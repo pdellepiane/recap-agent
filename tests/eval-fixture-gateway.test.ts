@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { channelRequestSchema } from '../src/lambda/request-contract';
 import { FixtureAgentConversationGateway, normalizePurchaseTimestamp } from '../src/runtime/eval-fixture-gateway';
+import type { FixtureData } from '../src/runtime/eval-fixture-gateway';
+import { InMemoryEvalFixtureStateStore } from '../src/runtime/eval-fixture-state';
+import type { EvalFixtureStateStore } from '../src/runtime/eval-fixture-state';
 import { HttpAgentConversationGateway } from '../src/runtime/agent-conversation-gateway';
 import type { AgentAuthByPhoneInput } from '../src/runtime/agent-conversation-gateway';
 
@@ -31,13 +34,33 @@ describe('eval fixture seam', () => {
   it('request with valid backendFixture marker validates', () => {
     const payload = {
       ...validWhatsAppPayload,
-      backendFixture: { scenario: 'purchase-victor-171' },
+      backendFixture: { scenario: 'purchase-victor-171', runId: 'run-2026-09-14', caseId: 'live_behavior.case' },
     };
     const result = channelRequestSchema.safeParse(payload);
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.backendFixture?.scenario).toBe('purchase-victor-171');
+      expect(result.data.backendFixture?.runId).toBe('run-2026-09-14');
+      expect(result.data.backendFixture?.caseId).toBe('live_behavior.case');
     }
+  });
+
+  it('request with incomplete evaluation identity fails validation', () => {
+    const missingCase = {
+      ...validWhatsAppPayload,
+      backendFixture: { scenario: 'purchase-victor-171', runId: 'run-2026-09-14' },
+    };
+    expect(channelRequestSchema.safeParse(missingCase).success).toBe(false);
+    const missingRun = {
+      ...validWhatsAppPayload,
+      backendFixture: { scenario: 'purchase-victor-171', caseId: 'live_behavior.case' },
+    };
+    expect(channelRequestSchema.safeParse(missingRun).success).toBe(false);
+    const scenarioOnly = {
+      ...validWhatsAppPayload,
+      backendFixture: { scenario: 'purchase-victor-171' },
+    };
+    expect(channelRequestSchema.safeParse(scenarioOnly).success).toBe(false);
   });
 
   it('request with malformed fixture marker fails validation', () => {
@@ -221,8 +244,7 @@ describe('eval fixture seam', () => {
     }
   });
 
-  it('POST /guest/rsvp fixture outcomes type correctly', async () => {
-    const savedGateway = await FixtureAgentConversationGateway.create('rsvp-plus-one-saved');
+  it('POST /guest/rsvp fixture outcomes type correctly', async () => {    const savedGateway = await FixtureAgentConversationGateway.create('rsvp-plus-one-saved');
     const savedInput = { phone_extension: '+51', phone_number: '942633292', guest_id: 70001, plus_one_response: 'yes' as const };
     // Verify concatenated probe: 51942633292 == 51 + 942633292
     expect(`${savedInput.phone_extension.replace(/\D/gu, '')}${savedInput.phone_number}`).toBe('51942633292');
@@ -270,6 +292,34 @@ describe('eval fixture seam', () => {
     void multipleInput;
   });
 
+  it('a guest-targeted write on the multi-pending fixture confirms its own event', async () => {
+    // Fixture proof for live_behavior.rsvp_explicit_mutation_targets_requested_event:
+    // an explicit attending write for guest 80002 must confirm Cumpleaños
+    // Marta (event 8002), and the same-instance fresh read must observe it,
+    // so verification can succeed instead of reporting selection.
+    const gateway = await FixtureAgentConversationGateway.create('rsvp-plus-one-multiple-pending');
+    const written = await gateway.guestRsvp({
+      phone_extension: '+51',
+      phone_number: '941438999',
+      action: 'attending',
+      guest_id: 80002,
+    });
+    expect(written.status).toBe('responded');
+    if (written.status !== 'responded') return;
+    expect(written.guestId).toBe(80002);
+    expect(written.eventId).toBe(8002);
+    expect(written.willAttend).toBe(true);
+
+    const read = await gateway.getEventDetail({
+      eventId: 8002,
+      phone: { phone_extension: '+51', phone_number: '941438999' },
+    });
+    expect(read.status).toBe('success');
+    if (read.status !== 'success') return;
+    expect(read.event.attendance?.guestId).toBe(80002);
+    expect(read.event.attendance?.willAttend).toBe(true);
+  });
+
   it('COD normalization is preserved via purchase mapping', async () => {
     const gateway = await FixtureAgentConversationGateway.create('purchase-victor-171');
     const phone: AgentAuthByPhoneInput = { phone_extension: '+51', phone_number: '981056171' };
@@ -303,5 +353,331 @@ describe('eval fixture seam', () => {
       expect(soniaResult.carts?.length).toBe(1);
       expect(soniaResult.carts?.[0]?.wasAbandoned).toBe(true);
     }
+  });
+});
+
+describe('F1 fixture conversation history', () => {
+  const imagePhone = '+51987654321';
+
+  async function historyGateway(
+    scenario: string,
+    store: EvalFixtureStateStore,
+    runId: string,
+    caseId: string,
+    conversationKey = 'test-conversation',
+  ): Promise<FixtureAgentConversationGateway> {
+    return FixtureAgentConversationGateway.create(scenario, undefined, { stateStore: store, runId, caseId, conversationKey });
+  }
+
+  it('follow-up fixture history contains the preceding inbound turn and the sent answer', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const store = new InMemoryEvalFixtureStateStore();
+    const first = await historyGateway('image-clean-world', store, 'run-f1', 'case-question');
+    // Empty seed history for this phone.
+    const before = await first.getRecentMessages(imagePhone);
+    expect(before.status).toBe('success');
+    if (before.status === 'success') expect(before.messages).toEqual([]);
+
+    // Simulate the first invocation: history read, then the inbound turn logs,
+    // then the actual delivered model text is recorded as the sent receipt.
+    await expect(first.logMessage({
+      phoneNumber: imagePhone,
+      body: 'Cuanto dice ahi?',
+      direction: 'inbound',
+      whatsappMessageId: 'wamid-first',
+      sentAt: '2026-09-12T00:00:00-05:00',
+    })).resolves.toMatchObject({ status: 'success' });
+    await expect(first.recordOutboundReceipt({
+      phoneNumber: imagePhone,
+      body: 'El comprobante muestra S/ 149.90.',
+      deliveryAction: 'sent',
+    })).resolves.toMatchObject({ status: 'success' });
+
+    // A later invocation sharing the store sees seed + both records in order.
+    const second = await historyGateway('image-clean-world', store, 'run-f1', 'case-question');
+    const after = await second.getRecentMessages(imagePhone);
+    expect(after.status).toBe('success');
+    if (after.status === 'success') {
+      expect(after.messages.map((message) => message.body)).toEqual([
+        'Cuanto dice ahi?',
+        'El comprobante muestra S/ 149.90.',
+      ]);
+      expect(after.messages.map((message) => message.direction)).toEqual(['inbound', 'outbound']);
+    }
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('same phone in two cases remains isolated; two phones in one case remain isolated', async () => {
+    const store = new InMemoryEvalFixtureStateStore();
+    const caseA = await historyGateway('image-clean-world', store, 'run-f1', 'case-a');
+    const caseB = await historyGateway('image-clean-world', store, 'run-f1', 'case-b');
+    await caseA.logMessage({ phoneNumber: imagePhone, body: 'mensaje del caso A', direction: 'inbound', whatsappMessageId: 'wamid-a' });
+    await caseB.logMessage({ phoneNumber: imagePhone, body: 'mensaje del caso B', direction: 'inbound', whatsappMessageId: 'wamid-b' });
+
+    const readA = await caseA.getRecentMessages(imagePhone);
+    const readB = await caseB.getRecentMessages(imagePhone);
+    expect(readA.status).toBe('success');
+    expect(readB.status).toBe('success');
+    if (readA.status === 'success' && readB.status === 'success') {
+      expect(readA.messages.map((message) => message.body)).toEqual(['mensaje del caso A']);
+      expect(readB.messages.map((message) => message.body)).toEqual(['mensaje del caso B']);
+    }
+
+    const otherPhone = await caseA.getRecentMessages('+51900027801');
+    expect(otherPhone.status).toBe('success');
+    if (otherPhone.status === 'success') expect(otherPhone.messages).toEqual([]);
+  });
+
+  it('duplicate delivery of the same message id does not duplicate the current entry', async () => {
+    const store = new InMemoryEvalFixtureStateStore();
+    const gateway = await historyGateway('image-clean-world', store, 'run-f1', 'case-dupe');
+    const input = {
+      phoneNumber: imagePhone,
+      body: 'Cuanto dice ahi?',
+      direction: 'inbound' as const,
+      whatsappMessageId: 'wamid-same',
+    };
+    await expect(gateway.logMessage(input)).resolves.toMatchObject({ status: 'success' });
+    await expect(gateway.logMessage(input)).resolves.toMatchObject({ status: 'success' });
+    const read = await gateway.getRecentMessages(imagePhone);
+    expect(read.status).toBe('success');
+    if (read.status === 'success') {
+      expect(read.messages).toHaveLength(1);
+      expect(read.messages[0]?.body).toBe('Cuanto dice ahi?');
+    }
+  });
+
+  it('suppressed, failed, and unverified turns never enter merged history', async () => {
+    const store = new InMemoryEvalFixtureStateStore();
+    const gateway = await historyGateway('image-clean-world', store, 'run-f1', 'case-suppressed');
+    await expect(gateway.logMessage({
+      phoneNumber: imagePhone, body: 'pregunta real', direction: 'inbound', whatsappMessageId: 'wamid-real',
+    })).resolves.toMatchObject({ status: 'success' });
+    // Unverified outbound claim on the plain log path: stored, never merged.
+    await expect(gateway.logMessage({
+      phoneNumber: imagePhone, body: 'respuesta no verificada', direction: 'outbound',
+    })).resolves.toMatchObject({ status: 'success' });
+    await expect(gateway.recordOutboundReceipt({
+      phoneNumber: imagePhone, body: 'respuesta suprimida', deliveryAction: 'suppressed',
+    })).resolves.toMatchObject({ status: 'success' });
+    await expect(gateway.recordOutboundReceipt({
+      phoneNumber: imagePhone, body: 'respuesta fallida', deliveryAction: 'failed',
+    })).resolves.toMatchObject({ status: 'success' });
+
+    const read = await gateway.getRecentMessages(imagePhone);
+    expect(read.status).toBe('success');
+    if (read.status === 'success') {
+      expect(read.messages.map((message) => message.body)).toEqual(['pregunta real']);
+    }
+    // The suppressed/failed records are still auditable in the store.
+    const all = await store.listMessages('run-f1', 'case-suppressed', 'test-conversation');
+    expect(all).toHaveLength(4);
+  });
+
+  it('failed logger degrades to typed failure without crashing or calling production', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const broken: EvalFixtureStateStore = {
+      record: () => Promise.reject(new Error('store down')),
+      count: () => Promise.resolve(0),
+      list: () => Promise.resolve([]),
+      lastReceipt: () => Promise.resolve(null),
+      recordMessage: () => Promise.reject(new Error('store down')),
+      listMessages: () => Promise.reject(new Error('store down')),
+      resetForTesting: () => Promise.resolve(),
+    };
+    const gateway = await historyGateway('image-clean-world', broken, 'run-f1', 'case-broken');
+    await expect(gateway.logMessage({
+      phoneNumber: imagePhone, body: 'hola', direction: 'inbound',
+    })).resolves.toMatchObject({ status: 'failed' });
+    const read = await gateway.getRecentMessages(imagePhone);
+    expect(read.status).toBe('failed');
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('malformed seed history fails closed instead of returning silent empty history', async () => {
+    const gateway = FixtureAgentConversationGateway.createSync(
+      'malformed-history',
+      { recentMessages: { '51987654321': { messages: 'not-an-array' } } } as unknown as FixtureData,
+      new Set(['malformed-history']),
+    );
+    const read = await gateway.getRecentMessages(imagePhone);
+    expect(read.status).toBe('failed');
+    if (read.status === 'failed') expect(read.error).toContain('recentMessages');
+  });
+
+  it('unknown scenario message paths fail closed and never reach production', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const gateway = await FixtureAgentConversationGateway.create('unknown-scenario-xyz');
+    await expect(gateway.logMessage({
+      phoneNumber: imagePhone, body: 'hola', direction: 'inbound',
+    })).resolves.toMatchObject({ status: 'failed' });
+    const read = await gateway.getRecentMessages(imagePhone);
+    expect(read.status).toBe('failed');
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('F1 fixture worlds: empty, two pending orders, and distractor history', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const clean = await FixtureAgentConversationGateway.create('image-clean-world');
+    const cleanOrders = await clean.getGuestOrdersByPhone({ phone_extension: '+51', phone_number: '987654321' });
+    expect(cleanOrders.status).toBe('success');
+    if (cleanOrders.status === 'success') {
+      expect(cleanOrders.purchases).toEqual([]);
+      expect(cleanOrders.orderPartitions?.pending).toEqual([]);
+    }
+    const cleanHistory = await clean.getRecentMessages(imagePhone);
+    expect(cleanHistory.status).toBe('success');
+    if (cleanHistory.status === 'success') expect(cleanHistory.messages).toEqual([]);
+
+    const multi = await FixtureAgentConversationGateway.create('image-multi-pending');
+    const multiOrders = await multi.getGuestOrdersByPhone({ phone_extension: '+51', phone_number: '900001303' });
+    expect(multiOrders.status).toBe('success');
+    if (multiOrders.status === 'success') {
+      expect(multiOrders.orderPartitions?.pending).toHaveLength(2);
+      expect(multiOrders.orderPartitions?.pending.map((order) => order.eventName).sort())
+        .toEqual(['Evento de prueba A', 'Evento de prueba B']);
+      expect(multiOrders.orderPartitions?.completed).toEqual([]);
+    }
+
+    const distractor = await FixtureAgentConversationGateway.create('image-distractor-history');
+    const distractorHistory = await distractor.getRecentMessages(imagePhone);
+    expect(distractorHistory.status).toBe('success');
+    if (distractorHistory.status === 'success') {
+      expect(distractorHistory.messages).toHaveLength(2);
+      expect(distractorHistory.messages.every((message) => message.source === 'campaign')).toBe(true);
+    }
+    const distractorOrders = await distractor.getGuestOrdersByPhone({ phone_extension: '+51', phone_number: '987654321' });
+    expect(distractorOrders.status).toBe('success');
+    if (distractorOrders.status === 'success') expect(distractorOrders.purchases).toEqual([]);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('S1 durable isolated fixture history', () => {
+  const imagePhone = '+51987654321';
+
+  async function scopedGateway(
+    scenario: string,
+    store: EvalFixtureStateStore,
+    runId: string,
+    caseId: string,
+    conversationKey: string,
+  ): Promise<FixtureAgentConversationGateway> {
+    return FixtureAgentConversationGateway.create(scenario, undefined, { stateStore: store, runId, caseId, conversationKey });
+  }
+
+  it('same conversation retains observed history across an intentional scenario transition', async () => {
+    const store = new InMemoryEvalFixtureStateStore();
+    const first = await scopedGateway('image-clean-world', store, 'run-s1', 'case-transition', 'conv-keep');
+    await expect(first.logMessage({
+      phoneNumber: imagePhone, body: 'Cuanto dice ahi?', direction: 'inbound', whatsappMessageId: 'wamid-q1',
+    })).resolves.toMatchObject({ status: 'success' });
+    await expect(first.recordOutboundReceipt({
+      phoneNumber: imagePhone, body: 'El comprobante muestra S/ 149.90.', deliveryAction: 'sent',
+      whatsappMessageId: 'outbound:turn-0',
+    })).resolves.toMatchObject({ status: 'success' });
+
+    // Intentional scenario transition on the same conversation: the new
+    // scenario seed (campaign distractors) is a prefix and must not erase
+    // the observed messages.
+    const second = await scopedGateway('image-distractor-history', store, 'run-s1', 'case-transition', 'conv-keep');
+    const read = await second.getRecentMessages(imagePhone);
+    expect(read.status).toBe('success');
+    if (read.status === 'success') {
+      const bodies = read.messages.map((message) => message.body);
+      expect(bodies.slice(0, 2).every((body) => body.includes('Baby shower') || body.includes('CIVIL'))).toBe(true);
+      expect(bodies).toContain('Cuanto dice ahi?');
+      expect(bodies).toContain('El comprobante muestra S/ 149.90.');
+    }
+  });
+
+  it('two conversations on one phone and a later run stay isolated', async () => {
+    const store = new InMemoryEvalFixtureStateStore();
+    const convA = await scopedGateway('image-clean-world', store, 'run-s1', 'case-a', 'conv-a');
+    const convB = await scopedGateway('image-clean-world', store, 'run-s1', 'case-b', 'conv-b');
+    await convA.logMessage({ phoneNumber: imagePhone, body: 'mensaje del caso A', direction: 'inbound', whatsappMessageId: 'wamid-a' });
+    await convB.logMessage({ phoneNumber: imagePhone, body: 'mensaje del caso B', direction: 'inbound', whatsappMessageId: 'wamid-b' });
+    const readA = await convA.getRecentMessages(imagePhone);
+    const readB = await convB.getRecentMessages(imagePhone);
+    expect(readA.status).toBe('success');
+    expect(readB.status).toBe('success');
+    if (readA.status === 'success' && readB.status === 'success') {
+      expect(readA.messages.map((message) => message.body)).toEqual(['mensaje del caso A']);
+      expect(readB.messages.map((message) => message.body)).toEqual(['mensaje del caso B']);
+    }
+    const laterRun = await scopedGateway('image-clean-world', store, 'run-s2', 'case-a', 'conv-a');
+    const readLater = await laterRun.getRecentMessages(imagePhone);
+    expect(readLater.status).toBe('success');
+    if (readLater.status === 'success') expect(readLater.messages).toEqual([]);
+  });
+
+  it('write-side idempotent message ids never duplicate the current entry', async () => {
+    const store = new InMemoryEvalFixtureStateStore();
+    const gateway = await scopedGateway('image-clean-world', store, 'run-s1', 'case-dupe', 'conv-dupe');
+    const first = await gateway.logMessage({
+      phoneNumber: imagePhone, body: 'Cuanto dice ahi?', direction: 'inbound', whatsappMessageId: 'wamid-same',
+    });
+    expect(first.status).toBe('success');
+    const retry = await gateway.logMessage({
+      phoneNumber: imagePhone, body: 'Cuanto dice ahi?', direction: 'inbound', whatsappMessageId: 'wamid-same',
+    });
+    expect(retry.status).toBe('success');
+    const stored = await store.listMessages('run-s1', 'case-dupe', 'conv-dupe');
+    expect(stored).toHaveLength(1);
+    const read = await gateway.getRecentMessages(imagePhone);
+    expect(read.status).toBe('success');
+    if (read.status === 'success') expect(read.messages).toHaveLength(1);
+  });
+
+  it('fixture records carry TTL and conversation scope', async () => {
+    const store = new InMemoryEvalFixtureStateStore();
+    const gateway = await scopedGateway('image-clean-world', store, 'run-s1', 'case-ttl', 'conv-ttl');
+    await gateway.logMessage({ phoneNumber: imagePhone, body: 'hola', direction: 'inbound' });
+    const stored = await store.listMessages('run-s1', 'case-ttl', 'conv-ttl');
+    expect(stored).toHaveLength(1);
+    expect(stored[0]?.ttl).toBeGreaterThan(Math.floor(Date.now() / 1000));
+    expect(stored[0]?.conversationKey).toBe('conv-ttl');
+  });
+
+  it('conversation keys derive from channel and user and reject blanks', async () => {
+    const { buildFixtureConversationKey } = await import('../src/runtime/eval-fixture-state');
+    expect(buildFixtureConversationKey('terminal_whatsapp_eval', 'user-1')).toBe('terminal_whatsapp_eval#user-1');
+    expect(() => buildFixtureConversationKey('', 'user-1')).toThrow();
+    expect(() => buildFixtureConversationKey('terminal_whatsapp_eval', '  ')).toThrow();
+  });
+
+  it('gateway exposes its conversation scope and never uses scenario-derived identity', async () => {
+    const store = new InMemoryEvalFixtureStateStore();
+    const gateway = await scopedGateway('image-clean-world', store, 'run-s1', 'case-scope', 'conv-explicit');
+    expect(gateway.getConversationKey()).toBe('conv-explicit');
+    expect(gateway.runId).toBe('run-s1');
+    expect(gateway.caseId).toBe('case-scope');
+  });
+
+  it('two gate runs sharing phone and case stay effect-isolated by runId', async () => {
+    const store = new InMemoryEvalFixtureStateStore();
+    const first = await scopedGateway('otp-sent-image-guidance', store, 'run-effect-a', 'case-effect', 'conv-effect');
+    await expect(first.requestUserLoginCode('customer@example.invalid')).resolves.toMatchObject({ status: 'sent' });
+    // OTP one-shot within the same run: the second request is consumed.
+    await expect(first.requestUserLoginCode('customer@example.invalid')).resolves.toMatchObject({ status: 'failed' });
+    await expect(first.requestHumanTakeover(imagePhone)).resolves.toMatchObject({ status: 'success' });
+    // Handoff replay within the same run: the second call replays, never a fresh write.
+    const replay = await first.requestHumanTakeover(imagePhone);
+    expect(replay.status).toBe('success');
+    if (replay.status === 'success') expect(replay.message).toContain('replay');
+
+    // Second gate run sharing phone/case/conversation but a distinct runId:
+    // both OTP and handoff are fresh, never already-consumed or replayed.
+    const second = await scopedGateway('otp-sent-image-guidance', store, 'run-effect-b', 'case-effect', 'conv-effect');
+    await expect(second.requestUserLoginCode('customer@example.invalid')).resolves.toMatchObject({ status: 'sent' });
+    const freshHandoff = await second.requestHumanTakeover(imagePhone);
+    expect(freshHandoff.status).toBe('success');
+    if (freshHandoff.status === 'success') expect(freshHandoff.message).not.toContain('replay');
+
+    // Effect receipts are partitioned by run: each run consumed exactly once.
+    expect(await store.count('run-effect-a', 'case-effect', 'otp.request')).toBe(2);
+    expect(await store.count('run-effect-b', 'case-effect', 'otp.request')).toBe(1);
+    expect(await store.count('run-effect-a', 'case-effect', 'handoff.write')).toBe(2);
+    expect(await store.count('run-effect-b', 'case-effect', 'handoff.write')).toBe(1);
   });
 });

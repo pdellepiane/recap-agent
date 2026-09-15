@@ -363,6 +363,70 @@ describe('conversation turn coordination', () => {
     expect(owners).toHaveLength(2);
     expect(owners[0]).not.toBe(owners[1]);
   });
+
+  it('lets a later holder read the earlier holder persisted write (no stale plan)', async () => {
+    const coordinator = new InMemoryConversationTurnCoordinator();
+    let persisted = 'old';
+    await runWithConversationTurnLease({
+      coordinator,
+      identity,
+      hardDeadlineMs: 10_000,
+      waitMs: 0,
+      executionReserveMs: 100,
+      expirySafetyMs: 1_000,
+      pollMs: 10,
+      operation: async () => {
+        persisted = 'new';
+      },
+      now: () => 1_000,
+      ownerId: 'first',
+    });
+    // A read inside the later lease observes the earlier write: plan and
+    // history loads after acquisition never see a stale snapshot. This is
+    // mutual exclusion only; no FIFO or delivery ordering is claimed.
+    const seen = await runWithConversationTurnLease({
+      coordinator,
+      identity,
+      hardDeadlineMs: 10_000,
+      waitMs: 0,
+      executionReserveMs: 100,
+      expirySafetyMs: 1_000,
+      pollMs: 10,
+      operation: async () => persisted,
+      now: () => 2_000,
+      ownerId: 'second',
+    });
+    expect(seen).toBe('new');
+  });
+
+  it('releases the lease when the operation throws (release-on-error)', async () => {
+    const inner = new InMemoryConversationTurnCoordinator();
+    const releases: string[] = [];
+    const coordinator: ConversationTurnCoordinator = {
+      acquire: (turnLease, nowMs) => inner.acquire(turnLease, nowMs),
+      release: async (turnLease) => {
+        releases.push(turnLease.ownerId);
+        await inner.release(turnLease);
+      },
+    };
+    await expect(runWithConversationTurnLease({
+      coordinator,
+      identity,
+      hardDeadlineMs: 10_000,
+      waitMs: 0,
+      executionReserveMs: 100,
+      expirySafetyMs: 1_000,
+      pollMs: 10,
+      operation: async () => {
+        throw new Error('operation failed');
+      },
+      now: () => 1_000,
+      ownerId: 'failing',
+    })).rejects.toThrow('operation failed');
+    expect(releases).toEqual(['failing']);
+    // The failed holder did not wedge the lock: a later holder acquires.
+    expect(await inner.acquire(lease('next'), 1_001)).toBe(true);
+  });
 });
 
 describe('Dynamo conversation turn coordinator', () => {

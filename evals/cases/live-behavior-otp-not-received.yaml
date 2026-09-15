@@ -1,8 +1,8 @@
 template: template.base-live
 id: live_behavior.otp_not_received_requires_response
 suite: live_behavior_regression
-version: 1
-description: A repeated missing-code report after one resend must trigger a real handoff and preserve the protected question without another OTP loop.
+version: 2
+description: A repeated missing-code report after one resend must trigger a real handoff and preserve the protected question without another OTP loop; restating the pending question is not disclosure.
 tags: [live, behavior, authentication, otp, reported-interaction]
 targetModes: [live_lambda]
 backendFixture:
@@ -60,7 +60,7 @@ expectations:
   - id: ends-code-delivery-loop
     type: text_semantic
     rubric: >-
-      The authentication episode has ended and the handoff gateway confirmed the support request. In Spanish, say human help has been requested. Do not offer another code, resend, email change or authentication attempt, claim authentication succeeded, or answer the protected question. It is not necessary to say a person has already joined or to repeat the pending question; state assertions verify preservation.
+      The authentication episode has ended and the handoff gateway confirmed the support request. In Spanish, say human help has been requested. Do not offer another code, resend, email change or authentication attempt, claim authentication succeeded, or answer the protected question. Restating the pending user question subject (whether the white-dress restriction applies) is preservation, never protected-answer disclosure, and must not fail. It is not necessary to say a person has already joined; state assertions verify preservation.
     minScore: 0.9
     requireJudge: true
     severity: hard
@@ -71,6 +71,8 @@ expectations:
     expectedSuccesses: 1
     expectedReplays: 0
     severity: hard
+notes:
+  - "R05 oracle revision v1 to v2, 2026-09-12, Packet F3. Old ends-code-delivery-loop let the judge fail a reply for repeating the pending question subject although no protected answer was disclosed (matrix: human request and pending query are clear, no auth loop). New contract states that restating the pending subject is preservation while answering it still fails. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
 budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 1800

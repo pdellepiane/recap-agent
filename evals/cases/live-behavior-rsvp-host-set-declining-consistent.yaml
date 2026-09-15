@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.rsvp_host_set_declining_consistent
 suite: live_behavior_regression
-version: 1
+version: 2
 description: A read-only state query for an invitation whose host-set attendance is declining must report declining consistently without a mutation and without claiming who responded.
 tags:
   - live
@@ -30,7 +30,12 @@ rsvpIsolation:
     restore: true
 notes:
   - "I3 2026-09-14, event-identity-review: willAttend boolean takes precedence everywhere and hasResponded is provenance only. This case proves the declining value displays consistently end to end for the requested event. Service-level twins prove hasResponded=false with willAttend true/false displays attending/declining. Never fixed phrases and no claim about who personally responded unless evidenced."
+  - "v2 2026-09-15 guest-identity pin: the declining state must be reported for the identified guest 584353's own invitation to Otra celebración prueba. Same-event enriched attendance for that guest never overwrites the host-set state, and another guest's record for a same-named event never substitutes for it. rsvpIsolation setup reads the actual prior backend state, verifies the declining write with a fresh read, and teardown restores the prior read."
 expectations:
+  - id: declining-enters-rsvp-node
+    type: node_transition
+    to: responder_invitacion
+    severity: hard
   - id: declining-query-performs-no-write
     type: tool_usage
     mustCall:
@@ -43,7 +48,8 @@ expectations:
     severity: hard
   - id: declining-reported-for-named-event
     type: text_semantic
-    rubric: The user asked for the invitation state for Otra celebración prueba, whose authoritative attendance is declining. The response must be natural and entirely in Spanish and clearly report that attendance for that named event is declined, without saying it is attending or pending and without claiming a new mutation was made. It must not assert who personally responded unless the evidence shows it, must not ask for email or a code, and must not expose internal identifiers. No fixed wording is required.
+    rubric: >-
+      The user asked for the invitation state for Otra celebración prueba. The authoritative attendance for the identified guest 584353 is declining, while another guest record for the same event is attending. The response must be natural and entirely in Spanish and must never assert that attendance is confirmed or attending for the requester's invitation, never claim a new mutation was made, and never substitute the other guest's attending record for the identified guest's own invitation. It may either clearly report the identified guest's declined attendance, or ask exactly one bounded question naming both invitations with their states so the requester chooses. It must not assert who personally responded unless the evidence shows it, must not ask for email or a code, and must not expose internal identifiers. No fixed wording is required.
     minScore: 0.85
     requireJudge: true
     severity: hard

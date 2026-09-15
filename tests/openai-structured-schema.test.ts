@@ -3,9 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { extractionSchema } from '../src/runtime/extraction-schemas';
 import { assertOpenAiStructuredSchemaCompatible } from '../src/runtime/openai-structured-schema';
 import {
-  closeConfirmationMessageSchema,
-  closeResultMessageSchema,
-  contactRequestMessageSchema,
   genericMessageSchema,
   multiNeedRecommendationMessageSchema,
   recommendationMessageSchema,
@@ -17,9 +14,6 @@ const openAiOutputSchemas = [
   ['reply_welcome', welcomeMessageSchema],
   ['reply_recommendation', recommendationMessageSchema],
   ['reply_multi_need_recommendation', multiNeedRecommendationMessageSchema],
-  ['reply_contact_request', contactRequestMessageSchema],
-  ['reply_close_confirmation', closeConfirmationMessageSchema],
-  ['reply_close_result', closeResultMessageSchema],
   ['reply_generic', genericMessageSchema],
 ] as const;
 

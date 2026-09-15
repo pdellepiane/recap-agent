@@ -16,6 +16,37 @@ import {
 import { closeActionSchema } from '../runtime/close-flow-schemas';
 import { extractedInformationRequestSchema } from '../core/information';
 
+const outputOriginEvidenceSchema = z.object({
+  status: z.enum(['verified', 'mismatch', 'missing', 'generation_failed']),
+  candidateSha256: z.string().regex(/^[a-f0-9]{64}$/u).nullable(),
+  deliveredSha256: z.string().regex(/^[a-f0-9]{64}$/u).nullable(),
+  transformationVersion: z.string().nullable(),
+  mismatchFields: z.array(z.string()),
+});
+export type OutputOriginEvidence = z.infer<typeof outputOriginEvidenceSchema>;
+
+/**
+ * F2 typed silence observation for semantic judging.
+ *
+ * Records how an empty candidate was observed BEFORE any blanket empty-text
+ * rejection: a validated silence path (established, model-selected, or
+ * image-only with a successful ref save), deliverable speech, or a hard
+ * failure (generation failure, origin mismatch, missing turn, empty send,
+ * unknown suppression, unpersisted image). The semantic judge receives the
+ * observed disposition, never a pretend assistant sentence.
+ */
+export const silenceObservationSchema = z.object({
+  route: z.enum(['speech', 'silence', 'failure']),
+  path: z.enum(['established', 'model_selected', 'image_only']).nullable(),
+  reason: z.string().min(1).max(512),
+  dispositionAction: z.string().max(64).nullable(),
+  dispositionReason: z.string().max(256).nullable(),
+  deliveredNull: z.boolean(),
+  originStatus: z.string().max(32).nullable(),
+  imageRefSaved: z.boolean(),
+}).strict();
+export type SilenceObservation = z.infer<typeof silenceObservationSchema>;
+
 const jsonValueSchema: z.ZodType<unknown> = z.lazy(() =>
   z.union([
     z.string(),
@@ -81,6 +112,42 @@ const contactFieldPresenceSchema = z.object({
   name: z.boolean(),
   email: z.boolean(),
   phone: z.boolean(),
+});
+
+const openAiTransportRequestSchema = z.object({
+  sequence: z.number().int().nonnegative(),
+  stage: z.enum(['classifier', 'extraction', 'reply', 'image', 'knowledge_retrieval', 'provider_vector_search', 'unknown']),
+  requestId: z.string().nullable(),
+  responseId: z.string().nullable(),
+  statusCode: z.number().int().nullable(),
+  succeeded: z.boolean().nullable(),
+  totalPayloadBytes: z.number().int().nonnegative().nullable(),
+  instructionBytes: z.number().int().nonnegative().nullable(),
+  inputBytes: z.number().int().nonnegative().nullable(),
+  toolBytes: z.number().int().nonnegative().nullable(),
+  outputSchemaBytes: z.number().int().nonnegative().nullable(),
+  requestBodySha256: z.string().regex(/^[a-f0-9]{64}$/u).nullable(),
+});
+const openAiCallSchema = z.object({
+  responseId: z.string().nullable(),
+  requestId: z.string().nullable(),
+  model: z.string(),
+  attemptCount: z.number().int().positive(),
+  requestMetrics: z.object({
+    instructionBytes: z.number().int().nonnegative(),
+    inputBytes: z.number().int().nonnegative(),
+    toolCount: z.number().int().nonnegative(),
+    schemaPropertyCount: z.number().int().nonnegative(),
+    transport: z.object({
+      observedRequestCount: z.number().int().nonnegative(),
+      totalPayloadBytes: z.number().int().nonnegative().nullable(),
+      instructionBytes: z.number().int().nonnegative().nullable(),
+      inputBytes: z.number().int().nonnegative().nullable(),
+      toolBytes: z.number().int().nonnegative().nullable(),
+      outputSchemaBytes: z.number().int().nonnegative().nullable(),
+      requests: z.array(openAiTransportRequestSchema).default([]),
+    }).optional(),
+  }),
 });
 
 export const turnTraceSchema = z.object({
@@ -174,9 +241,34 @@ export const turnTraceSchema = z.object({
       filename: z.string(),
       score: z.number(),
       contentHash: z.string().regex(/^[a-f0-9]{64}$/u),
+      /**
+       * Packet O5 typed purchase fact. Optional so older artifacts and
+       * unit probes without a backend read still parse; absent means
+       * unknown, never a demand for a named datum.
+       */
+      purchaseFact: z.object({
+        eventLabel: z.string().nullable(),
+        total: z.number().nullable(),
+        currency: z.string().nullable(),
+        currencySymbol: z.string().nullable(),
+        paymentMethod: z.string().nullable(),
+        paymentStatus: z.string().nullable(),
+        eventDate: z.string().nullable(),
+        createdAt: z.string().nullable(),
+        referencePresent: z.boolean(),
+      }).optional(),
     })),
     resultCount: z.number().int().nonnegative(),
     durationMs: z.number().nonnegative(),
+    openAiTransport: z.object({
+      observedRequestCount: z.number().int().nonnegative(),
+      totalPayloadBytes: z.number().int().nonnegative().nullable(),
+      instructionBytes: z.number().int().nonnegative().nullable(),
+      inputBytes: z.number().int().nonnegative().nullable(),
+      toolBytes: z.number().int().nonnegative().nullable(),
+      outputSchemaBytes: z.number().int().nonnegative().nullable(),
+      requests: z.array(openAiTransportRequestSchema).default([]),
+    }).optional(),
     accessMethod: z.enum(['authenticated_account', 'trusted_phone_guest', 'trusted_phone_purchase', 'trusted_phone_event_purchase']).nullable().optional(),
     resource: z.enum(['orders', 'gift_purchases']).optional(),
     coverage: z.enum(['complete', 'partial', 'inconsistent']).nullable().optional(),
@@ -195,6 +287,11 @@ export const turnTraceSchema = z.object({
     resultStatus: z.enum(['confirmed', 'failed', 'unresolved']),
     attempt: z.number().int().nonnegative(),
   })).default([]),
+  openai_calls: z.object({
+    classifier: openAiCallSchema.nullable(),
+    extraction: openAiCallSchema.nullable(),
+    reply: openAiCallSchema.nullable(),
+  }).optional(),
   recommendation_funnel: z.object({
     available_candidates: z.number().int().nonnegative(),
     context_candidates: z.number().int().nonnegative(),
@@ -348,12 +445,19 @@ const turnImageErrorSchema = z.object({
 
 const turnImageRedactedSchema = z.object({
   redacted: z.literal(true),
-  mime_type: z.string().min(1).max(128),
-  byte_length: z.number().int().nonnegative(),
+  mime_type: z.string().min(1).max(128).optional(),
+  byte_length: z.number().int().nonnegative().optional(),
+  url_host_redacted: z.string().max(256).optional(),
+  url_bytes: z.number().int().nonnegative().optional(),
+}).strict();
+
+const turnImageUrlSchema = z.object({
+  url: z.string().min(1).max(2048),
 }).strict();
 
 export const turnImageInputSchema = z.union([
   turnImageDataSchema,
+  turnImageUrlSchema,
   turnImageErrorSchema,
   turnImageRedactedSchema,
 ]);
@@ -664,6 +768,20 @@ const rsvpIsolationSetupSchema = z.object({
   eventName: z.string().min(1).default('Otra celebración prueba'),
   phone: z.string().min(1).default('+51973296571'),
   targetState: z.enum(['attending', 'declining', 'pending']),
+  /**
+   * Packet O1: known restorable prior state. Real-backend setup requires a
+   * decided restorable prior (explicit here or a fresh same-guest/same-event
+   * backend read); fixture-backed setup preserves the explicit value and
+   * otherwise reads the declared fixture world. Never inferred from prose.
+   */
+  priorState: z.enum(['attending', 'declining', 'pending']).nullable().optional(),
+  /**
+   * Packet O1: fixture scenario backing this isolation. Present (directly or
+   * resolved from the case backendFixture) routes setup/teardown through the
+   * fixture gateway with zero real HTTP writes; absent routes through the
+   * real backend with verified write and verified restoration.
+   */
+  fixtureScenario: z.string().trim().min(1).max(128).nullable().optional(),
 }).strict();
 
 const rsvpIsolationTeardownSchema = z.object({
@@ -733,6 +851,21 @@ export const evalSuiteManifestSchema = z.object({
 });
 export type EvalSuiteManifest = z.infer<typeof evalSuiteManifestSchema>;
 
+/**
+ * Packet O0 manifest hook. Every config/case pair executed in a run carries
+ * the digest identity recorded in `src/evals/run-manifest.ts`; this schema
+ * names the reference without changing any result envelope.
+ */
+export const evalRunManifestReferenceSchema = z.object({
+  runId: z.string().min(1),
+  manifestPath: z.string().min(1),
+  manifestDigest: z.string().regex(/^[a-f0-9]{64}$/u),
+  configLabel: z.string().min(1),
+  caseId: z.string().min(1),
+  pairId: z.string().regex(/^[a-f0-9]{64}$/u),
+});
+export type EvalRunManifestReference = z.infer<typeof evalRunManifestReferenceSchema>;
+
 export const evalRunConfigSchema = z.object({
   run_id: z.string().min(1).optional(),
   label: z.string().min(1),
@@ -757,6 +890,9 @@ export type EvalMatrix = z.infer<typeof evalMatrixSchema>;
 
 export const lambdaTurnResponseSchema = z.object({
   message: z.string().nullable(),
+  message_original_sha256: z.string().regex(/^[a-f0-9]{64}$/u).nullable().optional(),
+  message_redaction_applied: z.boolean().optional(),
+  output_origin: outputOriginEvidenceSchema.optional(),
   delivery: z.object({
     action: z.enum(['send', 'suppress', 'failure']),
     reason: z.string(),
@@ -773,6 +909,19 @@ export const evalTurnResultSchema = z.object({
   turnIndex: z.number().int().nonnegative(),
   input: turnInputSchema,
   outputText: z.string(),
+  deliveredText: z.string().nullable().optional(),
+  delivery: z.object({
+    action: z.enum(['send', 'suppress', 'failure']),
+    reason: z.string(),
+  }).optional(),
+  outputOrigin: outputOriginEvidenceSchema.optional(),
+  /**
+   * S1 wire identity for the S3 silence seam. The live target records the
+   * inbound message_id it actually sent; downstream silence validation binds
+   * saved attachment refs to this invocation instead of a fixture-supplied
+   * claim. Absent for offline turns (no wire identity).
+   */
+  observedMessageId: z.string().trim().min(1).max(256).optional(),
   currentNode: z.string(),
   trace: turnTraceSchema,
   perf: cliPerfSummarySchema.nullable().optional(),
@@ -812,6 +961,12 @@ export const evalArtifactTurnResultSchema = z.object({
   turnIndex: z.number().int().nonnegative(),
   input: turnInputSchema,
   outputText: z.string(),
+  deliveredText: z.string().nullable().optional(),
+  delivery: z.object({
+    action: z.enum(['send', 'suppress', 'failure']),
+    reason: z.string(),
+  }).optional(),
+  outputOrigin: outputOriginEvidenceSchema.optional(),
   currentNode: z.string(),
   trace: turnTraceSchema,
   perf: cliPerfSummarySchema.nullable().optional(),
@@ -857,8 +1012,53 @@ const benchmarkMetricsSchema = z.object({
   plan_persistence_rate: z.number().min(0).max(1),
   total_tokens: z.number().int().nonnegative(),
   cache_hit_rate: z.number().min(0).max(1),
+  /**
+   * Packet O3 honest token accounting. Cached/input tokens aggregate by
+   * summed counts with separate cache writes and uncached tokens; ratios
+   * are always ratio-of-sums, never averages of per-turn percentages.
+   * Missing usage is unknown (usage_known=false), never counted as zero.
+   */
+  input_tokens: z.number().int().nonnegative().optional(),
+  cached_input_tokens: z.number().int().nonnegative().optional(),
+  cache_write_input_tokens: z.number().int().nonnegative().optional(),
+  uncached_input_tokens: z.number().int().nonnegative().optional(),
+  usage_known: z.boolean().optional(),
 });
 export type BenchmarkMetrics = z.infer<typeof benchmarkMetricsSchema>;
+
+/**
+ * Packet O2/O3 per-case pipeline timing. Runtime turn latency stays a
+ * distinct field (EvalTurnResult.latencyMs); these stages cover the whole
+ * execution pipeline: admission queue wait, setup, turns, snapshot,
+ * teardown, judge wait/API, and report write. All wall-clock milliseconds.
+ */
+export const caseTimingSchema = z.object({
+  queueWaitMs: z.number().nonnegative(),
+  setupMs: z.number().nonnegative(),
+  turnMs: z.number().nonnegative(),
+  snapshotMs: z.number().nonnegative(),
+  teardownMs: z.number().nonnegative(),
+  judgeWaitMs: z.number().nonnegative(),
+  judgeApiMs: z.number().nonnegative(),
+  reportWriteMs: z.number().nonnegative(),
+  makespanMs: z.number().nonnegative(),
+});
+export type CaseTiming = z.infer<typeof caseTimingSchema>;
+
+/**
+ * Packet O3 per-case judge accounting: model call count, runner-owned
+ * retry count, observed rate limits, and SDK/provider usage. Missing usage
+ * is unknown (tokensUnknown=true), never zero.
+ */
+export const caseJudgeMetricsSchema = z.object({
+  modelCalls: z.number().int().nonnegative(),
+  retryCount: z.number().int().nonnegative(),
+  rateLimitCount: z.number().int().nonnegative(),
+  tokensUnknown: z.boolean(),
+  openaiSdk: z.string().nullable(),
+  judgeModels: z.array(z.string()),
+});
+export type CaseJudgeMetrics = z.infer<typeof caseJudgeMetricsSchema>;
 
 export const evalResultSchema = z.object({
   runId: z.string(),
@@ -866,8 +1066,26 @@ export const evalResultSchema = z.object({
   suite: z.string(),
   target: evalTargetModeSchema,
   configLabel: z.string(),
+  /**
+   * Packet O1 lane admission (no parallel execution yet; the runner stays
+   * serial). Proven fully isolated fixture cases admit to `parallel`; every
+   * other case enters the serial `external` lane. Unknown fails closed to
+   * external. Dropped from redacted artifacts; in-memory reports keep it.
+   */
+  lane: z.enum(['parallel', 'external']).optional(),
   status: z.enum(['passed', 'failed', 'errored', 'skipped']),
   hardGatePassed: z.boolean(),
+  /**
+   * Packet O5: one primary reason per failure. Scores stay diagnostic;
+   * present only on failed/errored results, null-free omission otherwise.
+   */
+  primaryFailureReason: z.enum([
+    'product_effect_identity',
+    'product_fact_completeness',
+    'unnecessary_interaction',
+    'evaluator_defect',
+    'infrastructure_error',
+  ]).optional(),
   finalScore: z.number().min(0).max(1),
   totalLatencyMs: z.number().nonnegative(),
   totalToolCalls: z.number().int().nonnegative(),
@@ -879,6 +1097,14 @@ export const evalResultSchema = z.object({
   expectationResults: z.array(expectationResultSchema),
   scorerResults: z.array(scorerResultSchema),
   benchmarkMetrics: benchmarkMetricsSchema.optional(),
+  timing: caseTimingSchema.optional(),
+  judgeMetrics: caseJudgeMetricsSchema.optional(),
+  /**
+   * Packet O2 uncertain execution. An aborted HTTP request does not prove
+   * Lambda stopped: the case is marked uncertain, never silently retried or
+   * restored over a possibly active mutation.
+   */
+  executionUncertain: z.boolean().optional(),
   turns: z.array(evalTurnResultSchema),
   startedAt: z.string(),
   completedAt: z.string(),
@@ -916,6 +1142,11 @@ const benchmarkSummarySchema = z.object({
   avg_plan_persistence_rate: z.number().min(0).max(1),
   avg_cache_hit_rate: z.number().min(0).max(1),
   total_tokens: z.number().int().nonnegative(),
+  /** Packet O3: summed token accounting (never averaged percentages). */
+  total_input_tokens: z.number().int().nonnegative().optional(),
+  total_cached_input_tokens: z.number().int().nonnegative().optional(),
+  total_cache_write_input_tokens: z.number().int().nonnegative().optional(),
+  total_uncached_input_tokens: z.number().int().nonnegative().optional(),
 });
 export type BenchmarkSummary = z.infer<typeof benchmarkSummarySchema>;
 
@@ -927,6 +1158,14 @@ export const evalArtifactResultSchema = z.object({
   configLabel: z.string(),
   status: z.enum(['passed', 'failed', 'errored', 'skipped']),
   hardGatePassed: z.boolean(),
+  /** Packet O5 primary failure reason; omitted on passed/skipped results. */
+  primaryFailureReason: z.enum([
+    'product_effect_identity',
+    'product_fact_completeness',
+    'unnecessary_interaction',
+    'evaluator_defect',
+    'infrastructure_error',
+  ]).optional(),
   finalScore: z.number().min(0).max(1),
   totalLatencyMs: z.number().nonnegative(),
   totalToolCalls: z.number().int().nonnegative(),
@@ -938,6 +1177,8 @@ export const evalArtifactResultSchema = z.object({
   expectationResults: z.array(expectationResultSchema),
   scorerResults: z.array(scorerResultSchema),
   benchmarkMetrics: benchmarkMetricsSchema.optional(),
+  timing: caseTimingSchema.optional(),
+  judgeMetrics: caseJudgeMetricsSchema.optional(),
   turns: z.array(evalArtifactTurnResultSchema),
   startedAt: z.string(),
   completedAt: z.string(),
@@ -958,6 +1199,25 @@ export const evalReportSchema = z.object({
   targetSummaries: z.array(evalAggregateSummarySchema),
   flakyCandidates: z.array(flakyCandidateSchema),
   benchmarkSummary: benchmarkSummarySchema.optional(),
+  /**
+   * Packet O2 completion. A SIGINT/deadline/contamination stop produces an
+   * incomplete red report with the reason explicit; a diagnostic resume is
+   * labeled diagnostic and can never authorize promotion as a clean gate.
+   */
+  completion: z.object({
+    complete: z.boolean(),
+    reason: z.string().nullable(),
+    resumeMode: z.enum(['full', 'diagnostic']),
+  }).optional(),
+  /** Packet O2/O3 run-level timing and judge accounting. */
+  timingSummary: z.object({
+    makespanMs: z.number().nonnegative(),
+  }).passthrough().optional(),
+  judgeSummary: z.object({
+    modelCalls: z.number().int().nonnegative(),
+    retryCount: z.number().int().nonnegative(),
+    rateLimitCount: z.number().int().nonnegative(),
+  }).passthrough().optional(),
   results: z.array(evalArtifactResultSchema),
 });
 export type EvalArtifactResult = z.infer<typeof evalArtifactResultSchema>;

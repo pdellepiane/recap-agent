@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.rsvp_confirmed_state_is_reported
 suite: live_behavior_regression
-version: 5
+version: 6
 description: A user-level invitation that already has attendance confirmed is reported via hybrid fragment plus natural tissue without another mutation.
 tags: [live, behavior, rsvp, attendance, current-state, trusted-phone]
 targetModes: [live_lambda]
@@ -40,13 +40,9 @@ expectations:
   - id: reports-existing-confirmation-naturally
     type: text_semantic
     rubric: >-
-      The response must contain the deterministic attending fragment elements — polarity "figura que asistirás", confirmation "ya está confirmada", no-change clause "No fue necesario hacer otro cambio" and "no se realizó un nuevo registro", Spanish date "19 de agosto de 2026", event name "Otra celebración prueba", and natural Spanish conversational tissue (thanks, closing). Element presence is required, order is not evaluated. Must be entirely in Spanish, natural, must not imply a new mutation was made, must not ask for email or a code, must not mention internal states or tools, and must not invert polarity to "Figura que no asistirás".
+      Pass only if the assistant responds entirely in Spanish in its own natural wording, reporting that attendance for "Otra celebración prueba" on 19 de agosto de 2026 is already confirmed, and making clear that no new change or registration was needed or made. Factual requirements are attending polarity, the event name, the date, and the no-write fact; no exact deterministic phrase is required. It must not imply a new mutation was made, must not ask for email or a code, must not mention internal states or tools, and must not state the opposite polarity.
     minScore: 0.9
     requireJudge: true
-    severity: hard
-  - id: fragment-attending-polarity-event-date-no-change
-    type: text_contains
-    allOf: ["figura que asistirás", "Otra celebración prueba", "19 de agosto de 2026", "No fue necesario hacer otro cambio", "no se realizó un nuevo registro", "ya está confirmada"]
     severity: hard
   - id: fragment-not-inverted
     type: text_not_contains

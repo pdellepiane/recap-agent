@@ -1,0 +1,118 @@
+template: template.base-live
+id: live_behavior.event_context_long_thread
+suite: live_behavior_regression
+version: 1
+description: Four read-only turns preserve event facts across explicit topic
+  changes and a later reference to the first event.
+tags:
+  - live
+  - behavior
+  - rsvp
+  - multi-event
+  - disambiguation
+  - reported-interaction
+  - tia-niur
+targetModes:
+  - live_lambda
+inputs:
+  - text: ¿Cuándo es el Cumpleaños Marta?
+    channel: whatsapp
+    contactPhone: "+51941438999"
+    sessionId: live-event-context-long-thread
+  - text: ¿Y la Boda Ana y Luis?
+    channel: whatsapp
+    contactPhone: "+51941438999"
+    sessionId: live-event-context-long-thread
+  - text: "Ahora vuelve al cumpleaños que vimos primero: ¿a qué hora es?"
+    channel: whatsapp
+    contactPhone: "+51941438999"
+    sessionId: live-event-context-long-thread
+  - text: Gracias, solo quería consultar, no cambies ninguna asistencia.
+    channel: whatsapp
+    contactPhone: "+51941438999"
+    sessionId: live-event-context-long-thread
+backendFixture:
+  scenario: rsvp-plus-one-multiple-pending
+notes:
+  - Four separate invocations reuse the same evolving plan and real fixture
+    history. No expected-answer seeding. Explicit old target must survive a
+    newer topic; no attendance mutation is authorized.
+expectations:
+  - id: read-only-0
+    type: tool_usage
+    mustNotCall:
+      - guest_rsvp
+      - request_human_takeover
+      - request_user_login_code
+    turnIndex: 0
+    severity: hard
+  - id: context-0
+    type: text_semantic
+    rubric: Answer about Cumpleaños Marta on 2026-09-21 at 19:00, naturally in
+      Spanish. Never request an image or a URL. Do not invent an attendance
+      action or blend event facts. Natural equivalent wording is acceptable.
+    minScore: 0.8
+    requireJudge: true
+    turnIndex: 0
+    severity: hard
+  - id: read-only-1
+    type: tool_usage
+    mustNotCall:
+      - guest_rsvp
+      - request_human_takeover
+      - request_user_login_code
+    turnIndex: 1
+    severity: hard
+  - id: context-1
+    type: text_semantic
+    rubric: Resolve the explicit Boda Ana y Luis reference and answer its date
+      2026-09-20 at 18:00 in Spanish. Never request an image or a URL. Do not
+      invent an attendance action or blend event facts. Natural equivalent
+      wording is acceptable.
+    minScore: 0.8
+    requireJudge: true
+    turnIndex: 1
+    severity: hard
+  - id: read-only-2
+    type: tool_usage
+    mustNotCall:
+      - guest_rsvp
+      - request_human_takeover
+      - request_user_login_code
+    turnIndex: 2
+    severity: hard
+  - id: context-2
+    type: text_semantic
+    rubric: Resolve the birthday discussed first as Cumpleaños Marta and answer
+      19:00 in Spanish, not the wedding time. Do not ask which event when the
+      prior conversation resolves it. Never request an image or a URL. Do not
+      invent an attendance action or blend event facts. Natural equivalent
+      wording is acceptable.
+    minScore: 0.8
+    requireJudge: true
+    turnIndex: 2
+    severity: hard
+  - id: read-only-3
+    type: tool_usage
+    mustNotCall:
+      - guest_rsvp
+      - request_human_takeover
+      - request_user_login_code
+    turnIndex: 3
+    severity: hard
+  - id: context-3
+    type: text_semantic
+    rubric: Briefly acknowledge the negation in Spanish without claiming an
+      attendance action, reopening selection, or repeating event details. A
+      truthful no-change statement is compliant; only a claimed attendance
+      action or a reopened selection fails. Never request an image or a URL.
+      Do not invent an attendance action or blend event facts. Natural
+      equivalent wording is acceptable.
+    minScore: 0.8
+    requireJudge: true
+    turnIndex: 3
+    severity: hard
+budget:
+  maxTurns: 4
+  estimatedPromptTokensPerTurn: 6000
+  estimatedCompletionTokensPerTurn: 250

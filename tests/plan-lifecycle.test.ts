@@ -4,6 +4,7 @@ import {
   createEmptyPlan,
   mergePlan,
   planSchema,
+  replaceProviderNeeds,
 } from '../src/core/plan';
 
 describe('plan lifecycle', () => {
@@ -202,5 +203,56 @@ describe('plan lifecycle', () => {
 
     expect(updated.provider_needs[0]?.selected_provider_ids).toEqual([]);
     expect(updated.provider_needs[0]?.status).toBe('shortlisted');
+  });
+
+  it('never keeps active focus on a deferred need', () => {
+    const base = createEmptyPlan({
+      planId: 'p-defer-focus',
+      channel: 'terminal_whatsapp',
+      externalUserId: 'u-defer-focus',
+    });
+    const deferredCatering = {
+      category: 'Catering' as const,
+      status: 'deferred' as const,
+      preferences: [],
+      hard_constraints: [],
+      missing_fields: [],
+      recommended_provider_ids: [],
+      recommended_providers: [],
+      selected_provider_ids: [],
+      selected_provider_hints: [],
+    };
+    const selectedPhoto = {
+      category: 'Fotografía y video' as const,
+      status: 'selected' as const,
+      preferences: [],
+      hard_constraints: [],
+      missing_fields: [],
+      recommended_provider_ids: [90],
+      recommended_providers: [],
+      selected_provider_ids: [90],
+      selected_provider_hints: ['Carlos Schult'],
+    };
+
+    // Requesting a deferred category falls back to the first non-deferred
+    // need instead of foregrounding the deferred one.
+    const diverted = replaceProviderNeeds(
+      base,
+      [deferredCatering, selectedPhoto],
+      'Catering' as never,
+    );
+    expect(diverted.active_need_category).toBe('Fotografía y video');
+
+    // A non-deferred request is untouched.
+    const kept = replaceProviderNeeds(
+      base,
+      [selectedPhoto, deferredCatering],
+      'Fotografía y video' as never,
+    );
+    expect(kept.active_need_category).toBe('Fotografía y video');
+
+    // Every need deferred clears focus instead of pointing at one.
+    const cleared = replaceProviderNeeds(base, [deferredCatering], 'Catering' as never);
+    expect(cleared.active_need_category).toBeNull();
   });
 });

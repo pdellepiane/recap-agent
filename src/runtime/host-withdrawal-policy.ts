@@ -1,4 +1,3 @@
-import { z } from 'zod';
 import type { KnowledgeEvidence } from '../core/information';
 
 export const hostWithdrawalPolicyQuery =
@@ -28,9 +27,3 @@ export function parseHostWithdrawalPolicy(evidence: KnowledgeEvidence[]): {
     evidence: [{ ...fact.entry, text: `Plazo general de procesamiento: hasta ${fact.hours} horas hábiles.` }],
   };
 }
-
-export const hostWithdrawalMessagesSchema = z.object({
-  policy: z.string(), unavailable: z.string(), statusUnavailable: z.string(),
-  handoffSuccess: z.string(), handoffFailure: z.string(),
-  event: z.string(),
-}).strict();

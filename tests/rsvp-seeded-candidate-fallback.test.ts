@@ -9,10 +9,9 @@ import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
 import type { ProviderGateway, UserEventLookupResult } from '../src/runtime/provider-gateway';
 import { createEmptyPlan, mergePlan } from '../src/core/plan';
 
-describe('RSVP seeded candidate fallback (Fix 1)', () => {
-  it('fallback engaged projects needs_event_selection with candidates carrying event_name and event_date', async () => {
+describe('RSVP seeded candidate fallback', () => {
+  it('projects seeded candidates into the model evidence and preserves generated output', async () => {
     const runtime = new RsvpRuntime([rsvpExtraction({ action: 'attending', eventReference: null })]);
-    const invitations: UserEventLookupResult['events'] = [];
     const store = new InMemoryPlanStore();
     const seededPlan = mergePlan(createEmptyPlan({ planId: 'plan-fallback', channel: 'whatsapp', externalUserId: 'user-fallback' }), {
       current_node: 'responder_invitacion',
@@ -32,81 +31,28 @@ describe('RSVP seeded candidate fallback (Fix 1)', () => {
       },
     });
     await store.save({ plan: seededPlan, reason: 'seed' });
-    const service = createService(runtime, new RsvpGateway(), store, invitations);
-    await service.handleTurn(inbound('Ese.', 'user-fallback'));
+    const service = createService(runtime, new RsvpGateway(), store, []);
+    const result = await service.handleTurn(inbound('Ese.', 'user-fallback'));
     const evidence = runtime.composeRequests[0]?.rsvpPhoneEvidence as unknown as { state: string; candidates: Array<{ event_name: string | null; event_date: string | null }> };
     expect(evidence.state).toBe('needs_event_selection');
-    expect(evidence.candidates).toHaveLength(2);
-    for (const candidate of evidence.candidates) {
-      expect(candidate.event_name).toBeTruthy();
-      expect(candidate.event_date).toBeTruthy();
-    }
-    const names = evidence.candidates.map((c) => c.event_name);
-    expect(names).toEqual(expect.arrayContaining(['Matrimonio de Ana y Luis', 'Cumpleaños de Marta']));
-    const dates = evidence.candidates.map((c) => c.event_date);
-    expect(dates).toEqual(expect.arrayContaining(['2026-09-12', '2026-09-19']));
+    expect(evidence.candidates).toEqual(expect.arrayContaining([
+      expect.objectContaining({ event_name: 'Matrimonio de Ana y Luis', event_date: '2026-09-12' }),
+      expect.objectContaining({ event_name: 'Cumpleaños de Marta', event_date: '2026-09-19' }),
+    ]));
+    expect(runtime.composeRequests[0]?.errorMessage).toContain('"outcome":"event_selection_required"');
+    expect(result.outbound.text).toBe('RSVP_MODEL_SENTINEL');
   });
 
-  it('multipleRsvpInvitationsNote enumerates each candidate with name and Spanish date', () => {
+  it('does not expose a deterministic invitation question helper', () => {
     const service = new AgentService({
       planStore: new InMemoryPlanStore(),
       runtime: new RsvpRuntime([]),
       providerGateway: { async lookupUserEventContext() { return null; } } as unknown as ProviderGateway,
       promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
       renderers: { whatsapp: new WhatsAppMessageRenderer() },
-    }) as unknown as { multipleRsvpInvitationsNote: (inv: unknown[], action: unknown, attempts: number) => string; formatRsvpSpanishDate: (v: string | null) => string };
-    const invitations = [
-      { eventId: null, guestId: 41001, eventName: 'Matrimonio de Ana y Luis', eventDate: '2026-09-12', state: 'unknown', accessMethod: 'guest_record' },
-      { eventId: null, guestId: 41002, eventName: 'Cumpleaños de Marta', eventDate: '2026-09-19', state: 'unknown', accessMethod: 'guest_record' },
-    ] as unknown[];
-    const note = (service as unknown as { multipleRsvpInvitationsNote: (a: unknown, b: unknown, c: number) => string }).multipleRsvpInvitationsNote(invitations, 'attending', 0);
-    expect(note).toContain('Matrimonio de Ana y Luis');
-    expect(note).toContain('Cumpleaños de Marta');
-    expect(note).toContain('12 de septiembre de 2026');
-    expect(note).toContain('19 de septiembre de 2026');
-  });
-
-  it('identical inputs produce byte-identical note and projection (deterministic)', async () => {
-    const make = async (): Promise<{ evidence: unknown; note: string }> => {
-      const rt = new RsvpRuntime([rsvpExtraction({ action: 'attending', eventReference: null })]);
-      const inv: UserEventLookupResult['events'] = [];
-      const store = new InMemoryPlanStore();
-      const seeded = mergePlan(createEmptyPlan({ planId: 'plan-det', channel: 'whatsapp', externalUserId: 'user-det' }), {
-        current_node: 'responder_invitacion',
-        intent: 'responder_invitacion',
-        contact_phone: '+12025550100',
-        contact_phone_extension: '+1',
-        contact_phone_number: '2025550100',
-        rsvp_state: {
-          status: 'awaiting_event_selection',
-          pending_action: 'attending',
-          candidates: [
-            { guest_id: 41001, event_name: 'Matrimonio de Ana y Luis', event_date: '2026-09-12' },
-            { guest_id: 41002, event_name: 'Cumpleaños de Marta', event_date: '2026-09-19' },
-          ],
-          requested_at: '2026-08-13T15:00:00.000Z',
-          selection_attempts: 0,
-        },
-      });
-      await store.save({ plan: seeded, reason: 'seed' });
-      const svc = createService(rt, new RsvpGateway(), store, inv);
-      await svc.handleTurn(inbound('Ese.', 'user-det'));
-      const evidence = rt.composeRequests[0]?.rsvpPhoneEvidence;
-      const svc2 = svc as unknown as { multipleRsvpInvitationsNote: (a: unknown, b: unknown, c: number) => string };
-      const note = svc2.multipleRsvpInvitationsNote(
-        [
-          { eventId: null, guestId: 41001, eventName: 'Matrimonio de Ana y Luis', eventDate: '2026-09-12', state: 'unknown', accessMethod: 'guest_record' },
-          { eventId: null, guestId: 41002, eventName: 'Cumpleaños de Marta', eventDate: '2026-09-19', state: 'unknown', accessMethod: 'guest_record' },
-        ] as unknown[],
-        'attending',
-        1,
-      );
-      return { evidence, note };
-    };
-    const a = await make();
-    const b = await make();
-    expect(JSON.stringify(a.evidence)).toBe(JSON.stringify(b.evidence));
-    expect(a.note).toBe(b.note);
+    });
+    expect('multipleRsvpInvitationsNote' in service).toBe(false);
+    expect('renderRsvpEventSelectionDeterministically' in service).toBe(false);
   });
 });
 
@@ -120,7 +66,7 @@ class RsvpRuntime implements AgentRuntime {
   }
   async composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult> {
     this.composeRequests.push(request);
-    return { text: request.errorMessage ?? 'ok' };
+    return { text: 'RSVP_MODEL_SENTINEL', structuredMessage: { type: 'generic', paragraphs_es: ['RSVP_MODEL_SENTINEL'] } };
   }
 }
 

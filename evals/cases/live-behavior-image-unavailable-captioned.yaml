@@ -1,10 +1,12 @@
 template: template.base-live
 id: live_behavior.image_unavailable_captioned
 suite: live_behavior_regression
-version: 1
-description: A media_unavailable error with a caption answers the caption through the text pipeline and appends the resend fallback once.
+version: 4
+description: A media_unavailable error with a caption gets a useful natural Spanish reply that handles the caption and helps recover the lost input.
 tags: [live, behavior, image, image-error, caption, s17]
 targetModes: [live_lambda]
+backendFixture:
+  scenario: image-clean-world
 inputs:
   - text: Hola
     channel: whatsapp
@@ -14,20 +16,19 @@ inputs:
       error: media_unavailable
       mime_type: image/jpeg
 notes:
+  - "F1 2026-09-12: backendFixture scenario image-clean-world; this phone has empty initial history and empty authorized purchase results; never mutable backend data."
   - Backend image forwarding contract 2026-09-08 error variant. No bytes are transmitted.
+  - "R05 oracle revision v2 to v3, 2026-09-12, Packet F3. Old unavailable-caption-fallback-appended demanded a fixed appended resend sentence and unavailable-caption-enters-intent forced the intent template, failing a greeting that ignored the lost image another way (matrix: greeting ignores unavailable image). New contract judges one useful model-written reply without fixed phrases. Successful-upload checks stay separate from this unavailable-image path. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
+  - "R05 oracle revision v3 to v4, 2026-09-14, Packet EX1. Old unavailable-caption-answered-plus-recovery demanded resending the image or writing the information in text, failing URL-ask or DB-answer recovery (matrix: re-upload demands contradict the 2026-09-14 operator doctrine; recovery is a URL link the assistant can open or an answer from profile evidence). New contract passes a URL-ask or an answer from available evidence and fails any demand to re-upload or resend the image file. Old v3 runs preserved; baseline and candidate must rerun on this v4 contract."
 expectations:
-  - id: unavailable-caption-fallback-appended
-    type: text_contains
-    allOf: [Puedes enviarla de nuevo]
+  - id: unavailable-caption-no-effect
+    type: tool_usage
+    mustNotCall: [image_inspect, auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover, guest_rsvp]
     severity: hard
-  - id: unavailable-caption-enters-intent
-    type: node_transition
-    to: deteccion_intencion
-    severity: hard
-  - id: unavailable-caption-answered-plus-fallback
+  - id: unavailable-caption-answered-plus-recovery
     type: text_semantic
     rubric: >-
-      Pass only if the assistant responds entirely in Spanish with a single reply that both handles the greeting (a welcome or a clarifying question about what the user needs is acceptable) and asks the user to resend the image or write the information in text. It must not claim it viewed, read, saved, or forwarded any image, and must not ask for an OTP.
+      Pass only if the assistant responds entirely in Spanish with a single useful model-written reply that both handles the greeting (a welcome or a clarifying question about what the user needs is acceptable) and helps recover the lost image by asking for a shareable URL link it can open or answering from profile or order evidence already available, in natural wording without any fixed required phrase. It must not demand that the user re-upload or resend the image file, must not claim it viewed, read, saved, or forwarded any image, and must not ask for an OTP.
     minScore: 0.8
     requireJudge: true
     severity: hard

@@ -1,41 +1,74 @@
 plan_id: 2026-09-09-lean-conversation
 status: in_progress
-tldr: |
-  Lean conversation refactor per plan.md plus binding acceptance-contract.md (E01-E12, R01-R11).
-  Wave0 re-pins the baseline to HEAD 29ed763e and tracks the plan docs. L0/L1 code is
-  committed but L1 is not yet deployed. L2 migrates purchase plus close first, then the
-  remaining families, under a single-writer lock on shared runtime files.
-created_at: '2026-09-09'
+tldr: "Event-identity audit: host-set willAttend is authoritative; withdraw hasResponded gate. Reproduced stale-target and name-only merge risks. Fresh controls2/3 pass without observed event mixing; full acceptance OPEN. Follow event-identity-review-2026-09-14.md and corrected recheck-5e846b."
+created_at: 2026-09-09
 created_by: gem-implementer
-revision: 1
-replan_count: 0
+revision: 7
+replan_count: 2
 planner_revision_used: false
 baseline:
-  objective: Refactor to model-owned conversation with runtime-owned evidence and effects,
-    keeping event-plan-first scope, with zero fixed replies and measured request reduction.
+  objective: Refactor to model-owned conversation with runtime-owned evidence and effects, keeping
+    event-plan-first scope, with zero fixed replies and measured request reduction.
   acceptance_criteria:
     - 100 percent of ordinary delivered conversational text comes from the current-turn model output
     - Zero fixed complete replies, post-generation prose replacements, and discarded reply calls
-    - Full live gate passes with zero failed, errored, or skipped cases, all hard structural
-      plus required semantic judges green
+    - Full live gate passes with zero failed, errored, or skipped cases, all hard structural plus
+      required semantic judges green
     - No byte-reduction claim until E10 capture exists with identical denominators
-  captured_at: '2026-09-09'
+  captured_at: 2026-09-09
   git_head: 29ed763eec50f7b7888cb1486b75ed5a6fe75e04
   prior_inspected: 40d3bd79393462491ab2bab85107e05c18286d36
   baseline_run: eval-2026-09-09T22-54-06-714Z-1674f810
   baseline_score: 79/83 passed, 4 failed, 0 errored, 0 skipped
 decisions:
-  - "Single-writer lock: at most one active task edits shared runtime files (agent-service.ts, openai-agent-runtime.ts, contracts.ts). Waves 3 through 8 serialize on those files; no parallel patches."
-  - "L2 order: purchase family plus contact and quotation closure first (waves 3-4), then support and capability, RSVP, and clarification plus images plus auth (waves 5-7)."
-  - "Baseline 79/83 is never rescored. Evaluator changes require a separate reviewed change with both baseline and candidate rerun on the revised contract."
-  - "plan.md line 3 keeps the original 40d3bd79 inspection note as historical fact; the re-pin lives in evaluation-manifest.md plus the implementation log."
-  - "Every behavior-changing wave gets its own live-behavior-coverage.yaml entry with hard structural plus hard text_semantic requireJudge true, a deterministic offline twin, a development deploy (se-dev, us-east-1, STS 684516060775), and the full mandatory live suite. Contract and test-only changes run focused checks only."
+  - "Single-writer lock: at most one active task edits shared runtime files (agent-service.ts,
+    openai-agent-runtime.ts, contracts.ts). Waves 3 through 8 serialize on those files; no parallel
+    patches."
+  - "Destructive-first behavior change (operator directive 2026-09-14): modifying model behavior
+    must delete the old capability, typed dictionary, tool record, or instruction that teaches the
+    undesired behavior BEFORE adding any new guidance. A later 'do not do X' appended after the
+    thing that teaches X does not work. Models only do what they are told."
+  - "Campaign-event assumption (operator directive 2026-09-14): the agent may assume the event
+    under discussion ONLY from previous messages sent by a campaign (not the agent) that reference
+    one specific event (RSVP confirmation/reminder campaigns). In all other multi-event situations
+    it must ask which event, with event name and date."
+  - "One state, three agents, tools differentiate (operator directive 2026-09-14): no hard RSVP
+    state machine that forces lookups-instead-of-answers or actions-instead-of-answers. The same
+    agent answers purchase, invitation, and RSVP questions; capabilities differ by available tools."
+  - "Native image handling (operator directive 2026-09-14): images ride as native model context
+    (ChatGPT-style: pixels attached, model reads and builds on top). No typed enumeration of image
+    possibilities, no extractor over-reliance, no hand-held image paths. Assume model intelligence;
+    subtract machinery, do not add it."
+  - "L2 order: purchase family plus contact and quotation closure first (waves 3-4), then support
+    and capability, RSVP, and clarification plus images plus auth (waves 5-7)."
+  - Baseline 79/83 is never rescored. Evaluator changes require a separate reviewed change with both
+    baseline and candidate rerun on the revised contract.
+  - Every behavior-changing wave gets its own live-behavior-coverage.yaml entry with hard structural
+    plus hard text_semantic requireJudge true, a deterministic offline twin, a development deploy
+    (se-dev, us-east-1, STS 684516060775), and the full mandatory live suite. Contract and test-only
+    changes run focused checks only.
+  - Record production exception separately from strict gate status. No retroactive waiver,
+    denominator change, judge relaxation, or conversion of a hard semantic failure into a pass.
+  - Repeated wording does not by itself prove deterministic code origin. Trace model output,
+    projected receipt evidence, and rendered output before fixing the false resend claim.
+  - Pending work is a single dependency chain across shared runtime, evaluator and deployment state;
+    wave labels are descriptive only. A downstream writer may start only after its predecessor hands
+    off evidence and releases ownership.
+  - The packet for each task is sufficient dispatch context; do not send the entire implementation
+    log or conversation. Read acceptance-contract.md sections listed in that packet, and retrieve
+    only the referenced evidence.
+  - "Owner decision 2026-09-10: exactly three persistent owners: planning, faq (General
+    information), customer_assistance (Customer assistance). Purchases, invitations, authentication
+    and support are scoped capabilities within Customer assistance, not separate owners."
 assumptions:
-  - L0 inventory plus frozen contract (a8e443ab, 436600e3, 04500c10) and L1 seam
-    (1305f973, 29ed763e) are committed on branch dev; L1 deploy plus gate are pending.
-  - September deterministic-response fix plans are superseded for response
-    prescriptions; their historical evidence is preserved as-is.
-  - selectSupportAcknowledgmentMessage is dead code kept for L2 deletion with its tests.
+  - September deterministic-response fix plans are superseded for response prescriptions; their
+    historical evidence is preserved as-is.
+  - L1 and subsequent debug changes have been deployed. Passing targeted cases do not satisfy the
+    still-pending full gate on e8299759 or complete the broad L2-L5 migrations.
+  - Earlier baseline, source hashes, and run scores are historical records, not current deployment
+    identifiers.
+  - Runtime/test changes already present in the shared worktree belong to ongoing implementation;
+    this reconciliation edits plan documents only.
 tasks:
   - id: w0-baseline-repin
     title: Re-pin baseline to HEAD and track plan docs
@@ -83,13 +116,12 @@ tasks:
         - docs/plan/2026-09-09-lean-conversation/evaluation-manifest.md
   - id: l1-seam-gate
     title: L1 composition seam deploy and gate
-    description: |
-      Deploy L1 bytes (model-composition.ts, ReplyDisposition, support continuity bundle,
-      renderer audit) to development, then run focused suites plus typecheck plus lint
-      plus the full mandatory live gate. Record digest, run artifact, and metrics.
+    description: Verify the already-shipped seam on the latest predecessor candidate. Do not redeploy
+      old L1 bytes. Use predecessor full-run evidence only if candidate/contract digests match
+      exactly; otherwise run the missing gate.
     wave: 2
     agent: gem-implementer
-    status: pending
+    status: in_progress
     retries_used: 0
     acceptance_criteria:
       - Sentinel model text survives the outbound pipeline on migrated paths
@@ -102,6 +134,288 @@ tasks:
       relevant_context:
         - src/runtime/model-composition.ts
         - tests/model-output-origin.test.ts
+    progress_note: Composition seam and subsequent fixes deployed; full gate requirement remains open.
+      Initial debug run 39d75046 completed 81/84, zero errors; the added close case and concurrency
+      passed. Later current-artifact targeted gate 57a9e47d is 2/3, not full acceptance.
+    depends_on:
+      - acceptance-evidence
+    packet: docs/plan/2026-09-09-lean-conversation/tasks/l1-seam-gate.md
+    execution:
+      owned_paths:
+        - src/runtime/model-composition.ts
+        - tests/model-output-origin.test.ts
+        - docs/plan/2026-09-09-lean-conversation/evaluation-manifest.md
+        - docs/plan/2026-09-09-lean-conversation/outbound-inventory.md
+      entry_symbols:
+        - "model-composition.ts: ReplyDisposition and failure behavior"
+        - "agent-service.ts: actual migrated support composition caller"
+      steps:
+        - Verify predecessor artifacts and current deployed hash; do not redeploy historical L1
+          bytes over later fixes.
+        - Map actual migrated paths to production callers and independently captured output-origin
+          tests. A seam existing in a file is insufficient.
+        - Confirm failed generation cannot silently switch to a fixed answer, and legitimate
+          suppression remains an explicit transport outcome.
+        - Consume one complete passing mandatory run on the exact current candidate, or run one if
+          missing/stale. Do not combine targeted passes from different candidates.
+        - Mark this gate complete only for the documented seam and evidence controls; retain all
+          unmigrated family tasks as open.
+      focused_tests:
+        - tests/model-output-origin.test.ts
+        - tests/s10-model-projection.test.ts
+        - tests/agent-service-information-flow.test.ts
+      diagnostic_live_cases:
+        - live_behavior.mailbox_issue_deferral_and_clarification_preserve_support
+        - live_behavior.concurrent_support_turns_preserve_context
+      contract_sections:
+        - E01
+        - E11
+        - R01
+        - R02
+        - R11
+      out_of_scope: This is verification of shipped work, not a fresh L1 implementation or whole-plan signoff.
+      negative_control: A model call followed by a fixed fallback must fail origin checks despite non-null tokens.
+      write_lock: exclusive shared runtime/evaluator + development deployment; predecessor must release
+      completion: Implementation plus required evidence complete; separate reviewer verifies
+        diff/artifacts; never self-certify missing gates.
+  - id: debug-close-effects
+    title: Diagnose and fix premature and duplicate close effects
+    wave: debug
+    status: completed
+    description: Reconstructed all original close turns and stored Responses. Corroborate user dates
+      before tool exposure/execution, persist completed state before further generation, reuse
+      confirmed same-turn effects, and preserve original concurrency request errors.
+    acceptance_criteria:
+      - Offline regression and coverage tests pass; development artifact 7867db19 deployed.
+      - Full debug run 39d75046 retained as 81/84 failed overall, with close retry and concurrent
+        cases passing; no targeted-pass substitution.
+    evidence:
+      - debug-2026-09-10.md
+      - debug-2026-09-10-manifest.json
+  - id: promote-frozen-subset
+    title: Record completed frozen-artifact production promotion
+    wave: promote
+    status: completed
+    description: Promotion e8299759 was completed by the deployment task under the recorded owner
+      exception. This task records existing evidence and authorizes no additional deployment.
+    acceptance_criteria:
+      - Production digest and development digest match the frozen artifact as recorded and rechecked.
+      - Keep targeted 57a9e47d 2/3 and repeat 729a314b 0/1 failed; full gate remains pending.
+  - id: dev-followup
+    title: Fix false repeat-submission claim and run full 84-case dev gate
+    wave: dev-followup
+    status: completed
+    owner_exception: "Owner decision 2026-09-10: accept dev-followup completion with the strict 84-case
+      gate recorded open on two unrelated oscillating hard semantic failures
+      (purchase_confirmation_carina_request_survives_normalization,
+      token_seeded_selection_defer_close). Recorded separately from strict status; no rescore,
+      waiver, threshold change or production change. Both failures remain explicit and are re-run
+      under the later l2-close/l3-semantic gates."
+    progress_note: "Implementation deployed in three dev artifacts; current `5924e4d7…` / Lambda
+      `WSTk1/jZ…` 2026-09-10T15:36:36Z. Target case passes on current bytes: run 618372bf 82/84 with
+      close_date_provenance_and_completed_retry 0.8998 hardGate true (repeat-outcome axis 1.0); run
+      f735b1f0 0.8923 before credential expiry. Strict 84-case gate open: residual hard semantic
+      failures carina (axis 0.08) and token_seeded_selection_defer_close (axis 0.72) on run
+      618372bf; both oscillate on identical bytes and belong to later l2-close/l3-semantic scopes.
+      Runs retained: 3771d89c 82/84, aecdbe5d 80/84, f735b1f0 invalid 68/84 (expired se-dev login;
+      retained), 618372bf valid 82/84, diagnostic a90eff20 1/1. No production change."
+    depends_on:
+      - debug-close-effects
+      - promote-frozen-subset
+    description: Trace turn 5 of close_date_provenance_and_completed_retry through receipt/state
+      projection, exact model output, and renderer. Supply the model only the existing completion
+      evidence and the fact that this turn performed no new write. Remove any proven conflicting
+      prose instruction or replacement at its source. Then deploy development and run the complete
+      mandatory suite on frozen candidate bytes.
+    acceptance_criteria:
+      - Preserve all six turns; hard effect count stays attempts=1 successes=1 replays=0; no
+        finish_plan on phone-only or completed-repeat turns; lifecycle remains finished.
+      - Hard requireJudge semantic expectation rejects any unsupported claim of a fresh submission,
+        regardless of wording. Do not blacklist nuevamente, prescribe an exact answer, replace
+        generated prose, or loosen the existing judge.
+      - Verify model-authored output survives delivery and contrast an already-confirmed receipt
+        with a genuinely new authorized successful receipt; correct behavior follows evidence, not
+        phrase matching.
+      - Register the behavior change separately; add offline evidence/output-origin coverage and
+        measure serialized instruction/input/tool bytes with irrelevant content absent.
+      - After se-dev/us-east-1 account 684516060775 validation and dev deployment, execute all 84
+        mandatory cases in one fresh run; require zero errors/skips/duplicates and all hard
+        structural plus required semantic expectations passing for strict acceptance.
+      - Report original 83 subset and additive case separately; preserve earlier reports and pin
+        start/end Lambda digests. Any remaining failure stays explicit; no further production change
+        without applicable authorization.
+    handoff:
+      constraints:
+        - Single writer for shared runtime files; preserve current uncommitted work.
+        - No automatic production promotion. Existing owner exception is scoped to the
+          already-promoted artifact.
+        - A full passing run is necessary but does not establish universal exactly-once effects
+          across crashes or completion of L2-L5.
+      relevant_context:
+        - debug-2026-09-10.md
+        - evaluation-manifest.md
+        - src/runtime/openai-agent-runtime.ts
+        - src/runtime/agent-service.ts
+        - prompts/nodes/necesidad_cubierta
+        - evals/cases/live-close-date-provenance-completed-retry.yaml
+    agent: gem-implementer
+    packet: docs/plan/2026-09-09-lean-conversation/tasks/dev-followup.md
+    execution:
+      owned_paths:
+        - src/runtime/openai-agent-runtime.ts
+        - src/runtime/agent-service.ts
+        - prompts/nodes/necesidad_cubierta
+        - tests/close-proceed-confirmed.test.ts
+        - tests/lean-close-footer.test.ts
+        - evals/cases/live-close-date-provenance-completed-retry.yaml
+      entry_symbols:
+        - "agent-service.ts: finished-plan branch in handleTurn and renderOutbound"
+        - "openai-agent-runtime.ts: buildReplyTurnEvidence, composeReply, finish_plan tool"
+        - "prompts/nodes/necesidad_cubierta: current completion instructions"
+      steps:
+        - Open the complete six-turn artifacts from 57a9e47d and 729a314b; compare turn 4 successful
+          submission and turn 5 acknowledgement. Retrieve the referenced stored model response if
+          raw candidate text is absent; never infer origin from token presence.
+        - Trace lifecycle and selected-provider/date evidence into the actual request. Distinguish
+          existing completed outcome from this-turn action; attach existing receipt details only
+          when actually persisted/retrieved. A finished flag alone must not invent a date or receipt
+          ID.
+        - Remove only the proven conflicting instruction, evidence, or replacement. Keep the current
+          model free to compose. No phrase match, word ban, canned text, or new model supervisor.
+        - Add a two-sentinel output-origin test and paired
+          existing-completion/new-authorized-receipt evidence test. Preserve the original six-turn
+          live scenario and all hard expectations.
+        - Register this behavior fix separately, capture wire bytes, deploy dev and run the complete
+          suite. Retain failures; do not keep retrying until one result passes.
+      focused_tests:
+        - tests/close-proceed-confirmed.test.ts
+        - tests/lean-close-footer.test.ts
+        - tests/f4-explicit-event-date.test.ts
+        - tests/model-output-origin.test.ts
+      diagnostic_live_cases:
+        - live_behavior.close_date_provenance_and_completed_retry
+        - live_feedback.token_seeded_close_flow
+        - live_feedback.token_seeded_selection_defer_close
+      contract_sections:
+        - E04
+        - E05
+        - R01
+        - R02
+        - R05
+        - R06
+        - R07
+        - R09
+        - R11
+      out_of_scope: Do not migrate the entire close family, repair unrelated RSVP worlds, or change production.
+      negative_control: Unsupported new-send claim must fail even when phrased without nuevamente;
+        duplicated effect must fail even with perfect prose.
+      write_lock: exclusive shared runtime/evaluator + development deployment; predecessor must release
+      completion: Implementation plus required evidence complete; separate reviewer verifies
+        diff/artifacts; never self-certify missing gates.
+  - id: acceptance-evidence
+    title: Complete request, output-origin, and judge evidence controls
+    wave: evidence
+    status: completed
+    progress_note: "Phase 1 implemented in the worktree: transport-boundary request capture
+      (`src/audit/openai-transport-capture.ts`), versioned output-origin evidence
+      (`src/audit/output-origin.ts`), judge packet separation and fail-closed empty-candidate
+      scoring (`runner.ts`, `semantic-judge.ts`), artifact/reporting support, five test-only
+      mutation controls. Evaluator semantics changed; independent review requested before any
+      baseline/candidate rerun. Pending: classifier-client capture, live Lambda `output_origin`
+      emission, implementation-log entry, and the documented paired rerun procedure. No deployment
+      or live run yet. Frozen baseline artifact recoverable at S3
+      `lambda/daaf4cb438cdb2704155d54ca8320fddf617641c06e2cad97cdaf1337965ec56.zip` (Lambda
+      `2q9MtDjNsnBBVdVMqDIP3fYXZBwG4srZfNrxM3ll7FY=`)."
+    completion_note: >-
+      Corrective pass 2026-09-10 addressed the independent review blockers offline:
+            candidate-visible history and independent truth restored and separated, judge packet validated in
+            the production path, mandatory live case execution enforced, wire-text hash independently
+            verified, fixture read failures fail closed, candidate delivered once, anti-injection wording
+            neutralized. Focused 70/70; full suite 1,208 passed / 5 skipped; typecheck and lint pass. No
+            deployment, no live run. Under the owner leanness directive the paired baseline/candidate
+            84-case reruns were intentionally not executed; recorded here rather than silently dropped.
+    depends_on:
+      - dev-followup
+    description: Close E10-E12 ownership gaps at the actual request/output/judge boundaries before broad
+      family migration.
+    acceptance_criteria:
+      - All serialized requests including loops/retries and schemas/tools are accounted for.
+      - Actual wire output is independently compared with model output; judge facts have provenance
+        and no future leakage.
+      - Negative controls fail as intended; evaluator revisions preserve baseline and candidate
+        evidence.
+    agent: gem-implementer
+    packet: docs/plan/2026-09-09-lean-conversation/tasks/acceptance-evidence.md
+    execution:
+      owned_paths:
+        - src/runtime/openai-agent-runtime.ts
+        - src/runtime/contracts.ts
+        - src/audit
+        - src/evals/targets/live-lambda.ts
+        - src/evals/case-schema.ts
+        - src/evals/runner.ts
+        - src/evals/reporting.ts
+        - src/evals/scorers/semantic-judge.ts
+        - tests/request-observability.test.ts
+        - tests/model-output-origin.test.ts
+        - tests/eval-runner-judge-context.test.ts
+        - tests/semantic-judge.test.ts
+      entry_symbols:
+        - "openai-agent-runtime.ts: buildRequestMetrics and extractOpenAiCallRef"
+        - "runner.ts: buildSemanticJudgeContext and expectation evaluation"
+        - "live-lambda.ts: runTurn and delivered output capture"
+      steps:
+        - Freeze case/fixture/judge/model configuration and deployed baseline before editing.
+          Inventory current telemetry and judge tests; extend them instead of creating a second
+          harness.
+        - Capture every serialized request at the real transport boundary, including
+          extraction/classifier/reply calls, tool loops, retry attempts and failed calls. Count
+          UTF-8 instructions, input, tools, output schema, total payload and request/response
+          identifiers; do not replace missing observations with zero.
+        - Capture candidate text and actual delivered output with a declared transformation version.
+          Independently test two sentinel outputs and detect replacement, append, discarded
+          generation and scoring an internal draft. Keep private raw content out of public logs.
+        - Check judge packets separate candidate-visible knowledge, independent effect truth, and
+          expectations, with no future turns. Add incorrect/correct paraphrase pairs and candidate
+          injection attempts. A missing receipt must remain unknown rather than zero effects.
+        - Add test-only mutations for omitted schema bytes, dropped second call, missing origin,
+          missing evidence, and missing mandatory case. Emit intended assertion plus observed
+          failure for each; never deploy mutants.
+        - If evaluator semantics change, record the contradiction and obtain separate review of that
+          change; rerun retained baseline and candidate under the same revised contract. Keep
+          original artifacts. Do not weaken the oracle to fit a candidate.
+      focused_tests:
+        - tests/request-observability.test.ts
+        - tests/openai-agent-runtime-token-usage.test.ts
+        - tests/model-output-origin.test.ts
+        - tests/eval-live-target.test.ts
+        - tests/eval-runner-judge-context.test.ts
+        - tests/semantic-judge.test.ts
+        - tests/f4-judge-close-evidence.test.ts
+      diagnostic_live_cases:
+        - live_behavior.close_date_provenance_and_completed_retry
+        - live_behavior.purchase_confirmation_carina_request_survives_normalization
+        - live_behavior.concurrent_support_turns_preserve_context
+      contract_sections:
+        - E07
+        - E10
+        - E11
+        - E12
+        - R01
+        - R03
+        - R05
+        - R06
+        - R07
+        - R08
+        - R10
+        - R11
+      out_of_scope: Do not rewrite conversation policy, add a new runtime evaluator model, or claim
+        complete independence for same-workspace tests.
+      negative_control: A hidden second request, absent schema bytes, replaced candidate, future-turn
+        fact, or unknown receipt represented as zero must each fail the intended check.
+      write_lock: exclusive shared runtime/evaluator + development deployment; predecessor must release
+      completion: Implementation plus required evidence complete; separate reviewer verifies
+        diff/artifacts; never self-certify missing gates.
   - id: l2-purchase
     title: L2 purchase reply family migration
     description: |
@@ -110,7 +424,21 @@ tasks:
       to evidence plus model-output delivery with live semantic expectations.
     wave: 3
     agent: gem-implementer
-    status: pending
+    status: completed
+    completion_note: >-
+      Completed 2026-09-10. Verified deletions in scope: agent-service.ts 442 changed
+            lines (net -262), purchase-reply-projector.ts 505 changed lines (net -500, now 377 lines of
+            typed selectors/projectors only), purchase tests net -583; `enforcePurchaseReplyDeterministic`
+            and all purchase `render*` replacement calls gone; prompt contract now keys off
+            `reference_status`, `missing_inputs`, `disclosures.permitted_aspects` instead of prescribed
+            prose. Focused purchase tests 111/111; full suite 1,191 passed / 5 skipped; typecheck and lint
+            pass. No deployment, live run, or commit. Development deploy and purchase diagnostics pending
+            coordinator batching after the remaining deletion waves.
+    progress_note: |-
+      Deletion wave dispatched 2026-09-10 under the leanness directive: remove the
+            purchase reply replacement path and prose renderers, keep typed evidence/disclosure/
+            reconciliation, rewrite template tests to fact and delivery assertions, net line delta
+            negative (target >= 400 removed). Offline validation only.
     retries_used: 0
     acceptance_criteria:
       - Zero purchase deterministic prose replacements remain
@@ -122,6 +450,67 @@ tasks:
       relevant_context:
         - src/runtime/purchase-reply-projector.ts
         - tests/f3-purchase-truthfulness.test.ts
+    depends_on:
+      - l1-seam-gate
+    packet: docs/plan/2026-09-09-lean-conversation/tasks/l2-purchase.md
+    execution:
+      owned_paths:
+        - src/runtime/agent-service.ts
+        - src/runtime/purchase-reply-projector.ts
+        - src/runtime/reply-evidence-projector.ts
+        - src/runtime/openai-agent-runtime.ts
+        - prompts/nodes/resolver_consultas_informativas
+        - tests/f3-purchase-truthfulness.test.ts
+        - tests/s09-purchase-reply-projector.test.ts
+      leanness:
+        directive: "Owner directive 2026-09-10: prioritize meaningful architecture and total line reduction
+          over chasing the full 84-case gate; retain the model-written invariant and frozen
+          evidence, but stop running the full suite after every change."
+        audit_evidence: "Runtime leanness audit 2026-09-10 (explorer) confirmed the purchase prose machinery
+          as the largest safe deletion target: dispatcher `agent-service.ts:7135-7330` (~180-230
+          lines) plus renderers `purchase-reply-projector.ts:300-686` (~300-400 lines), with typed
+          outcome selection, disclosure and reconciliation preserved."
+        line_budget: Net line delta must be negative; the migration must delete more than it adds.
+        required_evidence: Keep the typed evidence, disclosure and reconciliation paths; replace
+          phrase-snapshot tests with fact/disclosure assertions and model-origin delivery checks.
+      entry_symbols:
+        - "agent-service.ts: enforcePurchaseReplyDeterministic and its information-flow caller"
+        - "purchase-reply-projector.ts: renderPurchaseReplyDeterministic, resolvePurchaseReplyText,
+          render* prose exports"
+      steps:
+        - Enumerate each reachable purchase replacement branch and map its outcome, permitted
+          disclosure and live case; include single/multiple purchases, carts, pending balances,
+          approved status and reference mismatch.
+        - Move only relevant facts and allowed next action before generation; preserve currency
+          arithmetic, reconciliation, auth, exact references and candidate resolution.
+        - Delete runtime-authored answer text and replacement callers after their production paths
+          consume typed evidence. No natural-language answer hidden in a tool result.
+        - Replace phrase snapshots with fact/disclosure assertions and two different model-output
+          sentinels per outcome. Exercise supported answers as well as missing/ambiguous evidence.
+        - "Run paired context tests: unrelated planning/RSVP changes leave purchase wire content
+          identical after declared volatile metadata; relevant amount/reference changes alter it."
+      focused_tests:
+        - tests/f3-purchase-truthfulness.test.ts
+        - tests/f3-purchase-continuity.test.ts
+        - tests/s09-purchase-reply-projector.test.ts
+        - tests/model-output-origin.test.ts
+      diagnostic_live_cases:
+        - live_behavior.purchase_confirmation_carina_request_survives_normalization
+        - live_behavior.purchase_martha_accountless_selection
+        - live_behavior.pending_balance_validation_luis
+        - live_behavior.current_campaign_order_over_historical_declined_maria_jose
+      contract_sections:
+        - E01
+        - E02
+        - R01
+        - R02
+        - R04
+        - R09
+      out_of_scope: Do not alter payment truth, disclosure authorization, or RSVP behavior while removing prose.
+      negative_control: An empty projector or universal clarification must fail the supported-purchase counterpart.
+      write_lock: exclusive shared runtime/evaluator + development deployment; predecessor must release
+      completion: Implementation plus required evidence complete; separate reviewer verifies
+        diff/artifacts; never self-certify missing gates.
   - id: l2-close
     title: L2 contact and quotation closure migration
     description: |
@@ -129,9 +518,23 @@ tasks:
       with typed receipt projection before generation. Keep validation and the
       explicit-confirmation gate.
     wave: 4
-    depends_on: [l2-purchase]
+    depends_on:
+      - l2-purchase
+      - dev-followup
     agent: gem-implementer
-    status: pending
+    status: completed
+    status_note: "Completed 2026-09-10 (offline). Close/contact prose deleted: agent-service.ts now
+      10,668 lines; close-submission-summary.ts 353 -> 166; message-renderer.ts -82;
+      structured-message.ts -35; target diff 554 insertions / 1,404 deletions (net -850). Focused
+      close suites 47 passed; full suite 1,176 passed / 5 skipped; typecheck and lint pass.
+      Deferred: deployment and targeted close diagnostics (coordinator batch)."
+    progress_note: >-
+      Deletion wave dispatched 2026-09-10 under the leanness directive: delete runtime
+            close/contact prose (confirmation questions, sent summaries, future-tense footers), project
+            typed receipts before generation, preserve validation and the explicit-confirmation gate,
+            negative control for prompt-example date/unverified success/appended confirmation/duplicate
+            quote. Offline validation only; coordinator deploys and runs targeted close diagnostics after
+            review. Target >= 250 lines removed.
     retries_used: 0
     acceptance_criteria:
       - Five-turn close live case shows no early send, one authorized send, dated response
@@ -142,14 +545,71 @@ tasks:
       relevant_context:
         - src/runtime/close-submission-summary.ts
         - tests/f4-close-submission-summary.test.ts
+    historical_progress_note: "Partial close work shipped: user-date provenance, completion persistence,
+      and later final-footer removal. Repeated-close response still implies a new submission. This
+      is not proof that all contact/close prose paths are model-owned."
+    packet: docs/plan/2026-09-09-lean-conversation/tasks/l2-close.md
+    execution:
+      owned_paths:
+        - src/runtime/agent-service.ts
+        - src/runtime/close-submission-summary.ts
+        - src/runtime/openai-agent-runtime.ts
+        - src/runtime/message-renderer.ts
+        - src/runtime/structured-message.ts
+        - prompts/nodes/crear_lead_cerrar
+        - prompts/nodes/necesidad_cubierta
+      entry_symbols:
+        - "agent-service.ts: enforceContactRequestFields, completeContactConfirmation,
+          renderOutbound"
+        - "close-submission-summary.ts: buildCloseSubmissionSummary, applyCloseSubmissionToText"
+      steps:
+        - Re-audit contact/close branches after dev-followup; retain its provenance/persistence
+          guarantees and later footer fix. Do not redo already-removed paths.
+        - Separate calendar validation/outcome parsing from sentence generation; project required
+          contact fields, unresolved choices and actual per-provider receipts before the model call.
+        - Remove confirmation questions, sent summaries and future-tense footers authored after
+          generation. Structured layout may place model fields and disclosed data only.
+        - Cover missing contact/date, ambiguous dates, authorization,
+          confirmed/failed/unknown/partial outcomes and completed continuation. Never equate tool
+          invocation with success.
+        - Keep exact effect counts and no early/repeat tool calls; document crash/partial-effect
+          limitations rather than claiming universal idempotency.
+      focused_tests:
+        - tests/close-proceed-confirmed.test.ts
+        - tests/f4-explicit-event-date.test.ts
+        - tests/f4-close-submission-summary.test.ts
+        - tests/lean-close-footer.test.ts
+        - tests/f4-judge-close-evidence.test.ts
+        - tests/message-renderer.test.ts
+      diagnostic_live_cases:
+        - live_feedback.token_seeded_close_flow
+        - live_feedback.token_seeded_contact_correction
+        - live_feedback.token_seeded_selection_defer_close
+        - live_behavior.close_date_provenance_and_completed_retry
+      contract_sections:
+        - E04
+        - E05
+        - E07
+        - R01
+        - R02
+        - R06
+        - R08
+      out_of_scope: Do not replace validation with prose or introduce a new universal effect ledger
+        without a separate concrete design.
+      negative_control: Prompt-example date, unverified success, appended confirmation or duplicate quote
+        must fail independently.
+      write_lock: exclusive shared runtime/evaluator + development deployment; predecessor must release
+      completion: Implementation plus required evidence complete; separate reviewer verifies
+        diff/artifacts; never self-certify missing gates.
   - id: l2-support-capability
     title: L2 support and capability language migration
-    description: |
-      Retire support acknowledgement, escalation, and capability renderer dictionaries;
-      project support issue, status, and permitted next action. Delete the dead
-      selectSupportAcknowledgmentMessage with its tests.
+    description: Remove remaining reachable support/capability prose dictionaries and replacement
+      callers; preserve typed outcome, identity and effect logic. The old
+      selectSupportAcknowledgmentMessage symbol is already absent; do not assign its deletion as new
+      work.
     wave: 5
-    depends_on: [l2-close]
+    depends_on:
+      - l2-close
     agent: gem-implementer
     status: pending
     retries_used: 0
@@ -163,33 +623,146 @@ tasks:
       relevant_context:
         - src/runtime/capability-outcome-renderer.ts
         - src/runtime/capability-boundary-renderer.ts
+    packet: docs/plan/2026-09-09-lean-conversation/tasks/l2-support-capability.md
+    execution:
+      owned_paths:
+        - src/runtime/agent-service.ts
+        - src/runtime/reply-evidence-projector.ts
+        - src/runtime/capability-outcome-renderer.ts
+        - src/runtime/capability-boundary-renderer.ts
+        - src/runtime/openai-agent-runtime.ts
+        - prompts/capability/turn_outcomes.txt
+      entry_symbols:
+        - "agent-service.ts: capability boundary and support/human escalation response branches"
+        - "reply-evidence-projector.ts: projectReply, resolveReplyText"
+        - capability renderer message dictionaries
+      steps:
+        - Inventory live callers and unlabeled fixed replies as well as deterministic labels.
+          selectSupportAcknowledgmentMessage is already absent at this revision; do not recreate it
+          to delete it.
+        - Project operation, status, identity availability, actual escalation receipt and permitted
+          continuation; remove sentence dictionaries/defaults.
+        - Preserve access checks, capability prohibitions and dedupe.
+          Failed/unknown/unavailable/already-completed handoff outcomes must remain distinct.
+        - Use model output directly, including an honest response when no effect was confirmed; do
+          not claim human help was registered from intention alone.
+        - Retain support context across overlapping turns and explicit topic switches without
+          injecting broad planning instructions.
+      focused_tests:
+        - tests/capability-boundary-routing.test.ts
+        - tests/f3-capability-safe-read.test.ts
+        - tests/s10-model-projection.test.ts
+        - tests/agent-service-information-flow.test.ts
+        - tests/model-output-origin.test.ts
+      diagnostic_live_cases:
+        - live_behavior.concurrent_support_turns_preserve_context
+        - live_behavior.mailbox_issue_deferral_and_clarification_preserve_support
+        - live_behavior.wrong_account_handoff_once
+        - live_behavior.otp_terminal_handoff_failed
+        - live_behavior.otp_terminal_handoff_unknown
+      contract_sections:
+        - E01
+        - E06
+        - R01
+        - R02
+        - R06
+        - R09
+      out_of_scope: Do not loosen capability/write authorization or change channel-specific adapters in core.
+      negative_control: Missing trusted identity or failed handoff must never acquire a success claim;
+        blanket refusal fails a supported counterpart.
+      write_lock: exclusive shared runtime/evaluator + development deployment; predecessor must release
+      completion: Implementation plus required evidence complete; separate reviewer verifies
+        diff/artifacts; never self-certify missing gates.
   - id: l2-rsvp
     title: L2 RSVP prose migration
     description: |
       Delete RSVP deterministic prose and the post-generation merge block; feed state,
       target, and receipt into the model before its response.
     wave: 6
-    depends_on: [l2-support-capability]
+    depends_on:
+      - l2-support-capability
     agent: gem-implementer
-    status: pending
-    retries_used: 0
-    acceptance_criteria:
-      - RSVP authorization and durability suites pass with output-origin assertions
+    status: completed
+    status_note: >-
+      Completed 2026-09-10 (offline). agent-service.ts 11,323 -> 10,792 lines (-531);
+            targeted diff 474 insertions / 1,293 deletions; deterministic RSVP symbols grep to zero. Tests
+            reworked to model-output delivery plus typed effects; full suite 1,188 passed / 5 skipped;
+            typecheck and lint pass. No deployment, live run, or commit. Coordinator deploy + targeted
+            diagnostics batched after remaining deletion waves.
     handoff:
       constraints:
         - Single-writer lock on shared files.
       relevant_context:
         - tests/s07-rsvp-decision-policy.test.ts
         - tests/s11-rsvp-durability.test.ts
+    packet: docs/plan/2026-09-09-lean-conversation/tasks/l2-rsvp.md
+    execution:
+      owned_paths:
+        - src/runtime/agent-service.ts
+        - src/runtime/openai-agent-runtime.ts
+        - prompts/nodes/responder_invitacion
+        - tests/agent-service-rsvp.test.ts
+        - tests/s07-rsvp-decision-policy.test.ts
+        - tests/s11-rsvp-durability.test.ts
+      entry_symbols:
+        - "agent-service.ts: handleRsvpFlow deterministicReplyText construction and merge block"
+        - "agent-service.ts: renderRsvp*Deterministically"
+      steps:
+        - Map selection, current state, identical decision, reversal, plus-one eligibility and
+          mutation outcomes to production callers. Preserve S11 corrected declining fixture and S07
+          already-attending no-write distinction.
+        - Provide grounded event/person, prior state, explicit user action, backend result and
+          eligible next action to the model before replying.
+        - Remove deterministic response construction and appended fragments while preserving
+          mutation authorization, lock, dedupe and persistence.
+        - Test two generated phrasings through each outcome and independent effect counts for
+          read-only, write-once, failed and unknown states.
+        - Add full-context multi-person/ambiguous event and state-reversal coverage; an affirmative
+          answer is not permission to act on an unresolved target.
+      focused_tests:
+        - tests/agent-service-rsvp.test.ts
+        - tests/s07-rsvp-decision-policy.test.ts
+        - tests/s11-rsvp-durability.test.ts
+        - tests/model-output-origin.test.ts
+      diagnostic_live_cases:
+        - live_behavior.s11_rsvp_durability_confirms_once
+        - live_behavior.s07_attending_identical_no_write
+        - live_behavior.rsvp_state_reversal_ends_confirmed
+        - live_behavior.rsvp_plus_one_multiple_events_requires_selection
+      contract_sections:
+        - E03
+        - R01
+        - R02
+        - R06
+        - R09
+      out_of_scope: Do not edit fixture truth to fit runtime output; evaluator repairs require separate
+        evidence/review.
+      negative_control: Already-attending world must not write; declining-to-attending authorized world
+        must write once. Neither can pass by canned confirmation.
+      write_lock: exclusive shared runtime/evaluator + development deployment; predecessor must release
+      completion: Implementation plus required evidence complete; separate reviewer verifies
+        diff/artifacts; never self-certify missing gates.
   - id: l2-clarification-media-auth
     title: L2 clarification, image, and auth refusal migration
     description: |
       Replace ambiguity, missing-field, capability-clarification, image fallback, and
       terminal-auth fixed replies with unresolved alternatives and outcome projection.
     wave: 7
-    depends_on: [l2-rsvp]
+    depends_on:
+      - l2-rsvp
     agent: gem-implementer
-    status: pending
+    status: completed
+    status_note: Completed 2026-09-10 (offline, after a network-interrupted first attempt). Fixed
+      clarification/image/auth-refusal branches deleted; 9 stale suites rewritten to typed evidence
+      plus exact model-origin delivery; 5 live-behavior coverage entries added; no additional
+      runtime projection required. Focused 231 passed / 3 skipped; full suite 1,175 passed / 5
+      skipped; typecheck and lint pass. Deployment and targeted live diagnostics handled by the
+      coordinator bundle.
+    progress_note: "Deletion wave dispatched 2026-09-10 under the leanness directive: replace fixed
+      clarification/image/auth-refusal replies with typed evidence and model wording, delete
+      appended questions and post-generation rewrites, negative control for appended question/erased
+      caption/ universal refusal. Offline validation only; coordinator deploys and runs targeted
+      diagnostics after review. Target >= 250 lines removed."
     retries_used: 0
     acceptance_criteria:
       - No inserted questions after generation; terminal outcomes stay truthful
@@ -198,52 +771,218 @@ tasks:
         - Single-writer lock on shared files.
       relevant_context:
         - tests/f3-ambiguous-confirmation.test.ts
+    packet: docs/plan/2026-09-09-lean-conversation/tasks/l2-clarification-media-auth.md
+    execution:
+      owned_paths:
+        - src/runtime/agent-service.ts
+        - src/runtime/openai-agent-runtime.ts
+        - src/runtime/reply-evidence-projector.ts
+        - src/runtime/message-renderer.ts
+        - src/runtime/structured-message.ts
+        - prompts
+      entry_symbols:
+        - "agent-service.ts: enforceFaqAmbiguityReply, enforceMissingFieldReply,
+          enforceAmbiguousProviderConfirmationReply, sanitizeAssistantOutput"
+        - image failure and terminal authentication response branches
+      steps:
+        - Map remaining fixed clarification, auth refusal and media failure paths; scope prompts to
+          the actual node/outcome rather than all possible branches.
+        - Supply unresolved alternatives, required fields, image availability and terminal access
+          result as evidence. Let the model choose useful wording; retain the typed reason for not
+          executing.
+        - Delete appended questions, semantic cleanup and punctuation surgery; declare mechanical
+          rendering transformations and verify model conversational spans survive.
+        - Pair ambiguous selection with resolved selection, unavailable image with usable caption,
+          and denied private access with public information still answerable.
+        - Audit that no migrated branch silently re-enters a canned fallback when generation fails.
+      focused_tests:
+        - tests/f3-ambiguous-confirmation.test.ts
+        - tests/message-renderer.test.ts
+        - tests/model-output-origin.test.ts
+        - tests/s10-model-projection.test.ts
+      diagnostic_live_cases:
+        - live_behavior.ambiguous_confirmation_adversarial_selection
+        - live_behavior.image_unavailable_captioned
+        - live_behavior.image_readable_captionless
+        - live_behavior.authentication_refusal_closes_protected_query
+      contract_sections:
+        - E04
+        - E06
+        - E07
+        - R01
+        - R02
+        - R09
+      out_of_scope: No streaming; WhatsApp behavior remains represented by the terminal adapter.
+      negative_control: An appended question, erased caption fact, or universal refusal must fail
+        independently of fluent wording.
+      write_lock: exclusive shared runtime/evaluator + development deployment; predecessor must release
+      completion: Implementation plus required evidence complete; separate reviewer verifies
+        diff/artifacts; never self-certify missing gates.
   - id: l3-semantic
     title: L3 authoritative semantic interpretation
     description: |
       Remove blanket ambiguity clearing and keyword routing; wire one real request
       builder with profile-scoped instructions, schema, and tools.
     wave: 8
-    depends_on: [l1-seam-gate]
+    depends_on:
+      - l2-clarification-media-auth
     agent: gem-implementer
     status: pending
     retries_used: 0
     acceptance_criteria:
-      - Carina stays ambiguous until clarified; live purchase, support, and RSVP
-        requests carry no planning-only fields
+      - Carina stays ambiguous until clarified; live purchase, support, and RSVP requests carry no
+        planning-only fields
     handoff:
       constraints:
         - Single-writer lock on shared files. Keep validation and preservation.
       relevant_context:
         - src/runtime/extraction-projection.ts
         - src/runtime/openai-agent-runtime.ts
+    packet: docs/plan/2026-09-09-lean-conversation/tasks/l3-semantic.md
+    execution:
+      owned_paths:
+        - src/runtime/agent-service.ts
+        - src/runtime/openai-agent-runtime.ts
+        - src/runtime/extraction-projection.ts
+        - src/runtime/extraction-schemas.ts
+        - src/runtime/prompt-manifest.ts
+        - prompts/extractors
+      entry_symbols:
+        - "agent-service.ts: normalizeInformationExtractionAmbiguity and other intent-changing
+          guards"
+        - "openai-agent-runtime.ts: extract, composeExtractorInput, composeConversationInput"
+      steps:
+        - Trace raw extraction to normalized state to tool authorization for Carina and cross-domain
+          continuations. Classify every override as invariant validation, preservation, or new
+          semantic interpretation.
+        - Remove blanket ambiguity clearing and semantic reinterpretation in code; model-produced
+          conflicts become typed unresolved evidence, never a different executable request.
+        - Use one production request builder to select minimal domain schema/instructions/tools.
+          Established purchase/support/RSVP turns must omit planning-only fields and priorities.
+        - Add unchanged-inactive-domain and changed-relevant-domain wire tests, including unknown
+          entities and reordering; preserve useful current facts and pending questions.
+        - Measure full serialized calls including repair attempts; do not use keyword or
+          exact-response matching to route.
+      focused_tests:
+        - tests/extraction-schemas.test.ts
+        - tests/openai-agent-runtime-token-usage.test.ts
+        - tests/f3-ambiguous-confirmation.test.ts
+        - tests/eval-runner-judge-context.test.ts
+      diagnostic_live_cases:
+        - live_behavior.purchase_confirmation_carina_request_survives_normalization
+        - live_behavior.host_support_allows_explicit_rsvp_switch
+        - live_feedback.token_fresh_multifront_stays_multi_need
+      contract_sections:
+        - E08
+        - E09
+        - R03
+        - R04
+        - R08
+        - R09
+      out_of_scope: Do not create hard-coded semantic intent rules or remove required event-plan
+        multi-need behavior.
+      negative_control: "Clear ambiguous status/document extraction or inject inactive-domain sentinel
+        facts: the corresponding test must fail."
+      write_lock: exclusive shared runtime/evaluator + development deployment; predecessor must release
+      completion: Implementation plus required evidence complete; separate reviewer verifies
+        diff/artifacts; never self-certify missing gates.
   - id: l4-ownership
     title: L4 persistent specialist ownership
-    description: |
-      Implement entry plus planning, purchase, invitation, and support profiles on one
-      state store with real tools; delete global extractor participation per moved
-      domain; bound transfers to one per turn.
+    description: "Implement exactly three persistent owners: Planning, General information (FAQ), and
+      Customer assistance. Use transient initial selection, one existing state store and bounded
+      silent transfers. Customer assistance contains scoped purchase/RSVP/auth/support capabilities
+      without child agents."
     wave: 9
-    depends_on: [l2-clarification-media-auth, l3-semantic]
+    depends_on:
+      - l2-clarification-media-auth
+      - l3-semantic
     agent: gem-implementer
     status: pending
     retries_used: 0
     acceptance_criteria:
       - No-tool continuation uses one model call; one transfer maximum per turn
       - Full cross-owner sequences pass with exact effect counts
+      - Exactly three persistent owner values; no entry fourth owner, hidden subowner agents, or
+        mandatory router call on established-owner turns.
+      - Customer assistance switches purchase/RSVP/support capabilities without transfer churn or
+        disclosure of unrelated task context.
+      - Planning to FAQ to planning preserves selections; FAQ to person-specific assistance requires
+        grounded identity/access before protected facts or effects.
+      - "Customer snapshot assembly meets customer-context.md scenarios: bounded parallel authorized
+        reads, no duplicate lookups, per-section source/freshness/failure states, question-scoped
+        model projection, and invalidation after confirmed actions."
     handoff:
       constraints:
         - Single-writer lock on shared files. Never run old and new paths twice for one turn.
       relevant_context:
         - src/runtime/agent-service.ts
         - src/core/plan.ts
+    packet: docs/plan/2026-09-09-lean-conversation/tasks/l4-ownership.md
+    execution:
+      owned_paths:
+        - src/core/plan.ts
+        - src/runtime/agent-service.ts
+        - src/runtime/openai-agent-runtime.ts
+        - src/runtime/contracts.ts
+        - src/runtime/prompt-manifest.ts
+        - src/runtime/prompt-loader.ts
+        - prompts
+      entry_symbols:
+        - PersistedPlan schema and resume/dispatch path
+        - domain extraction and reply construction at their production callers
+      steps:
+        - Add a persisted owner discriminator with exactly planning, faq and customer_assistance on
+          the existing plan store. Initial selection is transient and does not add entry/support as
+          extra owners. Reuse existing domain state; no second state store.
+        - Expose only current-owner and current-capability context/tools. Within
+          customer_assistance, purchase, invitation/RSVP, identity/auth and support are projected
+          capability slices, not agents or persistent subowners. Public FAQ is its own owner only
+          when general information is the primary task.
+        - Transfer a compact typed packet of current task, grounded facts/references, pending
+          questions and relevant receipts. Persist the new owner; no user-visible handoff
+          announcement by default.
+        - Enforce at most one transfer per turn; source stops and recipient alone replies/acts. If
+          still unresolved, recipient asks a model-written clarification. Public policy needed for a
+          current task is a bounded knowledge read, not a transfer. Resume a paused owner on a later
+          turn without losing its pending task.
+        - Retire the old global extractor from migrated established-owner turns. Verify one actual
+          model request for no-tool continuations and count all calls on tool/transfer turns.
+        - Test explicit domain switch, mixed need, interruption/resume, failed transfer and
+          ownership after reload. Add mandatory full sequences if no existing scenario covers
+          transfer; report expanded denominators without dropping the original 84.
+      focused_tests:
+        - tests/model-output-origin.test.ts
+        - tests/request-observability.test.ts
+        - tests/agent-service.test.ts
+        - tests/openai-agent-runtime-token-usage.test.ts
+      diagnostic_live_cases:
+        - live_behavior.host_support_allows_explicit_rsvp_switch
+        - live_feedback.token_fresh_multifront_stays_multi_need
+        - live_behavior.concurrent_support_turns_preserve_context
+      contract_sections:
+        - E09
+        - R01
+        - R03
+        - R04
+        - R06
+        - R08
+        - R09
+      out_of_scope: No new agent per minor operation, visible routing narration, compatibility shim or
+        second memory system.
+      negative_control: Second same-turn transfer, simultaneous old/new execution or inactive-owner
+        evidence must fail. A real supported switch must still succeed.
+      write_lock: exclusive shared runtime/evaluator + development deployment; predecessor must release
+      completion: Implementation plus required evidence complete; separate reviewer verifies
+        diff/artifacts; never self-certify missing gates.
+    customer_context_design: docs/plan/2026-09-09-lean-conversation/customer-context.md
   - id: l5-simplify
     title: L5 machinery deletion and simplification proof
     description: |
       Delete unreachable prompt triples, contradictory shared instructions, unused
       projectors, and obsolete tests. Report net deletion plus real request reduction.
     wave: 10
-    depends_on: [l4-ownership]
+    depends_on:
+      - l4-ownership
     agent: gem-implementer
     status: pending
     retries_used: 0
@@ -256,3 +995,485 @@ tasks:
       relevant_context:
         - src/runtime/prompt-manifest.ts
         - src/runtime/prompt-loader.ts
+    packet: docs/plan/2026-09-09-lean-conversation/tasks/l5-simplify.md
+    execution:
+      owned_paths:
+        - src/runtime/prompt-manifest.ts
+        - src/runtime/prompt-loader.ts
+        - src/runtime/agent-service.ts
+        - src/runtime/openai-agent-runtime.ts
+        - src/audit
+        - prompts
+        - docs/plan/2026-09-09-lean-conversation/outbound-inventory.md
+      entry_symbols:
+        - actual prompt-manifest reachability and all model request constructors
+        - remaining fixed conversational return paths and legacy callers
+      steps:
+        - Rebuild the path inventory from real callers after migrations. Delete unreachable
+          code/prompts/tests only with demonstrated replacement coverage; keep historical evaluation
+          evidence.
+        - Remove duplicate/global instructions whose facts are already projected; retain Spanish
+          git-tracked prompts and minimal shared invariants.
+        - Exercise all surviving output variants with origin and no-template evidence. Name searches
+          alone are not completion proof.
+        - Run test-only mutants and owner/reviewer scenario variants. Label same-agent accessible
+          variants robustness testing; never claim independent holdouts without separation.
+        - Produce matched baseline/candidate per-domain/per-case total request bytes, model calls,
+          usage where available, and net source/prompt deletion. Include failed/repair calls and
+          unchanged denominators. Missing comparable baseline means no reduction claim.
+        - Run final complete dev gate, obtain separate review of actual diff and harness artifacts,
+          and leave any unmet R01-R11 item explicit. No implied production promotion.
+      focused_tests:
+        - tests/model-output-origin.test.ts
+        - tests/request-observability.test.ts
+        - tests/message-renderer.test.ts
+        - tests/semantic-judge.test.ts
+        - tests/live-behavior-coverage.test.ts
+      diagnostic_live_cases: []
+      contract_sections:
+        - E01
+        - E02
+        - E03
+        - E04
+        - E05
+        - E06
+        - E07
+        - E08
+        - E09
+        - E10
+        - E11
+        - E12
+        - R01
+        - R02
+        - R03
+        - R04
+        - R05
+        - R06
+        - R07
+        - R08
+        - R09
+        - R10
+        - R11
+      out_of_scope: Do not delete functional coverage, weaken byte goals, or present static prompt size as
+        runtime cost.
+      negative_control: Renamed/encoded answer templates, omitted expensive requests or removed required
+        cases must fail acceptance.
+      write_lock: exclusive shared runtime/evaluator + development deployment; predecessor must release
+      completion: Implementation plus required evidence complete; separate reviewer verifies
+        diff/artifacts; never self-certify missing gates.
+  - id: latest-c0
+    title: "Freeze source and comparator"
+    status: in_progress
+    wave: latest-run-repair
+    agent: coordinator
+    packet: latest-run-31697069-repair-plan.md
+    packet_section: C0
+    depends_on: []
+    acceptance_criteria:
+      - Complete the locked C0 packet and its negative controls; record evidence and side effects
+      - Preserve all existing edits and release conditions; no evaluator relaxation or product decisions
+    progress_note: "September14 recheck: Freeze recorded; complete recoverable comparator archive and fresh deployment identity not demonstrated."
+    reconciliation_packet: recheck-2026-09-14.md
+  - id: latest-f1
+    title: "Repair image assets and isolated evolving history"
+    status: in_progress
+    wave: latest-run-repair
+    agent: evaluation
+    packet: latest-run-31697069-repair-plan.md
+    packet_section: F1
+    depends_on: ["latest-c0"]
+    acceptance_criteria:
+      - Complete the locked F1 packet and its negative controls; record evidence and side effects
+      - Preserve all existing edits and release conditions; no evaluator relaxation or product decisions
+    progress_note: "September14 recheck: Images repaired; durable history and outbound receipt API exist but real Lambda/target wiring absent."
+    reconciliation_packet: recheck-2026-09-14.md
+  - id: latest-f2
+    title: "Repair silence judging and candidate evidence"
+    status: in_progress
+    wave: latest-run-repair
+    agent: evaluation
+    packet: latest-run-31697069-repair-plan.md
+    packet_section: F2
+    depends_on: ["latest-f1"]
+    acceptance_criteria:
+      - Complete the locked F2 packet and its negative controls; record evidence and side effects
+      - Preserve all existing edits and release conditions; no evaluator relaxation or product decisions
+    progress_note: "September14 recheck: Silence judging implemented; current-image proof accepts an unrelated stale ref."
+    reconciliation_packet: recheck-2026-09-14.md
+  - id: latest-f3
+    title: "Review outcome-based fixture contracts"
+    status: in_progress
+    wave: latest-run-repair
+    agent: evaluation
+    packet: latest-run-31697069-repair-plan.md
+    packet_section: F3
+    depends_on: ["latest-f2"]
+    acceptance_criteria:
+      - Complete the locked F3 packet and its negative controls; record evidence and side effects
+      - Preserve all existing edits and release conditions; no evaluator relaxation or product decisions
+    progress_note: "September14 recheck: Oracles revised locally; matched R05 comparison and live acceptance outstanding."
+    reconciliation_packet: recheck-2026-09-14.md
+  - id: latest-r1
+    title: "Repair complete delivery provenance"
+    status: in_progress
+    wave: latest-run-repair
+    agent: runtime
+    packet: latest-run-31697069-repair-plan.md
+    packet_section: R1
+    depends_on: ["latest-f3"]
+    acceptance_criteria:
+      - Complete the locked R1 packet and its negative controls; record evidence and side effects
+      - Preserve all existing edits and release conditions; no evaluator relaxation or product decisions
+    progress_note: "September14 recheck: Snapshot provenance implemented; same-renderer mutant incorrectly verifies."
+    reconciliation_packet: recheck-2026-09-14.md
+  - id: latest-r2
+    title: "Integrate image and response continuity"
+    status: in_progress
+    wave: latest-run-repair
+    agent: runtime
+    packet: latest-run-31697069-repair-plan.md
+    packet_section: R2
+    depends_on: ["latest-r1"]
+    acceptance_criteria:
+      - Complete the locked R2 packet and its negative controls; record evidence and side effects
+      - Preserve all existing edits and release conditions; no evaluator relaxation or product decisions
+    progress_note: "September14 recheck: Index and continuity fields implemented; fallback, finalization, pending clearing and diagnostic redaction incomplete."
+    reconciliation_packet: recheck-2026-09-14.md
+  - id: latest-r3
+    title: "Normalize image failures and retry accounting"
+    status: in_progress
+    wave: latest-run-repair
+    agent: runtime
+    packet: latest-run-31697069-repair-plan.md
+    packet_section: R3
+    depends_on: ["latest-r2"]
+    acceptance_criteria:
+      - Complete the locked R3 packet and its negative controls; record evidence and side effects
+      - Preserve all existing edits and release conditions; no evaluator relaxation or product decisions
+    progress_note: "September14 recheck: Typed download failure implemented; current-image generic failure catch remains broad."
+    reconciliation_packet: recheck-2026-09-14.md
+  - id: latest-r4
+    title: "Preserve support and terminal authentication outcomes"
+    status: in_progress
+    wave: latest-run-repair
+    agent: runtime
+    packet: latest-run-31697069-repair-plan.md
+    packet_section: R4
+    depends_on: ["latest-r3"]
+    acceptance_criteria:
+      - Complete the locked R4 packet and its negative controls; record evidence and side effects
+      - Preserve all existing edits and release conditions; no evaluator relaxation or product decisions
+    progress_note: "September14 recheck: Local changes present; deployed full-context/effect validation outstanding."
+    reconciliation_packet: recheck-2026-09-14.md
+  - id: latest-r5
+    title: "Project authoritative close state"
+    status: in_progress
+    wave: latest-run-repair
+    agent: runtime
+    packet: latest-run-31697069-repair-plan.md
+    packet_section: R5
+    depends_on: ["latest-r4"]
+    acceptance_criteria:
+      - Complete the locked R5 packet and its negative controls; record evidence and side effects
+      - Preserve all existing edits and release conditions; no evaluator relaxation or product decisions
+    progress_note: "September14 recheck: Local close projection/contact continuation present; deployed full gate outstanding."
+    reconciliation_packet: recheck-2026-09-14.md
+  - id: latest-r6
+    title: "Repair purchase disclosure and factual time"
+    status: in_progress
+    wave: latest-run-repair
+    agent: runtime
+    packet: latest-run-31697069-repair-plan.md
+    packet_section: R6
+    depends_on: ["latest-r5"]
+    acceptance_criteria:
+      - Complete the locked R6 packet and its negative controls; record evidence and side effects
+      - Preserve all existing edits and release conditions; no evaluator relaxation or product decisions
+    progress_note: "September14 recheck: Local disclosure/time/secondary capability work present; cart relevance, duplicate JSON and TS prescriptions remain."
+    reconciliation_packet: recheck-2026-09-14.md
+  - id: latest-c1
+    title: "Validate full plan and promote exact accepted bytes"
+    status: pending
+    wave: latest-run-repair
+    agent: coordinator
+    packet: latest-run-31697069-repair-plan.md
+    packet_section: C1
+    depends_on: ["latest-r6"]
+    acceptance_criteria:
+      - Complete the locked C1 packet and its negative controls; record evidence and side effects
+      - Preserve all existing edits and release conditions; no evaluator relaxation or product decisions    progress_note: "September14 recheck: No post-repair full live gate or matched comparator execution; release not accepted."
+    reconciliation_packet: recheck-2026-09-14.md
+
+  - id: sept14-s0
+    title: "Recoverable freeze and coverage reconciliation"
+    status: in_progress
+    wave: sept14-integration
+    agent: coordinator
+    packet: recheck-2026-09-14.md
+    packet_section: S0
+    depends_on: []
+    acceptance_criteria:
+      - Execute the locked packet and its production-path negative controls
+      - Preserve prior repairs; no policy choices, gate waivers, or unverified completion
+    progress_note: "S0 started 2026-09-14: HEAD bdb4a88a dirty (230 paths); source archive .eval-archives/sept14-S0-source.tgz sha256 582f8464041ffc958c0ddee205abae0755004bc85a43f43dd15b2983424fe807; sorted content manifest .eval-archives/sept14-S0-manifest.txt sha256 7f5d866969343abdf65de9f741630655625afc2b61aca37a53faf14009c6a12f (674 files). Suite 103 cases (107 dash lines minus 4 tags, includes live.faq_from_recommendation_node). STS se-dev us-east-1 684516060775 verified; dev ooMDgQ7bH8eF8hY4yv+mZXfPk5Ev1wyvhN07+ZdTmug= 2026-09-11T18:11:05Z Active/Successful (=31697069 bytes, historical); prod 6CmXWVDpnr92gMF/fmrOPloBpiUnmiOOMAPA8MeQNhY= 2026-09-10T12:42:13Z Active. No claim current worktree ran in 31697069. F1-R6 implemented locally, acceptance open/partial per recheck table; C1 pending."
+  - id: sept14-s2
+    title: "Universal continuity finalization and pending outcome"
+    status: completed
+    wave: sept14-integration
+    agent: runtime
+    packet: recheck-2026-09-14.md
+    packet_section: S2
+    depends_on: ["sept14-s0"]
+    acceptance_criteria:
+      - Execute the locked packet and its production-path negative controls
+      - Preserve prior repairs; no policy choices, gate waivers, or unverified completion
+    progress_note: "S2 done 2026-09-14 (runtime ses_f5fba5808ffe1): handleTurn central finalization, linkage-based fallback merge, pending_task_outcome answered-only clear. typecheck/lint pass; focused 136/136; full offline 1552 passed/5 skipped. No deploy."
+  - id: sept14-s3
+    title: "Private/public evidence and current-image silence proof"
+    status: completed
+    wave: sept14-integration
+    agent: runtime
+    packet: recheck-2026-09-14.md
+    packet_section: S3
+    depends_on: ["sept14-s2"]
+    acceptance_criteria:
+      - Execute the locked packet and its production-path negative controls
+      - Preserve prior repairs; no policy choices, gate waivers, or unverified completion
+    progress_note: "S3 done 2026-09-14: SafePlanSnapshot redaction, wire-hash from private text, current-image silence binding with observed-ID linkage. Focused 33/33; coordinator resolved 2 silence-exemption fixtures to typed schema (kind-matched persist reasons, full expiry/digest/receivedAt); now 46/46. typecheck/lint pass. live-lambda seam left for S1."
+  - id: sept14-s1
+    title: "Durable fixture history through Lambda and live target"
+    status: completed
+    wave: sept14-integration
+    agent: evaluation
+    packet: recheck-2026-09-14.md
+    packet_section: S1
+    depends_on: ["sept14-s3"]
+    acceptance_criteria:
+      - Execute the locked packet and its production-path negative controls
+      - Preserve prior repairs; no policy choices, gate waivers, or unverified completion
+    progress_note: "S1 done 2026-09-14: dev marker runId/caseId, scoped durable store (atomic counters, idempotent IDs, TTL, pagination), live-target validated receipt + silence binding, dev-only EvalFixtureTable, distractor live case (suite 104). Focused + S3 regression green; typecheck/lint pass. No deploy."
+  - id: sept14-s4
+    title: "Independent render provenance"
+    status: completed
+    wave: sept14-integration
+    agent: runtime
+    packet: recheck-2026-09-14.md
+    packet_section: S4
+    depends_on: ["sept14-s1"]
+    acceptance_criteria:
+      - Execute the locked packet and its production-path negative controls
+      - Preserve prior repairs; no policy choices, gate waivers, or unverified completion
+    progress_note: "S4 done 2026-09-14: expected-render.ts reference serializer, transport-v2 receipts/hashes, injected-renderer public-path failure. Focused 72/72 + S2/S3 regression green; coordinator updated development-isolation test for S1 dev-only fixture table (null default + passthrough); now 76/76. typecheck/lint pass. No deploy."
+  - id: sept14-s5
+    title: "Narrow all image failures and usage accounting"
+    status: completed
+    wave: sept14-integration
+    agent: runtime
+    packet: recheck-2026-09-14.md
+    packet_section: S5
+    depends_on: ["sept14-s4"]
+    acceptance_criteria:
+      - Execute the locked packet and its production-path negative controls
+      - Preserve prior repairs; no policy choices, gate waivers, or unverified completion
+    progress_note: "S5 done 2026-09-14: current+retained retry only on typed image-access failure; upload transport vs malformed split; usage partial/unavailable; D7 test expectations replaced with stricter propagation. Full offline 1612/5/0. No deploy."
+  - id: sept14-s6
+    title: "Lean prompt cleanup and cart relevance"
+    status: completed
+    wave: sept14-integration
+    agent: runtime
+    packet: recheck-2026-09-14.md
+    packet_section: S6
+    depends_on: ["sept14-s5"]
+    acceptance_criteria:
+      - Execute the locked packet and its production-path negative controls
+      - Preserve prior repairs; no policy choices, gate waivers, or unverified completion
+    progress_note: "S6 done 2026-09-14: single customerContext serialization (22211B measured), structured payment_options cart focus, phrase/window prescriptions removed, explicit 05:00-vs-17:00 live case + 6 registry entries (suite 105). Full offline 1620/5/0. No deploy."
+  - id: sept14-s7
+    title: "Bounded authorized profile expansion"
+    status: completed
+    wave: sept14-integration
+    agent: runtime
+    packet: recheck-2026-09-14.md
+    packet_section: S7
+    depends_on: ["sept14-s6"]
+    acceptance_criteria:
+      - Execute the locked packet and its production-path negative controls
+      - Preserve prior repairs; no policy choices, gate waivers, or unverified completion
+    progress_note: "S7 done 2026-09-14: async linked enrichment (2-edge/4-read/deadline, access-scoped visited/cache), inline typed expansion, old-target retention, no auto-select. Focused 47/47 + S2-S6 regression green. No deploy."
+  - id: sept14-s8
+    title: "Full matched validation and conditional promotion"
+    status: in_progress
+    wave: sept14-integration
+    agent: coordinator
+    packet: recheck-2026-09-14.md
+    packet_section: S8
+    depends_on: ["sept14-s7"]
+    acceptance_criteria:
+      - Execute the locked packet and its production-path negative controls
+      - Preserve prior repairs; no policy choices, gate waivers, or unverified completion
+    progress_note: "EX1+R7+R8 done 2026-09-14 (suite 113; joint offline 1670/5/0). Second candidate deploying for full unfiltered re-gate + matched baseline comparison + conditional promotion. Production untouched."
+updated_at: 2026-09-10
+execution_status:
+  scope: Overall lean-conversation plan remains in progress; 9/9 is the reported promotion subset only.
+  promotion_subset:
+    status: completed
+    reported_completed_tasks: 9
+    reported_total_tasks: 9
+    artifact_sha256: e829975950e99ebf7680c17f7e6ace3e5a01a625279a238e3003c0f0c7903616
+    lambda_code_sha256: 6CmXWVDpnr92gMF/fmrOPloBpiUnmiOOMAPA8MeQNhY=
+    production_last_modified: 2026-09-10T12:42:13Z
+    authorization: Owner exception recorded in implementation-log.md; does not turn a failed evaluation
+      into a pass.
+  full_gate:
+    status: strict_gate_open_residuals_unrelated
+    case_count: 84
+    original_case_count: 83
+    valid_run: eval-2026-09-10T16-37-22-533Z-618372bf
+    valid_result: 82/84, 0 errored, 0 skipped; close_date_provenance_and_completed_retry PASS 0.8998
+      hardGate true (repeat-outcome axis 1.0); residuals carina 0.8406 (axis 0.08) and
+      token_seeded_selection_defer_close 0.9292 (axis 0.72)
+    prior_full_runs:
+      - eval-2026-09-10T14-27-56-593Z-3771d89c 82/84 (close reset defect found; fixed)
+      - eval-2026-09-10T15-08-00-207Z-aecdbe5d 80/84 (3 failed, 1 errored)
+      - eval-2026-09-10T15-37-12-044Z-f735b1f0 invalid 68/84 (16 errored; expired se-dev login;
+        retained, not a gate result)
+    diagnostic_run: eval-2026-09-10T17-00-16-079Z-a90eff20 (token_seeded_selection_defer_close 1/1 on
+      identical bytes)
+    deployment: artifact 5924e4d7f8d924dfa2a11cdfb9ff4e77aa9f71750c0d63ffa362cfde97c167f3; Lambda
+      WSTk1/jZJN+ioRzfuf9Od6qfcXUMDWP/o2LP3pfBZ/M= 2026-09-10T15:36:36Z; production unchanged
+    owner_exception: dev-followup accepted complete 2026-09-10 with this gate recorded open; two
+      residual failures remain explicit and are re-run under l2-close/l3-semantic. No rescore or
+      waiver.
+  next_task: acceptance-evidence (dev-followup completed with owner exception)
+  broader_acceptance: "Not complete: model-output ownership, remaining family migrations, semantic
+    extraction, specialist handoffs, and E10 request measurements retain their own acceptance
+    gates."
+  code_audit: "2026-09-10: purchase replacement, RSVP deterministicReplyText, ambiguity rewrites,
+    contact prose and incomplete request accounting remain in source. Broad migration completion is
+    not evidenced."
+owner_design:
+  count: 3
+  owners:
+    - id: planning
+      name: Planning
+      scope: Event needs, provider search/refinement/selection, contact collection and quote completion.
+    - id: faq
+      name: General information
+      scope: Public policies, how-to questions and general event/platform information requiring no
+        person-specific lookup or mutation.
+    - id: customer_assistance
+      name: Customer operations
+      scope: Person-specific purchase/order/cart questions, guest/host event information, RSVP,
+        identity/auth, support and human escalation; accountless customers included.
+  entry: Transient first-turn semantic selection, never a fourth persisted owner or mandatory router
+    on every turn.
+  projection: Customer assistance selects only the current capability context and tools; purchase,
+    RSVP, auth and support are capability slices, not child agents.
+  transfer: Semantic task switch only; silence by default; at most one per turn; source stops and
+    recipient alone replies/acts. A needed public policy lookup inside an active task does not
+    require a transfer.
+  customer_context:
+    design: docs/plan/2026-09-09-lean-conversation/customer-context.md
+    status: production_wired_acceptance_red
+    strategy: Concurrent authorized summary reads, typed per-section freshness/access evidence, compact
+      question-relevant model view, targeted detail reads and receipt-based updates. Reuse existing
+      orchestration; no extra agent or profile LLM.
+progress_audit:
+  audited_at: 2026-09-10
+  source: Local worktree and implementation/evaluation records; no deployment recheck in this design
+    review.
+  implementation: Repeated-close fix recorded complete. Purchase/close/RSVP/clarification deletion
+    tasks marked completed; inspected legacy replacement symbols are absent. Transport/origin
+    modules now exist.
+  acceptance: Implementation completion is not strict gate acceptance. Recent artifacts include
+    passing and failing targeted diagnostics; latest log leaves post-deletion deployment/full
+    validation to coordinator. acceptance-evidence progress_note is stale relative to later
+    implementation; reconcile from current harness evidence before dispatch.
+  registry_repair: Preserved duplicate l2-close progress note as historical_progress_note so YAML
+    parses without discarding either record.
+
+url_image_scope_amendment:
+  date: 2026-09-10
+  status: implementation_pending
+  specification: url-image-context.md
+  task: l2-clarification-media-auth
+  decision: New URL images use native owner context and plan references; preserve base64 behavior and nonpersistent bytes; no new object storage.
+  acceptance: Existing full-plan and promotion gates remain in force; documentation is not implementation evidence.
+
+implementation_reconciliation_2026_09_11:
+  status: incomplete_acceptance_red
+  evidence: progress-audit-2026-09-11.md
+  failure_index: progress-audit-2026-09-11.json
+  canonical_run: eval-2026-09-11T12-47-51-929Z-d2141705
+  result: 48/89 passed; 41 failed; no corrected pass rate claimed
+  blocking_gaps:
+    - Customer snapshot helper has no production assembler/projector caller
+    - Host withdrawal still constructs canned conversational replies
+    - Diagnostic redaction and null conversion invalidate origin comparisons
+    - Legitimate suppression lacks separate typed acceptance evidence
+    - URL path bypasses established owner evidence and needs failure accounting
+    - Obsolete deterministic RSVP and incorrect dice oracles need reviewed correction
+  next_work: Observation/evaluator repair, production integration, grounding fixes, full exact-artifact validation
+
+persistent_image_decision_2026_09_11:
+  status: implementation_pending
+  specification: persistent-image-context.md
+  input: Existing base64; URL optional; no upstream migration dependency
+  storage: OpenAI Files; plan contains references only
+  retention_seconds: 432000
+  active_reference_limit: 5
+  images_per_request_limit: 2
+  supersedes: URL-only behavior scope and preservation of base64 describe-by-default behavior
+  delivery: Same-envelope or separate ordered events; no artificial wait; model-owned contextual response
+
+batching_profile_sync:
+  status: planned_contract_verification_pending
+  specification: batching-profile-sync.md
+  batching_owner: backend
+  reported_window_seconds: 8
+  lambda_additional_wait: false
+  image_only_default: suppress_unless_fulfilling_outstanding_task
+  campaign: deferred_until_backend_contract
+  profile: bounded_authorized_detail_expansion_without_date_cutoff
+
+lean_image_execution_contract:
+  specification: lean-image-execution-contract.md
+  status: implementation_pending
+  retention_seconds: 432000
+  coordination: existing_conversation_turn_lease
+  dedicated_description_model_calls: 0
+  campaign: deferred_until_documented_contract
+  completion: atomic_packets_plus_full_plan_acceptance
+
+inbound_contract_correction:
+  authoritative_specification: inbound-continuity-correction.md
+  wire_contract: unchanged_text_and_optional_image
+  backend_batching: invisible_to_lambda
+  package_schema_work: withdrawn
+  response_policy: answer_current_request_suppress_supplemental_images_preserve_followups
+  total_answers_across_future_arrivals: no_fixed_guarantee
+
+latest_run_repair_2026_09_11:
+  status: acceptance_red_implementation_pending
+  specification: latest-run-31697069-repair-plan.md
+  matrix: latest-run-31697069-case-matrix.md
+  evidence: latest-run-31697069-evidence.json
+  canonical_run: eval-2026-09-11T18-13-10-185Z-31697069
+  total: 102
+  passed: 57
+  failed: 44
+  errored: 1
+  skipped: 0
+  precedence: Supersedes earlier current-state summaries; historical records retained
+  production: blocked_until_full_binding_acceptance_on_exact_artifact
+  ownership: Two implementation workers plus coordinator; one shared runtime and deployment writer
+
+recheck_2026_09_14:
+  specification: recheck-2026-09-14.md
+  evidence: recheck-2026-09-14-evidence.json
+  status: local_repairs_present_integration_partial_live_acceptance_open
+  latest_live_run: eval-2026-09-11T18-13-10-185Z-31697069
+  post_repair_live_run: none_found_locally
+  current_suite_case_count: 103
+  offline_bounded: 1543 passed, 5 skipped, 0 failed
+  precedence: Supersedes older next-task summaries; preserves historical evidence

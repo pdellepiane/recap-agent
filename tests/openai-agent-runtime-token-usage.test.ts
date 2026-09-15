@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import path from 'node:path';
 
 import type {
   ComposeReplyRequest,
@@ -7,12 +8,19 @@ import type {
 } from '../src/runtime/contracts';
 import type { InformationTaskResult } from '../src/core/information';
 import type { AgentFeatureFlags } from '../src/runtime/config';
+import type { PersistedPlan } from '../src/core/plan';
 import { deriveDynamicAgentPolicy } from '../src/runtime/dynamic-agent-policy';
 import {
+  deriveEstablishedExtractionDomain,
+  type ExtractionProjection,
+} from '../src/runtime/extraction-projection';
+import {
+  createDynamicExtractionSchema,
   normalizeRequestedOperation,
   openAiInformationRequestSchema,
   type OpenAiInformationRequest,
 } from '../src/runtime/extraction-schemas';
+import { measureBundle, PromptLoader } from '../src/runtime/prompt-loader';
 import type { StructuredExtraction } from '../src/runtime/extraction-schemas';
 import { OpenAiAgentRuntime } from '../src/runtime/openai-agent-runtime';
 import { localTurnMessageContext } from '../src/runtime/turn-message-context';
@@ -119,6 +127,61 @@ describe('host withdrawal minimum disclosure and role correction', () => {
       processingPolicy: { maxBusinessHours: 72 }, individualStatus: 'not_available' });
     expect(Buffer.byteLength(JSON.stringify(result))).toBeLessThan(210);
     expect(JSON.stringify(result)).not.toMatch(/Raw|123|USD5|approved|tomorrow|evidence|private/u);
+  });
+
+  it('withholds attendance state from associated-event reply facts, keeping names and dates', () => {
+    // A read-only event-fact question must not manufacture an unrequested
+    // attendance claim: guestStatus stays out of the reply projection while
+    // both event fact sets ride it.
+    const runtime = createRuntimeForTokenUsageTests() as unknown as {
+      projectInformationResultForReply: (result: InformationTaskResult) => unknown;
+    };
+    const projected = runtime.projectInformationResultForReply({
+      kind: 'associated_event',
+      status: 'completed',
+      requestId: 'event-date-1',
+      accessMethod: 'trusted_phone_guest',
+      result: {
+        lookup: { email: null, phone: '900000001' },
+        user: null,
+        events: [
+          {
+            relation: 'guest', guestId: 80001, eventId: 8001, slug: 'boda-ana-luis',
+            url: null, name: 'Boda Ana y Luis', place: 'Lima', type: 'matrimonio',
+            datetime: '2026-09-20T18:00:00.000Z', stage: null, isVisible: null,
+            isPublic: null, currency: 'PEN', country: 'Peru',
+            guestStatus: { hasResponded: false, willAttend: null, hasCouple: null, responseDate: null },
+            hostType: null, hostPermission: null, hostStatus: null, celebratedType: null,
+            amountCollected: null, amountTransferred: null, transactionsCount: null,
+            invitedGuestCount: null, confirmedGuestCount: null, orders: [],
+          },
+          {
+            relation: 'guest', guestId: 80002, eventId: 8002, slug: 'cumple-marta',
+            url: null, name: 'Cumpleaños Marta', place: 'Lima', type: 'cumpleaños',
+            datetime: '2026-09-21T19:00:00.000Z', stage: null, isVisible: null,
+            isPublic: null, currency: 'PEN', country: 'Peru',
+            guestStatus: { hasResponded: false, willAttend: null, hasCouple: null, responseDate: null },
+            hostType: null, hostPermission: null, hostStatus: null, celebratedType: null,
+            amountCollected: null, amountTransferred: null, transactionsCount: null,
+            invitedGuestCount: null, confirmedGuestCount: null, orders: [],
+          },
+        ],
+        counts: { ownerEvents: 0, guestEvents: 2, hostEvents: 0, celebratedEvents: 0, recentOrders: 0 },
+      },
+    }) as {
+      result: { events: Array<{ name: string | null; datetime: string | null; guestStatus: unknown }> };
+    };
+    expect(projected.result.events).toHaveLength(2);
+    expect(projected.result.events[0]).toMatchObject({
+      name: 'Boda Ana y Luis',
+      datetime: '2026-09-20T18:00:00.000Z',
+      guestStatus: null,
+    });
+    expect(projected.result.events[1]).toMatchObject({
+      name: 'Cumpleaños Marta',
+      datetime: '2026-09-21T19:00:00.000Z',
+      guestStatus: null,
+    });
   });
 });
 
@@ -266,6 +329,60 @@ describe('OpenAiAgentRuntime token usage parsing', () => {
         schemaPropertyCount: 12,
       },
     });
+  });
+
+  it('carries per-request transport byte accounting through the call reference', () => {
+    const runtime = createRuntimeForTokenUsageTests();
+    const typedRuntime = runtime as unknown as {
+      extractOpenAiCallRef: (
+        value: unknown,
+        model: string,
+        metrics: {
+          instructionBytes: number;
+          inputBytes: number;
+          toolCount: number;
+          schemaPropertyCount: number;
+          transport?: {
+            observedRequestCount: number;
+            totalPayloadBytes: number | null;
+            instructionBytes: number | null;
+            inputBytes: number | null;
+            toolBytes: number | null;
+            outputSchemaBytes: number | null;
+            requests: readonly unknown[];
+          };
+        },
+      ) => {
+        requestMetrics: {
+          transport?: { observedRequestCount: number; requests: readonly unknown[] };
+        };
+      } | null;
+    };
+
+    const ref = typedRuntime.extractOpenAiCallRef({
+      lastResponseId: 'resp_transport_test',
+      rawResponses: [{
+        responseId: 'resp_transport_test',
+        requestId: 'req_transport_test',
+      }],
+      state: { usage: { requests: 2 } },
+    }, 'gpt-5.6-luna', {
+      instructionBytes: 100,
+      inputBytes: 200,
+      toolCount: 1,
+      schemaPropertyCount: 12,
+      transport: {
+        observedRequestCount: 2,
+        totalPayloadBytes: 200,
+        instructionBytes: 20,
+        inputBytes: 40,
+        toolBytes: 60,
+        outputSchemaBytes: 80,
+        requests: [{ sequence: 0 }, { sequence: 1 }],
+      },
+    });
+    expect(ref?.requestMetrics.transport?.observedRequestCount).toBe(2);
+    expect(ref?.requestMetrics.transport?.requests).toHaveLength(2);
   });
 
   it('extracts usage from SDK run state camelCase shape', () => {
@@ -649,6 +766,56 @@ describe('OpenAiAgentRuntime capability context', () => {
     expect(replyInput).toContain('"user_message": "No ha llegado nada"');
   });
 
+  it('packet C keeps inbound dialogue pairs in the extractor input with inference-first guidance', () => {
+    const runtime = createRuntimeForTokenUsageTests();
+    const request = createComposeRequest('resolver_consultas_informativas');
+    request.messageContext = {
+      historyStatus: 'available',
+      contextSource: 'agent_api',
+      retrievedMessageCount: 2,
+      excludedCurrentMessageCount: 0,
+      recentMessages: [
+        {
+          id: 1,
+          direction: 'inbound',
+          source: 'user',
+          body: '¿Cuándo es el cumpleaños de Marta?',
+          status: 'received',
+          sentAt: '2026-09-10T10:00:00.000Z',
+          createdAt: null,
+        },
+        {
+          id: 2,
+          direction: 'outbound',
+          source: 'agent',
+          body: 'El cumpleaños de Marta es el 20 de septiembre.',
+          status: 'sent',
+          sentAt: '2026-09-10T10:01:00.000Z',
+          createdAt: null,
+        },
+      ],
+      entryMessage: null,
+    };
+    const typedRuntime = runtime as unknown as {
+      composeExtractorInput: (
+        extractionRequest: ExtractRequest,
+        policy: ReturnType<typeof deriveDynamicAgentPolicy>,
+      ) => string;
+    };
+    const extractionInput = typedRuntime.composeExtractorInput(
+      {
+        userMessage: '¿Y la Boda Ana y Luis?',
+        plan: request.plan,
+        messageContext: request.messageContext,
+      },
+      deriveDynamicAgentPolicy(request.plan),
+    );
+    expect(extractionInput).toContain('¿Cuándo es el cumpleaños de Marta?');
+    expect(extractionInput).toContain('El cumpleaños de Marta es el 20 de septiembre.');
+    expect(extractionInput).toContain('en lugar de marcar ambiguedad');
+    expect(extractionInput).not.toContain('devuelve ambiguedad con UNA sola pregunta contextual');
+  });
+
   it('projects continuity guidance only for the anchorless information-support route', () => {
     const runtime = createRuntimeForTokenUsageTests();
     const contextualRequest = createComposeRequest('resolver_consultas_informativas');
@@ -801,13 +968,95 @@ describe('OpenAiAgentRuntime capability context', () => {
     const schema = typedRuntime.resolveOutputSchema(request);
 
     expect(input).toContain('"status": "ambiguous"');
-    expect(input).toContain('¿Confirmas el proveedor o deseas cerrar todo el plan?');
     expect(input).toContain('"interpretations"');
-    expect(input).toContain('no reinicies la conversación con una bienvenida genérica');
+    expect(input).toContain('Pide una aclaración breve');
+    expect(input).not.toContain(request.extraction.ambiguity.clarificationQuestion ?? '');
     expect(schema.safeParse({
       type: 'generic',
-      paragraphs_es: ['¿Confirmas el proveedor o deseas cerrar todo el plan?'],
+       paragraphs_es: ['Necesito una aclaración breve.'],
     }).success).toBe(true);
+  });
+
+  it('skips the binding clarification when a resolved single image answers it', () => {
+    const runtime = createRuntimeForTokenUsageTests();
+    const request = createComposeRequest('resolver_consultas_informativas');
+    request.userMessage = 'Cuanto es de este comprobante?';
+    request.extraction.ambiguity = {
+      status: 'ambiguous',
+      clarificationQuestion: 'Quieres el estado o que revise el comprobante?',
+      interpretations: ['el estado de la compra', 'la revision del comprobante'],
+    };
+    request.extraction.imageReference = {
+      status: 'prior_single',
+      referencedMessageIds: ['wamid.img1'],
+    };
+    request.imageEvidence = {
+      status: 'available',
+      reason: null,
+      captionPresent: false,
+    };
+    const typedRuntime = runtime as unknown as {
+      composeConversationInput: (
+        replyRequest: ComposeReplyRequest,
+        recommendationFunnel: {
+          available_candidates: number;
+          context_candidates: number;
+          context_candidate_ids: number[];
+          presentation_limit: number;
+        },
+      ) => string;
+    };
+
+    const input = typedRuntime.composeConversationInput(request, emptyFunnel());
+
+    expect(input).toContain('"status": "ambiguous"');
+    expect(input).not.toContain('Pide una aclaración breve');
+  });
+
+  it('skips the binding clarification when candidate operations already carry completed evidence', () => {
+    const runtime = createRuntimeForTokenUsageTests();
+    const request = createComposeRequest('resolver_consultas_informativas');
+    request.extraction.ambiguity = {
+      status: 'ambiguous',
+      clarificationQuestion: 'Quieres el estado o enviar la constancia?',
+      interpretations: ['estado del pago', 'envio de constancia'],
+      candidateOperations: ['purchase.orders.read', 'confirmation_document.send'],
+    };
+    request.informationResults = [
+      {
+        requestId: 'info-1',
+        kind: 'associated_event',
+        status: 'completed',
+        result: {
+          lookup: { email: null, phone: '+51973296571' },
+          user: null,
+          events: [],
+          counts: {
+            ownerEvents: 0,
+            guestEvents: 0,
+            hostEvents: 0,
+            celebratedEvents: 0,
+            recentOrders: 0,
+          },
+        },
+      },
+    ] as unknown as ComposeReplyRequest['informationResults'];
+    const typedRuntime = runtime as unknown as {
+      composeConversationInput: (
+        replyRequest: ComposeReplyRequest,
+        recommendationFunnel: {
+          available_candidates: number;
+          context_candidates: number;
+          context_candidate_ids: number[];
+          presentation_limit: number;
+        },
+      ) => string;
+    };
+
+    const input = typedRuntime.composeConversationInput(request, emptyFunnel());
+
+    expect(input).toContain('"status": "ambiguous"');
+    expect(input).not.toContain('Pide una aclaración breve');
   });
 
   it.each([
@@ -1129,7 +1378,7 @@ describe('OpenAiAgentRuntime information auth prompt isolation', () => {
 
     const input = typedRuntime.composeConversationInput(request, emptyFunnel());
 
-    expect(input).toContain('"type": "cash"');
+    expect(input).toContain('"eventName": "Boda Laura y Marcos"');
     expect(input).not.toContain('shippingStatus');
     expect(input).not.toContain('physicalStatus');
     expect(input).not.toContain('sendPhysical');
@@ -1251,6 +1500,15 @@ describe('OpenAiAgentRuntime information auth prompt isolation', () => {
     const runtime = createRuntimeWithKnowledgeBase();
     const request = createComposeRequest('resolver_consultas_informativas');
     request.userMessage = '¿Ya se aprobó mi regalo?';
+    request.extraction.informationRequests = [{
+      kind: 'purchase',
+      resource: 'orders',
+      query: '¿Ya se aprobó mi regalo?',
+      orderId: null,
+      aspects: ['summary'],
+      sensitiveFields: [],
+      authAction: 'none',
+    }];
     request.informationResults = [{
       requestId: 'phone-order-status',
       kind: 'purchase',
@@ -1292,7 +1550,7 @@ describe('OpenAiAgentRuntime information auth prompt isolation', () => {
 
     const input = typedRuntime.composeConversationInput(request, emptyFunnel());
 
-    expect(input).toContain('ORD-000880');
+    expect(input).toContain('"eventName": "Caroline & Jason"');
     expect(input).toContain('approved');
     expect(input).toContain('trusted_phone_purchase');
     expect(input).not.toContain('962983263');
@@ -1309,6 +1567,15 @@ describe('OpenAiAgentRuntime information auth prompt isolation', () => {
   it('excludes hard payment and temporal provenance from purchase model input', () => {
     const runtime = createRuntimeWithKnowledgeBase();
     const request = createComposeRequest('resolver_consultas_informativas');
+    request.extraction.informationRequests = [{
+      kind: 'purchase',
+      resource: 'orders',
+      query: 'estado y detalles del pago',
+      orderId: null,
+      aspects: ['summary', 'payment_details'],
+      sensitiveFields: [],
+      authAction: 'none',
+    }];
     request.informationResults = [{
       requestId: 'hard-exclusions',
       kind: 'purchase',
@@ -1353,10 +1620,9 @@ describe('OpenAiAgentRuntime information auth prompt isolation', () => {
     expect(input).not.toContain('CCI');
     expect(input).not.toContain('"raw"');
     expect(input).not.toContain('trusted_phone');
-    expect(input).toContain('recorded_method_no_currency');
-    expect(input).toContain('"currency": "not_reported"');
-    expect(input).toContain('"remainingBalance": "not_verifiable"');
-    expect(input).toContain('"transactionTime": "not_verifiable"');
+    expect(input).toContain('"outcome_kind": "order_unique"');
+    expect(input).toContain('"total": 63.85');
+    expect(input).toContain('"denied"');
     expect(input).toContain('63.85');
     expect(input).not.toContain('PEN');
     expect(input).not.toContain('S/');
@@ -1452,6 +1718,7 @@ function createComposeRequest(
       external_user_id: 'user-1',
       conversation_id: null,
       lifecycle_state: 'active',
+      image_attachments: [],
       contact_name: null,
       contact_email: null,
       contact_phone: null,
@@ -1525,6 +1792,11 @@ function createComposeRequest(
       conversation_summary: '',
       last_user_goal: null,
       open_questions: [],
+      owner: 'planning',
+      owner_capability: null,
+      owner_pending_question: null,
+      owner_pending_task: null,
+      owner_return: null,
       updated_at: '2026-05-03T00:00:00.000Z',
     },
     extraction: {
@@ -1592,8 +1864,7 @@ function createRuntimeWithKnowledgeBase(): OpenAiAgentRuntime {
   });
 }
 
-describe('OpenAiAgentRuntime guardrails', () => {
-  it('detects and normalizes corrupted Sin Envolturas support emails', () => {
+describe('OpenAiAgentRuntime guardrails', () => {  it('detects and normalizes corrupted Sin Envolturas support emails', () => {
     const runtime = createRuntimeWithKnowledgeBase();
     const typedRuntime = runtime as unknown as {
       findSupportEmailViolations: (value: unknown) => string[];
@@ -1657,5 +1928,442 @@ describe('OpenAiAgentRuntime guardrails', () => {
         providers: [],
       }],
     });
+  });
+});
+
+const L3_PLANNING_ONLY_SCHEMA_FIELDS = [
+  'eventType',
+  'vendorCategory',
+  'vendorCategories',
+  'activeNeedCategory',
+  'location',
+  'budgetSignal',
+  'guestRange',
+  'preferences',
+  'hardConstraints',
+  'providerFitCriteria',
+  'providerQueryIntents',
+  'providerPlanOperations',
+  'selectedProviderHints',
+  'selectedProviderReferences',
+  'providerExplanationRequest',
+  'providerDetailRequest',
+  'closeAction',
+  'pauseRequested',
+];
+
+const L3_PLANNING_PROMPT_FILES = [
+  'extractors/planning.txt',
+  'extractors/provider_management.txt',
+  'extractors/close_pause.txt',
+];
+
+function l3PurchasePlan(): PersistedPlan {
+  const plan = structuredClone(createL3BaseRequest('resolver_consultas_informativas').plan);
+  plan.current_node = 'resolver_consultas_informativas';
+  plan.conversation_summary = 'Consulta de compra en curso.';
+  plan.open_questions = ['¿Confirmas el correo para enviar el código?'];
+  plan.information_state.pending_requests = [{
+    requestId: 'information-1',
+    kind: 'purchase',
+    resource: 'orders',
+    query: 'Estado del pago del regalo por S/ 63.85.',
+    orderId: null,
+    aspects: ['payment_status'],
+    sensitiveFields: [],
+    authAction: 'none',
+  }];
+  return plan;
+}
+
+function l3SupportPlan(): PersistedPlan {
+  const plan = structuredClone(createL3BaseRequest('resolver_consultas_informativas').plan);
+  plan.current_node = 'resolver_consultas_informativas';
+  plan.conversation_summary = 'Pregunta de política en curso.';
+  plan.information_state.pending_requests = [{
+    requestId: 'information-1',
+    kind: 'faq',
+    query: '¿Cuánto demora un retiro de fondos?',
+  }];
+  return plan;
+}
+
+function l3RsvpPlan(): PersistedPlan {
+  const plan = structuredClone(createL3BaseRequest('responder_invitacion').plan);
+  plan.current_node = 'responder_invitacion';
+  plan.conversation_summary = 'Confirmación de asistencia en curso.';
+  plan.rsvp_state = {
+    status: 'awaiting_action',
+    pending_action: 'attending',
+    pending_plus_one_response: null,
+    candidates: [],
+    requested_at: null,
+    selection_attempts: 0,
+  };
+  return plan;
+}
+
+function createL3BaseRequest(
+  currentNode: ComposeReplyRequest['currentNode'],
+): ComposeReplyRequest {
+  return createComposeRequest(currentNode);
+}
+
+function l3ProjectionForPlan(runtime: OpenAiAgentRuntime, plan: PersistedPlan): {
+  projection: ExtractionProjection;
+  policy: ReturnType<typeof deriveDynamicAgentPolicy>;
+} {
+  const typedRuntime = runtime as unknown as {
+    buildExtractionProjection: (
+      plan: PersistedPlan,
+      policy: ReturnType<typeof deriveDynamicAgentPolicy>,
+      features: AgentFeatureFlags,
+    ) => ExtractionProjection;
+    resolveFeatureFlags: () => AgentFeatureFlags;
+  };
+  const features = typedRuntime.resolveFeatureFlags();
+  const policy = deriveDynamicAgentPolicy(plan);
+  return { projection: typedRuntime.buildExtractionProjection(plan, policy, features), policy };
+}
+
+async function captureL3ExtractionRequest(
+  runtime: OpenAiAgentRuntime,
+  plan: PersistedPlan,
+  userMessage: string,
+): Promise<{
+  projection: ExtractionProjection;
+  filePaths: string[];
+  instructions: string;
+  input: string;
+  schemaKeys: string[];
+  serializedBytes: number;
+  instructionBytes: number;
+  inputBytes: number;
+  schemaPropertyCount: number;
+}> {
+  const { projection, policy } = l3ProjectionForPlan(runtime, plan);
+  const loader = new PromptLoader(path.resolve(process.cwd(), 'prompts'));
+  const bundle = await loader.loadExtractorBundle(projection.profile);
+  const typedRuntime = runtime as unknown as {
+    composeExtractorInput: (
+      request: ExtractRequest,
+      policy: ReturnType<typeof deriveDynamicAgentPolicy>,
+      projection?: ExtractionProjection,
+    ) => string;
+  };
+  const input = typedRuntime.composeExtractorInput(    { userMessage, plan, messageContext: localTurnMessageContext('not_configured') },
+    policy,
+    projection,
+  );
+  const schema = createDynamicExtractionSchema({
+    allowedActionIntents: projection.allowedActionIntents,
+    capabilities: projection.profile,
+  });
+  const schemaKeys = Object.keys(schema.shape);
+  // Full serialized accounting: instructions plus input plus schema shape
+  // plus tool count, including every repair-shaped byte the model would see.
+  const measurement = measureBundle({
+    bundleId: bundle.id,
+    instructions: bundle.instructions,
+    input,
+    schemaPropertyCount: schemaKeys.length,
+    toolCount: 0,
+  });
+  return {
+    projection,
+    filePaths: [...bundle.filePaths],
+    instructions: bundle.instructions,
+    input,
+    schemaKeys,
+    serializedBytes: measurement.serializedBytes,
+    instructionBytes: measurement.instructionBytes,
+    inputBytes: measurement.inputBytes,
+    schemaPropertyCount: measurement.schemaPropertyCount,
+  };
+}
+
+describe('L3 established-lane minimal extraction requests', () => {
+  it('routes established purchase turns through projectExtraction without planning-only fields', async () => {
+    const runtime = createRuntimeForTokenUsageTests();
+    const captured = await captureL3ExtractionRequest(
+      runtime,
+      l3PurchasePlan(),
+      '¿Ya se aprobó mi regalo?',
+    );
+
+    expect(deriveEstablishedExtractionDomain(l3PurchasePlan())).toBe('purchase');
+    for (const field of L3_PLANNING_ONLY_SCHEMA_FIELDS) {
+      expect(captured.schemaKeys).not.toContain(field);
+    }
+    expect(captured.schemaKeys).toEqual(expect.arrayContaining([
+      'actionIntent',
+      'requestedOperation',
+      'informationRequests',
+      'supportAct',
+      'ambiguity',
+      'contactEmail',
+    ]));
+    for (const file of L3_PLANNING_PROMPT_FILES) {
+      expect(captured.filePaths).not.toContain(file);
+    }
+    expect(captured.input).not.toContain('Categorías sugeridas');
+    expect(captured.input).not.toContain('Prioridad completa');
+  });
+
+  it('routes established support turns without planning-only fields or priorities', async () => {
+    const runtime = createRuntimeForTokenUsageTests();
+    const captured = await captureL3ExtractionRequest(
+      runtime,
+      l3SupportPlan(),
+      '¿Cuánto demora un retiro de fondos?',
+    );
+
+    expect(deriveEstablishedExtractionDomain(l3SupportPlan())).toBe('support');
+    for (const field of L3_PLANNING_ONLY_SCHEMA_FIELDS) {
+      expect(captured.schemaKeys).not.toContain(field);
+    }
+    expect(captured.schemaKeys).toContain('informationRequests');
+    for (const file of L3_PLANNING_PROMPT_FILES) {
+      expect(captured.filePaths).not.toContain(file);
+    }
+    expect(captured.input).not.toContain('Categorías sugeridas');
+    expect(captured.input).not.toContain('Prioridad completa');
+  });
+
+  it('routes established RSVP turns without planning-only fields while keeping RSVP fields', async () => {
+    const runtime = createRuntimeForTokenUsageTests();
+    const captured = await captureL3ExtractionRequest(
+      runtime,
+      l3RsvpPlan(),
+      'Sí, confirmo mi asistencia.',
+    );
+
+    expect(deriveEstablishedExtractionDomain(l3RsvpPlan())).toBe('rsvp');
+    for (const field of L3_PLANNING_ONLY_SCHEMA_FIELDS) {
+      expect(captured.schemaKeys).not.toContain(field);
+    }
+    expect(captured.schemaKeys).toEqual(expect.arrayContaining([
+      'rsvpAction',
+      'rsvpDecisionSource',
+      'rsvpCandidateGuestId',
+      'rsvpEventReference',
+      'rsvpParty',
+    ]));
+    expect(captured.filePaths).toContain('extractors/rsvp.txt');
+    expect(captured.input).not.toContain('Categorías sugeridas');
+    expect(captured.input).not.toContain('Prioridad completa');
+  });
+
+  it('keeps planning fields and category priorities on transient planning turns', async () => {
+    const runtime = createRuntimeForTokenUsageTests();
+    const plan = structuredClone(createL3BaseRequest('entrevista').plan);
+    const captured = await captureL3ExtractionRequest(
+      runtime,
+      plan,
+      'Boda en Lima para 120 personas.',
+    );
+
+    expect(deriveEstablishedExtractionDomain(plan)).toBeNull();
+    expect(captured.schemaKeys).toEqual(expect.arrayContaining([
+      'eventType',
+      'vendorCategory',
+      'providerQueryIntents',
+    ]));
+    expect(captured.filePaths).toContain('extractors/planning.txt');
+    expect(captured.input).toContain('Categorías sugeridas');
+    expect(captured.input).toContain('Prioridad completa');
+  });
+
+  it('keeps unsupported operations expressible without full schemas', async () => {
+    const runtime = createRuntimeForTokenUsageTests();
+    const captured = await captureL3ExtractionRequest(
+      runtime,
+      l3PurchasePlan(),
+      'Necesito una conformidad de pago.',
+    );
+
+    expect(captured.schemaKeys).toContain('requestedOperation');
+    expect(captured.filePaths).toContain('extractors/capability_boundary.txt');
+    expect(captured.instructions).toContain('confirmation_document.send');
+  });
+
+  it('emits byte-identical requests when only inactive planning state changes', async () => {
+    const runtime = createRuntimeForTokenUsageTests();
+    const message = '¿Ya se aprobó mi regalo?';
+    const before = await captureL3ExtractionRequest(runtime, l3PurchasePlan(), message);
+    const changed = l3PurchasePlan();
+    changed.event_type = 'boda';
+    changed.location = 'Arequipa';
+    changed.vendor_category = 'Catering';
+    changed.active_need_category = 'Catering';
+    changed.guest_range = '101-200';
+    changed.preferences = ['terraza'];
+    changed.hard_constraints = ['máximo S/ 4,000'];
+    changed.provider_needs = [{
+      category: 'Catering',
+      status: 'shortlisted',
+      preferences: ['terraza'],
+      hard_constraints: [],
+      missing_fields: [],
+      recommended_provider_ids: [7],
+      recommended_providers: [],
+      selected_provider_ids: [],
+      selected_provider_hints: [],
+    }];
+    changed.selected_provider_ids = [7];
+    changed.selected_provider_hints = ['Casa Lima'];
+    const after = await captureL3ExtractionRequest(runtime, changed, message);
+
+    expect(after.input).toBe(before.input);
+    expect(after.instructions).toBe(before.instructions);
+    expect(after.serializedBytes).toBe(before.serializedBytes);
+  });
+
+  it('changes serialized bytes when relevant purchase evidence changes', async () => {
+    const runtime = createRuntimeForTokenUsageTests();
+    const message = '¿Ya se aprobó mi regalo?';
+    const before = await captureL3ExtractionRequest(runtime, l3PurchasePlan(), message);
+    const changed = l3PurchasePlan();
+    changed.information_state.pending_requests = [{
+      requestId: 'information-1',
+      kind: 'purchase',
+      resource: 'orders',
+      query: 'Estado del pago del regalo por S/ 120 para el evento de Lucía.',
+      orderId: null,
+      eventHint: 'Evento de Lucía',
+      amount: 120,
+      aspects: ['payment_status'],
+      sensitiveFields: [],
+      authAction: 'none',
+    }];
+    changed.open_questions = ['¿Confirmas el monto de S/ 120?'];
+    const after = await captureL3ExtractionRequest(runtime, changed, message);
+
+    expect(after.serializedBytes).not.toBe(before.serializedBytes);
+    expect(after.input).toContain('S/ 120');
+    expect(after.input).toContain('Evento de Lucía');
+  });
+
+  it('preserves unknown active-domain entities while ignoring inactive reordering', async () => {
+    const runtime = createRuntimeForTokenUsageTests();
+    const message = '¿Llegó el pedido del Evento Inexistente ZQX 123?';
+    const plan = l3PurchasePlan();
+    plan.information_state.pending_requests = [{
+      requestId: 'information-1',
+      kind: 'purchase',
+      resource: 'orders',
+      query: '¿Llegó el pedido del Evento Inexistente ZQX 123?',
+      orderId: null,
+      eventHint: 'Evento Inexistente ZQX 123',
+      aspects: ['summary'],
+      sensitiveFields: [],
+      authAction: 'none',
+    }];
+    const before = await captureL3ExtractionRequest(runtime, plan, message);
+    expect(before.input).toContain('Evento Inexistente ZQX 123');
+
+    const reordered = structuredClone(plan);
+    reordered.provider_needs = [
+      {
+        category: 'Música',
+        status: 'identified',
+        preferences: [],
+        hard_constraints: [],
+        missing_fields: [],
+        recommended_provider_ids: [],
+        recommended_providers: [],
+        selected_provider_ids: [],
+        selected_provider_hints: [],
+      },
+      {
+        category: 'Catering',
+        status: 'identified',
+        preferences: [],
+        hard_constraints: [],
+        missing_fields: [],
+        recommended_provider_ids: [],
+        recommended_providers: [],
+        selected_provider_ids: [],
+        selected_provider_hints: [],
+      },
+    ];
+    const after = await captureL3ExtractionRequest(runtime, reordered, message);
+    expect(after.input).toBe(before.input);
+    expect(after.serializedBytes).toBe(before.serializedBytes);
+  });
+
+  it('preserves pending purchase facts and open questions in the request', async () => {
+    const runtime = createRuntimeForTokenUsageTests();
+    const captured = await captureL3ExtractionRequest(
+      runtime,
+      l3PurchasePlan(),
+      '¿Ya se aprobó mi regalo?',
+    );
+
+    expect(captured.input).toContain('Estado del pago del regalo por S/ 63.85.');
+    expect(captured.input).toContain('¿Confirmas el correo para enviar el código?');
+    expect(captured.input).toContain('Consulta de compra en curso.');
+  });
+
+  it('derives the lane from typed plan state, never message keywords', async () => {
+    const runtime = createRuntimeForTokenUsageTests();
+    const plan = l3PurchasePlan();
+    const planningKeywords = await captureL3ExtractionRequest(
+      runtime,
+      plan,
+      'Necesito catering y local para una boda en Lima.',
+    );
+    const purchaseQuestion = await captureL3ExtractionRequest(
+      runtime,
+      plan,
+      'Estado de mi pago.',
+    );
+
+    expect(planningKeywords.projection.profile).toEqual(purchaseQuestion.projection.profile);
+    expect(planningKeywords.instructions).toBe(purchaseQuestion.instructions);
+    expect(planningKeywords.schemaKeys).toEqual(purchaseQuestion.schemaKeys);
+  });
+
+  it('counts schema and instruction bytes in the serialized total so nothing hides', async () => {
+    const runtime = createRuntimeForTokenUsageTests();
+    const captured = await captureL3ExtractionRequest(
+      runtime,
+      l3PurchasePlan(),
+      '¿Ya se aprobó mi regalo?',
+    );
+
+    expect(captured.schemaPropertyCount).toBe(captured.schemaKeys.length);
+    expect(captured.serializedBytes).toBeGreaterThan(
+      captured.instructionBytes + captured.inputBytes,
+    );
+  });
+
+  it('negative control l3-mutant-inactive-sentinel: injected planning facts are detected', async () => {
+    const runtime = createRuntimeForTokenUsageTests();
+    const sentinel = 'SENTINEL_CATERING_ZQX';
+    const plan = l3PurchasePlan();
+    plan.provider_needs = [{
+      category: 'Catering',
+      status: 'shortlisted',
+      preferences: [sentinel],
+      hard_constraints: [],
+      missing_fields: [],
+      recommended_provider_ids: [],
+      recommended_providers: [],
+      selected_provider_ids: [],
+      selected_provider_hints: [],
+    }];
+    const captured = await captureL3ExtractionRequest(
+      runtime,
+      plan,
+      '¿Ya se aprobó mi regalo?',
+    );
+
+    // Production request carries no inactive-domain facts.
+    expect(captured.input).not.toContain(sentinel);
+    // A mutant injecting the sentinel into the wire request is caught.
+    const mutatedInput = `${captured.input} ${sentinel}`;
+    expect(mutatedInput).toContain(sentinel);
+    expect(captured.input.includes(sentinel)).toBe(false);
   });
 });

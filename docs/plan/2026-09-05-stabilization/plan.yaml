@@ -1,0 +1,194 @@
+plan_id: 2026-09-05-stabilization
+status: in_progress
+tldr: |
+  Expand tool trace agent-wise now bounded with secrets redacted, then diagnose 10 G5 failures from existing artifacts only with zero new live runs; G5 rerun stays blocked.
+created_at: '2026-09-08'
+created_by: planner
+revision: 8
+replan_count: 5
+planner_revision_used: false
+baseline:
+  objective: Expand tool trace visibility agent-wise now (bounded, secrets redacted) to diagnose 10 G5 failures from existing artifacts with zero new live runs; assess fixture vs product vs judge variance.
+  acceptance_criteria:
+    - Field-by-field redaction matrix for every newly visible tool field vs banned list (phone/email/token/JWT/OTP, keys, internal IDs beyond trace/plan, queue/ticket/SLA, full syntheticIds, raw stacks) plus failing regression test proving no leak
+    - Disclosure proof for plan.md 225-227 with handler.ts:722 bypass preconditions/auth/prod-dev gating; artifact/log retention + purge noted; S03 excluded
+    - 10-case diagnosis from existing runs only (full gate 8ebc180a 59/69 + trials 6527c16a/49aa8a64/de7d5016 + triage rerun 560518f9 + F4 artifact 631e6bdc): map each ID to product vs fixture vs judge-variance vs infra with report.json lines + artifact paths; explicitly test fixture hypothesis (backendFixture vs simulated vs real-gateway bypass, TTL/store, frozen worlds)
+    - Zero new live runs, zero deploys; default se-dev commands only for read-only inspection; preserve F1/F2/F3/F4 4/4; prod untouched
+  captured_at: '2026-09-08'
+decisions:
+  - Trace before any G5 rerun per user order; prior finish-first G5-before TRACE-ALL ordering is superseded for this scope.
+  - Bounded expansion only with secrets redacted default; every newly visible field allowlisted against banned list, no raw payloads or full IDs or stacks.
+  - Zero new live runs and zero deploys in this plan; read-only inspection of existing artifacts only; se-dev profile only if any CLI inspection is needed.
+  - Diagnosis maps each of the 10 IDs to product vs fixture vs judge-variance vs infra with report.json line numbers and artifact paths; fixture hypothesis tested explicitly.
+  - G5-release-gate stays blocked; no rerun authorized here; F1/F2/F3/F4 4/4 preserved; prod untouched; S03 excluded from all tasks.
+  - plan.md revision 2 and baseline commit 55a6c99bba6e2d1162aee071204f41aeebb8fba9 remain immutable for product behavior.
+assumptions:
+  - Existing artifacts are readable: full gate 8ebc180a 59/69, trials 6527c16a/49aa8a64/de7d5016, triage rerun 560518f9, F4 artifact 631e6bdc, lines 3061/5341/9321/12522/15373/18175/19032/20016/24366/29959.
+  - Redaction extension points remain artifact-redaction.ts:44-72, live-lambda.ts:154, reporting.ts:124; bypass boundary handler.ts:722 vs fixture-provider-gateway.ts:389-423.
+  - TRACE-UNREDACT finish_plan-only output remains valid baseline for agent-wise extension.
+replan:
+  reason: User order trace now then diagnose 10 with zero rerun; prior revision gated TRACE-ALL after G5 pass which would deadlock trace on blocked G5.
+  changed_tasks:
+    - F4-provider-campaign
+    - G5-release-gate
+  added_tasks:
+    - TRACE-AGENT-VIS
+    - DIAGNOSE-10-G5
+  removed_tasks:
+    - TRACE-ALL-gated
+  preserved_acceptance_criteria:
+    - F1/F2/F3/F4 4/4 preserved with hard structural plus text_semantic requireJudge true history intact
+    - Baseline 55a6c99bba6e2d1162aee071204f41aeebb8fba9 immutable
+  new_risks:
+    - Allowlist drift leaking banned fields into dev artifacts
+    - Trace volume masking provider truthfulness regressions
+    - Misattributing fixture TTL/store variance to product behavior
+  progress_signal: Completed F1 F2 F3 DEBUG-S12-TRACE F4-TRACE-UNREDACT F4 4/4 triage 560518f9; G5 59/69 blocked; 10 IDs and artifact lines known.
+  revised_tasks:
+    - TRACE-AGENT-VIS
+    - DIAGNOSE-10-G5
+    - G5-release-gate
+  invalidated_tasks:
+    - TRACE-ALL-gated
+  invalidated_assumptions:
+    - TRACE-ALL after G5 pass ordering no longer valid
+tasks:
+  - id: F1-otp-handoff
+    title: Fix OTP one-shot terminal handoff
+    description: 'reuse: existing InformationAuthStateMachine plus HumanHelpPolicy. Done; preserved completed baseline.'
+    wave: 1
+    agent: gem-implementer
+    status: completed
+    retries_used: 0
+    acceptance_criteria:
+      - OTP 3 cases pass with hard structural plus text_semantic requireJudge true
+    handoff:
+      constraints:
+        - Local-only existing API shapes; S03 excluded
+      relevant_context:
+        - docs/plan/2026-09-05-stabilization/plan.md
+  - id: F2-reminder-rsvp-frozen
+    title: Fix reminder RSVP mismatch and frozen worlds
+    description: 'reuse: existing adapter reminder source plus RSVP declined one-change policy. Done; preserved completed baseline.'
+    wave: 2
+    agent: gem-implementer
+    status: completed
+    retries_used: 0
+    acceptance_criteria:
+      - Reminder RSVP frozen 7 cases pass with hard structural plus text_semantic requireJudge true
+    handoff:
+      constraints:
+        - Local-only existing API shapes; S03 excluded
+      relevant_context:
+        - docs/plan/2026-09-05-stabilization/plan.md
+  - id: F3-continuity-purchase
+    title: Fix continuity and purchase reconciliation
+    description: 'reuse: existing canonical aggregate plus purchase reply projector. Done; preserved completed baseline.'
+    wave: 3
+    agent: gem-implementer
+    status: completed
+    retries_used: 0
+    acceptance_criteria:
+      - Continuity purchase 7 cases pass with hard structural plus text_semantic requireJudge true
+    handoff:
+      constraints:
+        - Local-only existing API shapes; S03 excluded
+      relevant_context:
+        - docs/plan/2026-09-05-stabilization/plan.md
+  - id: TRACE-UNREDACT
+    title: TRACE unredacted baseline done
+    description: 'reuse: existing artifact-redaction.ts plus live-lambda reporting. Done 5mod 2new 21 tests; S12 7-fail 0.83 report 60-121 artifact fa757b61 preserved.'
+    wave: 4
+    agent: gem-implementer
+    status: completed
+    retries_used: 0
+    acceptance_criteria:
+      - TRACE-UNREDACT dev-only baseline recorded with redaction helpers intact
+    handoff:
+      constraints:
+        - Secrets redacted default; dev-only lift needs explicit user confirm
+      relevant_context:
+        - docs/plan/2026-09-05-stabilization/plan.md
+  - id: F4-provider-campaign
+    title: Fix provider completion and campaign ordering
+    description: 'reuse: existing finish_plan quote-write capability split plus per-provider quote persistence plus trusted phone lookup. Done 4/4 triage 560518f9 artifact 631e6bdc preserved.'
+    wave: 5
+    agent: gem-implementer
+    status: completed
+    retries_used: 0
+    acceptance_criteria:
+      - provider_reference_cheaper_option, provider_reference_miraflores_option, s12_provider_completion_truthful_event_date, current_campaign_order_over_historical_declined_maria_jose pass 4/4
+    handoff:
+      constraints:
+        - Local-only existing API shapes; S03 excluded
+        - Affected modules: provider completion, capability-manifest finish_plan split, event identity validation
+      relevant_context:
+        - docs/plan/2026-09-05-stabilization/plan.md
+        - Baseline commit 55a6c99bba6e2d1162aee071204f41aeebb8fba9 immutable
+  - id: TRACE-AGENT-VIS
+    title: Bounded agent-wise tool trace with redaction proof
+    description: 'reuse: existing artifact-redaction.ts:44-72 allowlist plus live-lambda.ts:154 and reporting.ts:124 dev artifact path. new: per-tool allowlisted arg schemas and outcome-kind enum only where no helper exists.'
+    wave: 6
+    agent: gem-reviewer -> gem-implementer
+    status: pending
+    retries_used: 0
+    acceptance_criteria:
+      - Field-by-field matrix for every newly visible tool field vs banned list (phone/email/token/JWT/OTP, keys, internal IDs beyond trace/plan, queue/ticket/SLA, full syntheticIds, raw stacks) with allow or deny plus helper reference
+      - Failing regression test proves banned value stripped, then passing suite proves no banned value in any new artifact
+      - Disclosure proof cites plan.md 225-227 with handler.ts:722 bypass preconditions/auth/prod-dev gating via fixture-provider-gateway.ts:389-423; prod rejects fixture markers and real dev writes stay blocked
+      - Artifact/log retention plus purge policy plus promotion auth gate noted; S03 excluded; structured summaries only with no raw payloads
+      - Focused redaction tests plus typecheck pass; no byte growth on unaffected routes asserted
+    handoff:
+      constraints:
+        - Zero new live runs; zero deploys; read-only artifact inspection only; se-dev read-only if CLI needed
+        - Secrets-redacted default; bounded allowlist only; any leak fails gate and reverts emitter
+        - Single integrator owns artifact-redaction.ts, live-lambda.ts, reporting.ts, handler.ts boundary
+        - Affected modules: artifact redaction, live-lambda dev artifact writer, reporting, fixture provider gateway
+        - S03 excluded; no keyword routing
+      relevant_context:
+        - docs/plan/2026-09-05-stabilization/plan.md lines 225-227 plus 241-244
+        - artifact-redaction.ts:44-72 live-lambda.ts:154 reporting.ts:124
+        - handler.ts:722 vs fixture-provider-gateway.ts:389-423
+  - id: DIAGNOSE-10-G5
+    title: Diagnose 10 G5 failures from existing artifacts only
+    description: 'reuse: existing run artifacts 8ebc180a plus 6527c16a/49aa8a64/de7d5016 plus 560518f9 plus 631e6bdc report.json lines. new: diagnosis mapping table only, no new harness code.'
+    wave: 7
+    depends_on:
+      - TRACE-AGENT-VIS
+    agent: gem-debugger -> gem-implementer
+    status: pending
+    retries_used: 0
+    acceptance_criteria:
+      - Each of 10 IDs mapped to product vs fixture vs judge-variance vs infra with report.json line among 3061/5341/9321/12522/15373/18175/19032/20016/24366/29959 plus artifact path for 8ebc180a, 6527c16a, 49aa8a64, de7d5016, 560518f9, 631e6bdc as applicable
+      - Fixture hypothesis tested explicitly: backendFixture vs simulated vs real-gateway bypass, TTL/store behavior, frozen worlds reuse
+      - Judge variance assessed via trials 0.65-0.98 spread plus otp empty-turn infra note; product vs infra separated from fixture
+      - Zero new live runs, zero deploys, prod untouched, F1/F2/F3/F4 4/4 preserved
+    handoff:
+      constraints:
+        - Zero new live runs; zero deploys; read-only inspection only; default se-dev read-only; no eval rerun
+        - Do not weaken or reinterpret acceptance criteria to avoid failure
+        - Affected modules: diagnosis report only; no product code change in this task
+        - S03 excluded; prod untouched
+      relevant_context:
+        - G5 59/69 run 8ebc180a plus trials 6527c16a/49aa8a64/de7d5016 plus triage 560518f9 plus F4 artifact 631e6bdc
+        - docs/plan/2026-09-05-stabilization/plan.md validation and release contract
+        - Baseline commit 55a6c99bba6e2d1162aee071204f41aeebb8fba9 immutable
+  - id: G5-release-gate
+    title: Release gate blocked no rerun in this plan
+    description: 'reuse: existing eval runner plus coverage audit. Blocked here by user order trace-then-diagnose; no rerun authorized.'
+    wave: 8
+    depends_on:
+      - DIAGNOSE-10-G5
+    agent: gem-implementer
+    status: blocked
+    retries_used: 0
+    acceptance_criteria:
+      - No rerun executed in this plan; gate remains 59/69 historical evidence only
+      - Next rerun requires separate authorization after TRACE-AGENT-VIS plus DIAGNOSE-10-G5 complete
+    handoff:
+      constraints:
+        - Zero new live runs; zero deploys in this plan
+        - Use ONLY repo default deploy commands on se-dev when later authorized; S03 excluded
+      relevant_context:
+        - docs/plan/2026-09-05-stabilization/plan.md validation and release contract
+        - evals/live-behavior-coverage.yaml

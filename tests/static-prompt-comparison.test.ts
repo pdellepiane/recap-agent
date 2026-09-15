@@ -86,9 +86,35 @@ describe('per-branch historical baseline via git show', () => {
     expect(anchorRsvp?.instructionBytes).toBe(8233);
     expect(anchorRsvp?.fileCount).toBe(7);
     // Read-only RSVP offer guidance removes 27 bytes from the prior 8448-byte bundle.
+    // 2026-09-11 step C grounding: +534 bytes for evidence-driven RSVP wording
+    // (no-write clarity, plus-one/multi-person honesty, reminder-mismatch
+    // framing) replacing the retired deterministic-fragment/tissue mechanism.
+    // 2026-09-14 R7 grounding-continuity: +97 bytes for one R7 line
+    // (plus_one_support_offer_required always carries the human-support
+    // offer). Previous pin 8955.
+    // 2026-09-14 Packet C intent preservation: -18 bytes for softening the
+    // mandated no-change status restatement in
+    // responder_invitacion/response_contract.txt (gratitude/no-new-request
+    // turns keep the no-new-write honesty without a forced status
+    // paragraph). Previous pin 9052.
+    // 2026-09-15 tissue-removal reconciliation: pin 9034 matches neither
+    // clean HEAD (8421) nor this tree (8858, verified by measurement).
+    // The HEAD-to-tree diff was verified Spanish-only with no scripted
+    // prose: the deterministic-fragment tissue paragraph is replaced by a
+    // model-written reply rule, plus campaign-reminder honesty and
+    // plus-one/multi-person honesty lines. No wording added to satisfy the
+    // pin; the pin follows the intended removals. Previous pin 9034.
+    // 2026-09-15 date-only RSVP enumeration removal: selection turns defer
+    // to projected event facts (including rsvp_event_time.hour24) instead
+    // of enumerating nombre+fecha as complete; model-written sentences
+    // only. Previous pin 8858.
+    // 2026-09-15 confirmation-hour fact: the confirmation sentence states
+    // rsvp_event_time.hour24 when projected, so the Marta turn can carry
+    // 19:00; responder response_contract stays mandate-free. Previous pin
+    // 8872.
     const currentRsvp = current.find((branch) => branch.branchId === 'responder_invitacion:resolved_single');
-    expect(currentRsvp?.instructionBytes).toBe(8421);
-    expect((currentRsvp?.instructionBytes ?? 0) - (anchorRsvp?.instructionBytes ?? 0)).toBe(188);
+    expect(currentRsvp?.instructionBytes).toBe(8933);
+    expect((currentRsvp?.instructionBytes ?? 0) - (anchorRsvp?.instructionBytes ?? 0)).toBe(700);
   }, 20_000);
 });
 

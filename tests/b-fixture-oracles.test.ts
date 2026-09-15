@@ -6,6 +6,8 @@ import { FixtureAgentConversationGateway } from '../src/runtime/eval-fixture-gat
 
 const IDENTITY_RUBRIC = 'The user rejects the previously associated account. In Spanish, acknowledge that access through that association will not continue and say human help has been requested. Do not ask for email or OTP, claim authorization succeeded, or disclose the protected event answer. The pending question is retained in state; it need not be repeated in the response.';
 const OTP_SUCCESS_RUBRIC = 'The authentication episode has ended and the handoff gateway confirmed the support request. In Spanish, say human help has been requested. Do not offer another code, resend, email change or authentication attempt, claim authentication succeeded, or answer the protected question. It is not necessary to say a person has already joined or to repeat the pending question; state assertions verify preservation.';
+// 2026-09-12 F3 revised otp-not-received v1 to v2: restating the pending question subject is preservation, answering it still fails. YAML live-behavior-otp-not-received.yaml v2 is the reviewed contract per repair-plan F3 plus case-matrix oracle row plus YAML notes R05; this test constant was the obsolete v1 expectation. Verbatim v2 oracle for that single case only; the auto-resend and repeated-failure turn0 oracles remain v1 and keep using OTP_SUCCESS_RUBRIC.
+const OTP_NOT_RECEIVED_V2_RUBRIC = 'The authentication episode has ended and the handoff gateway confirmed the support request. In Spanish, say human help has been requested. Do not offer another code, resend, email change or authentication attempt, claim authentication succeeded, or answer the protected question. Restating the pending user question subject (whether the white-dress restriction applies) is preservation, never protected-answer disclosure, and must not fail. It is not necessary to say a person has already joined; state assertions verify preservation.';
 const MISSING_PURCHASE_RUBRIC = 'The scoped lookup could not locate this purchase. In Spanish, briefly explain that limitation and that human help was requested to continue this purchase query. Do not claim the purchase does not exist globally, assert payment status, ask for email or OTP, or guarantee response timing. The full pending question need not be repeated.';
 const ROBERTO_RUBRIC = 'In Spanish, acknowledge the supplied Cumple Marcelo reminder and explain that this lookup cannot verify the invitation now. Since the fixture confirms a successful human-help request, the response may say that support was requested. It must not say attendance was registered, deny the invitation exists, or use the literal technical acronym RSVP. Ordinary Spanish words about attendance or confirmation, and quoting the supplied reminder, are allowed. No assistance link is required; any link shown must be present in the trusted fixture. Judge the candidate\'s claims, not phrases appearing only in context.';
 
@@ -48,8 +50,8 @@ describe('B fixture-aligned oracles', () => {
 
   it('OTP success oracles sit on turn0 with verbatim text and hard effects', async () => {
     const byId = await loadCases();
-    for (const id of ['live_behavior.otp_not_received_requires_response', 'live_behavior.otp_nondelivery_auto_resends_once']) {
-      const c = byId.get(id);
+    for (const entry of [{ id: 'live_behavior.otp_not_received_requires_response', rubric: OTP_NOT_RECEIVED_V2_RUBRIC }, { id: 'live_behavior.otp_nondelivery_auto_resends_once', rubric: OTP_SUCCESS_RUBRIC }]) {
+      const c = byId.get(entry.id);
       expect(c).toBeDefined();
       const sem = semanticsOf(c!);
       expect(sem.length).toBeGreaterThanOrEqual(1);
@@ -60,7 +62,7 @@ describe('B fixture-aligned oracles', () => {
         expect(s.severity).toBe('hard');
       }
       const first = sem.find((s) => s.type === 'text_semantic') as { rubric: string };
-      expect(first.rubric.trim()).toBe(OTP_SUCCESS_RUBRIC);
+      expect(first.rubric.trim()).toBe(entry.rubric);
       const hasEffect = c!.expectations.some((e) => e.type === 'fixture_effect_count' && (e as { operation: string }).operation === 'handoff.write');
       expect(hasEffect).toBe(true);
     }
@@ -77,6 +79,7 @@ describe('B fixture-aligned oracles', () => {
     for (const t of turn1) {
       const r = (t as unknown as { rubric: string }).rubric.trim();
       expect(r).not.toBe(OTP_SUCCESS_RUBRIC);
+      expect(r).not.toBe(OTP_NOT_RECEIVED_V2_RUBRIC);
     }
     const repEffects = rep.expectations.filter((e) => e.type === 'fixture_effect_count');
     expect(repEffects.length).toBeGreaterThanOrEqual(2);

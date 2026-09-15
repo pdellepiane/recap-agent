@@ -87,10 +87,19 @@ export function computeBenchmarkMetrics(
     (sum, turn) => sum + (turn.trace.token_usage.total?.cached_input_tokens ?? 0),
     0,
   );
+  const cacheWriteTokens = turns.reduce(
+    (sum, turn) => sum + (turn.trace.token_usage.total?.cache_write_input_tokens ?? 0),
+    0,
+  );
   const totalTokens = turns.reduce(
     (sum, turn) => sum + (turn.trace.token_usage.total?.total_tokens ?? 0),
     0,
   );
+  // Missing usage is unknown, never zero: only turns carrying a total
+  // token record count toward the known denominator.
+  const turnsWithUsage = turns.filter((turn) => turn.trace.token_usage.total !== null &&
+    turn.trace.token_usage.total !== undefined).length;
+  const usageKnown = turns.length === 0 || turnsWithUsage === turns.length;
   const persistedTurns = turns.filter((turn) => turn.trace.plan_persisted).length;
   const toolF1 =
     toolPrecision + toolRecall === 0
@@ -112,7 +121,13 @@ export function computeBenchmarkMetrics(
     trajectory_expectation_pass_rate: passRate(trajectoryExpectations),
     plan_persistence_rate: turns.length === 0 ? 0 : persistedTurns / turns.length,
     total_tokens: totalTokens,
+    // Ratio of summed counts, never an average of per-turn percentages.
     cache_hit_rate: inputTokens === 0 ? 0 : cachedTokens / inputTokens,
+    input_tokens: inputTokens,
+    cached_input_tokens: cachedTokens,
+    cache_write_input_tokens: cacheWriteTokens,
+    uncached_input_tokens: Math.max(0, inputTokens - cachedTokens),
+    usage_known: usageKnown,
   };
 }
 

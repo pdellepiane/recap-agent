@@ -960,7 +960,7 @@ describe('AgentService', () => {
     terminal_whatsapp: new WhatsAppMessageRenderer(),
   };
 
-  it('uses trusted image metadata to return the unsupported-media response without model inference', async () => {
+  it('projects trusted image metadata and delivers the model response without extraction', async () => {
     const planStore = new InMemoryPlanStore();
     const runtime = new HumanEscalationRuntime();
     const response = await new AgentService({
@@ -988,11 +988,13 @@ describe('AgentService', () => {
     });
 
     expect(runtime.extractCalls).toBe(0);
-    expect(response.outbound.text).toBe(
-      'No puedo leer ni revisar el contenido de imágenes. Puedes escribir aquí el dato relevante o puedo solicitar apoyo humano.',
-    );
+    expect(response.outbound.text).toBe('reply:resolver_consultas_informativas');
     expect(response.plan.current_node).toBe('resolver_consultas_informativas');
-    expect(response.trace.prompt_bundle_id).toBe('deterministic:unsupported_image_media');
+    expect(runtime.composeRequests.at(-1)?.imageEvidence).toMatchObject({
+      status: 'unavailable',
+      reason: 'media_unavailable',
+      captionPresent: false,
+    });
     expect(response.trace.plan_persist_reason).toBe('unsupported_image_media');
     expect(response.trace.tools_called).toEqual([]);
   });
@@ -1054,7 +1056,7 @@ describe('AgentService', () => {
     }
   });
 
-  it('enforces one clarification question from structured FAQ ambiguity evidence', async () => {
+  it('projects structured FAQ ambiguity without rewriting the model response', async () => {
     const runtime = new LowConfidenceFaqRuntime();
     const service = new AgentService({
       planStore: new InMemoryPlanStore(),
@@ -1075,16 +1077,12 @@ describe('AgentService', () => {
     expect(runtime.composeRequests.at(-1)?.currentNode).toBe(
       'resolver_consultas_informativas',
     );
-    expect(runtime.composeRequests.at(-1)?.errorMessage).toContain(
-      'pregunta como ambigua',
-    );
-    expect(runtime.composeRequests.at(-1)?.errorMessage).toContain(
-      'No contestes ninguna de las interpretaciones posibles',
-    );
-    expect(response.outbound.text).toBe(
-      '¿Quieres saber el dato de tu evento o un dato de Sin Envolturas?',
-    );
-    expect(response.outbound.text?.match(/\?/gu)).toHaveLength(1);
+    expect(runtime.composeRequests.at(-1)?.errorMessage).toBeNull();
+    expect(runtime.composeRequests.at(-1)?.extraction.ambiguity).toMatchObject({
+      status: 'ambiguous',
+      interpretations: ['el dato de tu evento', 'un dato de Sin Envolturas'],
+    });
+    expect(response.outbound.text).toBe('reply:resolver_consultas_informativas');
     expect(response.trace.extraction_summary.ambiguity_status).toBe('ambiguous');
     expect(response.trace.extraction_summary.clarification_question_present).toBe(true);
     expect(response.trace.extraction_summary.ambiguity_interpretation_count).toBe(2);
@@ -1364,8 +1362,13 @@ describe('AgentService', () => {
         request_id: null,
       },
     ]);
-    // Terminal handoff is deterministic: no reply-model composition runs.
-    expect(runtime.composeRequests).toHaveLength(0);
+    expect(runtime.composeRequests).toHaveLength(1);
+    expect(response.outbound.text).toBe('reply:resolver_consultas_informativas');
+    expect(runtime.composeRequests.at(-1)?.authenticationOutcome).toMatchObject({
+      status: 'terminal',
+      // C1: terminal escalation retains pending protected requests.
+      protectedRequestsClosed: false,
+    });
   });
 
   it('persists the token and injects event context after a correct user auth code', async () => {
@@ -1718,7 +1721,7 @@ describe('AgentService', () => {
     ]);
   });
 
-  it('stores a temporary close when the user pauses', async () => {
+  it('enters no explicit pause state when the user pauses', async () => {
     const runtime = new FakeRuntime();
     const planStore = new InMemoryPlanStore();
     const service = new AgentService({
@@ -1737,8 +1740,12 @@ describe('AgentService', () => {
       receivedAt: new Date().toISOString(),
     });
 
-    expect(response.plan.current_node).toBe('guardar_cerrar_temporalmente');
-    expect(response.trace.plan_persist_reason).toBe('guardar_cerrar_temporalmente');
+    // No explicit pause state exists: pausing is the user not writing. The
+    // pause mark dissolves and the turn continues normal handling instead
+    // of entering guardar_cerrar_temporalmente.
+    expect(response.plan.current_node).not.toBe('guardar_cerrar_temporalmente');
+    expect(response.trace.plan_persist_reason).not.toBe('guardar_cerrar_temporalmente');
+    expect(response.outbound.delivery.action).toBe('send');
   });
 
   it('resumes an existing shortlist without searching again', async () => {
@@ -2325,9 +2332,8 @@ describe('AgentService', () => {
     expect(response.trace.route_kind).toBe('clarify_missing_fields');
     expect(response.trace.search_ready).toBe(false);
     expect(gateway.searchCalls).toBe(0);
-    expect(response.outbound.text).toBe(
-      'Para continuar con la búsqueda, ¿cuántos invitados esperas aproximadamente o qué presupuesto tienes?',
-    );
+    expect(response.outbound.text).toBe('¿Qué correo electrónico debo usar para enviarte el enlace?');
+    expect(runtime.composeRequests.at(-1)?.missingFields).toContain('budget_or_guest_range');
   });
 
   it('broadens the active shortlist when the user asks for more options', async () => {
@@ -6986,7 +6992,7 @@ describe('AgentService', () => {
     expect(response.trace.extraction_summary.ambiguity_status).toBe('ambiguous');
     expect(response.trace.selection_resolution_summary.selected_provider_references).toEqual([]);
     expect(response.trace.selection_resolution_summary.provider_plan_operation_types).toEqual([]);
-    expect(response.outbound.text).toBe('¿Qué proveedor o acción estás confirmando?');
+    expect(response.outbound.text).toBe('reply:aclarar_pedir_faltante');
     expect(runtime.composeRequests.at(-1)?.extraction).toMatchObject({
       ambiguity: { status: 'ambiguous' },
       selectedProviderHints: [],
@@ -7422,7 +7428,7 @@ describe('AgentService', () => {
     );
     expect(cateringNeed?.status).toBe('shortlisted');
     expect(cateringNeed?.selected_provider_ids).toEqual([]);
-    expect(response.trace.operational_note).toContain('Catering');
+    expect(response.trace.operational_note).toBeNull();
     expect(gateway.searchCalls).toBe(0);
     expect(response.trace.tools_called).not.toContain('search_providers_from_plan');
   });
@@ -8317,10 +8323,8 @@ describe('AgentService', () => {
         return {
           text: '',
           structuredMessage: {
-            type: 'close_confirmation',
-            summary_es: 'Todavía necesito tu teléfono con código de país',
-            selected_providers_es: ['Fotografía y video: Foto Uno'],
-            unselected_needs_es: [],
+            type: 'generic',
+            paragraphs_es: ['El teléfono quedó actualizado.'],
           },
         };
       }
@@ -8379,12 +8383,7 @@ describe('AgentService', () => {
     expect(response.plan.contact_phone).toBe('51954779067');
     expect(response.trace.contact_validation_summary.status).toBe('valid');
     expect(response.trace.operational_note).toBeNull();
-    expect(response.outbound.text).toContain(
-      'Ya tengo tu nombre, correo electrónico y teléfono',
-    );
-    expect(response.outbound.text).not.toContain('Carlos Schult');
-    expect(response.outbound.text).toContain('Foto Uno');
-    expect(response.outbound.text).not.toContain('teléfono con código de país');
+    expect(response.outbound.text).toBe('El teléfono quedó actualizado.');
   });
 
   it('sanitizes file citation artifacts and avoids a final plain period', async () => {
@@ -8450,10 +8449,13 @@ describe('AgentService', () => {
     expect(response.trace.search_strategy).toBe('none');
     expect(response.trace.provider_results).toHaveLength(0);
     expect(agentGateway.requestedPhones).toEqual(['51987654321']);
-    // Package D contract: non-auth skipped help renders the bounded non-auth
-    // variant with no OTP/email copy, never a success claim.
-    expect(response.outbound.text).toContain('No pude registrar la solicitud de apoyo humano');
+    // Package D contract: non-auth skipped help is model-composed from typed
+    // handoff evidence with no OTP/email copy, never a success claim.
+    expect(response.outbound.text).toBe('reply:solicitar_agente_humano');
     expect(response.outbound.text).not.toMatch(/12|horas/iu);
+    expect(runtime.composeRequests).toHaveLength(1);
+    expect(runtime.composeRequests.at(-1)?.currentNode).toBe('solicitar_agente_humano');
+    expect(runtime.composeRequests.at(-1)?.handoffOutcome).toBeNull();
   });
 
   it('keeps escalated conversations soft-paused without extracting or searching again', async () => {
@@ -9026,7 +9028,10 @@ describe('AgentService', () => {
       help_offer_status: 'offered',
     });
     expect(response.trace.route_kind).toBe('human_help_offer');
-    expect(response.outbound.text).toContain('una persona del equipo se una a esta conversación');
+    expect(response.outbound.text).toBe('reply:ofrecer_agente_humano');
+    expect(response.trace.prompt_file_paths).toContain(
+      'nodes/ofrecer_agente_humano/response_contract.txt',
+    );
     expect(gateway.operations).toEqual(['get', 'log:inbound']);
   });
 
@@ -9080,15 +9085,149 @@ describe('AgentService', () => {
     expect(response.plan.human_escalation.status).toBe('requested');
     expect(response.plan.current_node).toBe('solicitar_agente_humano');
     expect(response.trace.route_kind).toBe('human_escalation');
-    // Package D3 contract: successful handoff renders the bounded requested
-    // variant from handoff_outcomes.json.
-    expect(response.outbound.text).toContain('Listo, ya solicité apoyo humano');
+    // Package D3 contract: successful handoff is model-composed from typed
+    // requested-handoff evidence, never a fixed sentence.
+    expect(response.outbound.text).toBe('reply:solicitar_agente_humano');
     expect(response.outbound.text).not.toMatch(/12|horas/iu);
     expect(gateway.operations).toEqual([
       'get',
       'log:inbound',
       'takeover:51900000002',
     ]);
+  });
+
+  it('delivers a distinct model-composed offer after a stalled turn without fixed prose', async () => {
+    class OfferVariantRuntime extends FakeRuntime {
+      override async composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult> {
+        this.composeRequests.push(request);
+        return { text: 'Veo que estamos atascados; ¿te ayudaria una persona del equipo?' };
+      }
+    }
+
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      reason: 'seed-stall-variant',
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'health-stalled-variant',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'health-stalled-variant-user',
+        }),
+        {
+          conversation_health: {
+            status: 'stalled',
+            reason: 'repeated_question',
+            consecutive_non_progress_turns: 1,
+            help_offer_status: 'none',
+            help_offered_at: null,
+            last_assessed_at: '2026-07-10T10:00:00.000Z',
+          },
+        },
+      ),
+    });
+    const runtime = new OfferVariantRuntime();
+    const classifier = new FakeResponseClassifier('observe', 'respond', {
+      status: 'stalled',
+      reason: 'circular_conversation',
+      helpResponse: 'not_applicable',
+    });
+    const gateway = new TrackingAgentConversationGateway([]);
+
+    const response = await new AgentService({
+      planStore,
+      runtime,
+      providerGateway: new FakeGateway(),
+      agentConversationGateway: gateway,
+      responseClassifier: classifier,
+      promptLoader,
+      renderers,
+    }).handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'health-stalled-variant-user',
+      text: 'Todavía no logramos resolverlo',
+      messageId: 'health-stalled-variant-turn',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51 900000001',
+    });
+
+    expect(response.plan.current_node).toBe('ofrecer_agente_humano');
+    expect(response.outbound.delivery.action).toBe('send');
+    expect(response.outbound.text).toBe('Veo que estamos atascados; ¿te ayudaria una persona del equipo?');
+    expect(runtime.composeRequests).toHaveLength(1);
+    expect(runtime.composeRequests.at(-1)?.currentNode).toBe('ofrecer_agente_humano');
+    expect(response.trace.prompt_bundle_id).not.toMatch(/^deterministic:/u);
+    expect(gateway.operations).toEqual(['get', 'log:inbound']);
+  });
+
+  it('composes failed takeover evidence after offer acceptance without claiming success', async () => {
+    class AcceptedFailedRuntime extends FakeRuntime {
+      override async composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult> {
+        this.composeRequests.push(request);
+        return { text: 'No quedo registrada la derivacion; seguimos por aqui.' };
+      }
+    }
+
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      reason: 'seed-offer-failed',
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'health-offered-failed',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'health-offered-failed-user',
+        }),
+        {
+          current_node: 'ofrecer_agente_humano',
+          conversation_health: {
+            status: 'frustrated',
+            reason: 'explicit_frustration',
+            consecutive_non_progress_turns: 1,
+            help_offer_status: 'offered',
+            help_offered_at: '2026-07-10T10:00:00.000Z',
+            last_assessed_at: '2026-07-10T10:00:00.000Z',
+          },
+        },
+      ),
+    });
+    const classifier = new FakeResponseClassifier('observe', 'respond', {
+      status: 'progressing',
+      reason: 'normal_progress',
+      helpResponse: 'accept',
+    });
+    const runtime = new AcceptedFailedRuntime();
+    class AcceptFailedGateway extends TrackingAgentConversationGateway {
+      override async requestHumanTakeover(phoneNumber: string): Promise<AgentGatewayResult> {
+        this.operations.push(`takeover:${phoneNumber}`);
+        return { status: 'failed', error: 'takeover boom', retryable: false };
+      }
+    }
+    const gateway = new AcceptFailedGateway([]);
+
+    const response = await new AgentService({
+      planStore,
+      runtime,
+      providerGateway: new FakeGateway(),
+      agentConversationGateway: gateway,
+      responseClassifier: classifier,
+      promptLoader,
+      renderers,
+    }).handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'health-offered-failed-user',
+      text: 'Sí, por favor',
+      messageId: 'health-accept-failed-turn',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51 900000002',
+    });
+
+    expect(response.plan.current_node).toBe('solicitar_agente_humano');
+    expect(response.outbound.delivery.action).toBe('send');
+    expect(response.outbound.text).toBe('No quedo registrada la derivacion; seguimos por aqui.');
+    expect(runtime.composeRequests).toHaveLength(1);
+    expect(runtime.composeRequests.at(-1)?.handoffOutcome).toBe('handoff_failed');
+    expect(runtime.composeRequests.at(-1)?.handoffOutcome).not.toBe('handoff_requested');
+    expect(response.plan.human_escalation.last_error).toBe('takeover boom');
+    expect(response.trace.prompt_bundle_id).not.toMatch(/^deterministic:/u);
   });
 
   it('resumes normal processing after a structured decline without repeating the offer', async () => {

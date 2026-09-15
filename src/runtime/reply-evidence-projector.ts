@@ -1,3 +1,4 @@
+import type { AgentGatewayResult } from './agent-conversation-gateway';
 import type { HandoffOutcome } from './human-help-policy';
 import type { TurnCapabilityOutcome } from './turn-capability-policy';
 
@@ -149,4 +150,72 @@ export function resolveComposedReply(args: {
     return { disposition: 'operational_failure', text: null };
   }
   return { disposition: 'composed', text: args.modelText };
+}
+
+export type SupportHandoffReplyOutcome =
+  | 'handoff_requested'
+  | 'handoff_failed'
+  | 'handoff_unknown'
+  | 'handoff_duplicate'
+  | null;
+
+export type SupportHandoffEvidence = {
+  readonly handoffOutcome: SupportHandoffReplyOutcome;
+  readonly identityAvailable: boolean;
+  readonly effectConfirmed: boolean;
+  readonly receiptPresent: boolean;
+  readonly requiresReplyModel: boolean;
+  readonly operationalNote: string;
+};
+
+/**
+ * Projects a human-takeover gateway result into typed reply evidence before
+ * generation. Success is claimed only from an actual gateway success;
+ * failed, unknown and unattempted (skipped) results stay distinct and every
+ * branch still requires this turn's model composition. The operational note
+ * carries facts (status, reason), never reply prose.
+ */
+export function projectSupportHandoffEvidence(args: {
+  readonly result: AgentGatewayResult;
+  readonly phonePresent: boolean;
+  readonly confirmedReceipt: boolean;
+}): SupportHandoffEvidence {
+  if (args.result.status === 'success') {
+    return {
+      handoffOutcome: 'handoff_requested',
+      identityAvailable: args.phonePresent,
+      effectConfirmed: true,
+      receiptPresent: args.confirmedReceipt,
+      requiresReplyModel: true,
+      operationalNote: 'Human takeover was requested through the Agent API.',
+    };
+  }
+  if (args.result.status === 'failed' && args.result.outcome === 'unknown') {
+    return {
+      handoffOutcome: 'handoff_unknown',
+      identityAvailable: args.phonePresent,
+      effectConfirmed: false,
+      receiptPresent: false,
+      requiresReplyModel: true,
+      operationalNote: `Human escalation API call outcome unknown: ${args.result.error}`,
+    };
+  }
+  if (args.result.status === 'failed') {
+    return {
+      handoffOutcome: 'handoff_failed',
+      identityAvailable: args.phonePresent,
+      effectConfirmed: false,
+      receiptPresent: false,
+      requiresReplyModel: true,
+      operationalNote: `Human escalation API call failed: ${args.result.error}`,
+    };
+  }
+  return {
+    handoffOutcome: null,
+    identityAvailable: args.phonePresent,
+    effectConfirmed: false,
+    receiptPresent: false,
+    requiresReplyModel: true,
+    operationalNote: `Local human escalation soft-pause only: ${args.result.reason}.`,
+  };
 }

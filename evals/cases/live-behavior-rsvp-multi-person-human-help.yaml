@@ -1,8 +1,8 @@
 template: template.base-live
 id: live_behavior.rsvp_multi_person_offers_human_help
 suite: live_behavior_regression
-version: 10
-description: RSVP for more than one additional companion remains a bounded human-review case; the single +1 case is handled separately through POST /guest/rsvp.
+version: 11
+description: RSVP for more than one additional companion remains a bounded human-review case with a natural reply; the single +1 case is handled separately through POST /guest/rsvp.
 tags: [live, behavior, rsvp, multi-person, human-help, spanish]
 targetModes: [live_lambda]
 inputs:
@@ -28,7 +28,7 @@ expectations:
   - id: multi-person-offers-human-help
     type: text_semantic
     rubric: >-
-      The user asks to confirm attendance for themselves and two additional people, Maria and Carlos. The current API supports only one +1, so the response must be entirely in natural Latin American Spanish, acknowledge the request, and state that human support will help. It must NOT silently truncate the request to one companion, enumerate events, ask to select an event, claim any attendance was already registered, or call the RSVP mutation. The reply must be one concise code-composed handoff sentence.
+      The user asks to confirm attendance for themselves and two additional people, Maria and Carlos. The current API supports only one +1, so the response must be entirely in natural Latin American Spanish, acknowledge the request and the party of three, and state that human support will help, in natural wording of any length. It must NOT silently truncate the request to one companion, enumerate events, ask to select an event, claim any attendance was already registered, or call the RSVP mutation.
     minScore: 0.9
     requireJudge: true
     severity: hard
@@ -40,6 +40,8 @@ expectations:
     type: text_not_contains
     phrases: ["RSVP", "rsvp"]
     severity: hard
+notes:
+  - "R05 oracle revision v10 to v11, 2026-09-12, Packet F3. Old multi-person-offers-human-help demanded one concise code-composed handoff sentence, failing a reply that acknowledged the party, offered human continuation, and made no false registration (matrix: one-sentence preference is not a product failure). New contract keeps party and effect correctness and drops the one-sentence demand. Old v10 runs preserved; baseline and candidate must rerun on this v11 contract."
 budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 1600

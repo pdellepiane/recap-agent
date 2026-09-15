@@ -7,139 +7,68 @@ import { PromptLoader } from '../src/runtime/prompt-loader';
 import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
 import type { ProviderGateway, UserEventLookupResult } from '../src/runtime/provider-gateway';
-import { createEmptyPlan, mergePlan } from '../src/core/plan';
 
-describe('RSVP hybrid fragment composition (T6-fix-11)', () => {
-  it('attending fragment contains polarity event date and no-change without model tissue', () => {
+describe('RSVP model output and typed current state', () => {
+  it('passes current-state evidence to the model and preserves both model paragraphs', async () => {
+    const first = 'MODELO_ESTADO_PRIMERO';
+    const second = 'MODELO_ESTADO_SEGUNDO';
+    const runtime = new RsvpRuntime([rsvpExtraction({ action: null })], first, second);
+    const invitations = [rsvpLookupInvitation({
+      guestId: 584352,
+      eventId: 38331,
+      eventName: 'Otra celebración prueba',
+      hasResponded: true,
+      willAttend: true,
+      datetime: '2026-08-19 05:00:00',
+    })];
     const service = new AgentService({
       planStore: new InMemoryPlanStore(),
-      runtime: new RsvpRuntime([]),
-      providerGateway: { async lookupUserEventContext() { return null; } } as unknown as ProviderGateway,
-      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
-      renderers: { whatsapp: new WhatsAppMessageRenderer() },
-    }) as unknown as { renderRsvpCurrentStateDeterministically: (inv: unknown, offer: boolean) => string };
-    const invitation = { eventId: 1, guestId: 584352, eventName: 'Otra celebración prueba', eventDate: '2026-08-19 05:00:00', state: 'attending', accessMethod: 'guest_record' } as unknown;
-    const fragment = (service as unknown as { renderRsvpCurrentStateDeterministically: (a: unknown, b: boolean) => string }).renderRsvpCurrentStateDeterministically(invitation, false);
-    expect(fragment).toContain('Otra celebración prueba');
-    expect(fragment).toContain('19 de agosto de 2026');
-    expect(fragment.toLowerCase()).toContain('figura que asistirás');
-    expect(fragment.toLowerCase()).toContain('ya está confirmada');
-    expect(fragment.toLowerCase()).toContain('no fue necesario hacer otro cambio');
-    expect(fragment.toLowerCase()).toContain('no se realizó un nuevo registro');
-    expect(fragment).toContain('Gracias,');
-    expect(fragment.startsWith('Gracias,')).toBe(true);
-    expect(fragment).not.toContain('Que disfrutes');
-    expect(fragment).not.toContain('19/08/2026');
-  });
-
-  it('declining fragment with offer contains question without no-change', () => {
-    const service = new AgentService({
-      planStore: new InMemoryPlanStore(),
-      runtime: new RsvpRuntime([]),
-      providerGateway: { async lookupUserEventContext() { return null; } } as unknown as ProviderGateway,
-      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
-      renderers: { whatsapp: new WhatsAppMessageRenderer() },
-    }) as unknown as { renderRsvpCurrentStateDeterministically: (inv: unknown, offer: boolean) => string };
-    const invitation = { eventId: 1, guestId: 1, eventName: 'Evento Decline', eventDate: '2026-09-12', state: 'declining', accessMethod: 'guest_record' } as unknown;
-    const withOffer = (service as unknown as { renderRsvpCurrentStateDeterministically: (a: unknown, b: boolean) => string }).renderRsvpCurrentStateDeterministically(invitation, true);
-    expect(withOffer).toContain('no asistirás');
-    expect(withOffer).toContain('Evento Decline');
-    expect(withOffer).toContain('12 de septiembre de 2026');
-    expect(withOffer).toContain('¿Deseas que confirme tu asistencia?');
-    expect(withOffer.trim().endsWith('?')).toBe(true);
-    expect(withOffer.toLowerCase()).not.toContain('no fue necesario hacer otro cambio');
-    expect(withOffer).not.toContain('Gracias');
-    const withoutOffer = (service as unknown as { renderRsvpCurrentStateDeterministically: (a: unknown, b: boolean) => string }).renderRsvpCurrentStateDeterministically(invitation, false);
-    expect(withoutOffer).toContain('no asistirás');
-    expect(withoutOffer.toLowerCase()).toContain('no fue necesario hacer otro cambio');
-    expect(withoutOffer).not.toContain('¿Deseas que confirme tu asistencia?');
-  });
-
-  it('fragment determinism is byte-identical for identical inputs', () => {
-    const service = new AgentService({
-      planStore: new InMemoryPlanStore(),
-      runtime: new RsvpRuntime([]),
-      providerGateway: { async lookupUserEventContext() { return null; } } as unknown as ProviderGateway,
-      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
-      renderers: { whatsapp: new WhatsAppMessageRenderer() },
-    }) as unknown as { renderRsvpCurrentStateDeterministically: (inv: unknown, offer: boolean) => string };
-    const inv = { eventId: 1, guestId: 584352, eventName: 'Otra celebración prueba', eventDate: '2026-08-19 05:00:00', state: 'attending', accessMethod: 'guest_record' } as unknown;
-    const a = (service as unknown as { renderRsvpCurrentStateDeterministically: (a: unknown, b: boolean) => string }).renderRsvpCurrentStateDeterministically(inv, false);
-    const b = (service as unknown as { renderRsvpCurrentStateDeterministically: (a: unknown, b: boolean) => string }).renderRsvpCurrentStateDeterministically(inv, false);
-    expect(a).toBe(b);
-    expect(Buffer.from(a).toString()).toBe(Buffer.from(b).toString());
-  });
-
-  it('handleTurn hybrid merges fragment lead with model tissue and fragment is deterministic', async () => {
-    const tissueParagraph1 = 'Gracias por tu mensaje, aprecio tu confirmación.';
-    const tissueParagraph2 = 'Quedo atento por si necesitas algo más.';
-    const runOnce = async (): Promise<{ text: string; fragment: string }> => {
-      const runtime = new RsvpRuntime([rsvpExtraction({ action: null })], tissueParagraph1, tissueParagraph2);
-      const invitations: UserEventLookupResult['events'] = [rsvpLookupInvitation({ guestId: 584352, eventId: 38331, eventName: 'Otra celebración prueba', hasResponded: true, willAttend: true, datetime: '2026-08-19 05:00:00' })];
-      const store = new InMemoryPlanStore();
-      const seeded = mergePlan(createEmptyPlan({ planId: 'plan-attending', channel: 'whatsapp', externalUserId: 'user-attending' }), {
-        current_node: 'responder_invitacion',
-        intent: 'responder_invitacion',
-        contact_phone: '+51973296571',
-        contact_phone_extension: '+51',
-        contact_phone_number: '973296571',
-        rsvp_state: {
-          status: 'awaiting_action',
-          pending_action: 'attending',
-          candidates: [{ guest_id: 584352, event_name: 'Otra celebración prueba', event_date: '2026-08-19 05:00:00' }],
-          requested_at: '2026-08-17T15:00:00.000Z',
-          selection_attempts: 0,
+      runtime,
+      providerGateway: {
+        async lookupUserEventContext(): Promise<UserEventLookupResult | null> {
+          return { lookup: { email: null, phone: '973296571' }, user: null, events: invitations, counts: { ownerEvents: 0, guestEvents: 1, hostEvents: 0, celebratedEvents: 0, recentOrders: 0 } };
         },
-      });
-      await store.save({ plan: seeded, reason: 'seed' });
-      const service = new AgentService({
-        planStore: store,
-        runtime,
-        providerGateway: {
-          async lookupUserEventContext(): Promise<UserEventLookupResult | null> {
-            return { lookup: { email: null, phone: '973296571' }, user: null, events: invitations, counts: { ownerEvents: 0, guestEvents: invitations.length, hostEvents: 0, celebratedEvents: 0, recentOrders: 0 } };
-          },
-        } as unknown as ProviderGateway,
-        agentConversationGateway: new RsvpGateway(),
-        promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
-        renderers: { whatsapp: new WhatsAppMessageRenderer() },
-      });
-      const inbound = { channel: 'whatsapp', externalUserId: 'user-attending', text: '¿Mi asistencia ya está confirmada?', messageId: 'msg-1', receivedAt: '2026-08-27T15:00:00.000Z', contactPhone: '+51973296571' };
-      const result = await service.handleTurn(inbound);
-      const text = result.outbound.text ?? '';
-      // Extract fragment via verifier for determinism check
-      const verifier = new AgentService({
-        planStore: new InMemoryPlanStore(),
-        runtime: new RsvpRuntime([]),
-        providerGateway: { async lookupUserEventContext() { return null; } } as unknown as ProviderGateway,
-        promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
-        renderers: { whatsapp: new WhatsAppMessageRenderer() },
-      }) as unknown as { renderRsvpCurrentStateDeterministically: (inv: unknown, offer: boolean) => string };
-      const fragment = verifier.renderRsvpCurrentStateDeterministically({ eventId: 1, guestId: 584352, eventName: 'Otra celebración prueba', eventDate: '2026-08-19 05:00:00', state: 'attending' } as unknown, true);
-      return { text, fragment };
-    };
-    const first = await runOnce();
-    const second = await runOnce();
-    // Fragment determinism (byte-identical)
-    expect(first.fragment).toBe(second.fragment);
-    expect(Buffer.from(first.fragment).toString()).toBe(Buffer.from(second.fragment).toString());
-    // Outbound contains fragment elements
-    expect(first.text).toContain('Otra celebración prueba');
-    expect(first.text).toContain('19 de agosto de 2026');
-    expect(first.text.toLowerCase()).toContain('figura que asistirás');
-    expect(first.text.toLowerCase()).toContain('ya está confirmada');
-    expect(first.text.toLowerCase()).toContain('no fue necesario hacer otro cambio');
-    expect(first.text.toLowerCase()).toContain('no se realizó un nuevo registro');
-    // Outbound contains model tissue (distinct paragraphs) — sanitizer may strip trailing period
-    expect(first.text).toContain(tissueParagraph1.replace(/\.$/, ''));
-    expect(first.text).toContain(tissueParagraph2.replace(/\.$/, ''));
-    // Fragment leads the reply (appears before tissue)
-    expect(first.text.indexOf(first.fragment)).toBe(0);
-    expect(first.text.indexOf(tissueParagraph1.replace(/\.$/, ''))).toBeGreaterThan(first.text.indexOf(first.fragment));
-    // No raw slash date leak
-    expect(first.text).not.toContain('19/08/2026');
-    // Hybrid determinism: outbound text is byte-identical across runs when tissue is deterministic
-    expect(first.text).toBe(second.text);
+      } as unknown as ProviderGateway,
+      agentConversationGateway: new RsvpGateway(),
+      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
+      renderers: { whatsapp: new WhatsAppMessageRenderer() },
+    });
+    const result = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'user-attending', text: '¿Mi asistencia ya está confirmada?', messageId: 'msg-1', receivedAt: '2026-08-27T15:00:00.000Z', contactPhone: '+51973296571' });
+    expect(result.outbound.text).toContain(first);
+    expect(result.outbound.text).toContain(second);
+    expect(runtime.composeRequests[0]?.errorMessage).toContain('"invitation_state":"attending"');
+    expect(runtime.composeRequests[0]?.rsvpPhoneEvidence).toMatchObject({ state: 'resolved_single', event: { rsvp_state: 'attending' } });
+  });
+
+  it('keeps a declining invitation offer typed while model wording remains authoritative', async () => {
+    const runtime = new RsvpRuntime([rsvpExtraction({ action: null })], 'MODELO_OFERTA');
+    const invitations = [rsvpLookupInvitation({ guestId: 584353, eventId: 38331, eventName: 'Evento Decline', hasResponded: true, willAttend: false, datetime: '2026-09-12' })];
+    const service = new AgentService({
+      planStore: new InMemoryPlanStore(),
+      runtime,
+      providerGateway: { async lookupUserEventContext(): Promise<UserEventLookupResult | null> { return { lookup: { email: null, phone: '973296571' }, user: null, events: invitations, counts: { ownerEvents: 0, guestEvents: 1, hostEvents: 0, celebratedEvents: 0, recentOrders: 0 } }; } } as unknown as ProviderGateway,
+      agentConversationGateway: new RsvpGateway(),
+      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
+      renderers: { whatsapp: new WhatsAppMessageRenderer() },
+    });
+    const result = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'user-declining', text: '¿Cómo figura mi asistencia?', messageId: 'msg-2', receivedAt: '2026-08-27T15:00:00.000Z', contactPhone: '+51973296571' });
+    expect(result.plan.rsvp_state).toMatchObject({ status: 'awaiting_action', pending_action: 'attending' });
+    expect(result.outbound.text).toContain('MODELO_OFERTA');
+    expect(runtime.composeRequests[0]?.errorMessage).toContain('"invitation_state":"declining"');
+  });
+
+  it('does not prepend or replace a generated RSVP response', async () => {
+    const runtime = new RsvpRuntime([rsvpExtraction({ action: 'attending' })], 'SENTINEL_RSVP_REPLY');
+    const result = await new AgentService({
+      planStore: new InMemoryPlanStore(),
+      runtime,
+      providerGateway: { async lookupUserEventContext(): Promise<UserEventLookupResult | null> { return null; } } as unknown as ProviderGateway,
+      agentConversationGateway: new RsvpGateway(),
+      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
+      renderers: { whatsapp: new WhatsAppMessageRenderer() },
+    }).handleTurn({ channel: 'whatsapp', externalUserId: 'user-rsvp', text: 'Confirmo', messageId: 'msg-3', receivedAt: '2026-08-27T15:00:00.000Z', contactPhone: '+51973296571' });
+    expect(result.outbound.text).toContain('SENTINEL_RSVP_REPLY');
+    expect(result.outbound.text).not.toContain('Listo,');
   });
 });
 
@@ -156,7 +85,9 @@ class RsvpRuntime implements AgentRuntime {
     const para1 = this.p1 ?? 'Tu asistencia para Otra celebración prueba el 19/08/2026 está pendiente. Modelo.';
     const para2 = this.p2 ?? 'Fecha cruda 19/08/2026 no debe aparecer.';
     // If custom tissue provided, use it; else default
-    const paragraphs = this.p1 && this.p2 ? [this.p1, this.p2] : [para1, para2];
+    const paragraphs = this.p1
+      ? [this.p1, ...(this.p2 ? [this.p2] : [])]
+      : [para1, para2];
     return {
       text: '',
       structuredMessage: {

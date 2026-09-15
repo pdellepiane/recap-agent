@@ -2,6 +2,9 @@ Objetivo del nodo:
 - guiar al cierre definitivo del plan de evento.
 - antes de pedir datos de contacto, verifica explícitamente el campo selected_provider_ids de cada necesidad en el plan.
 - si una necesidad ya tiene selected_provider_ids no vacío (y selected_provider_titles contiene nombres), nunca pidas elegir otro proveedor para esa necesidad; considérala cubierta.
+- si una necesidad está en close_deferred_categories, está descartada por el usuario: nunca la pidas de nuevo, nunca la cotices y nunca la selecciones en silencio.
+- nunca uses un conteo global o el foco actual como sustituto de los seleccionados por necesidad: la única verdad es close_selected_providers.
+- si falta la fecha del evento con respaldo en el mensaje del usuario, pídela una vez y espera; nunca inventes una fecha ni uses fechas de ejemplos o instrucciones.
 - si el usuario quiere cerrar solo algunas necesidades, permite el cierre parcial listando qué se cierra y qué se omite.
 
 Entrada esperada:
@@ -10,12 +13,13 @@ Entrada esperada:
 
 Salida esperada:
 - si falta información de contacto: solicitar amablemente el nombre, correo electrónico y teléfono del usuario.
-- si ya hay contacto completo y selecciones: mostrar un resumen de proveedores seleccionados por necesidad y pedir confirmación explícita antes de contactarlos. Una petición explícita de envío ("envía las cotizaciones", "para cerrar el plan") ya es la confirmación: llama finish_plan en este mismo turno en vez de pedir otra confirmación, e incluye la fecha del evento en la respuesta.
-- tras confirmación: llamar finish_plan, confirmar el envío de cotizaciones y despedirse.
+- si ya hay contacto completo y selecciones: usa los hechos del plan para explicar el estado y pedir confirmación cuando todavía no exista.
+- tras una confirmación explícita: llama finish_plan en este mismo turno y redacta la respuesta únicamente con el recibo que devuelva.
+- si el contacto está completo, hay selección elegible y fecha con respaldo, y la intención de cierre sigue pendiente (aunque llegue como request_contact): eso equivale a confirmación para despachar en este mismo turno, no a pedir el contacto de nuevo.
 
 Reglas clave:
 - nunca cerrar el plan sin que el usuario haya confirmado explícitamente. Una petición explícita de envío cuenta como confirmación.
-- convierte la fecha que dio el usuario a formato AAAA-MM-DD (ej: "18 de octubre de 2026" es 2026-10-18) y pásala como event_date; nunca uses hoy por defecto ni nulo.
+- convierte una fecha que dio el usuario a formato AAAA-MM-DD y pásala como event_date; nunca uses hoy por defecto ni nulo.
 - si el usuario quiere editar algo (contacto o proveedores), responder naturalmente; la extracción del siguiente turno capturará los cambios.
 - finish_plan envía solicitudes de cotización a cada proveedor seleccionado por necesidad.
 - si la Nota operativa indica un bloqueo por shortlist sin seleccionar, explica la situación y pregunta si quiere elegir alguna opción o dejar esa necesidad sin proveedor; menciona que puede responder "ninguna" para dejarla sin proveedor.

@@ -35,8 +35,19 @@ const inboundMediaSchema = z.object({
   }
 });
 
+/**
+ * S1 development-only evaluation marker. The wire carries the fixture
+ * scenario plus the required evaluation identity (runId/caseId); the
+ * conversation scope is derived by the handler from the existing
+ * channel/user_id, never from this marker. This is not a production
+ * message-package contract: every marker is rejected in production, and
+ * incomplete evaluation identities are rejected in development fixture
+ * execution (see handler getFixtureRuntime).
+ */
 export const backendFixtureSchema = z.object({
   scenario: z.string().trim().min(1).max(128),
+  runId: z.string().trim().min(1).max(128),
+  caseId: z.string().trim().min(1).max(256),
 }).strict();
 
 export const channelRequestSchema = z.object({

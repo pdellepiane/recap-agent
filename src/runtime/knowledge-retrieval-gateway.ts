@@ -1,18 +1,25 @@
 import OpenAI from 'openai';
 
 import type { KnowledgeEvidence } from '../core/information';
+import type { OpenAiTransportMetrics } from './contracts';
 import { executeOpenAiStage } from './openai-stage-execution';
+import {
+  captureOpenAiTransport,
+  installOpenAiTransportCapture,
+} from '../audit/openai-transport-capture';
 
 export type KnowledgeRetrievalResult =
   | {
       status: 'success';
       evidence: KnowledgeEvidence[];
+      openAiTransport?: OpenAiTransportMetrics;
     }
   | {
       status: 'failed';
       reason: 'not_configured' | 'request_failed';
       retryable: boolean;
       error: string;
+      openAiTransport?: OpenAiTransportMetrics;
     };
 
 export interface KnowledgeRetrievalGateway {
@@ -49,6 +56,7 @@ export class OpenAiKnowledgeRetrievalGateway implements KnowledgeRetrievalGatewa
       maxRetries: 1,
       timeout: options.timeoutMs ?? 8_000,
     });
+    installOpenAiTransportCapture(this.client);
   }
 
   private readonly options: {
@@ -60,28 +68,36 @@ export class OpenAiKnowledgeRetrievalGateway implements KnowledgeRetrievalGatewa
   };
 
   async search(query: string, options?: { rewriteQuery: boolean }): Promise<KnowledgeRetrievalResult> {
+    let transportMetrics: OpenAiTransportMetrics | undefined;
     try {
-      const page = await executeOpenAiStage({
-        stage: 'knowledge_retrieval',
-        model: 'vector_store_search',
-        timeoutMs: this.options.timeoutMs ?? 8_000,
-        operation: async (signal) => await this.client.vectorStores.search(
-          this.options.vectorStoreId,
-          {
-            query,
-            max_num_results: this.options.maxResults,
-            rewrite_query: options?.rewriteQuery ?? true,
-            ranking_options: {
-              ranker: 'auto',
-              score_threshold: this.options.scoreThreshold,
+      const captured = await captureOpenAiTransport('knowledge_retrieval',
+        async () => await executeOpenAiStage({
+          stage: 'knowledge_retrieval',
+          model: 'vector_store_search',
+          timeoutMs: this.options.timeoutMs ?? 8_000,
+          operation: async (signal) => await this.client.vectorStores.search(
+            this.options.vectorStoreId,
+            {
+              query,
+              max_num_results: this.options.maxResults,
+              rewrite_query: options?.rewriteQuery ?? true,
+              ranking_options: {
+                ranker: 'auto',
+                score_threshold: this.options.scoreThreshold,
+              },
             },
-          },
-          { signal },
-        ),
-      });
+            { signal },
+          ),
+        }),
+        (metrics) => { transportMetrics = metrics; },
+      );
+      const page = captured.value;
 
       return {
         status: 'success',
+        ...(transportMetrics && transportMetrics.observedRequestCount > 0
+          ? { openAiTransport: transportMetrics }
+          : {}),
         evidence: page.data.map((result) => ({
           fileId: result.file_id,
           filename: result.filename,
@@ -99,6 +115,9 @@ export class OpenAiKnowledgeRetrievalGateway implements KnowledgeRetrievalGatewa
         reason: 'request_failed',
         retryable: true,
         error: error instanceof Error ? error.message : String(error),
+        ...(transportMetrics && transportMetrics.observedRequestCount > 0
+          ? { openAiTransport: transportMetrics }
+          : {}),
       };
     }
   }

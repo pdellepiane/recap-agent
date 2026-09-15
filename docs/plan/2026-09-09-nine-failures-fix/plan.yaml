@@ -1,0 +1,211 @@
+plan_id: 2026-09-09-nine-failures-fix
+status: pending
+tldr: |
+  Fix 9 live-gate failures in wave order: A fixture worlds/effects, then B oracles plus E reference worlds plus F trace/judge, then C terminal auth plus D grounded routes, then integration gate with deploy and full live eval.
+created_at: "2026-09-09T00:00:00Z"
+created_by: gem-planner
+revision: 2
+replan_count: 0
+planner_revision_used: true
+baseline:
+  objective: Implement docs/plan/2026-09-05-stabilization/debugging-plan-2026-09-09.md work packages A (fixture correctness), B (fixture-aligned oracles), C (terminal auth integration), D (grounded route selection D1/D2/D3), E (transaction-reference worlds), F (trace/judge repair) plus Integration order and acceptance, preserving human-first recovery, one-shot OTP, development write isolation, and hard semantic gates.
+  acceptance_criteria:
+    - typecheck, lint, full offline tests, prompt audit, tests/live-behavior-coverage.test.ts pass
+    - focused incident/companion cases then full gate AWS_PROFILE=se-dev AWS_REGION=us-east-1 DEV_STACK_NAME=recap-agent-runtime-dev npm run eval:behavior-live passes: all hard structural assertions + required semantic judges, zero errors/skips, no protected disclosure, no automatic retry/OTP loop, no regression among 67 previously passing (total will exceed 76 after companions)
+    - exact run/artifact/case versions and remaining failures recorded in docs/implementation-log.md
+  captured_at: "2026-09-09T00:00:00Z"
+decisions:
+  - Repair test worlds before product work; A is gate for B/C/D/E/F acceptance.
+  - Trusted identity comes only from inbound channel adapter; seed/model plan.contact_phone never authorizes takeover.
+  - Terminal auth stays terminal after failed/unavailable/unknown handoff; requested=false softPaused=false; only explicit new inbound human-help retry may retry definitively failed help, never OTP budget.
+  - Do not increase score tolerances, rewrite product behavior for stale rubrics, enable real development writes, promote production, change upstream APIs, add broad global prompt appendix, keyword routing, or new OTP eligibility expansion.
+  - One integrator owns shared agent-service.ts edits; C then D serialize on that file with exclusive ownership (no parallel patches); Z requires rebase plus source/fixture hash check before deploy/eval.
+  - B owns judge rubric/assertion texts, F owns judge context-isolation plumbing; B completes before F starts; post-C/D judge context-isolation re-validation is required before full live gate.
+  - Wave-1 snapshot task records git status plus stash/commit hash of tree 538169a2 before A for reversibility.
+  - Z proves 67-ID carry-forward with explicit prior-vs-current per-ID disposition table in implementation log; no regression accepted.
+  - Long evals via nohup; parallelize independent packages within each wave.
+assumptions:
+  - Assumed nhoup means nohup for background eval runs.
+  - Contract file docs/plan/2026-09-05-stabilization/debugging-plan-2026-09-09.md is authority and supersedes nine-failure brief hypotheses.
+  - Saved run .eval-runs/eval-2026-09-09T13-05-03-835Z-f8bf0fc1 67/76 passed 9 failed is reproduction baseline.
+  - Branch dev based on 452d8df7 with uncommitted tree candidate 538169a2; integrator preserves tree and records hashes, no reset of unrelated work.
+  - Prior offline validation 51 passed is still valid starting signal, not completion.
+tasks:
+  - id: snapshot-tree
+    title: Snapshot uncommitted tree for reversibility
+    description: |
+      Record git status, diff stat, and stash or commit hash of uncommitted tree candidate 538169a2 before package A; reuse: git status/diff/stash helpers. No product code change.
+    wave: 1
+    agent: gem-implementer
+    status: pending
+    retries_used: 0
+    acceptance_criteria:
+      - git status plus diff stat and stash-or-commit hash of tree 538169a2 recorded in implementation log before A starts
+      - reversibility note states restore command without resetting unrelated work
+    handoff:
+      constraints:
+        - Do not reset, drop, or alter unrelated tree work; record only.
+      relevant_context:
+        - Baseline branch dev based on 452d8df7 with candidate 538169a2
+        - docs/implementation-log.md
+  - id: a-fixture-correctness
+    title: Package A fixture correctness and effect evidence
+    description: |
+      Implement contract A1/A2/A3 in eval fixture gateway, state, live target, runner, schema. reuse: existing eval-fixture-gateway, eval-fixture-state, live-lambda target, runner, case-schema helpers; new: typed outcome failed|unknown discriminant, disabledOperations manifest, fixture_effect_count expectation, s06 worlds and companions.
+    wave: 1
+    depends_on: [snapshot-tree]
+    agent: gem-implementer
+    status: pending
+    retries_used: 0
+    acceptance_criteria:
+      - s06-identity-rejection-success, s06-otp-exhausted-success, repeated-failure trusted phones, nondelivery success, mailbox/Roberto/missing-purchase explicit outcomes, s06-otp-handoff-failed/unknown plus disabled manifest plus no-trusted-phone companion exist with pinned fixture-only phones
+      - replay returns stored outcome (success stays success, failed stays failed, unknown stays unknown); cached state isolated by run/case/operation; offline truth table first/replayed success, rejection, unknown, disabled passes with zero real writes
+      - fixture_effect_count with operation/turnIndex/expectedAttempts/expectedSuccesses/expectedReplays enforced from cumulative receipts; missing receipt fails; repeated-OTP turn0 verify 1 + handoff 1/1 and turns1-2 zero new effects verified
+    handoff:
+      constraints:
+        - Do not enable real development writes; blocked worlds use isolated disabled manifest with typed disabledOperations.
+        - Do not fabricate receipts for unattempted effects; keep receipt IDs/phones out of artifacts and judge input.
+        - Clean commit for package A with source/fixture hashes.
+      relevant_context:
+        - Contract: docs/plan/2026-09-05-stabilization/debugging-plan-2026-09-09.md sections Evidence, Case disposition, Fixed product contract, Work package A
+        - Files: src/runtime/eval-fixture-gateway.ts, eval-fixture-state.ts, src/evals/targets/live-lambda.ts, runner.ts, case-schema.ts, evaluation-state.ts plus fixture/runner tests
+        - Saved run .eval-runs/eval-2026-09-09T13-05-03-835Z-f8bf0fc1
+  - id: b-fixture-oracles
+    title: Package B fixture-aligned oracles
+    description: |
+      Replace semantic contracts verbatim and move state checks to structural assertions. reuse: existing live-behavior-coverage registry and judge harness; new: verbatim English oracle texts for identity/OTP/missing-purchase/Roberto/mailbox/shortlist plus hard state/effect assertions. Ownership: B owns rubric/assertion texts only, does not touch judge plumbing owned by F; B completes before F.
+    wave: 2
+    depends_on: [a-fixture-correctness]
+    agent: gem-implementer
+    status: pending
+    retries_used: 0
+    acceptance_criteria:
+      - minScore 0.9 and requireJudge true preserved; no skipped cases or softened hard assertions
+      - All replacement rubrics applied verbatim; missing-purchase not_found outcome and empty-array twin asserted; Roberto literal-RSVP plus no-guest_rsvp plus real-effect assertions present
+      - Mailbox turns 1-3 no-takeover/no-OTP assertions and turn0 greeting allowance present; shortlist aclarar/empty-selection/no-effects plus adversarial companion judge present
+    handoff:
+      constraints:
+        - Do not lower thresholds, remove judges, or rewrite product behavior to satisfy stale rubric language.
+        - Keep product examples in Spanish; oracle contract text in English verbatim.
+        - Clean commit for package B with source/fixture hashes.
+      relevant_context:
+        - Contract Work package B replacement semantic contracts
+        - evals/live-behavior-coverage.yaml and live_behavior_regression cases
+        - Package A effect counts and world IDs as oracle inputs
+  - id: e-reference-worlds
+    title: Package E transaction-reference worlds
+    description: |
+      Build s13 unavailable-unique/matched/unavailable-multiple guestOrders worlds and adapter contract tests. reuse: existing guestOrders fixtures and canonical phone normalizer; new: s13-reference-unavailable-unique/matched/multiple JSON plus two new case IDs and normalization contract tests.
+    wave: 2
+    depends_on: [a-fixture-correctness]
+    agent: gem-implementer
+    status: pending
+    retries_used: 0
+    acceptance_criteria:
+      - Three s13 fixtures exist with pinned fixture-only inbound phone, no carts, backend IDs separated from public codes, amounts/currency rules per contract
+      - Existing incident points at unavailable-unique with grounded status, no code echo, no manufactured uncertainty; matched selects alias A structurally; multiple asks one grounded selection question with two candidates
+      - Fixture adapter test proves reference fields survive normalization and requested reference is not treated as internal ID filter
+    handoff:
+      constraints:
+        - No latest-order heuristic, hidden IDs, invented currency, or forced redacted identifiers in text.
+        - Remove abandoned-cart claim unless real cart history supplied.
+        - Clean commit for package E with source/fixture hashes.
+      relevant_context:
+        - Contract Work package E
+        - Package A effect contract and trusted-phone rule
+        - guestOrders fixture adapter and normalizer
+  - id: f-trace-judge-repair
+    title: Package F trace and judge repair
+    description: |
+      Add bounded typed decision/effect packets, per-turn fixture resolver fix, judge context isolation, and digest/hash validation. reuse: existing 8KiB diagnostic envelope, 16 call summaries, 8 candidate details, live target report path; new: typed extraction/auth/purchase/effects/reply packets, same per-turn resolver both paths, judge request hash/redaction. Ownership: F owns judge plumbing only, starts after B rubrics land; re-validates judge after C/D before full gate.
+    wave: 2
+    depends_on: [a-fixture-correctness, b-fixture-oracles]
+    agent: gem-implementer
+    status: pending
+    retries_used: 0
+    acceptance_criteria:
+      - Packets for extraction/auth-help/purchase/effects/reply flow Lambda to report unchanged; no raw phone/email/credential/receipt; overflow drops candidate detail first with truncation facts; schema/version/allowlist validated; double-projection and forged-summary tests pass
+      - resolveEffectiveFixtureScenario uses same per-turn resolver in dispatch and judge paths with no carry-forward; override-A-turn0 then absent-turn1 resolves case fixture B test passes; nine frozen cases resolve to declared worlds every turn
+      - Judge isolates candidate vs prior assistant vs fixture history, tool-name alone is not effect proof, unavailable-reference policy kept; serialized judge request hashed with rubric/evidence digests persisted; malformed/missing/skipped judge fails gate; mocked context-isolation tests pass
+    handoff:
+      constraints:
+        - Zero new model-input bytes from diagnostics; remove irrelevant instruction fragments instead of raising prompt ceilings.
+        - Do not sample judges until pass; retain failed runs.
+        - Clean commit for package F with source/fixture hashes.
+      relevant_context:
+        - Contract Work package F
+        - Package A receipts/effect counts as ground truth for judge evidence
+        - src/evals judge, live target, report paths
+  - id: c-terminal-auth
+    title: Package C terminal auth integration
+    description: |
+      Wire InformationAuthRecoveryState monotonic terminal recovery through all continuation paths. reuse: existing InformationAuthRecoveryState, monotonic merge policy, normalization function, human-help-policy; new: typed auth_recovery on plan, terminal-before-email/OTP check, dedupe-preserving reset/session handling.
+    wave: 3
+    depends_on: [a-fixture-correctness, b-fixture-oracles]
+    agent: gem-implementer
+    status: pending
+    retries_used: 0
+    acceptance_criteria:
+      - Typed auth_recovery persisted via core schema without core-to-runtime imports; seed user_auth normalized once then merged monotonically; email/private context redacted, only budgets/terminal reason/counts in diagnostics
+      - Terminal checked after extraction/normalization before email/OTP regardless of escalation status or six-digit presence; rejection/refusal precedence kept; unrelated public question does not clear record
+      - First invalid verification persists terminal before handoff; failed/skipped/unknown cannot reset; subsequent codes retain terminal with no verify/send/retry copy; otp_invalid/pending branch removed for terminal episodes
+      - Recovery and dedupe survive plan reset/session change; refusal closes request without renewing budget; explicit help retry affects only help effect
+      - Tests cover 3-turn success/rejection/unknown/disabled/missing-phone, conflicting support plus rejection, legacy exhausted seed, reset-after-failure, FAQ-after-failed-handoff, explicit failed-help retry once, unknown never retries; prompt/output never offers another OTP and gateway call counts asserted
+    handoff:
+      constraints:
+        - Single integrator owns agent-service.ts; C holds exclusive ownership during its edit, D waits; no parallel patches; record file hash before and after.
+        - Retain only trusted inbound phone; persist attempted/skipped reason without fabricating receipts; requested=false softPaused=false for failed/unavailable/unknown.
+        - No broad global prompt appendix, keyword routing, or OTP eligibility expansion.
+        - Clean commit for package C with source/fixture hashes.
+      relevant_context:
+        - Contract Fixed product contract items 1-4 and Work package C
+        - Files: src/runtime/agent-service.ts, information-auth-state-machine.ts, human-help-policy.ts, src/core/plan.ts, gateway adapters, tests/f1-otp-terminal-handoff.test.ts, s06-information-auth.test.ts
+        - Packages A/B worlds and oracles as acceptance inputs
+  - id: d-grounded-routes
+    title: Package D grounded route selection D1 D2 D3
+    description: |
+      Fix ambiguous confirmation, mailbox/human arbitration, and missing-purchase scoped rendering. reuse: existing extractor projection, support-profile prompt, handoff renderer; new: unclear-as-absent predicate, humanHelpIntent enum + arbitration, phone_information_not_found scoped variant. Ownership: D edits agent-service.ts only after C commits and rebases; single integrator serializes.
+    wave: 3
+    depends_on: [a-fixture-correctness, b-fixture-oracles, c-terminal-auth]
+    agent: gem-implementer
+    status: pending
+    retries_used: 0
+    acceptance_criteria:
+      - D1: phoneConfirmation unclear equals absent; yes/no actionable only in relevant auth states; rejection wins over clarification; phone-auth fields omitted in pure shortlist; exact stored-output twin returns existing clarification with no provider tools; named-provider/location/FAQ/rejection/one-provider routes preserved
+      - D2: humanHelpIntent none/request/accept_offer/retry/decline_offer emitted with accept only on pending offer; explicit-human routing requires it; actionIntent alone cannot override supportAct; mailbox rule moved out of auth-only control; non-auth help has no OTP/email copy; conflicting extraction replays support win, explicit request triggers one handoff, accept/refusal handled; 4-turn mailbox live case preserved
+      - D3: scoped successful-handoff variant for phone_information_not_found selected from typed reason with bounded Spanish copy; failed/unknown variants explain lookup limit plus truthful help outcome; generic terminal replies free of purchase facts; question preserved internally
+    handoff:
+      constraints:
+        - No generic Si-confirmo keyword branch; no indiscriminate auth instructions on every turn.
+        - Mailbox report alone stays support acknowledgement; do not disable help for explicit requests.
+        - Do not repeat full pending question, deny existence globally, or restore authentication in D3.
+        - Clean commit for package D with source/fixture hashes.
+      relevant_context:
+        - Contract Fixed product contract items 5-6 and Work package D
+        - Packages A/B worlds and oracles; package C terminal states as boundary
+  - id: z-integration-gate
+    title: Integration order and acceptance gate
+    description: |
+      Sequence commits, registry, offline gates, development deploy, focused then full live gate, and log evidence. reuse: existing typecheck/lint/offline/prompt-audit/coverage scripts, deploy script, eval:behavior-live harness; new: per-package registry entries, run/artifact digests plus 67-ID carry-forward matrix in implementation log, post-C/D judge re-validation, rebase plus hash check.
+    wave: 4
+    depends_on: [a-fixture-correctness, b-fixture-oracles, e-reference-worlds, f-trace-judge-repair, c-terminal-auth, d-grounded-routes]
+    agent: gem-implementer
+    status: pending
+    retries_used: 0
+    acceptance_criteria:
+      - Per-package clean commits with hashes recorded; snapshot hash from snapshot-tree preserved; shared agent-service.ts edits owned by single integrator with C-then-D serialization; rebase plus source/fixture hash check passes before deploy/eval; unrelated tree work preserved
+      - Every behavior change registered separately in evals/live-behavior-coverage.yaml with real commits and mandatory live IDs; tests/live-behavior-coverage.test.ts passes
+      - typecheck, lint, full offline tests, prompt audit pass; extractor/reply byte counts measured with scoped absence kept; zero model-input bytes from diagnostics; failure/malformed-judge fixtures fail for intended reason
+      - Post-C/D judge context-isolation re-validation passes (mocked isolation tests plus nine frozen worlds resolve) before full live gate
+      - DEPLOYMENT_ENV=development npm run deploy via se-dev/us-east-1 account 684516060775 recorded with artifact digest and stack confirmation; no production promotion or upstream API change
+      - Focused incident/companion cases then AWS_PROFILE=se-dev AWS_REGION=us-east-1 DEV_STACK_NAME=recap-agent-runtime-dev npm run eval:behavior-live via nohup passes with all hard structural plus required semantic judges, zero errors/skips, no protected disclosure, no retry/OTP loop, no regression among 67 prior passes; total exceeds 76 reported actually
+      - docs/implementation-log.md records exact run/artifact/case versions plus explicit 67-ID carry-forward table (prior vs current per-ID disposition) and remaining failures; plan/ticket status updated only on evidence
+    handoff:
+      constraints:
+        - Do not promote production, enable real development writes, change upstream APIs, or weaken acceptance to avoid failure.
+        - Run long evals via nohup and parallelize independent work where possible.
+        - Inspect full 3-turn OTP and 4-turn mailbox sequences, not isolated outputs; deploy or green offline alone is not completion.
+      relevant_context:
+        - Contract Integration order and acceptance plus Scope exclusions
+        - All prior wave outputs, digests, and implementation log
+        - Commands: typecheck, lint, offline tests, prompt audit, coverage test, deploy, eval:behavior-live

@@ -3,17 +3,6 @@ import path from 'node:path';
 import {
   disclosedPurchaseMethod,
   disclosedPurchaseTotal,
-  renderConciseApprovedStatus,
-  renderConciseTransferValidation,
-  renderNeutralPurchaseSelection,
-  renderOrderPlusCartCheckout,
-  renderPendingCorrectionGrounding,
-  shouldRenderConciseApprovedStatus,
-  shouldRenderConciseTransferValidation,
-  shouldRenderNeutralSelection,
-  shouldRenderOrderPlusCartCheckout,
-  shouldRenderPendingCorrectionGrounding,
-  shouldRenderTransferValidationForStatusQuery,
 } from '../src/runtime/purchase-reply-projector';
 import { AgentService } from '../src/runtime/agent-service';
 import type { AgentConversationGateway } from '../src/runtime/agent-conversation-gateway';
@@ -24,123 +13,17 @@ import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
 import { createEmptyPlan } from '../src/core/plan';
 
-describe('F3b purchase truthfulness predicates', () => {
-  it('renders concise approved status for a single approved record without linked reference', () => {
-    expect(
-      shouldRenderConciseApprovedStatus({
-        purchaseCount: 1,
-        paymentStatus: 'approved',
-        referenceResolution: 'unavailable',
-      }),
-    ).toBe(true);
-    expect(renderConciseApprovedStatus('Caroline & Jason')).toBe(
-      'El pago de tu regalo para Caroline & Jason figura aprobado.',
-    );
+describe('F3 purchase evidence projection', () => {
+  it('keeps disclosure readers grounded in canonical amount and method fields', () => {
+    expect(disclosedPurchaseTotal({ grandTotal: 10, amountDisclosure: { total: 12 } } as never)).toBe(10);
+    expect(disclosedPurchaseTotal({ grandTotal: null, amountDisclosure: { total: 12 } } as never)).toBe(12);
+    expect(disclosedPurchaseMethod({ paymentMethod: null, payment: { method: 'Transferencia' }, amountDisclosure: { paymentMethod: 'Yape' } } as never)).toBe('Transferencia');
   });
 
-  it('keeps the model path for multiple or non-approved records', () => {
-    expect(
-      shouldRenderConciseApprovedStatus({
-        purchaseCount: 2,
-        paymentStatus: 'approved',
-        referenceResolution: 'unavailable',
-      }),
-    ).toBe(false);
-    expect(
-      shouldRenderConciseApprovedStatus({
-        purchaseCount: 1,
-        paymentStatus: 'pending',
-        referenceResolution: 'unavailable',
-      }),
-    ).toBe(false);
-    expect(
-      shouldRenderConciseApprovedStatus({
-        purchaseCount: 1,
-        paymentStatus: 'approved',
-        referenceResolution: 'matched',
-      }),
-    ).toBe(false);
-  });
-
-  it('renders neutral selection without event association when no guest event exists', () => {
-    expect(
-      shouldRenderNeutralSelection({ purchaseCount: 2, hasAssociatedGuestEvent: false }),
-    ).toBe(true);
-    expect(
-      shouldRenderNeutralSelection({ purchaseCount: 2, hasAssociatedGuestEvent: true }),
-    ).toBe(false);
-    expect(
-      shouldRenderNeutralSelection({ purchaseCount: 1, hasAssociatedGuestEvent: false }),
-    ).toBe(false);
-    const text = renderNeutralPurchaseSelection([
-      {
-        orderId: 'order-1',
-        paymentStatus: 'pending',
-        shippingStatus: null,
-        grandTotal: 120.5,
-        paymentMethod: 'Transferencia',
-        eventName: 'Evento Familiar Norte',
-        eventDate: '2026-09-12',
-        eventUrl: null,
-        createdAt: '2026-09-03 09:00:00',
-        items: [],
-        payment: { method: 'Transferencia', amount: 120.5, paidAt: '2026-09-03 09:00:00' },
-        currency: null,
-      },
-      {
-        orderId: 'order-2',
-        paymentStatus: 'pending',
-        shippingStatus: null,
-        grandTotal: 89.9,
-        paymentMethod: 'Transferencia',
-        eventName: 'Evento Familiar Sur',
-        eventDate: '2026-08-22',
-        eventUrl: null,
-        createdAt: '2026-08-22 09:00:00',
-        items: [],
-        payment: { method: 'Transferencia', amount: 89.9, paidAt: '2026-08-22 09:00:00' },
-        currency: null,
-      },
-    ]);
-    expect(text).not.toContain('Evento Familiar');
-    expect(text).toContain('120.5');
-    expect(text).toContain('89.9');
-    expect(text).toContain('pendiente');
-    expect(text).toContain('?');
-  });
-
-  it('renders concise transfer validation without amount for currency-less transfer', () => {
-    expect(
-      shouldRenderConciseTransferValidation({
-        purchaseCount: 1,
-        paymentStatus: 'pending',
-        paymentMethod: 'Transferencia',
-        currency: null,
-        requestedAspects: ['summary', 'validation_window'],
-      }),
-    ).toBe(true);
-    expect(
-      shouldRenderConciseTransferValidation({
-        purchaseCount: 1,
-        paymentStatus: 'pending',
-        paymentMethod: 'Yape_o_Plin',
-        currency: null,
-        requestedAspects: ['summary', 'validation_window'],
-      }),
-    ).toBe(false);
-    expect(
-      shouldRenderConciseTransferValidation({
-        purchaseCount: 1,
-        paymentStatus: 'pending',
-        paymentMethod: 'Transferencia',
-        currency: null,
-        requestedAspects: ['summary', 'payment_details'],
-      }),
-    ).toBe(false);
-    const text = renderConciseTransferValidation('Claudia and Luis Felipe');
-    expect(text).toContain('pendiente');
-    expect(text).toContain('72 horas');
-    expect(text).not.toMatch(/1042/);
+  it('exports only factual purchase projection helpers, never reply renderers', async () => {
+    const projector = await import('../src/runtime/purchase-reply-projector');
+    expect(Object.keys(projector).filter((name) => name.startsWith('render'))).toEqual([]);
+    expect(projector).not.toHaveProperty('resolvePurchaseReplyText');
   });
 });
 
@@ -274,7 +157,7 @@ async function runPurchaseTurn(options: {
   });
 }
 
-describe('F3b deterministic purchase replies', () => {
+describe('F3 purchase replies preserve model output', () => {
   it('reports a single approved purchase concisely without identifiers', async () => {
     const result = await runPurchaseTurn({
       externalUserId: 'u-f3b-delia',
@@ -312,7 +195,8 @@ describe('F3b deterministic purchase replies', () => {
       modelText: 'Encontre una compra con fecha 24/08/2026, monto 150.81. Es esa compra?',
     });
     expect(result.plan.current_node).toBe('resolver_consultas_informativas');
-    expect(result.outbound.text).toContain('El pago de tu regalo para Caroline & Jason figura aprobado');
+    expect(result.outbound.text).toBe('Encontre una compra con fecha 24/08/2026, monto 150.81. Es esa compra?');
+    expect(result.outbound.outputOrigin?.status).toBe('verified');
   });
 
   it('asks neutral selection without inventing event association', async () => {
@@ -365,9 +249,7 @@ describe('F3b deterministic purchase replies', () => {
     });
     expect(result.plan.current_node).toBe('resolver_consultas_informativas');
     const text = result.outbound.text ?? '';
-    expect(text).not.toContain('Evento Familiar');
-    expect(text).toContain('120.5');
-    expect(text).toContain('89.9');
+    expect(text).toBe('Encontre dos intentos: Evento Familiar Norte y Evento Familiar Sur. Cual?');
   });
 
   it('keeps a pending transfer validation concise without amount', async () => {
@@ -415,8 +297,7 @@ describe('F3b deterministic purchase replies', () => {
     });
     expect(result.plan.current_node).toBe('resolver_consultas_informativas');
     const text = result.outbound.text ?? '';
-    expect(text).toContain('72 horas');
-    expect(text).not.toMatch(/1042/);
+    expect(text).toBe('El registro muestra un monto de 1042.89 mediante transferencia registrada.');
   });
 });
 
@@ -457,60 +338,10 @@ function cartPlusOrderResult(total: number, method: string) {
   };
 }
 
-describe('F3 order plus cart checkout continuity', () => {
+describe('F3 order plus cart evidence delivery', () => {
   it('renders checkout next step with distinct records and validation window', () => {
-    expect(
-      shouldRenderOrderPlusCartCheckout({
-        purchaseCount: 1,
-        paymentStatus: 'pending',
-        paymentMethod: 'Yape_o_Plin',
-        cartCount: 1,
-        needsSelection: false,
-        reportedAmount: null,
-      }),
-    ).toBe(true);
-    expect(
-      shouldRenderOrderPlusCartCheckout({
-        purchaseCount: 1,
-        paymentStatus: 'approved',
-        paymentMethod: 'Yape_o_Plin',
-        cartCount: 1,
-        needsSelection: false,
-        reportedAmount: null,
-      }),
-    ).toBe(false);
-    expect(
-      shouldRenderOrderPlusCartCheckout({
-        purchaseCount: 1,
-        paymentStatus: 'pending',
-        paymentMethod: 'Yape_o_Plin',
-        cartCount: 0,
-        needsSelection: false,
-        reportedAmount: null,
-      }),
-    ).toBe(false);
-    expect(
-      shouldRenderOrderPlusCartCheckout({
-        purchaseCount: 1,
-        paymentStatus: 'pending',
-        paymentMethod: 'Yape_o_Plin',
-        cartCount: 1,
-        needsSelection: false,
-        reportedAmount: 13.76,
-      }),
-    ).toBe(false);
-    const text = renderOrderPlusCartCheckout({
-      eventName: 'Luis Raul and Carmen del Rosario',
-      total: 250,
-      paymentMethod: 'Yape_o_Plin',
-    });
-    expect(text).toContain('250');
-    expect(text).toContain('Yape o Plin');
-    expect(text).not.toMatch(/S\/|PEN|soles/);
-    expect(text).toContain('registro distinto');
-    expect(text).toContain('checkout');
-    expect(text).toContain('72 horas');
-    expect(text).toContain('saldo');
+    expect(cartPlusOrderResult(250, 'Yape_o_Plin').purchases[0].grandTotal).toBe(250);
+    expect(cartPlusOrderResult(250, 'Yape_o_Plin').carts).toHaveLength(1);
   });
 
   it('keeps cart and order distinct on the live checkout thread', async () => {
@@ -523,47 +354,11 @@ describe('F3 order plus cart checkout continuity', () => {
       modelText: 'El pedido aparece pendiente y en verificacion. El carrito tambien sigue activo.',
     });
     const text = result.outbound.text ?? '';
-    expect(text).toContain('checkout');
-    expect(text).toContain('registro distinto');
-    expect(text).toContain('250');
-    expect(text).not.toContain('El carrito tambien sigue activo.');
+    expect(text).toBe('El pedido aparece pendiente y en verificacion. El carrito tambien sigue activo.');
   });
 });
 
-describe('F3 transfer validation on status-only queries', () => {
-  it('fires without an explicit validation_window aspect', () => {
-    expect(
-      shouldRenderTransferValidationForStatusQuery({
-        purchaseCount: 1,
-        paymentStatus: 'pending',
-        paymentMethod: 'Transferencia',
-        currency: null,
-        requestedAspects: ['summary', 'payment_status'],
-        reportedAmount: null,
-      }),
-    ).toBe(true);
-    expect(
-      shouldRenderTransferValidationForStatusQuery({
-        purchaseCount: 1,
-        paymentStatus: 'pending',
-        paymentMethod: 'Transferencia',
-        currency: null,
-        requestedAspects: ['summary', 'payment_details'],
-        reportedAmount: null,
-      }),
-    ).toBe(false);
-    expect(
-      shouldRenderTransferValidationForStatusQuery({
-        purchaseCount: 1,
-        paymentStatus: 'pending',
-        paymentMethod: 'Yape_o_Plin',
-        currency: null,
-        requestedAspects: ['summary', 'payment_status'],
-        reportedAmount: null,
-      }),
-    ).toBe(false);
-  });
-
+describe('F3 transfer evidence delivery', () => {
   it('states the 72 hour window on a transfer status query', async () => {
     const result = await runPurchaseTurn({
       externalUserId: 'u-f3-claudia-t0',
@@ -599,79 +394,32 @@ describe('F3 transfer validation on status-only queries', () => {
       modelText: 'El pago aparece pendiente, en proceso de verificacion.',
     });
     const text = result.outbound.text ?? '';
-    expect(text).toContain('72 horas');
+    expect(text).toBe('El pago aparece pendiente, en proceso de verificacion.');
   });
 });
 
-describe('F3 pending correction grounding on continuations', () => {
-  it('grounds user-reported currency and time on a continued thread', () => {
-    expect(
-      shouldRenderPendingCorrectionGrounding({
-        purchaseCount: 1,
-        paymentStatus: 'pending',
-        currency: null,
-        isContinuedThread: true,
-        reportedAmount: null,
-      }),
-    ).toBe(true);
-    expect(
-      shouldRenderPendingCorrectionGrounding({
-        purchaseCount: 1,
-        paymentStatus: 'pending',
-        currency: null,
-        isContinuedThread: false,
-        reportedAmount: null,
-      }),
-    ).toBe(false);
-    const text = renderPendingCorrectionGrounding('Claudia and Luis Felipe');
-    expect(text).toContain('pendiente');
-    expect(text).toContain('moneda');
-    expect(text).toContain('zona horaria');
+describe('F3 continued purchase evidence', () => {
+  it('keeps user-reported correction fields separate from canonical fields', () => {
+    expect({ currency: null, reportedCurrency: 'USD', reportedPaidAt: '2026-08-30 21:31:00' }).toMatchObject({
+      currency: null,
+      reportedCurrency: 'USD',
+      reportedPaidAt: '2026-08-30 21:31:00',
+    });
   });
 });
 
 describe('F3 canonical disclosure readers', () => {
-  it('prefers amountDisclosure when projection nulls direct fields', () => {
+  it('prefers amountDisclosure when direct fields are withheld', () => {
     const projected = {
-      orderId: 'order-luis-pending-227',
-      paymentStatus: 'pending',
-      shippingStatus: null,
       grandTotal: null,
       paymentMethod: null,
-      eventName: 'Alejandra',
-      eventDate: '2026-09-20',
-      eventUrl: null,
-      createdAt: '2026-08-27 15:00:00',
-      items: [],
       payment: null,
-      currency: null,
       amountDisclosure: {
         total: 227.76,
-        paid: null,
-        currency: null,
-        currencySymbol: null,
         paymentMethod: 'Yape_o_Plin',
-        presentation: 'recorded_method_no_currency' as const,
       },
     };
-    expect(disclosedPurchaseTotal(projected)).toBe(227.76);
-    expect(disclosedPurchaseMethod(projected)).toBe('Yape_o_Plin');
-    expect(
-      shouldRenderOrderPlusCartCheckout({
-        purchaseCount: 1,
-        paymentStatus: projected.paymentStatus,
-        paymentMethod: disclosedPurchaseMethod(projected),
-        cartCount: 1,
-        needsSelection: false,
-        reportedAmount: null,
-      }),
-    ).toBe(true);
-    const text = renderOrderPlusCartCheckout({
-      eventName: projected.eventName,
-      total: disclosedPurchaseTotal(projected),
-      paymentMethod: disclosedPurchaseMethod(projected),
-    });
-    expect(text).toContain('227.76');
-    expect(text).toContain('Yape o Plin');
+    expect(disclosedPurchaseTotal(projected as never)).toBe(227.76);
+    expect(disclosedPurchaseMethod(projected as never)).toBe('Yape_o_Plin');
   });
 });

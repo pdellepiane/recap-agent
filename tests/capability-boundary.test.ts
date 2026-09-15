@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import fs from 'node:fs/promises';
 
 import { createEmptyPlan } from '../src/core/plan';
 import { resolveDynamicTools } from '../src/runtime/dynamic-agent-policy';
@@ -9,11 +8,7 @@ import {
   resolveCapabilityDecision,
   runtimeOperationIds,
 } from '../src/runtime/capability-manifest';
-import {
-  CapabilityBoundaryRenderer,
-  defaultCapabilityBoundaryMessages,
-  parseCapabilityBoundaryMessages,
-} from '../src/runtime/capability-boundary-renderer';
+import { projectSupportHandoffEvidence } from '../src/runtime/reply-evidence-projector';
 import { runtimeToolOperationMap } from '../src/runtime/capability-manifest';
 
 describe('runtime capability boundary', () => {
@@ -59,7 +54,11 @@ describe('runtime capability boundary', () => {
     expect(manifest['rsvp.response.write']).toMatchObject({ available: false, reason: 'write_blocked' });
     expect(manifest['human.takeover.write']).toMatchObject({ available: false, reason: 'write_blocked' });
     expect(manifest['confirmation_document.send']).toMatchObject({ available: false, reason: 'not_implemented' });
-    expect(manifest['media.image.inspect']).toMatchObject({ available: false, reason: 'media_unavailable' });
+    // R9: receipt/image turns are answered by the model with DB tools, so
+    // payment_proof.verify and media.image.inspect no longer force a
+    // deterministic handoff. They resolve like any configured operation.
+    expect(manifest['payment_proof.verify']).toMatchObject({ available: true, reason: 'enabled' });
+    expect(manifest['media.image.inspect']).toMatchObject({ available: true, reason: 'enabled' });
   });
 
   it('marks every operation unavailable for the no-op gateway manifest', () => {
@@ -67,7 +66,7 @@ describe('runtime capability boundary', () => {
     expect(manifest.operations).toHaveLength(runtimeOperationIds.length);
     expect(manifest.operations.every((operation) => !operation.available)).toBe(true);
     expect(manifest.operations.find((operation) => operation.id === 'media.image.inspect')?.reason)
-      .toBe('media_unavailable');
+      .toBe('gateway_unavailable');
   });
 
   it('separates extraction intent from deterministic availability', () => {
@@ -80,6 +79,10 @@ describe('runtime capability boundary', () => {
       status: 'supported',
       operation: 'purchase.orders.read',
     });
+    // Mixed availability with an available servable read no longer preempts
+    // the information flow: the read serves the fact (status_or_document
+    // pairs resolve through the purchase lookup + safe read instead of a
+    // capability question).
     expect(resolveCapabilityDecision({
       requestedOperation: null,
       manifest,
@@ -88,10 +91,22 @@ describe('runtime capability boundary', () => {
         candidateOperations: ['purchase.orders.read', 'confirmation_document.send'],
         questionKey: 'status_or_document',
       },
+    })).toEqual({ status: 'not_applicable' });
+    // Mixed availability without a servable read still clarifies: a
+    // write/unavailable pair crosses the runtime boundary with no
+    // domain read to serve the fact.
+    expect(resolveCapabilityDecision({
+      requestedOperation: null,
+      manifest,
+      ambiguity: {
+        status: 'ambiguous',
+        candidateOperations: ['human.takeover.write', 'confirmation_document.send'],
+        questionKey: 'type_missing',
+      },
     })).toEqual({
       status: 'clarify',
-      candidateOperations: ['purchase.orders.read', 'confirmation_document.send'],
-      questionKey: 'status_or_document',
+      candidateOperations: ['human.takeover.write', 'confirmation_document.send'],
+      questionKey: 'type_missing',
     });
     const allSupportedAmbiguityManifest = buildRuntimeCapabilityManifest({
       configured: true,
@@ -154,47 +169,40 @@ describe('runtime capability boundary', () => {
   });
 });
 
-describe('capability boundary renderer', () => {
-  it('parses the tracked deterministic Spanish messages', async () => {
-    const boundaryText = await fs.readFile(
-      `${process.cwd()}/prompts/nodes/resolver_consultas_informativas/capability_boundary.txt`,
-      'utf8',
-    );
-    const messages = parseCapabilityBoundaryMessages(boundaryText);
-    expect(messages).toEqual(expect.objectContaining(defaultCapabilityBoundaryMessages));
-  });
-
-  it('renders one clarification and honest handoff outcomes', () => {
-    const renderer = new CapabilityBoundaryRenderer(defaultCapabilityBoundaryMessages);
-    const clarification = renderer.render({
-      status: 'clarify',
-      candidateOperations: ['purchase.orders.read', 'confirmation_document.send'],
-      questionKey: 'status_or_document',
+describe('capability boundary evidence', () => {
+  it('projects honest handoff evidence without fixed replies', () => {
+    const requested = projectSupportHandoffEvidence({
+      result: { status: 'success', message: 'Requested.' },
+      phonePresent: true,
+      confirmedReceipt: true,
     });
-    expect(clarification).toBe('¿Quieres consultar si el pago está confirmado o necesitas que te envíen una constancia?');
-    expect(renderer.render({
-      status: 'unsupported',
-      operation: 'confirmation_document.send',
-      reason: 'not_implemented',
-      humanTakeoverAvailable: true,
-    }, { humanTakeoverFailed: true })).toContain('no pude registrar el apoyo humano');
-    expect(renderer.render({
-      status: 'unsupported',
-      operation: 'media.image.inspect',
-      reason: 'media_unavailable',
-      humanTakeoverAvailable: true,
-    })).toContain('No puedo leer ni revisar');
-    expect(renderer.render({
-      status: 'unsupported',
-      operation: 'purchase.modify',
-      reason: 'not_implemented',
-      humanTakeoverAvailable: true,
-    })).not.toContain('constancia');
-    expect(renderer.render({
-      status: 'unsupported',
-      operation: 'purchase.modify',
-      reason: 'not_implemented',
-      humanTakeoverAvailable: true,
-    })).toContain('No puedo realizar esa gestión');
+    expect(requested.handoffOutcome).toBe('handoff_requested');
+    expect(requested.effectConfirmed).toBe(true);
+    expect(requested.requiresReplyModel).toBe(true);
+    const failed = projectSupportHandoffEvidence({
+      result: { status: 'failed', error: 'unavailable', retryable: true },
+      phonePresent: true,
+      confirmedReceipt: false,
+    });
+    expect(failed.handoffOutcome).toBe('handoff_failed');
+    expect(failed.effectConfirmed).toBe(false);
+    expect(failed.operationalNote).toContain('unavailable');
+    const unknown = projectSupportHandoffEvidence({
+      result: { status: 'failed', error: 'timeout', retryable: true, outcome: 'unknown' },
+      phonePresent: true,
+      confirmedReceipt: false,
+    });
+    expect(unknown.handoffOutcome).toBe('handoff_unknown');
+    const skipped = projectSupportHandoffEvidence({
+      result: { status: 'skipped', reason: 'missing_phone_number', message: 'Missing.' },
+      phonePresent: false,
+      confirmedReceipt: false,
+    });
+    expect(skipped.handoffOutcome).toBeNull();
+    expect(skipped.identityAvailable).toBe(false);
+    expect(skipped.effectConfirmed).toBe(false);
+    for (const evidence of [requested, failed, unknown, skipped]) {
+      expect(evidence.requiresReplyModel).toBe(true);
+    }
   });
 });

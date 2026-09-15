@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { InformationOrchestrator } from '../src/runtime/information-orchestrator';
 import type { AgentConversationGateway } from '../src/runtime/agent-conversation-gateway';
 import type { ProviderGateway } from '../src/runtime/provider-gateway';
-import { OpenAiAgentRuntime } from '../src/runtime/openai-agent-runtime';
+import { projectCompletedPurchaseForModel } from '../src/runtime/purchase-reply-projector';
 
 describe('cart amount not volunteered', () => {
   it('information orchestrator does not expose cart subtotal via amountDisclosure', async () => {
@@ -78,23 +78,7 @@ describe('cart amount not volunteered', () => {
   });
 
   it('openai projection does not emit cart amount when amountDisclosure is null', async () => {
-    const runtime = new OpenAiAgentRuntime({
-      apiKey: 'test',
-      replyModel: 'gpt-5.6-luna',
-      extractorModel: 'gpt-5.6-luna',
-      replyProviderLimit: 5,
-      presentationProviderLimit: 5,
-      providerDetailLookupLimit: 5,
-      promptLoader: {
-        loadExtractorBundle: async () => ({ id: 'test', instructions: 'test', filePaths: [] }),
-        loadNodeBundle: async () => ({ id: 'test', instructions: 'test', filePaths: [] }),
-      } as never,
-      providerGateway: {} as never,
-    });
-
-    // Access private projector via any
-    const projector = (runtime as unknown as { projectInformationResultForReply: (r: unknown) => unknown }).projectInformationResultForReply.bind(runtime);
-    const result = projector({
+    const result = projectCompletedPurchaseForModel({
       requestId: 'information-1',
       kind: 'purchase',
       status: 'completed',
@@ -117,32 +101,20 @@ describe('cart amount not volunteered', () => {
       ],
       needsSelection: false,
       coverage: 'partial',
-    });
+    } as never, { requestedAspects: ['summary'] });
 
     const serialized = JSON.stringify(result);
     expect(serialized).not.toContain('150');
     expect(serialized).not.toContain('subtotal');
     // amountDisclosure should be null or absent, never 150
-    const carts = (result as { carts?: Array<{ amountDisclosure?: unknown }> }).carts;
-    expect(carts?.[0]?.amountDisclosure).toBeNull();
+    expect(serialized).toContain('"outcome_kind":"cart_only"');
   });
 
   it('cart-only reply projection omits giftsQuantity and gift-count fact', async () => {
-    const runtime = new OpenAiAgentRuntime({
-      apiKey: 'test',
-      replyModel: 'gpt-5.6-luna',
-      extractorModel: 'gpt-5.6-luna',
-      replyProviderLimit: 5,
-      presentationProviderLimit: 5,
-      providerDetailLookupLimit: 5,
-      promptLoader: {
-        loadExtractorBundle: async () => ({ id: 'test', instructions: 'test', filePaths: [] }),
-        loadNodeBundle: async () => ({ id: 'test', instructions: 'test', filePaths: [] }),
-      } as never,
-      providerGateway: {} as never,
-    });
-    const projector = (runtime as unknown as { projectCartForReply: (c: unknown) => unknown }).projectCartForReply.bind(runtime);
-    const projected = projector({
+    const projected = projectCompletedPurchaseForModel({
+      requestId: 'cart-only', kind: 'purchase', status: 'completed', resource: 'orders',
+      purchases: [],
+      carts: [{
       cartId: 'cart-sonia-001',
       status: 'abandoned',
       wasAbandoned: true,
@@ -154,44 +126,13 @@ describe('cart amount not volunteered', () => {
       giftsQuantity: 2,
       gifts_quantity: 2,
       createdAt: '2026-08-26 18:00:00',
-    }) as Record<string, unknown>;
-    expect(projected).not.toHaveProperty('giftsQuantity');
-    expect(projected).not.toHaveProperty('gifts_quantity');
+      }],
+      needsSelection: false, coverage: 'partial', referenceResolution: 'not_requested',
+    } as never, { requestedAspects: ['summary'] });
     expect(JSON.stringify(projected)).not.toContain('giftsQuantity');
+    expect(JSON.stringify(projected)).not.toContain('gifts_quantity');
     expect(JSON.stringify(projected)).not.toContain('2 regalos');
     expect(JSON.stringify(projected).toLowerCase()).not.toContain('regalo');
-    // allowed surface only
-    expect(Object.keys(projected).sort()).toEqual(
-      ['amountDisclosure', 'cartId', 'createdAt', 'eventDate', 'eventId', 'eventName', 'status', 'wasAbandoned'].sort(),
-    );
-    // also via information result projection
-    const infoProjector = (runtime as unknown as { projectInformationResultForReply: (r: unknown) => unknown }).projectInformationResultForReply.bind(runtime);
-    const infoResult = infoProjector({
-      requestId: 'information-1',
-      kind: 'purchase',
-      status: 'completed',
-      resource: 'orders',
-      purchases: [],
-      carts: [
-        {
-          cartId: 'cart-sonia-001',
-          status: 'abandoned',
-          wasAbandoned: true,
-          eventId: 5001,
-          eventName: 'Carlos and Adriana',
-          eventDate: '2026-09-25',
-          subtotal: null,
-          amountDisclosure: null,
-          giftsQuantity: 2,
-          createdAt: '2026-08-26 18:00:00',
-          items: [],
-        },
-      ],
-      needsSelection: false,
-      coverage: 'partial',
-    }) as { carts?: Array<Record<string, unknown>> };
-    const cart0 = infoResult.carts?.[0] ?? {};
-    expect(cart0).not.toHaveProperty('giftsQuantity');
-    expect(JSON.stringify(infoResult)).not.toContain('giftsQuantity');
+    expect(projected).toMatchObject({ outcome_kind: 'cart_only' });
   });
 });

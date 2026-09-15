@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import type { UserEventLookupResult } from '../runtime/provider-gateway';
+import type { OpenAiTransportMetrics } from '../runtime/contracts';
 import { decisionNodeSchema } from './decision-nodes';
 
 export const purchaseResourceValues = ['orders', 'gift_purchases'] as const;
@@ -333,6 +334,25 @@ export type KnowledgeEvidence = {
   text: string;
 };
 
+/**
+ * Packet O5 typed purchase fact. Candidate-visible purchase values travel
+ * under these exact field names on the summary evidence, never smuggled
+ * through the retrieval filename/score bridge: filename carries no event
+ * label and score carries no amount for purchase entries. Order ids, phones,
+ * emails and reference values never travel (reference presence only).
+ */
+export type PurchaseFactEvidence = {
+  eventLabel: string | null;
+  total: number | null;
+  currency: string | null;
+  currencySymbol: string | null;
+  paymentMethod: string | null;
+  paymentStatus: string | null;
+  eventDate: string | null;
+  createdAt: string | null;
+  referencePresent: boolean;
+};
+
 export type PurchaseItem = {
   giftName: string | null;
   quantity: number | null;
@@ -558,6 +578,7 @@ export type InformationTaskResult =
       status: 'completed';
       evidence: KnowledgeEvidence[];
       hostWithdrawalPolicy?: { maxBusinessHours: number } | null;
+      openAiTransport?: OpenAiTransportMetrics;
     }
   | {
       requestId: string;
@@ -565,6 +586,7 @@ export type InformationTaskResult =
       status: 'completed';
       result: UserEventLookupResult;
       accessMethod?: 'authenticated_account' | 'trusted_phone_guest';
+      openAiTransport?: OpenAiTransportMetrics;
     }
   | {
       requestId: string;
@@ -583,6 +605,7 @@ export type InformationTaskResult =
       coverage?: 'complete' | 'partial' | 'inconsistent';
       referenceResolution?: 'matched' | 'unavailable';
       requestedCustomerTransactionNumber?: string | null;
+      openAiTransport?: OpenAiTransportMetrics;
     }
   | {
       requestId: string;
@@ -590,6 +613,7 @@ export type InformationTaskResult =
       status: 'needs_input';
       nextInput: 'email' | 'otp' | 'phone_confirmation' | 'retry';
       guidance: InformationAuthGuidance;
+      openAiTransport?: OpenAiTransportMetrics;
     }
   | {
       requestId: string;
@@ -607,6 +631,7 @@ export type InformationTaskResult =
         | 'invalid_response'
         | 'request_failed';
       message: string;
+      openAiTransport?: OpenAiTransportMetrics;
     };
 
 export type InformationExecutionSummary = {
@@ -631,9 +656,17 @@ export type InformationExecutionSummary = {
     filename: string;
     score: number;
     contentHash: string;
+    /**
+     * Packet O5 typed purchase fact. Present only on completed purchase
+     * lookups; the single typed source for evaluator purchase projections.
+     * Absent when the backend was not read or yielded no such datum, which
+     * is unknown rather than a demand for a named value.
+     */
+    purchaseFact?: PurchaseFactEvidence;
   }>;
   resultCount: number;
   durationMs: number;
+  openAiTransport?: OpenAiTransportMetrics;
   accessMethod?:
     | 'authenticated_account'
     | 'trusted_phone_guest'
@@ -643,4 +676,51 @@ export type InformationExecutionSummary = {
   coverage?: 'complete' | 'partial' | 'inconsistent' | null;
   eventDetailCount?: number;
   resource?: PurchaseResource;
+  /**
+   * Pagination exhaustion for this read. True when the backend reported the
+   * last page, false when results were truncated by a bound or an
+   * unexhausted continuation, null when the route reports no pagination
+   * state. An unexhausted page is never assembled as a complete section.
+   */
+  paginationExhausted?: boolean | null;
+  /**
+   * API-side history limitation in the backend's own terms (for example a
+   * recent-orders window). Null when the route documents no cap. Never
+   * invented: unknown stays null instead of claiming full history.
+   */
+  historyLimit?: string | null;
 };
+
+/**
+ * Bounded enrichment contract (Packet C). Relationship traversal from root
+ * summaries is capped at two edges per pass with at most four concurrent
+ * reads. These are runtime bounds, not domain filters: hitting a bound
+ * keeps the section partial and the remaining candidates discoverable, it
+ * never claims completeness and never drops history.
+ */
+export const enrichmentBounds = {
+  maxRelationshipEdges: 2,
+  maxConcurrentReads: 4,
+} as const;
+
+export const enrichmentResourceTypeValues = [
+  'order',
+  'event',
+  'invitation',
+  'venue',
+] as const;
+export type EnrichmentResourceType =
+  (typeof enrichmentResourceTypeValues)[number];
+
+/**
+ * Visited-set key for bounded traversal. Scoped by access method so a
+ * public fallback read never collides with an authorized scoped read of
+ * the same id, and cyclic order -> event -> order links terminate.
+ */
+export function enrichmentVisitKey(
+  resourceType: EnrichmentResourceType,
+  stableId: string | number,
+  scope: string,
+): string {
+  return `${resourceType}:${String(stableId)}:${scope}`;
+}

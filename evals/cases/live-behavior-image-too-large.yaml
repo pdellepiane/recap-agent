@@ -1,10 +1,12 @@
 template: template.base-live
 id: live_behavior.image_too_large_fallback
 suite: live_behavior_regression
-version: 1
-description: An image_too_large delivery error without caption returns the smaller-image Spanish fallback exactly once.
+version: 4
+description: An image_too_large delivery error without caption gets a useful natural Spanish recovery response explaining the lost input.
 tags: [live, behavior, image, image-error, s17]
 targetModes: [live_lambda]
+backendFixture:
+  scenario: image-clean-world
 inputs:
   - text: ''
     channel: whatsapp
@@ -14,15 +16,14 @@ inputs:
       error: image_too_large
       mime_type: image/jpeg
 notes:
+  - "F1 2026-09-12: backendFixture scenario image-clean-world; this phone has empty initial history and empty authorized purchase results; never mutable backend data."
   - Backend image forwarding contract 2026-09-08 error variant. No bytes are transmitted.
+  - "R05 oracle revision v2 to v3, 2026-09-12, Packet F3. Old too-large-fallback-text demanded fixed fallback phrasing and too-large-stays-informative forced the information node, failing natural recovery wording (matrix: runtime gave a generic question rather than explaining lost input). New contract judges a useful model-written recovery instead of fixed phrases. Successful-upload checks stay separate from this unavailable-image path. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
+  - "R05 oracle revision v3 to v4, 2026-09-14, Packet EX1. Old too-large-guidance-in-spanish demanded resending a smaller image or writing the information in text, failing URL-ask or DB-answer recovery (matrix: re-upload demands contradict the 2026-09-14 operator doctrine; images are context enrichment, recovery is a URL link the assistant can open or an answer from profile evidence). New contract passes a URL-ask or an answer from available evidence and fails any demand to re-upload or resend the image file. Old v3 runs preserved; baseline and candidate must rerun on this v4 contract."
 expectations:
-  - id: too-large-fallback-text
-    type: text_contains
-    allOf: [supera el tamaño permitido, más pequeña]
-    severity: hard
-  - id: too-large-stays-informative
-    type: node_transition
-    to: resolver_consultas_informativas
+  - id: too-large-no-effect-no-leak
+    type: tool_usage
+    mustNotCall: [image_inspect, auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover, guest_rsvp]
     severity: hard
   - id: too-large-no-inspection-claim
     type: text_not_contains
@@ -31,7 +32,7 @@ expectations:
   - id: too-large-guidance-in-spanish
     type: text_semantic
     rubric: >-
-      Pass only if the assistant responds entirely in Spanish asking for a smaller image or the information in text. It must not claim it viewed, read, saved, or forwarded any image, and must not ask for an OTP.
+      Pass only if the assistant responds entirely in Spanish with a useful model-written recovery: it explains the image could not be received because of its size and either asks for a shareable URL link it can open or answers from profile or order evidence already available, in natural wording without any fixed required phrase. It must not demand that the user re-upload or resend the image file, must not claim it viewed, read, saved, or forwarded any image, and must not ask for an OTP.
     minScore: 0.8
     requireJudge: true
     severity: hard

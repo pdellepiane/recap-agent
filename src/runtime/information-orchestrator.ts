@@ -15,6 +15,7 @@ import {
   type SensitivePurchaseField,
 } from '../core/information';
 import { parseOrderReference } from '../core/order-reference';
+import { resolvePurchaseResourceForAspects } from './extraction-schemas';
 import type {
   AgentAuthByPhoneInput,
   AgentConversationGateway,
@@ -1493,6 +1494,25 @@ export class InformationOrchestrator {
     };
   }
 
+  /**
+   * Single-partition purchase selection for phone-scoped reads, derived from
+   * the typed aspects alone: requested gift detail (dedication, thanks, the
+   * requested payment time in payment_details) reads the gift-detail route,
+   * every other question reads orders. One partition only, never both: no
+   * sentence matching, no dual reads. The authenticated read below keeps its
+   * declared resource (already coerced to the aspects upstream), so summary
+   * questions stay on their route on both paths.
+   */
+  private selectPurchasePartition(
+    request: PurchaseRequest,
+  ): 'orders' | 'gift_purchases' {
+    return request.aspects.some(
+      (aspect) => aspect === 'dedication' || aspect === 'thanks' || aspect === 'payment_details',
+    )
+      ? 'gift_purchases'
+      : 'orders';
+  }
+
   private async lookupPhonePurchase(
     request: PurchaseRequest,
     trustedPhone: AgentAuthByPhoneInput,
@@ -1508,11 +1528,8 @@ export class InformationOrchestrator {
     referenceResolution: 'not_requested' | 'matched' | 'unavailable';
     requestedCustomerTransactionNumber: string | null;
   } | undefined> {
-    const lookupResource: 'orders' | 'gift_purchases' = request.aspects.some(
-      (aspect) => aspect === 'dedication' || aspect === 'thanks' || aspect === 'payment_details',
-    )
-      ? 'gift_purchases'
-      : 'orders';
+    const lookupResource: 'orders' | 'gift_purchases' =
+      this.selectPurchasePartition(request);
     if (
       (lookupResource === 'orders' && !this.gatewayMethodConfigured('getGuestOrdersByPhone')) ||
       (lookupResource === 'gift_purchases' &&
@@ -2022,13 +2039,20 @@ export class InformationOrchestrator {
     token: string,
     orderId: string | null,
   ): Promise<AgentPurchaseLookupResult | undefined> {
+    // Authenticated reads keep the declared resource, which normalization
+    // already coerced to the typed aspects (gift detail aspects read the
+    // gift route). One partition only, never both.
+    const partition = resolvePurchaseResourceForAspects(
+      request.resource,
+      request.aspects,
+    );
     if (!this.capabilityAvailable(
-      request.resource === 'orders' ? 'purchase.orders.read' : 'purchase.gift_detail.read',
+      partition === 'orders' ? 'purchase.orders.read' : 'purchase.gift_detail.read',
       true,
     )) {
       return undefined;
     }
-    return request.resource === 'orders'
+    return partition === 'orders'
       ? await this.dependencies.agentGateway.getOrders?.({ token, orderId })
       : await this.dependencies.agentGateway.getGiftPurchases?.({
           token,
@@ -2232,13 +2256,59 @@ export class InformationOrchestrator {
   private evidenceReferences(
     result: InformationTaskResult,
   ): InformationExecutionSummary['evidence'] {
-    if (result.status !== 'completed' || result.kind !== 'faq') return [];
-    return result.evidence.map((entry) => ({
-      fileId: entry.fileId,
-      filename: entry.filename,
-      score: entry.score,
-      contentHash: this.hash(entry.text),
-    }));
+    if (result.status !== 'completed') return [];
+    if (result.kind === 'faq') {
+      return result.evidence.map((entry) => ({
+        fileId: entry.fileId,
+        filename: entry.filename,
+        score: entry.score,
+        contentHash: this.hash(entry.text),
+      }));
+    }
+    // Packet O5 typed purchase facts for judge evidence (supersedes the
+    // R05 filename/score bridge). One entry per candidate-visible purchase:
+    // amounts, currency presence, method, status and event labels travel as
+    // typed purchaseFact fields; order ids, phones, emails and reference
+    // values never travel (reference presence only). filename carries no
+    // event label and score carries no amount for purchase entries;
+    // contentHash still covers the fact tuple as the verifiable pair. No
+    // product behavior change: reply projection is untouched, only the
+    // summary evidence fills.
+    if (result.kind === 'purchase') {
+      return result.purchases.map((purchase) => {
+        const total = purchase.amountDisclosure?.total ?? purchase.grandTotal ?? null;
+        const currency = purchase.amountDisclosure?.currency ?? purchase.currency ?? null;
+        const currencySymbol = purchase.amountDisclosure?.currencySymbol ?? purchase.currencySymbol ?? null;
+        const paymentMethod = purchase.amountDisclosure?.paymentMethod ?? purchase.paymentMethod ?? null;
+        const factTuple = [
+          total === null ? 'monto_desconocido' : `monto_${total}`,
+          currency === null ? 'moneda_ausente' : `moneda_${currency}`,
+          `metodo_${paymentMethod ?? 'desconocido'}`,
+          `estado_${purchase.paymentStatus ?? 'desconocido'}`,
+          `evento_${purchase.eventName ?? 'sin_etiqueta'}`,
+          `fecha_${purchase.eventDate ?? 'desconocida'}`,
+        ].join('|');
+        return {
+          fileId: '',
+          filename: '',
+          score: 0,
+          contentHash: this.hash(factTuple),
+          purchaseFact: {
+            eventLabel: purchase.eventName ?? null,
+            total,
+            currency,
+            currencySymbol,
+            paymentMethod,
+            paymentStatus: purchase.paymentStatus ?? null,
+            eventDate: purchase.eventDate ?? null,
+            createdAt: purchase.createdAt ?? null,
+            referencePresent: typeof purchase.customerTransactionNumber === 'string' &&
+              purchase.customerTransactionNumber.length > 0,
+          },
+        };
+      });
+    }
+    return [];
   }
 
   private hash(value: string): string {

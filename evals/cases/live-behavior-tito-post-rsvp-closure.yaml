@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.tito_numbered_name_and_post_rsvp_closure
 suite: live_behavior_regression
-version: 1
+version: 2
 description: Tito screenshot scenario sanitized into a full local interaction. A verified attending guest sends a relationship and thanks comment after confirmation. Attendance is preserved with no new RSVP effect, no planning interview, and no repeated introduction.
 tags: [live, behavior, rsvp, continuity, reported-interaction, tito-screenshot]
 targetModes: [live_lambda]
@@ -16,6 +16,8 @@ inputs:
     sessionId: live-tito-post-rsvp-session
 backendFixture:
   scenario: s14-tito-post-rsvp
+notes:
+  - "R05 oracle revision v1 to v2, 2026-09-14, Packet EX1. Old post-rsvp-comment-preserves-attendance-with-one-acknowledgement let the judge demand exact acknowledgement phrasing (matrix: wording literalism fails natural paraphrases of one thanks). New contract judges behavior only: thanks acknowledged once, in the model's own wording without any fixed required phrase. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
 expectations:
   - id: first-turn-reads-rsvp-state-without-account-auth
     type: tool_usage
@@ -41,7 +43,9 @@ expectations:
       The second reply must be entirely in Spanish and preserve the verified attending
       state for Celebración familiar de prueba without a new RSVP effect, a party-size
       change, or access grant. It must acknowledge the user-reported thanks and family
-      relationship exactly once with one short acknowledgement and no new question. It
+      relationship exactly once with one short acknowledgement in the model's own wording
+      without any fixed required phrase, and ask no new question: judge that thanks was
+      acknowledged once (behavior), never exact phrasing. It
       must not restart with a generic welcome or repeated introduction, must not open
       the provider planning interview, must not call for email authentication or a code,
       must not claim a new registration, and must not copy any numeric or ordinal label

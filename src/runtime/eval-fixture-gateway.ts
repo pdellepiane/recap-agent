@@ -34,8 +34,8 @@ import {
   type RuntimeOperationId,
 } from './capability-manifest';
 import { normalizeServerTimestamp } from '../core/server-timestamp';
-import type { EvalFixtureStateStore, FixtureEffectReceipt } from './eval-fixture-state';
-import { InMemoryEvalFixtureStateStore, assertFixtureAllowed } from './eval-fixture-state';
+import type { EvalFixtureStateStore, FixtureEffectReceipt, FixtureLoggedMessage } from './eval-fixture-state';
+import { InMemoryEvalFixtureStateStore, LOCAL_FIXTURE_CONVERSATION_KEY, assertFixtureAllowed } from './eval-fixture-state';
 
 export { normalizeServerTimestamp as normalizePurchaseTimestamp } from '../core/server-timestamp';
 
@@ -54,6 +54,41 @@ export function parseFixtureDisabledOperations(value: unknown): RuntimeOperation
   return [...new Set(out)];
 }
 
+/**
+ * Packet O1 fixture-operation coverage. A fixture marker alone never proves
+ * isolation: setup must verify the fixture gateway actually implements every
+ * backend operation the case exercises. Any missing or non-function member
+ * is a setup error (fail-closed to the external lane), never a silent pass.
+ */
+export type FixtureCaseOperation =
+  | 'guestRsvp'
+  | 'getGuestEventsByPhone'
+  | 'getEventDetail'
+  | 'getGuestOrdersByPhone'
+  | 'getGuestGiftPurchasesByPhone'
+  | 'getOrders'
+  | 'getGiftPurchases'
+  | 'authByPhone'
+  | 'updatePhone'
+  | 'getRecentMessages'
+  | 'logMessage'
+  | 'recordOutboundReceipt'
+  | 'requestHumanTakeover'
+  | 'requestUserLoginCode'
+  | 'verifyUserLoginCode';
+
+export function assertFixtureGatewayImplementsOperations(
+  gateway: Partial<Record<FixtureCaseOperation, unknown>>,
+  operations: readonly FixtureCaseOperation[],
+): void {
+  const missing = operations.filter((operation) => typeof gateway[operation] !== 'function');
+  if (missing.length > 0) {
+    throw new Error(
+      `Fixture gateway does not implement required operations: ${missing.join(', ')}.`,
+    );
+  }
+}
+
 export function resolveFixtureHandoffStatus(data: FixtureData | null): 'success' | 'failed' | 'unknown' {
   const raw = (data as Record<string, unknown> | null)?.['handoff'];
   if (raw !== undefined && raw !== null && typeof raw === 'object') {
@@ -67,6 +102,15 @@ export type FixtureGatewayEffectOptions = {
   allowCustomerWrites?: boolean;
   runId?: string;
   caseId?: string;
+  /**
+   * S1 conversation scope, derived by the Lambda handler from the existing
+   * channel/user_id identity. Observed history is keyed by
+   * run/case/conversation so the same conversation retains history across an
+   * intentional scenario transition. Direct unit construction without a scope
+   * keeps a local default; Lambda must never use scenario-derived or local
+   * default IDs.
+   */
+  conversationKey?: string;
   stateStore?: EvalFixtureStateStore;
 };
 
@@ -90,6 +134,8 @@ export type FixtureData = {
   disabledOperations?: unknown;
   /** Explicit handoff world outcome: success | failed | unknown. */
   handoff?: unknown;
+  /** Declared initial conversation history, keyed by phone lookup form. Validated as typed data on read. */
+  recentMessages?: unknown;
 };
 
 const rsvpEventSchema = z.object({
@@ -101,6 +147,7 @@ const rsvpEventSchema = z.object({
 
 const rsvpResponseDataSchema = z.object({
   guest_id: z.number().int().positive().nullable().optional(),
+  event_id: z.number().int().positive().nullable().optional(),
   action: z.enum(rsvpActionValues).optional(),
   already_responded: z.boolean().optional(),
   will_attend: z.union([z.boolean(), z.literal(0), z.literal(1)]).nullable().optional(),
@@ -125,6 +172,7 @@ const rsvpCombinedResponseDataSchema = z.object({
 
 const rsvpCandidateSchema = z.object({
   guest_id: z.number().int().positive(),
+  event_id: z.number().int().positive().nullable().optional(),
   event_name: z.string().trim().min(1).nullable().optional(),
   event_date: z.string().trim().min(1).nullable().optional(),
   event: rsvpEventSchema.nullable().optional(),
@@ -421,6 +469,20 @@ function normalizePhoneInput(
   };
 }
 
+/**
+ * Packet B: nested event identity from passthrough fixture RSVP payloads.
+ * Event name alone never binds identity; only a positive integer counts.
+ */
+function readFixtureRsvpNestedEventId(event: unknown): number | null {
+  if (typeof event !== 'object' || event === null) {
+    return null;
+  }
+  const eventId = (event as Record<string, unknown>).event_id;
+  return typeof eventId === 'number' && Number.isInteger(eventId) && eventId > 0
+    ? eventId
+    : null;
+}
+
 export async function loadFixtureData(
   scenario: string,
   fixturesRoot?: string,
@@ -472,6 +534,50 @@ export function loadFixtureDataSync(
   return { status: 'unknown_scenario', scenario, error: `Unknown fixture scenario "${scenario}".` };
 }
 
+/**
+ * S1 shared phone-lookup derivation. The gateway and the live evaluation
+ * target must derive identical lookup forms so outbound receipts recorded by
+ * the harness match the inbound history logged by the runtime. All forms are
+ * text-only identity keys; they never carry image bytes or message content.
+ */
+export function buildFixturePhoneLookupKeys(phoneInput: string): string[] {
+  const keys: string[] = [phoneInput];
+  // Try to parse international phone; derive national, extKey, concatenated
+  const normalized = phoneInput.replace(/\D/gu, '');
+  // Attempt splitInternationalPhone logic without importing full parser to avoid circular; simple heuristic
+  // Use the fixture's own normalize path: try known extensions +51, +52, +1
+  const candidates: Array<{ ext: string; national: string }> = [];
+  if (phoneInput.startsWith('+')) {
+    const digits = phoneInput.replace(/\D/gu, '');
+    for (const ext of ['52', '51', '1']) {
+      if (digits.startsWith(ext)) {
+        const national = digits.slice(ext.length);
+        if (national.length >= 7) {
+          candidates.push({ ext: `+${ext}`, national });
+          break;
+        }
+      }
+    }
+  } else if (normalized.length >= 11 && normalized.startsWith('51')) {
+    // Already concatenated form without '+', treat as concatenated directly
+    const national = normalized.slice(2);
+    candidates.push({ ext: '+51', national });
+  }
+  for (const c of candidates) {
+    const national = c.national;
+    const extKey = `${c.ext}:${national}`;
+    const concatenated = `${c.ext.replace(/\D/gu, '')}${national}`;
+    if (!keys.includes(national)) keys.push(national);
+    if (!keys.includes(extKey)) keys.push(extKey);
+    if (concatenated && !keys.includes(concatenated)) keys.push(concatenated);
+  }
+  // Also ensure raw normalized without '+' is probed if not already
+  if (normalized && !keys.includes(normalized)) {
+    keys.push(normalized);
+  }
+  return keys;
+}
+
 export class FixtureAgentConversationGateway implements AgentConversationGateway {
   readonly capabilityDescriptor: RuntimeCapabilityManifest;
   readonly capabilities: RuntimeCapabilityManifest;
@@ -479,6 +585,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
   readonly fixtureScenario: string;
   readonly runId: string;
   readonly caseId: string;
+  readonly conversationKey: string;
   private readonly loadResult: FixtureLoadResult;
   private readonly data: FixtureData | null;
   private readonly stateStore: EvalFixtureStateStore;
@@ -495,6 +602,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
     this.fixtureScenario = scenario;
     this.runId = options.runId?.trim() || 'local-run';
     this.caseId = options.caseId?.trim() || 'local-case';
+    this.conversationKey = options.conversationKey?.trim() || LOCAL_FIXTURE_CONVERSATION_KEY;
     this.stateStore = options.stateStore ?? new InMemoryEvalFixtureStateStore();
     const emailAuth = this.data?.emailAuth;
     const hasEmailAuthOutcome = emailAuth !== null &&
@@ -551,6 +659,10 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
 
   getStateStore(): EvalFixtureStateStore {
     return this.stateStore;
+  }
+
+  getConversationKey(): string {
+    return this.conversationKey;
   }
 
   resetFixtureEffectsForTesting(): void {
@@ -724,92 +836,213 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
     return undefined;
   }
 
-  private buildPhoneLookupKeys(phoneInput: string): string[] {
-    const keys: string[] = [phoneInput];
-    // Try to parse international phone; derive national, extKey, concatenated
-    const normalized = phoneInput.replace(/\D/gu, '');
-    // Attempt splitInternationalPhone logic without importing full parser to avoid circular; simple heuristic
-    // Use the fixture's own normalize path: try known extensions +51, +52, +1
-    const candidates: Array<{ ext: string; national: string }> = [];
-    if (phoneInput.startsWith('+')) {
-      const digits = phoneInput.replace(/\D/gu, '');
-      for (const ext of ['52', '51', '1']) {
-        if (digits.startsWith(ext)) {
-          const national = digits.slice(ext.length);
-          if (national.length >= 7) {
-            candidates.push({ ext: `+${ext}`, national });
-            break;
-          }
-        }
-      }
-    } else if (normalized.length >= 11 && normalized.startsWith('51')) {
-      // Already concatenated form without '+', treat as concatenated directly
-      const national = normalized.slice(2);
-      candidates.push({ ext: '+51', national });
-    }
-    for (const c of candidates) {
-      const national = c.national;
-      const extKey = `${c.ext}:${national}`;
-      const concatenated = `${c.ext.replace(/\D/gu, '')}${national}`;
-      if (!keys.includes(national)) keys.push(national);
-      if (!keys.includes(extKey)) keys.push(extKey);
-      if (concatenated && !keys.includes(concatenated)) keys.push(concatenated);
-    }
-    // Also ensure raw normalized without '+' is probed if not already
-    if (normalized && !keys.includes(normalized)) {
-      keys.push(normalized);
-    }
-    return keys;
-  }
 
   async logMessage(input: AgentMessageLogInput): Promise<AgentGatewayResult> {
-    void input;
     if (this.isFixtureUnavailable()) {
       return { status: 'failed', error: this.malformedError(), retryable: false };
     }
+    // Text only: this input carries no image bytes, captions, or descriptions,
+    // and none are recorded here. An empty body is legitimate for image-only
+    // turns; it records that a turn arrived without inventing any wording.
+    if (typeof input.phoneNumber !== 'string' || input.phoneNumber.trim().length === 0) {
+      return { status: 'failed', error: 'Fixture message logging requires a phone number.', retryable: false };
+    }
+    if (typeof input.body !== 'string') {
+      return { status: 'failed', error: 'Fixture message logging requires text.', retryable: false };
+    }
+    if (input.direction !== 'inbound' && input.direction !== 'outbound') {
+      return { status: 'failed', error: 'Fixture message logging requires a direction.', retryable: false };
+    }
+    // An arrived inbound turn is a received fact. An outbound claim on this
+    // path carries no delivery proof, so it is stored as unverified and never
+    // merged into history: actual delivered model text is the only basis for
+    // a sent receipt, and fixtures must not pretend suppressed/failed turns
+    // were sent.
+    const delivery = input.direction === 'inbound' ? 'received' as const : 'unverified' as const;
+    try {
+      await this.stateStore.recordMessage({
+        runId: this.runId,
+        caseId: this.caseId,
+        scenario: this.scenario,
+        conversationKey: this.conversationKey,
+        phone: input.phoneNumber.trim(),
+        phoneKeys: buildFixturePhoneLookupKeys(input.phoneNumber.trim()),
+        direction: input.direction,
+        body: input.body,
+        whatsappMessageId: input.whatsappMessageId ?? null,
+        sentAt: input.sentAt ?? null,
+        delivery,
+      });
+    } catch (error) {
+      return {
+        status: 'failed',
+        error: error instanceof Error ? error.message : 'Fixture message logging failed.',
+        retryable: true,
+      };
+    }
     return { status: 'success', message: 'Message logged (fixture).' };
+  }
+
+  /**
+   * Record an outbound receipt backed by actual delivered model text. This is
+   * the only path that marks fixture history as sent: suppressed, failed, or
+   * merely constructed-but-undelivered turns must never be recorded here.
+   * Callers pass the delivery action observed for the turn; anything other
+   * than an explicit sent action is stored but excluded from merged history.
+   */
+  async recordOutboundReceipt(input: {
+    phoneNumber: string;
+    body: string;
+    whatsappMessageId?: string | null;
+    sentAt?: string | null;
+    deliveryAction: 'sent' | 'suppressed' | 'failed' | 'unknown';
+  }): Promise<AgentGatewayResult> {
+    if (this.isFixtureUnavailable()) {
+      return { status: 'failed', error: this.malformedError(), retryable: false };
+    }
+    if (typeof input.phoneNumber !== 'string' || input.phoneNumber.trim().length === 0) {
+      return { status: 'failed', error: 'Fixture receipt recording requires a phone number.', retryable: false };
+    }
+    if (typeof input.body !== 'string') {
+      return { status: 'failed', error: 'Fixture receipt recording requires text.', retryable: false };
+    }
+    const delivery = input.deliveryAction === 'sent'
+      ? 'sent' as const
+      : input.deliveryAction === 'suppressed'
+        ? 'suppressed' as const
+        : 'failed' as const;
+    try {
+      await this.stateStore.recordMessage({
+        runId: this.runId,
+        caseId: this.caseId,
+        scenario: this.scenario,
+        conversationKey: this.conversationKey,
+        phone: input.phoneNumber.trim(),
+        phoneKeys: buildFixturePhoneLookupKeys(input.phoneNumber.trim()),
+        direction: 'outbound',
+        body: input.body,
+        whatsappMessageId: input.whatsappMessageId ?? null,
+        sentAt: input.sentAt ?? null,
+        delivery,
+      });
+    } catch (error) {
+      return {
+        status: 'failed',
+        error: error instanceof Error ? error.message : 'Fixture receipt recording failed.',
+        retryable: true,
+      };
+    }
+    return { status: 'success', message: 'Receipt recorded (fixture).' };
   }
 
   async getRecentMessages(phoneNumber: string): Promise<
     | { status: 'success'; messages: AgentConversationMessage[] }
     | Exclude<AgentGatewayResult, { status: 'success' }>
   > {
-    void phoneNumber;
     if (this.isFixtureUnavailable()) {
       return { status: 'failed', error: this.malformedError(), retryable: false };
     }
-    const section = this.data?.['recentMessages' as keyof FixtureData] as Record<string, unknown> | undefined;
-    if (!section) {
-      return { status: 'success', messages: [] };
-    }
-    const lookupKeys = this.buildPhoneLookupKeys(phoneNumber);
-    let raw: unknown;
-    for (const key of lookupKeys) {
-      if (Object.prototype.hasOwnProperty.call(section, key)) {
-        raw = (section)[key];
-        break;
+    const section = this.data?.recentMessages as Record<string, unknown> | undefined;
+    const seed: AgentConversationMessage[] = [];
+    if (section) {
+      const lookupKeys = buildFixturePhoneLookupKeys(phoneNumber);
+      let raw: unknown;
+      for (const key of lookupKeys) {
+        if (Object.prototype.hasOwnProperty.call(section, key)) {
+          raw = (section)[key];
+          break;
+        }
+      }
+      if (raw !== undefined) {
+        const parsed = messagesDataSchema.safeParse(raw);
+        if (!parsed.success) {
+          return { status: 'failed', error: 'Fixture recentMessages had an unexpected shape.', retryable: false };
+        }
+        for (const message of parsed.data.messages) {
+          seed.push({
+            id: message.id,
+            direction: message.direction,
+            source: message.source ?? null,
+            body: message.body,
+            status: message.status,
+            whatsappMessageId: message.whatsapp_message_id ?? null,
+            sentAt: message.sent_at ?? null,
+            createdAt: message.created_at ?? null,
+          });
+        }
       }
     }
-    if (!raw) {
-      return { status: 'success', messages: [] };
+    let logged: FixtureLoggedMessage[];
+    try {
+      logged = await this.stateStore.listMessages(this.runId, this.caseId, this.conversationKey);
+    } catch (error) {
+      return {
+        status: 'failed',
+        error: error instanceof Error ? error.message : 'Fixture message history is unavailable.',
+        retryable: true,
+      };
     }
-    const parsed = messagesDataSchema.safeParse(raw);
-    if (!parsed.success) {
-      return { status: 'failed', error: 'Fixture recentMessages had an unexpected shape.', retryable: false };
+    return { status: 'success', messages: this.mergeFixtureHistory(phoneNumber, seed, logged) };
+  }
+
+  /**
+   * Merge declared seed history with invocation history in recorded order.
+   * Only received inbound turns and sent outbound receipts merge; unverified,
+   * suppressed, or failed records never surface. Matching is scoped to the
+   * queried phone's lookup forms within this run/case/conversation, so no
+   * cross-case, cross-run, or cross-phone history leaks. The store query is
+   * already scoped to this run/case/conversation; records stay visible across
+   * an intentional scenario transition (scenario is a stored attribute, never
+   * a history partition). Declared seed history is a prefix: it never erases
+   * observed messages. A repeated delivery of the same message id collapses
+   * to its first record instead of duplicating the current message. The
+   * current inbound turn is excluded exactly once by call order (the runtime
+   * reads history before logging the arriving turn), never by extra filters
+   * here.
+   */
+  private mergeFixtureHistory(
+    phoneNumber: string,
+    seed: AgentConversationMessage[],
+    logged: FixtureLoggedMessage[],
+  ): AgentConversationMessage[] {
+    const lookup = new Set(buildFixturePhoneLookupKeys(phoneNumber));
+    const seenIds = new Set<string>();
+    for (const message of seed) {
+      if (message.whatsappMessageId) seenIds.add(message.whatsappMessageId);
     }
-    return {
-      status: 'success',
-      messages: parsed.data.messages.map((message) => ({
-        id: message.id,
-        direction: message.direction,
-        source: message.source ?? null,
-        body: message.body,
-        status: message.status,
-        whatsappMessageId: message.whatsapp_message_id ?? null,
-        sentAt: message.sent_at ?? null,
-        createdAt: message.created_at ?? null,
-      })),
-    };
+    const merged: AgentConversationMessage[] = [...seed];
+    let nextId = seed.reduce((max, message) => Math.max(max, message.id), 0);
+    const ordered = [...logged].sort((left, right) => left.seq - right.seq);
+    for (const record of ordered) {
+      if (record.runId !== this.runId || record.caseId !== this.caseId) {
+        continue;
+      }
+      if (record.conversationKey !== this.conversationKey) {
+        continue;
+      }
+      if (!record.phoneKeys.some((key) => lookup.has(key))) {
+        continue;
+      }
+      if (record.delivery !== 'received' && record.delivery !== 'sent') {
+        continue;
+      }
+      if (record.whatsappMessageId && seenIds.has(record.whatsappMessageId)) {
+        continue;
+      }
+      if (record.whatsappMessageId) seenIds.add(record.whatsappMessageId);
+      nextId += 1;
+      merged.push({
+        id: nextId,
+        direction: record.direction,
+        source: null,
+        body: record.body,
+        status: record.delivery,
+        whatsappMessageId: record.whatsappMessageId,
+        sentAt: record.sentAt,
+        createdAt: record.recordedAt,
+      });
+    }
+    return merged;
   }
 
   async requestHumanTakeover(phoneNumber: string): Promise<AgentGatewayResult> {
@@ -1093,6 +1326,29 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
     return this.mapEventDetail(parsed.data, phone);
   }
 
+  /**
+   * Packet B fixture coherence: this double simulates a backend where a
+   * write persists, so a read after the double's own guestRsvp reflects the
+   * written attendance for that guest. Without an entry the static fixture
+   * data stands. Production behavior is unchanged; only the double stops
+   * contradicting its own writes.
+   */
+  private overlayWrittenAttendance(
+    attendance: { guestId: number; name: string; hasResponded: boolean; willAttend: boolean | null; responseDate: string | null },
+  ): { guestId: number; name: string; hasResponded: boolean; willAttend: boolean | null; responseDate: string | null } {
+    if (!this.rsvpAttendanceByGuest.has(attendance.guestId)) {
+      return attendance;
+    }
+    const written = this.rsvpAttendanceByGuest.get(attendance.guestId) ?? null;
+    return {
+      guestId: attendance.guestId,
+      name: attendance.name,
+      hasResponded: true,
+      willAttend: written,
+      responseDate: new Date().toISOString(),
+    };
+  }
+
   private mapEventDetail(
     parsed: z.infer<typeof eventDetailDataSchema>,
     _phone: AgentAuthByPhoneInput | null,
@@ -1143,7 +1399,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
               .filter((entry): entry is [string, string] => entry[1] !== null)
               .map(([label, value]) => ({ label, value })),
         attendance: parsed.attendance
-          ? {
+          ? this.overlayWrittenAttendance({
               guestId: parsed.attendance.guest_id,
               name: parsed.attendance.name,
               hasResponded: parsed.attendance.has_responded === true || parsed.attendance.has_responded === 1,
@@ -1151,7 +1407,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
                 ? null
                 : parsed.attendance.will_attend === true || parsed.attendance.will_attend === 1,
               responseDate: normalizeServerTimestamp(parsed.attendance.response_date),
-            }
+            })
           : null,
         purchases: parsed.purchases.map((purchase) => this.mapGiftPurchase(purchase)),
       },
@@ -1286,6 +1542,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
         currentAction: null,
         requestedAction: input.action ?? null,
         guestId: input.guest_id ?? null,
+        eventId: null,
         eventName: null,
         eventDate: null,
       };
@@ -1336,11 +1593,20 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
       await this.recordEffect('rsvp.write', { guest_id: input.guest_id ?? null, action: input.action ?? null }, failed.status);
       return failed;
     }
+    // Packet B: reject a different returned guest identity instead of
+    // falling back to the requested id.
+    const returnedGuestId = parsed.data.guest_id ?? null;
+    if (input.guest_id !== undefined && returnedGuestId !== null && returnedGuestId !== input.guest_id) {
+      const failed: AgentGuestRsvpResult = { status: 'failed', error: 'Agent API RSVP response returned a different guest identity.', retryable: false };
+      await this.recordEffect('rsvp.write', { guest_id: input.guest_id ?? null, action: input.action ?? null }, failed.status);
+      return failed;
+    }
     const responded: AgentGuestRsvpResult = {
       status: 'responded',
       action: parsed.data.action ?? input.action ?? null,
       willAttend: returnedWillAttend,
-      guestId: parsed.data.guest_id ?? input.guest_id ?? null,
+      guestId: returnedGuestId ?? input.guest_id ?? null,
+      eventId: parsed.data.event_id ?? readFixtureRsvpNestedEventId(parsed.data.event) ?? null,
       eventName: parsed.data.event_name ?? parsed.data.event?.name ?? parsed.data.event?.title ?? null,
       eventDate: normalizeServerTimestamp(
         parsed.data.event_date ?? parsed.data.event?.date ?? parsed.data.event?.event_date,
@@ -1376,6 +1642,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
           : parsed.data.invitations;
     return candidateData.map((candidate) => ({
       guestId: candidate.guest_id,
+      eventId: candidate.event_id ?? readFixtureRsvpNestedEventId(candidate.event) ?? null,
       eventName: candidate.event_name ?? candidate.event?.name ?? candidate.event?.title ?? null,
       eventDate: normalizeServerTimestamp(
         candidate.event_date ?? candidate.event?.date ?? candidate.event?.event_date,

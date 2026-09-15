@@ -1,0 +1,56 @@
+template: template.base-live
+id: live_behavior.owner_planning_to_faq_single_transfer
+suite: live_behavior_regression
+version: 2
+description: A planning interview followed by a general information question transfers once to the FAQ owner and answers honestly from available evidence, never inventing a fee.
+tags: [live, behavior, ownership, planning, faq]
+targetModes: [live_lambda]
+inputs:
+  - text: Hola!
+    sessionId: live-owner-planning-to-faq-session
+  - text: Estoy buscando un proveedor para mi matrimonio, ¿qué opciones tienes?
+    sessionId: live-owner-planning-to-faq-session
+  - text: ¿Cuánto cobra Sin Envolturas por sus servicios?
+    sessionId: live-owner-planning-to-faq-session
+expectations:
+  - id: planning-turn-does-not-search-early
+    type: tool_usage
+    mustNotCall:
+      - search_providers_from_plan
+      - search_providers_by_query_intent
+    turnIndex: 1
+    severity: hard
+  - id: faq-turn-enters-information
+    type: node_transition
+    to: resolver_consultas_informativas
+    turnIndex: 2
+    severity: hard
+  - id: faq-turn-runs-no-provider-search
+    type: tool_usage
+    mustNotCall:
+      - search_providers_from_plan
+      - search_providers_by_query_intent
+      - search_providers_by_keyword
+      - search_providers_by_category_location
+    turnIndex: 2
+    severity: hard
+  - id: faq-turn-persists-faq-owner
+    type: plan_field_equals
+    path: owner
+    expected: faq
+    turnIndex: 2
+    severity: hard
+  - id: faq-reply-answers-general-question
+    type: text_semantic
+    rubric: >-
+      The user asked a general pricing question after a wedding-provider interview. The answer must be concise, natural, and entirely in Spanish; it addresses the pricing question honestly from the available evidence, which includes saying no price is available and offering human confirmation when that is the truth. It must not invent a fee, list providers, restart the interview, ask again for event details already in context, claim account-specific data, or request authentication.
+    minScore: 0.85
+    requireJudge: true
+    turnIndex: 2
+    severity: hard
+notes:
+  - "R05 oracle revision v1 to v2, 2026-09-12, Packet F3. Old faq-reply-answers-general-question failed a reply that honestly said no price was available and offered human confirmation although the judge rationale approved that behavior (matrix: do not invent fees or add irrelevant planning questions). New contract names honest unavailability plus human confirmation a pass and fails only invented fees and interview restarts. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
+budget:
+  maxTurns: 3
+  estimatedPromptTokensPerTurn: 2000
+  estimatedCompletionTokensPerTurn: 280

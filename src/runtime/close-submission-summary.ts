@@ -1,22 +1,17 @@
-/**
- * F4 deterministic close-submission summary for node `crear_lead_cerrar`.
- *
- * When the model already called `finish_plan` this turn with an explicitly
- * captured event date, the reply must confirm the per-provider submission
- * with that date instead of asking for another confirmation. Partial success
- * never claims closure: confirmed providers are reported as sent while
- * blocked or unresolved ones stay truthful without retry. A failed-all
- * submission with an explicit date reports the block truthfully with a human
- * handoff instead of asking for another confirmation. A missing or invalid
- * date, an empty provider list, or an unparsable tool output yields no
- * summary so the turn keeps asking for an explicit date.
- */
+export type CloseSubmissionError =
+  | 'missing_contact_info'
+  | 'invalid_contact_info'
+  | 'no_selected_providers'
+  | 'missing_event_date'
+  | 'invalid_event_date';
 
-export type FinishPlanContactedProvider = {
+export type CloseSubmissionProviderReceipt = {
   providerId: number;
   category: string;
-  success: boolean;
-  error?: string;
+  status: 'confirmed' | 'failed' | 'unresolved';
+  eventDate: string;
+  receiptId: string | null;
+  attemptCount: number;
 };
 
 export type CloseSubmissionStatus = 'success' | 'partial' | 'failed';
@@ -24,108 +19,19 @@ export type CloseSubmissionStatus = 'success' | 'partial' | 'failed';
 export type CloseSubmissionInput = {
   status: CloseSubmissionStatus;
   eventDate: string | null;
-  contactedProviders: readonly FinishPlanContactedProvider[];
-  displayByCategory: Readonly<Record<string, string>>;
+  providers: readonly CloseSubmissionProviderReceipt[];
+  error: CloseSubmissionError | null;
 };
 
 export type FinishPlanTurnOutcome = {
   status: CloseSubmissionStatus;
   eventDate: string | null;
-  contactedProviders: FinishPlanContactedProvider[];
+  providers: CloseSubmissionProviderReceipt[];
+  error: CloseSubmissionError | null;
 };
 
-const SPANISH_MONTHS = [
-  'enero',
-  'febrero',
-  'marzo',
-  'abril',
-  'mayo',
-  'junio',
-  'julio',
-  'agosto',
-  'septiembre',
-  'octubre',
-  'noviembre',
-  'diciembre',
-];
-
-export function formatSpanishEventDate(value: string | null): string | null {
-  if (value === null) return null;
-  const match = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/u);
-  if (!match || !match[1] || !match[2] || !match[3]) return null;
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  if (day > daysInMonth) return null;
-  return `${day} de ${SPANISH_MONTHS[month - 1]} de ${year}`;
-}
-
-function displayName(
-  provider: FinishPlanContactedProvider,
-  displayByCategory: Readonly<Record<string, string>>,
-): string {
-  return displayByCategory[provider.category] ?? `${provider.category} ${provider.providerId}`;
-}
-
-function joinSpanishList(names: string[]): string {
-  const unique = Array.from(new Set(names));
-  if (unique.length <= 2) return unique.join(' y ');
-  return `${unique.slice(0, -1).join(', ')} y ${unique[unique.length - 1]}`;
-}
-
-export function buildCloseSubmissionSummary(input: CloseSubmissionInput): string | null {
-  const longDate = formatSpanishEventDate(input.eventDate);
-  if (longDate === null) return null;
-  if (input.contactedProviders.length === 0) return null;
-  const confirmed = input.contactedProviders.filter((provider) => provider.success);
-  const pending = input.contactedProviders.filter((provider) => !provider.success);
-  if (confirmed.length === 0) {
-    return buildBlockedSubmissionSummary(longDate, input.contactedProviders, input.displayByCategory);
-  }
-  const sentNames = joinSpanishList(
-    confirmed.map((provider) => displayName(provider, input.displayByCategory)),
-  );
-  const sentClause = confirmed.length === 1
-    ? `La solicitud de cotización fue enviada a ${sentNames} para tu evento del ${longDate}.`
-    : `Las solicitudes de cotización fueron enviadas a ${sentNames} para tu evento del ${longDate}.`;
-  const contactClause = ' Los proveedores se pondrán en contacto contigo por correo electrónico o teléfono.';
-  if (pending.length === 0) {
-    return `${sentClause}${contactClause}`;
-  }
-  const pendingNames = joinSpanishList(
-    pending.map((provider) => displayName(provider, input.displayByCategory)),
-  );
-  return `${sentClause}${contactClause} Para ${pendingNames} no pude confirmar el envío todavía, así que esa parte sigue sin cerrar.`;
-}
-
-const CONFIRM_QUESTION_PATTERN = /¿Confirmas que envíe[^?]*\?/u;
-const LEGACY_CLOSE_FOOTER_PATTERN = /\n*\s*Se enviar[áa]n solicitudes para:[\s\S]*$/iu;
-
-export function applyCloseSubmissionToText(text: string, summary: string | null): string {
-  if (summary === null) return text;
-  if (!CONFIRM_QUESTION_PATTERN.test(text)) return text;
-  const replaced = text.replace(CONFIRM_QUESTION_PATTERN, summary);
-  return replaced.replace(LEGACY_CLOSE_FOOTER_PATTERN, '').trimEnd();
-}
-
-function buildBlockedSubmissionSummary(
-  longDate: string,
-  providers: readonly FinishPlanContactedProvider[],
-  displayByCategory: Readonly<Record<string, string>>,
-): string {
-  const names = joinSpanishList(
-    providers.map((provider) => displayName(provider, displayByCategory)),
-  );
-  const requests = providers.length === 1
-    ? `la solicitud de cotización a ${names}`
-    : `las solicitudes de cotización a ${names}`;
-  return `Para tu evento del ${longDate} no pude enviar ${requests}: el envío quedó bloqueado. Puedo comunicarte con una persona del equipo para continuar con el cierre.`;
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 const SPANISH_MONTH_INDEX: Record<string, number> = {
@@ -192,6 +98,11 @@ export function resolveExplicitEventDate(modelValue: unknown, userMessage: unkno
   return dates.length === 1 ? dates[0] : null;
 }
 
+const CLOSE_ERRORS = new Set<CloseSubmissionError>([
+  'missing_contact_info', 'invalid_contact_info', 'no_selected_providers',
+  'missing_event_date', 'invalid_event_date',
+]);
+
 export function parseFinishPlanTurnOutcome(outputJson: string): FinishPlanTurnOutcome | undefined {
   let parsed: unknown;
   try {
@@ -203,21 +114,80 @@ export function parseFinishPlanTurnOutcome(outputJson: string): FinishPlanTurnOu
   const status = parsed['status'];
   if (status !== 'success' && status !== 'partial' && status !== 'failed') return undefined;
   const rawDate = parsed['eventDate'];
-  const eventDate = typeof rawDate === 'string' ? rawDate : null;
-  const rawProviders = parsed['contacted_providers'];
-  if (!Array.isArray(rawProviders)) return undefined;
-  const contactedProviders: FinishPlanContactedProvider[] = [];
-  for (const entry of rawProviders) {
+  const eventDate = rawDate === null
+    ? null
+    : typeof rawDate === 'string' ? parseSingleDateText(rawDate) : undefined;
+  if (eventDate === undefined) return undefined;
+  if (rawDate !== null && eventDate === null) return undefined;
+  const rawEffects = parsed['effects'];
+  if (!Array.isArray(rawEffects)) return undefined;
+  const providers: CloseSubmissionProviderReceipt[] = [];
+  for (const entry of rawEffects) {
     if (!isRecord(entry)) return undefined;
     const providerId = entry['providerId'];
     const category = entry['category'];
-    const success = entry['success'];
-    if (typeof providerId !== 'number' || typeof category !== 'string' || typeof success !== 'boolean') {
+    const status = entry['status'];
+    const rawEffectDate = entry['eventDate'];
+    const effectDate = typeof rawEffectDate === 'string' ? parseSingleDateText(rawEffectDate) : null;
+    const receiptId = entry['receiptId'];
+    const attemptCount = entry['attemptCount'];
+    if (
+      typeof providerId !== 'number' || typeof category !== 'string' ||
+      (status !== 'confirmed' && status !== 'failed' && status !== 'unresolved') ||
+      effectDate === null || (typeof receiptId !== 'string' && receiptId !== null) ||
+      typeof attemptCount !== 'number' || !Number.isSafeInteger(attemptCount) || attemptCount < 1
+    ) {
       return undefined;
     }
-    const provider: FinishPlanContactedProvider = { providerId, category, success };
-    if (typeof entry['error'] === 'string') provider.error = entry['error'];
-    contactedProviders.push(provider);
+    providers.push({ providerId, category, status, eventDate: effectDate, receiptId, attemptCount });
   }
-  return { status, eventDate, contactedProviders };
+  const rawError = parsed['error'];
+  const error = typeof rawError === 'string' && CLOSE_ERRORS.has(rawError as CloseSubmissionError)
+    ? rawError as CloseSubmissionError
+    : null;
+  if (providers.length === 0 && status !== 'failed' && error === null) return undefined;
+  if (providers.length > 0) {
+    const confirmed = providers.filter((provider) => provider.status === 'confirmed').length;
+    const expectedStatus = confirmed === providers.length
+      ? 'success'
+      : confirmed > 0 ? 'partial' : 'failed';
+    if (status !== expectedStatus) return undefined;
+  }
+  return { status, eventDate, providers, error };
+}
+
+export function buildCloseSubmissionReceipt(
+  outputs: readonly { tool: string; output: string }[],
+): CloseSubmissionInput | null {
+  const last = outputs.filter((entry) => entry.tool === 'finish_plan').at(-1);
+  if (!last) return null;
+  const outcome = parseFinishPlanTurnOutcome(last.output);
+  return outcome ?? null;
+}
+
+/**
+ * R5 authoritative close blockers. Computes the remaining unmet close
+ * preconditions from merged validated state (never from raw extraction
+ * nulls): incomplete contact, missing user-backed event date, no eligible
+ * selection, or a shortlisted need still awaiting choice. Typed evidence
+ * for the reply model only; never reply prose and never intent routing.
+ */
+export type CloseBlocker =
+  | 'missing_contact_fields'
+  | 'missing_event_date'
+  | 'no_selected_providers'
+  | 'unresolved_provider_choice';
+
+export function resolveCloseBlockers(args: {
+  readonly contactComplete: boolean;
+  readonly eventDateAvailable: boolean;
+  readonly hasEligibleSelection: boolean;
+  readonly hasUnresolvedShortlist: boolean;
+}): CloseBlocker[] {
+  const blockers: CloseBlocker[] = [];
+  if (!args.eventDateAvailable) blockers.push('missing_event_date');
+  if (!args.contactComplete) blockers.push('missing_contact_fields');
+  if (!args.hasEligibleSelection) blockers.push('no_selected_providers');
+  if (args.hasUnresolvedShortlist) blockers.push('unresolved_provider_choice');
+  return blockers;
 }

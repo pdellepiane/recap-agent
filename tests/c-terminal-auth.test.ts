@@ -31,6 +31,7 @@ const renderers = { terminal_whatsapp: new WhatsAppMessageRenderer() };
 
 class ScriptedRuntime implements AgentRuntime {
   public readonly extractRequests: ExtractRequest[] = [];
+  public readonly composeRequests: ComposeReplyRequest[] = [];
   private index = 0;
   constructor(private readonly extractions: ExtractionResult[]) {}
   async extract(request: ExtractRequest): Promise<ExtractionResult> {
@@ -41,7 +42,7 @@ class ScriptedRuntime implements AgentRuntime {
     return next;
   }
   async composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult> {
-    void request;
+    this.composeRequests.push(request);
     return { text: 'Respuesta informativa.' };
   }
 }
@@ -364,8 +365,15 @@ describe('C terminal auth: 3-turn sequences per outcome', () => {
     expect(first.plan.human_help_receipt).toBeNull();
     expect(first.plan.human_escalation.last_error).toContain('missing_identity');
     expect(first.plan.auth_recovery.terminalReason).toBe('verification_failed');
-    expect(first.outbound.text ?? '').toContain('identidad');
-    expect(first.outbound.text ?? '').not.toContain('solicité apoyo humano');
+    expect(first.outbound.text).toBe('Respuesta informativa.');
+    expect(runtime.composeRequests.at(-1)?.authenticationOutcome).toMatchObject({
+      status: 'terminal',
+      // C1: terminal escalation retains the pending protected requests, so
+      // the reply preserves the pending question instead of claiming closure.
+      protectedRequestsClosed: false,
+      handoffOutcome: null,
+    });
+    expect(typeof runtime.composeRequests.at(-1)?.authenticationOutcome?.reason).toBe('string');
     expect(offersAnotherOtp(first.outbound.text)).toBe(false);
   });
 });
@@ -517,5 +525,68 @@ describe('C terminal auth: reset, FAQ, and help retry', () => {
     expect(provider.verifyCodeCalls).toBe(0);
     expect(provider.requestCodeCalls).toBe(0);
     expect(second.plan.auth_recovery.terminalReason).toBe('auth_refused');
+  });
+});
+
+describe('C terminal auth: R4 exact reason and handoff preservation across repeats', () => {
+  it('repeat keeps verification_failed and the failed handoff outcome with no new sends or verifies', async () => {
+    const planStore = new InMemoryPlanStore();
+    await seedOtpPlan(planStore, {});
+    const runtime = new ScriptedRuntime([twinExtraction([codeRequest()])]);
+    const agentGateway = new RecordingAgentGateway('failed');
+    const provider = scriptedProviderGateway({ verifyStatus: 'invalid_code' });
+    const service = createService({ runtime, agentGateway, provider: provider.gateway, planStore });
+
+    const first = await turn(service, '753994', 'c-r4-1');
+    expect(first.plan.auth_recovery.terminalReason).toBe('verification_failed');
+    expect(first.plan.human_help_receipt?.outcome).toBe('handoff_failed');
+    // First terminal turn carries the specific verification guidance reason;
+    // it must name verification failure, never generic non-delivery.
+    expect(runtime.composeRequests.at(-1)?.authenticationOutcome).toMatchObject({
+      status: 'terminal',
+      handoffOutcome: 'handoff_failed',
+    });
+    expect(runtime.composeRequests.at(-1)?.authenticationOutcome?.reason).toMatch(/verification_failed/);
+    expect(runtime.composeRequests.at(-1)?.authenticationOutcome?.reason).not.toBe('otp_recovery_exhausted');
+
+    const second = await turn(service, '753994', 'c-r4-2');
+    expect(provider.verifyCodeCalls).toBe(1);
+    expect(provider.requestCodeCalls).toBe(0);
+    expect(agentGateway.takeoverCalls).toBe(1);
+    expect(second.plan.auth_recovery.terminalReason).toBe('verification_failed');
+    expect(second.plan.human_help_receipt?.outcome).toBe('handoff_failed');
+    expect(second.trace.tools_called).not.toContain('verify_user_login_code');
+    expect(second.trace.tools_called).not.toContain('request_user_login_code');
+    expect(second.trace.tools_called).not.toContain('request_human_takeover');
+    expect(runtime.composeRequests.at(-1)?.authenticationOutcome).toMatchObject({
+      status: 'terminal',
+      reason: 'verification_failed',
+      handoffOutcome: 'handoff_failed',
+    });
+  });
+
+  it('disabled handoff stays unavailable with no dispatched effect and exact terminal reason', async () => {
+    const planStore = new InMemoryPlanStore();
+    await seedOtpPlan(planStore, {});
+    const runtime = new ScriptedRuntime([twinExtraction([codeRequest()])]);
+    const agentGateway = new RecordingAgentGateway('success');
+    const provider = scriptedProviderGateway({ verifyStatus: 'invalid_code' });
+    const service = createService({
+      runtime, agentGateway, provider: provider.gateway, planStore, disabledTakeover: true,
+    });
+    const first = await turn(service, '753994', 'c-r4-unavail-1');
+    expect(first.plan.auth_recovery.terminalReason).toBe('verification_failed');
+    expect(agentGateway.takeoverCalls).toBe(0);
+    expect(first.plan.human_help_receipt).toBeNull();
+    expect(runtime.composeRequests.at(-1)?.authenticationOutcome).toMatchObject({
+      status: 'terminal',
+      handoffOutcome: null,
+    });
+    expect(runtime.composeRequests.at(-1)?.authenticationOutcome?.reason).toMatch(/verification_failed/);
+    const second = await turn(service, '753994', 'c-r4-unavail-2');
+    expect(agentGateway.takeoverCalls).toBe(0);
+    expect(second.plan.auth_recovery.terminalReason).toBe('verification_failed');
+    expect(second.trace.tools_called).not.toContain('request_human_takeover');
+    expect(runtime.composeRequests.at(-1)?.authenticationOutcome?.handoffOutcome).toBeNull();
   });
 });

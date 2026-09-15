@@ -2,6 +2,7 @@ import { ulid } from 'ulid';
 
 import { AgentService } from '../../runtime/agent-service';
 import { normalizeInboundImage } from '../../core/inbound-image';
+import { redactImageUrlForLog } from '../../core/image-attachments';
 import { createEmptyPlan, mergePlan, planSchema } from '../../core/plan';
 import type {
   AgentRuntime,
@@ -94,6 +95,8 @@ export async function runOfflineCase(args: {
       turnIndex,
       input: redactOfflineInput(input),
       outputText: redactArtifactText(response.outbound.text ?? ''),
+      deliveredText: response.outbound.text,
+      delivery: { ...response.outbound.delivery },
       currentNode: response.plan.current_node,
       trace: projectSafeTrace(typedTrace) as EvalTurnResult['trace'],
       plan: projectSafePlan(typedPlan),
@@ -133,6 +136,15 @@ function redactOfflineInput(input: EvalTurnResult['input']): EvalTurnResult['inp
           redacted: true as const,
           mime_type: input.image.mime_type,
           byte_length: Buffer.byteLength(input.image.data, 'utf8'),
+        },
+      }
+      : {}),
+    ...(input.image && 'url' in input.image
+      ? {
+        image: {
+          redacted: true as const,
+          url_host_redacted: redactImageUrlForLog(input.image.url),
+          url_bytes: Buffer.byteLength(input.image.url, 'utf8'),
         },
       }
       : {}),

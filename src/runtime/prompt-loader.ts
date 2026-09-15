@@ -14,11 +14,6 @@ import {
 } from './prompt-manifest';
 import type { ExtractionCapabilityProfile } from './extraction-schemas';
 import type { InformationAuthReason } from '../core/information';
-import { hostWithdrawalMessagesSchema } from './host-withdrawal-policy';
-import {
-  parseCapabilityBoundaryMessages,
-  type CapabilityBoundaryMessages,
-} from './capability-boundary-renderer';
 
 export type PromptLoadContext = {
   informationAuthReasons?: readonly InformationAuthReason[];
@@ -109,7 +104,21 @@ export function summarizeBundleDelta(
 }
 
 export class PromptLoader {
+  /**
+   * O4 per-process raw file cache. Keys are absolute prompt paths; values
+   * carry the observed stat signature so an edited file is re-read while an
+   * immutable file never hits disk twice. Only immutable prompt bytes are
+   * cached here: projected bundles stay keyed by their full disclosure
+   * context and customer-bearing requests are never memoized.
+   */
+  private readonly rawContentCache = new Map<string, { mtimeMs: number; size: number; content: string }>();
+
   constructor(private readonly promptsDir: string) {}
+
+  /** Test-only view of cached absolute paths; never customer content. */
+  cachedRawFileCountForTest(): number {
+    return this.rawContentCache.size;
+  }
 
   async loadAuthControlBundle(): Promise<PromptBundle> {
     return this.load(['nodes/resolver_consultas_informativas/auth_control.txt'], []);
@@ -123,28 +132,6 @@ export class PromptLoader {
     return this.load(['nodes/resolver_consultas_informativas/support_continuity.txt'], []);
   }
 
-  async loadImageMessages(): Promise<Record<'image_too_large' | 'media_unavailable' | 'handoff_requested' | 'handoff_failed', string>> {
-    const { z } = await import('zod');
-    const schema = z.object({ image_too_large: z.string(), media_unavailable: z.string(),
-      handoff_requested: z.string(), handoff_failed: z.string() }).strict();
-    return schema.parse(JSON.parse(await fs.readFile(path.join(this.promptsDir,
-      'nodes/resolver_consultas_informativas/image_outcomes.json'), 'utf8')) as unknown);
-  }
-
-  async loadHostWithdrawalMessages() {
-    const content = await fs.readFile(path.join(this.promptsDir,
-      'nodes/resolver_consultas_informativas/host-withdrawal.json'), 'utf8');
-    return hostWithdrawalMessagesSchema.parse(JSON.parse(content) as unknown);
-  }
-
-  async loadCapabilityBoundaryMessages(): Promise<CapabilityBoundaryMessages> {
-    const content = await fs.readFile(path.join(
-      this.promptsDir,
-      'nodes/resolver_consultas_informativas/capability_boundary.txt',
-    ), 'utf8');
-    return parseCapabilityBoundaryMessages(content);
-  }
-
   async loadNodeBundle(
     node: DecisionNode,
     context: PromptLoadContext = {},
@@ -156,11 +143,18 @@ export class PromptLoader {
 
   async loadExtractorBundle(
     capabilities?: ExtractionCapabilityProfile,
+    options: { includeImageReference?: boolean } = {},
   ): Promise<PromptBundle> {
     const relativePaths = capabilities
       ? extractorPromptFilesForCapabilities(capabilities)
       : extractorPromptFiles;
-    return this.load([...relativePaths], []);
+    // Minimum disclosure: follow-up image-linkage guidance travels only
+    // while the plan stores image attachments. Imageless turns and static
+    // audit bundles stay byte-identical.
+    const imageReferencePaths = options.includeImageReference === true
+      ? ['extractors/image_reference.txt' as const]
+      : [];
+    return this.load([...relativePaths, ...imageReferencePaths], []);
   }
 
   async loadResponseClassifierBundle(
@@ -177,7 +171,7 @@ export class PromptLoader {
     const contents = await Promise.all(
       relativePaths.map(async (relativePath) => {
         const absolutePath = path.join(this.promptsDir, relativePath);
-        const rawContent = await fs.readFile(absolutePath, 'utf8');
+        const rawContent = await this.readRawPromptFile(absolutePath);
         return {
           relativePath,
           content: this.projectMinimumDisclosure(rawContent, context),
@@ -206,6 +200,17 @@ export class PromptLoader {
       instructions,
       allowedTools,
     };
+  }
+
+  private async readRawPromptFile(absolutePath: string): Promise<string> {
+    const stat = await fs.stat(absolutePath);
+    const cached = this.rawContentCache.get(absolutePath);
+    if (cached !== undefined && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) {
+      return cached.content;
+    }
+    const content = await fs.readFile(absolutePath, 'utf8');
+    this.rawContentCache.set(absolutePath, { mtimeMs: stat.mtimeMs, size: stat.size, content });
+    return content;
   }
 
   private projectMinimumDisclosure(

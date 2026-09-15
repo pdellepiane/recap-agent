@@ -6,6 +6,7 @@ import {
 import {
   DeleteCommand,
   DynamoDBDocumentClient,
+  GetCommand,
   PutCommand,
 } from '@aws-sdk/lib-dynamodb';
 
@@ -20,6 +21,11 @@ type LockItem = {
   sk: 'TURN_LOCK';
   owner_id: string;
   lease_until_ms: number;
+};
+
+export type TurnLeaseSnapshot = {
+  ownerId: string;
+  expiresAtMs: number;
 };
 
 export class DynamoConversationTurnCoordinator implements ConversationTurnCoordinator {
@@ -90,6 +96,31 @@ export class DynamoConversationTurnCoordinator implements ConversationTurnCoordi
       }
       throw error;
     }
+  }
+
+  /**
+   * Packet B: fresh lease read for effect-boundary validation. Returns the
+   * live TURN_LOCK snapshot or null when no lock record exists.
+   */
+  async currentLeaseSnapshot(
+    channel: string,
+    externalUserId: string,
+  ): Promise<TurnLeaseSnapshot | null> {
+    const response = await this.documentClient.send(
+      new GetCommand({
+        TableName: this.tableName,
+        Key: {
+          pk: conversationPartitionKey(channel, externalUserId),
+          sk: 'TURN_LOCK',
+        },
+        ConsistentRead: true,
+      }),
+    );
+    const item = response.Item as LockItem | undefined;
+    if (!item || typeof item.owner_id !== 'string' || typeof item.lease_until_ms !== 'number') {
+      return null;
+    }
+    return { ownerId: item.owner_id, expiresAtMs: item.lease_until_ms };
   }
 }
 

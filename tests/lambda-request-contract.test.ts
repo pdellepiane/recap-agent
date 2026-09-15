@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   agentParticipationRequestSchema,
+  backendFixtureSchema,
   channelRequestSchema,
 } from '../src/lambda/request-contract';
 
@@ -291,6 +292,29 @@ describe('Lambda channel request contract', () => {
     const result = agentParticipationRequestSchema.safeParse({
       channel: 'whatsapp',
       user_id: 'whatsapp:51999999999',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('requires a complete evaluation identity on the development fixture marker', () => {
+    expect(backendFixtureSchema.safeParse({
+      scenario: 'image-clean-world', runId: 'run-1', caseId: 'live_behavior.case',
+    }).success).toBe(true);
+    expect(backendFixtureSchema.safeParse({ scenario: 'image-clean-world' }).success).toBe(false);
+    expect(backendFixtureSchema.safeParse({
+      scenario: 'image-clean-world', runId: 'run-1',
+    }).success).toBe(false);
+    expect(backendFixtureSchema.safeParse({
+      scenario: 'image-clean-world', runId: 'run-1', caseId: 'live_behavior.case', extra: 'no',
+    }).success).toBe(false);
+  });
+
+  it('rejects a development fixture marker with an incomplete identity at the channel boundary', () => {
+    const result = channelRequestSchema.safeParse({
+      text: 'hola',
+      user_id: 'user-123',
+      channel: 'terminal_whatsapp_eval',
+      backendFixture: { scenario: 'image-clean-world' },
     });
     expect(result.success).toBe(false);
   });

@@ -2,6 +2,7 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { EvalLoader } from '../src/evals/loader';
 import { runEvaluation } from '../src/evals/runner';
 
 describe('eval runner caseIds filtering', () => {
@@ -123,5 +124,22 @@ describe('eval runner caseIds filtering', () => {
       caseIds: [],
     });
     expect(result.report.totalCases).toBe(3);
+  });
+
+  it('selects the complete current manifest when unfiltered, never a hardcoded count', async () => {
+    const catalog = await new EvalLoader(evalsDir).loadCatalog();
+    const suiteManifest = catalog.suites.find((suite) => suite.id === 'smoke');
+    expect(suiteManifest).toBeDefined();
+    const result = await runEvaluation({
+      evalsDir,
+      outputDir,
+      suite: 'smoke',
+      target: 'offline',
+      dryRun: true,
+    });
+    expect(result.report.totalCases).toBe(suiteManifest?.caseIds.length);
+    expect(result.report.results.map((entry) => entry.caseId).sort()).toEqual(
+      [...(suiteManifest?.caseIds ?? [])].sort(),
+    );
   });
 });

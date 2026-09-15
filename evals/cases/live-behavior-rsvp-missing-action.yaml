@@ -1,8 +1,8 @@
 template: template.base-live
 id: live_behavior.rsvp_missing_action_requires_explicit_decision
 suite: live_behavior_regression
-version: 2
-description: An RSVP request without an attendance decision reports the selected invitation state and does not mutate it.
+version: 3
+description: An RSVP request without an attendance decision reports the selected invitation state, invites a concrete attendance decision in natural wording, and does not mutate it.
 tags: [live, behavior, rsvp, attendance, explicit-decision]
 targetModes: [live_lambda]
 inputs:
@@ -51,7 +51,7 @@ expectations:
   - id: asks-for-explicit-rsvp-decision
     type: text_semantic
     rubric: >-
-      The guest wants to manage the selected invitation but has not stated a new attendance decision. The current user-level state says the guest will not attend. The response must naturally and entirely in Spanish report that current state and ask one clear question offering to change it to attending. It must not mutate the invitation, ask for email or an authentication code, or claim that any new response was registered.
+      The guest wants to manage the selected invitation but has not stated a new attendance decision. The current user-level state says the guest will not attend. The response must naturally and entirely in Spanish report that current state and invite a concrete decision to change it to attending, in the model's own wording without any fixed required phrase: either one explicit question or one unambiguous conditional offer requiring the user's decision satisfies the invitation, and interrogative syntax alone never decides. It must not mutate the invitation, ask for email or an authentication code, or claim that any new response was registered.
     minScore: 0.9
     requireJudge: true
     severity: hard
@@ -59,6 +59,8 @@ expectations:
     type: text_not_contains
     phrases: ["RSVP", "rsvp"]
     severity: hard
+notes:
+  - "R05 oracle revision v2 to v3, 2026-09-15, recheck-b9a7662d. Old asks-for-explicit-rsvp-decision demanded one clear interrogative question although the reply state and conditional offer already invite a concrete decision (recheck: understandable but weaker next-step prompt; do not demand a question mark). New contract accepts either an explicit question or an unambiguous conditional invitation requiring the user's decision; grammatical form alone never decides. Keeps the mandatory semantic judge, hard severity, no-write-without-intent tool checks, and identity/effect assertions unchanged. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
 budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 1400

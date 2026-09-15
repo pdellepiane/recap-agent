@@ -1,8 +1,8 @@
 template: template.base-live
 id: live_behavior.customer_transaction_code_by_phone
 suite: live_behavior_regression
-version: 2
-description: S13 unavailable-unique frozen world. COD301816 cannot be linked directly; one approved order for Evento de prueba A is answered with grounded status and no code echo.
+version: 3
+description: S13 unavailable-unique frozen world. COD301816 cannot be linked directly; the one visible Evento de prueba A order gets a grounded approval or a focused confirmation, never a false code match.
 tags: [live, behavior, purchase, phone-orders, customer-transaction-code, reported-interaction, s13]
 targetModes: [live_lambda]
 backendFixture:
@@ -14,6 +14,7 @@ inputs:
     sessionId: live-customer-transaction-code-session
 notes:
   - S13 frozen world s13-reference-unavailable-unique as of 2026-09-09T00:00:00.000Z. Synthetic identity only; one approved order for Evento de prueba A with absent code, amount and currency, no carts. Output must follow this world, never mutable backend data.
+  - "R05 oracle revision v2 to v3, 2026-09-12, Packet F3. Old transaction-code-unavailable-unique-grounded denied the grounded event date 2026-09-20 and called any confirmation unnecessary, failing a warranted one-candidate confirmation (matrix: stored candidate has eventDate 2026-09-20 with unavailable reference resolution). New contract permits either a grounded approval statement or one focused confirmation of the single visible candidate, forbidding only a false matched-code claim. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
 expectations:
   - id: transaction-code-enters-information
     type: node_transition
@@ -27,7 +28,7 @@ expectations:
   - id: transaction-code-unavailable-unique-grounded
     type: text_semantic
     rubric: >-
-      The phone-scoped lookup has exactly one approved purchase for Evento de prueba A and no customer transaction numbers, so COD301816 cannot be linked directly. The response must be entirely in natural Spanish and state the grounded approval for Evento de prueba A without claiming a code match. Code echo is not required and must not be demanded. It must not express manufactured uncertainty about the status, must not ask for email or OTP, must not ask the user to select among candidates, and must not reveal opaque backend order ids or sensitive payment details.
+      The phone-scoped lookup has exactly one approved purchase for Evento de prueba A with event date 2026-09-20 and no customer transaction numbers, so COD301816 cannot be linked directly. The response must be entirely in natural Spanish and either state the grounded approval for Evento de prueba A or ask one focused confirmation naming that visible candidate; both shapes are legitimate and neither may claim the code matched. The grounded event date 2026-09-20 may be reported and must not be treated as denied. Code echo is not required and must not be demanded. The reply must not express manufactured uncertainty about the status, must not ask for email or OTP, must not ask the user to select among candidates when only one exists, and must not reveal opaque backend order ids or sensitive payment details.
     minScore: 0.9
     requireJudge: true
     severity: hard

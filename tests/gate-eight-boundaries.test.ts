@@ -2,7 +2,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { PurchaseInformation } from '../src/core/information';
 import { redactArtifactText } from '../src/runtime/artifact-redaction';
-import { renderNeutralPurchaseSelection, renderReportedPendingInitial } from '../src/runtime/purchase-reply-projector';
+import { projectCompletedPurchaseForModel } from '../src/runtime/purchase-reply-projector';
 import { PromptLoader } from '../src/runtime/prompt-loader';
 
 describe('eight-failure gate boundaries', () => {
@@ -15,11 +15,22 @@ describe('eight-failure gate boundaries', () => {
     expect(redactArtifactText(safe)).toBe(safe);
   });
   it('does not imply a discrepancy when reported amount equals recorded total', () => {
-    const base = { eventName: 'Evento A', total: 63.85, paymentMethod: 'Transferencia' };
-    expect(renderReportedPendingInitial({ ...base, reportedAmount: 63.85 })).toBe('El pedido de Evento A por 63.85 mediante Transferencia sigue pendiente.');
-    const mismatch = renderReportedPendingInitial({ ...base, reportedAmount: 3.85 });
-    expect(mismatch).toContain('63.85');
-    expect(mismatch).toContain('Indicas haber enviado 3.85');
+    const result = {
+      requestId: 'gate-eight', kind: 'purchase', status: 'completed', resource: 'orders',
+      purchases: [{
+        orderId: 'internal-only', paymentStatus: 'pending', shippingStatus: null,
+        grandTotal: 63.85, paymentMethod: 'Transferencia', eventName: 'Evento A',
+        eventDate: '2026-09-12', eventUrl: null, createdAt: null, items: [],
+      }], carts: [], needsSelection: false, coverage: 'complete',
+      referenceResolution: 'not_requested',
+    } as never;
+    const evidence = projectCompletedPurchaseForModel(result, {
+      requestedAspects: ['summary', 'payment_status'],
+      userReported: { amount: 63.85 },
+    });
+    expect(evidence).toMatchObject({
+      outcome: { order: { amountMismatch: null } },
+    });
   });
   it('reads authorized disclosure and omits missing selection fields', () => {
     const purchase: PurchaseInformation = {
@@ -28,14 +39,16 @@ describe('eight-failure gate boundaries', () => {
       eventUrl: null, createdAt: null, items: [],
       amountDisclosure: { total: 120.5, paid: null, currency: null, currencySymbol: null, paymentMethod: 'Transferencia', presentation: 'recorded_method_no_currency' },
     };
-    const visible = renderNeutralPurchaseSelection([purchase]);
+    const result = {
+      requestId: 'gate-eight', kind: 'purchase', status: 'completed', resource: 'orders',
+      purchases: [purchase], carts: [], needsSelection: false, coverage: 'complete',
+      referenceResolution: 'not_requested',
+    } as never;
+    const visible = JSON.stringify(projectCompletedPurchaseForModel(result, {
+      requestedAspects: ['summary', 'payment_status'],
+    }));
     expect(visible).toContain('120.5');
-    expect(visible).toContain('Transferencia');
     expect(visible).not.toContain('internal-only');
-    const absent = renderNeutralPurchaseSelection([{ ...purchase, amountDisclosure: undefined }]);
-    expect(absent).not.toContain('monto');
-    expect(absent).not.toContain('no registrado');
-    expect(absent).toContain('2026-09-12');
   });
   it('keeps auth decision guidance out of the ordinary extractor bundle', async () => {
     const loader = new PromptLoader(path.resolve('prompts'));

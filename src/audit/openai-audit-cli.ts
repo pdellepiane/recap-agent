@@ -86,7 +86,8 @@ async function auditConversation(
   const callRefs = parseStoredCallRefs(record.openai_calls);
   const calls = await Promise.all(
     (Object.entries(callRefs) as Array<[keyof StoredCallRefs, OpenAiCallRef | null]>)
-      .filter((entry): entry is [keyof StoredCallRefs, OpenAiCallRef] => entry[1] !== null)
+      .filter((entry): entry is [keyof StoredCallRefs, OpenAiCallRef & { responseId: string }] =>
+        entry[1] !== null && entry[1].responseId !== null)
       .map(([component, callRef]) =>
         retrieveStoredPayload(client, component, callRef.responseId, callRef),
       ),

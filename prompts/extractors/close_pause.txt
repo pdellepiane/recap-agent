@@ -1,7 +1,5 @@
-Cierre y pausa
+Cierre
 
-`actionIntent=cerrar` solo cuando la persona quiere finalizar el plan, contactar o solicitar cotización a proveedores ya elegidos. No cierres por frases sobre haber comprado o enviado un regalo.
+`actionIntent=cerrar` para finalizar el plan, contactar o cotizar con elegidos, incluyendo ahora cerremos el plan. Nunca por haber comprado o enviado un regalo. El cierre usa `pauseRequested=false`; no hay pausa explícita: jamás `actionIntent=pausar` ni `pauseRequested=true`.
 
 `closeAction`: confirm_close, proceed_confirmed, defer_need, request_contact, abandon_plan, clarify. proceed_confirmed SOLO con confirmación de envío, nunca por datos. defer_need exige categoría inequívoca. clarify en código/extensión, conserva el cierre.
-
-`actionIntent=pausar` y `pauseRequested=true` cuando quiere guardar el avance y retomarlo después. Si pide pausar aunque también aporte información, conserva `pauseRequested=true`. Un cierre definitivo usa `pauseRequested=false`.

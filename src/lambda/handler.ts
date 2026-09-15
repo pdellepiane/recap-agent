@@ -1,5 +1,7 @@
 import crypto from 'node:crypto';
 import { normalizeInboundImage } from '../core/inbound-image';
+import OpenAI from 'openai';
+import { OpenAiImageFileStore } from '../runtime/image-file-store';
 
 import type {
   APIGatewayProxyEventV2,
@@ -10,6 +12,7 @@ import type {
 import { PromptLoader } from '../runtime/prompt-loader';
 import { getConfig } from '../runtime/config';
 import { DynamoPlanStore } from '../storage/dynamo-plan-store';
+import { DynamoRsvpEffectStore } from '../storage/dynamo-rsvp-effect-store';
 import { OpenAiAgentRuntime } from '../runtime/openai-agent-runtime';
 import { SinEnvolturasGateway } from '../runtime/sinenvolturas-gateway';
 import {
@@ -17,6 +20,11 @@ import {
 } from '../runtime/agent-conversation-gateway';
 import { FixtureAgentConversationGateway } from '../runtime/eval-fixture-gateway';
 import { FixtureProviderGateway } from '../runtime/fixture-provider-gateway';
+import {
+  assertFixtureAllowed,
+  buildFixtureConversationKey,
+  createEvalFixtureStateStoreFromEnv,
+} from '../runtime/eval-fixture-state';
 import type { FixtureData } from '../runtime/eval-fixture-gateway';
 import { ProviderVectorSearchGateway } from '../runtime/provider-vector-search';
 import { AgentService } from '../runtime/agent-service';
@@ -44,7 +52,7 @@ import {
   projectSafePlan,
   projectSafeRecord,
   projectSafeTrace,
-  redactArtifactText,
+  redactPublicResponseText,
   type ArtifactJsonValue,
 } from '../runtime/artifact-redaction';
 import { bearerTokenMatchIndex, readBearerAuthorization } from './bearer-auth';
@@ -68,6 +76,7 @@ import {
   mergeRuntimeCapabilityManifests,
   type RuntimeCapabilityManifest,
 } from '../runtime/capability-manifest';
+import { missingOutputOrigin, hashPrivateOutput } from '../audit/output-origin';
 
 const config = getConfig();
 
@@ -89,6 +98,7 @@ type SharedRuntimeDeps = {
   responseClassifier: OpenAiMessageResponseClassifier;
   planStore: DynamoPlanStore;
   perfStore: PerfStore;
+  imageFileStore: OpenAiImageFileStore;
 };
 
 let sharedRuntimeDepsPromise: Promise<SharedRuntimeDeps> | null = null;
@@ -142,6 +152,7 @@ async function handleRequest(
       deliveryAction?: string;
       currentNode?: string;
       traceId?: string;
+      outputOrigin?: HandleTurnResponse['outbound']['outputOrigin'];
       authenticationExecution?: HandleTurnResponse['trace']['authentication_execution_summary'];
       informationOutcomes?: HandleTurnResponse['trace']['information_execution_summary'];
       openAiCalls?: HandleTurnResponse['trace']['openai_calls'];
@@ -268,6 +279,20 @@ async function handleRequest(
     } catch {
       return respond(400, { error: 'Request body must be valid JSON.' }, 'invalid_json');
     }
+    // S1 fixture-marker boundary: every backendFixture marker is rejected in
+    // production before schema parsing, so an incomplete evaluation identity
+    // in production still hits this 403 instead of a schema 400. Development
+    // fixture execution requires the complete identity (scenario + runId +
+    // caseId) through channelRequestSchema below.
+    if (
+      rawBody !== null &&
+      typeof rawBody === 'object' &&
+      'backendFixture' in rawBody &&
+      (rawBody as { backendFixture?: unknown }).backendFixture !== undefined &&
+      config.deployment.environment !== 'development'
+    ) {
+      return respond(403, { error: 'Backend fixtures are available only in development.' }, 'invalid_request');
+    }
     if (route !== 'message') {
       const parsedOperation = agentParticipationRequestSchema.safeParse(rawBody);
       if (!parsedOperation.success) {
@@ -354,6 +379,11 @@ async function handleRequest(
     if (body.backendFixture && config.deployment.environment !== 'development') {
       return respond(403, { error: 'Backend fixtures are available only in development.' }, 'invalid_request');
     }
+    if (body.backendFixture && (!body.backendFixture.runId || !body.backendFixture.caseId)) {
+      return respond(400, {
+        error: 'Evaluation fixture execution requires a complete identity (scenario, runId, caseId).',
+      }, 'invalid_request');
+    }
     const channel = body.channel;
     const messageId = body.message_id ?? crypto.randomUUID();
     requestIdentity = {
@@ -374,10 +404,16 @@ async function handleRequest(
         channel,
         externalUserId: body.user_id,
       },
-      operation: async () => {
+      operation: async (lease) => {
         const hasFixture = Boolean(body.backendFixture?.scenario);
         const runtime = hasFixture
-          ? await getFixtureRuntime(body.backendFixture?.scenario as string)
+          ? await getFixtureRuntime({
+              scenario: body.backendFixture?.scenario as string,
+              runId: body.backendFixture?.runId as string,
+              caseId: body.backendFixture?.caseId as string,
+              channel,
+              externalUserId: body.user_id,
+            })
           : await getRuntime();
 
         const receivedAt = body.received_at ?? new Date().toISOString();
@@ -398,6 +434,18 @@ async function handleRequest(
           media,
           sessionId: body.session_id ?? null,
           contactPhone: body.contact_phone ?? null,
+          // Packet B internal execution context: whether the inbound id is
+          // channel-native (dedup coverage) plus the acquired lease identity
+          // with fresh validation for effect boundaries. The external
+          // inbound contract is unchanged (message_id stays optional).
+          nativeMessageId: body.message_id ? true : false,
+          turnLease: { ownerId: lease.ownerId, expiresAtMs: lease.expiresAtMs },
+          validateTurnLease: () => validateAcquiredLease(
+            getConversationTurnCoordinator(),
+            channel,
+            body.user_id,
+            lease.ownerId,
+          ),
         });
         const perfRecord = buildTurnPerfRecord({
           trace: response.trace,
@@ -442,6 +490,7 @@ async function handleRequest(
           response,
           perf,
           includeDiagnostics,
+          observedMessageId: messageId,
         }), 'success', {
           deliveryAction: response.outbound.delivery.action,
           currentNode: response.plan.current_node,
@@ -449,6 +498,7 @@ async function handleRequest(
           authenticationExecution: response.trace.authentication_execution_summary,
           informationOutcomes: response.trace.information_execution_summary,
           openAiCalls: response.trace.openai_calls,
+          outputOrigin: response.outbound.outputOrigin,
           feedbackSignalVersion: perfRecord.feedback_signals.schema_version,
           decisionSource: perfRecord.feedback_signals.routing.decision_source,
           ambiguityStatus: perfRecord.feedback_signals.routing.ambiguity_status,
@@ -480,14 +530,30 @@ export function buildCliResponseBody(args: {
   response: HandleTurnResponse;
   perf: CliPerfSummary | null | undefined;
   includeDiagnostics: boolean;
+  observedMessageId?: string | null;
 }): Record<string, ArtifactJsonValue> {
+  const outputOrigin = args.response.outbound.outputOrigin ??
+    missingOutputOrigin(args.response.outbound.text);
+  const originalText = args.response.outbound.text;
+  // Wire provenance boundary: the original hash is computed from the private
+  // delivered text BEFORE any diagnostic redaction. The redacted public
+  // message below must never be hashed as raw model-output proof; the live
+  // target recomputes wire evidence from this original hash. See
+  // independentlyObserveWireOutput.
+  const originalSha256 = originalText === null ? null : hashPrivateOutput(originalText);
   const body = {
-    message: args.response.outbound.text,
+    message: originalText,
+    message_original_sha256: originalSha256,
+    message_redaction_applied: false,
     delivery: args.response.outbound.delivery,
     conversation_id: args.response.outbound.conversationId,
     plan_id: args.response.plan.plan_id,
     current_node: args.response.plan.current_node,
     trace_id: args.response.trace.trace_id,
+    output_origin: {
+      ...outputOrigin,
+      mismatchFields: [...outputOrigin.mismatchFields],
+    },
   };
   if (!args.includeDiagnostics) {
     return body;
@@ -495,12 +561,15 @@ export function buildCliResponseBody(args: {
 
   return {
     ...body,
-    message: redactArtifactText(args.response.outbound.text ?? ''),
+    message: originalText === null ? null : redactPublicResponseText(originalText),
+    message_redaction_applied: true,
     trace: projectSafeTrace(args.response.trace),
     perf: args.perf === null || args.perf === undefined
       ? null
       : projectSafeRecord(args.perf),
-    plan: projectSafePlan(args.response.plan),
+    plan: projectSafePlan(args.response.plan, {
+      observedMessageId: args.observedMessageId ?? null,
+    }),
   };
 }
 
@@ -598,6 +667,9 @@ async function getSharedRuntimeDeps(): Promise<SharedRuntimeDeps> {
             region: config.aws.region,
           })
         : new NoopPerfStore();
+      const imageFileStore = new OpenAiImageFileStore(
+        new OpenAI({ apiKey, maxRetries: 0 }),
+      );
 
       return {
         promptLoader,
@@ -608,6 +680,7 @@ async function getSharedRuntimeDeps(): Promise<SharedRuntimeDeps> {
         planStore: runtimePlanStore,
         perfStore,
         capabilityManifest,
+        imageFileStore,
       };
     })();
   }
@@ -665,6 +738,12 @@ async function getRuntime(): Promise<{
             terminal_whatsapp: new WhatsAppMessageRenderer(),
           },
           capabilityManifest,
+          imageFileStore: shared.imageFileStore,
+          // Packet B: production RSVP effect receipts on the existing plans
+          // table (same conversation partition, RSVP_EFFECT# sort key).
+          rsvpEffectStore: new DynamoRsvpEffectStore(config.storage.plansTableName, undefined, {
+            region: config.aws.region,
+          }),
         }),
         perfStore: shared.perfStore,
       };
@@ -674,12 +753,46 @@ async function getRuntime(): Promise<{
   return runtimePromise;
 }
 
-async function getFixtureRuntime(scenario: string): Promise<{
+async function getFixtureRuntime(args: {
+  scenario: string;
+  runId: string;
+  caseId: string;
+  channel: string;
+  externalUserId: string;
+}): Promise<{
   service: AgentService;
   perfStore: PerfStore;
 }> {
+  // S1 durable isolated fixture history. The development evaluation marker
+  // carries the actual run/case identity; the conversation scope derives from
+  // the existing channel/user_id. Scenario-derived or local default IDs are
+  // never used here. One shared durable store is injected into both the
+  // conversation gateway and the provider-effect gateway so history and
+  // effects observe the same scope. Gateways are constructed per invocation;
+  // never globally cached (a cached gateway would leak history/effects
+  // between cases). The S3 redaction boundary is untouched: private plan
+  // state stays intact while public projections stay scrubbed.
+  assertFixtureAllowed(config.deployment.environment);
+  const scenario = args.scenario.trim();
+  const runId = args.runId.trim();
+  const caseId = args.caseId.trim();
+  if (!scenario || !runId || !caseId) {
+    throw new Error('Evaluation fixture execution requires a complete identity (scenario, runId, caseId).');
+  }
+  const conversationKey = buildFixtureConversationKey(args.channel, args.externalUserId);
+  const fixtureStore = createEvalFixtureStateStoreFromEnv();
+  if (!fixtureStore) {
+    throw new Error(
+      'Evaluation fixture state is not configured. Set EVAL_FIXTURE_TABLE_NAME (development EvalFixtureTable).',
+    );
+  }
   const shared = await getSharedRuntimeDeps();
-  const fixtureGateway = await FixtureAgentConversationGateway.create(scenario);
+  const fixtureGateway = await FixtureAgentConversationGateway.create(args.scenario, undefined, {
+    stateStore: fixtureStore,
+    runId,
+    caseId,
+    conversationKey,
+  });
   // Under fixture marker, providerGateway.lookupUserEventContext must not hit real backend.
   // Return deterministic empty typed context (fixture guestEvents drives reconciliation).
   const rawFixture = (fixtureGateway as unknown as { data?: Record<string, unknown> }).data ?? null;
@@ -691,7 +804,7 @@ async function getFixtureRuntime(scenario: string): Promise<{
     scenario,
     (rawFixture as FixtureData | null) ?? null,
     rawFixture ? 'loaded' : 'unknown_scenario',
-    { runId: `live-${scenario}`, caseId: scenario },
+    { runId, caseId, stateStore: fixtureStore },
   );
   const fixtureProviderGateway: typeof shared.providerGateway = {
     listCategories: (...args: Parameters<typeof originalProviderGateway.listCategories>) => originalProviderGateway.listCategories(...args),
@@ -759,6 +872,7 @@ async function getFixtureRuntime(scenario: string): Promise<{
         terminal_whatsapp: new WhatsAppMessageRenderer(),
       },
       capabilityManifest: fixtureGateway.capabilityDescriptor,
+      imageFileStore: shared.imageFileStore,
     }),
     perfStore: shared.perfStore,
   };
@@ -773,6 +887,13 @@ function getPlanStore(): DynamoPlanStore {
   return planStore;
 }
 
+/**
+ * Single conversation-turn lease boundary. Validation and authentication run
+ * before acquisition; plan/history reads, image upload/reference writes and
+ * all owner work run inside the lease operation. AgentService performs no
+ * nested acquisition with the same identity. Reads happen after acquisition
+ * so a second invocation observes references persisted by the first holder.
+ */
 async function runConversationTurn<T>(args: {
   requestId: string;
   hardDeadlineMs: number;
@@ -780,9 +901,14 @@ async function runConversationTurn<T>(args: {
     channel: string;
     externalUserId: string;
   };
-  operation: () => Promise<T>;
+  operation: (lease: { ownerId: string; expiresAtMs: number }) => Promise<T>;
   onEvent?: (event: ConversationTurnEvent) => void;
 }): Promise<T> {
+  // Packet B: the lease identity is generated here so it can be threaded
+  // into the service operation for effect-boundary validation and
+  // lease-conditioned writes, while the runner still owns acquisition.
+  const ownerId = crypto.randomUUID();
+  const expiresAtMs = args.hardDeadlineMs + config.conversationTurn.expirySafetyMs;
   return await runWithConversationTurnLease({
     coordinator: getConversationTurnCoordinator(),
     identity: args.identity,
@@ -791,7 +917,8 @@ async function runConversationTurn<T>(args: {
     executionReserveMs: config.conversationTurn.executionReserveMs,
     expirySafetyMs: config.conversationTurn.expirySafetyMs,
     pollMs: config.conversationTurn.pollMs,
-    operation: args.operation,
+    ownerId,
+    operation: () => args.operation({ ownerId, expiresAtMs }),
     onEvent: (event: ConversationTurnEvent) => {
       logConversationLeaseEvent(args.requestId, event);
       args.onEvent?.(event);
@@ -807,6 +934,28 @@ function getConversationTurnCoordinator(): DynamoConversationTurnCoordinator {
     );
   }
   return conversationTurnCoordinator;
+}
+
+/**
+ * Packet B: fresh lease validation at effect boundaries. Re-reads the live
+ * TURN_LOCK record and confirms it is still held by this owner and
+ * unexpired. Any read failure or mismatch fails closed (false).
+ */
+async function validateAcquiredLease(
+  coordinator: DynamoConversationTurnCoordinator,
+  channel: string,
+  externalUserId: string,
+  ownerId: string,
+): Promise<boolean> {
+  try {
+    const snapshot = await coordinator.currentLeaseSnapshot(channel, externalUserId);
+    if (!snapshot || snapshot.ownerId !== ownerId) {
+      return false;
+    }
+    return snapshot.expiresAtMs > Date.now();
+  } catch {
+    return false;
+  }
 }
 
 function logConversationLeaseEvent(requestId: string, event: ConversationTurnEvent): void {

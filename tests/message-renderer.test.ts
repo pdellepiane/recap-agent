@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import { WebChatMessageRenderer, WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import {
-  contactRequestMessageSchema,
   multiNeedRecommendationMessageSchema,
   type StructuredMessage,
 } from '../src/runtime/structured-message';
@@ -112,22 +111,6 @@ describe('WhatsAppMessageRenderer', () => {
       expect(parsed.needs[0]?.providers).toHaveLength(2);
     });
 
-    it('accepts only canonical contact request fields', () => {
-      const parsed = contactRequestMessageSchema.parse({
-        type: 'contact_request',
-        intro_es: 'Necesito tus datos para enviar la solicitud.',
-        requested_fields_es: ['full_name', 'email', 'phone'],
-      });
-
-      expect(parsed.requested_fields_es).toEqual(['full_name', 'email', 'phone']);
-      expect(() =>
-        contactRequestMessageSchema.parse({
-          type: 'contact_request',
-          intro_es: 'Necesito tus datos para enviar la solicitud.',
-          requested_fields_es: ['contact_name'],
-        }),
-      ).toThrow();
-    });
   });
 
   describe('welcome messages', () => {
@@ -260,36 +243,6 @@ describe('WhatsAppMessageRenderer', () => {
       const result = renderer.render({ message, providerResults: [provider] });
 
       expect(result).toContain('Ubicación: Ubicación no especificada.');
-    });
-  });
-
-  describe('contact request messages', () => {
-    it('renders canonical contact fields with country-code guidance', () => {
-      const message: StructuredMessage = {
-        type: 'contact_request',
-        intro_es: 'Necesito tus datos para enviar la solicitud.',
-        requested_fields_es: ['full_name', 'email', 'phone'],
-      };
-
-      const result = renderer.render({ message, providerResults: [] });
-
-      expect(result).toBe(
-        'Necesito tus datos para enviar la solicitud.\n\nEnvíame tu nombre completo, correo electrónico, teléfono con código de país.',
-      );
-    });
-
-    it('renders legacy contact field names defensively', () => {
-      const message: StructuredMessage = {
-        type: 'contact_request',
-        intro_es: 'Necesito tus datos para enviar la solicitud.',
-        requested_fields_es: ['contact_name', 'contact_email', 'contact_phone'],
-      };
-
-      const result = renderer.render({ message, providerResults: [] });
-
-      expect(result).toContain('nombre completo, correo electrónico, teléfono con código de país');
-      expect(result).not.toContain('contact_name');
-      expect(result).not.toContain('contact_phone');
     });
   });
 
@@ -433,56 +386,6 @@ describe('WhatsAppMessageRenderer', () => {
 
       expect(result).toBe('Encontré opciones para comparar.\n\nRevisemos el primer frente.');
       expect(result).not.toContain('No corresponde a esta categoría.');
-    });
-  });
-
-  describe('contact_request messages', () => {
-    it('renders contact request with field labels', () => {
-      const message: StructuredMessage = {
-        type: 'contact_request',
-        intro_es: 'Para continuar, necesito tus datos.',
-        requested_fields_es: ['full_name', 'email', 'phone'],
-      };
-
-      const result = renderer.render({ message, providerResults: [] });
-
-      expect(result).toContain('Para continuar, necesito tus datos.');
-      expect(result).toContain('Envíame tu nombre completo, correo electrónico, teléfono con código de país.');
-    });
-  });
-
-  describe('close_confirmation messages', () => {
-    it('renders selected and unselected lists', () => {
-      const message: StructuredMessage = {
-        type: 'close_confirmation',
-        summary_es: 'Resumen del cierre:',
-        selected_providers_es: ['fotografía: Foto Uno'],
-        unselected_needs_es: ['organización'],
-      };
-
-      const result = renderer.render({ message, providerResults: [] });
-
-      expect(result).toContain('Resumen del cierre:');
-      expect(result).toContain('Se enviarán solicitudes para:');
-      expect(result).toContain('- Fotografía: Foto Uno.');
-      expect(result).toContain('Se dejarán sin proveedor:');
-      expect(result).toContain('- Organización.');
-      expect(result).not.toContain('Confirmar');
-    });
-  });
-
-  describe('close_result messages', () => {
-    it('renders success and contact explanation', () => {
-      const message: StructuredMessage = {
-        type: 'close_result',
-        success_es: '¡Listo! Las solicitudes fueron enviadas.',
-        contact_explanation_es: 'Los proveedores te contactarán en 24-48 horas.',
-      };
-
-      const result = renderer.render({ message, providerResults: [] });
-
-      expect(result).toContain('¡Listo! Las solicitudes fueron enviadas.');
-      expect(result).toContain('Los proveedores te contactarán en 24-48 horas.');
     });
   });
 

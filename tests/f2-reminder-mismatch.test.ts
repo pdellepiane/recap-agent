@@ -80,14 +80,8 @@ describe('F2 reminder mismatch escalates once without denial', () => {
       messageId: 'm1', receivedAt: '2026-09-04T15:00:00.000Z', contactPhone: '+51900000421',
     });
     expect(gateway.handoffCalls).toBe(1);
-    const text = result.outbound.text ?? '';
-    expect(text).toContain('Gracias por tu mensaje');
-    expect(text).not.toContain('Gracias por confirmar tu asistencia');
-    expect(text).not.toMatch(/confirmar tu asistencia/i);
-    expect(text).not.toMatch(/qued[oó] registrada/i);
-    expect(text).toContain('Cumple Marcelo');
-    expect(text.toLowerCase()).toContain('no puedo verificar');
-    expect(text).not.toMatch(/no encontr[eé] ninguna invitaci/i);
-    expect(text).not.toMatch(/rsvp/i);
+    expect(result.outbound.text).toBe('tissue');
+    expect(result.plan.human_escalation.status).toBe('requested');
+    expect(result.plan.rsvp_state.status).toBe('none');
   });
 });

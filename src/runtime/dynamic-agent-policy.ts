@@ -24,7 +24,7 @@ export type DynamicAgentPolicy = {
   allowedNextNodes: readonly DecisionNode[];
 };
 
-const baseActionIntents = [
+export const baseActionIntents = [
   'reset_plan',
   'elicitar_necesidades',
   'buscar_proveedores',

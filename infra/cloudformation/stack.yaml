@@ -216,6 +216,9 @@ Rules:
             - !Equals [!Ref DeploymentEnvironment, production]
             - !Equals [!Ref FunctionName, recap-agent-runtime-dev]
 
+Conditions:
+  IsDevelopment: !Equals [!Ref DeploymentEnvironment, development]
+
 Resources:
   RuntimeLogGroup:
     Type: AWS::Logs::LogGroup
@@ -273,6 +276,32 @@ Resources:
         AttributeName: ttl_epoch_seconds
       TableName: !Sub '${FunctionName}-perf'
 
+  # S1 development-only durable fixture history. String pk/sk keys,
+  # on-demand billing, TTL attribute ttl. The existing PlansTable has no TTL
+  # and its Lambda permission lacks Query, so it is never repurposed for
+  # fixture state. Production receives neither this table nor fixture
+  # permissions/configuration (see Condition, scoped policy, and
+  # EVAL_FIXTURE_TABLE_NAME below).
+  EvalFixtureTable:
+    Type: AWS::DynamoDB::Table
+    Condition: IsDevelopment
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        Enabled: true
+        AttributeName: ttl
+      TableName: !Sub '${FunctionName}-eval-fixtures'
+
   RuntimeRole:
     Type: AWS::IAM::Role
     Properties:
@@ -308,6 +337,57 @@ Resources:
                   - !Ref SeApiSecretArn
                   - !Ref ChannelApiSecretArn
 
+  # S1 development-only fixture access, scoped to the EvalFixtureTable only.
+  # GetItem/PutItem/Query/UpdateItem cover consistent reads, conditional
+  # inserts, paginated queries, and atomic per-scope counters. Production
+  # receives neither this policy nor the table (Condition: IsDevelopment).
+  # Local evaluation principal setup: the se-dev profile in us-east-1
+  # (account 684516060775) used by the eval harness needs matching
+  # dynamodb rights on the development table; see docs/implementation-log.md.
+  EvalFixtureTableAccess:
+    Type: AWS::IAM::Policy
+    Condition: IsDevelopment
+    Properties:
+      PolicyName: recap-agent-eval-fixture
+      Roles:
+        - !Ref RuntimeRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:PutItem
+              - dynamodb:Query
+              - dynamodb:UpdateItem
+            Resource: !GetAtt EvalFixtureTable.Arn
+
+  # Packet B lease-fenced RSVP writes (saveFenced TransactWrite: Put +
+  # TURN_LOCK ConditionCheck on the existing plans table). DynamoDB
+  # TransactWriteItems requires per-operation permissions, so the role needs
+  # both dynamodb:TransactWriteItems and dynamodb:ConditionCheckItem;
+  # TransactWriteItems alone does not cover ConditionCheck. PutItem for the
+  # transact Put is already granted by recap-agent-dynamo above. Scoped to the
+  # plans table ARN only; item-level TURN_LOCK scoping stays in the runtime
+  # ConditionExpression, not IAM. Development-only (Condition:
+  # IsDevelopment) so production effective permissions are unchanged. No
+  # second table, no TTL change.
+  PlansTransactAccess:
+    Type: AWS::IAM::Policy
+    Condition: IsDevelopment
+    Properties:
+      PolicyName: recap-agent-plans-transact
+      Roles:
+        - !Ref RuntimeRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - dynamodb:TransactWriteItems
+              - dynamodb:ConditionCheckItem
+            Resource: !GetAtt PlansTable.Arn
+
   RuntimeFunction:
     Type: AWS::Lambda::Function
     DependsOn: RuntimeLogGroup
@@ -341,6 +421,11 @@ Resources:
           OPENAI_RETRIEVAL_TIMEOUT_MS: !Ref OpenAIRetrievalTimeoutMs
           RESPONSE_CLASSIFIER_MODE: !Ref ResponseClassifierMode
           PLANS_TABLE_NAME: !Ref PlansTable
+          # S1 development-only fixture state. Resolves to the
+          # EvalFixtureTable name in development and is removed entirely in
+          # production (Fn::If + AWS::NoValue), so production receives
+          # neither the table nor fixture configuration.
+          EVAL_FIXTURE_TABLE_NAME: !If [IsDevelopment, !Ref EvalFixtureTable, !Ref 'AWS::NoValue']
           PERF_TABLE_NAME: !Ref PerfTable
           PERF_RETENTION_DAYS: !Ref PerfRetentionDays
           PERF_CAPTURE_ASSISTANT_PREVIEW: !Ref PerfCaptureAssistantPreview
@@ -411,6 +496,10 @@ Outputs:
     Value: !Ref PlansTable
   PerfTableName:
     Value: !Ref PerfTable
+  EvalFixtureTableName:
+    Description: Development-only durable evaluation fixture history (absent in production).
+    Condition: IsDevelopment
+    Value: !Ref EvalFixtureTable
   RuntimeLogGroupName:
     Value: !Ref RuntimeLogGroup
   OpenAISecretArn:

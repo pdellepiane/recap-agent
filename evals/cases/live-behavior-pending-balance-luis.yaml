@@ -1,8 +1,8 @@
 template: template.base-live
 id: live_behavior.pending_balance_validation_luis
 suite: live_behavior_regression
-version: 1
-description: Luis pending Alejandra order and cart with null currency; balance reported as unknown and validation window applied.
+version: 2
+description: Luis pending Alejandra order and cart with null currency; the pending total is reported without a currency symbol and the remaining balance stays unknown.
 tags: [live, behavior, purchase, balance, validation, reported-interaction, luis]
 targetModes: [live_lambda]
 inputs:
@@ -39,11 +39,13 @@ expectations:
   - id: voucher-does-not-confirm
     type: text_semantic
     rubric: >-
-      This is the same Alejandra thread; the user reports sending the shortfall with a voucher image. The answer must stay on that pending order, acknowledge the report, restate that receipt cannot be confirmed from an image and the order remains pending pending backend validation, and repeat the 72 business hour window. It must not restart with a generic welcome, claim the payment was validated, or present a currency that the backend did not supply.
+      This is the same Alejandra thread; the user reports sending the 13.76 shortfall with a voucher image in a text-only turn with no new image attached. The answer must stay on that pending order, acknowledge the report, restate that the order remains pending backend validation without claiming the payment was validated, and repeat the 72 business hour window. It must not restart with a generic welcome, present a currency that the backend did not supply, or calculate a remaining balance. No image disclaimer is required for this text-only turn; silence about a nonexistent image is correct.
     minScore: 0.9
     requireJudge: true
     turnIndex: 1
     severity: hard
+notes:
+  - "R05 oracle revision v1 to v2, 2026-09-12, Packet F3. Old voucher-does-not-confirm demanded an image disclaimer although the turn is text-only with no image attached, failing a reply that acknowledged 13.76, retained pending state, and invented no currency (matrix: judge demands image/backend disclaimer though turn is text-only). New contract keeps pending state plus no invented currency and drops the disclaimer demand for a nonexistent image. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
 budget:
   maxTurns: 2
   estimatedPromptTokensPerTurn: 1800

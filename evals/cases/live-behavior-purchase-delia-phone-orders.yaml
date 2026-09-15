@@ -1,8 +1,8 @@
 template: template.base-live
 id: live_behavior.purchase_delia_status_by_phone
 suite: live_behavior_regression
-version: 1
-description: Delia's payment status is answered from phone-scoped order summaries without an account or OTP loop.
+version: 3
+description: Delia's payment status is answered from phone-scoped order summaries without an account or OTP loop. Live backend, no frozen fixture world.
 tags: [live, behavior, purchase, phone-orders, reported-interaction, delia]
 targetModes: [live_lambda]
 inputs:
@@ -10,6 +10,9 @@ inputs:
     channel: whatsapp
     contactPhone: "+51962983263"
     sessionId: live-purchase-delia-phone-orders-session
+notes:
+  - "R05 oracle revision v1 to v2, 2026-09-14, Packet EX1. Old delia-approved-payment-is-reported let the judge demand one fixed approved phrasing (matrix: wording literalism fails natural paraphrases of one approval). New contract judges behavior only: approval stated once, in the model's own wording without any fixed required phrase. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
+  - "R05 oracle revision v2 to v3, 2026-09-14, Packet A. This case runs against the live backend with no frozen fixture world, so the judge must weigh stated amounts and dates against the sanitized tool facts and user echo in the evidence, never as invention solely for a missing projection; inverted polarity, unauthorized writes, wrong entities, duplicate effects, and unanswered information still fail. Adds the operator-clarified ban on customer-facing image or URL requests (URLs arrive from the backend only). Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
 expectations:
   - id: delia-enters-information
     type: node_transition
@@ -23,7 +26,7 @@ expectations:
   - id: delia-approved-payment-is-reported
     type: text_semantic
     rubric: >-
-      The phone-scoped order lookup contains Delia's approved gift purchase for Caroline & Jason. The answer must be concise, natural, and entirely in Spanish; clearly say the payment is approved. It must not ask for email, an OTP, account registration, or a payment receipt, and must not expose private payment identifiers or gateway data.
+      The phone-scoped order lookup contains Delia's approved gift purchase for Caroline & Jason. This case runs against the live backend with no frozen fixture world: judge stated amounts and dates against the sanitized tool facts and user echo in the evidence, never as invention solely for a missing projection. The answer must be concise, natural, and entirely in Spanish; clearly say once that the payment is approved, in the model's own wording without any fixed required phrase: judge that approval was stated once (behavior), never exact phrasing; without calling it pending, failed, or under verification. It must not ask for email, an OTP, account registration, a payment receipt, an image, or a URL, and must not expose private payment identifiers or gateway data.
     minScore: 0.9
     requireJudge: true
     severity: hard

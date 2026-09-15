@@ -7,164 +7,40 @@ import { PromptLoader } from '../src/runtime/prompt-loader';
 import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
 import type { ProviderGateway, UserEventLookupResult } from '../src/runtime/provider-gateway';
-import { createEmptyPlan, mergePlan } from '../src/core/plan';
 
-describe('RSVP offer-variant fragment-only (T10-fix-3 A)', () => {
-  it('declining+offer variant outbound equals fragment exactly with no tissue', async () => {
-    const tissue1 = 'Tejido invalido que no debe aparecer.';
-    const tissue2 = 'Otra frase que deberia ser filtrada.';
-    const runtime = new OfferRuntime([rsvpExtraction({ action: null })], tissue1, tissue2);
-    const invitations: UserEventLookupResult['events'] = [
-      rsvpLookupInvitation({
-        guestId: 584353,
-        eventId: 38331,
-        eventName: 'Otra celebración prueba',
-        hasResponded: true,
-        willAttend: false,
-        datetime: '2026-08-19 05:00:00',
-      }),
-    ];
-    const store = new InMemoryPlanStore();
-    const seeded = mergePlan(
-      createEmptyPlan({ planId: 'plan-declining-offer', channel: 'whatsapp', externalUserId: 'user-declining' }),
-      {
-        current_node: 'responder_invitacion',
-        intent: 'responder_invitacion',
-        contact_phone: '+51973296571',
-        contact_phone_extension: '+51',
-        contact_phone_number: '973296571',
-        rsvp_state: {
-          status: 'awaiting_action',
-          pending_action: 'attending',
-          candidates: [{ guest_id: 584353, event_name: 'Otra celebración prueba', event_date: '2026-08-19 05:00:00' }],
-          requested_at: '2026-08-17T15:00:00.000Z',
-          selection_attempts: 0,
-        },
-      },
-    );
-    await store.save({ plan: seeded, reason: 'seed' });
+describe('RSVP model output for offer states', () => {
+  it('preserves generated wording for a declining-state offer', async () => {
+    const runtime = new OfferRuntime([rsvpExtraction({ action: null })], 'MODEL_DECLINING_OFFER');
+    const invitations = [rsvpLookupInvitation({ guestId: 584353, eventId: 38331, eventName: 'Otra celebración prueba', hasResponded: true, willAttend: false, datetime: '2026-08-19 05:00:00' })];
     const service = new AgentService({
-      planStore: store,
+      planStore: new InMemoryPlanStore(),
       runtime,
-      providerGateway: {
-        async lookupUserEventContext(): Promise<UserEventLookupResult | null> {
-          return {
-            lookup: { email: null, phone: '973296571' },
-            user: null,
-            events: invitations,
-            counts: { ownerEvents: 0, guestEvents: invitations.length, hostEvents: 0, celebratedEvents: 0, recentOrders: 0 },
-          };
-        },
-      } as unknown as ProviderGateway,
+      providerGateway: { async lookupUserEventContext(): Promise<UserEventLookupResult | null> { return { lookup: { email: null, phone: '973296571' }, user: null, events: invitations, counts: { ownerEvents: 0, guestEvents: 1, hostEvents: 0, celebratedEvents: 0, recentOrders: 0 } }; } } as unknown as ProviderGateway,
       agentConversationGateway: new OfferGateway(),
       promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
       renderers: { whatsapp: new WhatsAppMessageRenderer() },
     });
-    const inbound = {
-      channel: 'whatsapp' as const,
-      externalUserId: 'user-declining',
-      text: '¿Cómo figura mi asistencia?',
-      messageId: 'msg-declining',
-      receivedAt: '2026-08-27T15:00:00.000Z',
-      contactPhone: '+51973296571',
-    };
-    const result = await service.handleTurn(inbound);
-    const outbound = result.outbound.text ?? '';
-    const verifier = new AgentService({
-      planStore: new InMemoryPlanStore(),
-      runtime: new OfferRuntime([]),
-      providerGateway: { async lookupUserEventContext() { return null; } } as unknown as ProviderGateway,
-      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
-      renderers: { whatsapp: new WhatsAppMessageRenderer() },
-    }) as unknown as { renderRsvpCurrentStateDeterministically: (inv: unknown, offer: boolean) => string };
-    const fragment = verifier.renderRsvpCurrentStateDeterministically(
-      { eventId: 38331, guestId: 584353, eventName: 'Otra celebración prueba', eventDate: '2026-08-19 05:00:00', state: 'declining' } as unknown,
-      true,
-    );
-    expect(outbound).toBe(fragment);
-    expect(outbound).toContain('Figura que no asistirás');
-    expect(outbound).toContain('¿Deseas que confirme tu asistencia?');
-    expect(outbound.trim().endsWith('?')).toBe(true);
-    expect(outbound).not.toContain(tissue1);
-    expect(outbound).not.toContain(tissue2);
-    expect(outbound).not.toContain('Que disfrutes');
+    const result = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'user-declining', text: '¿Cómo figura mi asistencia?', messageId: 'msg-declining', receivedAt: '2026-08-27T15:00:00.000Z', contactPhone: '+51973296571' });
+    expect(result.plan.rsvp_state).toMatchObject({ status: 'awaiting_action', pending_action: 'attending' });
+    expect(result.outbound.text).toContain('MODEL_DECLINING_OFFER');
+    expect(runtime.composeRequests[0]?.errorMessage).toContain('"offer_action":true');
   });
 
-  it('attending variant keeps fragment lead plus tissue present', async () => {
-    const tissue1 = '¡Que disfrutes mucho la celebración!';
-    const tissue2 = 'Quedo atento por si necesitas algo más.';
-    const runtime = new OfferRuntime([rsvpExtraction({ action: null })], tissue1, tissue2);
-    const invitations: UserEventLookupResult['events'] = [
-      rsvpLookupInvitation({
-        guestId: 584352,
-        eventId: 38331,
-        eventName: 'Otra celebración prueba',
-        hasResponded: true,
-        willAttend: true,
-        datetime: '2026-08-19 05:00:00',
-      }),
-    ];
-    const store = new InMemoryPlanStore();
-    const seeded = mergePlan(
-      createEmptyPlan({ planId: 'plan-attending-offer', channel: 'whatsapp', externalUserId: 'user-attending' }),
-      {
-        current_node: 'responder_invitacion',
-        intent: 'responder_invitacion',
-        contact_phone: '+51973296571',
-        contact_phone_extension: '+51',
-        contact_phone_number: '973296571',
-        rsvp_state: {
-          status: 'awaiting_action',
-          pending_action: 'attending',
-          candidates: [{ guest_id: 584352, event_name: 'Otra celebración prueba', event_date: '2026-08-19 05:00:00' }],
-          requested_at: '2026-08-17T15:00:00.000Z',
-          selection_attempts: 0,
-        },
-      },
-    );
-    await store.save({ plan: seeded, reason: 'seed' });
+  it('does not prepend a state fragment to generated wording', async () => {
+    const runtime = new OfferRuntime([rsvpExtraction({ action: null })], 'MODEL_ATTENDING_STATE', 'MODEL_SECOND_PARAGRAPH');
+    const invitations = [rsvpLookupInvitation({ guestId: 584352, eventId: 38331, eventName: 'Otra celebración prueba', hasResponded: true, willAttend: true, datetime: '2026-08-19 05:00:00' })];
     const service = new AgentService({
-      planStore: store,
+      planStore: new InMemoryPlanStore(),
       runtime,
-      providerGateway: {
-        async lookupUserEventContext(): Promise<UserEventLookupResult | null> {
-          return {
-            lookup: { email: null, phone: '973296571' },
-            user: null,
-            events: invitations,
-            counts: { ownerEvents: 0, guestEvents: invitations.length, hostEvents: 0, celebratedEvents: 0, recentOrders: 0 },
-          };
-        },
-      } as unknown as ProviderGateway,
+      providerGateway: { async lookupUserEventContext(): Promise<UserEventLookupResult | null> { return { lookup: { email: null, phone: '973296571' }, user: null, events: invitations, counts: { ownerEvents: 0, guestEvents: 1, hostEvents: 0, celebratedEvents: 0, recentOrders: 0 } }; } } as unknown as ProviderGateway,
       agentConversationGateway: new OfferGateway(),
       promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
       renderers: { whatsapp: new WhatsAppMessageRenderer() },
     });
-    const inbound = {
-      channel: 'whatsapp' as const,
-      externalUserId: 'user-attending',
-      text: '¿Mi asistencia ya está confirmada?',
-      messageId: 'msg-attending',
-      receivedAt: '2026-08-27T15:00:00.000Z',
-      contactPhone: '+51973296571',
-    };
-    const result = await service.handleTurn(inbound);
-    const outbound = result.outbound.text ?? '';
-    const verifier = new AgentService({
-      planStore: new InMemoryPlanStore(),
-      runtime: new OfferRuntime([]),
-      providerGateway: { async lookupUserEventContext() { return null; } } as unknown as ProviderGateway,
-      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
-      renderers: { whatsapp: new WhatsAppMessageRenderer() },
-    }) as unknown as { renderRsvpCurrentStateDeterministically: (inv: unknown, offer: boolean) => string };
-    const fragment = verifier.renderRsvpCurrentStateDeterministically(
-      { eventId: 38331, guestId: 584352, eventName: 'Otra celebración prueba', eventDate: '2026-08-19 05:00:00', state: 'attending' } as unknown,
-      true,
-    );
-    expect(outbound).toContain(fragment);
-    expect(outbound.indexOf(fragment)).toBe(0);
-    expect(outbound).toContain(tissue1.replace(/\.$/, ''));
-    expect(outbound.indexOf(tissue1.replace(/\.$/, ''))).toBeGreaterThan(outbound.indexOf(fragment));
+    const result = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'user-attending', text: '¿Mi asistencia ya está confirmada?', messageId: 'msg-attending', receivedAt: '2026-08-27T15:00:00.000Z', contactPhone: '+51973296571' });
+    expect(result.outbound.text).toContain('MODEL_ATTENDING_STATE');
+    expect(result.outbound.text).toContain('MODEL_SECOND_PARAGRAPH');
+    expect(result.outbound.text).not.toContain('Gracias, tu asistencia');
   });
 });
 
@@ -180,7 +56,7 @@ class OfferRuntime implements AgentRuntime {
     this.composeRequests.push(request);
     const para1 = this.p1 ?? 'Modelo tejido 1';
     const para2 = this.p2 ?? 'Modelo tejido 2';
-    const paragraphs = this.p1 && this.p2 ? [this.p1, this.p2] : [para1, para2];
+    const paragraphs = this.p1 ? [this.p1, ...(this.p2 ? [this.p2] : [])] : [para1, para2];
     return { text: '', structuredMessage: { type: 'generic', paragraphs_es: paragraphs } };
   }
 }

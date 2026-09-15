@@ -1,8 +1,8 @@
 template: template.base-live
 id: live_behavior.rsvp_trusted_phone_reports_no_pending
 suite: live_behavior_regression
-version: 2
-description: A clear RSVP decision uses the trusted channel phone and distinguishes no associated invitations from no pending invitations.
+version: 3
+description: A clear RSVP decision uses the trusted channel phone and reports the scoped lookup outcome honestly without inventing an invitation.
 tags: [live, behavior, rsvp, attendance, trusted-phone, agent-api]
 targetModes: [live_lambda]
 inputs:
@@ -28,7 +28,7 @@ expectations:
   - id: reports-no-associated-invitation-outcome
     type: text_semantic
     rubric: >-
-      This case uses a reserved synthetic phone number for which the user-level lookup has no associated invitations at all. The response must say naturally and entirely in Spanish that no invitation is associated with the current number. It must not use the misleading statement that there are merely no pending invitations, request email or a one-time code, expose internal values, or claim that attendance was registered. It may offer human help if the guest expected an invitation.
+      This case uses a reserved synthetic phone number for which the user-level lookup completes with no associated invitations at all. The response must say naturally and entirely in Spanish that no invitation was found for the current number, either as an absolute absence or scoped to the completed lookup (no pending invitations found on this number passes when the lookup itself was complete). It must not request email or a one-time code, expose internal values, or claim that attendance was registered. It may offer human help if the guest expected an invitation. Only an unavailable or failed lookup must avoid absolute-absence wording.
     minScore: 0.9
     requireJudge: true
     severity: hard
@@ -36,6 +36,8 @@ expectations:
     type: text_not_contains
     phrases: ["RSVP", "rsvp"]
     severity: hard
+notes:
+  - "R05 oracle revision v2 to v3, 2026-09-12, Packet F3. Old reports-no-associated-invitation-outcome demanded absolute-absence wording and failed the merely-no-pending phrasing although no invitation was verified and no false mutation occurred (matrix: evaluate scoped complete-empty vs unavailable evidence, not one sentence). New contract passes scoped wording on a complete-empty lookup and reserves the failure for unavailable evidence stated as absence. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
 budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 1400

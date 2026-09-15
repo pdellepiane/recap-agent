@@ -21,6 +21,11 @@ import {
   type UserAuthState,
 } from './information';
 import { rsvpStateSchema, type RsvpState } from './rsvp';
+import {
+  MAX_IMAGE_ATTACHMENT_REFS,
+  imageAttachmentRefSchema,
+  mergeImageAttachmentRefs,
+} from './image-attachments';
 
 export const actionIntentValues = [
   'reset_plan',
@@ -57,6 +62,111 @@ export type GuestRange = (typeof guestRangeValues)[number];
 export const planLifecycleValues = ['active', 'finished'] as const;
 
 export type PlanLifecycleState = (typeof planLifecycleValues)[number];
+
+/**
+ * L4 persistent specialist ownership. Exactly three owners; the internal ID
+ * for Customer operations stays `customer_assistance` while the user-facing
+ * label is `Customer operations`. No fourth entry owner, no hidden subowner
+ * agents. Capability slices inside Customer assistance (purchase/RSVP/auth/
+ * support) are not persistent owners.
+ */
+export const ownerValues = ['planning', 'faq', 'customer_assistance'] as const;
+
+export type PlanOwner = (typeof ownerValues)[number];
+
+export const ownerSchema = z.enum(ownerValues);
+
+export const ownerLabels: Record<PlanOwner, string> = {
+  planning: 'Planning',
+  faq: 'General information',
+  customer_assistance: 'Customer operations',
+};
+
+/**
+ * R2 latest-response fallback record. One record only, never a second
+ * conversation database. It carries the latest successful rendered model
+ * text (provenance included) so a later turn can recover answered-vs-pending
+ * state when backend history lacks the current thread. Failed or suppressed
+ * turns never write here, so a truncated/failed/suppressed record can never
+ * mark a pending question answered. No image bytes, file IDs, URLs or
+ * descriptions travel here: text only, bounded below. Strict shape rejects
+ * any smuggled media keys by failing closed to null at the storage boundary.
+ */
+export const MAX_LAST_OUTBOUND_TEXT_BYTES = 4096;
+
+export const lastOutboundContextSchema = z.object({
+  message_id: z.string().trim().min(1).max(256),
+  text: z.string().min(1).max(8192),
+  text_truncated: z.boolean().default(false),
+  recorded_at: z.string().datetime({ offset: true }),
+  /**
+   * Lambda response construction is never end-user receipt: the channel
+   * supplies no acknowledgement, so the runtime only ever records
+   * `constructed`. `confirmed` is reserved for a future acknowledged
+   * delivery signal and must not be written from response construction.
+   */
+  delivery_evidence: z.enum(['constructed', 'confirmed']),
+}).strict();
+
+export type LastOutboundContext = z.infer<typeof lastOutboundContextSchema>;
+
+/**
+ * UTF-8-safe truncation at a valid character boundary (iterates code
+ * points, so multi-byte sequences are never split). A truncated excerpt is
+ * never proof that a particular question was answered; callers keep the
+ * pending question until a full answer is confirmed by task state.
+ */
+export function truncateTextToUtf8Bytes(
+  value: string,
+  maxBytes: number,
+): { text: string; truncated: boolean } {
+  if (Buffer.byteLength(value, 'utf8') <= maxBytes) {
+    return { text: value, truncated: false };
+  }
+  let bytes = 0;
+  let end = 0;
+  for (const char of value) {
+    const charBytes = Buffer.byteLength(char, 'utf8');
+    if (bytes + charBytes > maxBytes) break;
+    bytes += charBytes;
+    end += char.length;
+  }
+  return { text: value.slice(0, end), truncated: true };
+}
+
+/**
+ * Builds the fallback record from successful rendered model text only.
+ * Returns null for blank text (failed/suppressed turns carry no text and
+ * must never write here). No image bytes are accepted: this function only
+ * sees rendered text.
+ */
+export function buildLastOutboundContext(args: {
+  messageId: string;
+  text: string;
+  recordedAt: string;
+}): LastOutboundContext | null {
+  const messageId = args.messageId.trim();
+  if (messageId.length === 0 || args.text.length === 0) return null;
+  const bounded = truncateTextToUtf8Bytes(args.text, MAX_LAST_OUTBOUND_TEXT_BYTES);
+  if (bounded.text.length === 0) return null;
+  return {
+    message_id: messageId,
+    text: bounded.text,
+    text_truncated: bounded.truncated,
+    recorded_at: args.recordedAt,
+    delivery_evidence: 'constructed',
+  };
+}
+
+export const customerCapabilityValues = [
+  'purchase',
+  'rsvp',
+  'auth',
+  'support',
+  'none',
+] as const;
+
+export type CustomerCapability = (typeof customerCapabilityValues)[number];
 
 export const humanEscalationStatusValues = ['none', 'requested'] as const;
 
@@ -215,6 +325,13 @@ export const planSchema = z.object({
   conversation_summary: z.string(),
   last_user_goal: z.string().nullable(),
   open_questions: z.array(z.string()),
+  image_attachments: z.array(imageAttachmentRefSchema).max(MAX_IMAGE_ATTACHMENT_REFS).default([]),
+  owner: ownerSchema.default('planning'),
+  owner_capability: z.enum(customerCapabilityValues).nullable().default(null),
+  owner_pending_question: z.string().nullable().default(null),
+  owner_pending_task: z.string().nullable().default(null),
+  owner_return: ownerSchema.nullable().default(null),
+  last_outbound_context: lastOutboundContextSchema.nullable().optional(),
   updated_at: z.string(),
 });
 
@@ -292,6 +409,101 @@ export function normalizeRawPlan(raw: unknown): unknown {
     };
     delete informationState.support_anchor;
     plan.information_state = informationState;
+  }
+
+  // L4 ownership: exactly three persistent owners. Unknown or legacy
+  // owner values fall back to planning; capability is kept only under
+  // Customer assistance, otherwise cleared. No second state store.
+  if (
+    typeof plan.owner !== 'string' ||
+    !(ownerValues as readonly string[]).includes(plan.owner)
+  ) {
+    plan.owner = 'planning';
+  }
+  if (plan.owner !== 'customer_assistance') {
+    plan.owner_capability = null;
+  } else if (
+    typeof plan.owner_capability !== 'string' ||
+    !(customerCapabilityValues as readonly string[]).includes(plan.owner_capability)
+  ) {
+    plan.owner_capability = null;
+  }
+  if (
+    plan.owner_return !== null &&
+    plan.owner_return !== undefined &&
+    (!(typeof plan.owner_return === 'string') ||
+      !(ownerValues as readonly string[]).includes(plan.owner_return))
+  ) {
+    plan.owner_return = null;
+  }
+  if (
+    plan.owner_pending_question !== null &&
+    plan.owner_pending_question !== undefined &&
+    typeof plan.owner_pending_question !== 'string'
+  ) {
+    plan.owner_pending_question = null;
+  }
+  if (
+    plan.owner_pending_task !== null &&
+    plan.owner_pending_task !== undefined &&
+    typeof plan.owner_pending_task !== 'string'
+  ) {
+    plan.owner_pending_task = null;
+  }
+
+  // Latest-response fallback record only. Strict shape fails closed to null
+  // so smuggled media keys (bytes, urls, file IDs) can never persist here.
+  // Over-long text from older writers is re-truncated (never trusted as
+  // proof that a question was answered); unparseable records are dropped.
+  if (plan.last_outbound_context !== null && plan.last_outbound_context !== undefined) {
+    const parsed = lastOutboundContextSchema.safeParse(plan.last_outbound_context);
+    if (!parsed.success) {
+      plan.last_outbound_context = null;
+    } else if (
+      Buffer.byteLength(parsed.data.text, 'utf8') > MAX_LAST_OUTBOUND_TEXT_BYTES
+    ) {
+      const bounded = truncateTextToUtf8Bytes(parsed.data.text, MAX_LAST_OUTBOUND_TEXT_BYTES);
+      plan.last_outbound_context = {
+        ...parsed.data,
+        text: bounded.text,
+        text_truncated: true,
+      };
+    } else {
+      plan.last_outbound_context = parsed.data;
+    }
+  }
+
+  // Attachment refs carry linkage only. Normalize legacy url-only refs to
+  // the url kind, keep file refs with their linkage, and strip any other
+  // legacy keys (bytes, descriptions, store keys). Cap so old plans stay
+  // bounded. Expired file refs are pruned at projection time, not here, so
+  // a reload still shows the stored (expired) state for resubmission logic.
+  if (Array.isArray(plan.image_attachments)) {
+    const refs: unknown[] = plan.image_attachments;
+    plan.image_attachments = refs
+      .map((ref) => {
+        if (!ref || typeof ref !== 'object' || Array.isArray(ref)) return ref;
+        const record = ref as Record<string, unknown>;
+        if (record.kind === 'file') {
+          return {
+            kind: 'file',
+            fileId: record.fileId,
+            expiresAt: record.expiresAt,
+            mimeType: record.mimeType,
+            byteLength: record.byteLength,
+            contentDigest: record.contentDigest,
+            messageId: record.messageId,
+            receivedAt: record.receivedAt,
+          };
+        }
+        return { kind: 'url', url: record.url, messageId: record.messageId, receivedAt: record.receivedAt };
+      })
+      .map((ref) => imageAttachmentRefSchema.safeParse(ref))
+      .filter((parsed): parsed is typeof parsed & { success: true } => parsed.success)
+      .map((parsed) => parsed.data)
+      .slice(-MAX_IMAGE_ATTACHMENT_REFS);
+  } else if (plan.image_attachments !== undefined) {
+    delete plan.image_attachments;
   }
 
   // Seed typed auth_recovery once from legacy user_auth evidence, then merge
@@ -401,6 +613,13 @@ export function createEmptyPlan(args: {
     conversation_summary: '',
     last_user_goal: null,
     open_questions: [],
+    image_attachments: [],
+    owner: 'planning',
+    owner_capability: null,
+    owner_pending_question: null,
+    owner_pending_task: null,
+    owner_return: null,
+    last_outbound_context: null,
     updated_at: new Date(0).toISOString(),
   };
 }
@@ -604,10 +823,19 @@ export function replaceProviderNeeds(
   activeNeedCategory: ProviderCategory | null,
 ): PlanSnapshot {
   const parsedNeeds = providerNeeds.map((need) => providerNeedSchema.parse(need));
-  const activeCategory =
-    normalizeCategory(activeNeedCategory) ??
-    normalizeCategory(parsedNeeds[0]?.category) ??
+  // Active focus never points at a deferred need. A requested deferred
+  // category (or an absent one) falls back to the first non-deferred need;
+  // when every need is deferred there is no active focus to keep.
+  const requestedCategory = normalizeCategory(activeNeedCategory);
+  const requestedNeed = parsedNeeds.find(
+    (need) => normalizeCategory(need.category) === requestedCategory,
+  );
+  const fallbackCategory =
+    normalizeCategory(parsedNeeds.find((need) => need.status !== 'deferred')?.category) ??
     null;
+  const activeCategory = requestedNeed
+    ? (requestedNeed.status === 'deferred' ? fallbackCategory : requestedCategory)
+    : (requestedCategory ?? fallbackCategory);
   const activeProjection = projectActiveNeed(parsedNeeds, activeCategory);
 
   return planSchema.parse({
@@ -706,10 +934,24 @@ export function mergePlan(plan: PlanSnapshot, update: PlanUpdate): PlanSnapshot 
       })
     : (plan.auth_recovery ?? emptyAuthRecoveryState());
 
+  // L4 ownership coherence: a capability slice only lives under Customer
+  // assistance. Leaving the owner clears a stale capability unless the same
+  // update explicitly re-establishes Customer assistance with a capability.
+  const nextOwner = restUpdate.owner ?? plan.owner;
+  const nextCapability = restUpdate.owner_capability !== undefined
+    ? restUpdate.owner_capability
+    : plan.owner_capability;
+  const coherentCapability = nextOwner === 'customer_assistance' ? nextCapability : null;
+
   const merged: PersistedPlan = {
     ...plan,
     ...restUpdate,
+    owner_capability: coherentCapability,
     auth_recovery: mergedAuthRecovery,
+    image_attachments: mergeImageAttachmentRefs(
+      plan.image_attachments,
+      update.image_attachments,
+    ),
     user_auth: {
       ...plan.user_auth,
       ...(update.user_auth ?? {}),

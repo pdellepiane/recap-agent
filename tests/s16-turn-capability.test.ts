@@ -1,4 +1,3 @@
-import fs from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import {
   buildRuntimeCapabilityManifest,
@@ -21,11 +20,9 @@ import {
   decideHumanHelpAttempt,
 } from '../src/runtime/human-help-policy';
 import {
-  CapabilityOutcomeRenderer,
   claimAllowsSuccess,
-  defaultCapabilityOutcomeMessages,
-  parseCapabilityOutcomeMessages,
 } from '../src/runtime/capability-outcome-renderer';
+import { projectSupportHandoffEvidence } from '../src/runtime/reply-evidence-projector';
 import { toolNames } from '../src/runtime/prompt-manifest';
 
 function manifestWith(overrides = {}) {
@@ -176,17 +173,50 @@ describe('S16 turn capability authority', () => {
     expect(claimAllowsSuccess([{ operation: 'rsvp.response.write', claimsSuccess: true, receiptPresent: false }])).toBe(false);
   });
 
-  it('parses deterministic outcome prompts and renders handoff truthfully', async () => {
-    const content = await fs.readFile(`${process.cwd()}/prompts/capability/turn_outcomes.txt`, 'utf8');
-    const messages = parseCapabilityOutcomeMessages(content);
-    expect(messages).toEqual(expect.objectContaining(defaultCapabilityOutcomeMessages));
-    const renderer = new CapabilityOutcomeRenderer(messages);
-    expect(renderer.renderHandoffOutcome('handoff_requested')).toContain('apoyo humano');
-    expect(renderer.renderHandoffOutcome('handoff_failed')).toContain('no pude registrar');
-    expect(renderer.renderHandoffOutcome('outcome_unknown')).toContain('No lo reintentare');
-    expect(renderer.renderHandoffOutcome('handoff_failed', 'https://example.com/ayuda')).toContain('https://example.com/ayuda');
-    expect(renderer.renderHandoffOutcome('handoff_requested', 'https://example.com/ayuda')).not.toContain('https://example.com/ayuda');
-    expect(renderer.renderTurnOutcome({ status: 'already_completed', operation: 'rsvp.response.write', reason: 'enabled', requiredInput: [], allowedNext: 'none' })).toContain('ya quedo registrado');
+  it('projects handoff truthfulness as typed evidence for model composition', () => {
+    const requested = projectSupportHandoffEvidence({
+      result: { status: 'success', message: 'Requested.' },
+      phonePresent: true,
+      confirmedReceipt: true,
+    });
+    expect(requested.handoffOutcome).toBe('handoff_requested');
+    expect(requested.effectConfirmed).toBe(true);
+    expect(requested.receiptPresent).toBe(true);
+    const failed = projectSupportHandoffEvidence({
+      result: { status: 'failed', error: 'unavailable', retryable: false },
+      phonePresent: true,
+      confirmedReceipt: false,
+    });
+    expect(failed.handoffOutcome).toBe('handoff_failed');
+    expect(failed.effectConfirmed).toBe(false);
+    expect(failed.receiptPresent).toBe(false);
+    const unknown = projectSupportHandoffEvidence({
+      result: { status: 'failed', error: 'timeout', retryable: true, outcome: 'unknown' },
+      phonePresent: true,
+      confirmedReceipt: false,
+    });
+    expect(unknown.handoffOutcome).toBe('handoff_unknown');
+    expect(unknown.effectConfirmed).toBe(false);
+  });
+
+  it('never acquires a success claim from missing identity or a failed handoff', () => {
+    const missingIdentity = projectSupportHandoffEvidence({
+      result: { status: 'skipped', reason: 'missing_phone_number', message: 'Missing.' },
+      phonePresent: false,
+      confirmedReceipt: false,
+    });
+    expect(missingIdentity.handoffOutcome).not.toBe('handoff_requested');
+    expect(missingIdentity.identityAvailable).toBe(false);
+    expect(missingIdentity.effectConfirmed).toBe(false);
+    expect(missingIdentity.operationalNote).toContain('missing_phone_number');
+    const unavailable = projectSupportHandoffEvidence({
+      result: { status: 'skipped', reason: 'not_configured', message: 'Disabled.' },
+      phonePresent: true,
+      confirmedReceipt: false,
+    });
+    expect(unavailable.handoffOutcome).not.toBe('handoff_requested');
+    expect(unavailable.effectConfirmed).toBe(false);
+    expect(unavailable.operationalNote).toContain('not_configured');
   });
 });
 

@@ -1,6 +1,11 @@
+import crypto from 'node:crypto';
 import { z } from 'zod';
 import { providerCategorySchema } from '../core/provider-category';
 import type { PlanSnapshot } from '../core/plan';
+import {
+  imageAttachmentRefSchema,
+  isFileRefActive,
+} from '../core/image-attachments';
 
 export type ArtifactJsonValue =
   | string
@@ -44,7 +49,9 @@ export function redactArtifactText(value: string): string {
  * carries a bounded allowlisted summary; unknown tools stay omitted.
  * Safety net: any summary leaking email/JWT/stack reverts to omitted.
  */
-const MAX_DIAGNOSTIC_BYTES = 8192;
+// Keep enough room for effect receipts and transport aggregates on a normal turn.
+// These bounded diagnostics are not the full trace persisted in the Lambda response.
+const MAX_DIAGNOSTIC_BYTES = 12288;
 const MAX_CALL_SUMMARIES = 16;
 const MAX_CANDIDATE_DETAILS = 8;
 
@@ -52,6 +59,9 @@ export function projectSafeTrace(value: unknown): Record<string, ArtifactJsonVal
   const projected = redactArtifactRecord(value);
   const bounded: Record<string, ArtifactJsonValue> = {
     ...projected,
+    ...(isRecord(projected.openai_calls)
+      ? { openai_calls: compactOpenAiCalls(projected.openai_calls) }
+      : {}),
     ...(Array.isArray(projected.tool_inputs)
       ? {
           tool_inputs: projected.tool_inputs.slice(0, MAX_CALL_SUMMARIES).map((entry) =>
@@ -81,6 +91,43 @@ export function projectSafeTrace(value: unknown): Record<string, ArtifactJsonVal
     bounded['provider_candidate_audit'] = (bounded['provider_candidate_audit'] as ArtifactJsonValue[]).slice(0, MAX_CANDIDATE_DETAILS);
   }
   return enforceDiagnosticEnvelope(bounded, projected);
+}
+
+/**
+ * Transport request identifiers and hashes belong to the private audit record.
+ * Turn diagnostics retain the stage-level call and byte aggregates, but not the
+ * repeated per-request detail that can evict effect receipts from the envelope.
+ */
+function compactOpenAiCalls(
+  calls: Record<string, ArtifactJsonValue>,
+): ArtifactJsonValue {
+  const compacted: Record<string, ArtifactJsonValue> = {};
+  for (const [stage, value] of Object.entries(calls)) {
+    if (!isRecord(value)) {
+      compacted[stage] = value;
+      continue;
+    }
+    const metrics = value['requestMetrics'];
+    if (!isRecord(metrics)) {
+      compacted[stage] = value;
+      continue;
+    }
+    const transport = metrics['transport'];
+    if (!isRecord(transport)) {
+      compacted[stage] = value;
+      continue;
+    }
+    const compactTransport: Record<string, ArtifactJsonValue> = { ...transport };
+    delete compactTransport['requests'];
+    compacted[stage] = {
+      ...value,
+      requestMetrics: {
+        ...metrics,
+        transport: compactTransport,
+      },
+    };
+  }
+  return compacted;
 }
 
 function enforceDiagnosticEnvelope(
@@ -555,8 +602,111 @@ export function projectSafeRecord<T extends Record<string, unknown>>(value: T): 
  * retained only by the caller's in-process state, never by evaluator artifacts.
  * Auth recovery exposes only budgets, terminal reason, and counts: email and
  * preserved private context are redacted.
+ *
+ * S3 private/public separation. The private plan keeps real Files references
+ * and last-response text for continuity and native follow-up. This public
+ * projection omits every raw file ID, URL, and content digest: image refs are
+ * replaced by typed safe observations (kind, availability, expiry, message
+ * linkage fingerprint, count) and last-response text is scrubbed with the
+ * same public-response policy as the main diagnostic message. The input plan
+ * is never mutated. Silence and judge evidence must read the private plan
+ * (see src/evals/evaluation-state.ts), never this projection.
  */
-export function projectSafePlan(plan: PlanSnapshot): PlanSnapshot {
+export type SafeAttachmentMessageMatch = 'current' | 'prior' | 'unknown';
+
+export type SafeImageAttachmentObservation = {
+  kind: 'file' | 'url';
+  active: boolean;
+  expired: boolean;
+  expiresAt: string | null;
+  mimeType: string | null;
+  byteLength: number | null;
+  refFingerprint: string;
+  messageMatch: SafeAttachmentMessageMatch;
+  receivedAt: string | null;
+};
+
+export type SafePlanSnapshot = PlanSnapshot & {
+  image_attachment_observations: SafeImageAttachmentObservation[];
+  image_attachment_count: number;
+};
+
+export type ProjectSafePlanOptions = {
+  observedMessageId?: string | null;
+  nowMs?: number;
+};
+
+/**
+ * Shared public-response text policy for diagnostics and artifacts. Applies
+ * the free-text redaction used for the main response, plus provider-handle
+ * scrubbing (raw URLs, Files IDs, synthetic references, content digests) so
+ * a synthetic file ID, signed URL, email, or phone inside last-response text
+ * can never escape through the diagnostic plan or persisted artifacts. The
+ * private original text is hashed before this policy runs; never hash the
+ * output of this function as raw model-output provenance.
+ */
+export function redactPublicResponseText(value: string): string {
+  return redactArtifactText(value)
+    .replace(/https?:\/\/[^\s"'<>]+/giu, '[redacted-url]')
+    .replace(/\bwww\.[^\s"'<>]+/giu, '[redacted-url]')
+    .replace(/\bfile-[A-Za-z0-9_-]{3,}\b/gu, '[redacted-file]')
+    .replace(/\bsynth-[a-z0-9-]{8,}\b/giu, '[redacted-reference]')
+    .replace(/\b[a-f0-9]{64}\b/giu, '[redacted-digest]');
+}
+
+function fingerprintImageRefKey(value: string): string {
+  return crypto.createHash('sha256').update(value, 'utf8').digest('hex').slice(0, 16);
+}
+
+export function projectSafeImageAttachmentObservations(
+  plan: Pick<PlanSnapshot, 'image_attachments'>,
+  options?: ProjectSafePlanOptions,
+): SafeImageAttachmentObservation[] {
+  const nowMs = options?.nowMs ?? Date.now();
+  const observedRaw = options?.observedMessageId;
+  const observed = typeof observedRaw === 'string' && observedRaw.trim().length > 0
+    ? observedRaw.trim()
+    : null;
+  const attachments = Array.isArray(plan.image_attachments) ? plan.image_attachments : [];
+  const observations: SafeImageAttachmentObservation[] = [];
+  for (const entry of attachments) {
+    const parsed = imageAttachmentRefSchema.safeParse(entry);
+    if (!parsed.success) continue;
+    const ref = parsed.data;
+    const messageMatch: SafeAttachmentMessageMatch = observed === null
+      ? 'unknown'
+      : ref.messageId === observed ? 'current' : 'prior';
+    if (ref.kind === 'file') {
+      const active = isFileRefActive(ref, nowMs);
+      observations.push({
+        kind: 'file',
+        active,
+        expired: !active,
+        expiresAt: ref.expiresAt,
+        mimeType: ref.mimeType,
+        byteLength: ref.byteLength,
+        refFingerprint: fingerprintImageRefKey(`image-ref:file:${ref.fileId}:${ref.messageId}`),
+        messageMatch,
+        receivedAt: ref.receivedAt,
+      });
+    } else {
+      observations.push({
+        kind: 'url',
+        active: true,
+        expired: false,
+        expiresAt: null,
+        mimeType: null,
+        byteLength: null,
+        refFingerprint: fingerprintImageRefKey(`image-ref:url:${ref.url}:${ref.messageId}`),
+        messageMatch,
+        receivedAt: ref.receivedAt,
+      });
+    }
+  }
+  return observations;
+}
+
+export function projectSafePlan(plan: PlanSnapshot, options?: ProjectSafePlanOptions): SafePlanSnapshot {
   const recovery = (plan as Partial<PlanSnapshot>).auth_recovery ?? {
     sendAttempted: false,
     verificationAttempted: false,
@@ -565,8 +715,17 @@ export function projectSafePlan(plan: PlanSnapshot): PlanSnapshot {
     challengeRequestedAt: null,
     preservedRequest: null,
   };
+  const lastOutbound = (plan as Partial<PlanSnapshot>).last_outbound_context ?? null;
+  const attachmentObservations = projectSafeImageAttachmentObservations(plan, options);
   return {
     ...plan,
+    image_attachments: [],
+    image_attachment_observations: attachmentObservations,
+    image_attachment_count: attachmentObservations.length,
+    last_outbound_context: lastOutbound === null ? null : {
+      ...lastOutbound,
+      text: redactPublicResponseText(lastOutbound.text),
+    },
     contact_email: null,
     contact_phone: null,
     contact_phone_extension: null,

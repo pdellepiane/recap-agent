@@ -1,8 +1,8 @@
 template: template.base-live
 id: live_behavior.otp_sent_explains_image_limitation
 suite: live_behavior_regression
-version: 1
-description: After sending an email code, the assistant asks the user to copy and paste it without the confusing word text.
+version: 2
+description: After sending an email code, the assistant asks the user to type or paste it here, scoped to the credential step without a global image-reading claim.
 tags: [live, behavior, authentication, otp, image-limitation]
 targetModes: [live_lambda]
 inputs:
@@ -35,10 +35,12 @@ expectations:
   - id: post-send-image-guidance
     type: text_semantic
     rubric: >-
-      Pass only if the assistant responds naturally and entirely in Spanish that a one-time code was sent to the provided email, explicitly explains that it cannot read images or screenshots, and directly asks the user to copy and paste the code here. It must not use the word “texto” as an instruction, ask for the WhatsApp number, or claim that the protected event question has already been answered.
+      Pass only if the assistant responds naturally and entirely in Spanish that a one-time code was sent to the provided email, and directly asks the user to type or paste the code here as text for this credential step. It must not use the word “texto” as an instruction, must not claim a global inability to read images or screenshots, must not ask for the WhatsApp number, and must not claim that the protected event question has already been answered.
     minScore: 0.9
     requireJudge: true
     severity: hard
+notes:
+  - "R05 oracle revision v1 to v2, 2026-09-12, Packet F3. Old post-send-image-guidance demanded the retired universal inability-to-read-images sentence, failing an understandable credential-scoped instruction (matrix: universal image limitation is obsolete). New contract keeps the text-entry instruction scoped to the code step and forbids the global claim instead of requiring it. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
 budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 1800

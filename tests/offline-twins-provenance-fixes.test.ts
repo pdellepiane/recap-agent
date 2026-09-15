@@ -17,7 +17,7 @@ describe('offline twins provenance fixes F2 F3', () => {
     // response contract counterpart
     const contractPath = path.resolve(process.cwd(), 'prompts/nodes/resolver_consultas_informativas/response_contract.txt');
     const contract = fs.readFileSync(contractPath, 'utf8');
-    expect(contract).toContain('y que el enlace de recuperacion esta en esta conversacion, sin URL/montos y sin mencionar correo');
+    expect(contract).toContain('Para un carrito abandonado sin órdenes, usa solo su estado, evento y la ruta de recuperación autorizada por la evidencia.');
     expect(contract).not.toContain('y enlace ya enviado, sin URL/montos.');
     // ensure operational note does not assert email channel elsewhere for cart clause
     // the only correo mention in cart clause should be the negation, not an affirmation

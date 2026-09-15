@@ -1,8 +1,8 @@
 template: template.base-live
 id: live_behavior.current_campaign_order_over_historical_declined_maria_jose
 suite: live_behavior_regression
-version: 1
-description: Maria Jose current pending Isa and Lu order is selected over old declined AMORCITOS; balance is not recomputed.
+version: 2
+description: Maria Jose current pending Isa and Lu order is selected over old declined AMORCITOS; the recorded total stays usable and approval is never claimed.
 tags: [live, behavior, purchase, selection, campaign, reported-interaction, maria-jose]
 targetModes: [live_lambda]
 inputs:
@@ -18,6 +18,7 @@ backendFixture:
   scenario: purchase-maria-jose-554
 notes:
   - "El nombre registrado del evento es Isa and Lu; repetirlo tal cual no es mezcla de idiomas."
+  - "R05 oracle revision v1 to v2, 2026-09-12, Packet F3. Old shortfall-remains-pending let the judge call the stated 63.85 solely user-reported and therefore invented, although the stored reply input carries it as the recorded order total too (matrix: amount is in both recorded total and user report). New contract names 63.85 a grounded registry fact while keeping the pending-state core: no approval claim, no computed balance, no invented currency. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
 expectations:
   - id: current-order-enters-information
     type: node_transition
@@ -41,7 +42,7 @@ expectations:
   - id: shortfall-remains-pending
     type: text_semantic
     rubric: >-
-      After the user reports paying the shortfall for the same Isa and Lu order, the backend still reports the order as pending and provides no received-amount or balance fields; only a 72 business hour policy for transfer/Yape/Plin applies. The answer must be concise, natural Latin American Spanish, say the order remains pending and that validation can take up to 72 business hours, without claiming approval, denying receipt, calculating currency, or inventing a balance. It must not attribute user-reported or campaign-reported amounts to the order registry. It must not mention AMORCITOS or restart with a generic welcome.
+      After the user reports paying the shortfall for the same Isa and Lu order, the backend still reports the order as pending and provides no received-amount or balance fields; only a 72 business hour policy for transfer/Yape/Plin applies. The recorded order total 63.85 is a fixture-grounded registry fact shared with the user report, so stating it is never hallucination. The answer must be concise, natural Latin American Spanish, say the order remains pending and that validation can take up to 72 business hours, without claiming approval, denying receipt, calculating a remaining balance, or presenting a currency the backend did not supply. It must not treat a user-only figure as registry confirmation of the shortfall payment, must not mention AMORCITOS, and must not restart with a generic welcome.
     minScore: 0.9
     requireJudge: true
     turnIndex: 1

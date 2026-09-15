@@ -12,7 +12,13 @@ import {
   providerQueryIntentSchema,
 } from '../src/runtime/extraction-schemas';
 import type { ExtractionCapabilityProfile } from '../src/runtime/extraction-schemas';
+import { buildRuntimeCapabilityManifest } from '../src/runtime/capability-manifest';
+import {
+  deriveEstablishedExtractionDomain,
+  projectExtraction,
+} from '../src/runtime/extraction-projection';
 import { actionIntentValues } from '../src/core/plan';
+import { createEmptyPlan, mergePlan } from '../src/core/plan';
 
 const fitCriteria = {
   eventType: 'boda',
@@ -422,6 +428,110 @@ describe('structured extraction schemas', () => {
       capabilities: { ...capabilityProfile(), rsvp: true },
     });
     expect(withRsvp.keyof().options).toEqual(expect.arrayContaining(['rsvpDecisionSource']));
+  });
+
+  it('derives the established lane from typed plan state', () => {
+    const fresh = createEmptyPlan({ planId: 'p-l3-fresh', channel: 'whatsapp', externalUserId: 'u' });
+    expect(deriveEstablishedExtractionDomain(fresh)).toBeNull();
+
+    const purchase = mergePlan(fresh, {
+      current_node: 'resolver_consultas_informativas',
+      information_state: {
+        resume_node: null,
+        pending_requests: [{
+          requestId: 'information-1',
+          kind: 'purchase',
+          resource: 'orders',
+          query: 'Estado del pago.',
+          orderId: null,
+          aspects: ['payment_status'],
+          sensitiveFields: [],
+          authAction: 'none',
+        }],
+        selection_candidates: [],
+      },
+    });
+    expect(deriveEstablishedExtractionDomain(purchase)).toBe('purchase');
+
+    const support = mergePlan(fresh, {
+      current_node: 'resolver_consultas_informativas',
+      information_state: {
+        resume_node: null,
+        pending_requests: [{
+          requestId: 'information-1',
+          kind: 'faq',
+          query: '¿Cuánto demora un retiro?',
+        }],
+        selection_candidates: [],
+      },
+    });
+    expect(deriveEstablishedExtractionDomain(support)).toBe('support');
+
+    const rsvp = mergePlan(fresh, { current_node: 'responder_invitacion' });
+    expect(deriveEstablishedExtractionDomain(rsvp)).toBe('rsvp');
+  });
+
+  it('narrows established purchase/support/RSVP profiles to non-planning fields', () => {
+    const manifest = buildRuntimeCapabilityManifest({});
+    const fresh = createEmptyPlan({ planId: 'p-l3-prof', channel: 'whatsapp', externalUserId: 'u' });
+    const purchase = mergePlan(fresh, {
+      current_node: 'resolver_consultas_informativas',
+      information_state: {
+        resume_node: null,
+        pending_requests: [{
+          requestId: 'information-1',
+          kind: 'purchase',
+          resource: 'orders',
+          query: 'Estado del pago.',
+          orderId: null,
+          aspects: ['payment_status'],
+          sensitiveFields: [],
+          authAction: 'none',
+        }],
+        selection_candidates: [],
+      },
+    });
+    const projected = projectExtraction({
+      plan: purchase,
+      manifest,
+      requestedDomain: 'purchase',
+      candidateOperations: [],
+      allowedActionIntents: actionIntentValues,
+    });
+    const properties = Object.keys(
+      createDynamicExtractionSchema({
+        allowedActionIntents: projected.allowedActionIntents,
+        capabilities: projected.profile,
+      }).shape,
+    );
+
+    for (const field of [
+      'eventType', 'vendorCategory', 'providerQueryIntents',
+      'providerPlanOperations', 'selectedProviderReferences',
+      'closeAction', 'pauseRequested',
+    ]) {
+      expect(properties).not.toContain(field);
+    }
+    expect(properties).toEqual(expect.arrayContaining([
+      'informationRequests', 'supportAct', 'requestedOperation', 'contactEmail',
+    ]));
+
+    const rsvpPlan = mergePlan(fresh, { current_node: 'responder_invitacion' });
+    const rsvpProjected = projectExtraction({
+      plan: rsvpPlan,
+      manifest,
+      requestedDomain: 'rsvp',
+      candidateOperations: [],
+      allowedActionIntents: actionIntentValues,
+    });
+    const rsvpProperties = Object.keys(
+      createDynamicExtractionSchema({
+        allowedActionIntents: rsvpProjected.allowedActionIntents,
+        capabilities: rsvpProjected.profile,
+      }).shape,
+    );
+    expect(rsvpProperties).toEqual(expect.arrayContaining(['rsvpAction', 'rsvpParty']));
+    expect(rsvpProperties).not.toContain('providerQueryIntents');
   });
 });
 

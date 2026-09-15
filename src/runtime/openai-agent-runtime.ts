@@ -68,9 +68,11 @@ import {
 import { providerCategorySchema, categoryBucketNames } from '../core/provider-category';
 import type { ProviderCategory } from '../core/provider-category';
 import { projectCompletedPurchaseForModel } from './purchase-reply-projector';
+import { isApprovalBoundaryAnsweredByRecord } from './purchase-reconciliation';
 import {
   createDynamicExtractionSchema,
   normalizeRequestedOperation,
+  resolvePurchaseResourceForAspects,
   type OpenAiInformationRequest,
   type StructuredExtraction,
 } from './extraction-schemas';
@@ -460,17 +462,25 @@ type ReplyTurnEvidence = {
      close_pending_intention?: string | null;
      close_remaining_blockers?: CloseBlocker[];
      /**
-      * Attempted-check facts for unavailable-image replies. Typed record of
-      * the checks actually attempted on this turn (image availability with
-      * its typed reason, purchase lookups attempted with results returned)
-      * so the model grounds truthful uncertainty with a bounded fact-ask
-      * instead of vague recovery. Present only when image evidence is
-      * unavailable so unrelated turns stay byte-identical. Facts for the
-      * model to verbalize, never reply prose.
+      * Attempted-check facts for unavailable-image replies. The image check
+      * is always present here; purchase-record evidence travels only when a
+      * purchase read was actually attempted on this turn, carrying its real
+      * outcome, provenance and results. An attempted read that returned
+      * nothing is an empty result; a failed or unattempted read is never an
+      * empty-backend claim. Facts for the model to verbalize, never prose.
       */
      record_checks?: {
        image_check: { outcome: 'unavailable'; reason: string };
-       purchase_records: { lookups_attempted: number; results_returned: number };
+       purchase_records?: {
+         lookups_attempted: number;
+         results_returned: number;
+         outcomes: Array<{
+           status: 'completed' | 'needs_input' | 'failed';
+           access_method: string | null;
+           result_count: number;
+           failure_kind: string | null;
+         }>;
+       };
      };
      /**
       * Inbound-continuity facts for the model-owned send/suppress decision.
@@ -834,7 +844,7 @@ export function describeRsvpEventTime(
 ): { value: string; hour24: string; timezone: 'unknown' } | null {
   if (typeof value !== 'string' || value.trim().length === 0) return null;
   const stored = value.trim();
-  const match = stored.match(/\b(\d{2}):(\d{2})(?::(\d{2}))?\b/u);
+  const match = stored.match(/[T ](\d{2}):(\d{2})(?::(\d{2}))?\b/u);
   if (!match) return { value: stored, hour24: 'unknown', timezone: 'unknown' };
   return { value: stored, hour24: `${match[1]}:${match[2]}`, timezone: 'unknown' };
 }
@@ -1165,7 +1175,10 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     return [
       {
         kind: 'purchase',
-        resource: request.resource,
+        resource: resolvePurchaseResourceForAspects(
+          request.resource,
+          request.aspects.length > 0 ? request.aspects : (['summary'] as const),
+        ),
         query: request.query,
         orderId: normalizeExtractedOrderReference(request.orderId),
         ...(request.eventHint ? { eventHint: request.eventHint.trim() } : {}),
@@ -1928,6 +1941,64 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     return model.toLowerCase().startsWith('gpt-5');
   }
 
+  /**
+   * Binding-clarification skip for the reply input. The extractor ambiguity
+   * note binds the model to ask instead of answering; typed evidence already
+   * resolving the question lifts that bind so the model answers from
+   * evidence. Two typed shapes only, mirroring response_contract.txt:29: a
+   * resolved single image reference with available pixels, or candidate
+   * operations whose targets already carry completed projected evidence
+   * (answered information, a resolved RSVP record, or reply providers).
+   * Genuine multi-candidate ambiguity without such evidence keeps the note.
+   * Facts only, never reply prose.
+   */
+  private ambiguityAnsweredByProjectedEvidence(request: ComposeReplyRequest): boolean {
+    if (
+      request.imageEvidence?.status === 'available' &&
+      request.extraction.imageReference?.status === 'prior_single'
+    ) {
+      return true;
+    }
+    if (this.approvalBoundaryAnsweredByRecord(request)) {
+      return true;
+    }
+    const candidates = request.extraction.ambiguity?.candidateOperations ?? [];
+    if (candidates.length === 0) {
+      return false;
+    }
+    if ((request.informationResults ?? []).some((result) => result.status === 'completed')) {
+      return true;
+    }
+    if (request.rsvpPhoneEvidence?.state === 'resolved_single') {
+      return true;
+    }
+    return request.providerResults.length > 0;
+  }
+
+  /**
+   * Approval-boundary resolution for the reply input. Delegates to the
+   * single-owner predicate in purchase-reconciliation (receipt amount alone
+   * never proves approval; the record or the established receipt boundary
+   * settles it). Anything else keeps the ambiguity note. Typed evidence
+   * only; no phrase detection. Facts only, never reply prose.
+   */
+  private approvalBoundaryAnsweredByRecord(
+    request: ComposeReplyRequest,
+  ): boolean {
+    if (request.extraction.ambiguity?.questionKey !== 'status_or_proof_review') {
+      return false;
+    }
+    const receiptContext =
+      request.imageEvidence != null ||
+      (request.plan.image_attachments?.length ?? 0) > 0 ||
+      (request.extraction.imageReference != null &&
+        request.extraction.imageReference.status !== 'none');
+    return isApprovalBoundaryAnsweredByRecord({
+      informationResults: request.informationResults ?? [],
+      receiptContext,
+    });
+  }
+
   private composeConversationInput(
     request: ComposeReplyRequest,
     recommendationFunnel: RecommendationFunnelTrace,
@@ -1986,7 +2057,8 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     const hasImageEvidence = request.imageEvidence != null;
     const parts: Array<string | null> = [
       `Evidencia canónica del turno (JSON): ${JSON.stringify(evidence, null, 2)}`,
-      request.extraction.ambiguity?.status === 'ambiguous'
+      request.extraction.ambiguity?.status === 'ambiguous' &&
+      !this.ambiguityAnsweredByProjectedEvidence(request)
         ? 'La evidencia de ambigüedad contiene alternativas sin resolver. Pide una aclaración breve y no elijas una alternativa por tu cuenta.'
         : null,
       // R5: the close prompt carries the actual close outcome/next field
@@ -2375,34 +2447,68 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
   /**
    * Attempted-check facts for unavailable-image replies. Projects the typed
    * record of the checks actually attempted on this turn (image availability
-   * with its typed reason, purchase lookups attempted with results returned)
-   * so the model grounds truthful uncertainty with a bounded fact-ask
-   * instead of vague recovery. Returns no keys when the image is available
-   * or no image evidence travels, so unrelated turns stay byte-identical.
-   * Facts only, never reply prose.
+   * with its typed reason) so the model grounds truthful uncertainty with a
+   * bounded fact-ask instead of vague recovery. Purchase-record evidence is
+   * omitted entirely when no purchase read was attempted: zero unperformed
+   * reads can never read as an empty backend. When purchase reads ran, each
+   * outcome travels with its real status, provenance and result count, so an
+   * attempted read that returned nothing stays distinguishable from a failed
+   * or unavailable one. Returns no keys when the image is available or no
+   * image evidence travels, so unrelated turns stay byte-identical. Facts
+   * only, never reply prose.
    */
   private buildRecordCheckFacts(
     request: ComposeReplyRequest,
   ): Pick<ReplyTurnEvidence['turn_state'], 'record_checks'> {
     if (request.imageEvidence?.status !== 'unavailable') return {};
     const purchaseLookups = (request.informationResults ?? []).filter(
-      (result) => result.kind === 'purchase',
+      (
+        result,
+      ): result is InformationTaskResult & { kind: 'purchase' } =>
+        result.kind === 'purchase',
     );
-    const resultsReturned = purchaseLookups.reduce((total, result) => {
-      if (result.kind === 'purchase' && result.status === 'completed') {
-        return total + result.purchases.length;
+    const imageCheck = {
+      outcome: 'unavailable' as const,
+      reason: request.imageEvidence.reason ?? 'unknown',
+    };
+    if (purchaseLookups.length === 0) {
+      return { record_checks: { image_check: imageCheck } };
+    }
+    const outcomes = purchaseLookups.map((result) => {
+      if (result.status === 'completed') {
+        return {
+          status: 'completed' as const,
+          access_method: result.accessMethod ?? null,
+          result_count: result.purchases.length,
+          failure_kind: null as string | null,
+        };
       }
-      return total;
-    }, 0);
+      if (result.status === 'needs_input') {
+        return {
+          status: 'needs_input' as const,
+          access_method: null as string | null,
+          result_count: 0,
+          failure_kind: null as string | null,
+        };
+      }
+      return {
+        status: 'failed' as const,
+        access_method: result.accessMethod ?? null,
+        result_count: 0,
+        failure_kind: result.failureKind,
+      };
+    });
+    const resultsReturned = outcomes.reduce(
+      (total, outcome) => total + outcome.result_count,
+      0,
+    );
     return {
       record_checks: {
-        image_check: {
-          outcome: 'unavailable',
-          reason: request.imageEvidence.reason ?? 'unknown',
-        },
+        image_check: imageCheck,
         purchase_records: {
           lookups_attempted: purchaseLookups.length,
           results_returned: resultsReturned,
+          outcomes,
         },
       },
     };
@@ -2559,6 +2665,9 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       : evidence.candidates.map((candidate) => candidate.event_date).find((date) => date !== null) ?? null;
     const fact = describeRsvpEventTime(rawDate);
     if (!fact) return {};
+    // A date-only record carries no verified hour: project no fact so the
+    // model-owned sentence states no hour instead of a midnight default.
+    if (fact.hour24 === 'unknown') return {};
     return { rsvp_event_time: fact };
   }
 
@@ -3024,6 +3133,11 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     const seen = new Set<number>();
     const providers: ProviderSummary[] = [];
     for (const need of plan.provider_needs) {
+      // Deferred needs stay deferred: their rejected cards never re-enter
+      // reply candidates.
+      if (need.status === 'deferred') {
+        continue;
+      }
       const subQueryProviderIds = (need.sub_query_results ?? []).flatMap(
         (result) => result.selected_provider_ids,
       );
@@ -3880,6 +3994,21 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
           text: this.truncateText(entry.text, 1_200),
         })),
       };
+    }
+    if (result.status === 'completed' && result.kind === 'associated_event') {
+      // Event-fact answers (date/place) never volunteer RSVP attendance:
+      // the RSVP lane owns attendance evidence through its own lookup.
+      // Names, dates and places ride the reply; guestStatus stays out so a
+      // read-only question cannot manufacture an unrequested attendance
+      // claim. Both event fact sets stay preserved; the reply answers from
+      // the requested one.
+      return this.stripRawFields({
+        ...result,
+        result: {
+          ...result.result,
+          events: result.result.events.map((event) => ({ ...event, guestStatus: null })),
+        },
+      });
     }
     if (result.status !== 'completed' || result.kind !== 'purchase') {
       return this.stripRawFields(result);

@@ -1,0 +1,231 @@
+ D prompts/capability/turn_outcomes.txt
+ D prompts/nodes/resolver_consultas_informativas/handoff_outcomes.json
+ D prompts/nodes/resolver_consultas_informativas/host-withdrawal.json
+ M docs/implementation-log.md
+ M docs/plan/2026-09-09-lean-conversation/debug-2026-09-10.md
+ M docs/plan/2026-09-09-lean-conversation/evaluation-manifest.md
+ M docs/plan/2026-09-09-lean-conversation/outbound-inventory.md
+ M docs/plan/2026-09-09-lean-conversation/plan.md
+ M docs/plan/2026-09-09-lean-conversation/plan.yaml
+ M evals/cases/live-behavior-ambiguous-confirmation-adversarial.yaml
+ M evals/cases/live-behavior-current-campaign-order-maria-jose.yaml
+ M evals/cases/live-behavior-customer-transaction-code-by-phone.yaml
+ M evals/cases/live-behavior-customer-transaction-reference-unavailable-multiple.yaml
+ M evals/cases/live-behavior-image-captioned.yaml
+ M evals/cases/live-behavior-image-conversation-continuity.yaml
+ M evals/cases/live-behavior-image-readable-captionless.yaml
+ M evals/cases/live-behavior-image-too-large.yaml
+ M evals/cases/live-behavior-image-unavailable-captioned.yaml
+ M evals/cases/live-behavior-otp-not-received.yaml
+ M evals/cases/live-behavior-otp-sent-image-guidance.yaml
+ M evals/cases/live-behavior-otp-terminal-handoff-unknown.yaml
+ M evals/cases/live-behavior-pending-balance-luis.yaml
+ M evals/cases/live-behavior-purchase-martha-accountless.yaml
+ M evals/cases/live-behavior-rsvp-cinthya-campaign.yaml
+ M evals/cases/live-behavior-rsvp-confirmed-state.yaml
+ M evals/cases/live-behavior-rsvp-cristian-phone-enriched.yaml
+ M evals/cases/live-behavior-rsvp-declined-state.yaml
+ M evals/cases/live-behavior-rsvp-jose-campaign.yaml
+ M evals/cases/live-behavior-rsvp-multi-person-human-help.yaml
+ M evals/cases/live-behavior-rsvp-paolo-mariana-resolved-single.yaml
+ M evals/cases/live-behavior-rsvp-trusted-phone.yaml
+ M evals/cases/live-behavior-s01-frozen-world-identity.yaml
+ M evals/cases/live-behavior-s08-kiara-approved.yaml
+ M evals/cases/live-behavior-s11-rsvp-durability.yaml
+ M evals/cases/live-behavior-spanish-only.yaml
+ M evals/live-behavior-coverage.yaml
+ M evals/suites/live_behavior_regression.yaml
+ M prompts/nodes/aclarar_pedir_faltante/response_contract.txt
+ M prompts/nodes/crear_lead_cerrar/response_contract.txt
+ M prompts/nodes/crear_lead_cerrar/system.txt
+ M prompts/nodes/crear_lead_cerrar/tool_policy.txt
+ M prompts/nodes/necesidad_cubierta/response_contract.txt
+ M prompts/nodes/resolver_consultas_informativas/image_inspection.txt
+ M prompts/nodes/resolver_consultas_informativas/response_contract.txt
+ M prompts/nodes/responder_invitacion/response_contract.txt
+ M prompts/nodes/responder_invitacion/system.txt
+ M prompts/nodes/solicitar_agente_humano/system.txt
+ M src/audit/openai-audit-cli.ts
+ M src/audit/prompt-inventory.ts
+ M src/core/inbound-image.ts
+ M src/core/information.ts
+ M src/core/messages.ts
+ M src/core/plan.ts
+ M src/evals/case-schema.ts
+ M src/evals/reporting.ts
+ M src/evals/runner.ts
+ M src/evals/scorers/semantic-judge.ts
+ M src/evals/targets/live-lambda.ts
+ M src/evals/targets/offline.ts
+ M src/evals/trace-packets.ts
+ M src/lambda/handler.ts
+ M src/lambda/request-observability.ts
+ M src/runtime/agent-service.ts
+ M src/runtime/artifact-redaction.ts
+ M src/runtime/capability-boundary-renderer.ts
+ M src/runtime/capability-outcome-renderer.ts
+ M src/runtime/close-submission-summary.ts
+ M src/runtime/contracts.ts
+ M src/runtime/dynamic-agent-policy.ts
+ M src/runtime/eval-fixture-gateway.ts
+ M src/runtime/eval-fixture-state.ts
+ M src/runtime/extraction-projection.ts
+ M src/runtime/extraction-schemas.ts
+ M src/runtime/host-withdrawal-policy.ts
+ M src/runtime/information-orchestrator.ts
+ M src/runtime/knowledge-retrieval-gateway.ts
+ M src/runtime/message-renderer.ts
+ M src/runtime/message-response-classifier.ts
+ M src/runtime/model-composition.ts
+ M src/runtime/openai-agent-runtime.ts
+ M src/runtime/prompt-loader.ts
+ M src/runtime/prompt-manifest.ts
+ M src/runtime/provider-vector-search.ts
+ M src/runtime/purchase-reply-projector.ts
+ M src/runtime/reply-evidence-projector.ts
+ M src/runtime/rsvp-effect-executor.ts
+ M src/runtime/structured-message.ts
+ M tests/agent-service-information-flow.test.ts
+ M tests/agent-service-rsvp.test.ts
+ M tests/agent-service.test.ts
+ M tests/artifact-redaction.test.ts
+ M tests/b-fixture-oracles.test.ts
+ M tests/batch4-state-machine.test.ts
+ M tests/c-terminal-auth.test.ts
+ M tests/capability-boundary-routing.test.ts
+ M tests/capability-boundary.test.ts
+ M tests/cart-amount-not-volunteered.test.ts
+ M tests/close-proceed-confirmed.test.ts
+ M tests/conversation-turn-coordinator.test.ts
+ M tests/d-grounded-routes.test.ts
+ M tests/eval-fixture-gateway.test.ts
+ M tests/eval-live-target.test.ts
+ M tests/eval-runner-judge-context.test.ts
+ M tests/extraction-schemas.test.ts
+ M tests/f-trace-judge-repair.test.ts
+ M tests/f2-frozen-closure.test.ts
+ M tests/f2-reminder-mismatch.test.ts
+ M tests/f2-rsvp-declined-offer.test.ts
+ M tests/f3-ambiguous-confirmation.test.ts
+ M tests/f3-capability-safe-read.test.ts
+ M tests/f3-purchase-truthfulness.test.ts
+ M tests/f4-close-submission-summary.test.ts
+ M tests/f4-explicit-event-date.test.ts
+ M tests/f4-judge-close-evidence.test.ts
+ M tests/f4-reported-pending-order.test.ts
+ M tests/gate-eight-boundaries.test.ts
+ M tests/lambda-turn-coordination.test.ts
+ M tests/lean-close-footer.test.ts
+ M tests/message-renderer.test.ts
+ M tests/message-response-classifier.test.ts
+ M tests/model-output-origin.test.ts
+ M tests/offline-twins-provenance-fixes.test.ts
+ M tests/offline-twins-wave-c5.test.ts
+ M tests/openai-agent-runtime-token-usage.test.ts
+ M tests/openai-structured-schema.test.ts
+ M tests/prompt-audit.test.ts
+ M tests/prompt-loader.test.ts
+ M tests/request-observability.test.ts
+ M tests/rsvp-deterministic-current-state.test.ts
+ M tests/rsvp-handoff-multi-person.test.ts
+ M tests/rsvp-mutation-authorization.test.ts
+ M tests/rsvp-offer-fragment-only.test.ts
+ M tests/rsvp-party-precision.test.ts
+ M tests/rsvp-seeded-candidate-fallback.test.ts
+ M tests/s09-purchase-reply-projector.test.ts
+ M tests/s10-model-projection.test.ts
+ M tests/s11-rsvp-durability.test.ts
+ M tests/s16-turn-capability.test.ts
+ M tests/s17-image-turn.test.ts
+ M tests/semantic-judge.test.ts
+ M tests/static-prompt-comparison.test.ts
+?? .eval-archives/
+?? analysis/agent-complexity-handoffs/
+?? docs/plan/2026-09-05-stabilization/debug-2026-09-08.md
+?? docs/plan/2026-09-05-stabilization/debugging-evidence-2026-09-09.json
+?? docs/plan/2026-09-05-stabilization/debugging-plan-2026-09-09.md
+?? docs/plan/2026-09-05-stabilization/plan.yaml
+?? docs/plan/2026-09-05-stabilization/status-2026-09-08.md
+?? docs/plan/2026-09-05-stabilization/testing-handoff-2026-09-09.md
+?? docs/plan/2026-09-09-lean-conversation/START-HERE.md
+?? docs/plan/2026-09-09-lean-conversation/adversarial-review-2026-09-10.md
+?? docs/plan/2026-09-09-lean-conversation/batching-profile-sync.md
+?? docs/plan/2026-09-09-lean-conversation/customer-context.md
+?? docs/plan/2026-09-09-lean-conversation/debug-2026-09-11-gate-triage.md
+?? docs/plan/2026-09-09-lean-conversation/inbound-continuity-correction.md
+?? docs/plan/2026-09-09-lean-conversation/latest-run-31697069-case-matrix.md
+?? docs/plan/2026-09-09-lean-conversation/latest-run-31697069-evidence.json
+?? docs/plan/2026-09-09-lean-conversation/latest-run-31697069-repair-plan.md
+?? docs/plan/2026-09-09-lean-conversation/lean-image-execution-contract.md
+?? docs/plan/2026-09-09-lean-conversation/persistent-image-context.md
+?? docs/plan/2026-09-09-lean-conversation/progress-audit-2026-09-11.json
+?? docs/plan/2026-09-09-lean-conversation/progress-audit-2026-09-11.md
+?? docs/plan/2026-09-09-lean-conversation/receipt-attachment-feedback.md
+?? docs/plan/2026-09-09-lean-conversation/recheck-2026-09-14-evidence.json
+?? docs/plan/2026-09-09-lean-conversation/recheck-2026-09-14.md
+?? docs/plan/2026-09-09-lean-conversation/request-measurements-2026-09-11.md
+?? docs/plan/2026-09-09-lean-conversation/round2-usability-audit.md
+?? docs/plan/2026-09-09-lean-conversation/tasks/
+?? docs/plan/2026-09-09-lean-conversation/url-image-context.md
+?? docs/plan/2026-09-09-nine-failures-fix/
+?? docs/reporte-tests-comportamiento.md
+?? evals/cases/live-behavior-continuity-question-needs-image.yaml
+?? evals/cases/live-behavior-continuity-text-image-same-turn.yaml
+?? evals/cases/live-behavior-continuity-voucher-then-thanks.yaml
+?? evals/cases/live-behavior-image-conversation-repeat-answered.yaml
+?? evals/cases/live-behavior-image-expired-reference.yaml
+?? evals/cases/live-behavior-image-file-captioned.yaml
+?? evals/cases/live-behavior-image-file-delayed-question.yaml
+?? evals/cases/live-behavior-image-file-explicit-describe.yaml
+?? evals/cases/live-behavior-image-file-malformed.yaml
+?? evals/cases/live-behavior-image-file-unrelated.yaml
+?? evals/cases/live-behavior-image-multiple-pending-orders.yaml
+?? evals/cases/live-behavior-image-non-receipt-payment-claim.yaml
+?? evals/cases/live-behavior-image-receipt-ambiguous-digits.yaml
+?? evals/cases/live-behavior-image-receipt-illegible-amount.yaml
+?? evals/cases/live-behavior-image-url-describe.yaml
+?? evals/cases/live-behavior-image-url-receipt-payment.yaml
+?? evals/cases/live-behavior-image-url-unavailable.yaml
+?? evals/cases/live-behavior-owner-customer-payment-relevance.yaml
+?? evals/cases/live-behavior-owner-planning-to-faq-transfer.yaml
+?? evals/fixtures/image-clean-world.json
+?? evals/fixtures/image-distractor-history.json
+?? evals/fixtures/image-multi-pending.json
+?? evals/fixtures/images/
+?? evals/fixtures/s11-rsvp-durability-declining.json
+?? probe-s12.tmp.ts
+?? prompts/extractors/image_reference.txt
+?? r2measure.tmp.ts
+?? scripts/check-image-eval-fixtures.ts
+?? src/audit/matched-request-measurement.ts
+?? src/audit/openai-transport-capture.ts
+?? src/audit/output-origin.ts
+?? src/core/image-attachments.ts
+?? src/evals/silence.ts
+?? src/runtime/customer-context.ts
+?? src/runtime/image-file-store.ts
+?? src/runtime/owner-routing.ts
+?? tests/acceptance-contract-mutations.test.ts
+?? tests/c-step-c-grounding.test.ts
+?? tests/close-completed-evidence.test.ts
+?? tests/eval-image-fixture-integrity.test.ts
+?? tests/f3-oracle-revision-mutations.test.ts
+?? tests/handler-wire-observation.test.ts
+?? tests/image-file-persistence.test.ts
+?? tests/image-sdk-wire.test.ts
+?? tests/l1-semantic-evidence.test.ts
+?? tests/l4-customer-context-service.test.ts
+?? tests/l4-customer-context.test.ts
+?? tests/l4-owner-routing.test.ts
+?? tests/matched-request-measurement.test.ts
+?? tests/model-spans-origin.test.ts
+?? tests/openai-transport-capture.test.ts
+?? tests/phone-identity-rejection.test.ts
+?? tests/r3-image-access-fallback.test.ts
+?? tests/semantic-silence-integration.test.ts
+?? tests/silence-exemption.test.ts
+?? tests/spanish-only-multi-need-retention.test.ts
+?? tests/token-defer-close-yield.test.ts
+?? tests/url-image-context.test.ts
+?? tests/w1-07-structured-completeness.test.ts
+?? tests/w1-10-catastrophic-fix.test.ts

@@ -262,3 +262,40 @@ All commands run at worktree whose seven runtime blobs match section 0
   `tests/model-output-origin.test.ts(138,7): error TS2322: Type 'undefined' is
   not assignable to type 'TurnMessageContext'.` Noted as L1 scope per task
   acceptance; no runtime file touched by this inventory task.
+
+## 13. L5 amendment 2026-09-11 (prompt-loader / prompt-inventory reachability)
+
+Scope: L5-owned symbols only. Historical sections 0-12 preserved as-is.
+Method: production-caller grep over `src/` (excluding `tests/`), not name
+search alone. Base: worktree at `bdb4a88a` plus in-flight L2/L3/L4/URL-image
+edits, preserved untouched.
+
+| symbol | old caller (verified current) | replacement status |
+| --- | --- | --- |
+| `PromptLoader.loadImageMessages` (`prompt-loader.ts`) | none in production or tests (dead) | deleted L5; `image_outcomes.json` retained on disk pending l2-support owner decision, inventory now states `no production loader since L5` |
+| `PromptLoader.loadCapabilityBoundaryMessages` (`prompt-loader.ts`) | none in production or tests (dead); `parseCapabilityBoundaryMessages` kept, covered by `tests/capability-boundary.test.ts` | deleted L5; `nodes/.../capability_boundary.txt` retained pending l2-support owner decision, inventory now states `no production loader since L5` |
+| `prompt-inventory.ts` branch `capability/turn_outcomes.txt` | file deleted from disk earlier (`prompts/capability/` absent); branch unreachable dead code | deleted L5 |
+| `prompt-inventory.ts` branch `nodes/.../handoff_outcomes.json` | file deleted from disk earlier; branch unreachable dead code | deleted L5 |
+| `prompt-inventory.ts` loader strings naming `CapabilityBoundaryRenderer` / `CapabilityOutcomeRenderer` (known l2-support handoff leftover) | no such runtime symbols remain (both renderers already gutted to typed contracts) | fixed L5 to name the actual loader/parser state |
+| `prompt-inventory.ts` `auth_control.txt` entry (`deterministic_reply`, `no model call`) | actual consumer is `OpenAiAgentRuntime.extract` via `loadAuthControlBundle`, merged into extractor model input | fixed L5 to `extraction` with the real loader chain |
+| `extractorPromptFiles` missing `extractors/rsvp.txt` while `extractorPromptFilesForCapabilities({rsvp:true})` emits it | default fallback bundle diverged from the capability union | fixed L5: const now lists all 8 files; production unaffected (production `extract` always passes explicit capabilities, `openai-agent-runtime.ts:445`) |
+
+Not deleted (explicit): `nodes/.../capability_boundary.txt`,
+`nodes/.../image_outcomes.json` on-disk files and their tests stay until the
+l2-support owner rules; `parseCapabilityBoundaryMessages`,
+`claimAllowsSuccess`, `loadImageBundle`, `loadSupportContinuityBundle`,
+`loadAuthControlBundle`, `loadHostWithdrawalMessages` all have a live caller
+or sole test coverage and stay.
+
+Static metrics (samples, not runtime cost): default extractor fallback bundle
+is now 8 files, 16158 instruction bytes / 16483 serialized sample bytes
+(+~2437 vs the 7-file fallback; the added bytes are the previously-omitted
+`rsvp.txt`, 2411 bytes on disk). No production request changes: every
+production and audit caller passes explicit capabilities. No live baseline
+exists for a matched comparison, so no runtime byte-reduction claim is made.
+
+Net source delta L5 (vs `bdb4a88a` worktree, own hunks only):
+`prompt-loader.ts` -20 lines (dead methods/imports),
+`prompt-inventory.ts` -10 net (dead branches out, truthful strings in),
+`prompt-manifest.ts` +1, `tests/prompt-audit.test.ts` +3 regression tests.
+No prompt files deleted; file count stays 111 with zero unmapped.

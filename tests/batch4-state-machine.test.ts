@@ -622,8 +622,7 @@ describe('Batch 4 — State machine fixes', () => {
     });
 
     expect(response.plan.current_node).toBe('crear_lead_cerrar');
-    expect(response.trace.operational_note).toContain('Música');
-    expect(response.trace.operational_note).toContain('ninguna');
+    expect(response.trace.operational_note).toBeNull();
     expect(response.plan.provider_needs.find((n) => n.category === 'Música')?.status).toBe(
       'shortlisted',
     );

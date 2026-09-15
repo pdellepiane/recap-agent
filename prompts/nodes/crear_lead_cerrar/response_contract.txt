@@ -1,34 +1,18 @@
-La respuesta debe adaptarse a la fase actual del cierre:
+Genera la respuesta únicamente en paragraphs_es.
 
-1. Si faltan datos de contacto (contact_name, contact_email o contact_phone son nulos):
-   - Usa intro_es y requested_fields_es para pedir solo los campos que faltan de forma clara y amable.
-   - Explica brevemente que esos datos se necesitan para enviar la solicitud a los proveedores seleccionados.
-   - Para teléfono, pide el número completo con código de país (ej: +51 954779067).
+Usa la evidencia canónica del turno y no conviertas una llamada de herramienta en un resultado confirmado.
 
-2. Si ya hay contacto completo y el usuario está confirmando el cierre:
-   - Si la extracción indica proceed_confirmed (el usuario ya confirmó el envío en este turno), NO vuelvas a pedir confirmación: llama finish_plan en este mismo turno y usa success_es.
-   - Si la extracción indica confirm_close (quiere cerrar pero aún no confirmó el envío), usa summary_es para el resumen amable del cierre.
-   - Usa selected_providers_es con una línea por cada necesidad que tiene selected_provider_ids no vacío (ej: "catering: La Botanería").
-   - Usa unselected_needs_es con las categorías que NO tienen proveedor seleccionado o tienen estado no_providers_available.
-
-3. Tras confirmación y llamada exitosa a finish_plan:
-   - Usa success_es para confirmar que las solicitudes fueron enviadas y menciona qué proveedores fueron contactados.
-   - Usa contact_explanation_es para explicar que los proveedores se pondrán en contacto directamente por correo electrónico o teléfono en un plazo aproximado de 24 a 48 horas. Despídete con calidez.
-
-4. Si hay un bloqueo por shortlist sin seleccionar (Nota operativa lo indica):
-   - Usa paragraphs_es para explicar que antes de cerrar hay una necesidad con opciones pendientes. Pregunta si quiere elegir alguna o dejarla sin proveedor. Menciona que puede responder "ninguna" para dejarla sin proveedor.
-
-5. Si Nota operativa indica que un teléfono o correo electrónico es inválido:
-   - Usa paragraphs_es para explicar el problema y pedir solo ese dato corregido. No vuelvas a pedir los datos que ya están presentes en el plan.
-   - Si el problema es teléfono, menciona explícitamente el código de país y no vuelvas a listar proveedores.
-
-6. Si Nota operativa indica una aclaración sobre código de país/extensión:
-   - Responde en una sola frase qué significa: es el prefijo internacional del teléfono, por ejemplo +51 para Perú.
-   - Luego pide solo el teléfono completo con código de país.
-   - No muestres recomendaciones, shortlists ni opciones de proveedores en esta respuesta.
-
-Reglas generales:
-- nunca cerrar el plan sin confirmación explícita del usuario; una petición explícita de envío ("envía las cotizaciones", "para cerrar el plan") ya es la confirmación y exige llamar finish_plan en este mismo turno;
-- no fingir que se contactaron proveedores si finish_plan no fue llamado o retornó error;
-- no usar Markdown ni asteriscos;
-- no mencionar períodos de enfriamiento ni tiempos de espera para iniciar un nuevo plan.
+- Si turn_state.close_contact_missing_fields contiene campos y la fecha del evento ya está disponible, solicita solo esos datos. Si también falta la fecha, pide primero la fecha.
+- Si turn_state.close_contact_complete es verdadero, no pidas ningún dato de contacto: continúa o completa el envío para el proveedor seleccionado con los hechos del plan y solo pide la confirmación o el dato que realmente falte. Un teléfono ya guardado nunca se vuelve a pedir por un delta de nombre o correo.
+- Si turn_state.close_selected_providers lista proveedores, considéralos cubiertos y nunca pidas elegir otro para esas necesidades.
+- Si turn_state.close_deferred_categories contiene categorías, están descartadas: nunca pidas elegir un proveedor para ellas ni afirmes que se las contactó.
+- Si turn_state.close_event_date_available es falso, pide la fecha del evento una vez y espera; nunca inventes una fecha.
+- Si turn_state.close_unresolved_provider_needs contiene necesidades, explica la decisión pendiente y pide que el usuario elija o la deje sin proveedor.
+- Si no hay fecha explícita respaldada por el mensaje del usuario, solicita una fecha. No uses fechas de ejemplos, instrucciones o supuestos.
+- Solo afirma envíos cuando close_submission_receipt contiene recibos con status confirmed.
+- Para status failed o unresolved, describe el estado pendiente o fallido sin presentarlo como enviado.
+- En status partial, distingue cada recibo confirmado del que no lo está.
+- Si no existe close_submission_receipt, no afirmes que se contactó a ningún proveedor.
+- Una confirmación explícita permite la herramienta; nunca inventes una confirmación ni solicites otra después de un envío ya confirmado.
+- No agregues listas, pies de página, preguntas ni resúmenes después de generar los párrafos.
+- No uses Markdown ni asteriscos.

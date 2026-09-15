@@ -22,6 +22,7 @@ import type {
   ExtractionResult,
 } from '../src/runtime/contracts';
 import { createEmptyPlan, mergePlan } from '../src/core/plan';
+import { describeRsvpEventTime, OpenAiAgentRuntime } from '../src/runtime/openai-agent-runtime';
 import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import { PromptLoader } from '../src/runtime/prompt-loader';
 import type { ProviderGateway, UserEventLookupResult } from '../src/runtime/provider-gateway';
@@ -107,10 +108,38 @@ describe('event identity RSVP regressions', () => {
 
     expect(gateway.writes).toHaveLength(1);
     expect(gateway.writes[0]?.guest_id).toBe(22);
+    // The fresh-read verification targets the same event that was mutated.
+    expect(gateway.readEventIds).toContain(2);
     expect(runtime.composeRequests[0]?.rsvpPhoneEvidence).toMatchObject({
       state: 'resolved_single',
       event: { event_name: 'Boda Beto', rsvp_state: 'attending' },
     });
+    // The reply receipt carries the same guest/event IDs end to end, so the
+    // model-written prose grounds on Marta-equivalent B facts only.
+    const note = JSON.parse(runtime.composeRequests[0]?.errorMessage ?? '{}') as {
+      next_action: string;
+      selected_candidate: { guest_id: number };
+      backend_result: { status: string; guest_id: number; event_id: number };
+      verification: {
+        verification_status: string;
+        requested: { guest_id: number; event_id: number };
+        observed: { guest_id: number; event_id: number; attendance: string } | null;
+      };
+    };
+    expect(note.next_action).toBe('communicate_confirmed_state');
+    expect(note.selected_candidate.guest_id).toBe(22);
+    expect(note.backend_result).toMatchObject({ status: 'responded', guest_id: 22, event_id: 2 });
+    expect(note.verification.verification_status).toBe('verified');
+    expect(note.verification.requested).toMatchObject({ guest_id: 22, event_id: 2 });
+    expect(note.verification.observed).toMatchObject({ guest_id: 22, event_id: 2, attendance: 'attending' });
+    // The confirmation turn carries the stored event hour as a typed fact:
+    // rsvp_event_time derives from this projected date, so the model-owned
+    // sentence can state the hour. IDs and facts only, never prose pins.
+    const confirmedEvidence = runtime.composeRequests[0]?.rsvpPhoneEvidence;
+    const confirmedDate = confirmedEvidence?.state === 'resolved_single'
+      ? confirmedEvidence.event.event_date
+      : null;
+    expect(describeRsvpEventTime(confirmedDate)?.hour24).toBe('18:00');
   });
 
   it('sole A with a named B performs zero mutations and never answers A as B', async () => {
@@ -237,8 +266,63 @@ describe('event identity RSVP regressions', () => {
     },
   );
 
-  it('B after A then back to A preserves both fact sets per requested target', async () => {
+  it('shared name across different guests never auto-selects: asks a bounded selection', async () => {
+    const hostDeclining: ProviderEvent = {
+      ...EVENT_A,
+      eventId: 100,
+      guestId: 584353,
+      name: 'Otra celebracion prueba',
+      datetime: '2026-08-19 05:00:00',
+      guestStatus: { hasResponded: false, willAttend: false, hasCouple: null, responseDate: null },
+    };
+    const associatedSummary: AgentGuestEventSummary = {
+      eventId: 200,
+      name: 'Otra celebracion prueba',
+      slug: 'otra-celebracion-prueba',
+      url: null,
+      datetime: '2026-08-19 05:00:00',
+      type: null,
+      typeDetail: null,
+      stage: null,
+      city: null,
+      country: null,
+      currency: null,
+    };
     const runtime = new TwinRuntime([
+      twinExtraction({ action: null, eventReference: 'Otra celebracion prueba' }),
+    ]);
+    const gateway = new TwinGateway(
+      [],
+      [readDetail({ eventId: 200, guestId: 777, willAttend: true })],
+      { status: 'success', events: [associatedSummary] },
+    );
+    const service = twinService(
+      runtime,
+      gateway,
+      new InMemoryPlanStore(),
+      [hostDeclining],
+    );
+
+    await service.handleTurn(twinInbound('Cual es el estado de mi invitacion?', 'wamid-id-7'));
+
+    // No mutation, no cross-guest auto-pick: two guest-bound decided records
+    // for two different events stay unresolved, so the reply asks a bounded
+    // selection naming both candidates instead of answering with one
+    // guest's record. Same-guest same-event records still resolve directly.
+    expect(gateway.writes).toHaveLength(0);
+    const evidence = runtime.composeRequests[0]?.rsvpPhoneEvidence as unknown as {
+      state: string;
+      event?: { event_name: string | null; rsvp_state: string | null };
+      candidates?: Array<{ event_name: string | null; rsvp_state: string | null }>;
+    };
+    expect(evidence.state).toBe('needs_event_selection');
+    expect(evidence.event).toBeUndefined();
+    expect(evidence.candidates ?? []).toHaveLength(2);
+    expect((evidence.candidates ?? []).map((candidate) => candidate.rsvp_state).sort())
+      .toEqual(['attending', 'declining']);
+  });
+
+  it('B after A then back to A preserves both fact sets per requested target', async () => {    const runtime = new TwinRuntime([
       twinExtraction({ action: null, eventReference: 'Boda Ana' }),
       twinExtraction({ action: null, eventReference: 'Boda Beto' }),
       twinExtraction({ action: null, eventReference: 'Boda Ana' }),
@@ -260,6 +344,94 @@ describe('event identity RSVP regressions', () => {
     expect(names[0]).toMatchObject({ event_name: 'Boda Ana', event_date: '2026-09-20 18:00:00' });
     expect(names[1]).toMatchObject({ event_name: 'Boda Beto', event_date: '2026-09-21 18:00:00' });
     expect(names[2]).toMatchObject({ event_name: 'Boda Ana', event_date: '2026-09-20 18:00:00' });
+  });
+});
+
+/**
+ * R6 midnight-suppression twins through the real reply-evidence projection
+ * (offline: buildReplyTurnEvidence only, no model call). A date-only record
+ * carries no verified hour, so no rsvp_event_time fact is projected and the
+ * model-owned sentence states no hour instead of a midnight default. Full
+ * datetimes project their stored hour verbatim. Facts only, never prose.
+ */
+describe('rsvp event-time midnight suppression', () => {
+  function projectRsvpEventTime(eventDate: string | null) {
+    const runtime = new OpenAiAgentRuntime({
+      apiKey: 'test',
+      replyModel: 'gpt-5',
+      extractorModel: 'gpt-5',
+      replyProviderLimit: 2,
+      presentationProviderLimit: 2,
+      providerDetailLookupLimit: 2,
+      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
+      providerGateway: { lookupUserEventContext: async () => null } as unknown as never,
+    });
+    const evidence = (runtime as unknown as { buildReplyTurnEvidence: (args: unknown) => {
+      rsvp_event_time?: { value: string; hour24: string; timezone: 'unknown' };
+    } }).buildReplyTurnEvidence({
+      request: {
+        currentNode: 'responder_invitacion',
+        previousNode: 'responder_invitacion',
+        userMessage: 'Confirmo la boda de Beto',
+        messageContext: { historyStatus: 'none', recentMessages: [], history: [] } as unknown as never,
+        plan: createEmptyPlan({ planId: 'plan-twin-hour', channel: 'whatsapp', externalUserId: 'user-identity' }),
+        extraction: twinExtraction({ action: 'attending', eventReference: 'Beto' }),
+        missingFields: [],
+        searchReady: false,
+        providerResults: [],
+        errorMessage: null,
+        promptBundleId: 'test',
+        promptFilePaths: [],
+        toolUsage: { considered: [], called: [], inputs: [], outputs: [] },
+        rsvpPhoneEvidence: {
+          state: 'resolved_single',
+          coverage: 'complete',
+          resolution: 'authoritative_invitation',
+          event: {
+            event_name: 'Boda Beto',
+            event_date: eventDate,
+            invitation_record: 'available',
+            rsvp_state: 'attending',
+          },
+        },
+      },
+      focusNeedCategory: null,
+      providerResults: [],
+      recommendationFunnel: null,
+      authenticationOnlyReply: false,
+    });
+    return evidence.rsvp_event_time;
+  }
+
+  it('projects no hour fact for a date-only record', () => {
+    expect(describeRsvpEventTime('2026-09-21')?.hour24).toBe('unknown');
+    expect(projectRsvpEventTime('2026-09-21')).toBeUndefined();
+  });
+
+  it('reads ISO-T hours verbatim instead of the trailing midnight default', () => {
+    expect(describeRsvpEventTime('2026-09-21T19:00:00.000Z')?.hour24).toBe('19:00');
+    expect(describeRsvpEventTime('2026-09-21T00:00:00.000Z')?.hour24).toBe('00:00');
+  });
+
+  it('projects the truly-midnight ISO-T source instead of suppressing it', () => {
+    expect(projectRsvpEventTime('2026-09-21T00:00:00.000Z')).toEqual({
+      value: '2026-09-21T00:00:00.000Z',
+      hour24: '00:00',
+      timezone: 'unknown',
+    });
+  });
+
+  it.each([
+    { stored: '2026-09-21 19:00:00', expected: '19:00' },
+    { stored: '2026-09-20 18:00:00', expected: '18:00' },
+    { stored: '2026-09-21T19:00:00.000Z', expected: '19:00' },
+    { stored: '2026-09-21T18:00:00.000Z', expected: '18:00' },
+  ])('projects the stored hour verbatim for $stored', ({ stored, expected }) => {
+    expect(projectRsvpEventTime(stored)).toEqual({
+      value: stored,
+      hour24: expected,
+      timezone: 'unknown',
+    });
   });
 });
 
@@ -288,6 +460,7 @@ class TwinRuntime implements AgentRuntime {
 
 class TwinGateway implements AgentConversationGateway {
   readonly writes: AgentGuestRsvpInput[] = [];
+  readonly readEventIds: number[] = [];
   reads = 0;
 
   constructor(
@@ -324,8 +497,9 @@ class TwinGateway implements AgentConversationGateway {
     return this.guestEvents;
   }
 
-  async getEventDetail(): Promise<AgentEventDetailResult> {
+  async getEventDetail(input: { eventId: number }): Promise<AgentEventDetailResult> {
     this.reads += 1;
+    this.readEventIds.push(input.eventId);
     const next = this.readScript.shift();
     if (next instanceof Error) {
       throw next;

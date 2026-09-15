@@ -6,15 +6,9 @@ import type {
   PurchaseInformation,
 } from '../src/core/information';
 import {
-  checkPurchaseNarrativeClaims,
+  projectCompletedPurchaseForModel,
   projectPurchaseReplyForModel,
-  renderPurchaseReplyDeterministic,
-  renderReferenceMatchedSingle,
-  renderReferenceSelection,
-  resolvePurchaseReplyText,
   selectPurchaseReplyOutcome,
-  shouldRenderReferenceMatchedSingle,
-  shouldRenderReferenceSelection,
 } from '../src/runtime/purchase-reply-projector';
 
 function order(overrides: Partial<PurchaseInformation> = {}): PurchaseInformation {
@@ -69,7 +63,10 @@ describe('S09 purchase reply projector keeps carts distinct from orders', () => 
     if (outcome.kind !== 'cart_only') return;
     expect(outcome.cart.recordType).toBe('cart');
     expect(outcome.cart).not.toHaveProperty('grandTotal');
-    expect(outcome.cart).not.toHaveProperty('paymentStatus');
+    // C1: the cart carries explicit nulls (never order values) for payment
+    // state and amount so the reply keeps them on the order record.
+    expect(outcome.cart.paymentStatus).toBeNull();
+    expect(outcome.cart.amount).toBeNull();
     expect(outcome.cart).not.toHaveProperty('subtotal');
     expect(outcome.cart).not.toHaveProperty('amountDisclosure');
   });
@@ -90,7 +87,9 @@ describe('S09 purchase reply projector keeps carts distinct from orders', () => 
     expect(outcome.order.recordType).toBe('order');
     expect(outcome.cart.recordType).toBe('cart');
     expect(outcome.cart).not.toHaveProperty('grandTotal');
-    expect(outcome.cart).not.toHaveProperty('paymentStatus');
+    // C1: explicit nulls keep order payment state and amount off the cart.
+    expect(outcome.cart.paymentStatus).toBeNull();
+    expect(outcome.cart.amount).toBeNull();
     expect(outcome.order.paymentStatus).toBe('pending');
   });
 });
@@ -134,8 +133,8 @@ describe('S09 reported amounts never become settlement evidence', () => {
   });
 });
 
-describe('S09 unique records render directly while multiples require selection', () => {
-  it('states a unique record directly when customer-reference metadata is unavailable', () => {
+describe('S09 purchase facts reach the reply model', () => {
+  it('selects a unique record without inventing a reference', () => {
     const outcome = selectPurchaseReplyOutcome({
       purchases: [order({ customerTransactionNumber: null })],
       carts: [],
@@ -149,11 +148,13 @@ describe('S09 unique records render directly while multiples require selection',
     expect(outcome.kind).toBe('order_unique');
     if (outcome.kind !== 'order_unique') return;
     expect(outcome.order.transactionReference).toBeNull();
-    const text = renderPurchaseReplyDeterministic(outcome);
-    expect(text).not.toMatch(/codigo|vincular|elija|opciones/iu);
+    expect(projectPurchaseReplyForModel(outcome)).toMatchObject({
+      recordType: 'order',
+      order: { paymentStatus: 'pending' },
+    });
   });
 
-  it('requires selection across multiples with compact candidates and no invented events', () => {
+  it('keeps candidate resolution and reference status as structured facts', () => {
     const outcome = selectPurchaseReplyOutcome({
       purchases: [
         order({ orderId: 'order-martha-01', eventName: 'Evento Familiar Norte' }),
@@ -162,140 +163,55 @@ describe('S09 unique records render directly while multiples require selection',
       carts: [],
       needsSelection: true,
       coverage: 'complete',
-      referenceResolution: 'not_requested',
+      referenceResolution: 'unavailable',
       requestedAspects: aspects('summary', 'payment_status'),
       referenceAuthorized: false,
       userReported: {},
     });
     expect(outcome.kind).toBe('selection');
-    if (outcome.kind !== 'selection') return;
-    expect(outcome.candidates).toHaveLength(2);
-    expect(outcome.candidates[1]?.eventName).toBeNull();
-    const text = renderPurchaseReplyDeterministic(outcome);
-    expect(text).toMatch(/cual/iu);
-  });
-
-  it('discloses a transaction reference only when the source supplies it and access is authorized', () => {
-    const supplied = selectPurchaseReplyOutcome({
-      purchases: [order({ customerTransactionNumber: '100000901' })],
-      carts: [],
-      needsSelection: false,
-      coverage: 'complete',
-      referenceResolution: 'matched',
-      requestedAspects: aspects('summary'),
-      referenceAuthorized: true,
-      userReported: {},
-    });
-    expect(supplied.kind).toBe('order_unique');
-    if (supplied.kind !== 'order_unique') return;
-    expect(supplied.order.transactionReference).toBe('100000901');
-    const denied = selectPurchaseReplyOutcome({
-      purchases: [order({ customerTransactionNumber: '100000901' })],
-      carts: [],
-      needsSelection: false,
-      coverage: 'complete',
-      referenceResolution: 'matched',
-      requestedAspects: aspects('summary'),
-      referenceAuthorized: false,
-      userReported: {},
-    });
-    expect(denied.kind).toBe('order_unique');
-    if (denied.kind !== 'order_unique') return;
-    expect(denied.order.transactionReference).toBeNull();
-  });
-});
-
-describe('S09 model input carries only trusted associations and requested fields', () => {
-  it('omits payment method from an approved summary unless requested and never adds currency caveats', () => {
-    const outcome = selectPurchaseReplyOutcome({
-      purchases: [order({ paymentStatus: 'approved', currency: null })],
-      carts: [],
-      needsSelection: false,
-      coverage: 'complete',
-      referenceResolution: 'not_requested',
-      requestedAspects: aspects('summary', 'payment_status'),
-      referenceAuthorized: false,
-      userReported: {},
-    });
-    const input = projectPurchaseReplyForModel(outcome);
-    expect(JSON.stringify(input)).not.toContain('Yape_o_Plin');
-    expect(JSON.stringify(input)).not.toMatch(/currency/i);
-  });
-
-  it('excludes internal identifiers and bank or voucher data from model input', () => {
-    const outcome = selectPurchaseReplyOutcome({
+    const result = {
+      requestId: 'purchase-1',
+      kind: 'purchase',
+      status: 'completed',
+      resource: 'orders',
       purchases: [
-        order({
-          payment: {
-            method: 'Transferencia',
-            amount: 63.85,
-            paidAt: '2026-08-28 12:00:00',
-            paymentId: 'pay-1',
-            destinationAccount: { holder: 'h', bank: 'b', number: 'n', cci: 'c', type: 't' },
-            voucherImage: 'voucher.png',
-          },
-        }),
+        order({ eventName: 'Evento Familiar Norte' }),
+        order({ eventName: null }),
       ],
       carts: [],
-      needsSelection: false,
+      needsSelection: true,
       coverage: 'complete',
-      referenceResolution: 'not_requested',
-      requestedAspects: aspects('summary', 'payment_status'),
-      referenceAuthorized: true,
-      userReported: {},
-    });
-    const serialized = JSON.stringify(projectPurchaseReplyForModel(outcome));
-    expect(serialized).not.toContain('order-alex-pending-250');
-    expect(serialized).not.toContain('pay-1');
-    expect(serialized).not.toContain('voucher.png');
-    expect(serialized).not.toContain('destinationAccount');
-  });
-});
-
-describe('S09 time and currency corrections stay user-reported with server-local time', () => {
-  it('preserves server timestamps verbatim and marks corrections as unverifiable user reports', () => {
-    const outcome = selectPurchaseReplyOutcome({
-      purchases: [order({ currency: null, createdAt: '2026-08-30 14:00:00' })],
-      carts: [],
-      needsSelection: false,
-      coverage: 'complete',
-      referenceResolution: 'not_requested',
+      referenceResolution: 'unavailable',
+      requestedCustomerTransactionNumber: 'COD-missing',
+    } as never;
+    const evidence = projectCompletedPurchaseForModel(result, {
       requestedAspects: aspects('summary', 'payment_status'),
       referenceAuthorized: false,
-      userReported: { currency: 'USD', paidAt: '2026-08-30 21:31:00' },
     });
-    expect(outcome.kind).toBe('order_unique');
-    if (outcome.kind !== 'order_unique') return;
-    expect(outcome.order.createdAt).toBe('2026-08-30 14:00:00');
-    expect(outcome.order.currency).toBeNull();
-    expect(outcome.order.userReported.currency).toBe('USD');
-    expect(outcome.order.userReported.paidAt).toBe('2026-08-30 21:31:00');
-    const text = renderPurchaseReplyDeterministic(outcome);
-    expect(text).not.toContain('USD');
-  });
-});
-
-describe('S09 deterministic rendering with a structured claim contract', () => {
-  it('renders conflict coverage without a confident status', () => {
-    const outcome = selectPurchaseReplyOutcome({
-      purchases: [order()],
-      carts: [],
-      needsSelection: false,
-      coverage: 'inconsistent',
-      referenceResolution: 'not_requested',
-      requestedAspects: aspects('summary', 'payment_status'),
-      referenceAuthorized: false,
-      userReported: {},
+    expect(evidence).toMatchObject({
+      outcome_kind: 'selection',
+      reference_status: {
+        requested: true,
+        resolution: 'unavailable',
+        authorized: false,
+        candidate_count: 2,
+      },
+      permitted_next_action: 'select_purchase',
     });
-    expect(outcome.kind).toBe('conflict');
-    const text = renderPurchaseReplyDeterministic(outcome);
-    expect(text).not.toMatch(/aprobado|pendiente/iu);
+    const disclosures = evidence.disclosures as { denied: unknown[] };
+    const missingInputs = evidence.missing_inputs as unknown[];
+    expect(disclosures.denied).toEqual(
+      expect.arrayContaining(['transaction_reference', 'internal_identifiers']),
+    );
+    expect(missingInputs).toEqual(expect.arrayContaining(['purchase_selection']));
+    const serialized = JSON.stringify(evidence);
+    expect(serialized).not.toContain('order-martha-01');
   });
 
-  it('falls back to the deterministic renderer when narrative claims lack evidence', () => {
+  it('keeps a cart separate from an order and preserves reported amount provenance', () => {
     const outcome = selectPurchaseReplyOutcome({
-      purchases: [order({ paymentStatus: 'pending' })],
-      carts: [],
+      purchases: [order({ grandTotal: 63.85 })],
+      carts: [cart()],
       needsSelection: false,
       coverage: 'complete',
       referenceResolution: 'not_requested',
@@ -303,76 +219,135 @@ describe('S09 deterministic rendering with a structured claim contract', () => {
       referenceAuthorized: false,
       userReported: { amount: 60 },
     });
-    expect(checkPurchaseNarrativeClaims(outcome, {
-      claimsSettledTotal: true,
-      settledFromUserReport: true,
-      claimsSuccess: false,
-      receiptPresent: false,
-    })).toBe('fallback');
-    expect(checkPurchaseNarrativeClaims(outcome, {
-      claimsSettledTotal: false,
-      settledFromUserReport: false,
-      claimsSuccess: true,
-      receiptPresent: false,
-    })).toBe('fallback');
-    const resolved = resolvePurchaseReplyText(outcome, 'Tu pago ya quedo aprobado.', {
-      claimsSettledTotal: false,
-      settledFromUserReport: false,
-      claimsSuccess: true,
-      receiptPresent: false,
+    expect(outcome.kind).toBe('order_plus_cart');
+    if (outcome.kind !== 'order_plus_cart') return;
+    expect(outcome.order.amount?.total).toBe(63.85);
+    expect(outcome.order.amountMismatch).toEqual({ reported: 60, recorded: 63.85 });
+    expect(outcome.cart.recordType).toBe('cart');
+    const modelInput = projectPurchaseReplyForModel(outcome);
+    expect(modelInput).toMatchObject({
+      recordType: 'order_plus_cart',
+      order: { amountMismatch: { reported: 60, recorded: 63.85 } },
+      cart: { recordType: 'cart' },
     });
-    expect(resolved).toBe(renderPurchaseReplyDeterministic(outcome));
   });
 
-  it('keeps a valid narrative without a corrective model call', () => {
+  it('omits withheld currency and internal payment data from model facts', () => {
     const outcome = selectPurchaseReplyOutcome({
-      purchases: [order({ paymentStatus: 'pending' })],
+      purchases: [order({
+        payment: {
+          method: 'Transferencia',
+          amount: 63.85,
+          paidAt: '2026-08-28 12:00:00',
+          paymentId: 'pay-1',
+          destinationAccount: { holder: 'h', bank: 'b', number: 'n', cci: 'c', type: 't' },
+          voucherImage: 'voucher.png',
+        },
+        currency: null,
+      })],
       carts: [],
       needsSelection: false,
       coverage: 'complete',
       referenceResolution: 'not_requested',
       requestedAspects: aspects('summary', 'payment_status'),
+      referenceAuthorized: true,
+      userReported: { currency: 'USD', paidAt: '2026-08-28 12:00:00' },
+    });
+    const serialized = JSON.stringify(projectPurchaseReplyForModel(outcome));
+    expect(serialized).not.toContain('pay-1');
+    expect(serialized).not.toContain('voucher.png');
+    expect(serialized).not.toContain('destinationAccount');
+    expect(serialized).toContain('USD');
+    expect(serialized).toContain('2026-08-28 12:00:00');
+  });
+
+  it('projects conflict and empty outcomes without a fabricated status', () => {
+    const conflict = selectPurchaseReplyOutcome({
+      purchases: [order()], carts: [], needsSelection: false,
+      coverage: 'inconsistent', referenceResolution: 'not_requested',
+      requestedAspects: aspects('summary'), referenceAuthorized: false, userReported: {},
+    });
+    const empty = selectPurchaseReplyOutcome({
+      purchases: [], carts: [], needsSelection: false,
+      coverage: 'complete', referenceResolution: 'not_requested',
+      requestedAspects: aspects('summary'), referenceAuthorized: false, userReported: {},
+    });
+    expect(projectPurchaseReplyForModel(conflict)).toEqual({ recordType: 'conflict' });
+    expect(projectPurchaseReplyForModel(empty)).toEqual({ recordType: 'empty' });
+  });
+
+  it('permits no next action on an empty receipt-boundary read, never team support', () => {
+    // A visible receipt amount with zero backend records cannot prove
+    // approval and must not imply team support on its own.
+    const result = {
+      requestId: 'purchase-approval-empty',
+      kind: 'purchase',
+      status: 'completed',
+      resource: 'orders',
+      purchases: [],
+      carts: [],
+      needsSelection: false,
+      coverage: 'complete',
+      referenceResolution: 'not_requested',
+    } as never;
+    const evidence = projectCompletedPurchaseForModel(result, {
+      requestedAspects: aspects('payment_status'),
+      referenceAuthorized: false,
+      userReported: { amount: 250 },
+    });
+    expect(evidence).toMatchObject({
+      outcome_kind: 'empty',
+      permitted_next_action: 'none',
+    });
+  });
+});
+
+describe('S09 time-only answers carry time evidence without amount-driven caveats', () => {
+  it('projects paymentAt with no amount block for a payment_details-only question', () => {
+    const timed = order({
+      payment: { method: 'Yape', amount: 250, paidAt: '2026-08-30 21:31:00' },
+    });
+    const outcome = selectPurchaseReplyOutcome({
+      purchases: [timed],
+      carts: [],
+      needsSelection: false,
+      coverage: 'complete',
+      referenceResolution: 'not_requested',
+      requestedAspects: aspects('payment_details'),
       referenceAuthorized: false,
       userReported: {},
     });
-    expect(checkPurchaseNarrativeClaims(outcome, {
-      claimsSettledTotal: false,
-      settledFromUserReport: false,
-      claimsSuccess: false,
-      receiptPresent: false,
-    })).toBe('ok');
-    expect(resolvePurchaseReplyText(outcome, 'Tu regalo sigue pendiente.', {
-      claimsSettledTotal: false,
-      settledFromUserReport: false,
-      claimsSuccess: false,
-      receiptPresent: false,
-    })).toBe('Tu regalo sigue pendiente.');
+    expect(outcome.kind).toBe('order_unique');
+    if (outcome.kind !== 'order_unique') return;
+    // Relevant time evidence only: the recorded hour travels, the total
+    // the question never asked for stays out so no balance/currency
+    // caveat is invited.
+    expect(outcome.order.paymentAt).toBe('2026-08-30 21:31:00');
+    expect(outcome.order.amount).toBeNull();
   });
 
-  it('answers a matched reference deterministically from the single record', () => {
-    expect(shouldRenderReferenceMatchedSingle({ purchaseCount: 1, referenceResolution: 'matched' })).toBe(true);
-    expect(shouldRenderReferenceMatchedSingle({ purchaseCount: 2, referenceResolution: 'matched' })).toBe(false);
-    expect(shouldRenderReferenceMatchedSingle({ purchaseCount: 1, referenceResolution: 'unavailable' })).toBe(false);
-    const text = renderReferenceMatchedSingle({ eventName: 'Evento de prueba A', paymentStatus: 'approved' });
-    expect(text).toContain('Evento de prueba A');
-    expect(text).not.toMatch(/opci[oó]n|cu[aá]l te refieres/iu);
-    expect(text).not.toMatch(/correo|c[oó]digo|OTP/iu);
-    expect(text).not.toMatch(/order-s13|301816/);
-    expect(renderReferenceMatchedSingle({ eventName: 'Evento X', paymentStatus: 'pending' })).toContain('pendiente');
-  });
-
-  it('asks one grounded selection question when the reference matches none', () => {
-    expect(shouldRenderReferenceSelection({ purchaseCount: 2, referenceResolution: 'unavailable' })).toBe(true);
-    expect(shouldRenderReferenceSelection({ purchaseCount: 1, referenceResolution: 'unavailable' })).toBe(false);
-    expect(shouldRenderReferenceSelection({ purchaseCount: 2, referenceResolution: 'matched' })).toBe(false);
-    const text = renderReferenceSelection([
-      { eventName: 'Evento de prueba A', paymentStatus: 'pending' },
-      { eventName: 'Evento de prueba B', paymentStatus: 'approved' },
-    ]);
-    expect(text).toContain('Evento de prueba A');
-    expect(text).toContain('Evento de prueba B');
-    expect(text.match(/\?/g) ?? []).toHaveLength(1);
-    expect(text).not.toMatch(/order-s13|301816/);
-    expect(text).not.toMatch(/correo|OTP/iu);
+  it('omits unknown-currency negative evidence when no amount is disclosed', () => {
+    const timed = order({
+      currency: null,
+      currencySymbol: null,
+      payment: { method: 'Yape', amount: 250, paidAt: '2026-08-30 21:31:00' },
+    });
+    const outcome = selectPurchaseReplyOutcome({
+      purchases: [timed],
+      carts: [],
+      needsSelection: false,
+      coverage: 'complete',
+      referenceResolution: 'not_requested',
+      requestedAspects: aspects('payment_details'),
+      referenceAuthorized: false,
+      userReported: {},
+    });
+    const projected = projectPurchaseReplyForModel(outcome) as {
+      recordType: string;
+      order: Record<string, unknown>;
+    };
+    expect(projected.recordType).toBe('order');
+    expect(projected.order.currencyAvailability).toBe('unknown');
+    expect('currency_unknown' in projected.order).toBe(false);
   });
 });

@@ -21,6 +21,7 @@ const renderers = { terminal_whatsapp: new WhatsAppMessageRenderer() };
 
 class ScriptedRuntime implements AgentRuntime {
   public composeCalls = 0;
+  public readonly composeRequests: ComposeReplyRequest[] = [];
   private index = 0;
   constructor(private readonly extractions: ExtractionResult[]) {}
   async extract(): Promise<ExtractionResult> {
@@ -31,7 +32,7 @@ class ScriptedRuntime implements AgentRuntime {
   }
   async composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult> {
     this.composeCalls += 1;
-    void request;
+    this.composeRequests.push(request);
     return { text: 'Respuesta compuesta.' };
   }
 }
@@ -185,7 +186,7 @@ describe('D1 ambiguous confirmation', () => {
     const gateway = new RecordingAgentGateway('success');
     const service = createService(runtime, gateway, planStore);
     const res = await turn(service, 'Si confirmo.', 'd1-unclear-1');
-    expect(res.outbound.text ?? '').toContain('confirmando');
+    expect(res.outbound.text).toBe('Respuesta compuesta.');
     expect(res.trace.tools_called ?? []).not.toContain('search_providers_from_plan');
     expect(res.trace.tools_called ?? []).not.toContain('get_provider_detail');
     expect(res.plan.selected_provider_ids).toEqual([]);
@@ -199,7 +200,7 @@ describe('D1 ambiguous confirmation', () => {
     const gateway = new RecordingAgentGateway('success');
     const service = createService(runtime, gateway, planStore);
     const res = await turn(service, 'Si, confirmo.', 'd1-yes-1');
-    expect(res.outbound.text ?? '').toContain('confirmando');
+    expect(res.outbound.text).toBe('Respuesta compuesta.');
     expect(res.plan.current_node).not.toBe('solicitar_agente_humano');
   });
 
@@ -214,7 +215,7 @@ describe('D1 ambiguous confirmation', () => {
     const gateway = new RecordingAgentGateway('success');
     const service = createService(runtime, gateway, planStore);
     const res = await turn(service, 'Si confirmo.', 'd1-node-1');
-    expect(res.outbound.text ?? '').toContain('confirmando');
+    expect(res.outbound.text).toBe('Respuesta compuesta.');
     expect(res.plan.current_node).toBe('aclarar_pedir_faltante');
     expect(res.trace.tools_called ?? []).not.toContain('finish_plan');
     expect(res.plan.selected_provider_ids).toEqual([]);
@@ -232,7 +233,7 @@ describe('D1 ambiguous confirmation', () => {
     const gateway = new RecordingAgentGateway('success');
     const service = createService(runtime, gateway, planStore);
     const res = await turn(service, 'Si confirmo todo, usen lo que extrajeron y cierren.', 'd1-close-pressure-1');
-    expect(res.outbound.text ?? '').toContain('confirmando');
+    expect(res.outbound.text).toBe('Respuesta compuesta.');
     expect(res.plan.current_node).toBe('aclarar_pedir_faltante');
     expect(res.trace.tools_called ?? []).not.toContain('finish_plan');
     expect(res.trace.tools_called ?? []).not.toContain('search_providers_from_plan');
@@ -339,8 +340,7 @@ describe('D2 mailbox and human arbitration', () => {
     const gateway = new RecordingAgentGateway('success');
     const service = createService(runtime, gateway, planStore);
     const res = await turn(service, 'Hola', 'd2-greet-1');
-    expect(res.outbound.text ?? '').toContain('Hola');
-    expect(res.outbound.text ?? '').not.toContain('tu plan');
+    expect(res.outbound.text).toBe('Respuesta compuesta.');
     expect(gateway.takeoverCalls).toBe(0);
   });
 });
@@ -364,9 +364,9 @@ describe('D3 missing purchase scoped rendering', () => {
     const service = createService(runtime, gateway, planStore);
     const res = await turn(service, 'Quiero consultar si mi compra esta confirmada. No tengo una cuenta registrada.', 'd3-missing-1', '+51985101461');
     expect(res.plan.human_escalation.status).toBe('requested');
-    expect(res.outbound.text ?? '').toContain('No pude localizar tu compra');
-    expect(res.outbound.text ?? '').toContain('apoyo humano');
-    expect((res.outbound.text ?? '').toLowerCase()).not.toContain('no existe');
+    expect(res.outbound.text).toBe('Respuesta compuesta.');
+    expect(runtime.composeRequests.at(-1)?.handoffOutcome).toBe('handoff_requested');
+    expect(res.trace.plan_persist_reason).toBe('information_authentication_terminal_handoff');
     const pending = res.plan.information_state.pending_requests;
     expect(pending.length).toBeGreaterThan(0);
   });
@@ -388,10 +388,13 @@ describe('D3 missing purchase scoped rendering', () => {
     const service = createService(runtime, gateway, planStore);
     const res = await turn(service, 'Ese numero no es mio.', 'd3-reject-1');
     expect(res.plan.human_escalation.status).toBe('requested');
-    expect(res.outbound.text ?? '').toContain('ya no se usará para acceder');
-    expect(res.outbound.text ?? '').toContain('apoyo humano');
-    expect((res.outbound.text ?? '').toLowerCase()).not.toContain('correo');
-    expect((res.outbound.text ?? '').toLowerCase()).not.toContain('otp');
-    expect((res.outbound.text ?? '').toLowerCase()).not.toContain('código');
+    expect(res.outbound.text).toBe('Respuesta compuesta.');
+    expect(res.trace.plan_persist_reason).toBe('information_authentication_terminal_handoff');
+    expect(runtime.composeRequests.at(-1)?.authenticationOutcome).toMatchObject({
+      status: 'terminal',
+      // C1: terminal escalation retains pending protected requests.
+      protectedRequestsClosed: false,
+      handoffOutcome: 'handoff_requested',
+    });
   });
 });

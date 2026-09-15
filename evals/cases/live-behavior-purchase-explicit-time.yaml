@@ -1,0 +1,39 @@
+template: template.base-live
+id: live_behavior.purchase_explicit_time_alternatives
+suite: live_behavior_regression
+version: 2
+description: An explicit 05:00 vs 17:00 payment-time question keeps the recorded 21:31 hour with unknown timezone and never picks or converts an alternative; repeating the user-supplied transfer method is grounded.
+tags: [live, behavior, purchase, time, timezone, reported-interaction]
+targetModes: [live_lambda]
+inputs:
+  - text: El pago por transferencia para Claudia & Luis Felipe figura en proceso. ¿El pago fue a las 05:00 o a las 17:00?
+    channel: whatsapp
+    contactPhone: "+51957212085"
+    sessionId: live-purchase-explicit-time-session
+backendFixture:
+  scenario: purchase-claudia-085
+notes:
+  - "El nombre registrado del evento es Claudia and Luis Felipe; repetirlo tal cual no es mezcla de idiomas."
+  - "El registro trae paid_at 2026-08-30 21:31:00 sin zona horaria verificada y sin moneda. Ninguna de las dos horas propuestas por la persona coincide con el registro."
+  - "R05 oracle revision v1 to v2, 2026-09-15, recheck-b9a7662d. Old explicit-time-keeps-recorded-hour kept the exact recorded hour but did not protect repeating the user-supplied bank-transfer method (recheck: payment method was in the user's question and is not itself an error; core requested fact fixed, minor relevance defect only). New contract keeps the exact 21:31 hour with zone unknown, keeps the ban on picking 05:00 or 17:00, on conversion, and on invented currency, and states that repeating the supplied transfer method is grounded. Keeps the mandatory semantic judge and hard severity. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
+expectations:
+  - id: explicit-time-enters-information
+    type: node_transition
+    to: resolver_consultas_informativas
+    severity: hard
+  - id: explicit-time-uses-phone-orders
+    type: tool_usage
+    mustCall: [lookup_guest_gift_purchases_by_phone]
+    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
+    severity: hard
+  - id: explicit-time-keeps-recorded-hour
+    type: text_semantic
+    rubric: >-
+      The trusted-phone purchase evidence identifies the Claudia & Luis Felipe gift as pending and paid by bank transfer, with a recorded payment time of 21:31 and no verified time zone. The user explicitly asks whether the payment was at 05:00 or at 17:00. The answer must be concise, natural, and entirely in Spanish; state only the recorded hour (21:31) with its zone unknown, and must never pick 05:00 or 17:00, convert the hour, claim a Lima local time, or invent currency. Repeating the user-supplied bank-transfer method is grounded fixture evidence, never an invented detail. It must not ask for email or an OTP, and must not expose payment identifiers, bank data, or an internal order id.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1700
+  estimatedCompletionTokensPerTurn: 220

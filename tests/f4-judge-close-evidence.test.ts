@@ -63,4 +63,16 @@ describe('F4 judge context carries finish_plan close evidence', () => {
     const context = buildSemanticJudgeContext([turn], undefined);
     expect(context).toContain('cierre=ninguno');
   });
+
+  it('keeps future close facts out of the selected candidate packet', () => {
+    const first = closeTurn();
+    const second = closeTurn();
+    second.turnIndex = 1;
+    second.input = { text: 'Confirmo el salon futuro unico zzz.' };
+    second.outputText = 'Cierre futuro unico zzz para el 19 de octubre de 2026.';
+    const context = buildSemanticJudgeContext([first, second], 0);
+    expect(context).toContain('2026-10-18');
+    expect(context).not.toContain('futuro unico zzz');
+    expect(context).not.toContain('19 de octubre de 2026');
+  });
 });

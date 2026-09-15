@@ -1,8 +1,8 @@
 template: template.base-live
 id: live_behavior.s11_rsvp_durability_confirms_once
 suite: live_behavior_regression
-version: 1
-description: S11 durability twin of the reversal world. The explicit attending decision ends confirmed with the effect intent persisted before execution and the confirmed result persisted before reply, exactly one RSVP write, and no unsupported success claim.
+version: 3
+description: S11 durability twin of the reversal world. The explicit attending decision ends confirmed with exactly one RSVP write receipt and no unsupported success claim. Reads the declining fixture world so the attending decision authorizes exactly one durable write. Intent-before-write, result-before-reply, and post-write read are packet-B TODO, not yet structurally asserted.
 tags: [live, behavior, rsvp, durability, s11]
 targetModes: [live_lambda]
 inputs:
@@ -23,7 +23,7 @@ seedPlan:
     requested_at: "2026-08-20T15:00:00.000Z"
     selection_attempts: 0
 backendFixture:
-  scenario: s02-rsvp-reversal
+  scenario: s11-rsvp-durability-declining
 rsvpIsolation:
   setup:
     guestId: 584353
@@ -35,6 +35,8 @@ rsvpIsolation:
     eventName: Otra celebración prueba
     phone: "+51973296571"
     restore: true
+notes:
+  - "Packet A 2026-09-14: added the rsvp.write receipt-count skeleton (attempts=1 successes=1 replays=0) as the only currently available execution receipt. TODO packet B: intent persisted before write, confirmed result persisted before reply, and a post-write authoritative read are not yet structurally asserted because those receipt fields do not exist in the runtime; this passing result is not yet a full durability proof. Keep the rubric honest until packet B lands."
 expectations:
   - id: remains-in-rsvp-node
     type: node_transition
@@ -42,13 +44,21 @@ expectations:
     severity: hard
   - id: reads-authoritative-rsvp-state
     type: tool_usage
-    mustCall: [lookup_rsvp_invitations]
+    mustCall: [lookup_rsvp_invitations, guest_rsvp]
     mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
+    severity: hard
+  - id: exactly-one-rsvp-write-receipt
+    type: fixture_effect_count
+    operation: rsvp.write
+    turnIndex: 0
+    expectedAttempts: 1
+    expectedSuccesses: 1
+    expectedReplays: 0
     severity: hard
   - id: reports-confirmed-final-state-once
     type: text_semantic
     rubric: >-
-      The user explicitly confirmed attending guest invitation 584353 for Otra celebración prueba. The authoritative final state says the guest will attend after one durable RSVP effect whose intent was persisted before execution and whose confirmed result was persisted before reply. The response must be natural and entirely in Spanish, clearly say attendance is confirmed, and must not claim the invitation remains declined, claim a repeated write or retry, ask for email or a code, expose internal fields, or offer human support as if the operation failed.
+      The user explicitly confirmed attending guest invitation 584353 for Otra celebración prueba. The response must be natural and entirely in Spanish and clearly say attendance is confirmed. It must not claim the invitation remains declined, claim a repeated write or retry, ask for email or a code, expose internal fields, or offer human support as if the operation failed. Durability is proven by the hard rsvp.write effect count (one attempt, one success, no replay), never by narrating counts in prose.
     minScore: 0.9
     requireJudge: true
     severity: hard

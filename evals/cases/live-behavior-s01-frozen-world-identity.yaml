@@ -1,8 +1,8 @@
 template: template.base-live
 id: live_behavior.s01_frozen_kiara_pending_replay
 suite: live_behavior_regression
-version: 1
-description: S01 frozen-world replay. Synthetic identity asks for the Suki Sofia gift status against the frozen Kiara pending world. Output must follow frozen fixture facts with no OTP, no registration, and no mutable backend dependence.
+version: 2
+description: S01 frozen-world replay. Synthetic identity asks for the Suki Sofia gift status against the frozen Kiara pending world; the recorded 149.9 total is grounded and the pending state is reported.
 tags: [live, behavior, purchase, phone-orders, s01, frozen-world]
 targetModes: [live_lambda]
 backendFixture:
@@ -14,6 +14,7 @@ inputs:
     sessionId: live-s01-frozen-kiara-session
 notes:
   - S01 frozen incident world purchase-kiara-frozen as of 2026-09-05T01:33:57.291Z. Synthetic identity only.
+  - "R05 oracle revision v1 to v2, 2026-09-12, Packet F3. Old s01-frozen-pending-status-is-reported let the judge call the stated 149.9 a hallucinated amount although it is the recorded order total in the stored input (matrix: calling that invented is false). New contract names 149.9 grounded while keeping the pending-not-approved core. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
 expectations:
   - id: s01-frozen-enters-information
     type: node_transition
@@ -27,7 +28,7 @@ expectations:
   - id: s01-frozen-pending-status-is-reported
     type: text_semantic
     rubric: >-
-      The frozen phone-scoped world contains one pending order for Suki Sofia and no completed orders or carts. The answer must be concise, natural, and entirely in Spanish; explain that the payment or gift is still pending or being verified, without calling it approved or failed. It must not ask for email, an OTP, another registration, or a screenshot, and must not reference mutable backend data.
+      The frozen phone-scoped world contains one pending order for Suki Sofia with recorded total 149.9, event date 2026-09-20, and no completed orders or carts. Stating the recorded total 149.9 is grounded fixture fact, never a hallucinated amount. The answer must be concise, natural, and entirely in Spanish; explain that the payment or gift is still pending or being verified, without calling it approved or failed. It must not ask for email, an OTP, another registration, or a screenshot, must not present a currency the backend did not supply, and must not reference mutable backend data.
     minScore: 0.9
     requireJudge: true
     severity: hard

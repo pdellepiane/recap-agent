@@ -94,7 +94,49 @@ describe('prompt audit', () => {
     // hour-only; extractor ambiguity no longer binds the reply when resolved
     // image evidence answers it; receipt-is-not-proof keeps the no-team-escalation
     // implication out. Relevance controls, not new disclosures. Previous pin 18666.
-    expect(entry(result, 'resolver_consultas_informativas').serializedRequestBytes).toBe(19445);
+    // 2026-09-15 s3 honest-limitation narrowing: +260 bytes in
+    // resolver_consultas_informativas/response_contract.txt. The
+    // image_evidence rule now asks for the specific missing datum only when
+    // the current task identifies one, otherwise permits a concise honest
+    // limitation or one open question about what the customer wants to
+    // resolve (never a demanded named datum, never blind reads), and bans
+    // forward-looking resubmission invitations alongside direct
+    // image/URL/resend asks. Previous pin 19445.
+    // 2026-09-15 oracle-gap currency scoping: -84 bytes in
+    // resolver_consultas_informativas/system.txt. The unconditional
+    // unknown-currency mandate is deleted: displayed amounts already carry
+    // the currency rule via response_contract.txt:44, and hour-only answers
+    // must not announce unknown currency. The conditional 72h window note
+    // stays. Previous pin 19705.
+    // 2026-09-15 three-gap approval/unreadability narrowing: +819 bytes in
+    // resolver_consultas_informativas/response_contract.txt. The
+    // validation-window/method paragraph (:32) and the total/balance
+    // paragraph (:43) fire only on projected purchase facts for the requested
+    // aspect and never on an approval-boundary empty outcome (no invented
+    // manual/email/window prose); the receipt-is-not-proof rule (:39) now
+    // covers native/file pixel receipts via the empty-outcome evidence
+    // (`outcome_kind` empty + `permitted_next_action` none); the
+    // image_evidence rule (:38) grounds unreadability in
+    // `turn_state.record_checks.image_check` before any question,
+    // model-written with no fixed phrase. Previous pin 19621.
+    // O4 duplicate subtraction: -92 bytes in
+    // resolver_consultas_informativas/response_contract.txt. The
+    // no-tech-jargon sentence duplicated system.txt:15 in the same bundle;
+    // system.txt keeps the invariant (pinned in prompt-loader.test.ts).
+    // Previous pin 20440.
+    // 2026-09-15 close/continuity repair: -75 bytes in
+    // resolver_consultas_informativas/response_contract.txt. The
+    // total/balance paragraph no longer fires on payment_details and no
+    // longer mandates an unsolicited remaining-balance disclaimer on
+    // approved-status answers; the no-fabrication guard stays. Previous
+    // pin 20348.
+    // 2026-09-15 spanish-only backtick gate: -33 bytes in
+    // resolver_consultas_informativas/response_contract.txt (:38). The
+    // receipt-rule parenthetical dropped code-formatting backticks around
+    // outcome_kind/permitted_next_action/none, keeping model-written
+    // Spanish prose with identical empty-outcome semantics. Previous pin
+    // 20273.
+    expect(entry(result, 'resolver_consultas_informativas').serializedRequestBytes).toBe(20240);
     expect(entry(result, 'responder_invitacion')).toMatchObject({
       maximumToolCount: 0,
     });
@@ -141,9 +183,9 @@ describe('prompt inventory', () => {
     const inventory = await buildPromptInventory({
       promptsDir: path.resolve(process.cwd(), 'prompts'),
     });
-    expect(inventory.totalFiles).toBe(111);
+    expect(inventory.totalFiles).toBe(109);
     expect(inventory.unmappedFiles).toEqual([]);
-    expect(inventory.entries).toHaveLength(111);
+    expect(inventory.entries).toHaveLength(109);
     for (const entry of inventory.entries) {
       expect(entry.consumers.length).toBeGreaterThan(0);
       expect(entry.filePath).toBeTruthy();
@@ -171,21 +213,24 @@ describe('prompt inventory', () => {
     expect(filePaths).not.toContain('capability/turn_outcomes.txt');
     expect(filePaths).not.toContain('nodes/resolver_consultas_informativas/handoff_outcomes.json');
     expect(filePaths).not.toContain('nodes/resolver_consultas_informativas/host-withdrawal.json');
+    // O4: unreachable L5-era deterministic message maps deleted after
+    // repo-wide call-site proof (zero production loaders; parser covered
+    // only by tests). Their typed replacements live in deterministic code
+    // plus model-owned node contracts, not in prompt files.
+    expect(filePaths).not.toContain('nodes/resolver_consultas_informativas/capability_boundary.txt');
+    expect(filePaths).not.toContain('nodes/resolver_consultas_informativas/image_outcomes.json');
   });
 
-  it('marks runtime-unreachable prompt files as having no production loader', async () => {
+  it('keeps every tracked prompt file on a production loader path', async () => {
     const inventory = await buildPromptInventory({
       promptsDir: path.resolve(process.cwd(), 'prompts'),
     });
-    for (const filePath of [
-      'nodes/resolver_consultas_informativas/capability_boundary.txt',
-      'nodes/resolver_consultas_informativas/image_outcomes.json',
-    ]) {
-      const found = inventory.entries.find((entry) => entry.filePath === filePath);
-      expect(found).toBeDefined();
-      expect(found?.consumers.length).toBeGreaterThan(0);
-      for (const consumer of found?.consumers ?? []) {
-        expect(consumer.loader).toContain('no production loader since L5');
+    for (const entry of inventory.entries) {
+      for (const consumer of entry.consumers) {
+        // O4: no prompt file may sit behind a "no production loader" note.
+        // Unreachable deterministic message maps were deleted; every
+        // remaining file must name its live loader chain.
+        expect(consumer.loader).not.toContain('no production loader');
       }
     }
   });

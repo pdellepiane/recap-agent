@@ -6,6 +6,10 @@ import { getActiveNeed } from '../core/plan';
 import { resolveSearchCategories } from '../core/provider-category';
 import type { QueryIntentProviderSearchInput } from './provider-gateway';
 import { executeOpenAiStage } from './openai-stage-execution';
+import {
+  captureOpenAiTransport,
+  installOpenAiTransportCapture,
+} from '../audit/openai-transport-capture';
 
 export type ProviderVectorSearchResult = {
   providerId: number;
@@ -169,6 +173,7 @@ export class ProviderVectorSearchGateway {
       maxRetries: 1,
       timeout: options.timeoutMs ?? 8_000,
     });
+    installOpenAiTransportCapture(this.client);
   }
 
   async search(plan: PersistedPlan): Promise<ProviderVectorSearchResult[]> {
@@ -276,16 +281,19 @@ export class ProviderVectorSearchGateway {
   private async searchVectorStore(
     body: Parameters<OpenAI['vectorStores']['search']>[1],
   ) {
-    return await executeOpenAiStage({
-      stage: 'provider_vector_search',
-      model: 'vector_store_search',
-      timeoutMs: this.options.timeoutMs ?? 8_000,
-      operation: async (signal) => await this.client.vectorStores.search(
-        this.options.vectorStoreId,
-        body,
-        { signal },
-      ),
-    });
+    const captured = await captureOpenAiTransport('provider_vector_search',
+      async () => await executeOpenAiStage({
+        stage: 'provider_vector_search',
+        model: 'vector_store_search',
+        timeoutMs: this.options.timeoutMs ?? 8_000,
+        operation: async (signal) => await this.client.vectorStores.search(
+          this.options.vectorStoreId,
+          body,
+          { signal },
+        ),
+      }),
+    );
+    return captured.value;
   }
 
   async searchQueryIntent(

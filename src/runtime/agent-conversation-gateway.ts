@@ -279,6 +279,7 @@ export type AgentEventDetailInput = {
 
 export type RsvpCandidate = {
   guestId: number;
+  eventId?: number | null;
   eventName: string | null;
   eventDate: string | null;
 };
@@ -299,6 +300,7 @@ export type AgentGuestRsvpResult =
       action: RsvpAction | null;
       willAttend: boolean | null;
       guestId: number | null;
+      eventId?: number | null;
       eventName: string | null;
       eventDate: string | null;
       plusOne?: {
@@ -316,6 +318,7 @@ export type AgentGuestRsvpResult =
       currentAction: RsvpAction | null;
       requestedAction: RsvpAction | null;
       guestId: number | null;
+      eventId?: number | null;
       eventName: string | null;
       eventDate: string | null;
     }
@@ -530,6 +533,7 @@ const rsvpEventSchema = z.object({
 
 const rsvpResponseDataSchema = z.object({
   guest_id: z.number().int().positive().nullable().optional(),
+  event_id: z.number().int().positive().nullable().optional(),
   action: z.enum(rsvpActionValues).optional(),
   already_responded: z.boolean().optional(),
   will_attend: z.union([z.boolean(), z.literal(0), z.literal(1)]).nullable().optional(),
@@ -554,6 +558,7 @@ const rsvpCombinedResponseDataSchema = z.object({
 
 const rsvpCandidateSchema = z.object({
   guest_id: z.number().int().positive(),
+  event_id: z.number().int().positive().nullable().optional(),
   event_name: z.string().trim().min(1).nullable().optional(),
   event_date: z.string().trim().min(1).nullable().optional(),
   event: rsvpEventSchema.nullable().optional(),
@@ -809,6 +814,20 @@ function normalizePhoneInput(
     phone_extension: `+${extensionDigits}`,
     phone_number: phoneDigits,
   };
+}
+
+/**
+ * Packet B: nested event identity from passthrough RSVP payloads. Event name
+ * alone never binds identity; only a positive integer event id counts.
+ */
+function readRsvpNestedEventId(event: unknown): number | null {
+  if (typeof event !== 'object' || event === null) {
+    return null;
+  }
+  const eventId = (event as Record<string, unknown>).event_id;
+  return typeof eventId === 'number' && Number.isInteger(eventId) && eventId > 0
+    ? eventId
+    : null;
 }
 
 export class HttpAgentConversationGateway implements AgentConversationGateway {
@@ -1386,11 +1405,23 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
           retryable: false,
         };
       }
+      // Packet B: a returned guest identity different from the requested one
+      // is a mismatch rejection, never a fallback to the requested id. Event
+      // name alone never binds identity; the executor re-checks event id too.
+      const returnedGuestId = parsed.data.guest_id ?? null;
+      if (input.guest_id !== undefined && returnedGuestId !== null && returnedGuestId !== input.guest_id) {
+        return {
+          status: 'failed',
+          error: 'Agent API RSVP response returned a different guest identity.',
+          retryable: false,
+        };
+      }
       return {
         status: 'responded',
         action: parsed.data.action ?? input.action ?? null,
         willAttend: returnedWillAttend,
-        guestId: parsed.data.guest_id ?? input.guest_id ?? null,
+        guestId: returnedGuestId ?? input.guest_id ?? null,
+        eventId: parsed.data.event_id ?? readRsvpNestedEventId(parsed.data.event) ?? null,
         eventName:
           parsed.data.event_name ??
           parsed.data.event?.name ??
@@ -1437,6 +1468,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
         currentAction: null,
         requestedAction: input.action ?? null,
         guestId: input.guest_id ?? null,
+        eventId: null,
         eventName: null,
         eventDate: null,
       };
@@ -1464,6 +1496,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
           : parsed.data.invitations;
     return candidateData.map((candidate) => ({
       guestId: candidate.guest_id,
+      eventId: candidate.event_id ?? readRsvpNestedEventId(candidate.event) ?? null,
       eventName:
         candidate.event_name ??
         candidate.event?.name ??

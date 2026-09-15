@@ -36,12 +36,6 @@ abstract class BaseProviderMessageRenderer implements MessageRenderer {
         return this.renderRecommendation(message, providerResults);
       case 'multi_need_recommendation':
         return this.renderMultiNeedRecommendation(message, providerResults);
-      case 'contact_request':
-        return this.renderContactRequest(message);
-      case 'close_confirmation':
-        return this.renderCloseConfirmation(message);
-      case 'close_result':
-        return this.renderCloseResult(message);
       case 'generic':
         return this.renderGeneric(message);
     }
@@ -175,8 +169,8 @@ abstract class BaseProviderMessageRenderer implements MessageRenderer {
         details.push(formattedPrice);
       }
     }
-    if (provider.promoBadge || provider.promoSummary) {
-      details.push(`promo: ${provider.promoBadge ?? provider.promoSummary}`);
+    if (provider.promoBadge) {
+      details.push(`promo: ${provider.promoBadge}`);
     }
 
     const matchLabel = rec.match_label_es?.trim();
@@ -224,9 +218,8 @@ abstract class BaseProviderMessageRenderer implements MessageRenderer {
       lines.push(`   ${this.formatLine('Precio', formatPriceLevel(provider.priceLevel))}`);
     }
 
-    if (provider.promoBadge || provider.promoSummary) {
-      const promo = provider.promoBadge ?? provider.promoSummary;
-      lines.push(`   ${this.formatLine('Promo', promo)}`);
+    if (provider.promoBadge) {
+      lines.push(`   ${this.formatLine('Promo', provider.promoBadge)}`);
     }
 
     if (rec.caveat_es) {
@@ -243,56 +236,6 @@ abstract class BaseProviderMessageRenderer implements MessageRenderer {
     }
 
     return lines.join('\n');
-  }
-
-  private renderContactRequest(message: StructuredMessage): string {
-    const parts: string[] = [];
-
-    if (message.intro_es) {
-      parts.push(message.intro_es);
-    }
-
-    const fields = message.requested_fields_es ?? [];
-    if (fields.length > 0) {
-      const labels = fields
-        .map((field) => this.contactFieldLabel(field))
-        .join(', ');
-      parts.push(this.formatSentence(`Envíame tu ${labels}`));
-    }
-
-    return parts.filter(Boolean).join('\n\n');
-  }
-
-  private renderCloseConfirmation(message: StructuredMessage): string {
-    const parts: string[] = [];
-
-    if (message.summary_es) {
-      parts.push(message.summary_es);
-    }
-
-    const selected = message.selected_providers_es ?? [];
-    if (selected.length > 0) {
-      parts.push('Se enviarán solicitudes para:');
-      selected.forEach((name) => {
-        parts.push(this.renderBullet(this.capitalize(name)));
-      });
-    }
-
-    const unselected = message.unselected_needs_es ?? [];
-    if (unselected.length > 0) {
-      parts.push('Se dejarán sin proveedor:');
-      unselected.forEach((name) => {
-        parts.push(this.renderBullet(this.capitalize(name)));
-      });
-    }
-
-    return parts.join('\n\n');
-  }
-
-  private renderCloseResult(message: StructuredMessage): string {
-    return [message.success_es, message.contact_explanation_es]
-      .filter(Boolean)
-      .join('\n\n');
   }
 
   private renderGeneric(message: StructuredMessage): string {
@@ -318,32 +261,6 @@ abstract class BaseProviderMessageRenderer implements MessageRenderer {
     return `${this.style.bullet} ${this.formatSentence(value)}`;
   }
 
-  private contactFieldLabel(field: string): string {
-    switch (field) {
-      case 'full_name':
-        return 'nombre completo';
-      case 'email':
-        return 'correo electrónico';
-      case 'phone':
-        return 'teléfono con código de país';
-      case 'contact_name':
-        return 'nombre completo';
-      case 'contact_email':
-        return 'correo electrónico';
-      case 'contact_phone':
-        return 'teléfono con código de país';
-      default:
-        return field;
-    }
-  }
-
-  private capitalize(value: string): string {
-    if (value.length === 0) {
-      return value;
-    }
-
-    return value.charAt(0).toUpperCase() + value.slice(1);
-  }
 }
 
 export class WhatsAppMessageRenderer extends BaseProviderMessageRenderer {

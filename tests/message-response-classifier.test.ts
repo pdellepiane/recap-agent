@@ -64,6 +64,10 @@ describe('OpenAiMessageResponseClassifier', () => {
       requestMetrics: {
         toolCount: 0,
         schemaPropertyCount: 9,
+        transport: {
+          observedRequestCount: 1,
+          requests: [{ stage: 'classifier', statusCode: 200, succeeded: true }],
+        },
       },
     });
     const calls = fetchMock.mock.calls as unknown as Array<[
@@ -156,6 +160,10 @@ describe('OpenAiMessageResponseClassifier', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(response.trace.reason).toBe('classifier_unavailable');
+    expect(response.openAiCall).toMatchObject({
+      responseId: null,
+      requestMetrics: { transport: { observedRequestCount: 1 } },
+    });
   });
 
   it('retries a transient rate limit and respects a zero retry delay', async () => {
@@ -198,6 +206,7 @@ describe('OpenAiMessageResponseClassifier', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(response.trace.reason).toBe('requires_response');
+    expect(response.openAiCall?.requestMetrics.transport?.observedRequestCount).toBe(2);
   });
 
   it('accepts high-confidence automated suppression without outbound context', async () => {
@@ -524,7 +533,7 @@ describe('OpenAiMessageResponseClassifier', () => {
     ]);
   });
 
-  it('keeps typed campaign classification when a later admin message refreshes the campaign', async () => {
+  it('keeps typed campaign classification when a later reminder refreshes the campaign', async () => {
     const fetchMock = vi.fn().mockResolvedValue(responseForDecision({
       action: 'respond',
       reason: 'requires_response',
@@ -567,7 +576,7 @@ describe('OpenAiMessageResponseClassifier', () => {
         {
           id: 3,
           direction: 'outbound',
-          source: 'admin_manual',
+          source: 'frontend_followup',
           body: 'Recordatorio actualizado de la invitación.',
           status: 'sent',
           sentAt: null,
@@ -591,7 +600,7 @@ describe('OpenAiMessageResponseClassifier', () => {
       campaign_message?: { source?: string; body?: string };
     };
     expect(classifierInput.campaign_message).toMatchObject({
-      source: 'admin_manual',
+      source: 'frontend_followup',
       body: 'Recordatorio actualizado de la invitación.',
     });
   });

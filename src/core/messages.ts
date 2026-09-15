@@ -1,4 +1,5 @@
 import type { InboundImage } from './inbound-image';
+import type { OutputOriginEvidence } from '../audit/output-origin';
 
 export const inboundMediaKindValues = [
   'image',
@@ -36,10 +37,30 @@ export type NormalizedInboundMessage = {
   sessionId?: string | null;
   /** Optional phone number provided by the channel (e.g. WhatsApp webhook). */
   contactPhone?: string | null;
+  /**
+   * Internal execution context (Packet B). True when messageId arrived from
+   * the channel; false when the adapter generated a fallback UUID. Controls
+   * deduplication coverage reporting only; never changes the external
+   * inbound contract.
+   */
+  nativeMessageId?: boolean | null;
+  /**
+   * Internal execution context (Packet B). Lease identity acquired by the
+   * caller-held conversation turn runner for this invocation. Threaded into
+   * effect boundaries for fresh validation and lease-conditioned writes.
+   */
+  turnLease?: { ownerId: string; expiresAtMs: number } | null;
+  /**
+   * Internal execution context (Packet B). Fresh lease validation against
+   * the live coordination record. The service calls this at effect
+   * boundaries instead of trusting a stale snapshot.
+   */
+  validateTurnLease?: (() => Promise<boolean>) | null;
 };
 
 export type NormalizedOutboundMessage = {
   text: string | null;
+  outputOrigin?: OutputOriginEvidence;
   conversationId: string | null;
   structuredMessageKind: string | null;
   delivery: {

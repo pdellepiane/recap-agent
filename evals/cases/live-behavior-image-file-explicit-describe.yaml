@@ -1,0 +1,42 @@
+template: template.base-live
+id: live_behavior.image_file_explicit_describe
+suite: live_behavior_regression
+version: 2
+description: An explicit describe request on a base64 image is answered by the established owner with the persisted file projected natively.
+tags: [live, behavior, image, image-file, base64-persistence, explicit-describe]
+targetModes: [live_lambda]
+backendFixture:
+  scenario: image-clean-world
+inputs:
+  - text: Describe lo que ves en esta imagen con detalle
+    channel: whatsapp
+    contactPhone: "+51987654321"
+    sessionId: live-image-file-describe-session
+    image:
+      data: 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
+      mime_type: image/png
+notes:
+  - "F1 2026-09-12: backendFixture scenario image-clean-world; this phone has empty initial history and empty authorized purchase results; never mutable backend data."
+  - Backend image forwarding contract 2026-09-08. Synthetic voucher-style fixture rendered locally, never a customer document.
+expectations:
+  - id: file-image-describe-uses-owner-path
+    type: tool_usage
+    mustCall: [image_file_context]
+    mustNotCall: [image_inspect]
+    severity: hard
+  - id: file-image-describe-no-ids
+    type: text_not_contains
+    phrases: [base64, file-live, http]
+    turnIndex: 0
+    severity: hard
+  - id: file-image-describe-answered
+    type: text_semantic
+    rubric: >-
+      Pass only if the assistant responds entirely in Spanish describing the text visible in the image, including the amount. It must not confirm or approve any payment, must not claim the image proves a settled payment, and must not ask for an OTP.
+    minScore: 0.8
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 2500
+  estimatedCompletionTokensPerTurn: 300

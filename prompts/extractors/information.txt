@@ -1,6 +1,6 @@
 Consultas informativas
 
-`requestedOperation` identifica la operación solicitada usando solo los identificadores de `extractors/capability_boundary.txt`; no expresa disponibilidad. Si estado y documento son ambiguos, deja `requestedOperation=null` y marca `ambiguity.status=ambiguous`.
+`requestedOperation` identifica la operación solicitada usando solo los identificadores de `extractors/capability_boundary.txt`; no expresa disponibilidad. Si pide estado o detalle de su compra, conserva la consulta con su operación; solo null sin operación identificable.
 
 `informationRequests`: ordenadas, compatibles con `actionIntent`. Delta vacío no crea consulta ni bienvenida. Seguimiento: pendiente, última completada, historial.
 
@@ -12,15 +12,15 @@ Datos de un problema: usa `kind=provide_detail` aunque no haya pregunta. Copia l
 
 - `faq`: pregunta general sobre Sin Envolturas, políticas, comisiones o funciones; `query` autosuficiente. Rol declarado: `reportedEventRole=host|guest`, sin verificar propiedad.
 - Retiro: política/plazo/estado → `faq`; ejecución explícita. `hostWithdrawal`: `individual_status` si no llega; `policy_only` plazo
-- `kind=associated_event`: fecha, hora, lugar, anfitrión o confirmados; usa `eventHint`. Estado de asistencia propia va por RSVP.
+- `kind=associated_event`: fecha, hora, lugar, anfitrión, confirmados; usa `eventHint`. Asistencia propia: RSVP. Elíptica: hereda aspecto con `eventHint`.
 - `purchase`: estado o detalle de orden/regalo propio o notificado. Usa `orders` para ordenes/carritos y `gift_purchases` para pago, dedicatoria, tarjeta, envío o agradecimiento.
 - Pedir el destino de Yape o transferencia es `purchase` con `destination_account`; exige compra pendiente.
 
 Plazo de validación => purchase orders [payment_status,validation_window]; opciones de carrito => orders [payment_options]. Con compra activa, constancia o correccion de moneda => purchase orders; no FAQ/plan. “Monto pendiente 63.85 por transferencia para Isa y Lu” => purchase orders [summary,payment_status], `eventHint` y `amount`.
 
-Sin número usa `orderId=null`. Código de transacción `COD301816`/`301816` → `purchase`/`orders`, `orderId=301816`, nunca OTP. “estado de mi pedido” → `orders`, `aspects=[summary,payment_status,shipping]`. Regalos solo lo pedido.
+Sin número usa `orderId=null`. Código de transacción `COD301816`/`301816` → `purchase`/`orders`, `orderId=301816`, nunca OTP. “estado de mi pedido” → `orders`, `aspects=[summary,payment_status,shipping]`.
 
-En compras llena `eventHint`/`amount` si son explícitos. No uses `payment_details` para estado, plazo u opciones; mencionar Yape/transferencia no pide detalles. `sensitiveFields` solo incluye datos pedidos explícitamente: `payment_id`, `transaction_status`, `gateway_message`, `operation_code`, `origin_bank`, `destination_account`, `voucher_image`, `decline_code` o `admin_comment`.
+En compras llena `eventHint`/`amount` si son explícitos. No uses `payment_details` para estado, plazo u opciones; solo para hora de pago. Mencionar Yape/transferencia no pide detalles. `sensitiveFields` solo incluye datos pedidos explícitamente: `payment_id`, `transaction_status`, `gateway_message`, `operation_code`, `origin_bank`, `destination_account`, `voucher_image`, `decline_code` o `admin_comment`.
 
 Autenticación de consultas personales
 

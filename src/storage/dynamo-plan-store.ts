@@ -6,12 +6,14 @@ import {
   DynamoDBDocumentClient,
   GetCommand,
   PutCommand,
+  TransactWriteCommand,
 } from '@aws-sdk/lib-dynamodb';
 
 import { normalizeRawPlan, planSchema, type PlanSnapshot } from '../core/plan';
 import { sessionFocusSchema, type SessionFocus } from '../core/turn-decision';
-import type { PlanStore, SavePlanInput } from './plan-store';
+import type { FencedSavePlanInput, PlanStore, SavePlanInput } from './plan-store';
 import { conversationPartitionKey } from './conversation-key';
+import { buildFencedPlanTransactInput } from './turn-fencing';
 
 type StoredItem = {
   pk: string;
@@ -94,6 +96,34 @@ export class DynamoPlanStore implements PlanStore {
         } satisfies StoredItem,
       }),
     );
+  }
+
+  /**
+   * Packet B: plan writes under a turn lease use the current lease condition
+   * (atomic Put + TURN_LOCK ConditionCheck, no second lock store) instead of
+   * the test-only fencing helper in isolation. Without a lease owner this is
+   * a plain save.
+   */
+  async saveFenced(input: FencedSavePlanInput): Promise<void> {
+    if (!input.leaseOwnerId) {
+      await this.save(input);
+      return;
+    }
+    const planKey = this.pk(input.plan.channel, input.plan.external_user_id);
+    const planItem: Record<string, unknown> = {
+      pk: planKey,
+      sk: 'PLAN',
+      reason: input.reason,
+      ...input.plan,
+    };
+    const transactInput = buildFencedPlanTransactInput({
+      tableName: this.tableName,
+      planKey,
+      planItem,
+      ownerId: input.leaseOwnerId,
+      nowMs: input.nowMs ?? Date.now(),
+    });
+    await this.documentClient.send(new TransactWriteCommand(transactInput));
   }
 
   async saveSessionFocus(

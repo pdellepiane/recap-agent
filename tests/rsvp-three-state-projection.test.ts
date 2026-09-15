@@ -38,6 +38,76 @@ describe('RSVP three-state projection (Paolo & Mariana fix)', () => {
     expect(reconciled.map(r => r.eventId)).toEqual([3, 5]);
   });
 
+  it('keeps guest-record authority across an enriched merge without flipping accessMethod', async () => {
+    const service = createService(new RsvpRuntime([rsvpExtraction({ action: null })]), new RsvpGateway());
+    const a = service as unknown as {
+      reconcileRsvpPhoneEvidence: (x: unknown[], y: unknown[]) => Array<{
+        eventId: number | null;
+        guestId: number | null;
+        eventDate: string | null;
+        state: string;
+        accessMethod: string;
+      }>;
+    };
+    // Same event, same guest: fresh enriched values win but the guest-record
+    // authority label stays, so guest-bound downstream logic still
+    // recognizes the record.
+    const reconciled = a.reconcileRsvpPhoneEvidence(
+      [{ eventId: 100, guestId: 584353, eventName: 'Otra celebracion prueba', eventDate: null, state: 'pending', accessMethod: 'guest_record' }],
+      [{ eventId: 100, guestId: 584353, eventName: 'Otra celebracion prueba', eventDate: '2026-08-19 05:00:00', state: 'declining', accessMethod: 'phone_enriched_event' }],
+    );
+    expect(reconciled).toHaveLength(1);
+    expect(reconciled[0]).toMatchObject({
+      eventId: 100,
+      guestId: 584353,
+      state: 'declining',
+      accessMethod: 'guest_record',
+    });
+    expect(reconciled[0]?.eventDate).toBe('2026-08-19 05:00:00');
+  });
+
+  it('keeps a host-set decided state over stale enriched detail for the same guest', async () => {
+    const service = createService(new RsvpRuntime([rsvpExtraction({ action: null })]), new RsvpGateway());
+    const a = service as unknown as {
+      reconcileRsvpPhoneEvidence: (x: unknown[], y: unknown[]) => Array<{
+        eventId: number | null;
+        guestId: number | null;
+        state: string;
+        accessMethod: string;
+      }>;
+    };
+    // Same event, same guest: the host-set declining stands over a stale
+    // enriched attending, and the guest-record authority label stays.
+    const reconciled = a.reconcileRsvpPhoneEvidence(
+      [{ eventId: 100, guestId: 584353, eventName: 'Otra celebracion prueba', eventDate: '2026-08-19 05:00:00', state: 'declining', accessMethod: 'guest_record' }],
+      [{ eventId: 100, guestId: 584353, eventName: 'Otra celebracion prueba', eventDate: '2026-08-19 05:00:00', state: 'attending', accessMethod: 'phone_enriched_event' }],
+    );
+    expect(reconciled).toHaveLength(1);
+    expect(reconciled[0]).toMatchObject({
+      eventId: 100,
+      guestId: 584353,
+      state: 'declining',
+      accessMethod: 'guest_record',
+    });
+  });
+
+  it('keeps a different non-null guest as a separate invitation for the same event', async () => {
+    const service = createService(new RsvpRuntime([rsvpExtraction({ action: null })]), new RsvpGateway());
+    const a = service as unknown as {
+      reconcileRsvpPhoneEvidence: (x: unknown[], y: unknown[]) => Array<{
+        eventId: number | null;
+        guestId: number | null;
+        state: string;
+      }>;
+    };
+    const reconciled = a.reconcileRsvpPhoneEvidence(
+      [{ eventId: 100, guestId: 584353, eventName: 'E', eventDate: null, state: 'declining', accessMethod: 'guest_record' }],
+      [{ eventId: 100, guestId: 777, eventName: 'E', eventDate: null, state: 'attending', accessMethod: 'phone_enriched_event' }],
+    );
+    expect(reconciled).toHaveLength(2);
+    expect(reconciled.map(r => r.guestId).sort()).toEqual([584353, 777]);
+  });
+
   it('produces stable ordering for needs_event_selection candidates', async () => {
     const runtime = new RsvpRuntime([rsvpExtraction({ action: null })]);
     const invitations: UserEventLookupResult['events'] = [

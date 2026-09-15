@@ -1,187 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 import path from 'node:path';
-import {
-  renderVoucherContinuityReply,
-  resolveCapabilityPurchaseContinuation,
-} from '../src/runtime/purchase-reply-projector';
 import { AgentService } from '../src/runtime/agent-service';
 import type { AgentConversationGateway } from '../src/runtime/agent-conversation-gateway';
-import type { AgentRuntime, ExtractionResult } from '../src/runtime/contracts';
+import type { AgentRuntime, ComposeReplyRequest, ExtractionResult } from '../src/runtime/contracts';
 import type { ProviderGateway } from '../src/runtime/provider-gateway';
 import type { PendingInformationRequest } from '../src/core/information';
 import { PromptLoader } from '../src/runtime/prompt-loader';
 import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
 import { createEmptyPlan } from '../src/core/plan';
-
-describe('F3c capability purchase continuation', () => {
-  it('selects among gift records for a dedication change without mutating', () => {
-    const text = resolveCapabilityPurchaseContinuation({
-      operation: 'purchase.modify',
-      results: [
-        {
-          requestId: 'capability-status-read',
-          kind: 'purchase',
-          status: 'completed',
-          resource: 'gift_purchases',
-          purchases: [
-            {
-              orderId: 'order-joaquin-frozen-01',
-              paymentStatus: 'pending',
-              shippingStatus: null,
-              grandTotal: 120.0,
-              paymentMethod: 'Transferencia',
-              eventName: 'Chiara Vittoria',
-              eventDate: '2026-09-10',
-              eventUrl: null,
-              createdAt: '2026-09-03 11:00:00',
-              items: [],
-              payment: { method: 'Transferencia', amount: 120.0, paidAt: '2026-09-03 11:00:00' },
-              currency: null,
-            },
-            {
-              orderId: 'order-joaquin-frozen-02',
-              paymentStatus: 'approved',
-              shippingStatus: null,
-              grandTotal: 95.5,
-              paymentMethod: 'Transferencia',
-              eventName: 'Chiara Vittoria',
-              eventDate: '2026-08-10',
-              eventUrl: null,
-              createdAt: '2026-08-10 11:00:00',
-              items: [],
-              payment: { method: 'Transferencia', amount: 95.5, paidAt: '2026-08-10 11:00:00' },
-              currency: null,
-            },
-          ],
-          needsSelection: true,
-          accessMethod: 'trusted_phone_purchase',
-          coverage: 'complete',
-        },
-      ],
-      reportedAmount: null,
-    });
-    expect(text).not.toBeNull();
-    expect(text as string).toContain('Chiara Vittoria');
-    expect(text as string).toContain('120');
-    expect(text as string).toContain('95.5');
-    expect(text as string).toContain('?');
-    expect(text as string).not.toMatch(/dedicatoria.*(cambiada|actualizada|lista)/i);
-  });
-
-  it('acknowledges a voucher report on a single pending order without claiming validation', () => {
-    const text = resolveCapabilityPurchaseContinuation({
-      operation: 'purchase.modify',
-      results: [
-        {
-          requestId: 'capability-status-read',
-          kind: 'purchase',
-          status: 'completed',
-          resource: 'orders',
-          purchases: [
-            {
-              orderId: 'order-luis-pending-227',
-              paymentStatus: 'pending',
-              shippingStatus: null,
-              grandTotal: 227.76,
-              paymentMethod: 'Yape_o_Plin',
-              eventName: 'Alejandra',
-              eventDate: '2026-09-20',
-              eventUrl: null,
-              createdAt: '2026-08-27 15:00:00',
-              items: [],
-              payment: { method: 'Yape_o_Plin', amount: 227.76, paidAt: '2026-08-27 15:00:00' },
-              currency: null,
-            },
-          ],
-          needsSelection: false,
-          accessMethod: 'trusted_phone_purchase',
-          coverage: 'complete',
-        },
-      ],
-      reportedAmount: 13.76,
-    });
-    expect(text).not.toBeNull();
-    expect(text as string).toContain('13.76');
-    expect(text as string).toContain('pendiente');
-    expect(text as string).toContain('72 horas');
-    expect(text as string).not.toMatch(/validado|aprobado/i);
-  });
-
-  it('returns null when the safe read has no usable purchase evidence', () => {
-    expect(
-      resolveCapabilityPurchaseContinuation({
-        operation: 'purchase.modify',
-        results: [],
-        reportedAmount: null,
-      }),
-    ).toBeNull();
-    expect(
-      resolveCapabilityPurchaseContinuation({
-        operation: 'payment_proof.verify',
-        results: [],
-        reportedAmount: null,
-      }),
-    ).toBeNull();
-  });
-
-  it('renders voucher continuity deterministically', () => {
-    const text = renderVoucherContinuityReply({ reportedAmount: 13.76, eventName: 'Alejandra' });
-    expect(text).toContain('13.76');
-    expect(text).toContain('Alejandra');
-    expect(text).toContain('72 horas');
-    const generic = renderVoucherContinuityReply({ reportedAmount: null, eventName: null });
-    expect(generic).toContain('comprobante');
-    expect(generic).toContain('pendiente');
-  });
-
-  it('continues a voucher report on payment_proof.verify without handoff', () => {
-    const text = resolveCapabilityPurchaseContinuation({
-      operation: 'payment_proof.verify',
-      results: [
-        {
-          requestId: 'capability-status-read',
-          kind: 'purchase',
-          status: 'completed',
-          resource: 'orders',
-          purchases: [
-            {
-              orderId: 'order-luis-pending-227',
-              paymentStatus: 'pending',
-              shippingStatus: null,
-              grandTotal: null,
-              paymentMethod: null,
-              eventName: 'Alejandra',
-              eventDate: '2026-09-20',
-              eventUrl: null,
-              createdAt: '2026-08-27 15:00:00',
-              items: [],
-              payment: null,
-              currency: null,
-              amountDisclosure: {
-                total: 227.76,
-                paid: null,
-                currency: null,
-                currencySymbol: null,
-                paymentMethod: 'Yape_o_Plin',
-                presentation: 'recorded_method_no_currency' as const,
-              },
-            },
-          ],
-          needsSelection: false,
-          accessMethod: 'trusted_phone_purchase',
-          coverage: 'complete',
-        },
-      ],
-      reportedAmount: 13.76,
-    });
-    expect(text).not.toBeNull();
-    expect(text as string).toContain('13.76');
-    expect(text as string).toContain('pendiente');
-    expect(text as string).toContain('72 horas');
-    expect(text as string).not.toMatch(/apoyo humano/i);
-  });
-});
 
 function modifyExtraction(
   aspects: string[],
@@ -248,6 +75,7 @@ async function runModifyTurn(options: {
   purchaseResult: Record<string, unknown>;
   summary: Record<string, unknown>;
   pendingPurchaseRequest?: PendingInformationRequest;
+  composedText?: string;
 }) {
   const store = new InMemoryPlanStore();
   const seedPlan = createEmptyPlan({
@@ -271,6 +99,8 @@ async function runModifyTurn(options: {
     results: [options.purchaseResult],
     summaries: [options.summary],
   }));
+  const composedText = options.composedText ?? 'respuesta generada para evidencia de compra';
+  const composeRequests: ComposeReplyRequest[] = [];
   const gateway = {
     async logMessage(input: unknown) {
       void input;
@@ -301,8 +131,15 @@ async function runModifyTurn(options: {
       async extract(): Promise<ExtractionResult> {
         return options.extraction;
       },
-      async composeReply() {
-        throw new Error('model reply must not be used on safe-read continuation');
+      async composeReply(request: ComposeReplyRequest) {
+        composeRequests.push(request);
+        return {
+          text: composedText,
+          structuredMessage: {
+            type: 'generic',
+            paragraphs_es: [composedText],
+          },
+        };
       },
     } as unknown as AgentRuntime,
     providerGateway: {
@@ -323,7 +160,7 @@ async function runModifyTurn(options: {
     receivedAt: '2026-09-04T15:01:00.000Z',
     contactPhone: options.contactPhone,
   });
-  return { result, execute };
+  return { result, execute, composeRequests };
 }
 
 describe('F3c safe read precedes the unsupported mutation handoff', () => {
@@ -367,7 +204,7 @@ describe('F3c safe read precedes the unsupported mutation handoff', () => {
       accessMethod: 'trusted_phone_purchase',
       coverage: 'complete',
     };
-    const { result, execute } = await runModifyTurn({
+    const { result, execute, composeRequests } = await runModifyTurn({
       externalUserId: 'u-f3c-joaquin',
       text: 'Quisiera cambiar la dedicatoria de un regalo para Chiara Vittoria.',
       contactPhone: '+51926857444',
@@ -387,13 +224,18 @@ describe('F3c safe read precedes the unsupported mutation handoff', () => {
         accessMethod: 'trusted_phone_purchase',
         resource: 'gift_purchases',
       },
+      composedText: 'Evidencia de dos regalos para Chiara Vittoria lista para elegir.',
     });
     expect(execute).toHaveBeenCalled();
     expect(result.plan.current_node).toBe('resolver_consultas_informativas');
     const text = result.outbound.text ?? '';
-    expect(text).toContain('Chiara Vittoria');
-    expect(text).toContain('120');
-    expect(text).toContain('?');
+    expect(text).toBe('Evidencia de dos regalos para Chiara Vittoria lista para elegir.');
+    expect(composeRequests).toHaveLength(1);
+    expect(composeRequests[0]?.currentNode).toBe('resolver_consultas_informativas');
+    expect(composeRequests[0]?.turnDecision?.persistReason).toBe('purchase_evidence_after_capability_read');
+    expect(composeRequests[0]?.informationResults).toEqual([
+      expect.objectContaining({ kind: 'purchase', status: 'completed', resource: 'gift_purchases' }),
+    ]);
   });
 
   it('keeps a voucher report on the pending order without handoff', async () => {
@@ -422,7 +264,7 @@ describe('F3c safe read precedes the unsupported mutation handoff', () => {
       accessMethod: 'trusted_phone_purchase',
       coverage: 'complete',
     };
-    const { result, execute } = await runModifyTurn({
+    const { result, execute, composeRequests } = await runModifyTurn({
       externalUserId: 'u-f3c-luis',
       text: 'Ya envie los 13.76 que faltaban, tengo el voucher.',
       contactPhone: '+51938389389',
@@ -442,13 +284,17 @@ describe('F3c safe read precedes the unsupported mutation handoff', () => {
         accessMethod: 'trusted_phone_purchase',
         resource: 'orders',
       },
+      composedText: 'El pedido pendiente sigue en validacion sin derivacion.',
     });
     expect(execute).toHaveBeenCalled();
     expect(result.plan.current_node).toBe('resolver_consultas_informativas');
     const text = result.outbound.text ?? '';
-    expect(text).toContain('13.76');
-    expect(text).toContain('pendiente');
-    expect(text).toContain('72 horas');
+    expect(text).toBe('El pedido pendiente sigue en validacion sin derivacion.');
+    expect(composeRequests).toHaveLength(1);
+    expect(composeRequests[0]?.turnDecision?.persistReason).toBe('purchase_evidence_after_capability_read');
+    expect(composeRequests[0]?.informationResults).toEqual([
+      expect.objectContaining({ kind: 'purchase', status: 'completed', resource: 'orders' }),
+    ]);
   });
 
   it('reads gift purchases for purchase.modify even with a persisted orders request', async () => {
@@ -491,7 +337,7 @@ describe('F3c safe read precedes the unsupported mutation handoff', () => {
       accessMethod: 'trusted_phone_purchase',
       coverage: 'complete',
     };
-    const { result, execute } = await runModifyTurn({
+    const { result, execute, composeRequests } = await runModifyTurn({
       externalUserId: 'u-f3c-joaquin-persisted',
       text: 'Quisiera cambiar la dedicatoria de un regalo para Chiara Vittoria.',
       contactPhone: '+51926857444',
@@ -527,7 +373,10 @@ describe('F3c safe read precedes the unsupported mutation handoff', () => {
     expect(sentRequest?.resource).toBe('gift_purchases');
     expect(result.plan.current_node).toBe('resolver_consultas_informativas');
     const text = result.outbound.text ?? '';
-    expect(text).toContain('Chiara Vittoria');
-    expect(text).toContain('?');
+    expect(text).toBe('respuesta generada para evidencia de compra');
+    expect(composeRequests).toHaveLength(1);
+    expect(composeRequests[0]?.informationResults).toEqual([
+      expect.objectContaining({ kind: 'purchase', status: 'completed', resource: 'gift_purchases' }),
+    ]);
   });
 });

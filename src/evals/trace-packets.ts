@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import { z } from 'zod';
 
 export const PACKET_VERSION = 1;
-export const MAX_DIAGNOSTIC_BYTES = 8192;
+export const MAX_DIAGNOSTIC_BYTES = 12288;
 export const MAX_CALL_SUMMARIES = 16;
 export const MAX_CANDIDATE_DETAILS = 8;
 
@@ -129,6 +129,151 @@ export function hashJudgeRequest(args: {
     evidenceDigest: args.evidenceDigest ?? '',
   });
   return hashHex(serialized);
+}
+
+/**
+ * F2 versioned silence-disposition packet. The semantic judge receives this
+ * structured observation for empty candidates (suppress action/reason, no
+ * delivered text, observed classifier and effect context, image ref-save
+ * proof) instead of a pretend assistant sentence. Only typed scalars travel:
+ * no transcripts or identifiers that could leak PII; the reason field carries
+ * typed disposition vocabulary guarded against leaks. Invocation binding
+ * (observed message ID linkage, active typed refs, validated current input)
+ * is enforced at validation time in src/evals/silence.ts against the private
+ * plan snapshot; this packet records the resulting booleans and counts, and
+ * its reason field is leak-guarded above.
+ */
+export const SILENCE_DISPOSITION_VERSION = 1;
+
+const silenceDispositionEffectSchema = z.object({
+  operation: z.string().max(64),
+  attempts: boundedCount,
+  successes: boundedCount,
+  outcome: z.enum(['success', 'failed', 'unknown', 'disabled', 'none']),
+}).strict();
+
+const silenceDispositionPacketSchema = z.object({
+  version: z.literal(SILENCE_DISPOSITION_VERSION),
+  action: z.string().max(32),
+  reason: z.string().max(256),
+  deliveredNull: z.literal(true),
+  originStatus: z.string().max(32).nullable(),
+  path: z.enum(['established', 'model_selected', 'image_only']),
+  classifier: z.object({
+    mode: z.enum(['observe', 'enforce']).nullable(),
+    action: z.string().max(64).nullable(),
+    wouldSuppress: z.boolean().nullable(),
+  }).strict(),
+  effects: z.array(silenceDispositionEffectSchema).max(7),
+  imageRefSaved: z.boolean(),
+  imageRefCount: boundedCount,
+  inputImagePresent: z.boolean(),
+}).strict();
+
+export type SilenceDispositionPacket = z.infer<typeof silenceDispositionPacketSchema>;
+
+/**
+ * S3 permanent control. The disposition reason travels into judge context, so
+ * it must carry only typed disposition vocabulary: a synthetic file ID,
+ * signed URL, email, phone, credential, or content digest inside the reason
+ * fails the packet instead of escaping into judge evidence or artifacts.
+ * Legitimate reasons are short typed constants and never trip this guard.
+ */
+const SILENCE_REASON_LEAK_PATTERNS: RegExp[] = [
+  /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/iu,
+  /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/u,
+  /https?:\/\/[^\s"'<>]+/iu,
+  /\bwww\.[^\s"'<>]+/iu,
+  /\bfile-[A-Za-z0-9_-]{3,}\b/u,
+  /\bsynth-[a-z0-9-]{8,}\b/iu,
+  /\b[a-f0-9]{64}\b/iu,
+  /(?<![\d-])\+?\d[\d\s().-]{7,}\d/u,
+];
+
+function findSilenceReasonLeak(reason: string): string | null {
+  for (const pattern of SILENCE_REASON_LEAK_PATTERNS) {
+    if (pattern.test(reason)) return pattern.source;
+  }
+  return null;
+}
+
+export function buildSilenceDispositionPacket(args: {
+  action: string;
+  reason: string;
+  originStatus: string | null;
+  path: 'established' | 'model_selected' | 'image_only';
+  classifier?: { mode?: string | null; action?: string | null; wouldSuppress?: boolean | null } | null;
+  effects?: Array<{ operation: string; attempts: number; successes: number; outcome: string }>;
+  imageRefSaved: boolean;
+  imageRefCount: number;
+  inputImagePresent: boolean;
+}): SilenceDispositionPacket {
+  const leaked = findSilenceReasonLeak(args.reason);
+  if (leaked !== null) {
+    throw new Error(`Silence disposition reason leaks sensitive content (${leaked}).`);
+  }
+  const mode = args.classifier?.mode === 'enforce' || args.classifier?.mode === 'observe'
+    ? args.classifier.mode
+    : null;
+  const outcome = (value: string): 'success' | 'failed' | 'unknown' | 'disabled' | 'none' =>
+    value === 'success' || value === 'failed' || value === 'unknown' || value === 'disabled' || value === 'none'
+      ? value
+      : 'none';
+  const packet: SilenceDispositionPacket = {
+    version: SILENCE_DISPOSITION_VERSION,
+    action: args.action.slice(0, 32),
+    reason: args.reason.slice(0, 256),
+    deliveredNull: true,
+    originStatus: args.originStatus?.slice(0, 32) ?? null,
+    path: args.path,
+    classifier: {
+      mode,
+      action: typeof args.classifier?.action === 'string' ? args.classifier.action.slice(0, 64) : null,
+      wouldSuppress: typeof args.classifier?.wouldSuppress === 'boolean' ? args.classifier.wouldSuppress : null,
+    },
+    effects: (args.effects ?? []).slice(0, 7).map((entry) => ({
+      operation: entry.operation.slice(0, 64),
+      attempts: Math.max(0, Math.min(1000000, Math.floor(entry.attempts))),
+      successes: Math.max(0, Math.min(1000000, Math.floor(entry.successes))),
+      outcome: outcome(entry.outcome),
+    })),
+    imageRefSaved: args.imageRefSaved,
+    imageRefCount: Math.max(0, Math.min(1000000, Math.floor(args.imageRefCount))),
+    inputImagePresent: args.inputImagePresent,
+  };
+  const check = silenceDispositionPacketSchema.safeParse(packet);
+  if (!check.success) throw new Error('Invalid silence disposition packet.');
+  return check.data;
+}
+
+export function validateSilenceDispositionPacket(value: unknown): { ok: boolean; errors: string[] } {
+  const parsed = silenceDispositionPacketSchema.safeParse(value);
+  if (!parsed.success) {
+    return { ok: false, errors: parsed.error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`) };
+  }
+  const leaked = findSilenceReasonLeak(parsed.data.reason);
+  if (leaked !== null) {
+    return { ok: false, errors: [`reason: sensitive content must never travel in judge evidence (${leaked})`] };
+  }
+  return { ok: true, errors: [] };
+}
+
+/**
+ * Renders the validated disposition as labeled judge context. The candidate
+ * itself stays empty: this block is observed evidence about the silence,
+ * never model prose, and the judge must weigh it against that turn's task.
+ */
+export function formatSilenceDispositionForJudge(packet: SilenceDispositionPacket): string {
+  const effects = packet.effects.length > 0
+    ? packet.effects.map((entry) => `${entry.operation}:attempts=${entry.attempts}:successes=${entry.successes}:outcome=${entry.outcome}`).join(',')
+    : 'none';
+  return [
+    'CANDIDATE SILENCE DISPOSITION (observed evidence, never model prose):',
+    `action=${packet.action} reason=${packet.reason} delivered_text=none origin=${packet.originStatus ?? 'none'}`,
+    `silence_path=${packet.path} classifier_mode=${packet.classifier.mode ?? 'none'} classifier_action=${packet.classifier.action ?? 'none'} classifier_would_suppress=${packet.classifier.wouldSuppress ?? 'none'}`,
+    `observed_effects=[${effects}] image_ref_saved=${packet.imageRefSaved ? 'yes' : 'no'} image_refs=${packet.imageRefCount} input_image=${packet.inputImagePresent ? 'yes' : 'no'}`,
+    'Judge this silence against that turn\u2019s actual task: silence after thanks or a persisted supplemental image may pass; the same silence on an unanswered question fails.',
+  ].join('\n');
 }
 
 export function buildDecisionPackets(args: {

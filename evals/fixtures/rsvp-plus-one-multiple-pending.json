@@ -138,6 +138,64 @@
           "event_name": "Cumpleaños Marta",
           "event_date": "2026-09-21T19:00:00.000Z"
         }
+      ],
+      "responses": [
+        {
+          "match": { "guest_id": 80001, "action": "attending" },
+          "response": {
+            "httpStatus": 200,
+            "data": {
+              "guest_id": 80001,
+              "event_id": 8001,
+              "action": "attending",
+              "will_attend": true,
+              "event_name": "Boda Ana y Luis",
+              "event_date": "2026-09-20T18:00:00.000Z"
+            }
+          }
+        },
+        {
+          "match": { "guest_id": 80001, "action": "declining" },
+          "response": {
+            "httpStatus": 200,
+            "data": {
+              "guest_id": 80001,
+              "event_id": 8001,
+              "action": "declining",
+              "will_attend": false,
+              "event_name": "Boda Ana y Luis",
+              "event_date": "2026-09-20T18:00:00.000Z"
+            }
+          }
+        },
+        {
+          "match": { "guest_id": 80002, "action": "attending" },
+          "response": {
+            "httpStatus": 200,
+            "data": {
+              "guest_id": 80002,
+              "event_id": 8002,
+              "action": "attending",
+              "will_attend": true,
+              "event_name": "Cumpleaños Marta",
+              "event_date": "2026-09-21T19:00:00.000Z"
+            }
+          }
+        },
+        {
+          "match": { "guest_id": 80002, "action": "declining" },
+          "response": {
+            "httpStatus": 200,
+            "data": {
+              "guest_id": 80002,
+              "event_id": 8002,
+              "action": "declining",
+              "will_attend": false,
+              "event_name": "Cumpleaños Marta",
+              "event_date": "2026-09-21T19:00:00.000Z"
+            }
+          }
+        }
       ]
     }
   }

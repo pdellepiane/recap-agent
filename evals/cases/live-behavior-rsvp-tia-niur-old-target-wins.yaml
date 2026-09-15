@@ -1,0 +1,40 @@
+template: template.base-live
+id: live_behavior.rsvp_tia_niur_old_target_wins
+suite: live_behavior_regression
+version: 1
+description: Tia-Niur class gap 2. After a newer event entered the conversation, an explicit question about the older event must be answered from the older event, never the newest.
+tags: [live, behavior, rsvp, multi-event, disambiguation, reported-interaction, tia-niur]
+targetModes: [live_lambda]
+inputs:
+  - text: Hola, me invitaron al Cumpleaños Marta, ¿cuándo es?
+    channel: whatsapp
+    contactPhone: "+51941438999"
+    sessionId: live-rsvp-tia-niur-old-target-session
+  - text: Gracias, y la Boda Ana y Luis, ¿cuándo es?
+    channel: whatsapp
+    contactPhone: "+51941438999"
+    sessionId: live-rsvp-tia-niur-old-target-session
+backendFixture:
+  scenario: rsvp-plus-one-multiple-pending
+notes:
+  - "Tia-Niur diagnostic 2026-09-14 gap 2: the newer event entered first and a later explicit old target (Marcelo class) lost to recency-wins. Synthetic fixture identity only: Cumpleaños Marta 2026-09-21 enters on turn 0, Boda Ana y Luis 2026-09-20 is the explicit turn-1 target. Output must follow this world, never mutable backend data."
+  - "New behavior-proving case, Packet EX1. Additive; no existing case deleted or weakened. Baseline and candidate must run on this contract."
+expectations:
+  - id: old-target-performs-no-mutation
+    type: tool_usage
+    mustCall: []
+    mustNotCall: [guest_rsvp, auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover]
+    turnIndex: 1
+    severity: hard
+  - id: explicit-old-target-wins-over-newer
+    type: text_semantic
+    rubric: >-
+      The conversation first grounded Cumpleaños Marta with event date 2026-09-21, then the user explicitly asked about Boda Ana y Luis. The answer must be concise, natural, and entirely in Spanish; answer about Boda Ana y Luis with its event date 2026-09-20. It must not answer about Cumpleaños Marta, must not blend dates, facts, or attendance across the two events, must not re-ask which event the user means when the target is explicit, and must not ask for email or a code.
+    minScore: 0.9
+    requireJudge: true
+    turnIndex: 1
+    severity: hard
+budget:
+  maxTurns: 2
+  estimatedPromptTokensPerTurn: 1500
+  estimatedCompletionTokensPerTurn: 220

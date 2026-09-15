@@ -1,8 +1,8 @@
 template: template.base-live
 id: live_behavior.rsvp_declined_state_offers_one_change
 suite: live_behavior_regression
-version: 2
-description: A declined invitation reports its current state and offers one clear confirmation to change it to attending.
+version: 4
+description: A declined invitation reports its current state and offers a clear confirmation to change it to attending, as a question or conditional offer, in natural wording without fixed phrases.
 tags: [live, behavior, rsvp, attendance, current-state, confirmation]
 targetModes: [live_lambda]
 inputs:
@@ -51,22 +51,17 @@ expectations:
   - id: reports-decline-and-offers-change
     type: text_semantic
     rubric: >-
-      The selected invitation currently says the guest will not attend. The answer must be natural and entirely in Spanish, clearly report that current state, and ask one concise question offering to change it so attendance is confirmed. It must not claim that a change already succeeded, ask for email or a code, or expose internal fields.
+      The selected invitation currently says the guest will not attend. The answer must be natural and entirely in Spanish, clearly report that current declined state, and offer to change it so attendance is confirmed, in the model's own wording without any fixed required phrase: either one explicit question offering to change it, or one unambiguous conditional offer that requires the user's decision to proceed, both satisfy the offer. It must not claim that a change already succeeded, ask for email or a code, or expose internal fields.
     minScore: 0.9
     requireJudge: true
-    severity: hard
-  - id: deterministic-declining-offers-explicit-question
-    type: text_contains
-    allOf: ["Figura que no asistirás", "¿Deseas que confirme tu asistencia?"]
-    severity: hard
-  - id: deterministic-declining-omits-no-change
-    type: text_not_contains
-    phrases: ["No fue necesario hacer otro cambio"]
     severity: hard
   - id: no-rsvp-vocabulary
     type: text_not_contains
     phrases: ["RSVP", "rsvp"]
     severity: hard
+notes:
+  - "R05 oracle revision v2 to v3, 2026-09-12, Packet F3. Old deterministic-declining-offers-explicit-question demanded exact phrases (Figura que no asistirás plus ¿Deseas que confirme tu asistencia?) and deterministic-declining-omits-no-change banned one sentence, forcing scripts around an otherwise understandable truthful reply (matrix: hard exact-question/forbidden-no-change phrasing forces scripts). Both deterministic expectations are removed; the semantic contract judges declined-state reporting plus a natural change offer. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
+  - "R05 oracle revision v3 to v4, 2026-09-15, recheck-b9a7662d. Old reports-decline-and-offers-change demanded interrogative syntax although the fixture notes already describe a natural conditional change offer as actionable (recheck: requiring interrogative syntax is overstrict). New contract accepts either one explicit question or one unambiguous conditional offer requiring the user's decision; interrogative form alone never decides. Keeps the mandatory semantic judge, hard severity, no-write-without-intent tool checks, and identity/effect assertions unchanged. Old v3 runs preserved; baseline and candidate must rerun on this v4 contract."
 budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 1600

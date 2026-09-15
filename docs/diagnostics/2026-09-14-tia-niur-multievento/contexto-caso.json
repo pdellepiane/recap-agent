@@ -1,0 +1,23 @@
+{
+  "caseId": "tia-niur-multievento",
+  "source": "operator report 2026-09-14, not yet cross-checked against production logs",
+  "contact": { "label": "Tia Niur", "note": "owns invitations across 2 events" },
+  "events": [
+    { "label": "Marcelo", "id": 39361, "role": "expected target" },
+    { "label": "FACUNDO", "id": 33912, "role": "wrongly selected target" }
+  ],
+  "messages": [
+    { "when": "03/09", "about": 39361, "note": "first turns about Marcelo's event [OP]" },
+    { "when": "mid-window", "about": 33912, "note": "second event enters conversation [OP]" },
+    { "when": "yesterday", "about": "ambiguous follow-up", "agentResolvedTo": 33912, "shouldResolveTo": 39361 }
+  ],
+  "commits": ["37c9cbad", "e8299759", "bdb4a88a"],
+  "routes": [
+    { "file": "src/runtime/agent-service.ts", "line": 7038, "symbol": "currentReminderForEvent" },
+    { "file": "src/runtime/agent-service.ts", "line": 1148, "symbol": "workingPlan: existingPlan" },
+    { "file": "src/runtime/agent-service.ts", "line": 690, "symbol": "effect/gateway closure" },
+    { "file": "src/runtime/agent-service.ts", "line": 1031, "symbol": "currentNode ofrecer_agente_humano" }
+  ],
+  "horizon": "one-day conversations; next day starts over",
+  "suspectedMechanism": "recency-wins instead of explicit-target-wins in multi-event resolution"
+}

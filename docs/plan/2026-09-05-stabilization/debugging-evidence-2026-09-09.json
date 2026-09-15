@@ -1,0 +1,243 @@
+{
+  "runId": "eval-2026-09-09T13-05-03-835Z-f8bf0fc1",
+  "summary": {
+    "totalCases": 76,
+    "passedCases": 67,
+    "failedCases": 9,
+    "erroredCases": 0,
+    "skippedCases": 0
+  },
+  "sourceHead": "4bb558869f4affee1005f89e36556ef310105270",
+  "sourceDirty": true,
+  "reportedArtifactPrefix": "538169a2",
+  "artifactFullDigestVerifiedByThisAudit": false,
+  "failedExpectations": [
+    {
+      "caseId": "live_behavior.ambiguous_confirmation_clarifies",
+      "failures": [
+        {
+          "id": "ambiguity-response-is-a-focused-clarification",
+          "type": "text_semantic",
+          "passed": false,
+          "severity": "hard",
+          "score": 0.4,
+          "message": "La respuesta intenta aclarar el siguiente paso, pero no pregunta directamente qué está confirmando el usuario ni cuál proveedor; ofrece avanzar con “otro frente”, una posibilidad no indicada en el contexto."
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.customer_transaction_code_by_phone",
+      "failures": [
+        {
+          "id": "transaction-code-is-handled-as-purchase-reference",
+          "type": "text_semantic",
+          "passed": false,
+          "severity": "hard",
+          "score": 0.2,
+          "message": "La respuesta está en español y parece referirse a una compra, pero no identifica la referencia como COD301816 ni confirma claramente que corresponde a esa transacción. Además, solo indica que el regalo fue aprobado, sin presentar la información mínima necesaria para vincular la respuesta con el código enviado."
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.mailbox_issue_deferral_and_clarification_preserve_support",
+      "failures": [
+        {
+          "id": "report-enters-support",
+          "type": "node_transition",
+          "passed": false,
+          "severity": "hard",
+          "score": 0,
+          "message": "Expected transition did not match. Observed deteccion_intencion->solicitar_agente_humano. Allowed=*->resolver_consultas_informativas."
+        },
+        {
+          "id": "clarification-stays-in-support",
+          "type": "node_transition",
+          "passed": false,
+          "severity": "hard",
+          "score": 0,
+          "message": "Expected transition did not match. Observed solicitar_agente_humano->solicitar_agente_humano. Allowed=*->resolver_consultas_informativas."
+        },
+        {
+          "id": "acknowledge-mailbox-not-welcome",
+          "type": "text_semantic",
+          "passed": false,
+          "severity": "hard",
+          "score": 0.2,
+          "message": "No reconoce explícitamente el problema de capacidad del Gmail registrado. Además, introduce una referencia innecesaria a verificación por correo y códigos, aunque no los solicita directamente."
+        },
+        {
+          "id": "understand-full-mailbox-clarification",
+          "type": "text_semantic",
+          "passed": false,
+          "severity": "hard",
+          "score": 0,
+          "message": "La respuesta candidata está vacía y no reconoce en español que el buzón está lleno."
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.otp_nondelivery_auto_resends_once",
+      "failures": [
+        {
+          "id": "first-nondelivery-handoff-language-has-no-resend-loop",
+          "type": "text_semantic",
+          "passed": false,
+          "severity": "hard",
+          "score": 0.65,
+          "message": "Indica en español que ya solicitó apoyo humano y no reenvía ni ofrece reenviar el código. Sin embargo, no deja explícitamente la conversación con ese equipo ni confirma de forma clara la transferencia, como exige la rúbrica."
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.otp_not_received_requires_response",
+      "failures": [
+        {
+          "id": "missing-code-report-hands-off-without-another-code-operation",
+          "type": "tool_usage",
+          "passed": false,
+          "severity": "hard",
+          "score": 0,
+          "message": "Missing=request_human_takeover; forbidden=none; total=3."
+        },
+        {
+          "id": "handoff-is-persisted",
+          "type": "plan_field_equals",
+          "passed": false,
+          "severity": "hard",
+          "score": 0,
+          "message": "Plan field human_escalation.status was \"none\" instead of \"requested\"."
+        },
+        {
+          "id": "ends-code-delivery-loop",
+          "type": "text_semantic",
+          "passed": false,
+          "severity": "hard",
+          "score": 0,
+          "message": "No confirma que se haya solicitado apoyo humano ni que la conversación haya quedado con ese equipo; al contrario, indica que no pudo registrar la solicitud."
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.phone_account_rejection_requests_email",
+      "failures": [
+        {
+          "id": "requests-registered-email-after-rejection",
+          "type": "text_semantic",
+          "passed": false,
+          "severity": "hard",
+          "score": 0.02,
+          "message": "No solicita en español el correo registrado en Sin Envolturas y, en cambio, indica que no es necesario enviar otro correo ni código. Por tanto, no permite continuar con la pregunta protegida del evento."
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.phone_purchase_missing_hands_off_once",
+      "failures": [
+        {
+          "id": "scoped-missing-data-handoff-not-account-login",
+          "type": "text_semantic",
+          "passed": false,
+          "severity": "hard",
+          "score": 0.35,
+          "message": "La respuesta confirma correctamente que se solicitó apoyo humano y no pide correo ni código, pero omite el requisito central de informar que no se encontró información asociada a ese número. Tampoco explicita que el apoyo continuará con la consulta sobre la compra."
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.repeated_otp_failure_preserves_gift_query",
+      "failures": [
+        {
+          "id": "second-code-never-verifies-and-hands-off",
+          "type": "tool_usage",
+          "passed": false,
+          "severity": "hard",
+          "score": 0,
+          "message": "Missing=request_human_takeover; forbidden=none; total=1."
+        },
+        {
+          "id": "first-failure-persists-human-handoff",
+          "type": "plan_field_equals",
+          "passed": false,
+          "severity": "hard",
+          "score": 0,
+          "message": "Plan field human_escalation.status was \"none\" instead of \"requested\"."
+        },
+        {
+          "id": "first-rejected-code-hands-off-once",
+          "type": "text_semantic",
+          "passed": false,
+          "severity": "hard",
+          "score": 0.05,
+          "message": "No cumple: afirma que no pudo registrar la solicitud de apoyo humano, en lugar de decir que el apoyo humano ya fue solicitado. Aunque no pide otro código ni correo y no afirma un resultado del pago, tampoco preserva explícitamente la pregunta pendiente sobre si el depósito del regalo llegó a la pareja."
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.roberto_reminder_invitation_disagreement",
+      "failures": [
+        {
+          "id": "mismatch-reply-is-truthful-without-denial",
+          "type": "text_semantic",
+          "passed": false,
+          "severity": "hard",
+          "score": 0.55,
+          "message": "La respuesta está en español, reconoce el recordatorio vigente de Cumple Marcelo, declara honestamente que no puede verificar la invitación y menciona que solicitó apoyo humano. Sin embargo, reproduce vocabulario de confirmación de asistencia (\"confirmar tu asistencia\"), lo que incumple la prohibición de usar lenguaje de RSVP."
+        }
+      ]
+    }
+  ],
+  "retrievedModelFacts": [
+    {
+      "case": "ambiguous_confirmation_clarifies",
+      "responseId": "resp_054244ad7d0a9880006aa159da201487d2aea85ce4e4550ad3",
+      "actionIntent": null,
+      "ambiguity": "clear",
+      "phoneConfirmation": "unclear",
+      "actionableProviderDeltas": false
+    },
+    {
+      "case": "mailbox_issue_deferral_and_clarification_preserve_support",
+      "responseId": "resp_07ce2040237f75cc006aa15aa94fa487d2a6a05b26745e66a4",
+      "actionIntent": "solicitar_humano",
+      "supportAct": {
+        "kind": "report_issue",
+        "topic": "mailbox_capacity",
+        "detail": "mailbox_full"
+      },
+      "requestedOperation": null
+    },
+    {
+      "case": "customer_transaction_code_by_phone",
+      "responseId": "resp_0e8120c2a9a92142006aa15a2c1a7887d2a9adfe42d50e9a10",
+      "source": "stored reply input",
+      "referenceResolution": "unavailable"
+    }
+  ],
+  "isolatedFixtureProbe": [
+    {
+      "configured": "failed",
+      "first": "failed",
+      "second": "success"
+    },
+    {
+      "configured": "unknown",
+      "first": "failed",
+      "second": "success"
+    }
+  ],
+  "offlineValidation": {
+    "passed": 51,
+    "failed": 0,
+    "skipped": 0,
+    "files": [
+      "eval-fixture-gateway.test.ts",
+      "eval-live-target.test.ts",
+      "f1-otp-terminal-handoff.test.ts",
+      "f3-ambiguous-confirmation.test.ts",
+      "live-behavior-coverage.test.ts",
+      "s02-fixture-simulation.test.ts",
+      "semantic-judge.test.ts"
+    ]
+  },
+  "changesThisAudit": "Documentation only; no runtime/case/fixture edits or deployment; no new live generations."
+}

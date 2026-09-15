@@ -126,13 +126,45 @@ describe('capability boundary routing', () => {
 
     const response = await service(runtime).handleTurn(inbound('Necesito que me envíen la constancia'));
 
-    expect(response.trace.prompt_bundle_id).toBe('deterministic:unsupported_operation');
-    expect(response.outbound.text).toContain('constancia');
-    expect(response.outbound.text).not.toContain('No puedo realizar esa gestión');
-    expect(runtime.composeRequests).toHaveLength(0);
+    expect(response.trace.prompt_bundle_id).not.toBe('deterministic:unsupported_operation');
+    expect(response.outbound.text).toBe('reply:resolver_consultas_informativas');
+    expect(runtime.composeRequests).toHaveLength(1);
+    expect(runtime.composeRequests.at(-1)?.capabilityDecision).toMatchObject({
+      status: 'unsupported',
+      operation: 'confirmation_document.send',
+    });
   });
 
-  it('routes typed host-withdrawal policy evidence through the FAQ flow', async () => {
+  it('composes an explicit human request through the model with typed handoff evidence', async () => {
+    const runtime = new ScriptedRuntime(extraction({
+      actionIntent: 'solicitar_humano',
+    }));
+
+    const response = await service(runtime).handleTurn(inbound('Necesito hablar con una persona'));
+
+    expect(response.plan.current_node).toBe('solicitar_agente_humano');
+    expect(response.outbound.delivery.action).toBe('send');
+    expect(response.outbound.text).toBe('reply:solicitar_agente_humano');
+    expect(response.trace.prompt_bundle_id).not.toMatch(/^deterministic:/u);
+    expect(runtime.composeRequests).toHaveLength(1);
+    const request = runtime.composeRequests.at(-1);
+    expect(request?.currentNode).toBe('solicitar_agente_humano');
+    expect(request?.handoffOutcome).toBeNull();
+  });
+
+  it('never claims requested handoff evidence without a trusted identity', async () => {
+    const runtime = new ScriptedRuntime(extraction({
+      actionIntent: 'solicitar_humano',
+    }));
+
+    const response = await service(runtime).handleTurn(inbound('Necesito hablar con una persona'));
+
+    expect(response.plan.human_escalation.status).toBe('none');
+    expect(runtime.composeRequests.at(-1)?.handoffOutcome).not.toBe('handoff_requested');
+    expect(response.outbound.text).toBe('reply:solicitar_agente_humano');
+  });
+
+  it('composes typed host-withdrawal policy evidence through the model without canned prose', async () => {
     const runtime = new ScriptedRuntime(extraction({
       requestedOperation: null,
       informationRequests: [{
@@ -144,10 +176,43 @@ describe('capability boundary routing', () => {
 
     const response = await service(runtime).handleTurn(inbound('¿Cuánto demora un retiro de fondos?'));
 
-    expect(response.trace.prompt_bundle_id).toBe(
-      'deterministic:host_withdrawal_policy_and_support',
+    expect(response.trace.prompt_bundle_id).not.toMatch(/^deterministic:/u);
+    expect(response.trace.prompt_file_paths).not.toContain(
+      'nodes/resolver_consultas_informativas/host-withdrawal.json',
     );
-    expect(response.trace.capability_decision).toBeNull();
-    expect(runtime.composeRequests).toHaveLength(0);
+    expect(runtime.composeRequests).toHaveLength(1);
+    const request = runtime.composeRequests.at(-1);
+    expect(request?.currentNode).toBe('resolver_consultas_informativas');
+    expect(request?.informationResults?.[0]).toMatchObject({ kind: 'faq' });
+    expect(request?.handoffOutcome).toBeNull();
+    expect(response.outbound.text).toBe('reply:resolver_consultas_informativas');
+    // No canned prose joined into delivery: the stub reply carries no
+    // policy window and the trace keeps the typed request open.
+    expect(response.outbound.text).not.toContain('horas hábiles');
+    expect(response.plan.information_state.pending_requests.length).toBeGreaterThan(0);
+  });
+
+  it('reports an unconfigured handoff honestly on individual-status withdrawal', async () => {
+    const runtime = new ScriptedRuntime(extraction({
+      requestedOperation: null,
+      informationRequests: [{
+        kind: 'faq',
+        query: 'Hice un retiro y aún no lo recibo.',
+        hostWithdrawal: 'individual_status',
+        eventHint: 'Diana y Fernando',
+      }],
+    }));
+
+    const response = await service(runtime).handleTurn(inbound('Hice un retiro y aún no lo recibo.'));
+
+    expect(runtime.composeRequests).toHaveLength(1);
+    const request = runtime.composeRequests.at(-1);
+    expect(request?.extraction.informationRequests[0]).toMatchObject({
+      kind: 'faq',
+      hostWithdrawal: 'individual_status',
+      eventHint: 'Diana y Fernando',
+    });
+    expect(request?.handoffOutcome).toBe('handoff_unknown');
+    expect(response.plan.current_node).toBe('resolver_consultas_informativas');
   });
 });

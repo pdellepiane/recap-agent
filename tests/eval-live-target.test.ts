@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createEmptyPlan, mergePlan } from '../src/core/plan';
+import { buildExecutionIdentitySeed } from '../src/evals/targets/live-lambda';
 vi.mock('../src/aws/local-identity', () => ({ assertRequiredLocalAwsIdentity: vi.fn() }));
 
 vi.mock('@aws-sdk/client-cloudformation', () => ({
@@ -19,10 +20,14 @@ vi.mock('@aws-sdk/client-cloudformation', () => ({
 vi.mock('../src/storage/dynamo-plan-store', () => {
   const savedPlans: unknown[] = [];
   let saveError: Error | null = null;
+  let livePlan: Record<string, unknown> | null = null;
   return {
     savedPlans,
     setSaveError(error: Error | null) {
       saveError = error;
+    },
+    setLivePlan(plan: Record<string, unknown> | null) {
+      livePlan = plan;
     },
     DynamoPlanStore: class {
       async save(input: unknown) {
@@ -33,6 +38,7 @@ vi.mock('../src/storage/dynamo-plan-store', () => {
       }
 
       async getByExternalUser() {
+        if (livePlan) return livePlan;
         return {
           plan_id: 'plan-live',
           channel: 'terminal_whatsapp_eval',
@@ -74,9 +80,7 @@ describe('live lambda eval target', () => {
 
   it('fails loudly when a live seed plan cannot be persisted', async () => {
     const storageModule = await import('../src/storage/dynamo-plan-store');
-    const setSaveError = (storageModule as unknown as {
-      setSaveError: (error: Error | null) => void;
-    }).setSaveError;
+    const setSaveError = planStoreTestHooks(storageModule).setSaveError;
     setSaveError(new Error('expired development credentials'));
     const { runLiveLambdaCase } = await import('../src/evals/targets/live-lambda');
 
@@ -126,8 +130,9 @@ describe('live lambda eval target', () => {
       vi.fn().mockResolvedValue({
         ok: true,
         async json() {
-          return {
+            return {
             message: 'Tengo opciones de fotografía en Lima.',
+            output_origin: { status: 'verified', candidateSha256: '1'.repeat(64), deliveredSha256: '0'.repeat(64), transformationVersion: 'transport-v2', mismatchFields: [] },
             conversation_id: 'conv-live',
             plan_id: 'plan-live',
             current_node: 'recomendar',
@@ -248,6 +253,7 @@ describe('live lambda eval target', () => {
 
     expect(result.turns).toHaveLength(1);
     expect(result.turns[0]?.trace.tools_called).toEqual(['search_providers_from_plan']);
+    expect(result.turns[0]?.outputOrigin?.status).toBe('mismatch');
     expect(result.turns[0]?.trace.route_kind).toBe('single_need_search');
     // Package C contract: free-text operational notes stay omitted from safe
     // traces; judges use typed packets instead.
@@ -422,9 +428,12 @@ describe('live lambda eval target', () => {
     });
 
     expect(savedPlans).toHaveLength(1);
+    // O1 execution identity: the repeated logical session maps identically
+    // to one physical session per execution, never the literal input ID.
+    const expectedSession = `live.token.seeded-session-${buildExecutionIdentitySeed('live-dev-lambda', 'live-dev-lambda', 'live.token.seeded')}--s1`;
     expect(requestBodies.map((body) => body.session_id)).toEqual([
-      'session-token-test',
-      'session-token-test',
+      expectedSession,
+      expectedSession,
     ]);
     expect(requestBodies.every((body) => !Object.hasOwn(body, 'operation'))).toBe(true);
     expect(result.turns).toHaveLength(2);
@@ -432,6 +441,15 @@ describe('live lambda eval target', () => {
     expect(result.turns.every((turn) => (turn.perf?.total_tokens ?? 0) > 0)).toBe(true);
   }, 15_000);
 });
+
+type PlanStoreTestHooks = {
+  setSaveError: (error: Error | null) => void;
+  setLivePlan: (plan: Record<string, unknown> | null) => void;
+};
+
+function planStoreTestHooks(module: object): PlanStoreTestHooks {
+  return module as unknown as PlanStoreTestHooks;
+}
 
 function sensitiveLivePlan() {
   return mergePlan(
@@ -458,3 +476,529 @@ function sensitiveLivePlan() {
     },
   );
 }
+
+describe('live-target wire output observation', () => {
+  it('marks a replaced wire message as mismatch instead of trusting the declared hash', async () => {
+    const { hashPrivateOutput } = await import('../src/audit/output-origin');
+    const { independentlyObserveWireOutput } = await import('../src/evals/targets/live-lambda');
+    const candidate = 'Respuesta original del modelo.';
+    const observed = independentlyObserveWireOutput('Texto reemplazado en el cable.', {
+      status: 'verified',
+      candidateSha256: hashPrivateOutput(candidate),
+      deliveredSha256: hashPrivateOutput(candidate),
+      transformationVersion: 'transport-v2',
+      mismatchFields: [],
+    });
+    expect(observed.status).toBe('mismatch');
+    expect(observed.mismatchFields).toContain('candidate_sha256');
+    expect(observed.mismatchFields).toContain('delivered_sha256');
+    expect(observed.deliveredSha256).toBe(hashPrivateOutput('Texto reemplazado en el cable.'));
+  });
+
+  it('marks a missing declared receipt as missing with the recomputed delivered hash', async () => {
+    const { hashPrivateOutput } = await import('../src/audit/output-origin');
+    const { independentlyObserveWireOutput } = await import('../src/evals/targets/live-lambda');
+    const observed = independentlyObserveWireOutput('Texto entregado por cable.', undefined);
+    expect(observed.status).toBe('missing');
+    expect(observed.candidateSha256).toBeNull();
+    expect(observed.deliveredSha256).toBe(hashPrivateOutput('Texto entregado por cable.'));
+    expect(observed.mismatchFields).toContain('candidate_output_origin');
+  });
+
+  it('keeps raw model text out of the evidence while preserving verified equality', async () => {
+    const { hashPrivateOutput } = await import('../src/audit/output-origin');
+    const { independentlyObserveWireOutput } = await import('../src/evals/targets/live-lambda');
+    const wire = 'Texto entregado por cable.';
+    const observed = independentlyObserveWireOutput(wire, {
+      status: 'verified',
+      candidateSha256: hashPrivateOutput(wire),
+      deliveredSha256: hashPrivateOutput(wire),
+      transformationVersion: 'transport-v2',
+      mismatchFields: [],
+    });
+    expect(observed.status).toBe('verified');
+    expect(JSON.stringify(observed)).not.toContain(wire);
+  });
+});
+
+describe('live-target fixture outbound observation', () => {
+  beforeEach(async () => {
+    const storageModule = await import('../src/storage/dynamo-plan-store');
+    planStoreTestHooks(storageModule).setLivePlan(null);
+  });
+
+  function fixtureTrace(turnIndex: number) {
+    return {
+      trace_id: `trace-fixture-${turnIndex}`,
+      conversation_id: 'conv-fixture',
+      plan_id: 'plan-fixture',
+      previous_node: 'aclarar_pedir_faltante',
+      next_node: 'recomendar',
+      node_path: ['aclarar_pedir_faltante', 'recomendar'],
+      intent: 'buscar_proveedores',
+      missing_fields: [],
+      search_ready: true,
+      prompt_bundle_id: 'bundle-fixture',
+      prompt_file_paths: ['prompts/nodes/recomendar/system.txt'],
+      tools_considered: [],
+      tools_called: [],
+      tool_outputs: [],
+      provider_results: [],
+      plan_persisted: true,
+      plan_persist_reason: 'recomendar',
+      timing_ms: {
+        total: 1000,
+        load_plan: 10,
+        prepare_working_plan: 5,
+        extraction: 300,
+        apply_extraction: 10,
+        compute_sufficiency: 5,
+        provider_search: 0,
+        provider_enrichment: 0,
+        prompt_bundle_load: 10,
+        compose_reply: 500,
+        save_plan: 20,
+      },
+      token_usage: { extraction: null, reply: null, total: null },
+    };
+  }
+
+  it('records the sent receipt through the live caller when private evidence matches', async () => {
+    const { hashPrivateOutput } = await import('../src/audit/output-origin');
+    const { runLiveLambdaCase } = await import('../src/evals/targets/live-lambda');
+    const { InMemoryEvalFixtureStateStore } = await import('../src/runtime/eval-fixture-state');
+    const storageModule = await import('../src/storage/dynamo-plan-store');
+    const setLivePlan = planStoreTestHooks(storageModule).setLivePlan;
+    const replyText = 'Tengo opciones de fotografia en Lima.';
+    // O1 wire identity: the invocation message id carries the execution seed.
+    const sentMessageId = `live.fixture.receipt-0-${buildExecutionIdentitySeed('live-dev-lambda', 'live-dev-lambda', 'live.fixture.receipt')}`;
+    const { createEmptyPlan } = await import('../src/core/plan');
+    const privatePlan = {
+      ...createEmptyPlan({ planId: 'plan-fixture', channel: 'terminal_whatsapp_eval', externalUserId: 'eval-user' }),
+      last_outbound_context: {
+        message_id: sentMessageId,
+        text: replyText,
+        text_truncated: false,
+        recorded_at: new Date().toISOString(),
+        delivery_evidence: 'constructed' as const,
+      },
+    };
+    setLivePlan(privatePlan);
+    const requestBodies: Array<Record<string, unknown>> = [];
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (_url: string, init: RequestInit) => {
+      const bodyText = typeof init.body === 'string' ? init.body : await new Response(init.body).text();
+      requestBodies.push(JSON.parse(bodyText) as Record<string, unknown>);
+      return {
+        ok: true,
+        headers: new Headers(),
+        async json() {
+          return {
+            message: replyText,
+            message_original_sha256: hashPrivateOutput(replyText),
+            delivery: { action: 'send', reason: 'model_reply' },
+            conversation_id: 'conv-fixture',
+            plan_id: 'plan-fixture',
+            current_node: 'recomendar',
+            trace: fixtureTrace(0),
+          };
+        },
+      };
+    }));
+    try {
+      const store = new InMemoryEvalFixtureStateStore();
+      const result = await runLiveLambdaCase({
+        currentCase: {
+          id: 'live.fixture.receipt',
+          suite: 'live_behavior_regression',
+          version: 1,
+          description: 'Fixture receipt integration.',
+          imports: [],
+          tags: [],
+          priority: 'p1',
+          status: 'active',
+          targetModes: ['live_lambda'],
+          variables: {},
+          inputs: [{ text: 'quiero fotografos en lima', contactPhone: '+51973296571' }],
+          backendFixture: { scenario: 'image-clean-world' },
+          expectations: [],
+          scorers: [],
+          notes: [],
+        },
+        config: {
+          label: 'live-dev-lambda',
+          target: 'live_lambda',
+          notes: [],
+          environmentOverrides: {},
+          liveLambda: { functionUrl: 'https://example.test/lambda', channel: 'terminal_whatsapp_eval' },
+        },
+        artifactDir: '.eval-runs-test',
+        fixtureStore: store,
+      });
+      expect(result.turns).toHaveLength(1);
+      // S1 wire identity for the S3 silence seam travels on the turn.
+      expect(result.turns[0]?.observedMessageId).toBe(sentMessageId);
+      // The wire marker carries the actual evaluation identity, never
+      // scenario-derived defaults.
+      expect(requestBodies[0]?.backendFixture).toMatchObject({
+        scenario: 'image-clean-world',
+        runId: 'live-dev-lambda',
+        caseId: 'live.fixture.receipt',
+      });
+      const sentUser = requestBodies[0]?.user_id as string;
+      const stored = await store.listMessages(
+        'live-dev-lambda',
+        'live.fixture.receipt',
+        `terminal_whatsapp_eval#${sentUser}`,
+      );
+      expect(stored).toHaveLength(1);
+      expect(stored[0]).toMatchObject({
+        direction: 'outbound',
+        delivery: 'sent',
+        body: replyText,
+        scenario: 'image-clean-world',
+      });
+    } finally {
+      setLivePlan(null);
+    }
+  }, 15_000);
+
+  it('fails the harness when a claimed send has no matching private record', async () => {
+    const { hashPrivateOutput } = await import('../src/audit/output-origin');
+    const { runLiveLambdaCase } = await import('../src/evals/targets/live-lambda');
+    const { InMemoryEvalFixtureStateStore } = await import('../src/runtime/eval-fixture-state');
+    const replyText = 'Tengo opciones de fotografia en Lima.';
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      headers: new Headers(),
+      async json() {
+        return {
+          message: replyText,
+          message_original_sha256: hashPrivateOutput(replyText),
+          delivery: { action: 'send', reason: 'model_reply' },
+          conversation_id: 'conv-fixture',
+          plan_id: 'plan-fixture',
+          current_node: 'recomendar',
+          trace: fixtureTrace(0),
+        };
+      },
+    }));
+    // The mocked plan store returns a plan without last_outbound_context:
+    // a claimed send with no private record is a harness error, never a
+    // fabricated reply.
+    await expect(runLiveLambdaCase({
+      currentCase: {
+        id: 'live.fixture.mismatch',
+        suite: 'live_behavior_regression',
+        version: 1,
+        description: 'Harness error on missing record.',
+        imports: [],
+        tags: [],
+        priority: 'p1',
+        status: 'active',
+        targetModes: ['live_lambda'],
+        variables: {},
+        inputs: [{ text: 'quiero fotografos en lima', contactPhone: '+51973296571' }],
+        backendFixture: { scenario: 'image-clean-world' },
+        expectations: [],
+        scorers: [],
+        notes: [],
+      },
+      config: {
+        label: 'live-dev-lambda',
+        target: 'live_lambda',
+        notes: [],
+        environmentOverrides: {},
+        liveLambda: { functionUrl: 'https://example.test/lambda', channel: 'terminal_whatsapp_eval' },
+      },
+      artifactDir: '.eval-runs-test',
+      fixtureStore: new InMemoryEvalFixtureStateStore(),
+    })).rejects.toThrow('Harness error');
+  }, 15_000);
+
+  it('never marks suppressed responses as sent', async () => {
+    const { runLiveLambdaCase } = await import('../src/evals/targets/live-lambda');
+    const { InMemoryEvalFixtureStateStore } = await import('../src/runtime/eval-fixture-state');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      headers: new Headers(),
+      async json() {
+        return {
+          message: null,
+          delivery: { action: 'suppress', reason: 'image_only_no_outstanding_task' },
+          conversation_id: 'conv-fixture',
+          plan_id: 'plan-fixture',
+          current_node: 'contacto_inicial',
+          trace: { ...fixtureTrace(0), plan_persist_reason: 'image_file_silence' },
+        };
+      },
+    }));
+    const store = new InMemoryEvalFixtureStateStore();
+    const result = await runLiveLambdaCase({
+      currentCase: {
+        id: 'live.fixture.suppressed',
+        suite: 'live_behavior_regression',
+        version: 1,
+        description: 'Suppressed turns record nothing.',
+        imports: [],
+        tags: [],
+        priority: 'p1',
+        status: 'active',
+        targetModes: ['live_lambda'],
+        variables: {},
+        inputs: [{ text: '', contactPhone: '+51987654321' }],
+        backendFixture: { scenario: 'image-clean-world' },
+        expectations: [],
+        scorers: [],
+        notes: [],
+      },
+      config: {
+        label: 'live-dev-lambda',
+        target: 'live_lambda',
+        notes: [],
+        environmentOverrides: {},
+        liveLambda: { functionUrl: 'https://example.test/lambda', channel: 'terminal_whatsapp_eval' },
+      },
+      artifactDir: '.eval-runs-test',
+      fixtureStore: store,
+    });
+    expect(result.turns).toHaveLength(1);
+    // No receipt was recorded for the suppressed turn.
+    const stored = await store.list('live-dev-lambda', 'live.fixture.suppressed');
+    expect(stored).toHaveLength(0);
+  }, 15_000);
+
+  it('gates every receipt conjunct without fabricating replies', async () => {
+    const { hashPrivateOutput } = await import('../src/audit/output-origin');
+    const { recordFixtureOutboundObservation } = await import('../src/evals/targets/live-lambda');
+    const { InMemoryEvalFixtureStateStore } = await import('../src/runtime/eval-fixture-state');
+    const base = {
+      store: new InMemoryEvalFixtureStateStore(),
+      runId: 'run-gate',
+      caseId: 'case-gate',
+      conversationKey: 'conv#user',
+      scenario: 'image-clean-world',
+      phone: '+51987654321',
+      sentMessageId: 'case-gate-0',
+      responseText: 'Respuesta real.',
+      observedOriginalSha256: hashPrivateOutput('Respuesta real.'),
+    };
+    const contextFor = (text: string, messageId = 'case-gate-0', truncated = false) => ({
+      message_id: messageId,
+      text,
+      text_truncated: truncated,
+      recorded_at: new Date().toISOString(),
+      delivery_evidence: 'constructed' as const,
+    });
+    await expect(recordFixtureOutboundObservation({
+      ...base, privatePlan: { last_outbound_context: contextFor('Respuesta real.') }, deliveryAction: 'send',
+    })).resolves.toBe('recorded');
+    // Retry of the same turn stays idempotent.
+    await expect(recordFixtureOutboundObservation({
+      ...base, privatePlan: { last_outbound_context: contextFor('Respuesta real.') }, deliveryAction: 'send',
+    })).resolves.toBe('recorded');
+    const stored = await base.store.listMessages('run-gate', 'case-gate', 'conv#user');
+    expect(stored).toHaveLength(1);
+    await expect(recordFixtureOutboundObservation({
+      ...base, privatePlan: null, deliveryAction: 'send',
+    })).rejects.toThrow('Harness error');
+    await expect(recordFixtureOutboundObservation({
+      ...base, privatePlan: { last_outbound_context: contextFor('Respuesta real.', 'other-id') }, deliveryAction: 'send',
+    })).rejects.toThrow('does not match invocation');
+    await expect(recordFixtureOutboundObservation({
+      ...base, privatePlan: { last_outbound_context: contextFor('Respuesta real.', 'case-gate-0', true) }, deliveryAction: 'send',
+    })).rejects.toThrow('truncated');
+    await expect(recordFixtureOutboundObservation({
+      ...base, privatePlan: { last_outbound_context: contextFor('Texto distinto.') }, deliveryAction: 'send',
+    })).rejects.toThrow('does not match the independently observed response hash');
+    await expect(recordFixtureOutboundObservation({
+      ...base, privatePlan: { last_outbound_context: contextFor('Respuesta real.') }, deliveryAction: 'suppress',
+    })).resolves.toBe('skipped_no_send');
+    await expect(recordFixtureOutboundObservation({
+      ...base, privatePlan: { last_outbound_context: contextFor('Respuesta real.') }, deliveryAction: 'send', phone: null,
+    })).resolves.toBe('skipped_no_phone');
+  });
+
+  it('validates image-only silence from the private plan when the wire plan is redacted', async () => {
+    const { runLiveLambdaCase } = await import('../src/evals/targets/live-lambda');
+    const { getPrivatePlanForEvidence } = await import('../src/evals/evaluation-state');
+    const { validateImageOnlySilence } = await import('../src/evals/silence');
+    const { collectOriginGateFailures } = await import('../src/evals/runner');
+    const { createEmptyPlan, mergePlan } = await import('../src/core/plan');
+    const { projectSafePlan } = await import('../src/runtime/artifact-redaction');
+    const storageModule = await import('../src/storage/dynamo-plan-store');
+    const setLivePlan = planStoreTestHooks(storageModule).setLivePlan;
+    const caseId = 'live.image.silence.private';
+    // O1 wire identity: the invocation message id carries the execution seed.
+    const sentMessageId = `${caseId}-0-${buildExecutionIdentitySeed('live-dev-lambda', 'live-dev-lambda', caseId)}`;
+    const secretToken = 'eyJhbGciOiJIUzI1NiJ9.image-silence-private.signature';
+    const privatePlan = {
+      ...mergePlan(
+        createEmptyPlan({ planId: 'plan-image-silence', channel: 'terminal_whatsapp_eval', externalUserId: 'eval-user' }),
+        { user_auth: { status: 'authenticated', token: secretToken, auth_method: 'phone' } },
+      ),
+      image_attachments: [{
+        kind: 'file',
+        fileId: 'file-image-silence-123',
+        expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
+        mimeType: 'image/jpeg',
+        byteLength: 1234,
+        contentDigest: 'a'.repeat(64),
+        messageId: sentMessageId,
+        receivedAt: new Date().toISOString(),
+      }],
+    };
+    setLivePlan(privatePlan as unknown as Record<string, unknown>);
+    // Real CLI responses carry the redacted public projection on the wire:
+    // raw file IDs/URLs/digests omitted, last-response text scrubbed.
+    const wirePlan = projectSafePlan(privatePlan as unknown as Parameters<typeof projectSafePlan>[0]);
+    expect(wirePlan.image_attachments).toEqual([]);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      headers: new Headers(),
+      async json() {
+        return {
+          message: null,
+          delivery: { action: 'suppress', reason: 'image_only_no_outstanding_task' },
+          conversation_id: 'conv-image-silence',
+          plan_id: 'plan-image-silence',
+          current_node: 'contacto_inicial',
+          trace: { ...fixtureTrace(0), plan_persist_reason: 'image_file_silence' },
+          plan: wirePlan,
+        };
+      },
+    }));
+    try {
+      const result = await runLiveLambdaCase({
+        currentCase: {
+          id: caseId,
+          suite: 'live_behavior_regression',
+          version: 1,
+          description: 'Image-only silence with redacted wire plan.',
+          imports: [],
+          tags: [],
+          priority: 'p1',
+          status: 'active',
+          targetModes: ['live_lambda'],
+          variables: {},
+          inputs: [{ text: '', image: { data: 'aGVsbG8=', mime_type: 'image/jpeg' } }],
+          expectations: [],
+          scorers: [],
+          notes: [],
+        },
+        config: {
+          label: 'live-dev-lambda',
+          target: 'live_lambda',
+          notes: [],
+          environmentOverrides: {},
+          liveLambda: { functionUrl: 'https://example.test/lambda', channel: 'terminal_whatsapp_eval' },
+        },
+        artifactDir: '.eval-runs-test',
+      });
+      expect(result.turns).toHaveLength(1);
+      const turn = result.turns[0];
+      expect(turn?.observedMessageId).toBe(sentMessageId);
+      // Serialized turn carries the redacted public projection only.
+      expect(turn?.plan.image_attachments).toEqual([]);
+      const serialized = JSON.stringify(result);
+      expect(serialized).not.toContain('file-image-silence-123');
+      expect(serialized).not.toContain(secretToken);
+      if (turn === undefined) throw new Error('Missing live image-silence turn.');
+      // Private evidence keeps the typed active ref linked to this invocation.
+      const evidence = getPrivatePlanForEvidence(turn);
+      const refs = (evidence as unknown as { image_attachments?: unknown }).image_attachments;
+      expect(Array.isArray(refs) && (refs as unknown[]).length).toBe(1);
+      // Silence validates against the private snapshot, not the redacted wire.
+      expect(validateImageOnlySilence(turn, {
+        observedMessageId: turn?.observedMessageId ?? null,
+        nowMs: Date.now(),
+      }).exempt).toBe(true);
+      expect(collectOriginGateFailures(result.turns)).toEqual([]);
+    } finally {
+      setLivePlan(null);
+    }
+  }, 15_000);
+
+  it('threads config.run_id into the wire marker instead of the label fallback', async () => {
+    const { runLiveLambdaCase } = await import('../src/evals/targets/live-lambda');
+    const { InMemoryEvalFixtureStateStore } = await import('../src/runtime/eval-fixture-state');
+    const { hashPrivateOutput } = await import('../src/audit/output-origin');
+    const storageModule = await import('../src/storage/dynamo-plan-store');
+    const setLivePlan = planStoreTestHooks(storageModule).setLivePlan;
+    const { createEmptyPlan } = await import('../src/core/plan');
+    const replyText = 'Respuesta con run id explicito.';
+    const caseId = 'live.runid.threading';
+    const runId = 'eval-2026-09-14-run-thread-01';
+    // O1 wire identity: the invocation message id carries the execution seed.
+    const sentMessageId = `${caseId}-0-${buildExecutionIdentitySeed(runId, 'live-dev-lambda', caseId)}`;
+    setLivePlan({
+      ...createEmptyPlan({ planId: 'plan-runid', channel: 'terminal_whatsapp_eval', externalUserId: 'eval-user' }),
+      last_outbound_context: {
+        message_id: sentMessageId,
+        text: replyText,
+        text_truncated: false,
+        recorded_at: new Date().toISOString(),
+        delivery_evidence: 'constructed' as const,
+      },
+    } as unknown as Record<string, unknown>);
+    const requestBodies: Array<Record<string, unknown>> = [];
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (_url: string, init: RequestInit) => {
+      const bodyText = typeof init.body === 'string' ? init.body : await new Response(init.body).text();
+      requestBodies.push(JSON.parse(bodyText) as Record<string, unknown>);
+      return {
+        ok: true,
+        headers: new Headers(),
+        async json() {
+          return {
+            message: replyText,
+            message_original_sha256: hashPrivateOutput(replyText),
+            delivery: { action: 'send', reason: 'model_reply' },
+            conversation_id: 'conv-runid',
+            plan_id: 'plan-runid',
+            current_node: 'recomendar',
+            trace: fixtureTrace(0),
+          };
+        },
+      };
+    }));
+    try {
+      const store = new InMemoryEvalFixtureStateStore();
+      await runLiveLambdaCase({
+        currentCase: {
+          id: caseId,
+          suite: 'live_behavior_regression',
+          version: 1,
+          description: 'Run id threading.',
+          imports: [],
+          tags: [],
+          priority: 'p1',
+          status: 'active',
+          targetModes: ['live_lambda'],
+          variables: {},
+          inputs: [{ text: 'hola', contactPhone: '+51973296571' }],
+          backendFixture: { scenario: 'image-clean-world' },
+          expectations: [],
+          scorers: [],
+          notes: [],
+        },
+        config: {
+          run_id: runId,
+          label: 'live-dev-lambda',
+          target: 'live_lambda',
+          notes: [],
+          environmentOverrides: {},
+          liveLambda: { functionUrl: 'https://example.test/lambda', channel: 'terminal_whatsapp_eval' },
+        },
+        artifactDir: '.eval-runs-test',
+        fixtureStore: store,
+      });
+      expect(requestBodies[0]?.backendFixture).toMatchObject({ runId, caseId });
+      const sentUser = requestBodies[0]?.user_id as string;
+      const stored = await store.listMessages(runId, caseId, `terminal_whatsapp_eval#${sentUser}`);
+      expect(stored).toHaveLength(1);
+      // The label fallback scope stays empty: effects are partitioned by run.
+      expect(await store.listMessages('live-dev-lambda', caseId, `terminal_whatsapp_eval#${sentUser}`)).toHaveLength(0);
+    } finally {
+      setLivePlan(null);
+    }
+  }, 15_000);
+});

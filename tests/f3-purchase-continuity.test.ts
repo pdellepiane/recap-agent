@@ -329,7 +329,7 @@ describe('F3a purchase thread stays in information flow', () => {
 });
 
 describe('F3 accountless status queries stay on the orders route', () => {
-  it('drops payment_details without dedication or thanks so lookup uses orders', async () => {
+  it('preserves payment_details without dedication or thanks so the lookup still uses orders', async () => {
     const store = new InMemoryPlanStore();
     await store.save({
       plan: createEmptyPlan({ planId: 'p-f3-martha', channel: 'whatsapp', externalUserId: 'u-f3-martha' }),
@@ -430,7 +430,7 @@ describe('F3 accountless status queries stay on the orders route', () => {
     }>)[0];
     const purchaseRequest = sent?.requests?.find((request) => request.kind === 'purchase');
     expect(purchaseRequest).toBeDefined();
-    expect(purchaseRequest?.aspects).not.toContain('payment_details');
+    expect(purchaseRequest?.aspects).toContain('payment_details');
     expect(purchaseRequest?.aspects).toContain('summary');
   });
 });

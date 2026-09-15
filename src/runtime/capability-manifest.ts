@@ -140,8 +140,6 @@ const alwaysUnavailableReasons: Partial<
   Record<RuntimeOperationId, RuntimeCapabilityAvailabilityReason>
 > = {
   'confirmation_document.send': 'not_implemented',
-  'media.image.inspect': 'media_unavailable',
-  'payment_proof.verify': 'not_implemented',
   'purchase.modify': 'not_implemented',
   'refund_or_withdrawal.execute': 'not_implemented',
 };
@@ -320,6 +318,34 @@ export type CapabilityDecision =
 
 export type RequestedOperation = RuntimeOperationId;
 
+/**
+ * Read operations servable by the information flow's authoritative lookups.
+ * When a mixed-availability ambiguity carries one of these as an available
+ * candidate, the domain flow reconciles its own state instead of the
+ * capability boundary asking a clarification question: the read serves the
+ * fact (purchase status, event detail, FAQ policy, RSVP state) and the
+ * unavailable candidate never preempts it. Write/provider ambiguity without
+ * a servable read still clarifies. Typed operation IDs only.
+ */
+const informationServableReadOperations: readonly RuntimeOperationId[] = [
+  'faq.read',
+  'event.association.read',
+  'event.detail.read',
+  'purchase.orders.read',
+  'purchase.gift_detail.read',
+  'rsvp.state.read',
+];
+
+/**
+ * Whether an operation is a read servable by the information flow's
+ * authoritative lookups. Used by the capability boundary and the
+ * information flow to decide if a mixed-availability ambiguity carries a
+ * read that can serve the fact instead of preempting with a question.
+ */
+export function isServableInformationRead(operation: RuntimeOperationId): boolean {
+  return informationServableReadOperations.includes(operation);
+}
+
 export function resolveCapabilityDecision(args: {
   requestedOperation: RuntimeOperationId | null | undefined;
   manifest: RuntimeCapabilityManifest;
@@ -338,11 +364,20 @@ export function resolveCapabilityDecision(args: {
       (candidate) => args.manifest[candidate]?.available !== true,
     );
     // Capability clarification is only needed when the ambiguity crosses the
-    // runtime boundary. Domain-level ambiguity (for example, an RSVP request
-    // whose exact mutation is still unstated) must continue through that
-    // domain's typed flow instead of being mistaken for an unsupported
-    // operation.
+    // runtime boundary without a servable read. Domain-level ambiguity (for
+    // example, an RSVP request whose exact mutation is still unstated) must
+    // continue through that domain's typed flow instead of being mistaken
+    // for an unsupported operation. A mixed-availability ambiguity carrying
+    // an available read servable by the information flow (purchase status,
+    // event detail, FAQ policy, RSVP state) resolves as not_applicable so
+    // the read serves the fact instead of preempting it with a question.
     if (availableCandidates.length > 0 && unavailableCandidates.length > 0) {
+      const servableReadAvailable = availableCandidates.some((candidate) =>
+        isServableInformationRead(candidate),
+      );
+      if (servableReadAvailable) {
+        return { status: 'not_applicable' };
+      }
       return {
         status: 'clarify',
         candidateOperations: candidates,

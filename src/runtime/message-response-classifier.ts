@@ -3,7 +3,12 @@ import { zodTextFormat } from 'openai/helpers/zod';
 import { z } from 'zod';
 
 import type { PersistedPlan } from '../core/plan';
-import type { OpenAiCallRef, TokenUsage } from './contracts';
+import type {
+  OpenAiCallRef,
+  OpenAiRequestMetrics,
+  OpenAiTransportMetrics,
+  TokenUsage,
+} from './contracts';
 import type { AgentConversationMessage } from './agent-conversation-gateway';
 import type {
   PromptLoader,
@@ -12,6 +17,10 @@ import type {
 import { DEFAULT_PROMPT_CACHE_OPTIONS } from './openai-model-defaults';
 import { executeWithOpenAiRetry } from './openai-retry';
 import { executeOpenAiStage } from './openai-stage-execution';
+import {
+  captureOpenAiTransport,
+  installOpenAiTransportCapture,
+} from '../audit/openai-transport-capture';
 import {
   resolveClassifierProfile,
 } from './conversation-continuity-policy';
@@ -130,6 +139,7 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
       apiKey: options.apiKey,
       maxRetries: 0,
     });
+    installOpenAiTransportCapture(this.client);
   }
 
   get mode(): ResponseClassifierMode {
@@ -147,13 +157,15 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
       .reverse()
       .find((message) => message.direction === 'outbound') ?? null;
     // S05: campaign profile follows the newest outbound source only
-    // (admin_campaign, frontend_followup, admin_manual). An old campaign
-    // displaced by a newer agent message resolves to general. Missing
+    // (admin_campaign, frontend_followup). An old campaign displaced by a
+    // newer agent or manual message resolves to general. Missing
     // history resolves to general with no onboarding. Source enum only.
     const classifierProfile: ResponseClassifierPromptProfile =
       resolveClassifierProfile(args.messages);
     let promptBundleId: string | null = null;
     let promptFilePaths: string[] = [];
+    let transportMetrics: OpenAiTransportMetrics | undefined;
+    let requestMetrics: OpenAiRequestMetrics | null = null;
 
     try {
       const bundle = await this.options.promptLoader.loadResponseClassifierBundle(
@@ -187,22 +199,38 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
           format: zodTextFormat(classifierOutputSchema, 'reply_delivery_decision'),
         },
       };
-      const { value: response, attemptCount } = await executeOpenAiStage({
-        stage: 'classifier',
-        model: this.options.model,
-        timeoutMs: this.options.timeoutMs ?? 16_000,
-        operation: async (signal) => await executeWithOpenAiRetry(
-          async () => await this.client.responses.parse(request, { signal }),
-        ),
-      });
+       requestMetrics = {
+         instructionBytes: Buffer.byteLength(bundle.instructions, 'utf8'),
+         inputBytes: Buffer.byteLength(userInput, 'utf8'),
+         toolCount: 0,
+         schemaPropertyCount: Object.keys(classifierOutputSchema.shape).length,
+       };
+       const captured = await captureOpenAiTransport('classifier',
+         async () => await executeOpenAiStage({
+           stage: 'classifier',
+           model: this.options.model,
+           timeoutMs: this.options.timeoutMs ?? 16_000,
+           operation: async (signal) => await executeWithOpenAiRetry(
+             async () => await this.client.responses.parse(request, { signal }),
+           ),
+         }),
+         (metrics) => { transportMetrics = metrics; });
+       const { value: stageResult } = captured;
+       const { value: response, attemptCount } = stageResult;
+       const openAiCall = this.buildOpenAiCall(
+         response,
+         attemptCount,
+         { ...requestMetrics, transport: transportMetrics },
+       );
       const decision = response.output_parsed;
       if (!decision) {
         return this.fallback({
           contextSource: args.contextSource,
           hasPriorOutboundMessage,
-          classifierProfile,
-          promptBundleId,
-          promptFilePaths,
+           classifierProfile,
+           promptBundleId,
+           promptFilePaths,
+           openAiCall,
         });
       }
 
@@ -283,22 +311,23 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
           requestId: response._request_id ?? null,
           model: this.options.model,
           attemptCount,
-          requestMetrics: {
-            instructionBytes: Buffer.byteLength(bundle.instructions, 'utf8'),
-            inputBytes: Buffer.byteLength(userInput, 'utf8'),
-            toolCount: 0,
-            schemaPropertyCount: Object.keys(classifierOutputSchema.shape).length,
-          },
+           requestMetrics: { ...requestMetrics, transport: transportMetrics },
         },
       };
     } catch {
       return this.fallback({
         contextSource: args.contextSource,
         hasPriorOutboundMessage,
-        classifierProfile,
-        promptBundleId,
-        promptFilePaths,
-      });
+         classifierProfile,
+         promptBundleId,
+         promptFilePaths,
+         openAiCall: requestMetrics === null
+           ? null
+           : this.buildOpenAiCall(null, transportMetrics?.observedRequestCount ?? 0, {
+               ...requestMetrics,
+               transport: transportMetrics,
+             }),
+       });
     }
   }
 
@@ -360,6 +389,7 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
     classifierProfile: ResponseClassifierPromptProfile;
     promptBundleId: string | null;
     promptFilePaths: string[];
+    openAiCall?: OpenAiCallRef | null;
   }): MessageResponseClassifierResult {
     return {
       trace: {
@@ -382,7 +412,22 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
         prompt_file_paths: args.promptFilePaths,
       },
       tokenUsage: null,
-      openAiCall: null,
+      openAiCall: args.openAiCall ?? null,
+    };
+  }
+
+  private buildOpenAiCall(
+    response: { id: string; _request_id?: string | null } | null,
+    attemptCount: number,
+    requestMetrics: OpenAiRequestMetrics,
+  ): OpenAiCallRef {
+    const lastRequest = requestMetrics.transport?.requests.at(-1);
+    return {
+      responseId: response?.id ?? lastRequest?.responseId ?? null,
+      requestId: response?._request_id ?? lastRequest?.requestId ?? null,
+      model: this.options.model,
+      attemptCount: Math.max(1, attemptCount, requestMetrics.transport?.observedRequestCount ?? 0),
+      requestMetrics,
     };
   }
 

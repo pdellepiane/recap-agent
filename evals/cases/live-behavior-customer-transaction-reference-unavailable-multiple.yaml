@@ -1,8 +1,8 @@
 template: template.base-live
 id: live_behavior.customer_transaction_reference_unavailable_multiple
 suite: live_behavior_regression
-version: 1
-description: S13 unavailable-multiple frozen world. COD301816 matches nothing; two orders without references require one grounded selection question.
+version: 3
+description: S13 unavailable-multiple frozen world. COD301816 matches nothing; two orders without references require one grounded selection question with event dates; recorded PEN/S/ currency is grounded world data.
 tags: [live, behavior, purchase, phone-orders, customer-transaction-code, reported-interaction, s13]
 targetModes: [live_lambda]
 backendFixture:
@@ -14,6 +14,8 @@ inputs:
     sessionId: live-customer-transaction-reference-multiple-session
 notes:
   - S13 frozen world s13-reference-unavailable-multiple as of 2026-09-09T00:00:00.000Z. Synthetic identity only; two orders with no customer references for Evento de prueba A and Evento de prueba B with distinct status and authorized totals, no carts. Output must follow this world, never mutable backend data.
+  - "R05 oracle revision v1 to v2, 2026-09-12, Packet F3. Old multiple-asks-grounded-selection chased omitted names while missing the real defect: the reply inserted S/ although the stored candidate evidence carries no currency (matrix: unsupported currency assertion). New contract explicitly labels event dates and forbids inventing currency symbols or codes. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
+  - "R05 oracle revision v2 to v3, 2026-09-14, Packet EX1. Old multiple-asks-grounded-selection forbade every currency symbol or code, but the frozen fixture world itself carries currency_code PEN with currency_symbol S/ on both orders (currency null, code and symbol present; independently read from evals/fixtures/s13-reference-unavailable-multiple.json). Forbidding S/ contradicts world data, so a grounded reply stating recorded PEN/S/ failed as invention. Choice: align the oracle to world data; fixtures untouched (out of scope for this evaluator packet). New contract treats recorded PEN/S/ alongside the recorded totals as grounded fixture fact and forbids only novel currencies, amounts, or symbols beyond the world data. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
 expectations:
   - id: multiple-enters-information
     type: node_transition
@@ -27,7 +29,7 @@ expectations:
   - id: multiple-asks-grounded-selection
     type: text_semantic
     rubric: >-
-      The phone-scoped lookup has two orders and no customer transaction numbers, so COD301816 cannot be linked directly. The response must be entirely in natural Spanish and ask exactly one concise selection question naming both candidates with grounded public labels (Evento de prueba A and Evento de prueba B). It must not claim a match, must not select automatically, must not invent a latest-order choice, must not request email or OTP, and must not reveal opaque backend order ids or sensitive payment details.
+      The phone-scoped lookup has two orders and no customer transaction numbers, so COD301816 cannot be linked directly: a pending order for Evento de prueba A with event date 2026-09-12 and recorded total 120.5, and an approved order for Evento de prueba B with event date 2026-08-22 and recorded total 89.9. Both fixture records carry currency_code PEN with currency_symbol S/, so stating recorded PEN/S/ alongside the recorded totals is grounded world data, never invention. The response must be entirely in natural Spanish and ask exactly one concise selection question naming both candidates with grounded public labels and their event dates. It must not claim a match, must not select automatically, must not invent a latest-order choice, must not present a currency, amount, or symbol beyond the recorded world data, must not request email or OTP, and must not reveal opaque backend order ids or sensitive payment details.
     minScore: 0.9
     requireJudge: true
     severity: hard

@@ -147,7 +147,7 @@ describe('typed state fixes wave C5 attempt-3', () => {
     expect(hasRsvpGuest).toBe(true);
   });
 
-  it('hasRsvpWork: rsvp_state !== none unaffected (still returns true)', () => {
+  it('hasRsvpWork: lingering rsvp_state yields to other-domain work without explicit RSVP evidence', () => {
     const plan = makePlan({
       rsvp_state: { status: 'awaiting_event_selection', candidates: [{ guest_id: 1, event_name: 'Test', event_date: null }], pending_action: 'attending', pending_plus_one_response: null, requested_at: new Date().toISOString(), selection_attempts: 0 },
       information_state: {
@@ -169,7 +169,11 @@ describe('typed state fixes wave C5 attempt-3', () => {
       renderers: {} as never,
     });
     const hasRsvp = (service as unknown as { hasRsvpWork: (p: PlanSnapshot, e: ExtractionResult) => boolean }).hasRsvpWork(plan, extraction);
-    expect(hasRsvp).toBe(true);
+    // R9 RSVP relaxation: a lingering selection state never hijacks a turn
+    // carrying purchase work with only a bare event reference and no
+    // explicit decision, selection, or plus-one evidence. The information
+    // flow answers; an explicit RSVP choice still resumes the selection.
+    expect(hasRsvp).toBe(false);
   });
 
   it('hasRsvpWork: fresh RSVP start (last_completed null) unaffected with weak signal', () => {

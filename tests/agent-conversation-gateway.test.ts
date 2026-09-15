@@ -1164,6 +1164,7 @@ describe('AgentConversationGateway', () => {
       action: 'attending',
       willAttend: true,
       guestId: 481,
+      eventId: null,
       eventName: 'Matrimonio de Ana y Luis',
       eventDate: null,
       plusOne: null,
@@ -1222,6 +1223,7 @@ describe('AgentConversationGateway', () => {
       action: 'attending',
       willAttend: true,
       guestId: 481,
+      eventId: null,
       eventName: 'Matrimonio de Ana y Luis',
       eventDate: null,
       plusOne: { saved: true, response: 'yes', reason: null },
@@ -1270,6 +1272,7 @@ describe('AgentConversationGateway', () => {
       action: null,
       willAttend: null,
       guestId: 481,
+      eventId: null,
       eventName: null,
       eventDate: null,
       plusOne: { saved: false, response: 'yes', reason: 'not_eligible' },
@@ -1406,11 +1409,13 @@ describe('AgentConversationGateway', () => {
       candidates: [
         {
           guestId: 481,
+          eventId: null,
           eventName: 'Matrimonio de Ana y Luis',
           eventDate: '2026-09-12',
         },
         {
           guestId: 482,
+          eventId: null,
           eventName: 'Cumpleaños de Marta',
           eventDate: null,
         },
@@ -1423,6 +1428,7 @@ describe('AgentConversationGateway', () => {
       currentAction: null,
       requestedAction: 'declining',
       guestId: null,
+      eventId: null,
       eventName: null,
       eventDate: null,
     });
@@ -1458,6 +1464,7 @@ describe('AgentConversationGateway', () => {
       action: 'attending',
       willAttend: true,
       guestId: 584353,
+      eventId: null,
       eventName: 'Otra celebración prueba',
       eventDate: null,
       plusOne: null,
@@ -1488,6 +1495,74 @@ describe('AgentConversationGateway', () => {
       status: 'failed',
       error: 'Agent API RSVP response did not confirm the requested attendance state.',
       retryable: false,
+    });
+  });
+
+  it('rejects a mismatched returned guest id instead of falling back to the requested id', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, {
+      status: true,
+      data: {
+        guest_id: 999999,
+        will_attend: true,
+        event_name: 'Matrimonio de Ana y Luis',
+      },
+      errors: null,
+      error: null,
+    })));
+    const gateway = new HttpAgentConversationGateway({
+      baseUrl: 'https://api.example.test/api/agent',
+      apiKey: 'secret-key',
+      timeoutMs: 1_000,
+      maxRetries: 0,
+      messageLoggingEnabled: false,
+    });
+
+    await expect(gateway.guestRsvp({
+      phone_extension: '+51',
+      phone_number: '973296571',
+      action: 'attending',
+      guest_id: 481,
+    })).resolves.toEqual({
+      status: 'failed',
+      error: 'Agent API RSVP response returned a different guest identity.',
+      retryable: false,
+    });
+  });
+
+  it('binds the returned event id for guest and event identity matching', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, {
+      status: true,
+      data: {
+        guest_id: 481,
+        event_id: 205,
+        will_attend: true,
+        event_name: 'Matrimonio de Ana y Luis',
+      },
+      errors: null,
+      error: null,
+    })));
+    const gateway = new HttpAgentConversationGateway({
+      baseUrl: 'https://api.example.test/api/agent',
+      apiKey: 'secret-key',
+      timeoutMs: 1_000,
+      maxRetries: 0,
+      messageLoggingEnabled: false,
+    });
+
+    await expect(gateway.guestRsvp({
+      phone_extension: '+51',
+      phone_number: '973296571',
+      action: 'attending',
+      guest_id: 481,
+    })).resolves.toEqual({
+      status: 'responded',
+      action: 'attending',
+      willAttend: true,
+      guestId: 481,
+      eventId: 205,
+      eventName: 'Matrimonio de Ana y Luis',
+      eventDate: null,
+      plusOne: null,
     });
   });
 

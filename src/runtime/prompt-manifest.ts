@@ -1,5 +1,7 @@
 import type { DecisionNode } from '../core/decision-nodes';
 import type { ExtractionCapabilityProfile } from './extraction-schemas';
+import type { PlanOwner } from '../core/plan';
+import { ownerLabels } from '../core/plan';
 
 export const conversationSharedPromptFiles = [
   'shared/base_system.txt',
@@ -59,6 +61,65 @@ const questionStrategyNodes = new Set<DecisionNode>([
   'refinar_criterios',
 ]);
 
+export { ownerLabels };
+export type { PlanOwner };
+
+/**
+ * L4 owner-to-node map. Planning owns the event-provider interview and
+ * close flow; General information (FAQ) owns public information answers;
+ * Customer operations owns invitation responses plus person-specific
+ * purchase, RSVP, auth and support work. The informative node is shared:
+ * it belongs to FAQ only when general information is the primary task,
+ * otherwise the Customer operations snapshot serves it.
+ */
+export const ownerNodeSets: Record<PlanOwner, readonly DecisionNode[]> = {
+  planning: [
+    'existe_plan_guardado',
+    'reset_plan',
+    'entrevista',
+    'elicitacion_necesidades',
+    'minimos_para_buscar',
+    'aclarar_pedir_faltante',
+    'usuario_responde',
+    'buscar_proveedores',
+    'busqueda_exitosa',
+    'hay_resultados',
+    'recomendar',
+    'refinar_criterios',
+    'usuario_elige_proveedor',
+    'anadir_a_proveedores_recomendados',
+    'seguir_refinando_guardar_plan',
+    'continua',
+    'accion_final_exitosa',
+    'necesidad_cubierta',
+    'crear_lead_cerrar',
+    'guardar_seleccion_reintentar_luego',
+    'guardar_cerrar_temporalmente',
+    'reintentar',
+  ],
+  faq: ['resolver_consultas_informativas'],
+  customer_assistance: ['responder_invitacion', 'resolver_consultas_informativas'],
+};
+
+export function ownerForNode(node: DecisionNode, primaryTask: PlanOwner | null = null): PlanOwner {
+  if (node === 'responder_invitacion') {
+    return 'customer_assistance';
+  }
+  if (node === 'resolver_consultas_informativas') {
+    return primaryTask ?? 'faq';
+  }
+  if (
+    node === 'contacto_inicial' ||
+    node === 'deteccion_intencion' ||
+    node === 'ofrecer_agente_humano' ||
+    node === 'solicitar_agente_humano' ||
+    node === 'informar_error_reintento'
+  ) {
+    return 'planning';
+  }
+  return ownerNodeSets.planning.includes(node) ? 'planning' : 'planning';
+}
+
 export function conversationPromptFilesForNode(node: DecisionNode): readonly string[] {
   return [
     ...conversationCorePromptFiles,
@@ -77,6 +138,7 @@ export const extractorPromptFiles = [
   'extractors/base_system.txt',
   'extractors/planning.txt',
   'extractors/information.txt',
+  'extractors/rsvp.txt',
   'extractors/provider_management.txt',
   'extractors/contact.txt',
   'extractors/close_pause.txt',

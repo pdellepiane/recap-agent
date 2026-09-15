@@ -1,0 +1,41 @@
+template: template.base-live
+id: live_behavior.image_url_describe_dice
+suite: live_behavior_regression
+version: 4
+description: Explicit describe-image question with a remotely hosted fixture URL is answered natively by the owner without the base64 inspect call and without leaking the link.
+tags: [live, behavior, image, image-url, url-image-context]
+targetModes: [live_lambda]
+backendFixture:
+  scenario: image-clean-world
+inputs:
+  - text: Cuantos dados hay en la imagen y de que colores son?
+    channel: whatsapp
+    contactPhone: "+51987654321"
+    sessionId: live-image-url-describe-session
+    image:
+      url: https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png
+notes:
+  - "F1 2026-09-12: backendFixture scenario image-clean-world; this phone has empty initial history and empty authorized purchase results; never mutable backend data."
+  - Controlled non-sensitive public fixture (Wikimedia transparency demo). The live vision question requires seeing it.
+  - "R05 oracle revision v3 to v4, 2026-09-12, Packet F3. Old url-image-stays-informative forced the information node and url-image-dice-described demanded unrequested translucency, failing a correct count-and-colors answer (matrix: four dice answered correctly). New contract keeps native URL evidence and the no-link guard, and judges only count plus colors: four dice in blue, green, yellow and red. Old v3 runs preserved; baseline and candidate must rerun on this v4 contract."
+expectations:
+  - id: url-image-uses-native-context
+    type: tool_usage
+    mustCall: [image_url_context]
+    mustNotCall: [image_inspect]
+    severity: hard
+  - id: url-image-reply-has-no-link
+    type: text_not_contains
+    phrases: [upload.wikimedia.org, transparency_demonstration, http]
+    severity: hard
+  - id: url-image-dice-described
+    type: text_semantic
+    rubric: >-
+      Pass only if the assistant responds entirely in Spanish stating that the image shows four dice in blue, green, yellow and red. Translucency must not be demanded and its absence must not fail. It must not claim the image was saved, stored or forwarded, must not show or describe the URL or access parameters, and must not ask for an OTP.
+    minScore: 0.8
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 2500
+  estimatedCompletionTokensPerTurn: 300

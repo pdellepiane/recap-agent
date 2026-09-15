@@ -140,6 +140,7 @@ import type {
 } from './message-response-classifier';
 import type { MessageRenderer } from './message-renderer';
 import { readPendingTaskOutcome } from './openai-agent-runtime';
+import { isApprovalBoundaryAnsweredByRecord } from './purchase-reconciliation';
 import {
   inferCurrencyFromBudget,
   isProviderEligibleForCriteria,
@@ -154,6 +155,7 @@ import type {
   ProviderQueryIntent,
   ProviderReference,
 } from './extraction-schemas';
+import { resolvePurchaseResourceForAspects } from './extraction-schemas';
 import { parseInternationalPhone, splitInternationalPhone } from './phone';
 import type { PromptLoader } from './prompt-loader';
 import type { ProviderGateway } from './provider-gateway';
@@ -174,6 +176,7 @@ import {
 } from './information-orchestrator';
 import {
   buildRuntimeCapabilityManifest,
+  isServableInformationRead,
   resolveCapabilityDecision,
   type CapabilityDecision,
   type RuntimeCapabilityDescriptor,
@@ -1411,6 +1414,20 @@ export class AgentService {
       workingPlan,
       extraction,
     );
+    // Close-vs-pause reconciliation on typed extraction only, never user
+    // text. An explicit close ("ahora cerremos el plan") always continues
+    // the existing close flow: a conflicting pause mark dissolves. There
+    // is no explicit pause state — pausing is the user not writing — so a
+    // pause mark dissolves too and the turn continues normal handling.
+    // Genuine close intent and close data are preserved; nothing here
+    // matches keywords or recites provider names.
+    if (extraction.actionIntent === 'cerrar') {
+      if (extraction.pauseRequested) {
+        extraction = { ...extraction, pauseRequested: false };
+      }
+    } else if (extraction.actionIntent === 'pausar' || extraction.pauseRequested) {
+      extraction = { ...extraction, actionIntent: null, pauseRequested: false };
+    }
     extraction = this.preserveContactPhoneCandidate(extraction, inbound.text);
     // D1: unclear equals absent; yes/no only when typed auth state is relevant.
     // Pure shortlist omits phone-auth fields: normalize to absent.
@@ -1826,86 +1843,6 @@ export class AgentService {
           searchStrategy,
           turnDecision: this.humanEscalationTurnDecision(currentNode),
           operationalNote: this.humanEscalationOperationalNote(gatewayResult),
-        }),
-      };
-    }
-
-    if (extraction.pauseRequested || extraction.actionIntent === 'pausar') {
-      currentNode = 'guardar_cerrar_temporalmente';
-      if (nodePath[nodePath.length - 1] !== currentNode) {
-        nodePath.push(currentNode);
-      }
-      const planToSave = mergePlan(mergedPlan, { current_node: currentNode });
-      await persistPlan(planToSave, 'guardar_cerrar_temporalmente');
-      planPersisted = true;
-      planPersistReason = 'guardar_cerrar_temporalmente';
-
-      const promptBundleStartedAt = Date.now();
-      const bundle = await this.dependencies.promptLoader.loadNodeBundle(currentNode);
-      timingMs.prompt_bundle_load += Date.now() - promptBundleStartedAt;
-      const composeReplyStartedAt = Date.now();
-      const reply = await this.dependencies.runtime.composeReply({
-        currentNode,
-        previousNode,
-        userMessage: inbound.text,
-        messageContext,
-        plan: planToSave,
-        extraction,
-        missingFields: sufficiency.missingFields,
-        searchReady: sufficiency.searchReady,
-        providerResults,
-        errorMessage,
-        promptBundleId: bundle.id,
-        promptFilePaths: bundle.filePaths,
-        toolUsage,
-      });
-      tokenUsage.reply = reply.tokenUsage ?? null;
-      tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
-      tokenUsage.total = this.sumTokenUsage(
-        tokenUsage.classifier,
-        tokenUsage.extraction,
-        tokenUsage.reply,
-      );
-      const recommendationFunnel = this.resolveRecommendationFunnel(
-        reply.recommendationFunnel ?? null,
-        providerResults,
-      );
-      timingMs.compose_reply += Date.now() - composeReplyStartedAt;
-
-      await persistPlan(planToSave, planPersistReason ?? currentNode);
-      timingMs.total = Date.now() - handleTurnStartedAt;
-
-      return {
-        plan: planToSave,
-        outbound: this.renderOutbound(
-          reply,
-          providerResults,
-          inbound.channel,
-          planToSave.conversation_id,
-          planToSave,
-          toolUsage,
-        ),
-        trace: this.buildTrace({
-          plan: planToSave,
-          previousNode,
-          currentNode,
-          nodePath,
-          extraction,
-          missingFields: sufficiency.missingFields,
-          searchReady: sufficiency.searchReady,
-          promptBundleId: bundle.id,
-          promptFilePaths: bundle.filePaths,
-          toolUsage,
-          providerResults,
-          recommendationFunnel: recommendationFunnel,
-          planPersisted: true,
-          planPersistReason: planPersistReason,
-          timingMs,
-          tokenUsage,
-          messageContext,
-          responseClassifier: responseClassifierTrace,
-          searchStrategy,
-          operationalNote: errorMessage,
         }),
       };
     }
@@ -2632,16 +2569,11 @@ export class AgentService {
         ),
       supportWork: extraction.supportAct !== null && extraction.supportAct !== undefined,
     };
-    const hasExistingPendingQuestion =
-      (plan.owner_pending_question?.trim().length ?? 0) > 0;
-    // S2: keep the original user question. A new turn's ambiguity text never
-    // overwrites an unrelated older pending request; evidence-seeking paths
-    // stash explicitly downstream when this turn demonstrably needs it.
-    const pendingQuestion = hasExistingPendingQuestion
-      ? undefined
-      : extraction.ambiguity?.status === 'ambiguous'
-        ? (extraction.ambiguity.clarificationQuestion ?? null)
-        : null;
+    // S2: the curated pending question is prior-turn state only. The current
+    // turn's extractor ambiguity text is never persisted here: it travels in
+    // the extraction snapshot for this turn's reply, while evidence-seeking
+    // paths stash the inbound user question explicitly downstream when this
+    // turn demonstrably needs later evidence.
     const pendingTask = this.ownerPendingTaskRef(plan, extraction, {
       rsvpWork,
       hasProtected: hasExtractedProtected || hasPendingProtected,
@@ -2659,7 +2591,6 @@ export class AgentService {
       signals,
       capabilitySignals,
       transfersThisTurn: 0,
-      ...(pendingQuestion !== null ? { pendingQuestion } : {}),
       ...(pendingTask !== currentPendingTask ? { pendingTask } : {}),
     }).plan;
   }
@@ -3713,9 +3644,20 @@ export class AgentService {
         // I2: same event ID is proven identity, but attendance still
         // belongs to a guest. A different non-null guest is a separate
         // invitation for the same event: keep both, never conflate.
+        // When sameRsvpGuest proves identity, authority stays with the
+        // guest record: no accessMethod flip, and a host-set decided state
+        // (willAttend-backed attending/declining) stands over stale
+        // enriched detail. An undecided host record (pending/unknown) is a
+        // display gap the fresh enriched values fill. Post-mutation display
+        // still flows through the verified fresh-read update downstream.
         if (authoritativeEvent && this.sameRsvpGuest(authoritativeEvent, associatedEvent)) {
+          const authoritativeDecided =
+            authoritativeEvent.state === 'attending' ||
+            authoritativeEvent.state === 'declining';
           reconciled[duplicateIndex] = {
             ...associatedEvent,
+            accessMethod: authoritativeEvent.accessMethod,
+            state: authoritativeDecided ? authoritativeEvent.state : associatedEvent.state,
             guestId: associatedEvent.guestId ?? authoritativeEvent.guestId,
             eventName: associatedEvent.eventName ?? authoritativeEvent.eventName,
             eventDate: associatedEvent.eventDate ?? authoritativeEvent.eventDate,
@@ -3744,11 +3686,12 @@ export class AgentService {
   }
 
   /**
-   * I1/I2 reply projection. A resolved selection projects its own
-   * same-identity record (strict event-ID match; fresh values win for that
-   * ID). An explicit event reference left unresolved never presents another
-   * event as the requested one: the single unrelated invitation stays a
-   * selection candidate instead of a resolved answer.
+   * I1/I2 reply projection. A resolved selection projects directly: the
+   * selection already resolved its own same-identity record upstream, so no
+   * event-ID re-lookup substitutes another record's attendance. An explicit
+   * event reference left unresolved never presents another event as the
+   * requested one: the single unrelated invitation stays a selection
+   * candidate instead of a resolved answer.
    */
   private projectRsvpPhoneEvidenceForReply(
     evidence: RsvpPhoneEvidence,
@@ -3775,15 +3718,16 @@ export class AgentService {
       return projection;
     }
     if (selectedInvitation && this.hasRsvpEventIdentity(selectedInvitation)) {
-      const matched = sortedInvitations.find((invitation) =>
-        this.sameRsvpEvent(invitation, selectedInvitation));
-      const target = matched
-        ? {
-            ...matched,
-            eventName: matched.eventName ?? selectedInvitation.eventName,
-            eventDate: matched.eventDate ?? selectedInvitation.eventDate,
-          }
-        : selectedInvitation;
+      // I2: the verified fresh read updates the evidence list in place, so
+      // the selected record resolves within the current evidence by full
+      // guest+event identity: the verified state shows, and a different
+      // guest's same-event record can never substitute for it via an
+      // event-ID-only lookup. Falls back to the selected record when the
+      // evidence carries no such entry.
+      const target = sortedInvitations.find((invitation) =>
+        this.sameRsvpEvent(invitation, selectedInvitation) &&
+        this.sameRsvpGuest(invitation, selectedInvitation)) ??
+        selectedInvitation;
       const projection: RsvpPhoneReplyEvidence = {
         state: 'resolved_single',
         coverage: evidence.coverage,
@@ -4086,7 +4030,10 @@ export class AgentService {
    * I1 requested-event precedence. A current explicit structured event
    * reference resolves FIRST against authorized candidates: a unique
    * compatible candidate wins; multiple or zero matches never fall back to
-   * a stored pending or a sole unrelated event. A current extracted guest
+   * a stored pending or a sole unrelated event. A shared-name tie with a
+   * single guest-bound attendance record (an invitation bound to a guest
+   * carrying a willAttend-backed attending/declining state) resolves to that
+   * record; zero or several stay unresolved. A current extracted guest
    * ID must be a member of the candidates and compatible with the explicit
    * reference; disagreement is unresolved (null), never pick-either.
    * Stored pending identity is usable only when the request switches no
@@ -4113,7 +4060,23 @@ export class AgentService {
         }
         matches = matches.filter((invitation) => invitation.guestId === extractedGuestId);
       }
-      return matches.length === 1 ? matches[0] ?? null : null;
+      if (matches.length === 1) {
+        return matches[0] ?? null;
+      }
+      // Explicit-name tie-break: a shared name never proves identity, but a
+      // single guest-bound attendance record (an invitation bound to a guest
+      // carrying a willAttend-backed attending/declining state) is the
+      // requested event's consistent display. Genuine ambiguity (zero or
+      // several such records) stays unresolved.
+      if (matches.length > 1) {
+        const authoritative = matches.filter((invitation) =>
+          invitation.guestId !== null &&
+          (invitation.state === 'attending' || invitation.state === 'declining'));
+        if (authoritative.length === 1) {
+          return authoritative[0] ?? null;
+        }
+      }
+      return null;
     }
     if (extractedGuestId !== null) {
       return args.invitations.find((invitation) => invitation.guestId === extractedGuestId) ?? null;
@@ -4614,20 +4577,11 @@ export class AgentService {
           }
         : undefined,
     });
-    const documentPurchaseAmbiguity = decision.status === 'unsupported' &&
-      decision.operation === 'confirmation_document.send' &&
-      args.extraction.informationRequests.some((request) => request.kind === 'purchase');
-    const effectiveDecision = documentPurchaseAmbiguity
-      ? resolveCapabilityDecision({
-        requestedOperation: null,
-        manifest: this.capabilityManifest,
-        ambiguity: {
-          status: 'ambiguous',
-          candidateOperations: [decision.operation, 'purchase.orders.read'],
-          questionKey: 'status_or_document',
-        },
-      })
-      : decision;
+    // An unavailable document operation alongside a purchase request is not
+    // re-seeded as capability ambiguity: the available purchase read serves
+    // the fact through the information flow (with a capability safe read
+    // below), so the decision stands and never preempts that flow.
+    const effectiveDecision = decision;
     if (effectiveDecision.status === 'not_applicable' || effectiveDecision.status === 'supported') {
       return null;
     }
@@ -4693,6 +4647,16 @@ export class AgentService {
         args.plan.information_state.last_completed_request?.kind === 'associated_event') &&
       (this.isSupportAcknowledgment(args.extraction.supportAct) ||
         args.extraction.informationRequests.length > 0)) {
+      return null;
+    }
+
+    // A live purchase/event request serves its own fact through the
+    // information flow: residual capability ambiguity (for example a mixed
+    // write clarify with no servable read) never preempts it. Typed request
+    // kinds only; no phrase detection.
+    if (effectiveDecision.status === 'clarify' &&
+      args.extraction.informationRequests.some((request) =>
+        request.kind === 'purchase' || request.kind === 'associated_event')) {
       return null;
     }
 
@@ -5921,9 +5885,12 @@ export class AgentService {
    * to the referenced prior messages (linkage validated against stored
    * refs); `prior_uncertain` exposes up to two plausible recent images;
    * `none`/absent projects nothing, so unrelated FAQ/cart turns never
-   * receive recent receipts. A `prior_single` without message linkage is
-   * malformed and projects nothing (it must not fall back to recent
-   * images). Expired file refs are excluded; when a referenced image exists
+   * receive recent receipts. A `prior_single` without message linkage
+   * carries the single stored image when exactly one usable ref exists
+   * (deterministic single-candidate carry, still typed linkage status, no
+   * wording rule); with several stored refs the linkage stays ambiguous
+   * and projects nothing (it must not fall back to recent images).
+   * Expired file refs are excluded; when a referenced image exists
    * but expired, the caller reports expiry so the model answers from the
    * profile and record, asking only for the specific missing fact when one
    * is needed. Never a resend demand and never an image or URL request.
@@ -5944,12 +5911,19 @@ export class AgentService {
     };
     const reference = args.extraction.imageReference;
     if (!reference || reference.status === 'none') return empty;
-    if (reference.status === 'prior_single' && reference.referencedMessageIds.length === 0) {
-      return empty;
-    }
     const stored = args.plan.image_attachments ?? [];
     const isUsable = (ref: ImageAttachmentRef): boolean =>
       ref.kind === 'url' || isFileRefActive(ref, args.nowMs);
+    if (reference.status === 'prior_single' && reference.referencedMessageIds.length === 0) {
+      // Deterministic single-candidate carry: one usable stored image must
+      // be the referenced prior, so it rides the follow-up. Several stored
+      // refs keep the linkage ambiguous and project nothing.
+      const usable = stored.filter(isUsable);
+      if (usable.length !== 1) {
+        return empty;
+      }
+      return { ...this.splitImageProjection(usable.slice(0, 1)), expiredReferenced: false };
+    }
     let candidates: ImageAttachmentRef[];
     if (reference.status === 'prior_single' && reference.referencedMessageIds.length > 0) {
       const wanted = new Set(reference.referencedMessageIds);
@@ -7180,6 +7154,119 @@ export class AgentService {
       .map((ref) => ({ url: ref.url, messageId: ref.messageId }));
   }
 
+  /**
+   * Single-image ambiguity resolution for the information skip. When the
+   * extractor linked the question to one prior image (prior_single), the
+   * image itself is the answerable target: an available image lets the model
+   * answer from pixels plus record (a visible receipt is described, never
+   * confirmed as approval), and an expired reference states unreadability as
+   * an answerable fact with the record behind it. Only genuine
+   * multi-candidate ambiguity (no single linked image) skips execution to
+   * ask. Typed linkage only; image-turn gates are untouched.
+   */
+  private priorSingleImageResolvesAmbiguity(extraction: ExtractionResult): boolean {
+    return (extraction.imageReference?.status ?? 'none') === 'prior_single';
+  }
+
+  /**
+   * Mixed-availability ambiguity carrying an available servable read does
+   * not divert the information flow to a clarification question when a live
+   * purchase/event request can serve the fact: the lookup executes and the
+   * record answers. Typed candidate IDs, manifest availability and request
+   * kinds only; no phrase detection, no new state.
+   */
+  private availableReadServesAmbiguousRequest(extraction: ExtractionResult): boolean {
+    const candidates = extraction.ambiguity?.candidateOperations ?? [];
+    if (candidates.length === 0) return false;
+    const hasLiveRequest = extraction.informationRequests.some((request) =>
+      request.kind === 'purchase' || request.kind === 'associated_event');
+    if (!hasLiveRequest) return false;
+    return candidates.some((candidate) =>
+      isServableInformationRead(candidate) &&
+      this.capabilityManifest[candidate]?.available === true);
+  }
+
+  /**
+   * Approval-boundary ambiguity carries an answerable record question, not a
+   * genuine choice. A status_or_proof_review ambiguity asks which of two
+   * invented tasks was intended, but the receipt amount alone never proves
+   * approval and the record shows whether any purchase stands approved. When
+   * typed receipt context exists (retained image attachments, an image
+   * reference, a live purchase/event request, or a last-completed
+   * purchase/event read) and a purchase read capability is available, the
+   * lookup executes and the record answers instead of asking. Typed evidence
+   * only; no phrase detection, no new state.
+   */
+  private approvalBoundaryServesAmbiguousRequest(args: {
+    extraction: ExtractionResult;
+    plan: PlanSnapshot;
+  }): boolean {
+    const ambiguity = args.extraction.ambiguity;
+    if (ambiguity?.status !== 'ambiguous') return false;
+    if (ambiguity.questionKey !== 'status_or_proof_review') return false;
+    const receiptContext =
+      (args.plan.image_attachments?.length ?? 0) > 0 ||
+      (args.extraction.imageReference != null &&
+        args.extraction.imageReference.status !== 'none') ||
+      args.extraction.informationRequests.some((request) =>
+        request.kind === 'purchase' || request.kind === 'associated_event') ||
+      args.plan.information_state.last_completed_request?.kind === 'purchase' ||
+      args.plan.information_state.last_completed_request?.kind === 'associated_event';
+    if (!receiptContext) return false;
+    return this.capabilityManifest['purchase.orders.read']?.available === true ||
+      this.capabilityManifest['purchase.gift_detail.read']?.available === true;
+  }
+
+  /**
+   * Reply-input reconciliation for the approval boundary (mirror of the
+   * runtime ambiguity/context projection, both delegating to the
+   * single-owner predicate in purchase-reconciliation). When a
+   * status_or_proof_review ambiguity reaches composition, the record
+   * already answers whether any purchase stands approved: a completed
+   * outcome (even an empty one) always settles it, a scoped attempted read
+   * that found nothing settles it when retained receipt context is
+   * present, and the established receipt boundary settles it even when no
+   * purchase read executed — the reply answers from receipt guidance
+   * instead of asking which task was meant. Returns the extraction with
+   * that answered ambiguity cleared; anything else returns it unchanged.
+   * Intake normalization still never clears ambiguity; only this
+   * evidence-bound reply projection does.
+   */
+  private reconcileApprovalBoundaryAmbiguity(args: {
+    extraction: ExtractionResult;
+    informationResults: InformationTaskResult[];
+    imageEvidence: ComposeReplyRequest['imageEvidence'];
+    plan: PlanSnapshot;
+  }): ExtractionResult {
+    const ambiguity = args.extraction.ambiguity;
+    if (ambiguity?.status !== 'ambiguous') return args.extraction;
+    if (ambiguity.questionKey !== 'status_or_proof_review') return args.extraction;
+    // Single-owner predicate in purchase-reconciliation: the record (or the
+    // established receipt boundary when no purchase read executed) settles
+    // whether any purchase stands approved. Intake normalization still never
+    // clears ambiguity; only this evidence-bound reply projection does.
+    const receiptContext =
+      args.imageEvidence != null ||
+      (args.plan.image_attachments?.length ?? 0) > 0 ||
+      (args.extraction.imageReference != null &&
+        args.extraction.imageReference.status !== 'none');
+    const answeredByRecord = isApprovalBoundaryAnsweredByRecord({
+      informationResults: args.informationResults,
+      receiptContext,
+    });
+    if (!answeredByRecord) return args.extraction;
+    return {
+      ...args.extraction,
+      ambiguity: {
+        status: 'clear',
+        clarificationQuestion: null,
+        interpretations: [],
+        candidateOperations: [],
+        questionKey: null,
+      },
+    };
+  }
+
   private async handleInformationFlow(args: {
     inbound: NormalizedInboundMessage;
     previousNode: DecisionNode;
@@ -7240,12 +7327,56 @@ export class AgentService {
       (lastCompletedRequest?.kind === 'purchase' ||
         lastCompletedRequest?.kind === 'associated_event');
     if (supportAcknowledgment && !supportContinuesPurchaseThread) requests = [];
-    if (args.extraction.supportAct?.kind === 'ask_policy' &&
+    // A typed purchase-status policy question is a record question, not a
+    // KB question: synthesize a purchase status read so the verified record
+    // outcome reaches the reply through the existing aspect machinery. Other
+    // ask_policy topics keep the support-policy FAQ synthesis untouched.
+    const supportAct = args.extraction.supportAct;
+    if (supportAct?.kind === 'ask_policy' && supportAct.topic === 'purchase_status' &&
+      !requests.some((request) => request.kind === 'purchase')) {
+      requests = [{
+        kind: 'purchase',
+        resource: 'orders',
+        query: args.inbound.text,
+        orderId: null,
+        aspects: ['payment_status'],
+        sensitiveFields: [],
+        authAction: 'none',
+        requestId: 'support-policy',
+      }, ...requests];
+    } else if (supportAct?.kind === 'ask_policy' && supportAct.topic !== 'purchase_status' &&
       !requests.some((request) => request.kind === 'faq')) {
       requests = [{
         kind: 'faq',
         query: args.inbound.text,
         requestId: 'support-policy',
+      }, ...requests];
+    }
+    // Approval-boundary record read: a status_or_proof_review ambiguity on
+    // retained receipt context without any purchase/event request still needs
+    // the record to answer whether anything stands approved. Synthesize the
+    // scoped status read through the existing aspect machinery so the
+    // boundary is answered from evidence instead of asking which of two
+    // invented tasks was intended. Typed ambiguity plus plan evidence only;
+    // acknowledgements synthesize nothing.
+    if (
+      !supportAcknowledgment &&
+      !requests.some((request) =>
+        request.kind === 'purchase' || request.kind === 'associated_event') &&
+      this.approvalBoundaryServesAmbiguousRequest({
+        extraction: args.extraction,
+        plan: planWithContact,
+      })
+    ) {
+      requests = [{
+        kind: 'purchase',
+        resource: 'orders',
+        query: args.inbound.text,
+        orderId: null,
+        aspects: ['payment_status'],
+        sensitiveFields: [],
+        authAction: 'none',
+        requestId: 'approval-boundary',
       }, ...requests];
     }
     const replayingLastCompletedRequest = false;
@@ -7356,7 +7487,13 @@ export class AgentService {
     const hasAmbiguity =
       args.extraction.ambiguity?.status === 'ambiguous' &&
       !preservingLastCompletedContext &&
-      !isRetiredPhoneConfirmationRecovery;
+      !isRetiredPhoneConfirmationRecovery &&
+      !this.priorSingleImageResolvesAmbiguity(args.extraction) &&
+      !this.availableReadServesAmbiguousRequest(args.extraction) &&
+      !this.approvalBoundaryServesAmbiguousRequest({
+        extraction: args.extraction,
+        plan: planForInformation,
+      });
     const informationExtraction = isRetiredPhoneConfirmationRecovery ||
       preservingLastCompletedContext
       ? {
@@ -7685,37 +7822,9 @@ export class AgentService {
         if (hasCustomerTransactionNumber) {
           operationalNote += ' Nunca afirmes que no existe constancia o comprobante; no comentes fecha u hora de pago salvo que la persona lo pregunte.';
         }
-        const hasPendingPurchaseForProvenance = phonePurchaseResult.purchases.some(
-          (purchase) => purchase.paymentStatus?.toLowerCase() === 'pending',
-        );
-        const selectedProvenancePurchase = phonePurchaseResult.purchases.find(
-          (purchase) => purchase.paymentStatus?.toLowerCase() === 'pending',
-        ) ?? phonePurchaseResult.purchases[0];
-        const selectedTotalForProvenance = selectedProvenancePurchase
-          ? (selectedProvenancePurchase.amountDisclosure?.total ?? (selectedProvenancePurchase as unknown as { grandTotal: number | null }).grandTotal ?? null)
-          : null;
-        const hasAmountMismatchForProvenance = selectedTotalForProvenance !== null &&
-          args.extraction.informationRequests.some(
-            (request) => request.kind === 'purchase' && request.amount !== null && request.amount !== undefined && Math.abs(request.amount - selectedTotalForProvenance) >= 0.005,
-          );
-        if (hasPendingPurchaseForProvenance && hasAmountMismatchForProvenance) {
-          operationalNote += ' El monto que la persona dice haber pagado es un dato aportado por ella; no lo presentes como monto del registro. Reconoce el reporte; la orden sigue pendiente; un comprobante en imagen no permite confirmar la recepcion; la validacion puede tardar hasta 72 horas habiles; no afirmes aprobacion ni niegues la recepcion.';
-        }
-        // C1 pending-validation window for every pending indexed-method
-        // purchase, not only on amount mismatch: the projected total is the
-        // order total and the remaining balance cannot be confirmed, so the
-        // reply states the total with its recorded method, explains the
-        // 72 business hour window, and never presents the total as the
-        // amount still owed.
-        const hasPendingValidationWindow = !isSingleStatusQuery && phonePurchaseResult.purchases.some(
-          (purchase) =>
-            purchase.paymentStatus?.trim().toLocaleLowerCase('en') === 'pending' &&
-            purchase.paymentValidationExpectation !== undefined &&
-            purchase.paymentValidationExpectation !== null,
-        );
-        if (hasPendingValidationWindow && !hasAmountMismatchForProvenance) {
-          operationalNote += ' La compra sigue pendiente con un método de validación indexado: informa el total como total del pedido con su método registrado, explica que la validación puede tardar hasta 72 horas hábiles y que el saldo restante no puede confirmarse con el registro disponible; no presentes el total como lo que falta pagar ni calcules diferencias.';
-        }
+        // Typed purchase facts (paymentStatus, paymentValidationExpectation)
+        // travel on the projected result; the node response contract owns
+        // their presentation, so no advisory prose is appended here.
         // C1 purchase selection framing: candidates are record data only.
         // Present each with its projected distinguishing fields, ask one
         // explicit question naming which purchase is meant, and never infer
@@ -7871,6 +7980,20 @@ export class AgentService {
       plan: planForInformation,
       depositMentioned: this.isDepositMentioned(replyExtraction),
     });
+    // Approval-boundary reconciliation for the reply input: a
+    // status_or_proof_review ambiguity asks which of two invented tasks was
+    // intended, but a terminal purchase outcome already settles whether any
+    // purchase stands approved while a visible receipt alone never proves
+    // approval. Clearing the answered ambiguity here (reply projection only;
+    // intake normalization never clears) lifts both the clarification skip
+    // and the reply-side ask bind so the record answers. Typed evidence
+    // only; no phrase detection, no new state.
+    const boundaryResolvedExtraction = this.reconcileApprovalBoundaryAmbiguity({
+      extraction: replyExtraction,
+      informationResults,
+      imageEvidence: defaultImageEvidence,
+      plan: planForInformation,
+    });
     const composeInformationReply = (overrides: {
       imageEvidence?: ComposeReplyRequest['imageEvidence'];
       imageUrlAttachments?: ComposeReplyRequest['imageUrlAttachments'];
@@ -7884,7 +8007,7 @@ export class AgentService {
       userMessage: args.inbound.text,
       messageContext: args.messageContext,
       plan: planForInformation,
-      extraction: overrides.extraction ?? replyExtraction,
+      extraction: overrides.extraction ?? boundaryResolvedExtraction,
       missingFields: [],
       searchReady: false,
       providerResults: [],
@@ -8518,22 +8641,26 @@ export class AgentService {
   /**
    * Packet C purchase route normalization. Requested answer aspects are
    * preserved verbatim through normalization, including payment_details:
-   * the explicit 05:00-versus-17:00 payment-time question must survive
-   * extraction-to-reply. The necessary read capability is chosen separately
-   * from the answer aspects: the orchestrator derives the lookup partition
-   * from gift-only aspects (dedication/thanks select gift_purchases, every
-   * other question reads orders) and keys disclosure on the requested
-   * aspects, so no aspect is ever removed to force a route. Unknown payment
-   * time stays unknown downstream; the reply addresses that uncertainty
-   * instead of inferring it from event time or order creation.
+   * the explicit payment-time question must survive extraction-to-reply.
+   * The read partition is derived from the typed aspects through the shared
+   * extraction-contract helper: gift detail aspects (dedication, thanks,
+   * payment_details) read gift_purchases, every other question keeps its
+   * declared resource. One partition only, never both; no aspect is ever
+   * removed to force a route. Unknown payment time stays unknown
+   * downstream; the reply addresses that uncertainty instead of inferring
+   * it from event time or order creation.
    */
   private normalizePurchaseDetailRoute(
     requests: PendingInformationRequest[],
   ): PendingInformationRequest[] {
     return requests.map((request) => {
       if (request.kind !== 'purchase') return request;
-      if (request.aspects.length > 0) return request;
-      return { ...request, aspects: ['summary'] };
+      const aspects = request.aspects.length > 0 ? request.aspects : (['summary'] as const);
+      return {
+        ...request,
+        aspects: [...aspects],
+        resource: resolvePurchaseResourceForAspects(request.resource, aspects),
+      };
     });
   }
 
@@ -8951,6 +9078,18 @@ export class AgentService {
       return true;
     }
     if (pending.kind === 'associated_event') {
+      // Explicit entity identity: a different explicit event starts its own
+      // thread. Mirrors the purchase eventHint comparison through the shared
+      // eventMatches helper; unhinted turns still continue the thread. Typed
+      // hints only, never user-text matching.
+      if (
+        pending.eventHint &&
+        extracted.eventHint &&
+        !eventMatches(pending.eventHint, extracted.eventHint) &&
+        !eventMatches(extracted.eventHint, pending.eventHint)
+      ) {
+        return false;
+      }
       return true;
     }
     if (pending.kind === 'faq' && extracted.kind === 'faq' &&
@@ -10687,18 +10826,6 @@ export class AgentService {
         stopReason: 'plan_reset_completed',
         persistReason: 'reset_plan',
       };
-    } else if (evidence.extractionIntent === 'pausar') {
-      decision = {
-        nextNode: 'guardar_cerrar_temporalmente',
-        routeKind: 'pause',
-        providerSearchMode: 'none',
-        presentationScope: 'none',
-        focusNeedCategory: evidence.focusedNeedCategory,
-        needsToSearch: [],
-        needsToPresent: [],
-        stopReason: null,
-        persistReason: 'guardar_cerrar_temporalmente',
-      };
     } else if (evidence.extractionIntent === 'solicitar_humano') {
       decision = {
         nextNode: 'solicitar_agente_humano',
@@ -12371,7 +12498,14 @@ export class AgentService {
       ...plan.provider_needs.filter((need) => need.category !== nextNeed.category),
       nextNeed,
     ];
-    return replaceProviderNeeds(plan, nextNeeds, activeNeedCategory);
+    // A deferred need never keeps active focus: clearing it here (with the
+    // non-deferred fallback in replaceProviderNeeds) keeps deferred
+    // categories from being re-foregrounded or re-asked.
+    return replaceProviderNeeds(
+      plan,
+      nextNeeds,
+      nextNeed.status === 'deferred' ? null : activeNeedCategory,
+    );
   }
 
   private resolveNextNeedAfterSelectionOperation(
@@ -13400,6 +13534,11 @@ export class AgentService {
     const seen = new Set<number>();
     const providers: ProviderSummary[] = [];
     for (const need of plan.provider_needs) {
+      // Deferred needs stay deferred: their rejected cards never re-enter
+      // reply candidates.
+      if (need.status === 'deferred') {
+        continue;
+      }
       for (const provider of need.recommended_providers) {
         if (seen.has(provider.id)) {
           continue;
@@ -13586,10 +13725,10 @@ export class AgentService {
   /**
    * C1 close continuation after refinement. When the previous turn closed a
    * selection/defer round on `seguir_refinando_guardar_plan` and this turn
-   * only carries close contact data (no new selection, operation, planning
-   * intent or pause) while merged contact is complete and a provider stands
-   * selected, the turn continues the close instead of falling through to a
-   * generic interview that re-asks deferred needs. Typed plan and extraction
+   * only carries close contact data (no new selection, operation or pause)
+   * while merged contact is complete and a provider stands selected, the
+   * turn continues the close instead of falling through to a generic
+   * interview that re-asks deferred needs. Typed plan and extraction
    * evidence only; deferred needs stay deferred via the close path.
    */
   private shouldContinueCloseAfterRefinement(
@@ -13609,8 +13748,6 @@ export class AgentService {
     if (!closeReadyPrevious) return false;
     if (!this.hasCloseContactField(extraction)) return false;
     if (extraction.pauseRequested || extraction.requestedOperation) return false;
-    const intent = extraction.actionIntent;
-    if (intent !== null && intent !== 'cerrar') return false;
     const closeActionType = extraction.closeAction?.type ?? null;
     if (
       closeActionType !== null &&

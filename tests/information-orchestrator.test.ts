@@ -801,6 +801,76 @@ describe('InformationOrchestrator', () => {
     expect(execution.results[0]).not.toMatchObject({ status: 'needs_input' });
   });
 
+  it('reads a requested payment time from gift detail and keeps status-only on orders', async () => {
+    const agentGateway = new FakeAgentGateway();
+    const timed = giftPurchase();
+    if (timed.payment) {
+      timed.payment = { ...timed.payment, paidAt: '2026-08-30 21:31:00' };
+    }
+    agentGateway.guestGiftResult = {
+      status: 'success',
+      resource: 'gift_purchases',
+      purchases: [timed],
+    };
+    agentGateway.guestOrdersResult = {
+      status: 'success',
+      resource: 'orders',
+      purchases: [{ ...timed, payment: null }],
+    };
+    const orchestrator = new InformationOrchestrator({
+      knowledgeGateway: { async search() { throw new Error('unused'); } },
+      providerGateway: {} as ProviderGateway,
+      agentGateway,
+    });
+    const phone = { phone_extension: '+51', phone_number: '987654321' };
+
+    const timeExecution = await orchestrator.execute({
+      requests: [{
+        requestId: 'phone-payment-time',
+        kind: 'purchase',
+        resource: 'orders',
+        query: '¿A qué hora se hizo el pago?',
+        orderId: null,
+        aspects: ['payment_details'],
+        sensitiveFields: [],
+        authAction: 'none',
+      }],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: phone,
+    });
+    expect(agentGateway.guestGiftCalls).toBe(1);
+    expect(agentGateway.guestOrdersCalls).toBe(0);
+    const timeResult = timeExecution.results[0];
+    if (!timeResult || timeResult.status !== 'completed' || timeResult.kind !== 'purchase') {
+      throw new Error('Expected completed purchase for the payment-time read.');
+    }
+    expect(timeResult.purchases[0]?.payment?.paidAt).toBe('2026-08-30 21:31:00');
+
+    const statusExecution = await orchestrator.execute({
+      requests: [{
+        requestId: 'phone-status-only',
+        kind: 'purchase',
+        resource: 'orders',
+        query: '¿Cuál es el estado de mi pedido?',
+        orderId: null,
+        aspects: ['summary', 'payment_status'],
+        sensitiveFields: [],
+        authAction: 'none',
+      }],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: phone,
+    });
+    expect(agentGateway.guestGiftCalls).toBe(1);
+    expect(agentGateway.guestOrdersCalls).toBe(1);
+    const statusResult = statusExecution.results[0];
+    if (!statusResult || statusResult.status !== 'completed' || statusResult.kind !== 'purchase') {
+      throw new Error('Expected completed purchase for the status-only read.');
+    }
+    expect(statusResult.purchases[0]?.payment ?? null).toBeNull();
+  });
+
   it('deduplicates identical phone purchase reads across requests', async () => {
     const agentGateway = new FakeAgentGateway();
     agentGateway.guestOrdersResult = {

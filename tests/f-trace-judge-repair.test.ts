@@ -184,7 +184,7 @@ describe('F packets flow unchanged with redaction and bounds', () => {
     expect(validateDecisionPackets({ ...packets, unknownTool: 'evil_tool' } as unknown as typeof packets).ok).toBe(false);
   });
 
-  it('enforces 8KiB envelope and 16/8 limits dropping candidate detail first', () => {
+  it('enforces 12KiB envelope and 16/8 limits dropping candidate detail first', () => {
     const bigCandidates = Array.from({ length: 20 }, (_, index) => ({
       provider_id: index + 1, category: 'local', location: null, retrieval_source: 'test', retrieval_score: 1, fit_score: 1,
     }));
@@ -286,14 +286,13 @@ describe('F judge context isolation and digest gate', () => {
       ],
     });
     const ctx = buildSemanticJudgeContext([first, second], 1, currentCase);
-    expect(ctx).toContain('CANDIDATE RESPONSE');
+    expect(ctx).toContain('CANDIDATE-VISIBLE EVIDENCE');
     expect(ctx).toContain('PRIOR ASSISTANT');
     expect(ctx).toContain('FIXTURE HISTORY');
     expect(ctx).toMatch(/tool-name alone|tool name alone/i);
     expect(ctx).toMatch(/verified effect|effect counts/i);
     expect(ctx).toMatch(/unavailable.*reference|reference.*unavailable/i);
-    const candidateSection = ctx.split('CANDIDATE RESPONSE')[1]?.split('PRIOR ASSISTANT')[0] ?? '';
-    expect(candidateSection).toContain('Ya solicite apoyo humano');
+    expect(ctx).not.toContain('Ya solicite apoyo humano');
     expect(ctx).toContain('plan_guardado=si');
     expect(ctx).toContain('rsvp_pending_flow=none');
     expect(ctx).toMatch(/no especules falta de persistencia/i);

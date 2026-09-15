@@ -12,13 +12,11 @@ import { SinEnvolturasGateway } from '../src/runtime/sinenvolturas-gateway';
 import {
   setupRsvpIsolationWithGateway,
   teardownRsvpIsolationWithGateway,
-  clearRsvpIsolationContextsForTesting,
 } from '../src/evals/rsvp-isolation';
 
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
-  clearRsvpIsolationContextsForTesting();
 });
 
 function denyNetwork(): void {
@@ -207,7 +205,12 @@ describe('S02 simulated effects fail closed', () => {
   });
 
   it('rsvp isolation seam restores explicit prior without network', async () => {
-    const guestRsvp = vi.fn(async () => ({ status: 'responded' as const, action: 'declining' as const, willAttend: false, guestId: 2, eventName: null, eventDate: null }));
+    // O1 verified-setup contract: a write must confirm the requested
+    // attendance, so the double answers each call honestly — attending for
+    // the setup write, declining for the restore write.
+    const guestRsvp = vi.fn(async (input: { action?: string }) => (input.action === 'attending'
+      ? { status: 'responded' as const, action: 'attending' as const, willAttend: true, guestId: 2, eventName: null, eventDate: null }
+      : { status: 'responded' as const, action: 'declining' as const, willAttend: false, guestId: 2, eventName: null, eventDate: null }));
     const context = await setupRsvpIsolationWithGateway({
       setup: { guestId: 2, eventName: 'E', phone: '+51900000002', targetState: 'attending', priorState: 'declining' },
     }, { guestRsvp } as unknown as { guestRsvp: (input: unknown) => Promise<unknown> } as never);

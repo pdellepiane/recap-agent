@@ -7,9 +7,10 @@ import { Command } from 'commander';
 import dotenv from 'dotenv';
 
 import { evalReportSchema } from './case-schema';
-import { listEvaluationAssets, runEvaluation } from './runner';
+import { listEvaluationAssets, parseResumeModeOption, runEvaluation } from './runner';
 import { renderMarkdownReport } from './reporting';
 import { runTechnicalStudy } from './technical-study';
+import { parseCaseConcurrency, parseJudgeConcurrency } from './scheduler';
 
 dotenv.config({ path: ['.env.development', '.env.local', '.env'], quiet: true });
 
@@ -19,6 +20,9 @@ type RunCommandOptions = {
   target?: 'offline' | 'live_lambda';
   matrix?: string;
   dryRun?: boolean;
+  caseConcurrency?: string;
+  judgeConcurrency?: string;
+  resumeMode?: string;
 };
 
 type ReportCommandOptions = {
@@ -37,9 +41,22 @@ program
   .option('--target <target>', 'Target mode: offline or live_lambda')
   .option('--matrix <path>', 'Matrix file relative to evals/')
   .option('--dry-run', 'Estimate cost and list cases without executing')
+  .option('--case-concurrency <n>', 'Bounded case workers 1..4 (default 4)')
+  .option('--judge-concurrency <n>', 'Judge API requests in flight 1..2 (default 2)')
+  .option('--resume-mode <mode>', 'full or diagnostic (default full)')
   .action(async (options: RunCommandOptions) => {
     const evalsDir = path.resolve(process.cwd(), 'evals');
     const outputDir = path.resolve(process.cwd(), '.eval-runs');
+    // Strict validation: missing/invalid values fail closed, never silent.
+    const caseConcurrency = options.caseConcurrency === undefined
+      ? undefined
+      : parseCaseConcurrency(options.caseConcurrency);
+    const judgeConcurrency = options.judgeConcurrency === undefined
+      ? undefined
+      : parseJudgeConcurrency(options.judgeConcurrency);
+    const resumeMode = options.resumeMode === undefined
+      ? undefined
+      : parseResumeModeOption(options.resumeMode);
     const result = await runEvaluation({
       evalsDir,
       outputDir,
@@ -48,6 +65,9 @@ program
       target: options.target ?? null,
       matrixPath: options.matrix ?? null,
       dryRun: Boolean(options.dryRun),
+      ...(caseConcurrency !== undefined ? { requestedCaseConcurrency: caseConcurrency } : {}),
+      ...(judgeConcurrency !== undefined ? { requestedJudgeConcurrency: judgeConcurrency } : {}),
+      ...(resumeMode !== undefined ? { resumeMode } : {}),
     });
 
     process.stdout.write(`${JSON.stringify(

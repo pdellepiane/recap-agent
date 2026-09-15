@@ -3,12 +3,13 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import type { PurchaseInformation } from '../src/core/information';
+import type { InformationTaskResult, PurchaseInformation } from '../src/core/information';
 import { buildRuntimeCapabilityManifest } from '../src/runtime/capability-manifest';
 import { InformationOrchestrator } from '../src/runtime/information-orchestrator';
 import { decideTurnCapability } from '../src/runtime/turn-capability-policy';
 import {
   detectConflictingFields,
+  isApprovalBoundaryAnsweredByRecord,
   isReportedSettlementEvidence,
   partitionHasConflict,
   preserveServerTimestamp,
@@ -500,5 +501,66 @@ describe('E requested reference falls back to bare query text', () => {
     if (result?.status === 'completed' && result.kind === 'purchase') {
       expect(result.purchases).toHaveLength(2);
     }
+  });
+});
+
+describe('approval boundary: receipt amount alone never proves approval', () => {
+  function completedPurchase(orderId: string): InformationTaskResult {
+    return {
+      requestId: `req-${orderId}`,
+      kind: 'purchase',
+      status: 'completed',
+      resource: 'orders',
+      purchases: [],
+      needsSelection: false,
+    };
+  }
+
+  function failedPurchase(): InformationTaskResult {
+    return {
+      requestId: 'req-miss',
+      kind: 'purchase',
+      status: 'failed',
+      retryable: false,
+      accessMethod: 'trusted_phone_purchase',
+      failureKind: 'not_found',
+      message: 'no records',
+    };
+  }
+
+  it('a completed purchase outcome settles the boundary with or without receipt context', () => {
+    expect(isApprovalBoundaryAnsweredByRecord({
+      informationResults: [completedPurchase('a')],
+      receiptContext: false,
+    })).toBe(true);
+    expect(isApprovalBoundaryAnsweredByRecord({
+      informationResults: [completedPurchase('a')],
+      receiptContext: true,
+    })).toBe(true);
+  });
+
+  it('a scoped read that found nothing settles the boundary only with receipt context', () => {
+    expect(isApprovalBoundaryAnsweredByRecord({
+      informationResults: [failedPurchase()],
+      receiptContext: true,
+    })).toBe(true);
+    expect(isApprovalBoundaryAnsweredByRecord({
+      informationResults: [failedPurchase()],
+      receiptContext: false,
+    })).toBe(false);
+  });
+
+  it('an established receipt boundary settles without any purchase read so no follow-up is asked', () => {
+    // Native receipt turn: the visible amount already establishes that a
+    // receipt alone proves nothing, so the approval-versus-review ambiguity
+    // is answered from receipt guidance instead of a redundant question.
+    expect(isApprovalBoundaryAnsweredByRecord({
+      informationResults: [],
+      receiptContext: true,
+    })).toBe(true);
+    expect(isApprovalBoundaryAnsweredByRecord({
+      informationResults: [],
+      receiptContext: false,
+    })).toBe(false);
   });
 });

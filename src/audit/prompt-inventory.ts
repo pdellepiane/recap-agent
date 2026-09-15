@@ -66,11 +66,11 @@ export async function buildPromptInventory(args: {
 
 function deriveConsumers(filePath: string): PromptInventoryConsumer[] {
   const consumers: PromptInventoryConsumer[] = [];
-  if (filePath === 'nodes/resolver_consultas_informativas/image_inspection.txt' ||
-      filePath === 'nodes/resolver_consultas_informativas/image_outcomes.json') {
-    consumers.push({ callType: filePath.endsWith('.json') ? 'deterministic_reply' : 'reply',
+  if (filePath === 'nodes/resolver_consultas_informativas/image_inspection.txt') {
+    consumers.push({ callType: 'reply',
       nodes: ['resolver_consultas_informativas'], profiles: ['image'],
-      transitions: ['media:image_turn'], loader: 'PromptLoader image bundle/messages' });
+      transitions: ['media:image_turn'],
+      loader: 'PromptLoader.loadImageBundle -> OpenAiAgentRuntime.inspectImage (retired describe-by-default; zero service callers since persistent-image amendment, explicit-describe-only fallback)' });
   }
   if (filePath === 'nodes/resolver_consultas_informativas/support_continuity.txt') {
     consumers.push({ callType: 'reply',
@@ -78,43 +78,11 @@ function deriveConsumers(filePath: string): PromptInventoryConsumer[] {
       transitions: ['information:support_acknowledgment'],
       loader: 'PromptLoader.loadSupportContinuityBundle -> AgentService.handleSupportAcknowledgment via composeModelReply' });
   }
-  if (filePath === 'nodes/resolver_consultas_informativas/capability_boundary.txt') {
-    consumers.push({
-      callType: 'deterministic_reply',
-      nodes: ['resolver_consultas_informativas'],
-      profiles: [],
-      transitions: ['capability:boundary_renderer'],
-      loader: 'CapabilityBoundaryRenderer (deterministic capability outcomes)',
-    });
-  }
-  if (filePath === 'capability/turn_outcomes.txt') {
-    consumers.push({
-      callType: 'deterministic_reply',
-      nodes: [],
-      profiles: [],
-      transitions: ['capability:turn_outcome_renderer'],
-      loader: 'CapabilityOutcomeRenderer (deterministic S16 turn and handoff outcomes)',
-    });
-  }
-  if (filePath === 'nodes/resolver_consultas_informativas/host-withdrawal.json') {
-    consumers.push({
-      callType: 'deterministic_reply', nodes: ['resolver_consultas_informativas'],
-      profiles: [], transitions: ['information:host_withdrawal_policy_and_support'],
-      loader: 'PromptLoader.loadHostWithdrawalMessages -> AgentService.handleHostWithdrawalInformation (no model call)',
-    });
-  }
-  if (filePath === 'nodes/resolver_consultas_informativas/handoff_outcomes.json') {
-    consumers.push({
-      callType: 'deterministic_reply', nodes: ['resolver_consultas_informativas'],
-      profiles: [], transitions: ['information:terminal_handoff', 'information:phone_information_not_found', 'human:explicit_request'],
-      loader: 'AgentService escalateInformationAuthentication/selectTerminalHandoffMessage + selectExplicitHumanMessage (no model call)',
-    });
-  }
   if (filePath === 'nodes/resolver_consultas_informativas/auth_control.txt') {
     consumers.push({
-      callType: 'deterministic_reply', nodes: ['resolver_consultas_informativas'],
-      profiles: [], transitions: ['information:auth_control'],
-      loader: 'AgentService effectivePhoneConfirmation/isPhoneConfirmationRelevant (auth-only guidance, no model call)',
+      callType: 'extraction', nodes: ['resolver_consultas_informativas'],
+      profiles: [], transitions: ['extraction:auth_control'],
+      loader: 'PromptLoader.loadAuthControlBundle -> OpenAiAgentRuntime.extract (protected-context evidence scope merged into extractor model input)',
     });
   }
   if (filePath.startsWith('shared/')) {
@@ -140,6 +108,15 @@ function deriveConsumers(filePath: string): PromptInventoryConsumer[] {
         profiles: ['initial_planning_information', 'active_plan', 'shortlist'],
         transitions: ['extraction:capability_boundary'],
         loader: 'OpenAiAgentRuntime.extract -> extractorPromptFilesForCapabilities(capabilityBoundary)',
+      });
+    }
+    if (filePath === 'extractors/image_reference.txt') {
+      consumers.push({
+        callType: 'extraction',
+        nodes: [],
+        profiles: ['image_followup'],
+        transitions: ['extraction:image_followup (stored refs present)'],
+        loader: 'PromptLoader.loadExtractorBundle(capabilities, { includeImageReference: true }) -> OpenAiAgentRuntime.extract (plan has image attachments)',
       });
     }
     const profiles = extractorAuditProfiles.filter((profile) =>

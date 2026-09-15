@@ -15,6 +15,8 @@ import {
   humanHelpIntentSchema,
   informationSupportActSchema,
   type InformationSupportAct,
+  type PurchaseAspect,
+  type PurchaseResource,
 } from '../core/information';
 import {
   rsvpActionValues,
@@ -109,6 +111,19 @@ export const ambiguityEvidenceSchema = z.object({
   ]).nullable().default(null),
 });
 
+/**
+ * Structured follow-up reference to previously persisted images. The model
+ * decides from the full message meaning and conversation context whether the
+ * current question needs a prior image; deterministic code only validates the
+ * linkage against stored refs. Absent on turns that carry their own image.
+ */
+export const imageReferenceEvidenceSchema = z.object({
+  status: z.enum(['none', 'prior_single', 'prior_uncertain']),
+  referencedMessageIds: z.array(z.string().trim().min(1).max(256)).max(2).default([]),
+});
+
+export type ImageReferenceEvidence = z.infer<typeof imageReferenceEvidenceSchema>;
+
 /** User-requested operation; availability is decided deterministically. */
 export const requestedOperationSchema = z.enum(runtimeOperationIds);
 export type RequestedOperation = RuntimeOperationId;
@@ -153,6 +168,29 @@ export type OpenAiInformationRequest = z.infer<
   typeof openAiInformationRequestSchema
 >;
 
+/**
+ * Typed purchase-route agreement for the extraction contract. Requested gift
+ * detail (dedication, thanks, or the requested payment time in
+ * payment_details) reads through the gift-detail route; every other aspect
+ * keeps the declared resource. Typed aspects only, never the user sentence.
+ * Single partition: this never fans out to both routes.
+ */
+export const giftDetailAspectValues = [
+  'dedication',
+  'thanks',
+  'payment_details',
+] as const satisfies readonly PurchaseAspect[];
+
+export function resolvePurchaseResourceForAspects(
+  resource: PurchaseResource,
+  aspects: readonly PurchaseAspect[],
+): PurchaseResource {
+  const needsGiftDetail = aspects.some((aspect) =>
+    (giftDetailAspectValues as readonly string[]).includes(aspect),
+  );
+  return needsGiftDetail ? 'gift_purchases' : resource;
+}
+
 export const extractionSchema = z.object({
   reportedEventRole: z.enum(['host', 'guest']).nullable().optional(),
   actionIntent: z.enum(actionIntentValues).nullable(),
@@ -186,6 +224,7 @@ export const extractionSchema = z.object({
   contactName: z.string().nullable(),
   contactEmail: z.string().nullable(),
   contactPhone: z.string().nullable(),
+  imageReference: imageReferenceEvidenceSchema.nullable().default(null),
   providerFitCriteria: providerFitCriteriaSchema,
   providerQueryIntents: z.array(providerQueryIntentSchema).default([]),
   providerPlanOperations: z.array(providerPlanOperationSchema).default([]),
@@ -211,6 +250,12 @@ export type ExtractionCapabilityProfile = {
 export function createDynamicExtractionSchema(args: {
   allowedActionIntents: readonly ActionIntent[];
   capabilities: ExtractionCapabilityProfile;
+  /**
+   * Minimum disclosure: the follow-up image-reference field travels only
+   * when the plan already stores image attachments. Imageless turns stay
+   * byte-identical. Defaults true for audit/static callers without a plan.
+   */
+  includeImageReference?: boolean;
 }) {
   const allowedActionIntents = args.allowedActionIntents as readonly [
     ActionIntent,
@@ -224,6 +269,9 @@ export function createDynamicExtractionSchema(args: {
       : {}),
     intentConfidence: extractionSchema.shape.intentConfidence,
     ambiguity: extractionSchema.shape.ambiguity,
+    ...(args.includeImageReference === false
+      ? {}
+      : { imageReference: extractionSchema.shape.imageReference }),
     assumptions: extractionSchema.shape.assumptions,
     conversationSummary: extractionSchema.shape.conversationSummary,
   ...(args.capabilities.information

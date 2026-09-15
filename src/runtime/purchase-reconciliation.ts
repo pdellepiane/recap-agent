@@ -1,5 +1,6 @@
 import type {
   CartInformation,
+  InformationTaskResult,
   PurchaseInformation,
   PurchasePartition,
 } from '../core/information';
@@ -235,6 +236,45 @@ export function selectCartRecords(
 export function isReportedSettlementEvidence(value: unknown): boolean {
   void value;
   return false;
+}
+
+/**
+ * Shared approval-boundary predicate: single owner of the receipt-amount ≠
+ * approval rule. A status_or_proof_review ambiguity asks which of two
+ * invented tasks was intended, but the established record already settles
+ * it: a completed purchase outcome (even an empty one) shows whether any
+ * purchase stands approved, and a visible receipt alone never proves
+ * approval. A scoped attempted read that found nothing settles it when
+ * retained receipt context is present; when no purchase read executed at
+ * all, the established receipt boundary still settles it — the reply
+ * answers from receipt guidance instead of asking which task was meant.
+ * Typed evidence only; the ambiguity questionKey guard stays at the call
+ * sites in agent-service and openai-agent-runtime.
+ */
+export function isApprovalBoundaryAnsweredByRecord(args: {
+  informationResults: readonly InformationTaskResult[];
+  receiptContext: boolean;
+}): boolean {
+  const purchaseResults = args.informationResults.filter(
+    (result): result is InformationTaskResult & { kind: 'purchase' } =>
+      result.kind === 'purchase',
+  );
+  if (purchaseResults.some((result) => result.status === 'completed')) {
+    return true;
+  }
+  if (!args.receiptContext) {
+    return false;
+  }
+  if (purchaseResults.length === 0) {
+    return true;
+  }
+  return purchaseResults.some(
+    (result) =>
+      result.status === 'failed' &&
+      result.failureKind === 'not_found' &&
+      (result.accessMethod === 'trusted_phone_purchase' ||
+        result.accessMethod === 'trusted_phone_guest'),
+  );
 }
 
 export function preserveServerTimestamp(value: string | null | undefined): string | null {

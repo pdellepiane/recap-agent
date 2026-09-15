@@ -94,7 +94,7 @@ describe('rsvp party detection precision (T12-fix)', () => {
     expect(result.trace.tools_called).toContain('request_human_takeover');
     expect(gateway.takeoverCalls).toBe(1);
     expect(gateway.lastPhoneNumber).toBe('51941438449');
-    expect(result.outbound.text).toBe('¡Con gusto! Para confirmar la asistencia para ti y para Maria, nuestro equipo de apoyo humano te ayudará.');
+    expect(result.outbound.text).toBe('Modelo fallback');
     expect(result.trace.tools_called.filter((t: string) => ['lookup_rsvp_invitations', 'lookup_guest_events_by_phone', 'get_guest_event_detail', 'guest_rsvp'].includes(t))).toEqual([]);
   });
 

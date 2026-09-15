@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.rsvp_cristian_phone_enriched_confirmation
 suite: live_behavior_regression
-version: 5
+version: 6
 description: Cristian's completed invitation is resolved via hybrid fragment plus natural tissue without a false missing-invitation answer.
 tags: [live, behavior, rsvp, phone-enrichment, reported-interaction, cristian]
 targetModes: [live_lambda]
@@ -23,13 +23,9 @@ expectations:
   - id: cristian-existing-confirmation-is-reported
     type: text_semantic
     rubric: >-
-      The response must contain the deterministic attending fragment elements — polarity "figura que asistirás", confirmation "ya está confirmada", no-change clause "No fue necesario hacer otro cambio" and "no se realizó un nuevo registro", event name "Michelle & Jorge", date "10/10/2026 20:15" (slash fallback via formatRsvpSpanishDate), and natural Spanish conversational tissue. Element presence is required, order is not evaluated. Must be entirely in Spanish, natural, must not imply a new mutation was made, must not ask for email or a code, must not mention internal states or tools, and must not invert polarity to "Figura que no asistirás".
+      Pass only if the assistant responds entirely in Spanish in its own natural wording, reporting that attendance for "Michelle & Jorge" on 10 October 2026 at 20:15 (any clear rendering of that factual date) is already confirmed, and making clear that no new change or registration was needed or made. Factual requirements are attending polarity, the event name, the date, and the no-write fact; no exact deterministic phrase is required. It must not imply a new mutation was made, must not ask for email or a code, must not mention internal states or tools, and must not state the opposite polarity.
     minScore: 0.9
     requireJudge: true
-    severity: hard
-  - id: fragment-attending-polarity-event-date-no-change
-    type: text_contains
-    allOf: ["figura que asistirás", "Michelle & Jorge", "10/10/2026 20:15", "No fue necesario hacer otro cambio", "no se realizó un nuevo registro", "ya está confirmada"]
     severity: hard
   - id: fragment-not-inverted
     type: text_not_contains

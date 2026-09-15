@@ -1,0 +1,54 @@
+template: template.base-live
+id: live_behavior.image_url_receipt_payment_thread
+suite: live_behavior_regression
+version: 2
+description: Receipt sent as a hosted image URL inside a pending-order thread supports the payment task without unsolicited description; thanks does not restart the explanation and the abandoned cart stays out of the payment reply.
+tags: [live, behavior, image, image-url, purchase, url-image-context]
+targetModes: [live_lambda]
+inputs:
+  - text: Consulta por Alejandra. El pedido figura pendiente por Yape. Cuanto me falta?
+    channel: whatsapp
+    contactPhone: "+51938389389"
+    sessionId: live-image-url-receipt-session
+  - text: Ya envie lo que faltaba, aqui esta el comprobante.
+    channel: whatsapp
+    contactPhone: "+51938389389"
+    sessionId: live-image-url-receipt-session
+    image:
+      url: https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png
+  - text: Gracias
+    channel: whatsapp
+    contactPhone: "+51938389389"
+    sessionId: live-image-url-receipt-session
+backendFixture:
+  scenario: purchase-luis-389
+notes:
+  - Same Alejandra pending-order thread as pending_balance_validation_luis. The receipt URL points at a controlled non-sensitive public fixture so the model cannot mistake it for a payment document.
+  - "R05 oracle revision v1 to v2, 2026-09-12, Packet F3. Old receipt-url-stays-informative forced the information node while the receipt turn repeated the full pending explanation instead of quiet supplemental persistence. New contract keeps native URL evidence, judges a brief acknowledgement without the repeated lecture, and accepts legitimate suppressed thanks as correct. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
+expectations:
+  - id: receipt-url-uses-native-context
+    type: tool_usage
+    mustCall: [image_url_context]
+    mustNotCall: [image_inspect]
+    turnIndex: 1
+    severity: hard
+  - id: receipt-url-supports-without-proof
+    type: text_semantic
+    rubric: >-
+      Pass only if the assistant responds entirely in Spanish staying on the pending Alejandra order: it briefly acknowledges the report, states that an image cannot confirm a payment and the order remains pending backend validation, and does not approve or confirm any payment. It must not repeat the full validation-window lecture, must not describe the image content in an unsolicited way, must not mention the separate abandoned cart or its recovery path, and must not ask for an OTP.
+    minScore: 0.85
+    requireJudge: true
+    turnIndex: 1
+    severity: hard
+  - id: thanks-does-not-restart-explanation
+    type: text_semantic
+    rubric: >-
+      An empty assistant response is fully correct when the response classifier suppresses this simple thanks. If a response is sent, it must be entirely in Spanish as a brief closing that does not restart the payment explanation, does not repeat the validation window lecture, does not describe any image, does not mention the abandoned cart, and does not claim any payment was approved.
+    minScore: 0.8
+    requireJudge: true
+    turnIndex: 2
+    severity: hard
+budget:
+  maxTurns: 3
+  estimatedPromptTokensPerTurn: 2200
+  estimatedCompletionTokensPerTurn: 300

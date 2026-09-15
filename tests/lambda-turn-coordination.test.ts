@@ -92,6 +92,9 @@ describe('Lambda turn coordination boundary', () => {
     });
     expect(coordinatorMocks.constructor).toHaveBeenCalledOnce();
     expect(coordinatorMocks.acquire).toHaveBeenCalledOnce();
+    // Failed acquisition never enters runtime work: no plan read or save.
+    expect(coordinatorMocks.getPlan).not.toHaveBeenCalled();
+    expect(coordinatorMocks.savePlan).not.toHaveBeenCalled();
   });
 
   it('fails closed with coordination_unavailable when lease storage errors', async () => {
@@ -108,6 +111,9 @@ describe('Lambda turn coordination boundary', () => {
       retryable: true,
     });
     expect(coordinatorMocks.acquire).toHaveBeenCalledOnce();
+    // Storage failure fails closed before any agent work: no plan read/save.
+    expect(coordinatorMocks.getPlan).not.toHaveBeenCalled();
+    expect(coordinatorMocks.savePlan).not.toHaveBeenCalled();
   });
 
   it('does not grant a fresh runtime budget when Lambda reports no time remaining', async () => {
@@ -155,6 +161,45 @@ describe('Lambda turn coordination boundary', () => {
       expect(JSON.stringify(coordinatorMocks.acquire.mock.calls[0]?.[0])).not.toContain('same-request-id');
     },
   );
+
+  it('serializes overlapping same-conversation turns through actual lease acquisition order', async () => {
+    let held = false;
+    coordinatorMocks.acquire.mockImplementation(async () => {
+      if (held) return false;
+      held = true;
+      return true;
+    });
+    coordinatorMocks.release.mockImplementation(async () => {
+      held = false;
+    });
+    const plan = createEmptyPlan({ planId: 'race-plan', channel: 'webchat', externalUserId: 'user-1' });
+    const escalated = mergePlan(plan, {
+      human_escalation: { status: 'requested', requested_at: new Date().toISOString(), phone_number: null, last_error: null },
+    });
+    coordinatorMocks.getPlan.mockResolvedValue(escalated);
+    coordinatorMocks.savePlan.mockImplementation(async () => {
+      // Every durable write happens under the lease its own turn acquired:
+      // a turn that lost the race never reaches runtime work.
+      expect(held).toBe(true);
+    });
+    const headers = { authorization: 'Bearer test-channel-key' };
+    const body = JSON.stringify({ channel: 'webchat', user_id: 'user-1', request_id: 'race-request' });
+    const [first, second] = await Promise.all([
+      handler({ ...buildEvent({ headers, body }), rawPath: '/conversations/resume' }),
+      handler({ ...buildEvent({ headers, body }), rawPath: '/conversations/resume' }),
+    ]);
+
+    // Exactly one turn wins the lease; the loser fails closed as retryable
+    // busy without entering runtime work. No sender FIFO is assumed: either
+    // invocation may win the race.
+    expect([first.statusCode, second.statusCode].sort()).toEqual([200, 503]);
+    const busy = [first, second].find((response) => response.statusCode === 503);
+    expect(JSON.parse(busy?.body ?? '{}')).toMatchObject({ code: 'conversation_busy', retryable: true });
+    expect(coordinatorMocks.getPlan).toHaveBeenCalledOnce();
+    expect(coordinatorMocks.savePlan).toHaveBeenCalledOnce();
+    expect(coordinatorMocks.release).toHaveBeenCalledOnce();
+    expect(held).toBe(false);
+  });
 });
 
 function validMessage(): Record<string, unknown> {

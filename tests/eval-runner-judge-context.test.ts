@@ -1,23 +1,25 @@
 import { describe, expect, it } from 'vitest';
+import type OpenAI from 'openai';
 
-import { buildSemanticJudgeContext } from '../src/evals/runner';
+import { buildSemanticJudgeContext, collectOriginGateFailures, collectTransportGateFailures } from '../src/evals/runner';
+import { hashPrivateOutput } from '../src/audit/output-origin';
 import type { EvalCase, EvalTurnResult } from '../src/evals/case-schema';
 import { createEmptyPlan } from '../src/core/plan';
 
-function makeTurn(text: string): EvalTurnResult {
+function makeTurn(text: string, turnIndex = 0, outputText = 'respuesta'): EvalTurnResult {
   const plan = createEmptyPlan({
     planId: 'test-plan',
     channel: 'whatsapp',
     externalUserId: 'test-user',
   });
   return {
-    turnIndex: 0,
+    turnIndex,
     input: {
       text,
       channel: 'whatsapp',
       sessionId: 's',
     },
-    outputText: 'respuesta',
+    outputText,
     currentNode: 'resolver_consultas_informativas',
     trace: {
       trace_id: 't1',
@@ -107,6 +109,17 @@ function makeCase(overrides: Partial<EvalCase>): EvalCase {
 }
 
 describe('buildSemanticJudgeContext judge-context completeness', () => {
+  it('keeps prior user inputs and assistant responses but excludes the candidate', () => {
+    const ctx = buildSemanticJudgeContext([
+      makeTurn('mensaje previo', 0, 'respuesta previa'),
+      makeTurn('mensaje actual', 1, 'respuesta candidata'),
+    ], 1);
+    expect(ctx).toContain('priorUserInputs');
+    expect(ctx).toContain('mensaje previo');
+    expect(ctx).toContain('respuesta previa');
+    expect(ctx).not.toContain('respuesta candidata');
+  });
+
   it('includes notes and fixture recentMessages when case provides them', () => {
     const turns = [makeTurn('Tengo un carrito abandonado de Carlos y Adriana')];
     const currentCase = makeCase({
@@ -173,5 +186,138 @@ describe('buildSemanticJudgeContext judge-context completeness', () => {
     const ctx = buildSemanticJudgeContext(turns, 0);
     expect(ctx).not.toContain('Contexto confiable reconstruido del caso');
     expect(ctx).toContain('test without case');
+  });
+});
+
+describe('finalization output-origin and transport gates', () => {
+  it('passes every delivered turn with consistent verified evidence', () => {
+    const delivered = 'respuesta entregada';
+    const sha = hashPrivateOutput(delivered);
+    const turn = makeTurn('hola', 0, delivered);
+    turn.outputOrigin = {
+      status: 'verified',
+      candidateSha256: sha,
+      deliveredSha256: sha,
+      transformationVersion: 'transport-v2',
+      mismatchFields: [],
+    };
+    expect(collectOriginGateFailures([turn])).toEqual([]);
+  });
+
+  it('fails an inconsistent hash on an unjudged intermediate turn', () => {
+    const delivered = 'respuesta entregada';
+    const sha = hashPrivateOutput(delivered);
+    const verified = makeTurn('primero', 0, delivered);
+    verified.outputOrigin = {
+      status: 'verified',
+      candidateSha256: sha,
+      deliveredSha256: sha,
+      transformationVersion: 'transport-v2',
+      mismatchFields: [],
+    };
+    const intermediate = makeTurn('intermedio', 1, 'texto reemplazado');
+    intermediate.outputOrigin = {
+      status: 'mismatch',
+      candidateSha256: hashPrivateOutput('candidato'),
+      deliveredSha256: hashPrivateOutput('texto reemplazado'),
+      transformationVersion: 'transport-v2',
+      mismatchFields: ['delivered_text'],
+    };
+    const failures = collectOriginGateFailures([verified, intermediate]);
+    expect(failures).toHaveLength(1);
+    expect(failures[0]).toContain('turn 1');
+  });
+
+  it('fails a completed model stage with missing transport aggregates', () => {
+    const turn = makeTurn('hola');
+    (turn.trace as unknown as { openai_calls: unknown }).openai_calls = {
+      classifier: null,
+      extraction: null,
+      reply: {
+        responseId: 'resp-1',
+        requestId: 'req-1',
+        model: 'gpt-5.6-luna',
+        attemptCount: 1,
+        requestMetrics: {
+          instructionBytes: 10,
+          inputBytes: 20,
+          toolCount: 0,
+          schemaPropertyCount: 2,
+          transport: {
+            observedRequestCount: 1,
+            totalPayloadBytes: null,
+            instructionBytes: null,
+            inputBytes: null,
+            toolBytes: null,
+            outputSchemaBytes: null,
+            requests: [],
+          },
+        },
+      },
+    };
+    const failures = collectTransportGateFailures([turn]);
+    expect(failures.length).toBeGreaterThan(0);
+    expect(failures.join('; ')).toContain('turn 0 reply');
+  });
+
+  it('excludes future turns from the candidate-visible judge packet', () => {
+    const ctx = buildSemanticJudgeContext([
+      makeTurn('mensaje actual', 0, 'respuesta candidata'),
+      makeTurn('mensaje futuro unico xyz', 1, 'respuesta futura'),
+    ], 0);
+    expect(ctx).toContain('mensaje actual');
+    expect(ctx).not.toContain('mensaje futuro unico xyz');
+    expect(ctx).not.toContain('respuesta futura');
+  });
+});
+
+describe('judge packet identity under scheduling (O3)', () => {
+  it('builds byte-identical contexts for identical evidence regardless of run order', () => {
+    const turns = [
+      makeTurn('mensaje previo', 0, 'respuesta previa'),
+      makeTurn('mensaje actual', 1, 'respuesta candidata'),
+    ];
+    const first = buildSemanticJudgeContext(turns, 1);
+    const second = buildSemanticJudgeContext([
+      makeTurn('mensaje previo', 0, 'respuesta previa'),
+      makeTurn('mensaje actual', 1, 'respuesta candidata'),
+    ], 1);
+    expect(first).toBe(second);
+  });
+
+  it('changes the judge context when immutable evidence changes', () => {
+    const before = buildSemanticJudgeContext([makeTurn('mensaje actual', 0, 'respuesta')], 0);
+    const after = buildSemanticJudgeContext([makeTurn('mensaje distinto', 0, 'respuesta')], 0);
+    expect(before).not.toBe(after);
+  });
+
+  it('traces each judge result to its own immutable evidence digest', async () => {
+    const { runSemanticJudge, hashJudgePayload } = await import('../src/evals/scorers/semantic-judge');
+    const seen: Array<Record<string, unknown>> = [];
+    const create = async (request: Record<string, unknown>): Promise<unknown> => {
+      seen.push(request);
+      return { choices: [{ message: { content: '{"score":1,"reason":"Cumple."}' } }] };
+    };
+    const client = { chat: { completions: { create } } } as unknown as {
+      chat: { completions: { create: typeof create } };
+    };
+    const turns = [makeTurn('mensaje actual', 0, 'respuesta candidata')];
+    const judgeContext = buildSemanticJudgeContext(turns, 0);
+    const outcome = await runSemanticJudge({
+      apiKey: 'test-key',
+      model: 'gpt-5.6-luna',
+      rubric: 'rubrica estable',
+      candidateText: 'respuesta candidata',
+      context: judgeContext,
+      client: client as unknown as OpenAI,
+    });
+    expect(seen).toHaveLength(1);
+    // The recorded digests identify this exact rubric and evidence.
+    expect(outcome.rubricDigest).toBe(hashJudgePayload('rubrica estable'));
+    expect(outcome.requestHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(outcome.evidenceDigest).toMatch(/^[a-f0-9]{64}$/);
+    const userContent = JSON.stringify((seen[0]?.['messages'] as Array<Record<string, unknown>>)[1]);
+    expect(userContent).toContain('respuesta candidata');
+    expect(outcome.message).toContain(`requestHash=${outcome.requestHash}`);
   });
 });

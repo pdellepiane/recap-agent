@@ -190,12 +190,21 @@ describe('Lambda channel request observability', () => {
           requestId: 'req_classifier',
           model: 'gpt-5.6-luna',
           attemptCount: 1,
-          requestMetrics: {
-            instructionBytes: 10,
-            inputBytes: 20,
-            toolCount: 0,
-            schemaPropertyCount: 8,
-          },
+            requestMetrics: {
+              instructionBytes: 10,
+              inputBytes: 20,
+              toolCount: 0,
+              schemaPropertyCount: 8,
+              transport: {
+                observedRequestCount: 2,
+                totalPayloadBytes: 120,
+                instructionBytes: 10,
+                inputBytes: 20,
+                toolBytes: 0,
+                outputSchemaBytes: 90,
+                requests: [],
+              },
+            },
         },
         extraction: null,
         reply: null,
@@ -220,6 +229,10 @@ describe('Lambda channel request observability', () => {
         extraction: { status: 'not_called' },
         reply: { status: 'not_called' },
       },
+    });
+    expect(record.openai_calls?.classifier.request_metrics?.transport).toMatchObject({
+      observedRequestCount: 2,
+      totalPayloadBytes: 120,
     });
   });
 
@@ -272,5 +285,95 @@ describe('Lambda channel request observability', () => {
     });
 
     expect(record.request_path).toBe('/conversations/resume/[phone]');
+  });
+
+  it('marks fully reconciled private transport evidence as complete', () => {
+    const record = buildChannelRequestLog({
+      requestId: 'request-transport-complete',
+      method: 'POST',
+      requestPath: '/',
+      requestRoute: 'message',
+      requestBodyPresent: true,
+      statusCode: 200,
+      outcome: 'success',
+      durationMs: 30,
+      authorizationHeaderPresent: true,
+      bearerTokenPresent: true,
+      openAiCalls: {
+        classifier: null,
+        extraction: null,
+        reply: {
+          responseId: 'resp_reply',
+          requestId: 'req_reply',
+          model: 'gpt-5.6-luna',
+          attemptCount: 1,
+          requestMetrics: {
+            instructionBytes: 10,
+            inputBytes: 20,
+            toolCount: 0,
+            schemaPropertyCount: 2,
+            transport: {
+              observedRequestCount: 1,
+              totalPayloadBytes: 100,
+              instructionBytes: 10,
+              inputBytes: 20,
+              toolBytes: 30,
+              outputSchemaBytes: 40,
+              requests: [{
+                sequence: 0,
+                stage: 'reply',
+                requestId: 'req_reply',
+                responseId: 'resp_reply',
+                statusCode: 200,
+                succeeded: true,
+                totalPayloadBytes: 100,
+                instructionBytes: 10,
+                inputBytes: 20,
+                toolBytes: 30,
+                outputSchemaBytes: 40,
+                requestBodySha256: 'a'.repeat(64),
+              }],
+            },
+          },
+        },
+      },
+    });
+
+    expect(record.transport_accounting?.complete).toBe(true);
+    expect(record.transport_accounting?.reasons).toEqual([]);
+  });
+
+  it('flags missing transport accounting as incomplete instead of zero', () => {
+    const record = buildChannelRequestLog({
+      requestId: 'request-transport-missing',
+      method: 'POST',
+      requestPath: '/',
+      requestRoute: 'message',
+      requestBodyPresent: true,
+      statusCode: 200,
+      outcome: 'success',
+      durationMs: 30,
+      authorizationHeaderPresent: true,
+      bearerTokenPresent: true,
+      openAiCalls: {
+        classifier: {
+          responseId: 'resp_classifier',
+          requestId: 'req_classifier',
+          model: 'gpt-5.6-luna',
+          attemptCount: 1,
+          requestMetrics: {
+            instructionBytes: 10,
+            inputBytes: 20,
+            toolCount: 0,
+            schemaPropertyCount: 8,
+          },
+        },
+        extraction: null,
+        reply: null,
+      },
+    });
+
+    expect(record.transport_accounting?.complete).toBe(false);
+    expect(record.transport_accounting?.reasons.join('; ')).toContain('classifier: transport evidence is missing');
   });
 });

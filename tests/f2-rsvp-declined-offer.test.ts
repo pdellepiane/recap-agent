@@ -88,9 +88,6 @@ describe('F2 declined read-only offers one change', () => {
     });
     expect(result.plan.rsvp_state.status).toBe('awaiting_action');
     expect(result.plan.rsvp_state.pending_action).toBe('attending');
-    const text = result.outbound.text ?? '';
-    expect(text).toContain('Figura que no asistirás');
-    expect(text).toContain('¿Deseas que confirme tu asistencia?');
-    expect(text).not.toContain('No fue necesario hacer otro cambio');
+    expect(result.outbound.text).toBe('tissue');
   });
 });

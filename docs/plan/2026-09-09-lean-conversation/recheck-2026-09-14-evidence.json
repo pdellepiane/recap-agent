@@ -1,0 +1,160 @@
+{
+  "auditedAt": "2026-09-14T14:08:05.280550+00:00",
+  "latestCompletedLiveRun": "eval-2026-09-11T18-13-10-185Z-31697069",
+  "liveResult": {
+    "passed": 57,
+    "failed": 44,
+    "errored": 1,
+    "skipped": 0,
+    "total": 102
+  },
+  "postRepairLiveRunFound": false,
+  "currentMandatorySuiteCount": 103,
+  "awsRechecked": false,
+  "runtimeChangedByAudit": false,
+  "checks": {
+    "typecheck": "passed",
+    "lint": "passed",
+    "offlineDefault": {
+      "passed": 1540,
+      "failed": 3,
+      "skipped": 5,
+      "failureKind": "5000ms timeouts"
+    },
+    "isolatedFailures": {
+      "passed": 3,
+      "failed": 0
+    },
+    "offlineBoundedWorkers4": {
+      "filesPassed": 170,
+      "passed": 1543,
+      "failed": 0,
+      "skipped": 5
+    }
+  },
+  "logs": {
+    "default": {
+      "path": ".openai-audits/offline-recheck-2026-09-14-default.log",
+      "sha256": "db93757ebb6134f4a165fbbaaf85ecaca365ab8ce97fe98db0620baf8f0adb96"
+    },
+    "isolated": {
+      "path": ".openai-audits/offline-recheck-2026-09-14-isolated.log",
+      "sha256": "f2276403bb5e8cdc7339a3680658b21aafba1f5c4901277da13c5f3122060889"
+    },
+    "bounded": {
+      "path": ".openai-audits/offline-recheck-2026-09-14-bounded.log",
+      "sha256": "56fec8c584679f8905385474a785f3c3a410f378db3023010165697c996fadd6"
+    }
+  },
+  "syntheticProbes": [
+    {
+      "id": "stale_history_fallback",
+      "call": "AgentService.applyLastOutboundFallback",
+      "input": "2020 unrelated campaign plus last_outbound_context dated2026-09-14",
+      "result": {
+        "messages": 1,
+        "latestIncluded": false
+      },
+      "expected": "include nonsuperseded latest context with its metadata"
+    },
+    {
+      "id": "fixture_recreated",
+      "call": "FixtureAgentConversationGateway.create(image-clean-world) twice; recordOutboundReceipt only on first",
+      "result": {
+        "firstMessages": 1,
+        "secondMessages": 0
+      },
+      "expected": "real scoped durable production wiring retains observed prior receipt"
+    },
+    {
+      "id": "diagnostic_plan",
+      "call": "projectSafePlan",
+      "input": "synthetic file-SYNTHETIC-private and synthetic@example.test in latest response",
+      "result": {
+        "rawFileIdRetained": true,
+        "rawLastReplyEmailRetained": true
+      },
+      "expected": "public values omitted/redacted; private state unaffected"
+    },
+    {
+      "id": "old_ref_silence",
+      "call": "validateImageOnlySilence",
+      "input": "new unavailable image, OLD-IMAGE reference, claimed image_file_silence/save/suppress",
+      "result": {
+        "exempt": true
+      },
+      "expected": "fail because no validated current image ref save"
+    },
+    {
+      "id": "renderer_self_verification",
+      "call": "AgentService.observeModelDelivery",
+      "input": "generic model one sentence; renderer appends synthetic runtime sentence on every call",
+      "result": {
+        "status": "verified",
+        "mismatchFields": []
+      },
+      "expected": "reject injected renderer prose"
+    },
+    {
+      "id": "image_implies_cart",
+      "call": "AgentService.deriveCustomerProjectionFocus",
+      "input": {
+        "aspects": [
+          "payment_status"
+        ],
+        "imageAvailable": true,
+        "supportAct": null
+      },
+      "result": "general",
+      "expected": "payment unless structured user task requests cart"
+    }
+  ],
+  "fullDecodedAssets": [
+    {
+      "file": "evals/fixtures/images/receipt-amount-obscured.png",
+      "sha256": "b9070acd5d258ca1e3361ac05638b8de3e3db16f63fdc0b6538a2e335c2f630c",
+      "dimensions": [
+        800,
+        1000
+      ]
+    },
+    {
+      "file": "evals/fixtures/images/receipt-readable-149-90.png",
+      "sha256": "15d3842a7e05e4538d15fb095891b5b3a2b4eea23915b49b42c49f62bb71001e",
+      "dimensions": [
+        800,
+        1000
+      ]
+    }
+  ],
+  "inspectedSourceHashesNotDeploymentProof": {
+    "src/runtime/agent-service.ts": "43a8302b9d69ee6315e0d26609226bf2bf0ec866dd8bc690bcf426c8764b7e09",
+    "src/runtime/openai-agent-runtime.ts": "ae479a6215a7925115ff0bde560e233b4ae68e29ec33afd5f37bde5707215f95",
+    "src/runtime/customer-context.ts": "97a736d82f0128bb1193cfaeb6b2cdd421ababdc6fc383c0e4b372063546f785",
+    "src/runtime/eval-fixture-gateway.ts": "53a7a3f06e1e65893383204308e52e5897eb2e9efd92fd611cf9923d05499216",
+    "src/runtime/eval-fixture-state.ts": "526f2ccb222e463c3485cf28f1673fdc10c274f8b13235ed674fa5ee3ff12562",
+    "src/runtime/model-composition.ts": "379c4ab7ccea38ec51e6a6984ddf54fdb5519b3f96df5f927f00924e7222334e",
+    "src/runtime/artifact-redaction.ts": "b0c7d9683aab3f6a4b2db376e167e38ef5faf04e600d7b85ad1685fc08c0da4c",
+    "src/runtime/contracts.ts": "9a56832fa4d6630ca1fda33b228956cbee5858b3ddf7725f2ca4802bfc58988d",
+    "src/audit/output-origin.ts": "4484365e449db9edfebd8d816ade8bdf09037944839bab4c5bb3c8117a8b32f5",
+    "src/evals/silence.ts": "71af895101d0da26f9e733d80ad0e504214ea28faea207e306d76bbebc3e3463",
+    "src/evals/runner.ts": "78f3f92cb698ed160b61cb3a4c30b3bb00a484b898ed2e561104628958eb765a",
+    "src/evals/targets/live-lambda.ts": "436ae5f519d336cd9a0c9298aceb2042528b58e226570f9b4755d58eeb8eedb0",
+    "src/lambda/handler.ts": "378beab28d02724491b20aaa351d992014ea981e9e02e777d9b8b9d969c7e367",
+    "src/core/plan.ts": "0f81b902f2241620e6a57421206bca8e6f4d959482121156a57cb249c2d09008",
+    "infra/cloudformation/stack.yaml": "61588bedda807fdfa05a497290cefa54b164aac10d42a7605173aa32a2bcb19f",
+    "evals/live-behavior-coverage.yaml": "7b67b71911fa8cc7ea84617686af982401edbdf8d762d8ebc02d418979d55281",
+    "evals/suites/live_behavior_regression.yaml": "283b5c53c51f1639a1925b9374923472abcd6dc41d04c6ccf70ae758eb989a9e"
+  },
+  "executionOrder": [
+    "S0",
+    "S2",
+    "S3",
+    "S1",
+    "S4",
+    "S5",
+    "S6",
+    "S7",
+    "S8"
+  ]
+}

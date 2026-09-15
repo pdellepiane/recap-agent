@@ -145,12 +145,108 @@ describe('AgentService first-class information flow', () => {
     });
 
     expect(response.plan.current_node).toBe('resolver_consultas_informativas');
-    expect(response.outbound.text).toBe(
-      '¿Confirmas que el buzón del correo registrado está lleno?',
-    );
-    expect(runtime.composeRequests).toHaveLength(0);
+    expect(response.outbound.text).toBe('Respuesta informativa.');
+    expect(runtime.composeRequests).toHaveLength(1);
+    expect(runtime.composeRequests[0]?.extraction.ambiguity?.status).toBe('ambiguous');
     expect(knowledge.calls).toBe(0);
     expect(gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.authByPhoneCalls).toBe(0);
+  });
+
+  it('runs lookups for a prior_single-linked ambiguous question instead of skipping', async () => {
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      reason: 'seed-prior-image',
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'prior-single-image-plan',
+          channel: 'whatsapp',
+          externalUserId: 'prior-single-user',
+        }),
+        {
+          current_node: 'resolver_consultas_informativas',
+          image_attachments: [{
+            kind: 'url',
+            url: 'https://example.invalid/voucher.jpg',
+            messageId: 'wamid.img1',
+            receivedAt: new Date().toISOString(),
+          }],
+        },
+      ),
+    });
+    const dedicationRequest = purchaseRequest(null);
+    dedicationRequest.aspects = ['dedication'];
+    const base = extraction([dedicationRequest]);
+    const runtime = new InformationRuntime([{
+      ...base,
+      ambiguity: {
+        status: 'ambiguous',
+        clarificationQuestion: 'Quieres el estado o que revise el comprobante?',
+        interpretations: ['el estado de la compra', 'la revision del comprobante'],
+      },
+      imageReference: { status: 'prior_single', referencedMessageIds: ['wamid.img1'] },
+    }]);
+    const knowledge = new FakeKnowledgeGateway();
+    const gateway = new FakePurchaseGateway();
+    const service = createService({
+      runtime,
+      knowledgeGateway: knowledge,
+      purchaseGateway: gateway,
+      providerGateway: providerGateway(),
+      planStore,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'prior-single-user',
+      contactPhone: '+51973296571',
+      text: 'Quiero que revises la dedicatoria de este comprobante',
+      messageId: 'prior-single-1',
+      receivedAt: new Date().toISOString(),
+    });
+
+    // The single linked image is the answerable target, so the ambiguous
+    // turn executes (phone-scoped lookup attempted) instead of skipping to
+    // a bare clarification. Genuine multi-candidate turns without such a
+    // link still skip (covered above).
+    expect(response.plan.current_node).toBe('resolver_consultas_informativas');
+    expect(response.outbound.text).toBe('Respuesta informativa.');
+    expect(runtime.composeRequests).toHaveLength(1);
+    expect(gateway.guestGiftCalls).toBe(1);
+    expect(runtime.composeRequests[0]?.imageEvidence).toMatchObject({ status: 'available' });
+  });
+
+  it('does not stash the extractor clarification text as the pending question', async () => {
+    const base = extraction([]);
+    const runtime = new InformationRuntime([{
+      ...base,
+      ambiguity: {
+        status: 'ambiguous',
+        clarificationQuestion: 'Te refieres al pago o a un evento?',
+        interpretations: ['el pago', 'el evento'],
+      },
+    }]);
+    const service = createService({
+      runtime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: new FakePurchaseGateway(),
+      providerGateway: providerGateway(),
+    });
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'bare-ambiguous-user',
+      text: 'No entiendo bien',
+      messageId: 'bare-ambiguous-1',
+      receivedAt: new Date().toISOString(),
+    });
+
+    // The current turn's extractor clarification text travels in the
+    // extraction snapshot for this turn's reply; it is never persisted as
+    // the curated pending question. Only prior-turn state and explicitly
+    // stashed evidence-seeking questions persist there.
+    expect(response.plan.owner_pending_question).toBeNull();
+    expect(runtime.composeRequests).toHaveLength(1);
+    expect(runtime.composeRequests[0]?.extraction.ambiguity?.status).toBe('ambiguous');
   });
 
   it('uses contextual clarification for an empty extraction after recent support history', async () => {
@@ -200,9 +296,9 @@ describe('AgentService first-class information flow', () => {
 
     expect(response.plan.current_node).toBe('resolver_consultas_informativas');
     expect(response.trace.route_kind).toBe('contextual_clarification');
-    expect(response.outbound.text).toContain('continuar');
+    expect(response.outbound.text).toBe('Respuesta informativa.');
     expect(response.outbound.text).not.toMatch(/^(?:Hola|¡Hola)/u);
-    expect(runtime.composeRequests).toHaveLength(0);
+    expect(runtime.composeRequests).toHaveLength(1);
     expect(knowledge.calls).toBe(0);
     expect(gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.authByPhoneCalls).toBe(0);
   });
@@ -241,7 +337,7 @@ describe('AgentService first-class information flow', () => {
 
     expect(runtime.composeRequests).toHaveLength(1);
     expect(runtime.composeRequests[0]?.plan.conversation_summary).toContain('buzón');
-    expect(runtime.composeRequests[0]?.errorMessage).toContain('resumen canónico');
+    expect(runtime.composeRequests[0]?.errorMessage).toBeNull();
     expect(response.trace.route_kind).toBe('contextual_clarification');
     expect(gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.authByPhoneCalls).toBe(0);
   });
@@ -306,7 +402,7 @@ describe('AgentService first-class information flow', () => {
     expect(response.trace.extraction_summary.information_normalization_rejected_count).toBe(1);
   });
 
-  it('retrieves verified FAQ evidence for a typed policy question instead of answering from model memory', async () => {
+  it('reads the verified purchase record for a typed purchase-status question instead of answering from the KB', async () => {
     const runtime = new InformationRuntime([{
       ...extraction([]),
       supportAct: {
@@ -316,6 +412,11 @@ describe('AgentService first-class information flow', () => {
       },
     }]);
     const gateway = new FakePurchaseGateway();
+    gateway.guestOrdersResult = {
+      status: 'success',
+      resource: 'orders',
+      purchases: [purchase('ORD-000880')],
+    };
     const knowledge = new FakeKnowledgeGateway();
     const service = createService({
       runtime,
@@ -328,17 +429,18 @@ describe('AgentService first-class information flow', () => {
       channel: 'whatsapp',
       externalUserId: 'typed-policy-question',
       contactPhone: '+51900000302',
-      text: '¿Cuál es el plazo general de validación?',
+      text: '¿Cuál es el estado de mi compra?',
       messageId: 'typed-policy-question-1',
       receivedAt: new Date().toISOString(),
     });
 
-    expect(knowledge.calls).toBe(1);
-    expect(knowledge.lastQuery).toBe('¿Cuál es el plazo general de validación?');
-    expect(gateway.guestOrdersCalls + gateway.guestGiftCalls).toBe(0);
+    expect(knowledge.calls).toBe(0);
+    expect(gateway.guestOrdersCalls).toBe(1);
+    expect(gateway.guestGiftCalls).toBe(0);
+    expect(gateway.authByPhoneCalls).toBe(0);
     expect(runtime.composeRequests).toHaveLength(1);
     expect(runtime.composeRequests[0]?.informationResults).toEqual([
-      expect.objectContaining({ kind: 'faq', status: 'completed' }),
+      expect.objectContaining({ kind: 'purchase', status: 'completed' }),
     ]);
   });
 
@@ -364,6 +466,72 @@ describe('AgentService first-class information flow', () => {
     });
 
     expect(takeover).not.toHaveBeenCalled();
+  });
+
+  it('composes an explicit human request through the model with requested handoff evidence', async () => {
+    const runtime = new InformationRuntime([
+      extraction([], 'solicitar_humano'),
+    ]);
+    const gateway = new FakePurchaseGateway();
+    const service = createService({
+      runtime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway,
+      providerGateway: providerGateway(),
+    });
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'explicit-handoff-requested',
+      text: 'Necesito hablar con una persona.',
+      messageId: 'explicit-handoff-1',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51973296571',
+    });
+
+    expect(gateway.takeoverCalls).toBe(1);
+    expect(response.plan.current_node).toBe('solicitar_agente_humano');
+    expect(response.plan.human_escalation.status).toBe('requested');
+    expect(response.plan.human_help_receipt).toMatchObject({
+      outcome: 'handoff_requested',
+      requested: true,
+    });
+    expect(runtime.composeRequests).toHaveLength(1);
+    expect(runtime.composeRequests[0]?.currentNode).toBe('solicitar_agente_humano');
+    expect(runtime.composeRequests[0]?.handoffOutcome).toBe('handoff_requested');
+    expect(response.trace.prompt_bundle_id).not.toMatch(/^deterministic:/u);
+    expect(response.outbound.delivery.action).toBe('send');
+    expect(response.outbound.text).toBe('Respuesta informativa.');
+  });
+
+  it('composes an explicit human request without trusted identity and never claims requested handoff', async () => {
+    const runtime = new InformationRuntime([
+      extraction([], 'solicitar_humano'),
+    ]);
+    const gateway = new FakePurchaseGateway();
+    const takeover = vi.spyOn(gateway, 'requestHumanTakeover');
+    const service = createService({
+      runtime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway,
+      providerGateway: providerGateway(),
+    });
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'explicit-handoff-nophone',
+      text: 'Necesito hablar con una persona.',
+      messageId: 'explicit-handoff-nophone-1',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(takeover).not.toHaveBeenCalled();
+    expect(response.plan.current_node).toBe('solicitar_agente_humano');
+    expect(response.plan.human_escalation.status).toBe('none');
+    expect(runtime.composeRequests).toHaveLength(1);
+    expect(runtime.composeRequests[0]?.handoffOutcome).not.toBe('handoff_requested');
+    expect(response.outbound.delivery.action).toBe('send');
+    expect(response.outbound.text).toBe('Respuesta informativa.');
   });
   const hostRequest = (hostWithdrawal: 'individual_status' | 'policy_only' = 'individual_status'): ExtractedInformationRequest => ({
     kind: 'faq', query: 'Retiro de fondos del evento aún no recibido', hostWithdrawal,
@@ -397,14 +565,29 @@ describe('AgentService first-class information flow', () => {
     expect(takeover).toHaveBeenCalledTimes(1);
     expect(answer.plan.human_escalation.status).toBe('requested');
     expect(answer.plan.information_state.pending_requests).toMatchObject([hostRequest()]);
-    expect(JSON.stringify(answer.outbound)).toContain('72 horas hábiles');
-    expect(JSON.stringify(answer.outbound)).toContain('No tengo disponible el estado de tu retiro');
-    expect(JSON.stringify(answer.outbound)).not.toMatch(/USD5|mañana|Cuenta privada/u);
+    // L1 model composition: the sourced policy window travels as typed
+    // evidence, never as joined canned prose; the stub model text is delivered.
+    const withdrawalCompose = runtime.composeRequests.at(-1);
+    expect(withdrawalCompose?.currentNode).toBe('solicitar_agente_humano');
+    expect(withdrawalCompose?.handoffOutcome).toBe('handoff_requested');
+    expect(withdrawalCompose?.informationResults?.[0]).toMatchObject({
+      kind: 'faq',
+      status: 'completed',
+      hostWithdrawalPolicy: { maxBusinessHours: 72 },
+    });
+    const policyEvidence = JSON.stringify(withdrawalCompose?.informationResults?.[0]);
+    expect(policyEvidence).toContain('72 horas hábiles');
+    expect(policyEvidence).not.toMatch(/USD5|mañana|Cuenta privada/u);
+    expect(answer.outbound.text).toBe('Respuesta informativa.');
+    expect(answer.trace.prompt_bundle_id).not.toMatch(/^deterministic:/u);
+    expect(answer.trace.prompt_file_paths).not.toContain(
+      'nodes/resolver_consultas_informativas/host-withdrawal.json',
+    );
     const followup = await service.handleTurn({ ...inbound, messageId: 'event', text: 'Evento: Diana y Fernando' });
     expect(followup.trace.prompt_bundle_id).toBe('deterministic:human_escalation_soft_pause');
     expect(takeover).toHaveBeenCalledTimes(1);
     expect(runtime.extractRequests).toHaveLength(2);
-    expect(runtime.composeRequests).toHaveLength(1); // Initial role response only; no policy reply-model call.
+    expect(runtime.composeRequests).toHaveLength(2); // Initial role response plus the model-composed withdrawal reply.
     expect(gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.guestEventCalls + gateway.authByPhoneCalls).toBe(0);
     expect(provider.requestCodeCalls + provider.verifyCodeCalls + provider.eventLookupCalls).toBe(0);
   });
@@ -418,8 +601,16 @@ describe('AgentService first-class information flow', () => {
       text: '¿Cuánto demora un retiro de fondos?', messageId: 'policy', receivedAt: new Date().toISOString() });
     expect(gateway.takeoverCalls).toBe(0);
     expect(result.plan.information_state.pending_requests).toEqual([]);
-    expect(runtime.composeRequests).toEqual([]);
-    expect(JSON.stringify(result.outbound)).toContain('72 horas hábiles');
+    expect(runtime.composeRequests).toHaveLength(1);
+    const compose = runtime.composeRequests[0];
+    expect(compose?.handoffOutcome).toBeNull();
+    expect(compose?.informationResults?.[0]).toMatchObject({
+      kind: 'faq',
+      status: 'completed',
+      hostWithdrawalPolicy: { maxBusinessHours: 72 },
+    });
+    expect(JSON.stringify(compose?.informationResults?.[0])).not.toMatch(/USD5|mañana|Cuenta privada/u);
+    expect(result.outbound.text).toBe('Respuesta informativa.');
   });
 
   it('retains pending support and does not enter RSVP for a bare event reference after failed handoff', async () => {
@@ -439,7 +630,10 @@ describe('AgentService first-class information flow', () => {
     expect(result.plan.current_node).toBe('resolver_consultas_informativas');
     expect(result.plan.human_escalation.status).toBe('none');
     expect(result.plan.information_state.pending_requests).toHaveLength(1);
-    expect(JSON.stringify(result.outbound)).toContain('No pude registrar');
+    // The failed handoff travels as typed outcome evidence for the model.
+    expect(runtime.composeRequests).toHaveLength(1);
+    expect(runtime.composeRequests[0]?.handoffOutcome).toBe('handoff_failed');
+    expect(result.outbound.text).toBe('Respuesta informativa.');
     expect(gateway.guestEventCalls + gateway.guestOrdersCalls).toBe(0);
   });
 
@@ -452,9 +646,12 @@ describe('AgentService first-class information flow', () => {
     const result = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'no-policy', contactPhone: '+51999999999',
       text: 'No recibí mi retiro', messageId: 'missing', receivedAt: new Date().toISOString() });
     expect(JSON.stringify(result.outbound)).not.toContain('72');
-    expect(JSON.stringify(result.outbound)).toContain('No pude verificar');
     expect(gateway.takeoverCalls).toBe(1);
-    expect(runtime.composeRequests).toEqual([]);
+    expect(runtime.composeRequests).toHaveLength(1);
+    const compose = runtime.composeRequests[0];
+    expect(compose?.informationResults?.[0]).toMatchObject({ kind: 'faq', status: 'failed' });
+    expect(compose?.handoffOutcome).toBe('handoff_requested');
+    expect(result.plan.information_state.pending_requests).toHaveLength(1);
   });
 
   it('does not act on an ambiguous host-withdrawal extraction', async () => {
@@ -629,10 +826,10 @@ describe('AgentService first-class information flow', () => {
     expect(runtime.composeRequests.at(-1)?.currentNode).toBe(
       'resolver_consultas_informativas',
     );
-    expect(runtime.composeRequests.at(-1)?.informationResults?.[0]).toMatchObject({
-      kind: 'purchase',
-      status: 'completed',
-    });
+    // P4 anchorless-replay removal: a correction turn with no current-turn
+    // request must not replay the last completed purchase record. The reply
+    // acknowledges without re-projecting completed evidence.
+    expect(runtime.composeRequests.at(-1)?.informationResults ?? []).toEqual([]);
   });
 
   it('answers FAQ evidence while preserving a purchase request blocked on email', async () => {
@@ -682,7 +879,7 @@ describe('AgentService first-class information flow', () => {
     expect(purchaseGateway.ordersCalls + purchaseGateway.giftCalls).toBe(0);
   });
 
-  it('treats a typed purchase request as clear when optional lookup details were marked ambiguous', async () => {
+  it('keeps a purchase request marked ambiguous as unresolved evidence instead of executing it', async () => {
     const recordedExtraction = extraction([
       {
         kind: 'purchase',
@@ -720,27 +917,21 @@ describe('AgentService first-class information flow', () => {
     });
 
     const results = runtime.composeRequests.at(-1)?.informationResults ?? [];
-    const purchaseBlock = results.find(
-      (result) => result.kind === 'purchase' && result.status === 'needs_input',
-    );
-    expect(purchaseBlock).toEqual(
-      expect.objectContaining({
-        kind: 'purchase',
-        status: 'needs_input',
-        nextInput: 'email',
-      }),
-    );
+    // L3/E08: model-produced ambiguity is typed unresolved evidence. The
+    // purchase request is not executed, not persisted as pending, and the
+    // model clarifies (specific order versus all orders) next.
     expect(
-      purchaseBlock?.status === 'needs_input' ? purchaseBlock.guidance : null,
-    ).toEqual(createInformationAuthGuidance('email_required', null));
-    expect(response.plan.information_state.pending_requests).toEqual([
-      expect.objectContaining({
-        kind: 'purchase',
-        resource: 'orders',
-        orderId: null,
-      }),
+      results.find((result) => result.kind === 'purchase'),
+    ).toBeUndefined();
+    expect(response.plan.information_state.pending_requests).toEqual([]);
+    expect(response.trace.extraction_summary.ambiguity_status).toBe('ambiguous');
+    const composed = runtime.composeRequests.at(-1)?.extraction;
+    expect(composed?.ambiguity?.status).toBe('ambiguous');
+    expect(composed?.ambiguity?.interpretations).toEqual([
+      'un pedido específico',
+      'todos tus pedidos',
     ]);
-    expect(response.trace.extraction_summary.ambiguity_status).toBe('clear');
+    expect(response.outbound.text).toBe('Respuesta informativa.');
     expect(runtime.composeRequests.at(-1)?.errorMessage).toBeNull();
   });
 
@@ -938,7 +1129,7 @@ describe('AgentService first-class information flow', () => {
     );
   });
 
-  it('adds only canonical pending status to an unsupported proof-validation reply', async () => {
+  it('answers a proof-validation purchase question from the record lookup without a capability handoff', async () => {
     const request = purchaseRequest(null);
     request.resource = 'orders';
     request.amount = 13.76;
@@ -950,20 +1141,27 @@ describe('AgentService first-class information flow', () => {
     gateway.guestOrdersResult = {
       status: 'success',
       resource: 'orders',
-      purchases: [{
-        ...purchase('ORD-000880'),
-        paymentStatus: 'pending',
-        grandTotal: 227.76,
-        paymentMethod: 'Yape_o_Plin',
-        eventName: 'Alejandra',
-        currency: null,
-        paymentValidationExpectation: {
-          maxBusinessHours: 72,
-          appliesTo: 'indexed_validation_methods',
-        },
-      }],
+      purchases: [],
+      // Production partition envelope: one pending order. The reported
+      // 13.76 is user-reported payment evidence, not order identity, so the
+      // lone-amount guard resolves the unique pending order.
+      orderPartitions: {
+        pending: [{
+          ...purchase('ORD-000880'),
+          paymentStatus: 'pending',
+          grandTotal: 227.76,
+          paymentMethod: 'Yape_o_Plin',
+          eventName: 'Alejandra',
+          currency: null,
+          paymentValidationExpectation: {
+            maxBusinessHours: 72,
+            appliesTo: 'indexed_validation_methods',
+          },
+        }],
+        completed: [],
+      },
     };
-    vi.spyOn(gateway, 'requestHumanTakeover')
+    const takeover = vi.spyOn(gateway, 'requestHumanTakeover')
       .mockResolvedValue({ status: 'success', message: null });
     const service = createService({
       runtime,
@@ -988,23 +1186,26 @@ describe('AgentService first-class information flow', () => {
       }],
     });
 
-    expect(response.outbound.text).toContain('indicas haber enviado 13.76');
-    expect(response.outbound.text).toContain('El pedido de Alejandra sigue pendiente');
-    expect(response.outbound.text).toContain('hasta 72 horas hábiles');
-    // Stale 2026-09-08: live run eval-2026-09-08T15-19-11-093Z-af842b71 scored
-    // the handoff wording 0.15 on live_behavior.pending_balance_validation_luis
-    // turn 1. The hard rubric demands staying on the pending order with image
-    // and window grounding and no handoff, so the voucher continuation owns it.
-    expect(response.outbound.text).toContain('no permite confirmar');
+    // R9: payment_proof.verify no longer forces a deterministic handoff. The
+    // model answers from the phone-scoped record lookup in the normal
+    // information flow; no capability-status-read synthesis, no takeover.
+    expect(response.outbound.text).toBe('Respuesta informativa.');
     expect(response.outbound.text).not.toMatch(/apoyo humano/i);
     expect(response.outbound.text).not.toMatch(/S\/|PEN|soles|not_eligible/u);
-    expect(response.trace.information_execution_summary).toEqual([
-      expect.objectContaining({
-        requestId: 'capability-status-read',
-        status: 'completed',
-        resource: 'orders',
-      }),
-    ]);
+    expect(takeover).not.toHaveBeenCalled();
+    expect(response.trace.information_execution_summary).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'purchase',
+          status: 'completed',
+        }),
+      ]),
+    );
+    expect(response.trace.information_execution_summary).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ requestId: 'capability-status-read' }),
+      ]),
+    );
   });
 
   it('projects a trusted cart recovery path separately from general payment policy', async () => {
@@ -1118,8 +1319,13 @@ describe('AgentService first-class information flow', () => {
     });
     expect(response.trace.tools_called).toContain('log_agent_conversation_message');
     expect(response.trace.tools_called).toContain('request_human_takeover');
-    expect(response.outbound.text).toContain('ya solicité apoyo humano');
-    expect(runtime.composeRequests).toHaveLength(0);
+    expect(response.outbound.text).toBe('Respuesta informativa.');
+    expect(runtime.composeRequests).toHaveLength(1);
+    expect(runtime.composeRequests.at(-1)?.authenticationOutcome).toMatchObject({
+      status: 'terminal',
+      reason: 'identity_rejected',
+      handoffOutcome: 'handoff_requested',
+    });
   });
 
   it('does not disclose trusted-phone guest data after the person rejects that phone association', async () => {
@@ -1208,8 +1414,13 @@ describe('AgentService first-class information flow', () => {
     });
     expect(response.trace.tools_called).toContain('log_agent_conversation_message');
     expect(response.trace.tools_called).toContain('request_human_takeover');
-    expect(response.outbound.text).toContain('ya solicité apoyo humano');
-    expect(runtime.composeRequests).toHaveLength(0);
+    expect(response.outbound.text).toBe('Respuesta informativa.');
+    expect(runtime.composeRequests).toHaveLength(1);
+    expect(runtime.composeRequests.at(-1)?.authenticationOutcome).toMatchObject({
+      status: 'terminal',
+      reason: 'identity_rejected',
+      handoffOutcome: 'handoff_requested',
+    });
   });
 
   it('recovers a persisted retired confirmation turn with the phone-scoped purchase read', async () => {
@@ -1317,7 +1528,7 @@ describe('AgentService first-class information flow', () => {
     expect(gateway.guestGiftCalls).toBe(0);
     expect(provider.requestCodeCalls).toBe(0);
     expect(response.plan.user_auth.status).toBe('none');
-    expect(runtime.composeRequests).toHaveLength(0);
+    expect(runtime.composeRequests).toHaveLength(1);
     expect(gateway.takeoverCalls).toBe(1);
     expect(response.plan.human_escalation.status).toBe('requested');
     expect(response.plan.information_state.pending_requests[0]?.query).toBe('Estado del regalo comprado.');
@@ -1326,7 +1537,8 @@ describe('AgentService first-class information flow', () => {
     expect(response.trace.information_execution_summary).toEqual([
       expect.objectContaining({ status: 'failed', accessMethod: 'trusted_phone_purchase', resource: 'orders' }),
     ]);
-    expect(response.outbound.text).toContain('ya solicité apoyo humano');
+    expect(response.outbound.text).toBe('Respuesta informativa.');
+    expect(runtime.composeRequests.at(-1)?.authenticationOutcome?.handoffOutcome).toBe('handoff_requested');
     expect(response.plan.human_help_receipt).toMatchObject({
       outcome: 'handoff_requested',
       requested: true,
@@ -1362,11 +1574,12 @@ describe('AgentService first-class information flow', () => {
     expect(gateway.guestEventCalls).toBe(1);
     expect(gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.authByPhoneCalls).toBe(0);
     expect(provider.requestCodeCalls + provider.verifyCodeCalls).toBe(0);
-    expect(runtime.composeRequests).toHaveLength(0);
+    expect(runtime.composeRequests).toHaveLength(1);
     expect(gateway.takeoverCalls).toBe(1);
     expect(response.plan.human_escalation.status).toBe('requested');
     expect(response.plan.information_state.pending_requests[0]?.query).toBe(query);
-    expect(response.outbound.text).toContain('ya solicité apoyo humano');
+    expect(response.outbound.text).toBe('Respuesta informativa.');
+    expect(runtime.composeRequests.at(-1)?.authenticationOutcome?.handoffOutcome).toBe('handoff_requested');
     expect(response.plan.human_help_receipt).toMatchObject({
       outcome: 'handoff_requested',
       requested: true,
@@ -1618,7 +1831,11 @@ describe('AgentService first-class information flow', () => {
 
     expect(provider.requestCodeCalls).toBe(0);
     expect(gateway.takeoverCalls).toBe(1);
-    expect(runtime.composeRequests).toHaveLength(0);
+    expect(runtime.composeRequests).toHaveLength(1);
+    expect(runtime.composeRequests.at(-1)?.authenticationOutcome).toMatchObject({
+      status: 'terminal',
+      handoffOutcome: 'handoff_requested',
+    });
     expect(response.plan.human_escalation.status).toBe('requested');
     expect(gateway.authByPhoneCalls).toBe(0);
     expect(gateway.guestGiftCalls).toBe(1);
@@ -2273,7 +2490,14 @@ describe('AgentService first-class information flow', () => {
     });
     expect(response.trace.tools_called).not.toContain('request_user_login_code');
     expect(response.trace.tools_called).not.toContain('verify_user_login_code');
-    expect(response.outbound.text).toContain('No volveré a pedirte el correo ni un código');
+    expect(response.outbound.text).toBe('Respuesta informativa.');
+    expect(runtime.composeRequests.at(-1)?.authenticationOutcome).toMatchObject({
+      status: 'declined',
+      reason: 'authentication_declined',
+      protectedRequestsClosed: true,
+      publicInformationRequestsRemaining: 0,
+      noFurtherCredentialRequests: true,
+    });
   });
 
   it('closes only protected work when authentication is declined and preserves an unrelated FAQ', async () => {
@@ -2329,8 +2553,12 @@ describe('AgentService first-class information flow', () => {
 
     expect(response.plan.information_state.pending_requests).toEqual([unrelatedFaq]);
     expect(response.plan.user_auth.status).toBe('none');
-    expect(response.outbound.text).toContain('Sin autenticación no puedo continuar');
-    expect(response.outbound.text).not.toContain('correo registrado');
+    expect(response.outbound.text).toBe('Respuesta informativa.');
+    expect(runtime.composeRequests.at(-1)?.authenticationOutcome).toMatchObject({
+      status: 'declined',
+      protectedRequestsClosed: true,
+      publicInformationRequestsRemaining: 1,
+    });
     expect(gateway.authByPhoneCalls).toBe(0);
     expect(provider.requestCodeCalls).toBe(0);
   });
@@ -2491,8 +2719,13 @@ describe('AgentService first-class information flow', () => {
       }),
     ]);
 
-    // Terminal handoffs are deterministic: no reply-model composition runs.
-    expect(runtime.composeRequests).toHaveLength(0);
+    // Each terminal handoff is model-composed from the typed access result.
+    expect(runtime.composeRequests).toHaveLength(2);
+    expect(runtime.composeRequests.at(-1)?.authenticationOutcome).toMatchObject({
+      status: 'terminal',
+      // C1: terminal escalation retains pending protected requests.
+      protectedRequestsClosed: false,
+    });
   });
 
   it('uses a newly provided email instead of the previously stored address', async () => {
@@ -2684,6 +2917,178 @@ describe('AgentService first-class information flow', () => {
     expect(response.plan.information_state.selection_candidates[0]).not.toHaveProperty(
       'payment',
     );
+  });
+});
+
+describe('event entity threads: explicit switches keep their own identity', () => {
+  it('starts a separate thread for an explicit different event instead of blending hints', async () => {
+    // Live event_context_long_thread turn 1: after asking when Marta occurs,
+    // the extractor resolves "¿Y la Boda Ana y Luis?" to a self-sufficient
+    // query carrying the inherited date/time aspect with the explicit Boda
+    // entity. The Boda question must complete on its own thread while the
+    // still-open Marta thread stays intact under its own hint and id.
+    const runtime = new InformationRuntime([extraction([{
+      kind: 'associated_event',
+      query: '¿Cuándo es la Boda Ana y Luis?',
+      eventHint: 'Boda Ana y Luis',
+    }])]);
+    const gateway = new FakePurchaseGateway();
+    gateway.guestEventsResult = {
+      status: 'success',
+      events: [
+        {
+          eventId: 90,
+          name: 'Cumpleaños Marta',
+          slug: 'cumpleanos-marta',
+          url: null,
+          datetime: '21/09/2026 19:00',
+          type: 'birthday',
+          typeDetail: null,
+          stage: 'published',
+          city: 'Lima',
+          country: 'Perú',
+          currency: 'PEN',
+        },
+        {
+          eventId: 91,
+          name: 'Boda Ana y Luis',
+          slug: 'boda-ana-luis',
+          url: null,
+          datetime: '20/09/2026 18:00',
+          type: 'wedding',
+          typeDetail: null,
+          stage: 'published',
+          city: 'Lima',
+          country: 'Perú',
+          currency: 'PEN',
+        },
+      ],
+    };
+    // Detail reads stay unavailable so both threads keep their pending
+    // identity: the twin proves thread separation, not fact content.
+    gateway.eventDetailResult = { status: 'not_found' };
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      reason: 'seed-marta-thread',
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'event-thread-plan',
+          channel: 'whatsapp',
+          externalUserId: 'event-thread-user',
+        }),
+        {
+          current_node: 'resolver_consultas_informativas',
+          information_state: {
+            resume_node: 'entrevista',
+            pending_requests: [{
+              requestId: 'information-1',
+              kind: 'associated_event',
+              query: '¿Cuándo es el Cumpleaños Marta?',
+              eventHint: 'Cumpleaños Marta',
+            }],
+            selection_candidates: [],
+            last_completed_request: null,
+          },
+        },
+      ),
+    });
+    const service = createService({
+      runtime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway,
+      providerGateway: providerGateway(),
+      planStore,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'event-thread-user',
+      text: '¿Y la Boda Ana y Luis?',
+      contactPhone: '+51941438999',
+      messageId: 'event-thread-1',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(gateway.guestEventCalls).toBeGreaterThan(0);
+    expect(runtime.composeRequests).toHaveLength(1);
+    // The open Marta thread is preserved verbatim on its own id and hint:
+    // the Boda question neither resolves into it nor overwrites its hint.
+    // A single merged thread (old behavior) would leave exactly one pending
+    // request carrying the Boda hint under Marta's id.
+    expect(response.plan.information_state.pending_requests).toHaveLength(2);
+    expect(response.plan.information_state.pending_requests).toContainEqual(
+      expect.objectContaining({
+        requestId: 'information-1',
+        kind: 'associated_event',
+        eventHint: 'Cumpleaños Marta',
+      }),
+    );
+    expect(response.plan.information_state.pending_requests).toContainEqual(
+      expect.objectContaining({
+        requestId: 'information-2',
+        kind: 'associated_event',
+        eventHint: 'Boda Ana y Luis',
+      }),
+    );
+    expect(response.outbound.delivery.action).toBe('send');
+  });
+
+  it('manufactures no new request from thanks after a completed event answer', async () => {
+    // Live event_context_long_thread turn 3: gratitude must not sustain or
+    // resurrect history into a new request. The completed Marta answer stays
+    // completed; nothing new pends.
+    const runtime = new InformationRuntime([extraction([])]);
+    const gateway = new FakePurchaseGateway();
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      reason: 'seed-marta-completed',
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'thanks-silence-plan',
+          channel: 'whatsapp',
+          externalUserId: 'thanks-silence-user',
+        }),
+        {
+          current_node: 'resolver_consultas_informativas',
+          information_state: {
+            resume_node: 'entrevista',
+            pending_requests: [],
+            selection_candidates: [],
+            last_completed_request: {
+              kind: 'associated_event',
+              query: '¿A qué hora es el cumpleaños?',
+              eventHint: 'Cumpleaños Marta',
+            },
+          },
+        },
+      ),
+    });
+    const service = createService({
+      runtime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway,
+      providerGateway: providerGateway(),
+      planStore,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'thanks-silence-user',
+      text: 'Gracias, solo quería consultar, no cambies ninguna asistencia.',
+      contactPhone: '+51941438999',
+      messageId: 'thanks-silence-1',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.information_state.pending_requests).toEqual([]);
+    expect(response.plan.information_state.last_completed_request).toMatchObject({
+      kind: 'associated_event',
+      eventHint: 'Cumpleaños Marta',
+    });
+    expect(gateway.guestEventCalls).toBe(0);
+    expect(gateway.takeoverCalls).toBe(0);
+    expect(runtime.composeRequests).toHaveLength(1);
+    expect(response.outbound.delivery.action).toBe('send');
   });
 });
 
@@ -3101,14 +3506,19 @@ it('W1-07 routes a fresh-session typed phone rejection to human handoff without 
   expect(response.trace.tools_called).toContain('request_human_takeover');
   expect(response.trace.tools_called).not.toContain('lookup_guest_orders_by_phone');
   expect(response.trace.tools_called).not.toContain('request_user_login_code');
-  expect(response.outbound.text ?? '').toContain('ya solicité apoyo humano');
+  expect(response.outbound.text).toBe('Respuesta informativa.');
   expect(response.outbound.text ?? '').not.toContain('Hola, soy el asistente');
   expect((response.outbound.text ?? '').toLowerCase()).not.toContain('otp');
   expect((response.outbound.text ?? '').toLowerCase()).not.toContain('código');
-  expect(runtime.composeRequests).toHaveLength(0);
+  expect(runtime.composeRequests).toHaveLength(1);
+  expect(runtime.composeRequests[0]?.authenticationOutcome).toMatchObject({
+    status: 'terminal',
+    reason: 'identity_rejected',
+    handoffOutcome: 'handoff_requested',
+  });
 });
 
-it('W1-07 guides neutral reported-amount wording for a pending Yape/Plin purchase without currency', async () => {
+it('S6 projects recorded-method-no-currency as typed facts without a TypeScript phrase template', async () => {
   const request = purchaseRequest(null);
   request.resource = 'orders';
   request.query = 'Hice la compra para Suki Sofia pero no me llego confirmacion. Cual es el estado?';
@@ -3149,7 +3559,69 @@ it('W1-07 guides neutral reported-amount wording for a pending Yape/Plin purchas
 
   expect(runtime.composeRequests).toHaveLength(1);
   const note = runtime.composeRequests[0]?.errorMessage ?? '';
-  expect(note).toContain('monto [valor] mediante');
-  expect(note).toContain('como dato disponible');
-  expect(note).toContain('sin escribir');
+  // S6: no TypeScript phrase template. The recorded method and the withheld
+  // currency travel as typed amountDisclosure facts; the node response
+  // contract owns the presentation policy.
+  expect(note).not.toContain('monto [valor] mediante');
+  const evidence = JSON.stringify(runtime.composeRequests[0]?.informationResults ?? []);
+  expect(evidence).toContain('recorded_method_no_currency');
+  expect(evidence).toContain('Yape_o_Plin');
+});
+
+it('R4 merges a structured provide_detail eventReference into the unique pending withdrawal and hands off once', async () => {
+  const store = new InMemoryPlanStore();
+  await store.save({ reason: 'fixture', plan: mergePlan(createEmptyPlan({ planId: 'r4-withdrawal-detail', channel: 'whatsapp', externalUserId: 'r4-withdrawal-detail' }), {
+    current_node: 'resolver_consultas_informativas', information_state: {
+      resume_node: 'entrevista', pending_requests: [{
+        requestId: 'host-withdrawal', kind: 'faq',
+        query: 'Retiro de dinero de mi evento que aun no recibo',
+        hostWithdrawal: 'individual_status', eventHint: null,
+      }],
+      selection_candidates: [], last_completed_request: null,
+    },
+  }) });
+  const runtime = new InformationRuntime([{
+    ...extraction([]),
+    supportAct: { kind: 'provide_detail', topic: 'unknown', detail: 'unknown', eventReference: 'Diana y Fernando' },
+  }]);
+  const knowledge = new FakeKnowledgeGateway();
+  const search = vi.spyOn(knowledge, 'search').mockResolvedValue({ status: 'success', evidence: [{
+    fileId: 'host-policy', filename: 'atc-template-new-solicitud-de-fondos.md', score: 0.9,
+    text: 'template_status: "Vigente"\nLas solicitudes se procesan en hasta 72 horas hábiles.',
+  }] });
+  const gateway = new FakePurchaseGateway();
+  const service = createService({ runtime, knowledgeGateway: knowledge, purchaseGateway: gateway, providerGateway: providerGateway(), planStore: store });
+  const result = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'r4-withdrawal-detail', contactPhone: '+51999999999',
+    text: 'Evento: Diana y Fernando', messageId: 'r4-event', receivedAt: new Date().toISOString() });
+  expect(search).toHaveBeenCalledTimes(1);
+  expect(gateway.takeoverCalls).toBe(1);
+  expect(result.plan.information_state.pending_requests).toHaveLength(1);
+  expect(result.plan.information_state.pending_requests[0]).toMatchObject({
+    requestId: 'host-withdrawal', kind: 'faq', hostWithdrawal: 'individual_status', eventHint: 'Diana y Fernando',
+  });
+  const compose = runtime.composeRequests[0];
+  expect(compose?.informationResults?.[0]).toMatchObject({ kind: 'faq', status: 'completed', hostWithdrawalPolicy: { maxBusinessHours: 72 } });
+  expect(compose?.handoffOutcome).toBe('handoff_requested');
+});
+
+it('R4 keeps ambiguous withdrawal targets ambiguous instead of selecting one', async () => {
+  const store = new InMemoryPlanStore();
+  await store.save({ reason: 'fixture', plan: mergePlan(createEmptyPlan({ planId: 'r4-ambiguous', channel: 'whatsapp', externalUserId: 'r4-ambiguous' }), {
+    current_node: 'resolver_consultas_informativas', information_state: {
+      resume_node: 'entrevista', pending_requests: [
+        { requestId: 'host-a', kind: 'faq', query: 'Retiro evento A', hostWithdrawal: 'individual_status', eventHint: null },
+        { requestId: 'host-b', kind: 'faq', query: 'Retiro evento B', hostWithdrawal: 'individual_status', eventHint: null },
+      ],
+      selection_candidates: [], last_completed_request: null,
+    },
+  }) });
+  const runtime = new InformationRuntime([{
+    ...extraction([]),
+    supportAct: { kind: 'provide_detail', topic: 'unknown', detail: 'unknown', eventReference: 'Diana y Fernando' },
+  }]);
+  const gateway = new FakePurchaseGateway();
+  const service = createService({ runtime, knowledgeGateway: new FakeKnowledgeGateway(), purchaseGateway: gateway, providerGateway: providerGateway(), planStore: store });
+  await service.handleTurn({ channel: 'whatsapp', externalUserId: 'r4-ambiguous', contactPhone: '+51999999999',
+    text: 'Evento: Diana y Fernando', messageId: 'r4-amb', receivedAt: new Date().toISOString() });
+  expect(gateway.takeoverCalls).toBe(0);
 });

@@ -13,7 +13,8 @@ describe('development isolation', () => {
     expect(() => resolveDevelopmentTarget({ ...outputs, DeploymentEnvironment: 'production' })).toThrow();
     expect(() => resolveDevelopmentTarget(outputs, { plansTableName: 'prod-plans' })).toThrow();
     expect(() => resolveDevelopmentTarget(outputs, { functionUrl: 'https://prod.test' })).toThrow();
-    expect(resolveDevelopmentTarget(outputs)).toEqual({ functionUrl: 'https://dev.test', plansTableName: 'dev-plans' });
+    expect(resolveDevelopmentTarget(outputs)).toEqual({ functionUrl: 'https://dev.test', plansTableName: 'dev-plans', evalFixtureTableName: null });
+    expect(resolveDevelopmentTarget({ ...outputs, EvalFixtureTableName: 'dev-eval-fixture' })).toEqual({ functionUrl: 'https://dev.test', plansTableName: 'dev-plans', evalFixtureTableName: 'dev-eval-fixture' });
   });
   it('fails closed for missing or unknown Lambda deployment environment', () => {
     vi.stubEnv('AWS_LAMBDA_FUNCTION_NAME', 'runtime');

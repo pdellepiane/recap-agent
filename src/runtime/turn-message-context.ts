@@ -14,6 +14,16 @@ export { resolveReminderContext } from './conversation-continuity-policy';
 export const recentConversationMessageLimit = 5;
 export const modelConversationMessageBodyLimit = 600;
 
+/**
+ * R7 extractor history budget. The extractor receives untruncated recent-turn
+ * bodies (bounded count, never truncated mid-sentence) so follow-ups keep
+ * their topic. Documented byte budget: 6 turns * 2000 bytes = 12000 bytes
+ * max for extractor history input.
+ */
+export const extractorHistoryTurnLimit = 6;
+export const extractorHistoryBodyBytes = 2000;
+export const extractorHistoryByteBudget = extractorHistoryTurnLimit * extractorHistoryBodyBytes;
+
 export const conversationHistoryStatusValues = [
   'available',
   'empty',
@@ -364,4 +374,63 @@ function truncateMessageBody(value: string): string {
   const headLength = Math.ceil(modelConversationMessageBodyLimit * 0.7);
   const tailLength = modelConversationMessageBodyLimit - headLength - 1;
   return `${value.slice(0, headLength)}…${value.slice(-tailLength)}`;
+}
+
+/**
+ * R7 extractor history projection (evidence projection, not routing).
+ * Untruncated recent-turn bodies, bounded count, each body capped at
+ * `extractorHistoryBodyBytes` bytes (whole-string slice, no head/tail
+ * merge) so follow-up topics survive. Total bounded by
+ * `extractorHistoryByteBudget` (documented above).
+ */
+export function buildExtractorConversationHistory(
+  context: TurnMessageContext,
+): Array<{
+  direction: AgentConversationMessage['direction'];
+  source: string | null;
+  body: string;
+  sent_at: string | null;
+}> {
+  const ordered = orderMessagesByServerTime(context.recentMessages).slice(
+    -extractorHistoryTurnLimit,
+  );
+  return ordered.map((message) => ({
+    direction: message.direction,
+    source: message.source,
+    body: message.body.slice(0, extractorHistoryBodyBytes),
+    sent_at: message.sentAt ?? message.createdAt,
+  }));
+}
+
+/**
+ * R7 prior assistant answer gist: first 500 chars of the newest outbound
+ * body, or null when absent. Lets the extractor carry a follow-up topic
+ * forward instead of dropping to an empty delta.
+ */
+export function buildPriorAnswerGist(
+  context: TurnMessageContext,
+  limit = 500,
+): string | null {
+  const ordered = orderMessagesByServerTime(context.recentMessages);
+  for (let index = ordered.length - 1; index >= 0; index -= 1) {
+    const candidate = ordered[index];
+    if (candidate?.direction === 'outbound' && candidate.body.trim().length > 0) {
+      return candidate.body.trim().slice(0, limit);
+    }
+  }
+  return null;
+}
+
+/**
+ * R7 ambiguity/delta-vacio rate measurement for before/after comparison.
+ * Counts ambiguous extractions (or empty deltas) over a sample.
+ */
+export function measureAmbiguityRate(
+  samples: ReadonlyArray<{ ambiguous: boolean; deltaEmpty: boolean }>,
+): { total: number; ambiguousOrEmpty: number; rate: number } {
+  const total = samples.length;
+  const ambiguousOrEmpty = samples.filter(
+    (sample) => sample.ambiguous || sample.deltaEmpty,
+  ).length;
+  return { total, ambiguousOrEmpty, rate: total === 0 ? 0 : ambiguousOrEmpty / total };
 }

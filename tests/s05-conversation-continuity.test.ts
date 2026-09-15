@@ -238,20 +238,28 @@ describe('S05 conversation continuity', () => {
     expect(reminder.hasOldCampaignOnly).toBe(true);
   });
 
-  it('treats a manual followup as campaign reply and anchors the newest reminder', () => {
+  it('treats an agent-sent manual followup as general traffic without a campaign anchor', () => {
     const messages = [
       msg(1, 'outbound', 'admin_campaign'),
       msg(2, 'outbound', 'agent'),
       msg(3, 'outbound', 'admin_manual'),
     ];
-    expect(resolveClassifierProfile(messages)).toBe('campaign_reply');
-    expect(resolveReminderContext(messages).entryMessageId).toBe(3);
+    // Operator rule: only CAMPAIGN-sourced reminders license the campaign
+    // assumption. An agent-sent manual followup selects the general profile,
+    // leaves no reminder entry, and reports no current reminder.
+    expect(resolveClassifierProfile(messages)).toBe('general');
+    const reminder = resolveReminderContext(messages);
+    expect(reminder.hasReminderHistory).toBe(true);
+    expect(reminder.hasCurrentReminder).toBe(false);
+    expect(reminder.hasOldCampaignOnly).toBe(true);
+    expect(reminder.hasManualFollowup).toBe(true);
+    expect(reminder.entryMessageId).toBe(1);
 
     const context = buildTurnMessageContext({
       inbound: inbound(),
       messages,
     });
-    expect(context.entryMessage?.id).toBe(3);
+    expect(context.entryMessage?.id).toBe(1);
     expect(context.recentMessages).toHaveLength(3);
   });
 

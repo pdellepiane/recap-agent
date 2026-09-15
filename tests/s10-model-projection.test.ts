@@ -16,6 +16,7 @@ import {
   checkReplyNarrativeClaims,
   projectOperationalFailure,
   projectReply,
+  projectSupportHandoffEvidence,
   resolveComposedReply,
 } from '../src/runtime/reply-evidence-projector';
 
@@ -190,6 +191,72 @@ describe('S10 reply evidence projector', () => {
     expect(checkReplyNarrativeClaims(
       [{ operation: 'provider.quote.write', claimsSuccess: true, receiptPresent: true, operationAllowed: false }],
     )).toBe('fallback');
+  });
+
+  it('projects handoff evidence distinctly per gateway result', () => {
+    const requested = projectSupportHandoffEvidence({
+      result: { status: 'success', message: 'Requested.' },
+      phonePresent: true,
+      confirmedReceipt: true,
+    });
+    expect(requested.handoffOutcome).toBe('handoff_requested');
+    expect(requested.identityAvailable).toBe(true);
+    expect(requested.effectConfirmed).toBe(true);
+    expect(requested.receiptPresent).toBe(true);
+    expect(requested.requiresReplyModel).toBe(true);
+    const failed = projectSupportHandoffEvidence({
+      result: { status: 'failed', error: 'unavailable', retryable: false },
+      phonePresent: true,
+      confirmedReceipt: false,
+    });
+    expect(failed.handoffOutcome).toBe('handoff_failed');
+    expect(failed.effectConfirmed).toBe(false);
+    expect(failed.operationalNote).toContain('unavailable');
+    const unknown = projectSupportHandoffEvidence({
+      result: { status: 'failed', error: 'timeout', retryable: true, outcome: 'unknown' },
+      phonePresent: true,
+      confirmedReceipt: false,
+    });
+    expect(unknown.handoffOutcome).toBe('handoff_unknown');
+    expect(unknown.effectConfirmed).toBe(false);
+    const skipped = projectSupportHandoffEvidence({
+      result: { status: 'skipped', reason: 'missing_phone_number', message: 'Missing.' },
+      phonePresent: false,
+      confirmedReceipt: false,
+    });
+    expect(skipped.handoffOutcome).toBeNull();
+    expect(skipped.identityAvailable).toBe(false);
+    expect(skipped.operationalNote).toContain('missing_phone_number');
+  });
+
+  it('never projects a success claim from missing identity or a failed handoff', () => {
+    for (const evidence of [
+      projectSupportHandoffEvidence({
+        result: { status: 'skipped', reason: 'missing_phone_number', message: 'Missing.' },
+        phonePresent: false,
+        confirmedReceipt: false,
+      }),
+      projectSupportHandoffEvidence({
+        result: { status: 'skipped', reason: 'not_configured', message: 'Disabled.' },
+        phonePresent: true,
+        confirmedReceipt: false,
+      }),
+      projectSupportHandoffEvidence({
+        result: { status: 'failed', error: 'boom', retryable: false },
+        phonePresent: true,
+        confirmedReceipt: false,
+      }),
+      projectSupportHandoffEvidence({
+        result: { status: 'failed', error: 'timeout', retryable: true, outcome: 'unknown' },
+        phonePresent: true,
+        confirmedReceipt: false,
+      }),
+    ]) {
+      expect(evidence.handoffOutcome).not.toBe('handoff_requested');
+      expect(evidence.effectConfirmed).toBe(false);
+      expect(evidence.receiptPresent).toBe(false);
+      expect(evidence.requiresReplyModel).toBe(true);
+    }
   });
 });
 

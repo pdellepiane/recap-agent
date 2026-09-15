@@ -208,6 +208,44 @@ describe('proceed_confirmed close state', () => {
     expect(res.trace.tools_called ?? []).not.toContain('search_providers_from_plan');
   });
 
+  it('keeps the saved phone when a name/email delta arrives on the close node', async () => {
+    const planStore = new InMemoryPlanStore();
+    await seedClosedPlan(planStore);
+    const extraction = baseExtraction({
+      actionIntent: null,
+      contactName: 'Carolina Mendoza',
+      contactEmail: 'carolina.m@example.com',
+    });
+    const agentGateway = new RecordingAgentGateway();
+    const service = new AgentService({
+      planStore,
+      runtime: new ScriptedRuntime([extraction]),
+      providerGateway: scriptedProviderGateway(),
+      promptLoader,
+      renderers,
+      informationOrchestrator: new InformationOrchestrator({
+        knowledgeGateway: new QuietKnowledgeGateway(),
+        providerGateway: scriptedProviderGateway(),
+        agentGateway: agentGateway as never,
+      }),
+      agentConversationGateway: agentGateway as never,
+    });
+    const res = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'close-user',
+      contactPhone: '+51900000302',
+      text: 'Soy Carolina Mendoza, mi correo es carolina.m@example.com',
+      messageId: 'close-contact-delta-1',
+      receivedAt: new Date().toISOString(),
+    });
+    // R5: the delta applies without losing the persisted phone, close
+    // intention survives the collection turn, and no quote is dispatched.
+    expect(res.plan.current_node).toBe('crear_lead_cerrar');
+    expect(res.plan.contact_phone).toBe('51900000302');
+    expect(res.plan.contact_email).toBe('carolina.m@example.com');
+    expect(res.plan.provider_needs[0]?.selected_provider_ids).toEqual([90]);
+  });
+
   it('persists confirmed completion even if reply generation subsequently fails', async () => {
     const planStore = new InMemoryPlanStore();
     await seedClosedPlan(planStore);
@@ -332,6 +370,17 @@ describe('close tool effect boundary reconstructed from token_seeded_close_flow'
     await test.invoke();
     expect(test.createQuoteRequest).not.toHaveBeenCalled();
     expect(test.onPlanCompleted).not.toHaveBeenCalled();
+  });
+
+  it('returns typed close facts to the model without backend prose', async () => {
+    const test = await fixture('Mi evento es el 18 de octubre de 2026. Confirmo el envío.');
+    const result = await test.invoke() as { status: string; effects: Array<Record<string, unknown>> };
+    expect(result.status).toBe('success');
+    expect(result.effects[0]).toEqual(expect.objectContaining({
+      status: 'confirmed', eventDate: '2026-10-18', receiptId: 'confirmed-quote-90',
+    }));
+    expect(result).not.toHaveProperty('detail');
+    expect(result).not.toHaveProperty('contacted_providers');
   });
 
   it('persists confirmed completion and reuses its effect if the model repeats the tool', async () => {

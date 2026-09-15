@@ -1,8 +1,8 @@
 template: template.base-live
 id: live_behavior.rsvp_paolo_mariana_resolved_single
 suite: live_behavior_regression
-version: 4
-description: Paolo & Mariana attending invitation reports the already-resolved RSVP result for the named event; it does not ask the user to choose among invitations when one is resolved.
+version: 5
+description: Paolo & Mariana attending invitation reports the already-resolved RSVP result for the named event; it does not ask the user to choose among invitations when one is resolved, and states source time exactly.
 tags: [live, behavior, rsvp, paolo-mariana, resolved-single, projection]
 targetModes: [live_lambda]
 inputs:
@@ -41,7 +41,7 @@ expectations:
   - id: reports-already-resolved-invitation-for-named-event
     type: text_semantic
     rubric: >-
-      The user asked about the invitation to Otra celebración prueba and the canonical phone evidence has that event as attending (Paolo & Mariana pattern: resolved_single). The response must be natural and entirely in Spanish, report that attendance is already confirmed for that named event and wish the guest well, without asking the user to choose among invitations, without listing other candidate events as alternatives, without asking for email or a code, and without claiming a new mutation was made.
+      The user asked about the invitation to Otra celebración prueba and the canonical phone evidence has that event as attending (Paolo & Mariana pattern: resolved_single). The response must be natural and entirely in Spanish and report that attendance is already confirmed for that named event, without asking the user to choose among invitations, without listing other candidate events as alternatives, without asking for email or a code, and without claiming a new mutation was made. No well-wish is required and its absence must not fail. If the reply states an event time it must preserve the source 05:00 exactly and never convert it to 5 p.m.; no timezone conversion may be guessed.
     minScore: 0.9
     requireJudge: true
     severity: hard
@@ -49,6 +49,8 @@ expectations:
     type: text_not_contains
     phrases: ["RSVP", "rsvp"]
     severity: hard
+notes:
+  - "R05 oracle revision v4 to v5, 2026-09-12, Packet F3. Old reports-already-resolved-invitation-for-named-event required wishing the guest well, failing an otherwise correct confirmation while the real defect (stored source 05:00 rendered as 5 p.m.) went unjudged (matrix: judge fails missing well-wish instead of the factual error). New contract drops the well-wish demand and tightens time24h: a stated time must keep source 05:00 with no guessed conversion. Old v4 runs preserved; baseline and candidate must rerun on this v5 contract."
 budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 1500

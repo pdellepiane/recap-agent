@@ -1,8 +1,8 @@
 template: template.base-live
 id: live_behavior.purchase_martha_accountless_selection
 suite: live_behavior_regression
-version: 2
-description: Martha's purchases are found by trusted phone even though she has no account, and multiple records are presented for selection without OTP.
+version: 3
+description: Martha's purchases are found by trusted phone even though she has no account, and multiple records are presented for selection without OTP; order labels never imply verified event membership.
 tags: [live, behavior, purchase, phone-orders, accountless, selection, reported-interaction, martha]
 targetModes: [live_lambda]
 backendFixture:
@@ -14,6 +14,7 @@ inputs:
     sessionId: live-purchase-martha-accountless-session
 notes:
   - S01 frozen incident world purchase-martha-frozen as of 2026-09-05T01:33:57.291Z. Synthetic identity only; multiple frozen orders with no guest event, selection required.
+  - "R05 oracle revision v2 to v3, 2026-09-12, Packet F3. Old martha-is-given-purchase-selection let the judge conflate naming order event labels with claiming separately verified event membership (matrix: two order event labels/dates/amounts/status are fixture facts). New contract names both fixture orders and states labels never imply membership verification, tightened with event-date semantics and no invented currency. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
 expectations:
   - id: martha-enters-information
     type: node_transition
@@ -27,7 +28,7 @@ expectations:
   - id: martha-is-given-purchase-selection
     type: text_semantic
     rubric: >-
-      The trusted phone has multiple historical order records but no associated guest event. The answer must be concise, natural, and entirely in Spanish; show compact distinguishing information for the available orders and ask Martha which one she means. It must not say no information was found, infer an invitation or event association, ask for email or a code, require account creation, or expose sensitive payment data.
+      The trusted phone has two pending order records (Evento Familiar Norte with event date 2026-09-12 and Evento Familiar Sur with event date 2026-08-22) but no associated guest event. The answer must be concise, natural, and entirely in Spanish; show compact distinguishing information for the available orders and ask Martha which one she means. Naming those order event labels and dates is grounded fixture fact and never asserts separately verified event membership. It must not say no information was found, infer an invitation or event association, ask for email or a code, require account creation, present a currency the backend did not supply, or expose sensitive payment data.
     minScore: 0.9
     requireJudge: true
     severity: hard

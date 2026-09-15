@@ -1,0 +1,64 @@
+template: template.base-live
+id: live_behavior.owner_customer_payment_relevance
+suite: live_behavior_regression
+version: 2
+description: A pending Alejandra order question persists the Customer operations owner and answers from payment evidence while the separate abandoned cart stays out of the payment reply; the unknown balance is never computed and thanks closes without restarting.
+tags: [live, behavior, ownership, customer-context, purchase, cart-relevance]
+targetModes: [live_lambda]
+inputs:
+  - text: Consulta por Alejandra. El pedido figura pendiente por Yape. ¿Cuánto me falta?
+    channel: whatsapp
+    contactPhone: "+51938389389"
+    sessionId: live-owner-payment-relevance-session
+  - text: Gracias
+    channel: whatsapp
+    contactPhone: "+51938389389"
+    sessionId: live-owner-payment-relevance-session
+backendFixture:
+  scenario: purchase-luis-389
+notes:
+  - Same Alejandra pending-order thread as pending_balance_validation_luis with a separate abandoned cart present in phone coverage. The payment projection must exclude cart facts while retaining them for a later cart question.
+  - "R05 oracle revision v1 to v2, 2026-09-12, Packet F3. Old payment-reply-answers-from-payment-evidence asked what is still missing without marking the balance unknown, and pending-state language could demand backend recitals (matrix: first answer understandable; pending language need not recite backend or disclaim a nonexistent image). New contract states the unknown balance and forbids backend recital, cart mention, and currency invention while keeping the no-approval core. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
+expectations:
+  - id: payment-turn-enters-information
+    type: node_transition
+    to: resolver_consultas_informativas
+    turnIndex: 0
+    severity: hard
+  - id: payment-turn-uses-phone-orders
+    type: tool_usage
+    mustCall: [lookup_guest_orders_by_phone]
+    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover]
+    turnIndex: 0
+    severity: hard
+  - id: payment-turn-persists-customer-owner
+    type: plan_field_equals
+    path: owner
+    expected: customer_assistance
+    turnIndex: 0
+    severity: hard
+  - id: payment-reply-excludes-cart
+    type: text_not_contains
+    phrases: ["carrito", "abandonado", "cart/recover"]
+    turnIndex: 0
+    severity: hard
+  - id: payment-reply-answers-from-payment-evidence
+    type: text_semantic
+    rubric: >-
+      The trusted-phone evidence identifies the Alejandra gift order as pending and paid by Yape, with a separate abandoned cart in coverage and no balance-due fields. The answer must be concise, natural, and entirely in Spanish; report the pending order state and its recorded total with method without adding a currency symbol, state that the remaining balance cannot be confirmed from the available record, and never approve or confirm any payment. It must not mention the separate abandoned cart or its recovery path, must not calculate a balance, must not recite backend internals, must not describe any image, and must not ask for email or an OTP.
+    minScore: 0.9
+    requireJudge: true
+    turnIndex: 0
+    severity: hard
+  - id: thanks-closes-without-restart
+    type: text_semantic
+    rubric: >-
+      Pass only if the assistant responds entirely in Spanish with a brief closing that does not restart the payment explanation, does not mention the abandoned cart, does not describe any image, and does not claim any payment was approved.
+    minScore: 0.8
+    requireJudge: true
+    turnIndex: 1
+    severity: hard
+budget:
+  maxTurns: 2
+  estimatedPromptTokensPerTurn: 2000
+  estimatedCompletionTokensPerTurn: 280

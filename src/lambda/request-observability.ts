@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import type { RuntimeRequestRoute } from './request-route';
 import type { InformationExecutionSummary } from '../core/information';
 import type { OpenAiCallRef } from '../runtime/contracts';
+import { checkTransportMetricsCompleteness } from '../audit/openai-transport-capture';
 
 export type ChannelRequestOutcome =
   | 'success'
@@ -87,7 +88,12 @@ export type ChannelRequestLog = {
     request_id: string | null;
     model: string | null;
     attempt_count: number;
+    request_metrics?: OpenAiCallRef['requestMetrics'];
   }>;
+  transport_accounting?: {
+    complete: boolean;
+    reasons: string[];
+  };
   error_name?: string;
   error_message_redacted?: string;
 };
@@ -248,7 +254,7 @@ export function buildChannelRequestLog(args: {
           })),
         }
       : {}),
-    ...(args.openAiCalls ? { openai_calls: summarizeOpenAiCalls(args.openAiCalls) } : {}),
+    ...(args.openAiCalls ? { openai_calls: summarizeOpenAiCalls(args.openAiCalls), transport_accounting: describeTransportAccounting(args.openAiCalls) } : {}),
     ...error,
   };
 }
@@ -298,6 +304,7 @@ function summarizeOpenAiCalls(
             request_id: call.requestId,
             model: call.model,
             attempt_count: call.attemptCount,
+            request_metrics: call.requestMetrics,
           }
         : {
             status: 'not_called' as const,
@@ -308,6 +315,31 @@ function summarizeOpenAiCalls(
           }];
     }),
   ) as NonNullable<ChannelRequestLog['openai_calls']>;
+}
+
+/**
+ * Emission-time transport completeness check on private call evidence.
+ * Metrics are copied verbatim into the log; completeness is annotated
+ * alongside so missing byte accounting can never read as zero usage. Full
+ * per-request reconciliation requires the private request arrays; the public
+ * compact path reports aggregate completeness instead.
+ */
+function describeTransportAccounting(
+  calls: Record<'classifier' | 'extraction' | 'reply', OpenAiCallRef | null>,
+): NonNullable<ChannelRequestLog['transport_accounting']> {
+  const reasons: string[] = [];
+  for (const stage of ['classifier', 'extraction', 'reply'] as const) {
+    const call = calls[stage];
+    if (!call) continue;
+    const result = checkTransportMetricsCompleteness(
+      call.requestMetrics.transport ?? undefined,
+      stage,
+    );
+    if (!result.complete) {
+      reasons.push(...result.reasons);
+    }
+  }
+  return { complete: reasons.length === 0, reasons };
 }
 
 function ownershipOperation(

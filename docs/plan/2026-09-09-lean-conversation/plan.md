@@ -1,6 +1,68 @@
 # Lean conversation architecture: implementation plan
 
-Date: 2026-09-09. Status: proposed implementation plan; no runtime work performed by this task. Decision owner: Leonardo. Implementation ownership: one integrator for shared runtime files; no parallel edits to `agent-service.ts`. Baseline inspected: `40d3bd79`, with pre-existing work in progress. Epic/team assignment: not applicable to this repository-local plan.
+## Current dispatch — September 14
+
+Read [recheck-2026-09-14.md](recheck-2026-09-14.md) first. No newer full live run exists locally after31697069 (57/102). Repairs are present locally; fresh bounded offline run1543passed/5skipped, but integration and live acceptance remain open. Follow S0 → S2 → S3 → S1 → S4 → S5 → S6 → S7 → S8. The September11 matrix remains historical evidence, not a result from the repaired code. [Fresh evidence](recheck-2026-09-14-evidence.json).
+
+
+## Latest audited gate and binding repair handoff — 2026-09-11
+
+Read [latest-run-31697069-repair-plan.md](latest-run-31697069-repair-plan.md) and its [45-case matrix](latest-run-31697069-case-matrix.md) before implementing. Latest full gate: **57/102 passed,44 failed,1 error,0 skipped**. Acceptance remains red. This supersedes older “next task” summaries and withdrawn package assumptions. Packets C0,F1–F3,R1–R6,C1 define the decided changes, exclusive ownership, negative tests and release conditions. Historical completion notes below are retained as history, not current acceptance.
+
+
+## Binding correction: no package protocol
+
+Read [inbound-continuity-correction.md](inbound-continuity-correction.md) first. Backend batching is invisible: Lambda keeps text + optional image. Earlier ordered-parts/package-schema implementation directions are withdrawn. No timer or batch state. Answer current requests, persist supplemental images quietly, and respond to later questions without repeating resolved explanations.
+
+## Current execution contract
+
+[lean-image-execution-contract.md](lean-image-execution-contract.md) is authoritative for implementation: five-day native image retention, existing mutex reuse, no description model pass, bounded profile enrichment, atomic file ownership and strict acceptance. Earlier 30-day retention is superseded for new uploads.
+
+## Latest sync decisions
+
+Read [batching-profile-sync.md](batching-profile-sync.md): backend owns eight-second batching; support all image/text orders within and across packages; image-only defaults to typed silence unless fulfilling an outstanding task. Expand relevant authorized profile details with bounded traversal and no age cutoff. Campaign implementation waits for docs.
+
+## Superseding decision — base64 image continuity (2026-09-11)
+
+Read [persistent-image-context.md](persistent-image-context.md) first. Backend URLs are optional. Base64 images will be uploaded to OpenAI Files, retained as plan references for 30 days, and used by the established owner across turns. Earlier directions to preserve base64 description behavior are superseded. Implementation remains pending.
+
+## Latest binding amendment — URL images
+
+Read [url-image-context.md](url-image-context.md) before implementing media changes. New URL inputs receive native owner-context attachment behavior and plan-stored references. Existing base64 behavior and nonpersistent handling remain unchanged for now. No new image/object storage. This amendment supersedes conflicting earlier media directions; implementation and acceptance remain pending.
+
+
+Date: 2026-09-09; reconciled 2026-09-10. Status: implementation in progress; the production-promotion subset is complete, while the full gate on the promoted artifact and the broader lean-conversation work remain open. Decision owner: Leonardo. One integrator owns shared runtime edits. Original inspection baseline `40d3bd79` is historical; current execution evidence is recorded below and in `evaluation-manifest.md`.
+
+## Customer operations context proposal — 2026-09-10
+
+The latest owner-facing label is **Customer operations** (planned internal ID remains `customer_assistance`). Assemble an authorized structured customer snapshot with concurrent bounded reads, then project common references plus question-relevant facts to its model. The owner can answer, inspect further or act from validated evidence. Reuse the existing information orchestrator and per-turn caches; do not add a profile-writing model or put every customer record in the prompt. See [customer-context.md](customer-context.md) for source findings, address limitations, exact edit scope, readiness/freshness rules and acceptance scenarios. This is an L4 design addition, not implemented functionality.
+
+Progress has advanced beyond the historical snapshot below: the repeated-close fix and several deletion tasks are now recorded complete, and transport/origin modules exist. Full acceptance remains open; recent targeted diagnostics include failures. Registry revision 4 preserves task statuses and adds a separate progress audit rather than equating implementation completion with a passed gate. A duplicate close progress key was repaired without discarding either note.
+
+## Subagent execution
+
+Start with [START-HERE.md](START-HERE.md). The registry is revision 3: 15 milestones, four completed, one gate in progress and ten pending. Eleven unfinished-task packets under `tasks/` carry exact ownership, production entry points, steps, test commands, negative controls and handoff requirements. The coordinator dispatches only dependency-ready work with exclusive shared-file/development ownership. The new `acceptance-evidence` task closes the E10–E12 ownership gap before broad migration; L3 now follows the L2 chain to prevent overlapping runtime edits. These counts do not describe implementation effort or override the acceptance contract.
+
+## Current execution state — 2026-09-10
+
+The reported **9/9 completed** applies to the promotion subset only. Frozen artifact `e829975950e99ebf7680c17f7e6ace3e5a01a625279a238e3003c0f0c7903616` was promoted under the owner exception recorded in the deployment log. The full 84-case gate on those bytes is still pending. Deployment completion does not imply strict behavioral acceptance or completion of L2-L5.
+
+| Work | State and evidence |
+| --- | --- |
+| Original duplicate close investigation | Complete: user-date provenance and completed-plan persistence fixed; same-turn confirmed effects reused; concurrency harness preserves original errors. |
+| Initial full debug gate `39d75046` | Completed, **81/84**, three failures, zero errors/skips. Added six-turn close regression and concurrent case passed. Original subset: **80/83**, plus new case **1/1**. |
+| Later full gates | `67d9dbe7`: **83/84**; `83e7a1be`: **81/84**. Historical artifacts retained; neither certifies the promoted bytes. |
+| Final footer inconsistency | Later implementation records show final footer removed; targeted close evidence retains zero final footer. This does not prove every close prose path is migrated. |
+| Frozen-artifact promotion | Complete, as recorded; production `6CmXWVDp…`, LastModified `2026-09-10T12:42:13Z`. |
+| Current targeted evidence | `57a9e47d`: **2/3**, S11 and Carina pass; close semantic failure. Retry `729a314b`: **0/1**, same failure. One recorded write, durable completion, no duplicate dispatch. |
+| Next development work | `dev-followup`: correct the unsupported repeat-submission claim and execute the fresh full 84-case gate. |
+| Broader architecture | In progress. Remaining migrations, extraction, specialist ownership, deletion, and measured request reduction retain separate acceptance criteria. |
+
+The remaining response says the request was sent “nuevamente,” implying another submission that did not occur. Treat this as an **unsupported action claim with clean recorded effects**, accepted for the existing promotion by owner exception. It remains a failed hard semantic expectation. Repeatability alone does not prove deterministic code origin; inspect model output and renderer evidence before assigning that cause.
+
+For `dev-followup`, edit the completed-turn evidence projection and any proven conflicting instruction or renderer behavior at its source. Give the model the existing completion outcome and whether this turn performed a new write. Preserve free model composition. Do not ban a word, prescribe a sentence, add a global prompt rule, replace generated text, or relax the semantic judge. The six-turn live case must retain one write, no early/repeat dispatch, finished state, and a required semantic judgment of the actual claim. Add an offline contrast between an existing completion and a genuinely new authorized receipt so generic success language cannot game the test.
+
+Run all 84 cases after development deployment, pin the deployed bytes, and report the original 83 separately from the added case. Targeted successes cannot replace this gate. The existing promotion exception neither changes historical scores nor authorizes another production deployment. See `plan.yaml` for task state and `debug-2026-09-10.md` for diagnosis and limitations.
 
 ## Decision and purpose
 
@@ -28,7 +90,7 @@ Mechanical paragraph joining, transport encoding, and rendering an exact grounde
 
 ## Target execution
 
-Persist a small active owner: planning, purchases, invitations, or support. Reuse existing domain state as the source of truth; do not create four independent copies of the conversation or event plan. Keep the pending question, unresolved task references, and optional return owner beside that state. Secrets and backend dependencies remain runtime-only.
+Persist exactly three owners: **Planning**, **General information (FAQ)**, and **Customer assistance**. Reuse existing domain state as the source of truth; do not create independent conversation or event-plan copies. Keep the pending question, unresolved task references, and optional return owner beside that state. Secrets and backend dependencies remain runtime-only.
 
 ```mermaid
 flowchart TD
@@ -41,11 +103,21 @@ flowchart TD
     C -->|Final model response| F[Validate structure and deliver]
 ```
 
-An unowned conversation enters the support/entry profile, which can answer a greeting or select another owner. An established owner handles follow-ups directly and can transfer on a semantic topic change. The existing delivery classifier is temporary during migration: consolidate its semantic suppression responsibilities into the entry/owner output once equivalent campaign and automation behavior passes. Adapter metadata can determine mechanical delivery prerequisites, not semantic acknowledgement meaning.
+An unowned conversation uses a transient semantic entry step that can answer a greeting or select one of the three owners. Entry is not a fourth persistent agent. An established owner handles follow-ups directly and can transfer on a semantic topic change. The existing delivery classifier is temporary during migration: consolidate its semantic suppression responsibilities into the entry/owner output once equivalent campaign and automation behavior passes. Adapter metadata can determine mechanical delivery prerequisites, not semantic acknowledgement meaning.
 
 Each specialist has one current-turn model configuration: a short shared identity/style block, its domain instructions, bounded relevant history, task state, allowed tools, and scoped results. The specialist performs structured semantic interpretation through its tool arguments or a typed non-executing decision. Code validates the request; results return to the same specialist for its final answer. Retire the global extraction stage after each domain moves; do not keep an old extractor, a router, a specialist, and a composer stacked together.
 
 On an ordinary no-tool continuation, target one model call. A tool-backed answer normally needs one call to request work and another to answer from its result. Transfers and legitimate multi-step operations can add calls; measure them instead of hiding them behind a stage count. Allow at most one ordinary ownership transfer per inbound turn; if the recipient still cannot determine ownership, it asks a model-written clarification with the original alternatives. Independent mixed reads stay bounded tasks and produce one final answer, not a ping-pong transfer chain.
+
+### Three-owner boundary
+
+| Owner | Responsibility | Boundary |
+| --- | --- | --- |
+| Planning | Event needs and provider search through quotation completion | Retains event-plan-first multi-provider state. |
+| General information (FAQ) | Public policy, how-to and general event/platform questions | No private customer lookup or mutation. |
+| Customer assistance | Purchase/order/cart status, guest/host information, RSVP, authentication, support and escalation | Includes accountless customers. Load only the current capability evidence and tools. |
+
+Purchase, invitation, auth and support are capabilities inside Customer assistance, not child agents or persistent subowners. A public policy lookup needed to complete an active task stays a knowledge read within that owner. A genuine semantic topic switch can transfer silently; mechanical code only validates the target and evidence. Planning → FAQ → Planning must preserve the pending selection. FAQ → person-specific assistance must respect access requirements.
 
 ## Context pieces and exact inclusion rules
 
@@ -128,9 +200,9 @@ Delete template-only files such as `prompts/capability/turn_outcomes.txt` and ou
 
 **Files:** existing `openai-agent-runtime.ts`, `agent-service.ts`, `contracts.ts`, `src/core/plan.ts`, `decision-flow.ts`, `turn-message-context.ts`, classifier and prompt-manifest modules. Add domain modules only where they replace whole existing responsibilities.
 
-- Implement the four profiles in the same runtime, using the shared request assembly and one state store. Planning includes interview, search, refinement, selection, contact collection and quote close.
+- Implement exactly three profiles in the same runtime, using shared request assembly and one state store. Planning includes interview, search, refinement, selection, contact collection and quote close; General information owns public FAQ; Customer assistance owns person-specific purchase, RSVP, auth and support tasks.
 - Use narrow existing tools with preconditions enforced inside executors. State deltas affect only the active task; the model cannot set receipt/auth fields.
-- Move planning first, then purchases, invitations, and support. For each moved domain, delete its global extractor participation and redundant service arbitration in the same integration change. Temporary unmigrated domains use the old path only; never run both for the same turn.
+- Move Planning, General information, then Customer assistance. Within Customer assistance migrate purchase, invitation and support capabilities without creating additional owners. For each moved capability, delete its global extractor participation and redundant service arbitration in the same integration change. Temporary unmigrated domains use the old path only; never run both for the same turn.
 - Persist owner, pending question/task references, and one return owner. Reuse existing pending information/plan/RSVP state instead of introducing a second memory system. For disposable evaluation sessions create fresh identities; do not purge unrelated development plans. If a state break is necessary, stop deployment until existing-session handling is explicit rather than silently dropping context.
 - Support pure FAQ interruption without losing planning selection; support explicit owner switches; preserve mixed requests and successful partial reads. A transfer cannot authorize an effect or leak another domain's protected state.
 - Consolidate semantic delivery classification into the entry/active specialist and delete its mandatory separate call only after campaign/acknowledgement/automation regression parity. Preserve real channel delivery policy in adapters.
@@ -197,3 +269,8 @@ On a failed development acceptance gate, stop advancing. Revert the failing pack
 ## Definition of complete
 
 The assistant still fulfills all existing tasks, interprets conversation through the LLM, receives only useful context, and produces its own words on every responding turn. Runtime decisions prevent invalid actions without scripting dialogue. Specialists replace competing orchestration and prompts. The measured artifacts, full live gates, removed-code inventory, and documented remaining limitations demonstrate the result; agent count or a green static prompt audit alone does not.
+
+
+## September 15 optimization implementation entry point
+
+Use [harness-optimization-plan-2026-09-15.md](harness-optimization-plan-2026-09-15.md) for bounded runner concurrency, isolation, reproducible artifacts, prompt/cache reduction and evaluator consolidation. Use [landing-plan-2026-09-15.md](landing-plan-2026-09-15.md) for the outstanding product corrections. Both retain the binding acceptance contract; neither records implementation completion or production approval.

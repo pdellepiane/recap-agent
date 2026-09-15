@@ -15,14 +15,6 @@ export const reminderOutboundSources = [
 
 export const manualFollowupSources = ['admin_manual'] as const;
 
-export const campaignLikeSources = [
-  ...reminderOutboundSources,
-  ...manualFollowupSources,
-] as const;
-
-export type CampaignLikeSource =
-  (typeof campaignLikeSources)[number];
-
 export type ContinuitySourceCategory =
   | 'reminder'
   | 'manual'
@@ -50,14 +42,6 @@ export function isManualFollowupSource(
   source: string | null,
 ): boolean {
   return categorizeOutboundSource(source) === 'manual';
-}
-
-export function isCampaignLikeSource(
-  source: string | null,
-): boolean {
-  return (
-    isReminderOutboundSource(source) || isManualFollowupSource(source)
-  );
 }
 
 export type MinimalContinuityMessage = {
@@ -89,7 +73,10 @@ export function resolveReminderContext(
       continue;
     }
     newestOutboundSource = message.source;
-    if (isCampaignLikeSource(message.source)) {
+    // Operator rule: only a prior CAMPAIGN-sourced reminder
+    // (admin_campaign, frontend_followup) licenses assuming its event. An
+    // agent-sent manual followup (admin_manual) never anchors the entry.
+    if (isReminderOutboundSource(message.source)) {
       hasReminderHistory = true;
       newestReminderSource = message.source;
       entryMessageId = message.id;
@@ -101,7 +88,7 @@ export function resolveReminderContext(
 
   const hasCurrentReminder =
     newestOutboundSource !== null &&
-    isCampaignLikeSource(newestOutboundSource);
+    isReminderOutboundSource(newestOutboundSource);
   const hasOldCampaignOnly = hasReminderHistory && !hasCurrentReminder;
 
   return {
@@ -165,9 +152,11 @@ export function resolveClassifierProfile(
       newestOutboundSource = message.source;
     }
   }
+  // Operator rule: only a CAMPAIGN-sourced newest outbound selects the
+  // campaign profile. An agent-sent manual followup is general traffic.
   if (
     newestOutboundSource !== null &&
-    isCampaignLikeSource(newestOutboundSource)
+    isReminderOutboundSource(newestOutboundSource)
   ) {
     return 'campaign_reply';
   }

@@ -25,7 +25,8 @@ describe('PromptLoader', () => {
     const information = await fs.readFile(path.join(promptsDir, 'extractors/information.txt'), 'utf8');
     expect(rsvp).toContain('Consultar o cambiar la asistencia propia');
     expect(rsvp).toContain('sin `informationRequests`');
-    expect(information).toContain('Estado de asistencia propia va por RSVP');
+    expect(information).toContain('Asistencia propia: RSVP');
+    expect(information).toContain('hereda aspecto con `eventHint`');
     expect(information).not.toContain('lugar, asistencia, anfitrion');
   });
 
@@ -161,13 +162,53 @@ describe('PromptLoader', () => {
     expect(invalidCode.instructions).not.toContain(
       'se alcanzó temporalmente el límite de solicitudes',
     );
-    expect(resentCode.instructions).toContain('Te envié un código');
+    expect(resentCode.instructions).toContain('comunica los requisitos presentes');
     expect(resentCode.instructions).not.toContain(
       'ofrece reintentar, reenviar o cambiar el correo',
     );
     expect(resentCode.instructions).not.toContain(
       '¿Quieres que lo reenvíe',
     );
+  });
+
+  it('caches immutable raw prompt bytes per process without sharing disclosure branches', async () => {
+    const fresh = new PromptLoader(promptsDir);
+    expect(fresh.cachedRawFileCountForTest()).toBe(0);
+    const first = await fresh.loadNodeBundle('resolver_consultas_informativas');
+    const cachedAfterFirst = fresh.cachedRawFileCountForTest();
+    expect(cachedAfterFirst).toBeGreaterThan(0);
+    const second = await fresh.loadNodeBundle('resolver_consultas_informativas');
+    expect(second.id).toBe(first.id);
+    expect(second.instructions).toBe(first.instructions);
+    expect(fresh.cachedRawFileCountForTest()).toBe(cachedAfterFirst);
+
+    // Bundles stay keyed by full disclosure context: different auth reasons
+    // never reuse each other's projected bundle.
+    const invalid = await fresh.loadNodeBundle('resolver_consultas_informativas', {
+      informationAuthReasons: ['otp_invalid'],
+    });
+    const resent = await fresh.loadNodeBundle('resolver_consultas_informativas', {
+      informationAuthReasons: ['otp_resent'],
+    });
+    expect(invalid.id).not.toBe(resent.id);
+    expect(invalid.id).not.toBe(first.id);
+    expect(invalid.instructions).toContain('ofrece reintentar, reenviar o cambiar el correo');
+    expect(first.instructions).not.toContain('ofrece reintentar, reenviar o cambiar el correo');
+  });
+
+  it('re-reads an edited prompt file instead of serving stale cached bytes', async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'recap-prompts-o4-'));
+    await fs.cp(promptsDir, tempRoot, { recursive: true });
+    const tempLoader = new PromptLoader(tempRoot);
+    const before = await tempLoader.loadNodeBundle('contacto_inicial');
+    await fs.appendFile(
+      path.join(tempRoot, 'shared/agent_personality.txt'),
+      '\n\nMarca temporal de prueba para cache O4.\n',
+      'utf8',
+    );
+    const after = await tempLoader.loadNodeBundle('contacto_inicial');
+    expect(after.id).not.toBe(before.id);
+    expect(after.instructions).toContain('Marca temporal de prueba para cache O4');
   });
 
   it('uses personality prompt content in the bundle id so prompt cache invalidates on personality edits', async () => {
@@ -214,13 +255,7 @@ describe('PromptLoader', () => {
       'No describas por adelantado todo el flujo',
     );
     expect(informationBundle.instructions).toContain(
-      'No uses la palabra “texto”',
-    );
-    expect(informationBundle.instructions).toContain(
-      'no puedes leer imágenes ni capturas',
-    );
-    expect(informationBundle.instructions).toContain(
-      'Cópialo y pégalo aquí',
+      'comunica los requisitos presentes en `guidance.requirements`',
     );
     expect(informationBundle.instructions).toContain(
       'Nunca menciones una bandeja de promociones',

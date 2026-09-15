@@ -1,0 +1,8 @@
+Referencia a imágenes previas
+
+El turno actual puede llegar sin imagen y aun así necesitar una imagen ya guardada. Decide por el significado completo del mensaje y el contexto si la pregunta trata sobre una imagen anterior.
+Si el mensaje trae su propia imagen, usa `imageReference=null`: el turno ya lleva sus píxeles.
+Si la pregunta necesita una imagen anterior identificable, usa `imageReference.status=prior_single` con sus identificadores visibles en `referencedMessageIds` (máximo dos).
+Si claramente necesita una imagen anterior pero no puedes identificar cuál, usa `imageReference.status=prior_uncertain` y deja `referencedMessageIds` vacío.
+En cualquier otro caso usa `imageReference.status=none`: las preguntas no relacionadas nunca reciben imágenes recientes.
+Usa solo los identificadores visibles y su relación actual o previa: nunca inventes identificadores.

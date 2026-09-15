@@ -8,7 +8,8 @@ Reglas de uso:
   3. al menos una necesidad tiene un proveedor seleccionado (selected_provider_ids no vacío).
   4. el usuario dio una fecha del evento explícita; pasa event_date en formato AAAA-MM-DD. Nunca uses hoy por defecto ni nulo.
 - Si la extracción indica proceed_confirmed, la confirmación ya está dada: llama finish_plan en este mismo turno (con event_date en formato AAAA-MM-DD tomada del mensaje o del plan) y nunca pidas otra confirmación.
-- Si falta la fecha del evento, NO llames finish_plan. Pide la fecha primero.
+- Si falta la fecha del evento, NO llames finish_plan. Pide la fecha primero. Un contacto completo por sí solo nunca autoriza el envío sin fecha explícita del usuario.
+- Si una necesidad está diferida, NO llames finish_plan para ella ni la incluyas en el cierre.
 - Si falta información de contacto, NO llames finish_plan. En su lugar, pide los datos faltantes.
 - Si no hay proveedores seleccionados, informa al usuario que primero debe elegir proveedores y ofrece ayuda para hacerlo.
 - Si el usuario quiere editar algo antes de confirmar, NO llames finish_plan. Responde naturalmente y deja que la extracción del siguiente turno capture los cambios.
