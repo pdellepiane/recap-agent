@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.pending_balance_validation_luis
 suite: live_behavior_regression
-version: 2
+version: 3
 description: Luis pending Alejandra order and cart with null currency; the pending total is reported without a currency symbol and the remaining balance stays unknown.
 tags: [live, behavior, purchase, balance, validation, reported-interaction, luis]
 targetModes: [live_lambda]
@@ -22,8 +22,11 @@ backendFixture:
   scenario: purchase-luis-389
 expectations:
   - id: pending-balance-enters-information
-    type: node_transition
-    to: resolver_consultas_informativas
+    type: fixture_effect_count
+    operation: rsvp.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
     turnIndex: 0
     severity: hard
   - id: pending-balance-uses-phone-partitions
@@ -50,6 +53,7 @@ expectations:
     severity: hard
 notes:
   - "R05 oracle revision v1 to v2, 2026-09-12, Packet F3. Old voucher-does-not-confirm demanded an image disclaimer although the turn is text-only with no image attached, failing a reply that acknowledged 13.76, retained pending state, and invented no currency (matrix: judge demands image/backend disclaimer though turn is text-only). New contract keeps pending state plus no invented currency and drops the disclaimer demand for a nonexistent image. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
+  - "R05 oracle revision v2 to v3, 2026-09-16, Packet E1 node-pin removal. Old pending-balance-enters-information pinned the internal resolver_consultas_informativas node, prescribing implementation instead of evidencing behavior (matrix: a correct unknown-balance answer through any routing passed the read evidence but failed the node pin). New contract proves the same read-only invariant from receipts: fixture_effect_count rsvp.write 0/0/0 hard plus the retained phone-orders read evidence. The invented-balance and invented-currency bans are unchanged. Threshold and hard severity kept; no threshold reduction. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract. Expectation id pending-balance-enters-information is retained for ledger and run continuity; only its type changed from node_transition to fixture_effect_count."
 budget:
   maxTurns: 2
   estimatedPromptTokensPerTurn: 1800

@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.image_file_captioned_persisted
 suite: live_behavior_regression
-version: 2
+version: 3
 description: Captioned base64 image persists a Files reference and the established owner answers the visual question natively without the retired inspect call.
 tags: [live, behavior, image, image-file, base64-persistence]
 targetModes: [live_lambda]
@@ -20,6 +20,7 @@ inputs:
 notes:
   - "F1 2026-09-12: backendFixture scenario image-clean-world; this phone has empty initial history and empty authorized purchase results; never mutable backend data."
   - Backend image forwarding contract 2026-09-08. Synthetic voucher-style fixture rendered locally, never a customer document. Live test uploads the bytes to Files and asks a visual detail not supplied in text; test files are deleted afterwards.
+  - "R05 oracle revision v2 to v3, 2026-09-16, full-gate triage item 1. The turn-0 image bytes are byte-identical to the live_behavior.image_file_delayed_question fixture (sha256 e6024548787bb4221c9dc53500f097e70e4c738283e2d684d70dba04c5cc764a, verified read-only against the E1 digest), so the same manually verified text (Monto: S/ 250.00) is bound via judgeGroundTruth (boundInputTurn 0). Ground truth rides the judge context only via resolveJudgeOnlyImageGroundTruth, never runtime input, no new OCR/vision. Read-only amount is not backend approval. Threshold 0.8, hard severity, requireJudge kept. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
 expectations:
   - id: file-image-uploads-and-projects
     type: tool_usage
@@ -33,10 +34,16 @@ expectations:
   - id: file-image-caption-answered
     type: text_semantic
     rubric: >-
-      Pass only if the assistant responds entirely in Spanish answering the caption question with the text visible in the image, including the amount. It must not confirm or approve any payment, must not claim the image proves a settled payment, must not claim the image was saved, stored or forwarded, and must not ask for an OTP.
+      Pass only if the assistant responds entirely in Spanish answering the caption question with the text visible in the image, including the amount. The judge-only ground truth for this fixture image is the text Monto: S/ 250.00 (verified amount S/ 250.00; read accuracy only, never backend payment approval). It must not confirm or approve any payment, must not claim the image proves a settled payment, must not claim the image was saved, stored or forwarded, and must not ask for an OTP.
     minScore: 0.8
     requireJudge: true
     severity: hard
+judgeGroundTruth:
+  imageDigest: e6024548787bb4221c9dc53500f097e70e4c738283e2d684d70dba04c5cc764a
+  verifiedText: 'Monto: S/ 250.00'
+  verifiedAmount: 'S/ 250.00'
+  verifiedAt: '2026-09-16'
+  boundInputTurn: 0
 budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 2500

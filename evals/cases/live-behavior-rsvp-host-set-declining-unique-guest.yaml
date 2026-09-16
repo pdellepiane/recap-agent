@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.rsvp_host_set_declining_unique_guest
 suite: live_behavior_regression
-version: 1
+version: 2
 description: A read-only state query for the single authorized invitation whose host-set attendance is declining must report declining without a mutation and without requiring hasResponded=true.
 tags:
   - live
@@ -23,10 +23,14 @@ inputs:
       scenario: rsvp-host-declining-unique
 notes:
   - "Packet E1 host-declining split, test 1 of 2 (2026-09-15, profile-inference directive). Unique authorized guest 584353 with host-set declining despite hasResponded=false. willAttend takes precedence; hasResponded is provenance only. Never require hasResponded=true. Permanent history; additive, no existing case deleted."
+  - "R05 oracle revision v1 to v2, 2026-09-16, Packet E1 node-pin removal. Old declining-enters-rsvp-node pinned the internal responder_invitacion node, prescribing implementation instead of evidencing behavior (matrix: a correct declining answer through any routing passed the read evidence but failed the node pin). New contract proves the same read-only invariant from receipts: fixture_effect_count rsvp.write 0/0/0 hard plus the retained lookup_rsvp_invitations read evidence. Threshold and hard severity kept; no threshold reduction. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract. Expectation id declining-enters-rsvp-node is retained for ledger and run continuity; only its type changed from node_transition to fixture_effect_count."
 expectations:
   - id: declining-enters-rsvp-node
-    type: node_transition
-    to: responder_invitacion
+    type: fixture_effect_count
+    operation: rsvp.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
     severity: hard
   - id: declining-query-performs-no-write
     type: tool_usage

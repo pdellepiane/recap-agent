@@ -12640,3 +12640,13 @@ New user directive supersedes strict asked-fields-only and campaign-only inferen
 **Promotion rule outcome: NO PROMOTION.** Binding gate fails (39 hard failures > 0) AND matched comparison blocked. Production (`recap-agent-runtime`, CodeSha256 `6CmXWVDpnr92gMF/fmrOPloBpiUnmiOOMAPA8MeQNhY=`) untouched. Readiness blockers: (1) 39/118 hard failures on validated bytes — full per-case list above; (2) no frozen baseline identity for matched comparison; (3) manifest deploymentBefore null (runner gap, unchanged). Single-case diagnostics do not substitute for gate evidence.
 
 **Isolation/restoration:** only new files: 3 commits, deploy #2 artifact, new run dir; deploy #1 artifact superseded with zero evidence collected on it; prior `.eval-runs` preserved; no prod writes; `EVAL_COORDINATOR_HOST` set for the run; tree clean at `2113f105` during gate, dirty only by this log entry now (final log commit follows; choice recorded: log-last separate commit because gate evidence had to exist before the log could cite it).
+
+
+## 2026-09-16 — support actual-prompt relevance audit
+
+Read-only retrieval of ten stored model requests (five failing support conversations, extraction/reply) from full run 50f1ccca. Confirmed absent venue facts, empty campaign history/empty extraction, planning tools on RSVP reply, repeated purchase facts/internal reference, raw FAQ response-template contamination and handoff-vs-FAQ instruction conflict. Added support-relevance-work-package-2026-09-16.md and private-artifact filename index. No runtime edits, tests, generation calls, deploy or promotion.
+
+
+## 2026-09-16 — generic prompt compiler architecture amendment
+
+Expanded support-relevance work package after explicit authorization for larger architecture changes. One pure typed model-request projector across extraction/reply and all three owners replaces node-driven prompt concatenation. G1–G5 specify registry applicability, fact provenance, local relevance manifest, caller migration/deletion and cross-owner metamorphic validation. Support remains release priority; shared integrity is mandatory everywhere. Documentation only.

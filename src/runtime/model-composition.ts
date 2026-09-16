@@ -303,7 +303,10 @@ export async function composeModelReply(
   const reply = await runtime.composeReply(request);
   const origin = buildModelOriginReceipt(
     reply,
-    request.replyBundle?.id ?? request.promptBundleId,
+    // G3: the runtime reports the compiler bundle actually sent on its own
+    // origin; the request promptBundleId is a pending marker, used here
+    // only when the runtime reports no identity (stub runtimes in tests).
+    reply.origin?.bundleId ?? request.promptBundleId,
     request.providerResults,
   );
   return { ...reply, origin };

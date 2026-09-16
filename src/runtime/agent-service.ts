@@ -536,6 +536,33 @@ function mergeFallbackTransportMetrics(
   };
 }
 
+/**
+ * S1 typed RSVP reference evidence. A current-message event reference or
+ * candidate guest id enables an authorized invitation read independent of
+ * rsvpAction; writes still require an explicit current-message decision
+ * downstream, so null never becomes attending. Pure predicate over typed
+ * extraction only; never customer text.
+ */
+export function hasCurrentMessageRsvpReference(
+  extraction: Pick<ExtractionResult, 'rsvpDecisionSource' | 'rsvpEventReference' | 'rsvpCandidateGuestId'>,
+): boolean {
+  return extraction.rsvpDecisionSource === 'current_message' &&
+    ((extraction.rsvpEventReference !== null &&
+      extraction.rsvpEventReference !== undefined) ||
+      (extraction.rsvpCandidateGuestId !== null &&
+        extraction.rsvpCandidateGuestId !== undefined));
+}
+
+/**
+ * G1 single prompt identity. Reply instructions are owned by the
+ * model-request compiler; these markers are the only caller-side prompt
+ * telemetry. Requests carry the pending marker (instructions unresolved
+ * until the runtime reports them); traces name the runtime-reported
+ * compiler identity, or the unreported marker when no request was sent.
+ */
+const PENDING_COMPILER_PROMPT_ID = 'compiler:runtime-reported';
+const UNREPORTED_COMPILER_PROMPT_ID = 'compiler:unreported';
+
 export class AgentService {
   private readonly capabilityManifest: RuntimeCapabilityManifest;
 
@@ -928,7 +955,6 @@ export class AgentService {
           phonePresent: phoneNumber !== null,
           confirmedReceipt: gatewayResult.status === 'success',
         });
-        const bundle = await this.dependencies.promptLoader.loadNodeBundle('solicitar_agente_humano');
         const composeReplyStartedAt = Date.now();
         let reply: ComposeReplyResult;
         try {
@@ -944,8 +970,8 @@ export class AgentService {
             providerResults: [],
             turnDecision: this.humanEscalationTurnDecision('human_help_offer_accepted'),
             errorMessage: handoffEvidence.operationalNote,
-            promptBundleId: bundle.id,
-            promptFilePaths: bundle.filePaths,
+            promptBundleId: PENDING_COMPILER_PROMPT_ID,
+            promptFilePaths: [],
             toolUsage,
             handoffOutcome: handoffEvidence.handoffOutcome,
           });
@@ -972,8 +998,8 @@ export class AgentService {
               extraction,
               missingFields: [],
               searchReady: false,
-              promptBundleId: bundle.id,
-              promptFilePaths: bundle.filePaths,
+              promptBundleId: UNREPORTED_COMPILER_PROMPT_ID,
+              promptFilePaths: [],
               toolUsage,
               providerResults: [],
               recommendationFunnel: this.resolveRecommendationFunnel(null, []),
@@ -1015,8 +1041,8 @@ export class AgentService {
             extraction,
             missingFields: [],
             searchReady: false,
-            promptBundleId: bundle.id,
-            promptFilePaths: bundle.filePaths,
+            promptBundleId: reply.compilerPrompt?.bundleId ?? reply.origin?.bundleId ?? UNREPORTED_COMPILER_PROMPT_ID,
+            promptFilePaths: reply.compilerPrompt != null ? [...reply.compilerPrompt.filePaths] : [],
             toolUsage,
             providerResults: [],
             recommendationFunnel: this.resolveRecommendationFunnel(null, []),
@@ -1045,7 +1071,6 @@ export class AgentService {
         timingMs.save_plan += Date.now() - savePlanStartedAt;
         timingMs.total = Date.now() - handleTurnStartedAt;
         const extraction = this.buildSyntheticConversationHealthExtraction();
-        const bundle = await this.dependencies.promptLoader.loadNodeBundle('ofrecer_agente_humano');
         const composeReplyStartedAt = Date.now();
         let reply: ComposeReplyResult;
         try {
@@ -1061,8 +1086,8 @@ export class AgentService {
             providerResults: [],
             turnDecision: this.conversationHealthTurnDecision(responseClassifierTrace.health_reason),
             errorMessage: null,
-            promptBundleId: bundle.id,
-            promptFilePaths: bundle.filePaths,
+            promptBundleId: PENDING_COMPILER_PROMPT_ID,
+            promptFilePaths: [],
             toolUsage,
           });
         } catch (error) {
@@ -1088,8 +1113,8 @@ export class AgentService {
               extraction,
               missingFields: planToSave.missing_fields,
               searchReady: false,
-              promptBundleId: bundle.id,
-              promptFilePaths: bundle.filePaths,
+              promptBundleId: UNREPORTED_COMPILER_PROMPT_ID,
+              promptFilePaths: [],
               toolUsage,
               providerResults: [],
               recommendationFunnel: this.resolveRecommendationFunnel(null, []),
@@ -1131,8 +1156,8 @@ export class AgentService {
             extraction,
             missingFields: planToSave.missing_fields,
             searchReady: false,
-            promptBundleId: bundle.id,
-            promptFilePaths: bundle.filePaths,
+            promptBundleId: reply.compilerPrompt?.bundleId ?? reply.origin?.bundleId ?? UNREPORTED_COMPILER_PROMPT_ID,
+            promptFilePaths: reply.compilerPrompt != null ? [...reply.compilerPrompt.filePaths] : [],
             toolUsage,
             providerResults: [],
             recommendationFunnel: this.resolveRecommendationFunnel(null, []),
@@ -1301,7 +1326,6 @@ export class AgentService {
         const respondNode: DecisionNode = 'necesidad_cubierta';
         const planForReply = existingPlan;
         const finishedErrorMessage: string | null = null;
-        const bundle = await this.dependencies.promptLoader.loadNodeBundle(respondNode);
         const composedReply = await this.dependencies.runtime.composeReply({
           currentNode: respondNode,
           previousNode: existingPlan.current_node,
@@ -1313,8 +1337,8 @@ export class AgentService {
           searchReady: finishedSufficiency.searchReady,
           providerResults: finishedProviders,
           errorMessage: finishedErrorMessage,
-          promptBundleId: bundle.id,
-          promptFilePaths: bundle.filePaths,
+          promptBundleId: PENDING_COMPILER_PROMPT_ID,
+          promptFilePaths: [],
           toolUsage,
         });
         const reply = composedReply;
@@ -1344,8 +1368,8 @@ export class AgentService {
             extraction: finishedExtraction,
             missingFields: finishedSufficiency.missingFields,
             searchReady: finishedSufficiency.searchReady,
-            promptBundleId: bundle.id,
-            promptFilePaths: bundle.filePaths,
+            promptBundleId: composedReply.compilerPrompt?.bundleId ?? composedReply.origin?.bundleId ?? UNREPORTED_COMPILER_PROMPT_ID,
+            promptFilePaths: composedReply.compilerPrompt != null ? [...composedReply.compilerPrompt.filePaths] : [],
             toolUsage,
             providerResults: finishedProviders,
             recommendationFunnel: this.resolveRecommendationFunnel(null, finishedProviders),
@@ -1746,7 +1770,6 @@ export class AgentService {
         phonePresent: phoneNumber !== null,
         confirmedReceipt: nextReceipt?.outcome === 'handoff_requested',
       });
-      const bundle = await this.dependencies.promptLoader.loadNodeBundle('solicitar_agente_humano');
       const composeReplyStartedAt = Date.now();
       let reply: ComposeReplyResult;
       try {
@@ -1762,8 +1785,8 @@ export class AgentService {
           providerResults: [],
           turnDecision: this.humanEscalationTurnDecision(currentNode),
           errorMessage: handoffEvidence.operationalNote,
-          promptBundleId: bundle.id,
-          promptFilePaths: bundle.filePaths,
+          promptBundleId: PENDING_COMPILER_PROMPT_ID,
+          promptFilePaths: [],
           toolUsage,
           handoffOutcome: handoffEvidence.handoffOutcome,
         });
@@ -1790,8 +1813,8 @@ export class AgentService {
             extraction,
             missingFields: [],
             searchReady: false,
-            promptBundleId: bundle.id,
-            promptFilePaths: bundle.filePaths,
+            promptBundleId: UNREPORTED_COMPILER_PROMPT_ID,
+            promptFilePaths: [],
             toolUsage,
             providerResults: [],
             recommendationFunnel: this.resolveRecommendationFunnel(null, []),
@@ -1834,8 +1857,8 @@ export class AgentService {
           extraction,
           missingFields: [],
           searchReady: false,
-          promptBundleId: bundle.id,
-          promptFilePaths: bundle.filePaths,
+          promptBundleId: reply.compilerPrompt?.bundleId ?? reply.origin?.bundleId ?? UNREPORTED_COMPILER_PROMPT_ID,
+          promptFilePaths: reply.compilerPrompt != null ? [...reply.compilerPrompt.filePaths] : [],
           toolUsage,
           providerResults: [],
           recommendationFunnel: this.resolveRecommendationFunnel(null, []),
@@ -1907,9 +1930,6 @@ export class AgentService {
         // A deferred need's rejected cards never substitute for it.
         providerResults = this.collectCloseEligibleProviders(planToSave);
 
-    const promptBundleStartedAt = Date.now();
-        const bundle = await this.dependencies.promptLoader.loadNodeBundle(currentNode);
-        timingMs.prompt_bundle_load += Date.now() - promptBundleStartedAt;
         const composeReplyStartedAt = Date.now();
         const reply = await this.dependencies.runtime.composeReply({
           currentNode,
@@ -1922,8 +1942,8 @@ export class AgentService {
           searchReady: sufficiency.searchReady,
           providerResults,
           errorMessage,
-          promptBundleId: bundle.id,
-          promptFilePaths: bundle.filePaths,
+          promptBundleId: PENDING_COMPILER_PROMPT_ID,
+          promptFilePaths: [],
           toolUsage,
         });
         tokenUsage.reply = reply.tokenUsage ?? null;
@@ -1960,8 +1980,8 @@ export class AgentService {
             extraction,
             missingFields: sufficiency.missingFields,
             searchReady: sufficiency.searchReady,
-            promptBundleId: bundle.id,
-            promptFilePaths: bundle.filePaths,
+            promptBundleId: reply.compilerPrompt?.bundleId ?? reply.origin?.bundleId ?? UNREPORTED_COMPILER_PROMPT_ID,
+            promptFilePaths: reply.compilerPrompt != null ? [...reply.compilerPrompt.filePaths] : [],
             toolUsage,
             providerResults,
             recommendationFunnel: recommendationFunnel,
@@ -1992,9 +2012,6 @@ export class AgentService {
       // never silently selected by this projection.
       providerResults = this.collectCloseEligibleProviders(planToSave);
 
-      const promptBundleStartedAt = Date.now();
-      const bundle = await this.dependencies.promptLoader.loadNodeBundle(currentNode);
-      timingMs.prompt_bundle_load += Date.now() - promptBundleStartedAt;
       const composeReplyStartedAt = Date.now();
       const reply = await this.dependencies.runtime.composeReply({
         currentNode,
@@ -2012,8 +2029,8 @@ export class AgentService {
         searchReady: sufficiency.searchReady,
         providerResults,
         errorMessage,
-        promptBundleId: bundle.id,
-        promptFilePaths: bundle.filePaths,
+        promptBundleId: PENDING_COMPILER_PROMPT_ID,
+        promptFilePaths: [],
         toolUsage,
       });
       tokenUsage.reply = reply.tokenUsage ?? null;
@@ -2050,8 +2067,8 @@ export class AgentService {
           extraction,
           missingFields: sufficiency.missingFields,
           searchReady: sufficiency.searchReady,
-          promptBundleId: bundle.id,
-          promptFilePaths: bundle.filePaths,
+          promptBundleId: reply.compilerPrompt?.bundleId ?? reply.origin?.bundleId ?? UNREPORTED_COMPILER_PROMPT_ID,
+          promptFilePaths: reply.compilerPrompt != null ? [...reply.compilerPrompt.filePaths] : [],
           toolUsage,
           providerResults,
           recommendationFunnel: recommendationFunnel,
@@ -2374,11 +2391,6 @@ export class AgentService {
       });
     }
 
-    const promptBundleStartedAt = Date.now();
-    const promptBundle = await this.dependencies.promptLoader.loadNodeBundle(
-      currentNode,
-    );
-    timingMs.prompt_bundle_load += Date.now() - promptBundleStartedAt;
     const composeReplyStartedAt = Date.now();
     // Secondary capability question surviving alongside planning work: the
     // boundary yields these turns to the planning owner, so project the
@@ -2416,8 +2428,8 @@ export class AgentService {
       searchReady: sufficiency.searchReady,
       providerResults,
       errorMessage,
-      promptBundleId: promptBundle.id,
-      promptFilePaths: promptBundle.filePaths,
+      promptBundleId: PENDING_COMPILER_PROMPT_ID,
+      promptFilePaths: [],
       toolUsage,
       turnDecision,
       capabilityDecision: planningCapabilityEvidence,
@@ -2465,8 +2477,8 @@ export class AgentService {
         extraction,
         missingFields: sufficiency.missingFields,
         searchReady: sufficiency.searchReady,
-        promptBundleId: promptBundle.id,
-        promptFilePaths: promptBundle.filePaths,
+        promptBundleId: composedReply.compilerPrompt?.bundleId ?? composedReply.origin?.bundleId ?? UNREPORTED_COMPILER_PROMPT_ID,
+        promptFilePaths: composedReply.compilerPrompt != null ? [...composedReply.compilerPrompt.filePaths] : [],
         toolUsage,
         providerResults,
         recommendationFunnel: recommendationFunnel,
@@ -2641,6 +2653,11 @@ export class AgentService {
     plan: PlanSnapshot,
     extraction: ExtractionResult,
   ): boolean {
+    // S1: typed topic/request evidence enables authorized reads independent
+    // of rsvpAction (see hasCurrentMessageRsvpReference). Bare intent
+    // without typed reference keeps the prior route (probe-0 deferral
+    // preserved: no guess-fix on the missingaction entry gate).
+    const hasCurrentMessageReference = hasCurrentMessageRsvpReference(extraction);
     const hasExplicitRsvpSelection =
       (extraction.actionIntent === 'responder_invitacion' &&
         extraction.rsvpDecisionSource === 'current_message' && extraction.informationRequests.length === 0) ||
@@ -2649,6 +2666,7 @@ export class AgentService {
         extraction.rsvpDecisionSource === 'current_message') ||
       (extraction.rsvpCandidateGuestId !== null &&
         extraction.rsvpCandidateGuestId !== undefined) ||
+      hasCurrentMessageReference ||
       extraction.rsvpParty?.plus_one_response === 'yes' ||
       extraction.rsvpParty?.plus_one_response === 'no' ||
       extraction.rsvpParty?.scope === 'self_and_others';
@@ -2798,9 +2816,6 @@ export class AgentService {
           },
         } : {}),
       });
-      const promptStartedAt = Date.now();
-      const bundle = await this.dependencies.promptLoader.loadNodeBundle(currentNode);
-      args.timingMs.prompt_bundle_load += Date.now() - promptStartedAt;
       const composeStartedAt = Date.now();
       const reply = await composeModelReply(this.dependencies.runtime, {
         currentNode,
@@ -2814,11 +2829,10 @@ export class AgentService {
         providerResults: [],
         turnDecision: this.rsvpTurnDecision(`handoff_multi_person_${handoffStatus}`),
         errorMessage: handoffOperationalNote,
-        promptBundleId: bundle.id,
-        promptFilePaths: bundle.filePaths,
+        promptBundleId: PENDING_COMPILER_PROMPT_ID,
+        promptFilePaths: [],
         toolUsage: args.toolUsage,
         rsvpPhoneEvidence: null,
-        replyBundle: bundle,
       });
       args.timingMs.compose_reply += Date.now() - composeStartedAt;
       args.tokenUsage.reply = reply.tokenUsage ?? null;
@@ -2850,8 +2864,8 @@ export class AgentService {
           extraction: args.extraction,
           missingFields: [],
           searchReady: false,
-          promptBundleId: bundle.id,
-          promptFilePaths: bundle.filePaths,
+          promptBundleId: reply.compilerPrompt?.bundleId ?? reply.origin?.bundleId ?? UNREPORTED_COMPILER_PROMPT_ID,
+          promptFilePaths: reply.compilerPrompt != null ? [...reply.compilerPrompt.filePaths] : [],
           toolUsage: args.toolUsage,
           providerResults: [],
           recommendationFunnel: this.resolveRecommendationFunnel(null, []),
@@ -3223,9 +3237,6 @@ export class AgentService {
       pendingState,
       selectedInvitation,
     });
-    const promptStartedAt = Date.now();
-    const bundle = await this.dependencies.promptLoader.loadNodeBundle(currentNode);
-    args.timingMs.prompt_bundle_load += Date.now() - promptStartedAt;
     const composeStartedAt = Date.now();
     const reply = await composeModelReply(this.dependencies.runtime, {
       currentNode,
@@ -3241,8 +3252,8 @@ export class AgentService {
         this.rsvpOutcomeReason(result, args.extraction.rsvpEventReference, args.messageContext),
       ),
       errorMessage: operationalNote,
-      promptBundleId: bundle.id,
-      promptFilePaths: bundle.filePaths,
+      promptBundleId: PENDING_COMPILER_PROMPT_ID,
+      promptFilePaths: [],
       toolUsage: args.toolUsage,
       rsvpPhoneEvidence: replyPhoneEvidence
         ? this.projectRsvpPhoneEvidenceForReply(
@@ -3251,7 +3262,6 @@ export class AgentService {
             args.extraction.rsvpEventReference ?? null,
           )
         : null,
-      replyBundle: bundle,
     });
     args.timingMs.compose_reply += Date.now() - composeStartedAt;
     args.tokenUsage.reply = reply.tokenUsage ?? null;
@@ -3299,8 +3309,8 @@ export class AgentService {
         extraction: args.extraction,
         missingFields: [],
         searchReady: false,
-        promptBundleId: bundle.id,
-        promptFilePaths: bundle.filePaths,
+        promptBundleId: reply.compilerPrompt?.bundleId ?? reply.origin?.bundleId ?? UNREPORTED_COMPILER_PROMPT_ID,
+        promptFilePaths: reply.compilerPrompt != null ? [...reply.compilerPrompt.filePaths] : [],
         toolUsage: args.toolUsage,
         providerResults: [],
         recommendationFunnel: this.resolveRecommendationFunnel(null, []),
@@ -4469,7 +4479,6 @@ export class AgentService {
     const turnDecision = this.contextualClarificationTurnDecision(
       providerClarification ? 'provider_selection_clarification' : 'contextual_clarification',
     );
-    const bundle = await this.dependencies.promptLoader.loadNodeBundle('aclarar_pedir_faltante');
     // R2: clarification replies share the resolved attachment projection and
     // the continuity reference. An image-seeking clarification defers for
     // later evidence, so the unresolved user question is preserved for the
@@ -4490,8 +4499,8 @@ export class AgentService {
       providerResults: [],
       turnDecision,
       errorMessage: null,
-      promptBundleId: bundle.id,
-      promptFilePaths: bundle.filePaths,
+      promptBundleId: PENDING_COMPILER_PROMPT_ID,
+      promptFilePaths: [],
       toolUsage: args.toolUsage,
       continuity: this.resolveContinuityProjection(plan, args.messageContext),
       pendingQuestionRef: plan.owner_pending_question ?? null,
@@ -4530,8 +4539,8 @@ export class AgentService {
         extraction: args.extraction,
         missingFields: plan.missing_fields,
         searchReady: false,
-        promptBundleId: bundle.id,
-        promptFilePaths: bundle.filePaths,
+        promptBundleId: reply.compilerPrompt?.bundleId ?? reply.origin?.bundleId ?? UNREPORTED_COMPILER_PROMPT_ID,
+        promptFilePaths: reply.compilerPrompt != null ? [...reply.compilerPrompt.filePaths] : [],
         toolUsage: args.toolUsage,
         providerResults: [],
         recommendationFunnel: this.resolveRecommendationFunnel(null, []),
@@ -4625,6 +4634,17 @@ export class AgentService {
       this.hasProviderSelectionEvidence(args.extraction)) {
       return null;
     }
+    // S4: an image question without projected pixels is never an automatic
+    // takeover. The media/image flow answers from available evidence (or an
+    // honest operational failure) with the pending task preserved; an
+    // unsupported media operation must not become an empty purchase lookup
+    // requiring human escalation. Typed operation only, no phrase detection.
+    if (
+      effectiveDecision.status === 'unsupported' &&
+      effectiveDecision.operation === 'media.image.inspect'
+    ) {
+      return null;
+    }
     // A close turn (cerrar with a typed close action) is close-flow data even
     // when the extractor also reports an unavailable provider operation such
     // as provider.quote.write; the close flow asks for contact through the
@@ -4680,7 +4700,6 @@ export class AgentService {
       const plan = args.plan.current_node === 'resolver_consultas_informativas'
         ? args.plan
         : mergePlan(args.plan, { current_node: 'resolver_consultas_informativas' });
-      const bundle = await this.dependencies.promptLoader.loadNodeBundle(plan.current_node);
       // R2: capability replies share the resolved attachment projection and
       // the continuity reference. The pre-compose save moves after render;
       // a compose failure still persists the plan before propagating.
@@ -4702,8 +4721,8 @@ export class AgentService {
           providerResults: [],
           turnDecision: this.contextualClarificationTurnDecision('capability_clarification_requested'),
           errorMessage: null,
-          promptBundleId: bundle.id,
-          promptFilePaths: bundle.filePaths,
+          promptBundleId: PENDING_COMPILER_PROMPT_ID,
+          promptFilePaths: [],
           toolUsage: args.toolUsage,
           capabilityDecision: effectiveDecision,
           continuity: this.resolveContinuityProjection(plan, args.messageContext),
@@ -4742,8 +4761,8 @@ export class AgentService {
           extraction: args.extraction,
           missingFields: plan.missing_fields,
           searchReady: false,
-          promptBundleId: bundle.id,
-          promptFilePaths: bundle.filePaths,
+          promptBundleId: reply.compilerPrompt?.bundleId ?? reply.origin?.bundleId ?? UNREPORTED_COMPILER_PROMPT_ID,
+          promptFilePaths: reply.compilerPrompt != null ? [...reply.compilerPrompt.filePaths] : [],
           toolUsage: args.toolUsage,
           providerResults: [],
           recommendationFunnel: this.resolveRecommendationFunnel(null, []),
@@ -4775,9 +4794,6 @@ export class AgentService {
       const plan = args.plan.current_node === 'resolver_consultas_informativas'
         ? args.plan
         : mergePlan(args.plan, { current_node: 'resolver_consultas_informativas' });
-      const bundle = await this.dependencies.promptLoader.loadNodeBundle(
-        'resolver_consultas_informativas',
-      );
       // R2: capability replies share the resolved attachment projection and
       // the continuity reference.
       const ownerProjection = this.resolveOwnerImageProjectionForReply({
@@ -4796,11 +4812,10 @@ export class AgentService {
         providerResults: [],
         turnDecision: this.informationTurnDecision('purchase_evidence_after_capability_read'),
         errorMessage: null,
-        promptBundleId: bundle.id,
-        promptFilePaths: bundle.filePaths,
+        promptBundleId: PENDING_COMPILER_PROMPT_ID,
+        promptFilePaths: [],
         toolUsage: args.toolUsage,
         informationResults: safeRead.results,
-        replyBundle: bundle,
         continuity: this.resolveContinuityProjection(plan, args.messageContext),
         imageEvidence: this.imageEvidenceForProjection({ projection: ownerProjection }),
         imageUrlAttachments: ownerProjection.urls,
@@ -4841,8 +4856,8 @@ export class AgentService {
           extraction: args.extraction,
           missingFields: [],
           searchReady: false,
-          promptBundleId: bundle.id,
-          promptFilePaths: bundle.filePaths,
+          promptBundleId: reply.compilerPrompt?.bundleId ?? reply.origin?.bundleId ?? UNREPORTED_COMPILER_PROMPT_ID,
+          promptFilePaths: reply.compilerPrompt != null ? [...reply.compilerPrompt.filePaths] : [],
           toolUsage: args.toolUsage,
           providerResults: [],
           recommendationFunnel: this.resolveRecommendationFunnel(null, []),
@@ -4884,7 +4899,6 @@ export class AgentService {
           },
         })
       : args.plan;
-    const bundle = await this.dependencies.promptLoader.loadNodeBundle('resolver_consultas_informativas');
     // R2: capability replies share the resolved attachment projection and
     // the continuity reference. The pre-compose save moves after render; a
     // compose failure still persists the plan before propagating.
@@ -4908,8 +4922,8 @@ export class AgentService {
           ? this.humanEscalationTurnDecision('unsupported_operation_detected')
           : this.informationTurnDecision('unsupported_operation_detected'),
         errorMessage: null,
-        promptBundleId: bundle.id,
-        promptFilePaths: bundle.filePaths,
+        promptBundleId: PENDING_COMPILER_PROMPT_ID,
+        promptFilePaths: [],
         toolUsage: args.toolUsage,
         informationResults: safeRead.results,
         capabilityDecision: effectiveDecision,
@@ -4949,8 +4963,8 @@ export class AgentService {
         extraction: args.extraction,
         missingFields: plan.missing_fields,
         searchReady: false,
-        promptBundleId: bundle.id,
-        promptFilePaths: bundle.filePaths,
+        promptBundleId: reply.compilerPrompt?.bundleId ?? reply.origin?.bundleId ?? UNREPORTED_COMPILER_PROMPT_ID,
+        promptFilePaths: reply.compilerPrompt != null ? [...reply.compilerPrompt.filePaths] : [],
         toolUsage: args.toolUsage,
         providerResults: [],
         recommendationFunnel: this.resolveRecommendationFunnel(null, []),
@@ -5078,7 +5092,6 @@ export class AgentService {
       requestedOperation: 'media.image.inspect',
       manifest: this.capabilityManifest,
     });
-    const bundle = await this.dependencies.promptLoader.loadNodeBundle('resolver_consultas_informativas');
     const reply = await composeModelReply(this.dependencies.runtime, {
       currentNode: plan.current_node,
       previousNode: args.plan.current_node,
@@ -5091,8 +5104,8 @@ export class AgentService {
       providerResults: [],
       turnDecision: this.informationTurnDecision('unsupported_image_media'),
       errorMessage: null,
-      promptBundleId: bundle.id,
-      promptFilePaths: bundle.filePaths,
+      promptBundleId: PENDING_COMPILER_PROMPT_ID,
+      promptFilePaths: [],
       toolUsage: args.toolUsage,
       imageEvidence: {
         status: 'unavailable',
@@ -5118,8 +5131,8 @@ export class AgentService {
         extraction,
         missingFields: plan.missing_fields,
         searchReady: false,
-        promptBundleId: bundle.id,
-        promptFilePaths: bundle.filePaths,
+        promptBundleId: reply.compilerPrompt?.bundleId ?? reply.origin?.bundleId ?? UNREPORTED_COMPILER_PROMPT_ID,
+        promptFilePaths: reply.compilerPrompt != null ? [...reply.compilerPrompt.filePaths] : [],
         toolUsage: args.toolUsage,
         providerResults: [],
         recommendationFunnel: this.resolveRecommendationFunnel(null, []),
@@ -5176,7 +5189,6 @@ export class AgentService {
     if (!image || image.status === 'unavailable') {
       const reason = image?.reason ?? 'media_unavailable';
       const unavailablePlan = plan;
-      const bundle = await this.dependencies.promptLoader.loadNodeBundle(unavailablePlan.current_node);
       const extraction = this.buildNeutralMediaExtraction(reason);
       const reply = await composeModelReply(this.dependencies.runtime, {
         currentNode: unavailablePlan.current_node,
@@ -5190,8 +5202,8 @@ export class AgentService {
         providerResults: [],
         turnDecision: this.informationTurnDecision('image_unavailable'),
         errorMessage: null,
-        promptBundleId: bundle.id,
-        promptFilePaths: bundle.filePaths,
+        promptBundleId: PENDING_COMPILER_PROMPT_ID,
+        promptFilePaths: [],
         toolUsage: args.toolUsage,
         continuity: this.resolveContinuityProjection(unavailablePlan, args.messageContext),
         imageEvidence: this.withImageObservation(
@@ -5224,8 +5236,8 @@ export class AgentService {
           extraction,
           missingFields: unavailablePlan.missing_fields,
           searchReady: false,
-          promptBundleId: bundle.id,
-          promptFilePaths: bundle.filePaths,
+          promptBundleId: reply.compilerPrompt?.bundleId ?? reply.origin?.bundleId ?? UNREPORTED_COMPILER_PROMPT_ID,
+          promptFilePaths: reply.compilerPrompt != null ? [...reply.compilerPrompt.filePaths] : [],
           toolUsage: args.toolUsage,
           providerResults: [],
           recommendationFunnel: this.resolveRecommendationFunnel(null, []),
@@ -5817,7 +5829,6 @@ export class AgentService {
     const unavailablePlan = args.plan.current_node === 'resolver_consultas_informativas'
       ? args.plan
       : mergePlan(args.plan, { current_node: 'resolver_consultas_informativas' });
-    const bundle = await this.dependencies.promptLoader.loadNodeBundle(unavailablePlan.current_node);
     const extraction = this.buildNeutralMediaExtraction(args.reason);
     this.recordDeterministicToolInput(args.toolUsage, 'image_file_context', {
       status: 'unavailable',
@@ -5836,8 +5847,8 @@ export class AgentService {
       providerResults: [],
       turnDecision: this.informationTurnDecision('image_unavailable'),
       errorMessage: null,
-      promptBundleId: bundle.id,
-      promptFilePaths: bundle.filePaths,
+      promptBundleId: PENDING_COMPILER_PROMPT_ID,
+      promptFilePaths: [],
       toolUsage: args.toolUsage,
       continuity: this.resolveContinuityProjection(unavailablePlan, args.messageContext),
       imageEvidence: this.withImageObservation(
@@ -5874,8 +5885,8 @@ export class AgentService {
         extraction,
         missingFields: unavailablePlan.missing_fields,
         searchReady: false,
-        promptBundleId: bundle.id,
-        promptFilePaths: bundle.filePaths,
+        promptBundleId: reply.compilerPrompt?.bundleId ?? reply.origin?.bundleId ?? UNREPORTED_COMPILER_PROMPT_ID,
+        promptFilePaths: reply.compilerPrompt != null ? [...reply.compilerPrompt.filePaths] : [],
         toolUsage: args.toolUsage,
         providerResults: [],
         recommendationFunnel: this.resolveRecommendationFunnel(null, []),
@@ -6292,7 +6303,6 @@ export class AgentService {
     capabilityDecision: CapabilityDecision;
     imageTurn: ImageTurnContext;
   }): Promise<HandleTurnResponse> {
-    const bundle = await this.dependencies.promptLoader.loadNodeBundle(args.workingPlan.current_node);
     const redactedShape = this.redactedImageTurnShape(args.imageTurn);
     const toolLabel = args.imageTurn.kind === 'file' ? 'image_file_context' : 'image_url_context';
     const turnDecisionLabel = args.imageTurn.kind === 'file' ? 'image_file_context' : 'image_url_context';
@@ -6317,8 +6327,8 @@ export class AgentService {
           imageEvidence.status === 'available' ? turnDecisionLabel : 'image_unavailable',
         ),
         errorMessage: null,
-        promptBundleId: bundle.id,
-        promptFilePaths: bundle.filePaths,
+        promptBundleId: PENDING_COMPILER_PROMPT_ID,
+        promptFilePaths: [],
         toolUsage: args.toolUsage,
         owner: args.workingPlan.owner ?? null,
         continuity: this.resolveContinuityProjection(args.workingPlan, args.messageContext),
@@ -6470,8 +6480,8 @@ export class AgentService {
         extraction: replyExtraction,
         missingFields: args.workingPlan.missing_fields,
         searchReady: false,
-        promptBundleId: bundle.id,
-        promptFilePaths: bundle.filePaths,
+        promptBundleId: reply.compilerPrompt?.bundleId ?? reply.origin?.bundleId ?? UNREPORTED_COMPILER_PROMPT_ID,
+        promptFilePaths: reply.compilerPrompt != null ? [...reply.compilerPrompt.filePaths] : [],
         toolUsage: args.toolUsage,
         providerResults: [],
         recommendationFunnel: this.resolveRecommendationFunnel(null, []),
@@ -8100,9 +8110,6 @@ export class AgentService {
     // (pending status, validation expectation, user-reported provenance)
     // already travel in the projected outcome; the support-continuity node
     // prompt owns the acknowledgment policy. Facts only.
-    const promptBundleStartedAt = Date.now();
-    const bundle = await this.dependencies.promptLoader.loadNodeBundle('resolver_consultas_informativas');
-    args.timingMs.prompt_bundle_load += Date.now() - promptBundleStartedAt;
     const composeReplyStartedAt = Date.now();
     const replyExtraction: ExtractionResult = {
       ...informationExtraction,
@@ -8187,8 +8194,8 @@ export class AgentService {
         operationalNote ?? 'information_batch',
       ),
       errorMessage: overrides.errorMessage ?? operationalNote,
-      promptBundleId: bundle.id,
-      promptFilePaths: bundle.filePaths,
+      promptBundleId: PENDING_COMPILER_PROMPT_ID,
+      promptFilePaths: [],
       toolUsage: args.toolUsage,
       informationResults,
       customerContext,
@@ -8198,7 +8205,6 @@ export class AgentService {
       imageEvidence: overrides.imageEvidence ?? defaultImageEvidence,
       imageUrlAttachments: overrides.imageUrlAttachments ?? ownerProjection.urls,
       imageFileAttachments: overrides.imageFileAttachments ?? ownerProjection.files,
-      replyBundle: bundle,
     });
     let composedReply: ComposeReplyResult;
     let deliveredTurnDecision = this.informationTurnDecision(operationalNote ?? 'information_batch');
@@ -8361,8 +8367,8 @@ export class AgentService {
         extraction: deliveredExtraction,
         missingFields: [],
         searchReady: false,
-        promptBundleId: bundle.id,
-        promptFilePaths: bundle.filePaths,
+        promptBundleId: composedReply.compilerPrompt?.bundleId ?? composedReply.origin?.bundleId ?? UNREPORTED_COMPILER_PROMPT_ID,
+        promptFilePaths: composedReply.compilerPrompt != null ? [...composedReply.compilerPrompt.filePaths] : [],
         toolUsage: args.toolUsage,
         providerResults: [],
         recommendationFunnel: this.resolveRecommendationFunnel(null, []),
@@ -8397,8 +8403,6 @@ export class AgentService {
     });
     const currentNode: DecisionNode = 'resolver_consultas_informativas';
     const turnDecision = this.informationTurnDecision('support_acknowledgment');
-    const bundle = await this.dependencies.promptLoader.loadSupportContinuityBundle();
-    args.timingMs.prompt_bundle_load += 0;
     // R2: support replies share the resolved attachment projection and the
     // continuity reference, so a follow-up question that lands here keeps
     // its linked image instead of losing it.
@@ -8421,8 +8425,8 @@ export class AgentService {
         providerResults: [],
         turnDecision,
         errorMessage: null,
-        promptBundleId: bundle.id,
-        promptFilePaths: bundle.filePaths,
+        promptBundleId: PENDING_COMPILER_PROMPT_ID,
+        promptFilePaths: [],
         toolUsage: args.toolUsage,
         owner: planWithSupportContext.owner ?? null,
         continuity: this.resolveContinuityProjection(planWithSupportContext, args.messageContext),
@@ -8432,7 +8436,6 @@ export class AgentService {
         }),
         imageUrlAttachments: ownerProjection.urls,
         imageFileAttachments: ownerProjection.files,
-        replyBundle: bundle,
       });
     } catch (error) {
       // The pre-compose save moved after render; a compose failure still
@@ -8469,8 +8472,8 @@ export class AgentService {
           extraction: args.extraction,
           missingFields: [],
           searchReady: false,
-          promptBundleId: bundle.id,
-          promptFilePaths: bundle.filePaths,
+          promptBundleId: UNREPORTED_COMPILER_PROMPT_ID,
+          promptFilePaths: [],
           toolUsage: args.toolUsage,
           providerResults: [],
           recommendationFunnel: this.resolveRecommendationFunnel(null, []),
@@ -8525,8 +8528,8 @@ export class AgentService {
         extraction: args.extraction,
         missingFields: [],
         searchReady: false,
-        promptBundleId: bundle.id,
-        promptFilePaths: bundle.filePaths,
+        promptBundleId: reply.compilerPrompt?.bundleId ?? reply.origin?.bundleId ?? UNREPORTED_COMPILER_PROMPT_ID,
+        promptFilePaths: reply.compilerPrompt != null ? [...reply.compilerPrompt.filePaths] : [],
         toolUsage: args.toolUsage,
         providerResults: [],
         recommendationFunnel: this.resolveRecommendationFunnel(null, []),
@@ -8635,7 +8638,6 @@ export class AgentService {
           : handoff.status === 'skipped' ? handoff.message : null,
       } } : {}),
     });
-    const bundle = await this.dependencies.promptLoader.loadNodeBundle(currentNode);
     const composeStartedAt = Date.now();
     // R2: host-withdrawal replies share the resolved attachment projection
     // and the continuity reference.
@@ -8657,13 +8659,12 @@ export class AgentService {
       turnDecision: handedOff ? this.humanEscalationTurnDecision('host_withdrawal_status_unsupported')
         : this.informationTurnDecision('host_withdrawal_policy_and_support'),
       errorMessage: null,
-      promptBundleId: bundle.id,
-      promptFilePaths: bundle.filePaths,
+      promptBundleId: PENDING_COMPILER_PROMPT_ID,
+      promptFilePaths: [],
       toolUsage: args.toolUsage,
       informationResults: execution.results,
       handoffOutcome,
       owner: planToSave.owner ?? null,
-      replyBundle: bundle,
       continuity: this.resolveContinuityProjection(planToSave, args.messageContext),
       imageEvidence: this.imageEvidenceForProjection({
         imageTurn: args.imageTurn,
@@ -8699,8 +8700,8 @@ export class AgentService {
         plan: finalPlan, previousNode: args.previousNode, currentNode,
         nodePath: [args.previousNode, currentNode], extraction: args.extraction,
         missingFields: [], searchReady: false,
-        promptBundleId: bundle.id,
-        promptFilePaths: bundle.filePaths,
+        promptBundleId: reply.compilerPrompt?.bundleId ?? reply.origin?.bundleId ?? UNREPORTED_COMPILER_PROMPT_ID,
+        promptFilePaths: reply.compilerPrompt != null ? [...reply.compilerPrompt.filePaths] : [],
         toolUsage: args.toolUsage, providerResults: [],
         recommendationFunnel: this.resolveRecommendationFunnel(null, []),
         planPersisted: true, planPersistReason: 'host_withdrawal_policy_and_support',
@@ -8890,7 +8891,6 @@ export class AgentService {
       plan: planToSave,
       reason: 'information_authentication_declined',
     });
-    const bundle = await this.dependencies.promptLoader.loadNodeBundle('resolver_consultas_informativas');
     const reply = await composeModelReply(this.dependencies.runtime, {
       currentNode: 'resolver_consultas_informativas',
       previousNode: args.previousNode,
@@ -8903,8 +8903,8 @@ export class AgentService {
       providerResults: [],
       turnDecision: this.informationTurnDecision('information_authentication_declined'),
       errorMessage: null,
-      promptBundleId: bundle.id,
-      promptFilePaths: bundle.filePaths,
+      promptBundleId: PENDING_COMPILER_PROMPT_ID,
+      promptFilePaths: [],
       toolUsage: args.toolUsage,
       authenticationOutcome: {
         status: 'declined',
@@ -8939,8 +8939,8 @@ export class AgentService {
         extraction: args.extraction,
         missingFields: [],
         searchReady: false,
-         promptBundleId: bundle.id,
-         promptFilePaths: bundle.filePaths,
+         promptBundleId: reply.compilerPrompt?.bundleId ?? reply.origin?.bundleId ?? UNREPORTED_COMPILER_PROMPT_ID,
+         promptFilePaths: reply.compilerPrompt != null ? [...reply.compilerPrompt.filePaths] : [],
         toolUsage: args.toolUsage,
         providerResults: [],
         recommendationFunnel: this.resolveRecommendationFunnel(null, []),
@@ -8986,7 +8986,6 @@ export class AgentService {
     const extraction = this.buildSyntheticEscalationExtraction(
       'La persona envió un código después de que la verificación terminó y se pidió apoyo humano.',
     );
-    const bundle = await this.dependencies.promptLoader.loadNodeBundle('resolver_consultas_informativas');
     // C1 retained-handoff truthfulness: report the handoff outcome decided on
     // the terminal turn from the persisted receipt, never a fresh request.
     // Failed, unknown and undispatched receipts stay distinct so the reply
@@ -9015,8 +9014,8 @@ export class AgentService {
       providerResults: [],
       turnDecision: this.humanEscalationTurnDecision('terminal_otp_code_retained'),
       errorMessage: null,
-      promptBundleId: bundle.id,
-      promptFilePaths: bundle.filePaths,
+      promptBundleId: PENDING_COMPILER_PROMPT_ID,
+      promptFilePaths: [],
       toolUsage: args.toolUsage,
       authenticationOutcome: {
         status: 'terminal',
@@ -9047,8 +9046,8 @@ export class AgentService {
         extraction,
         missingFields: [],
         searchReady: false,
-        promptBundleId: bundle.id,
-        promptFilePaths: bundle.filePaths,
+        promptBundleId: reply.compilerPrompt?.bundleId ?? reply.origin?.bundleId ?? UNREPORTED_COMPILER_PROMPT_ID,
+        promptFilePaths: reply.compilerPrompt != null ? [...reply.compilerPrompt.filePaths] : [],
         toolUsage: args.toolUsage,
         providerResults: [],
         recommendationFunnel: this.resolveRecommendationFunnel(null, []),
@@ -9140,7 +9139,6 @@ export class AgentService {
       args.tokenUsage.extraction,
     );
     args.timingMs.total = Date.now() - args.handleTurnStartedAt;
-    const bundle = await this.dependencies.promptLoader.loadNodeBundle('resolver_consultas_informativas');
     const handoffOutcome = requested
       ? 'handoff_requested' as const
       : receipt?.outcome === 'outcome_unknown'
@@ -9160,8 +9158,8 @@ export class AgentService {
       providerResults: [],
       turnDecision: this.humanEscalationTurnDecision(args.reason),
       errorMessage: null,
-      promptBundleId: bundle.id,
-      promptFilePaths: bundle.filePaths,
+      promptBundleId: PENDING_COMPILER_PROMPT_ID,
+      promptFilePaths: [],
       toolUsage: args.toolUsage,
       authenticationOutcome: {
         status: 'terminal',
@@ -9203,8 +9201,8 @@ export class AgentService {
         extraction: args.extraction,
         missingFields: [],
         searchReady: false,
-        promptBundleId: bundle.id,
-        promptFilePaths: bundle.filePaths,
+        promptBundleId: reply.compilerPrompt?.bundleId ?? reply.origin?.bundleId ?? UNREPORTED_COMPILER_PROMPT_ID,
+        promptFilePaths: reply.compilerPrompt != null ? [...reply.compilerPrompt.filePaths] : [],
         toolUsage: args.toolUsage,
         providerResults: [],
         recommendationFunnel: this.resolveRecommendationFunnel(null, []),

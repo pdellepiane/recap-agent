@@ -12,7 +12,9 @@ export function parseHostWithdrawalPolicy(evidence: KnowledgeEvidence[]): {
     entry.filename === 'atc-template-new-solicitud-de-fondos.md');
   const facts = candidates.flatMap((entry) => {
     const normalized = entry.text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
-    if (!/template_status:\s*["']?vigente\b/u.test(normalized)) return [];
+    // Factual-only supplemental format carries provenance as
+    // `Estado: Vigente`; legacy indexed files carry `template_status`.
+    if (!/\b(template_status|estado)\s*:\s*["']?vigente\b/u.test(normalized)) return [];
     const matches = [...normalized.matchAll(/las solicitudes se procesan en hasta\s+(\d+)\s*horas\s+habiles/gu)];
     return matches.map((match) => ({ hours: Number(match[1]), entry }));
   });

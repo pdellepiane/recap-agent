@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.s2-failed-delivery-preserves-pending
 suite: live_behavior_regression
-version: 1
+version: 2
 description: S2/D3 full-context twin through live Lambda. A question needing image evidence is preserved through a generated clarification (clarification, suppress, origin failure or inaccessible-image reply never clears it) and answered once the image arrives on retry, with no duplicate send or effect.
 tags: [live, behavior, continuity, image, image-file, inbound-continuity, s2, failed-delivery]
 targetModes: [live_lambda]
@@ -27,6 +27,7 @@ notes:
   - "B4 S2 2026-09-14: backendFixture scenario image-clean-world; this phone has empty initial history and empty authorized purchase results; never mutable backend data. The two inputs run as separate invocations against the same conversation."
   - "The first turn carries a question the current evidence cannot answer, so the runtime must preserve the pending question instead of clearing it: a generated clarification, a suppress disposition, an origin failure, or an inaccessible-image reply does not count as answered. Only a verified send of the answer clears it. The retry turn answers from the arriving pixels exactly once: no duplicate send and no backend effect."
   - "Backend image forwarding contract 2026-09-08. Synthetic voucher-style fixture rendered locally, never a customer document."
+  - "R05 oracle revision v1 to v2, 2026-09-16, full-gate triage item 1. The turn-1 image bytes are byte-identical to the live_behavior.image_file_delayed_question fixture (sha256 e6024548787bb4221c9dc53500f097e70e4c738283e2d684d70dba04c5cc764a, verified read-only against the E1 digest), so the same manually verified text (Monto: S/ 250.00) is bound via judgeGroundTruth (boundInputTurn 1). Ground truth rides the judge context only via resolveJudgeOnlyImageGroundTruth, never runtime input, no new OCR/vision. Read-only amount is not backend approval. Threshold 0.8, hard severity, requireJudge kept. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
 expectations:
   - id: s2-first-turn-no-mutation
     type: tool_usage
@@ -48,11 +49,17 @@ expectations:
   - id: s2-preserved-then-answered
     type: text_semantic
     rubric: >-
-      The first turn asked for the receipt amount before any image existed, so the pending question had to be preserved through the clarification. Pass only if the assistant responds entirely in Spanish answering that pending amount question with the text visible in the image that arrived in this turn, including the amount when readable. It must not ask the user to resend any image, must not claim it saved, stored or re-read the image, must not confirm or approve any payment, must not claim the image proves a settled payment, and must not ask for an OTP. Judge only what was known through this turn; no later message exists.
+      The first turn asked for the receipt amount before any image existed, so the pending question had to be preserved through the clarification. Pass only if the assistant responds entirely in Spanish answering that pending amount question with the text visible in the image that arrived in this turn, including the amount when readable. The judge-only ground truth for this fixture image is the text Monto: S/ 250.00 (verified amount S/ 250.00; read accuracy only, never backend payment approval). It must not ask the user to resend any image, must not claim it saved, stored or re-read the image, must not confirm or approve any payment, must not claim the image proves a settled payment, and must not ask for an OTP. Judge only what was known through this turn; no later message exists.
     minScore: 0.8
     requireJudge: true
     turnIndex: 1
     severity: hard
+judgeGroundTruth:
+  imageDigest: e6024548787bb4221c9dc53500f097e70e4c738283e2d684d70dba04c5cc764a
+  verifiedText: 'Monto: S/ 250.00'
+  verifiedAmount: 'S/ 250.00'
+  verifiedAt: '2026-09-16'
+  boundInputTurn: 1
 budget:
   maxTurns: 2
   estimatedPromptTokensPerTurn: 2500

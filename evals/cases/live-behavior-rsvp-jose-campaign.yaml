@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.rsvp_jose_campaign_invitation_not_reported_missing
 suite: live_behavior_regression
-version: 7
+version: 8
 # Evidence: event 38331 / guest 579788 has_responded=true will_attend=true -> resolved_single attending (not unavailable)
 # Verified via live API GET /guest/events and GET /event?event_id=38331 with phone +51941438449 (see /tmp/evidence-T6-fix-2b.json); SE API cannot provision unavailable condition; user-approved Option B T6-fix-3
 description: A campaign-grounded RSVP for Gia Antonella is resolved via hybrid fragment plus natural tissue without claiming a new mutation.
@@ -18,8 +18,11 @@ inputs:
       scenario: rsvp-jose-gia-antonella
 expectations:
   - id: enters-rsvp-node
-    type: node_transition
-    to: responder_invitacion
+    type: fixture_effect_count
+    operation: rsvp.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
     severity: hard
   - id: reads-user-level-state-without-account-auth
     type: tool_usage
@@ -41,6 +44,8 @@ expectations:
     type: text_not_contains
     phrases: ["RSVP", "rsvp"]
     severity: hard
+notes:
+  - "R05 oracle revision v7 to v8, 2026-09-16, Packet E1 node-pin removal. Old enters-rsvp-node pinned the internal responder_invitacion node, prescribing implementation instead of evidencing behavior (matrix: a correct confirmed-state answer through any routing passed the read evidence but failed the node pin). New contract proves the same read-only invariant from receipts: fixture_effect_count rsvp.write 0/0/0 hard plus the retained lookup_rsvp_invitations read evidence. The rubric never claims a campaign informed the decision; it asserts only reconciled phone evidence. Threshold and hard severity kept; no threshold reduction. Old v7 runs preserved; baseline and candidate must rerun on this v8 contract. Expectation id enters-rsvp-node is retained for ledger and run continuity; only its type changed from node_transition to fixture_effect_count."
 budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 1600

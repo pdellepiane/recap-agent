@@ -192,9 +192,9 @@ describe('prompt inventory', () => {
     const inventory = await buildPromptInventory({
       promptsDir: path.resolve(process.cwd(), 'prompts'),
     });
-    expect(inventory.totalFiles).toBe(109);
+    expect(inventory.totalFiles).toBe(112);
     expect(inventory.unmappedFiles).toEqual([]);
-    expect(inventory.entries).toHaveLength(109);
+    expect(inventory.entries).toHaveLength(112);
     for (const entry of inventory.entries) {
       expect(entry.consumers.length).toBeGreaterThan(0);
       expect(entry.filePath).toBeTruthy();
@@ -206,6 +206,29 @@ describe('prompt inventory', () => {
     expect(rsvpExtractor?.consumers.some((consumer) => consumer.callType === 'extraction')).toBe(true);
     const classifier = inventory.entries.find((entry) => entry.filePath === 'nodes/deteccion_intencion/response_classifier.txt');
     expect(classifier?.consumers.some((consumer) => consumer.callType === 'classifier')).toBe(true);
+  });
+
+  it('labels retired node contracts truthfully and never claims compiler ownership', async () => {
+    const inventory = await buildPromptInventory({
+      promptsDir: path.resolve(process.cwd(), 'prompts'),
+    });
+    for (const filePath of [
+      'nodes/resolver_consultas_informativas/system.txt',
+      'nodes/resolver_consultas_informativas/response_contract.txt',
+      'nodes/resolver_consultas_informativas/tool_policy.txt',
+      'nodes/resolver_consultas_informativas/image_inspection.txt',
+    ]) {
+      const entry = inventory.entries.find((candidate) => candidate.filePath === filePath);
+      expect(entry).toBeDefined();
+      expect(entry?.consumers.length).toBeGreaterThan(0);
+      for (const consumer of entry?.consumers ?? []) {
+        expect(consumer.loader).not.toContain('compiler owns');
+      }
+    }
+    const retired = inventory.entries.find(
+      (candidate) => candidate.filePath === 'nodes/entrevista/system.txt',
+    );
+    expect(retired?.consumers.some((consumer) => consumer.loader.includes('retired from production reply'))).toBe(true);
   });
 
   it('names no removed renderer and no deleted file as a live loader', async () => {

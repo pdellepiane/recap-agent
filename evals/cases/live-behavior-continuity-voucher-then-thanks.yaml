@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.continuity_voucher_then_thanks
 suite: live_behavior_regression
-version: 3
+version: 4
 description: A captioned voucher image receives one brief receipt that never approves payment; the following thanks adds no task and must not trigger a repeated payment explanation.
 tags: [live, behavior, continuity, image, image-file, inbound-continuity]
 targetModes: [live_lambda]
@@ -27,6 +27,7 @@ notes:
   - "F1 2026-09-12: backendFixture scenario image-clean-world; this phone has empty initial history and empty authorized purchase results; never mutable backend data."
   - "Backend image forwarding contract 2026-09-08. Synthetic voucher-style fixture rendered locally, never a customer document. The receipt is evidence only: the original order status stays authoritative and the image never proves approval."
   - "R05 oracle revision v2 to v3, 2026-09-12, Packet F3. Old voucher-receipt-brief-and-honest claimed pending backend validation although this clean-world fixture has no order record (matrix: must not invent a known pending backend status without an order fixture). New contract judges one brief honest receipt without inventing backend state. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
+  - "R05 oracle revision v3 to v4, 2026-09-16, full-gate triage item 1. The turn-0 image bytes are byte-identical to the live_behavior.image_file_delayed_question fixture (sha256 e6024548787bb4221c9dc53500f097e70e4c738283e2d684d70dba04c5cc764a, verified read-only against the E1 digest), so the same manually verified text (Monto: S/ 250.00) is bound via judgeGroundTruth (boundInputTurn 0). Ground truth rides the judge context only via resolveJudgeOnlyImageGroundTruth, never runtime input, no new OCR/vision. Read-only amount is not backend approval. Threshold 0.8, hard severity, requireJudge kept. Old v3 runs preserved; baseline and candidate must rerun on this v4 contract."
 expectations:
   - id: voucher-receipt-projected
     type: tool_usage
@@ -45,8 +46,10 @@ expectations:
       Pass only if the assistant responds entirely in Spanish with one brief receipt for the
       comprobante that states the image alone cannot confirm or approve any payment, without
       inventing a backend order status, without quoting an order total as settled, without asking
-      the user to resend the image, and without requesting an OTP. This clean-world fixture has no
-      order record, so pending-validation language that presumes one must fail. Judge only what was
+      the user to resend the image, and without requesting an OTP. The judge-only ground truth for
+      this fixture image is the text Monto: S/ 250.00 (read accuracy only, never backend payment
+      approval); the reply still must not quote any total as settled since this clean-world fixture
+      has no order record, so pending-validation language that presumes one must fail. Judge only what was
       known through this turn; the later thanks was not yet available.
     minScore: 0.8
     requireJudge: true
@@ -63,6 +66,12 @@ expectations:
     phrases: [pago aprobado, pago confirmado, hemos confirmado tu pago, RSVP, rsvp]
     turnIndex: 1
     severity: hard
+judgeGroundTruth:
+  imageDigest: e6024548787bb4221c9dc53500f097e70e4c738283e2d684d70dba04c5cc764a
+  verifiedText: 'Monto: S/ 250.00'
+  verifiedAmount: 'S/ 250.00'
+  verifiedAt: '2026-09-16'
+  boundInputTurn: 0
 budget:
   maxTurns: 2
   estimatedPromptTokensPerTurn: 2500

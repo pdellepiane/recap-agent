@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.current_campaign_order_over_historical_declined_maria_jose
 suite: live_behavior_regression
-version: 2
+version: 3
 description: Maria Jose current pending Isa and Lu order is selected over old declined AMORCITOS; the recorded total stays usable and approval is never claimed.
 tags: [live, behavior, purchase, selection, campaign, reported-interaction, maria-jose]
 targetModes: [live_lambda]
@@ -23,10 +23,14 @@ backendFixture:
 notes:
   - "El nombre registrado del evento es Isa and Lu; repetirlo tal cual no es mezcla de idiomas."
   - "R05 oracle revision v1 to v2, 2026-09-12, Packet F3. Old shortfall-remains-pending let the judge call the stated 63.85 solely user-reported and therefore invented, although the stored reply input carries it as the recorded order total too (matrix: amount is in both recorded total and user report). New contract names 63.85 a grounded registry fact while keeping the pending-state core: no approval claim, no computed balance, no invented currency. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
+  - "R05 oracle revision v2 to v3, 2026-09-16, Packet E1 node-pin removal. Old current-order-enters-information pinned the internal resolver_consultas_informativas node, prescribing implementation instead of evidencing behavior (matrix: a correct current-order answer suppressing AMORCITOS through any routing passed the read evidence but failed the node pin). New contract proves the same read-only invariant from receipts: fixture_effect_count rsvp.write 0/0/0 hard plus the retained phone-orders read evidence. The no-approval and no-computed-balance core is unchanged. Threshold and hard severity kept; no threshold reduction. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract. Expectation id current-order-enters-information is retained for ledger and run continuity; only its type changed from node_transition to fixture_effect_count."
 expectations:
   - id: current-order-enters-information
-    type: node_transition
-    to: resolver_consultas_informativas
+    type: fixture_effect_count
+    operation: rsvp.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
     turnIndex: 0
     severity: hard
   - id: current-order-uses-phone-partitions

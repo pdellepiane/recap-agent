@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.continuity_question_needs_image
 suite: live_behavior_regression
-version: 2
+version: 3
 description: A question that needs image evidence is preserved first with a useful clarification, then answered once the image arrives in a later invocation; no resend request, no payment approval.
 tags: [live, behavior, continuity, image, image-file, inbound-continuity]
 targetModes: [live_lambda]
@@ -26,6 +26,7 @@ inputs:
 notes:
   - "F1 2026-09-12: backendFixture scenario image-clean-world; this phone has empty initial history and empty authorized purchase results; never mutable backend data."
   - Backend image forwarding contract 2026-09-08. Synthetic voucher-style fixture rendered locally, never a customer document. The two inputs run as separate invocations against the same conversation; the second turn must answer the preserved question from the arriving pixels.
+  - "R05 oracle revision v2 to v3, 2026-09-16, full-gate triage item 1. The turn-1 image bytes are byte-identical to the live_behavior.image_file_delayed_question fixture (sha256 e6024548787bb4221c9dc53500f097e70e4c738283e2d684d70dba04c5cc764a, verified read-only against the E1 digest), so the same manually verified text (Monto: S/ 250.00) is bound via judgeGroundTruth (boundInputTurn 1). Ground truth rides the judge context only via resolveJudgeOnlyImageGroundTruth, never runtime input, no new OCR/vision. Read-only amount is not backend approval. Threshold 0.8, hard severity, requireJudge kept. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
 expectations:
   - id: needs-image-first-turn-no-tools
     type: tool_usage
@@ -61,13 +62,20 @@ expectations:
     rubric: >-
       Pass only if the assistant responds entirely in Spanish answering the pending amount question
       with the text visible in the image that arrived in this turn, including the amount when
-      readable. It must not ask the user to resend any image, must not claim it saved, stored or
+      readable. The judge-only ground truth for this fixture image is the text Monto: S/ 250.00
+      (verified amount S/ 250.00; read accuracy only, never backend payment approval). It must not ask the user to resend any image, must not claim it saved, stored or
       re-read the image, must not confirm or approve any payment, and must not ask for an OTP.
       Judge only what was known through this turn; no later message exists.
     minScore: 0.8
     requireJudge: true
     turnIndex: 1
     severity: hard
+judgeGroundTruth:
+  imageDigest: e6024548787bb4221c9dc53500f097e70e4c738283e2d684d70dba04c5cc764a
+  verifiedText: 'Monto: S/ 250.00'
+  verifiedAmount: 'S/ 250.00'
+  verifiedAt: '2026-09-16'
+  boundInputTurn: 1
 budget:
   maxTurns: 2
   estimatedPromptTokensPerTurn: 2500

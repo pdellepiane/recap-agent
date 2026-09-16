@@ -348,3 +348,199 @@ export const nodePromptManifest: Record<DecisionNode, NodePromptConfig> = {
     allowedTools: [],
   },
 };
+
+/**
+ * G1 composable instruction-module registry. Each module maps to exact
+ * tracked prompt files (or no files for evidence-only modules) plus the
+ * typed stages, owners and task kinds that may include it. Applicability
+ * logic lives in model-request-projector.ts; this registry stays data.
+ * prompt-loader.ts remains text-load/cache only.
+ */
+export const instructionModuleIds = [
+  'shared_invariants',
+  'extraction_cross_domain',
+  'extraction_information',
+  'extraction_rsvp',
+  'extraction_planning',
+  'extraction_contact',
+  'extraction_provider_management',
+  'extraction_close_pause',
+  'reply_planning_owner',
+  'reply_purchase_facts',
+  'reply_venue_facts',
+  'reply_rsvp_facts',
+  'reply_faq_policy',
+  'reply_handoff_outcome',
+  'reply_auth_limitation',
+  'reply_image_context',
+  'reply_approval_boundary',
+  'reply_support_continuity',
+] as const;
+
+export type InstructionModuleId = (typeof instructionModuleIds)[number];
+
+export type InstructionModuleStage = 'extraction' | 'reply';
+
+export type InstructionModuleOwner = 'planning' | 'faq' | 'customer_assistance' | 'unknown';
+
+export type InstructionModuleTask =
+  | 'purchase'
+  | 'venue'
+  | 'rsvp'
+  | 'faq_policy'
+  | 'handoff'
+  | 'auth'
+  | 'image'
+  | 'planning';
+
+export type InstructionModuleMetadata = {
+  /** Exact tracked prompt files; empty means evidence-only (facts, no prose). */
+  readonly files: readonly string[];
+  readonly stages: readonly InstructionModuleStage[];
+  readonly owners: readonly InstructionModuleOwner[];
+  readonly tasks: readonly InstructionModuleTask[];
+  /** Exact production consumer of this module. */
+  readonly consumer: string;
+};
+
+export const instructionModuleRegistry: Record<InstructionModuleId, InstructionModuleMetadata> = {
+  shared_invariants: {
+    files: [
+      'shared/base_system.txt',
+      'shared/agent_personality.txt',
+      'shared/output_style.txt',
+      'shared/common_anti_patterns.txt',
+    ],
+    stages: ['extraction', 'reply'],
+    owners: ['planning', 'faq', 'customer_assistance', 'unknown'],
+    tasks: ['purchase', 'venue', 'rsvp', 'faq_policy', 'handoff', 'auth', 'image', 'planning'],
+    consumer: 'openai-agent-runtime extract/composeReply (every model call)',
+  },
+  extraction_cross_domain: {
+    files: ['extractors/base_system.txt', 'extractors/capability_boundary.txt'],
+    stages: ['extraction'],
+    owners: ['planning', 'faq', 'customer_assistance', 'unknown'],
+    tasks: ['purchase', 'venue', 'rsvp', 'faq_policy', 'handoff', 'auth', 'image', 'planning'],
+    consumer: 'openai-agent-runtime extract (all lanes)',
+  },
+  extraction_information: {
+    files: ['extractors/information.txt', 'nodes/resolver_consultas_informativas/auth_control.txt'],
+    stages: ['extraction'],
+    owners: ['faq', 'customer_assistance', 'unknown'],
+    tasks: ['purchase', 'venue', 'faq_policy', 'auth', 'image'],
+    consumer: 'openai-agent-runtime extract (unknown + information lanes; auth_control carries extraction-decision guidance only)',
+  },
+  extraction_rsvp: {
+    files: ['extractors/rsvp.txt'],
+    stages: ['extraction'],
+    owners: ['customer_assistance', 'unknown'],
+    tasks: ['rsvp', 'venue'],
+    consumer: 'openai-agent-runtime extract (unknown + RSVP lanes)',
+  },
+  extraction_planning: {
+    files: ['extractors/planning.txt'],
+    stages: ['extraction'],
+    owners: ['planning', 'unknown'],
+    tasks: ['planning'],
+    consumer: 'openai-agent-runtime extract (unknown owner + planning lanes only; compact recognition)',
+  },
+  extraction_contact: {
+    files: ['extractors/contact.txt'],
+    stages: ['extraction'],
+    owners: ['planning', 'faq', 'customer_assistance', 'unknown'],
+    tasks: ['purchase', 'venue', 'faq_policy', 'planning'],
+    consumer: 'openai-agent-runtime extract (established support lanes + transient turns with planning detail only)',
+  },
+  extraction_provider_management: {
+    files: ['extractors/provider_management.txt'],
+    stages: ['extraction'],
+    owners: ['planning', 'unknown'],
+    tasks: ['planning'],
+    consumer: 'openai-agent-runtime extract (transient turns with active plan or shortlist only)',
+  },
+  extraction_close_pause: {
+    files: ['extractors/close_pause.txt'],
+    stages: ['extraction'],
+    owners: ['planning', 'unknown'],
+    tasks: ['planning'],
+    consumer: 'openai-agent-runtime extract (transient turns with active plan or shortlist only)',
+  },
+  reply_planning_owner: {
+    files: [
+      'shared/domain_scope.txt',
+      'shared/domain_knowledge.txt',
+      'shared/flow_discipline.txt',
+      'shared/question_strategy.txt',
+    ],
+    stages: ['reply'],
+    owners: ['planning'],
+    tasks: ['planning'],
+    consumer: 'openai-agent-runtime composeReply (planning nodes only)',
+  },
+  reply_purchase_facts: {
+    files: [],
+    stages: ['reply'],
+    owners: ['customer_assistance', 'unknown'],
+    tasks: ['purchase'],
+    consumer: 'openai-agent-runtime composeReply (purchase evidence, no prose)',
+  },
+  reply_venue_facts: {
+    files: [],
+    stages: ['reply'],
+    owners: ['customer_assistance', 'unknown'],
+    tasks: ['venue'],
+    consumer: 'openai-agent-runtime composeReply (venue evidence, no prose)',
+  },
+  reply_rsvp_facts: {
+    files: [],
+    stages: ['reply'],
+    owners: ['customer_assistance', 'unknown'],
+    tasks: ['rsvp'],
+    consumer: 'openai-agent-runtime composeReply (RSVP evidence, no prose)',
+  },
+  reply_faq_policy: {
+    files: [],
+    stages: ['reply'],
+    owners: ['faq', 'customer_assistance', 'unknown'],
+    tasks: ['faq_policy'],
+    consumer: 'knowledge retrieval projection (source-backed policy facts only)',
+  },
+  reply_handoff_outcome: {
+    files: [
+      'nodes/solicitar_agente_humano/system.txt',
+      'nodes/solicitar_agente_humano/response_contract.txt',
+    ],
+    stages: ['reply'],
+    owners: ['faq', 'customer_assistance', 'unknown', 'planning'],
+    tasks: ['handoff'],
+    consumer: 'agent-service handoff paths (actual outcome only)',
+  },
+  reply_auth_limitation: {
+    files: ['nodes/resolver_consultas_informativas/auth_limitation.txt'],
+    stages: ['reply'],
+    owners: ['faq', 'customer_assistance', 'unknown', 'planning'],
+    tasks: ['auth'],
+    consumer: 'agent-service auth terminal paths (validated terminal/declined/scoped-miss outcome only; never venue/purchase reads)',
+  },
+  reply_image_context: {
+    files: ['nodes/resolver_consultas_informativas/image_limits.txt'],
+    stages: ['reply'],
+    owners: ['faq', 'customer_assistance', 'unknown', 'planning'],
+    tasks: ['image'],
+    consumer: 'openai-agent-runtime composeReply (native image evidence plus resend/URL/description limits, no inspection prose)',
+  },
+  reply_approval_boundary: {
+    files: ['nodes/resolver_consultas_informativas/approval_limits.txt'],
+    stages: ['reply'],
+    owners: ['customer_assistance', 'unknown'],
+    tasks: ['purchase'],
+    consumer: 'openai-agent-runtime composeReply (purchase validation/payment-status boundary only; receipt never proves approval)',
+  },
+  reply_support_continuity: {
+    files: ['nodes/resolver_consultas_informativas/support_continuity.txt'],
+    stages: ['reply'],
+    owners: ['customer_assistance', 'unknown'],
+    tasks: ['purchase', 'venue', 'rsvp', 'faq_policy', 'handoff', 'auth', 'image'],
+    consumer: 'agent-service support continuity (pending task + prior answer only; never auth outcomes)',
+  },
+};

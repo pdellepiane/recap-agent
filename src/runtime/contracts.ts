@@ -16,7 +16,6 @@ import type {
 } from '../core/information';
 
 import type { StructuredMessage } from './structured-message';
-import type { PromptBundle } from './prompt-loader';
 import type { ProviderFitCriteria } from './provider-fit';
 import type { TurnMessageContext } from './turn-message-context';
 import type {
@@ -256,6 +255,13 @@ export type ComposeReplyRequest = {
   providerResults: ProviderSummary[];
   turnDecision?: TurnDecision;
   errorMessage: string | null;
+  /**
+   * G1/G3: reply instructions are owned by the model-request compiler
+   * (model-request-projector.ts) loading tracked files via PromptLoader.
+   * promptBundleId/promptFilePaths below stay a pending-identity marker;
+   * they never select instructions. Telemetry names the compiler-reported
+   * identity from ComposeReplyResult.compilerPrompt / origin.bundleId.
+   */
   promptBundleId: string;
   promptFilePaths: string[];
   toolUsage: ToolUsage;
@@ -334,11 +340,6 @@ export type ComposeReplyRequest = {
    * image content, never as model-visible text.
    */
   imageFileAttachments?: readonly ImageFileAttachment[];
-  /**
-   * L1 composition seam: a pre-loaded minimal bundle replaces the node bundle
-   * for migrated paths. Absent means the legacy node bundle (to be retired).
-   */
-  replyBundle?: PromptBundle;
   /** Persist a confirmed completion before subsequent model generation can fail. */
   onPlanCompleted?: (plan: PlanSnapshot) => Promise<void>;
 };
@@ -396,6 +397,16 @@ export type ComposeReplyResult = {
   };
   openAiCall?: OpenAiCallRef | null;
   origin?: ModelOriginReceipt | null;
+  /**
+   * G1/G3 runtime-reported compiler identity for the request actually
+   * sent: compiler bundle id plus the tracked module files loaded.
+   * Telemetry names this identity; stub runtimes omit it and callers fall
+   * back to the origin bundle id. Exactly one prompt identity per request.
+   */
+  compilerPrompt?: {
+    readonly bundleId: string;
+    readonly filePaths: readonly string[];
+  };
 };
 
 export type ToolUsage = {

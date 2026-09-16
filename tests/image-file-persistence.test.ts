@@ -356,6 +356,13 @@ describe('file-ID reply content', () => {
           instructions: 'Responde en español con un mensaje genérico.',
           allowedTools: [],
         }),
+        loadModuleFilesBundle: async () => ({
+          id: 'test-bundle',
+          filePaths: [],
+          instructions: 'Responde en español con un mensaje genérico.',
+          allowedTools: [],
+          fileBytes: [],
+        }),
       } as never,
       providerGateway: {} as never,
       openAIClient: client,

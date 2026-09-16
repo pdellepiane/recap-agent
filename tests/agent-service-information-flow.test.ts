@@ -36,6 +36,26 @@ import type {
   UserEventLookupResult,
 } from '../src/runtime/provider-gateway';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
+import {
+  deriveReplyCompilerContext,
+  moduleFilesFor,
+  selectReplyModules,
+} from '../src/runtime/model-request-projector';
+
+/**
+ * Stub compiler identity: reports the exact registry modules the production
+ * compiler selects for the received request. The bundle id is stub-labeled;
+ * the module files are real.
+ */
+function stubCompilerPrompt(
+  request: ComposeReplyRequest,
+): NonNullable<ComposeReplyResult['compilerPrompt']> {
+  const modules = selectReplyModules(deriveReplyCompilerContext(request));
+  return {
+    bundleId: `stub-compiler:${modules.map((module) => module.id).join('+')}`,
+    filePaths: moduleFilesFor(modules),
+  };
+}
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -68,8 +88,12 @@ describe('AgentService first-class information flow', () => {
       // one reply-model call per turn through the minimal support bundle.
       expect(runtime.composeRequests).toHaveLength(index + 1);
       expect(response.trace.prompt_bundle_id).not.toBe('deterministic:support_continuity_acknowledgment');
+      expect(response.trace.prompt_bundle_id).toMatch(/^stub-compiler:shared_invariants\+reply_faq_policy\+reply_support_continuity$/u);
       expect(response.trace.prompt_file_paths).toContain(
         'nodes/resolver_consultas_informativas/support_continuity.txt',
+      );
+      expect(response.trace.prompt_file_paths).not.toContain(
+        'nodes/resolver_consultas_informativas/system.txt',
       );
       expect(response.outbound.text).toBe('Respuesta informativa.');
       expect(response.outbound.delivery.action).toBe('send');
@@ -3211,7 +3235,7 @@ class InformationRuntime implements AgentRuntime {
     request: ComposeReplyRequest,
   ): Promise<ComposeReplyResult> {
     this.composeRequests.push(request);
-    return { text: 'Respuesta informativa.' };
+    return { text: 'Respuesta informativa.', compilerPrompt: stubCompilerPrompt(request) };
   }
 }
 

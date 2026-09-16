@@ -122,40 +122,36 @@ export function buildAtcTemplateIngestion(source: LocalAtcTemplateSource): AtcTe
 }
 
 export function formatAtcTemplateAsSupplementalMarkdown(template: NormalizedAtcTemplate): string {
-  const frontmatter = [
-    '---',
-    `title: "${escapeYamlString(template.title)}"`,
-    `slug: ${template.slug}`,
-    'source: "atc_notion_template"',
-    'article_type: customer_service_template',
-    `template_status: "${escapeYamlString(template.estado)}"`,
-    `channel: "${escapeYamlString(template.canal)}"`,
-    `template_type: "${escapeYamlString(template.tipo)}"`,
-    `semantic_trigger_hints: [${template.triggers.map((trigger) => `"${escapeYamlString(trigger)}"`).join(', ')}]`,
-    '---',
-  ];
-
-  const triggerSection = template.triggers.length > 0
-    ? template.triggers.map((trigger) => `- ${trigger}`).join('\n')
-    : '- No trigger hints were present in the source export. Treat this as quality debt, not as an exclusion rule.';
-
+  // S3 factual-only projection: the model-visible file carries source-backed
+  // policy facts plus provenance (source/conditions/applicability) and
+  // nothing else. Frontmatter, trigger hints, response-sample framing and
+  // bracketed alternatives stay in the source export (retrieval scoring) and
+  // never reach the prompt. General timing never proves an individual email
+  // arrival and a receipt amount never proves approval: the conditions state
+  // both so the facts cannot be over-read.
   return [
-    ...frontmatter,
-    '',
     `# ${template.title}`,
     '',
-    'Supplemental FAQ knowledge-base entry generated from an ATC/Notion customer-service response sample.',
-    'Use the sample semantically when it fits the user question; do not use trigger hints as routing keys.',
+    'Entrada de conocimiento de preguntas frecuentes con hechos de política verificados.',
+    `Origen: plantilla de atención al cliente de ATC/Notion. Canal: ${template.canal}. Estado: ${template.estado}. Tipo: ${template.tipo}. Actualización: ${template.actualizacion}.`,
+    'Alcance: respuestas de chat, WhatsApp y redes sociales cuando la pregunta coincida con esta política.',
+    'Condiciones: los plazos y valores son generales de la política; nunca prueban el estado individual de un correo, retiro o pago, ni la aprobación de un comprobante.',
     '',
-    '## Semantic trigger hints',
+    '## Hechos de la política',
     '',
-    triggerSection,
-    '',
-    '## Customer-service response sample',
-    '',
-    template.chatResponse.trim(),
+    stripBracketedAlternatives(template.chatResponse).trim(),
     '',
   ].join('\n');
+}
+
+function stripBracketedAlternatives(value: string): string {
+  return value
+    .replace(/\[[^\n[\]]*\]/gu, '')
+    .replace(/[ \t]{2,}/gu, ' ')
+    .replace(/\n{3,}/gu, '\n\n')
+    .split('\n')
+    .map((line) => line.trimEnd())
+    .join('\n');
 }
 
 export function writeAtcSupplementalKnowledgeBase(
@@ -348,8 +344,4 @@ function slugify(value: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
   return slug.length > 0 ? slug : 'template';
-}
-
-function escapeYamlString(value: string): string {
-  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }

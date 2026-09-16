@@ -394,7 +394,21 @@ describe('matched request measurement after SDK serialization', () => {
     expect(turn.modelCalls).toBe(bodies.length);
     // Current-candidate pins (offline stub model, installed SDK envelope).
     // Static sample bytes are never runtime cost; see the module header.
-    expect(turn.instructionBytes).toBeGreaterThan(16_000);
+    // 2026-09-16 G1 retention: measured 8862 after retaining the
+    // auth-terminal fragment (resolver response_contract L49-51) in the
+    // reply-side continuity file and splitting auth_control.txt to the
+    // extraction stage. Previous >16000 pin measured the pre-migration
+    // node bundle; the 8306 interim value carried the same drop with no
+    // retained fragment (+1013 auth-terminal, -486 extractor auth_control,
+    // +29 scoped handoff wording).
+    // 2026-09-16 auth split plus approval boundary: measured 9544 (+682).
+    // The auth-terminal prose moved to auth_limitation.txt behind
+    // reply_auth_limitation (one extra ## file header on auth turns) and
+    // the receipt guard loads via reply_approval_boundary because this
+    // turn requests payment_status aspects. Venue and non-approval turns
+    // shrink by the removed auth prose; only applicable turns pay.
+    expect(turn.instructionBytes).toBeGreaterThan(8_000);
+    expect(turn.instructionBytes).toBeLessThan(9_600);
     expect(turn.inputBytes).toBeGreaterThan(2_000);
     expect(turn.inputBytes).toBeLessThan(6_000);
     expect(turn.toolBytes).toBeLessThanOrEqual(4);

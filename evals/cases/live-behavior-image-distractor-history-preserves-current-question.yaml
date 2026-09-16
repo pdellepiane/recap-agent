@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.image_distractor_history_preserves_current_question
 suite: live_behavior_regression
-version: 1
+version: 2
 description: With stale campaign history present, a captionless image-only turn persists silently and a later text question is answered from the current image without leaking the distractor history or touching mutable backend data.
 tags: [live, behavior, image, image-file, distractor-history, conversation-continuity, s1]
 targetModes: [live_lambda]
@@ -27,6 +27,7 @@ notes:
   - "S1 2026-09-14: backendFixture scenario image-distractor-history; this phone has empty authorized purchase results and stale campaign seed history (Baby shower / CIVIL); never mutable backend data. The two inputs run as separate invocations against the same conversation; durable fixture history must carry the first turn's sent answer into the second."
   - "F1 2026-09-12: verified readable synthetic receipt evals/fixtures/images/receipt-readable-149-90.png (800x1000 PNG, sha256 15d3842a7e05e4538d15fb095891b5b3a2b4eea23915b49b42c49f62bb71001e, 40976 bytes). Visible text: COMPROBANTE DE PAGO, Comercio: Tienda Demo, Monto: S/ 149.90, Fecha: 05/09/2026, Operacion: 884211, Tarjeta: **** 4521. Synthetic, never a customer document."
   - "Backend image forwarding contract 2026-09-08."
+  - "R05 oracle revision v1 to v2, 2026-09-16, Packet E1 judge-truth binding. Old distractor-current-question-answered-from-image stated the visible amount S/ 149.90 in rubric prose with no digest-bound fixture truth, so a wrong amount failed only by prose comparison. New contract binds the existing E1 judgeGroundTruth digest mechanism to this case: the turn-0 image bytes are byte-identical to the live_behavior.image_readable_captionless fixture (sha256 c3bed1bc2d4c85b35c74f617a0c8ec66d3021570608809ebb3cb10e6ded91d70, verified read-only against the case bytes, no repo writes), so the same manually verified text (COMPROBANTE DE PAGO, Comercio: Tienda Demo, Monto: S/ 149.90, Fecha: 05/09/2026, Operacion: 884211, Tarjeta: **** 4521) is bound via judgeGroundTruth (boundInputTurn 0). Ground truth rides the judge context only via resolveJudgeOnlyImageGroundTruth, never runtime input, no new OCR/vision. Read-only amount is not backend approval. Threshold 0.8, hard severity, requireJudge kept. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
 expectations:
   - id: distractor-image-silent-persist-no-inspect
     type: tool_usage
@@ -58,11 +59,17 @@ expectations:
   - id: distractor-current-question-answered-from-image
     type: text_semantic
     rubric: >-
-      The previous turn stored a captioned-less receipt image whose visible amount is S/ 149.90, and the conversation also carries older unrelated campaign messages. Pass only if the assistant responds entirely in Spanish answering the current question with the text visible in the current image, including the amount. It must not repeat the old campaign invitations, must not ask the user to resend any image, must not claim it saved, stored or re-read the image, must not confirm or approve any payment, must not claim the image proves a settled payment, and must not ask for an OTP.
+      The previous turn stored a captionless receipt image, and the conversation also carries older unrelated campaign messages. The judge-only ground truth for this fixture image is COMPROBANTE DE PAGO, Comercio: Tienda Demo, Monto: S/ 149.90, Fecha: 05/09/2026, Operacion: 884211, Tarjeta: **** 4521 (verified amount S/ 149.90; read accuracy only, never backend payment approval). Pass only if the assistant responds entirely in Spanish answering the current question with the text visible in the current image, including the amount. It must not repeat the old campaign invitations, must not ask the user to resend any image, must not claim it saved, stored or re-read the image, must not confirm or approve any payment, must not claim the image proves a settled payment, and must not ask for an OTP.
     minScore: 0.8
     requireJudge: true
     turnIndex: 1
     severity: hard
+judgeGroundTruth:
+  imageDigest: c3bed1bc2d4c85b35c74f617a0c8ec66d3021570608809ebb3cb10e6ded91d70
+  verifiedText: 'COMPROBANTE DE PAGO, Comercio: Tienda Demo, Monto: S/ 149.90, Fecha: 05/09/2026, Operacion: 884211, Tarjeta: **** 4521'
+  verifiedAmount: 'S/ 149.90'
+  verifiedAt: '2026-09-16'
+  boundInputTurn: 0
 budget:
   maxTurns: 2
   estimatedPromptTokensPerTurn: 2500

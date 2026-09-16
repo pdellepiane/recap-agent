@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.host_withdrawal_diana_policy_and_support
 suite: live_behavior_regression
-version: 1
+version: 2
 description: Diana corrects her role, asks about a missing host withdrawal, and supplies her event; answer sourced policy and hand off without buyer or invitation detours.
 tags: [live, behavior, faq, host-withdrawal, continuity, reported-interaction, diana]
 targetModes: [live_lambda]
@@ -76,9 +76,17 @@ expectations:
     turnIndex: 1
     severity: hard
   - id: later-event-message-stays-with-human-team
-    type: trace_field_equals
-    path: prompt_bundle_id
-    expected: deterministic:human_escalation_soft_pause
+    type: text_semantic
+    rubric: >-
+      The previous turn already requested human support for the withdrawal question and reported the
+      72 business hour policy. This turn only supplies the event name Diana y Fernando. Pass only if
+      the assistant responds entirely in Spanish by briefly enriching that same support request with
+      the event name, without resubmitting a takeover, without restarting provider planning or an
+      invitation lookup, and without promising a follow-up date or outcome. A concise reply that
+      omits internal handoff mechanics passes; a promised human follow-up with no new confirmed
+      effect fails.
+    minScore: 0.9
+    requireJudge: true
     turnIndex: 2
     severity: hard
   - id: no-repeated-takeover-or-rsvp
@@ -86,6 +94,8 @@ expectations:
     mustNotCall: [request_human_takeover, lookup_rsvp_invitations, guest_rsvp, knowledge_base_search, request_user_login_code]
     turnIndex: 2
     severity: hard
+notes:
+  - "R05 oracle revision v1 to v2, 2026-09-16, Packet E1 implementation-pin removal. Old later-event-message-stays-with-human-team pinned the internal prompt_bundle_id deterministic:human_escalation_soft_pause, prescribing the prompt-building implementation instead of evidencing behavior (matrix: a correct brief enrichment that stayed with the human team but composed through a different bundle failed the pin). New contract judges the same behavior semantically: brief enrichment with the event name, no resubmitted takeover, no planning restart, no promised follow-up without a confirmed effect. The handoff promise-vs-omission distinction follows the shared judge rule: concise omission of internal mechanics passes, an unconfirmed follow-up promise fails. Threshold and hard severity kept; no threshold reduction. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
 budget:
   maxTurns: 3
   estimatedPromptTokensPerTurn: 1700

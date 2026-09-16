@@ -63,6 +63,10 @@ function boundaryRuntime(client: OpenAI): OpenAiAgentRuntime {
       loadNodeBundle: async () => ({
         id: 'test-bundle', filePaths: [], instructions: 'Responde en español.', allowedTools: [],
       }),
+      loadModuleFilesBundle: async () => ({
+        id: 'test-bundle', filePaths: [], instructions: 'Responde en español.', allowedTools: [],
+        fileBytes: [],
+      }),
     } as never,
     providerGateway: {} as never,
     openAIClient: client,

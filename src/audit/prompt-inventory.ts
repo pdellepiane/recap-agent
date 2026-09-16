@@ -5,6 +5,7 @@ import { decisionNodes, type DecisionNode } from '../core/decision-nodes';
 import {
   conversationPromptFilesForNode,
   extractorPromptFilesForCapabilities,
+  instructionModuleRegistry,
   nodePromptManifest,
 } from '../runtime/prompt-manifest';
 import { extractorAuditProfiles } from './prompt-audit';
@@ -76,13 +77,31 @@ function deriveConsumers(filePath: string): PromptInventoryConsumer[] {
     consumers.push({ callType: 'reply',
       nodes: ['resolver_consultas_informativas'], profiles: ['support'],
       transitions: ['information:support_acknowledgment'],
-      loader: 'PromptLoader.loadSupportContinuityBundle -> AgentService.handleSupportAcknowledgment via composeModelReply' });
+      loader: 'PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry reply_support_continuity via composeModelReply (pending task + prior answer only; auth outcomes travel in auth_limitation.txt)' });
+  }
+  if (filePath === 'nodes/resolver_consultas_informativas/auth_limitation.txt') {
+    consumers.push({ callType: 'reply',
+      nodes: ['resolver_consultas_informativas'], profiles: ['auth'],
+      transitions: ['information:auth_terminal_limitation'],
+      loader: 'PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry reply_auth_limitation via composeModelReply (validated terminal/declined/scoped-miss outcomes only)' });
+  }
+  if (filePath === 'nodes/resolver_consultas_informativas/image_limits.txt') {
+    consumers.push({ callType: 'reply',
+      nodes: ['resolver_consultas_informativas'], profiles: ['image'],
+      transitions: ['media:image_limits'],
+      loader: 'PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry reply_image_context via composeModelReply (image/media turns only; never venue/purchase reads without image evidence)' });
+  }
+  if (filePath === 'nodes/resolver_consultas_informativas/approval_limits.txt') {
+    consumers.push({ callType: 'reply',
+      nodes: ['resolver_consultas_informativas'], profiles: ['approval_boundary'],
+      transitions: ['information:approval_boundary'],
+      loader: 'PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry reply_approval_boundary via composeModelReply (purchase validation/payment-status aspects only; receipt never proves approval)' });
   }
   if (filePath === 'nodes/resolver_consultas_informativas/auth_control.txt') {
     consumers.push({
       callType: 'extraction', nodes: ['resolver_consultas_informativas'],
       profiles: [], transitions: ['extraction:auth_control'],
-      loader: 'PromptLoader.loadAuthControlBundle -> OpenAiAgentRuntime.extract (protected-context evidence scope merged into extractor model input)',
+      loader: 'PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry extraction_information via OpenAiAgentRuntime.extract (extraction-decision guidance only; reply uses the scoped continuity wording)',
     });
   }
   if (filePath.startsWith('shared/')) {
@@ -159,6 +178,21 @@ function deriveConsumers(filePath: string): PromptInventoryConsumer[] {
   }
 
   if (filePath.startsWith('nodes/')) {
+    const registryModules = Object.entries(instructionModuleRegistry).filter(([, meta]) =>
+      (meta.files as readonly string[]).includes(filePath),
+    );
+    if (registryModules.length > 0) {
+      for (const [moduleId, meta] of registryModules) {
+        consumers.push({
+          callType: meta.stages.includes('extraction') && !meta.stages.includes('reply') ? 'extraction' : 'reply',
+          nodes: [],
+          profiles: [],
+          transitions: [`compiler:${moduleId} (${meta.consumer})`],
+          loader: `PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:${moduleId}`,
+        });
+      }
+      return consumers;
+    }
     const parts = filePath.split('/');
     const nodeName = parts[1] as DecisionNode | undefined;
     if (nodeName && isDecisionNode(nodeName)) {
@@ -178,7 +212,7 @@ function deriveConsumers(filePath: string): PromptInventoryConsumer[] {
           nodes: [nodeName],
           profiles: [],
           transitions,
-          loader: `PromptLoader.loadNodeBundle("${nodeName}") -> nodePromptManifest["${nodeName}"].files`,
+          loader: 'retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)',
         });
       } else if (filePath.endsWith('response_classifier.txt') || filePath.endsWith('response_classifier_campaign.txt')) {
         // already handled above, skip

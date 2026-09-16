@@ -163,6 +163,51 @@ export class PromptLoader {
     return this.load(responseClassifierPromptFiles[profile], []);
   }
 
+  /**
+   * G1/G3 compiler bundle: loads exactly the tracked files selected by
+   * model-request-projector for the request actually sent, plus per-file
+   * byte sizes for the local relevance manifest. Load/cache only: module
+   * selection lives in the projector, never here.
+   */
+  async loadModuleFilesBundle(
+    relativePaths: readonly string[],
+    allowedTools: readonly ToolName[],
+  ): Promise<PromptBundle & { fileBytes: readonly number[] }> {
+    const contents = await Promise.all(
+      relativePaths.map(async (relativePath) => {
+        const absolutePath = path.join(this.promptsDir, relativePath);
+        const rawContent = await this.readRawPromptFile(absolutePath);
+        return {
+          relativePath,
+          content: rawContent,
+        };
+      }),
+    );
+
+    const instructions = contents
+      .map(({ relativePath, content }) => `## ${this.displayPath(relativePath)}\n${content.trim()}`)
+      .join('\n\n');
+
+    const id = crypto
+      .createHash('sha256')
+      .update(
+        contents
+          .map(({ relativePath, content }) => `${relativePath}:${content}`)
+          .join('\n---\n'),
+      )
+      .digest('hex')
+      .slice(0, 12);
+
+    return {
+      id,
+      filePaths: contents.map(({ relativePath }) => relativePath),
+      ruleIds: contents.map(({ relativePath }) => promptRuleIdForFile(relativePath)),
+      instructions,
+      allowedTools,
+      fileBytes: contents.map(({ content }) => Buffer.byteLength(content, 'utf8')),
+    };
+  }
+
   private async load(
     relativePaths: readonly string[],
     allowedTools: readonly ToolName[],

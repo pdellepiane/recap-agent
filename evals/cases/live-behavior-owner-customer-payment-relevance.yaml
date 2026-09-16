@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.owner_customer_payment_relevance
 suite: live_behavior_regression
-version: 2
+version: 3
 description: A pending Alejandra order question persists the Customer operations owner and answers from payment evidence while the separate abandoned cart stays out of the payment reply; the unknown balance is never computed and thanks closes without restarting.
 tags: [live, behavior, ownership, customer-context, purchase, cart-relevance]
 targetModes: [live_lambda]
@@ -23,10 +23,14 @@ backendFixture:
 notes:
   - Same Alejandra pending-order thread as pending_balance_validation_luis with a separate abandoned cart present in phone coverage. The payment projection must exclude cart facts while retaining them for a later cart question.
   - "R05 oracle revision v1 to v2, 2026-09-12, Packet F3. Old payment-reply-answers-from-payment-evidence asked what is still missing without marking the balance unknown, and pending-state language could demand backend recitals (matrix: first answer understandable; pending language need not recite backend or disclaim a nonexistent image). New contract states the unknown balance and forbids backend recital, cart mention, and currency invention while keeping the no-approval core. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
+  - "R05 oracle revision v2 to v3, 2026-09-16, Packet E1 node-pin removal. Old payment-turn-enters-information pinned the internal resolver_consultas_informativas node, prescribing implementation instead of evidencing behavior (matrix: a correct payment answer from payment evidence through any routing passed the read evidence but failed the node pin). New contract proves the same no-handoff invariant from receipts: fixture_effect_count handoff.write 0/0/0 hard plus the retained phone-orders read evidence. The invented-balance ban is unchanged: any computed remaining balance still fails the semantic judge. Threshold and hard severity kept; no threshold reduction. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract. Expectation id payment-turn-enters-information is retained for ledger and run continuity; only its type changed from node_transition to fixture_effect_count."
 expectations:
   - id: payment-turn-enters-information
-    type: node_transition
-    to: resolver_consultas_informativas
+    type: fixture_effect_count
+    operation: handoff.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
     turnIndex: 0
     severity: hard
   - id: payment-turn-uses-phone-orders

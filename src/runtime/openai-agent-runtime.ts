@@ -86,9 +86,31 @@ import {
   projectExtraction,
   type ExtractionProjection,
 } from './extraction-projection';
+import {
+  buildCompilerRequestManifest,
+  deriveReplyCompilerContext,
+  moduleFilesFor,
+  orderInputSections,
+  replyOmitsCapabilityCatalogue,
+  replyOmitsOperationalNote,
+  selectExtractionModules,
+  selectExtractionTools,
+  selectReplyModules,
+  selectReplyTools,
+  type CompilerRequestManifest,
+  type InputSection,
+  type ManifestFactGroup,
+  type ManifestToolEntry,
+  type ModuleSelectionContext,
+  type SelectedModule,
+} from './model-request-projector';
+import {
+  instructionModuleRegistry,
+} from './prompt-manifest';
 import { providerFitCriteriaSchema } from './provider-fit';
 import {
   deriveDynamicAgentPolicy,
+  derivePlanCapabilities,
   resolveDynamicTools,
   type DynamicAgentPolicy,
 } from './dynamic-agent-policy';
@@ -881,6 +903,58 @@ export function describeRsvpEventTime(
 }
 
 /**
+ * G1/G3 actual-request specs. The single typed construction boundary for the
+ * request actually sent: compiler-selected instruction modules loaded via
+ * PromptLoader, ordered input sections, executable tools and the local
+ * relevance manifest. buildExtractionRequestSpec/buildReplyRequestSpec are
+ * the production path used by extract()/composeReply() (no dual builder,
+ * no extra model call); tests exercise these directly without live calls.
+ */
+export type ExtractionRequestSpec = {
+  readonly bundleId: string;
+  readonly filePaths: readonly string[];
+  readonly instructions: string;
+  readonly modules: readonly SelectedModule[];
+  readonly input: string;
+  readonly manifest: CompilerRequestManifest;
+};
+
+export type ReplyRequestSpec = {
+  readonly bundleId: string;
+  readonly filePaths: readonly string[];
+  readonly instructions: string;
+  readonly modules: readonly SelectedModule[];
+  readonly input: string;
+  readonly scopedTools: readonly ToolName[];
+  readonly manifest: CompilerRequestManifest;
+};
+
+/**
+ * Typed provenance for extraction input sections. Keys map to the evidence
+ * that produced them; never customer payloads, only field paths.
+ */
+function extractionSectionSource(key: string): string {
+  const sources: Record<string, string> = {
+    history_status: 'messageContext.historyStatus',
+    extractor_history: 'messageContext.recentMessages',
+    prior_answer_gist: 'messageContext.recentMessages',
+    pending_question_ref: 'plan.owner_pending_question',
+    user_message: 'inbound.text',
+    media_metadata: 'inbound.media',
+    plan_snapshot: 'plan lane facts',
+    allowed_actions: 'extractionProjection.allowedActionIntents',
+    category_context: 'plan.event_type (transient owners only)',
+    continuity_evidence: 'messageContext.continuity',
+    image_presence: 'plan.image_attachments',
+    otp_evidence: 'plan.user_auth + plan.information_state.pending_requests',
+    operation_boundary_rule: 'compiler invariant',
+    ambiguity_history_rule: 'compiler invariant',
+    delta_rule: 'compiler invariant',
+  };
+  return sources[key] ?? 'compiler invariant';
+}
+
+/**
  * Step-D lane guard: the two established non-planning reply lanes whose node
  * contracts forbid provider recommendations and plan edits. Their reply
  * evidence carries no plan-derived provider focus.
@@ -988,23 +1062,14 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     const capabilities = projection.profile;
     const allowedActionIntents = projection.allowedActionIntents;
     const runExtraction = async (): Promise<ExtractResult> => {
-      const baseBundle = await this.options.promptLoader.loadExtractorBundle(
-        capabilities,
-        // Minimum disclosure: image-linkage guidance only while stored refs
-        // exist; imageless turns stay byte-identical.
-        { includeImageReference: (request.plan.image_attachments?.length ?? 0) > 0 },
-      );
-      const hasProtectedContext = request.plan.user_auth.auth_method === 'phone' ||
-        request.plan.information_state.pending_requests.some((pending) =>
-          pending.kind === 'purchase' || pending.kind === 'associated_event');
-      const authBundle = hasProtectedContext
-        ? await this.options.promptLoader.loadAuthControlBundle() : null;
-      const bundle = authBundle ? {
-        ...baseBundle,
-        id: `${baseBundle.id}:${authBundle.id}`,
-        instructions: `${baseBundle.instructions}\n\n${authBundle.instructions}`,
-        filePaths: [...baseBundle.filePaths, ...authBundle.filePaths],
-      } : baseBundle;
+      // G1/G2 single construction boundary: the compiler-selected modules
+      // loaded via PromptLoader are the instructions actually sent.
+      // Image-linkage guidance stays conditional so imageless turns stay
+      // byte-identical. Auth extraction-decision guidance travels through
+      // the extraction_information module (auth_control.txt); the reply
+      // stage carries only its own scoped limitation wording.
+      const spec = await this.buildExtractionRequestSpec(request, policy, projection);
+      const bundle = { id: spec.bundleId, instructions: spec.instructions };
       const outputSchema = createDynamicExtractionSchema({
         allowedActionIntents,
         capabilities,
@@ -1024,7 +1089,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
         }),
       });
 
-      const input = this.composeExtractorInput(request, policy, projection);
+      const input = spec.input;
       const requestMetrics = this.buildRequestMetrics({
         instructions: bundle.instructions,
         input,
@@ -1227,28 +1292,12 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
   async composeReply(
     request: ComposeReplyRequest,
   ): Promise<ComposeReplyResult> {
-    const bundle = request.replyBundle ?? await this.options.promptLoader.loadNodeBundle(
-      request.currentNode,
-      {
-        informationAuthReasons: (request.informationResults ?? [])
-          .filter((result) => result.status === 'needs_input')
-          .map((result) => result.guidance.reason),
-      },
-    );
-    const allowedTools = resolveDynamicTools({
-      plan: request.plan,
-      maximumTools: bundle.allowedTools,
-      searchReady: request.searchReady,
-      providerResults: request.providerResults,
-      capabilityManifest: this.options.capabilityManifest,
-      currentNode: request.currentNode,
-      closeConfirmed: request.extraction?.closeAction?.type === 'proceed_confirmed',
-    });
-    // An extracted confirmation does not supply a missing event date.
-    const groundedDate = resolveExplicitEventDate(null, this.closeDateEvidence(request));
-    const scopedTools = groundedDate === null
-      ? allowedTools.filter((name) => name !== 'finish_plan')
-      : allowedTools;
+    // G1/G3 single construction boundary: the compiler-selected modules
+    // loaded via PromptLoader are the instructions actually sent. The node
+    // bundle fallback is retired; every caller is served by the compiler.
+    const spec = await this.buildReplyRequestSpec(request);
+    const bundle = { id: spec.bundleId, instructions: spec.instructions };
+    const scopedTools = [...spec.scopedTools];
     const tools = this.createTools(request, scopedTools);
 
     request.toolUsage.considered.push(...scopedTools);
@@ -1262,7 +1311,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       inputGuardrails: [this.createJailbreakInputGuardrail()],
       outputType: outputSchema,
       outputGuardrails: [this.createSupportEmailGuardrail<typeof outputSchema>()],
-      modelSettings: this.buildReplyModelSettings(request),
+      modelSettings: this.buildReplyModelSettings(request, bundle.id),
     });
 
     const recommendationFunnel: RecommendationFunnelTrace = {
@@ -1279,7 +1328,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
 
     const replyImageUrls = this.resolveReplyImageUrls(request);
     const replyImageFiles = this.resolveReplyImageFiles(request);
-    const input = this.composeConversationInput(request, recommendationFunnel, replyImageUrls, replyImageFiles);
+    const input = spec.input;
     const inputPayload = replyImageUrls.length === 0 && replyImageFiles.length === 0
       ? input
       : [{
@@ -1354,10 +1403,14 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     };
     const origin: ModelOriginReceipt | null = buildModelOriginReceipt(
       composedReply,
-      request.replyBundle?.id ?? request.promptBundleId,
+      bundle.id,
       request.providerResults,
     );
-    return { ...composedReply, origin };
+    return {
+      ...composedReply,
+      origin,
+      compilerPrompt: { bundleId: spec.bundleId, filePaths: [...spec.filePaths] },
+    };
   }
 
   private extractTokenUsage(value: unknown): TokenUsage | null {
@@ -1687,17 +1740,114 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     return null;
   }
 
+  /**
+   * G2 extraction compiler context from typed lane state only. Transient
+   * owners keep compact cross-domain recognition; established
+   * purchase/support/RSVP lanes drop the inactive planning module. Provider
+   * detail travels only with typed planning progress (active plan or
+   * shortlist). Single derivation shared by instruction loading and input
+   * category gating.
+   */
+  private deriveExtractionCompilerContext(plan: PersistedPlan): ModuleSelectionContext {
+    const established = deriveEstablishedExtractionDomain(plan);
+    const capabilities = derivePlanCapabilities(plan);
+    return {
+      stage: 'extraction',
+      owner: established === null ? 'unknown' : 'customer_assistance',
+      establishedDomain: established,
+      tasks: established === null
+        ? ['purchase', 'venue', 'rsvp', 'faq_policy', 'planning']
+        : ['purchase', 'venue', 'rsvp', 'faq_policy'],
+      approvalBoundary: false,
+      hasPlanningDetail: capabilities.hasActivePlan || capabilities.hasShortlist,
+    };
+  }
+
+  /**
+   * G1/G3 actual extraction request construction without a model call.
+   * Production path for extract(): selected module files load here and
+   * become the instructions actually sent. Tests exercise this directly.
+   */
+  async buildExtractionRequestSpec(
+    request: ExtractRequest,
+    policy?: DynamicAgentPolicy,
+    projection?: ExtractionProjection,
+  ): Promise<ExtractionRequestSpec> {
+    const resolvedPolicy = policy ?? deriveDynamicAgentPolicy(request.plan);
+    const resolvedProjection = projection ??
+      this.buildExtractionProjection(request.plan, resolvedPolicy, this.resolveFeatureFlags());
+    const compilerContext = this.deriveExtractionCompilerContext(request.plan);
+    const modules = selectExtractionModules(compilerContext);
+    const includeImageReference = (request.plan.image_attachments?.length ?? 0) > 0;
+    const files = moduleFilesFor(modules);
+    // Minimum disclosure: follow-up image-linkage guidance travels only
+    // while the plan stores image attachments. Imageless turns stay
+    // byte-identical; the conditional file is attributed to the
+    // cross-domain module in the manifest.
+    const instructionFiles = includeImageReference &&
+        !files.includes('extractors/image_reference.txt')
+      ? [...files, 'extractors/image_reference.txt']
+      : files;
+    const bundle = await this.options.promptLoader.loadModuleFilesBundle(
+      instructionFiles,
+      selectExtractionTools(),
+    );
+    const sections = this.buildExtractorInputSections(request, resolvedPolicy, resolvedProjection);
+    const input = orderInputSections(sections);
+    const bytesByFile = new Map(
+      bundle.filePaths.map((file, index) => [file, bundle.fileBytes[index] ?? 0] as const),
+    );
+    const imageReferenceBytes = includeImageReference
+      ? bytesByFile.get('extractors/image_reference.txt') ?? 0
+      : 0;
+    const manifest = buildCompilerRequestManifest({
+      selectedModules: modules,
+      byteSizeOf: (id) =>
+        instructionModuleRegistry[id].files.reduce(
+          (total, file) => total + (bytesByFile.get(file) ?? 0),
+          id === 'extraction_cross_domain' ? imageReferenceBytes : 0,
+        ),
+      tools: [],
+      factGroups: sections.map((section) => ({
+        key: section.key,
+        source: extractionSectionSource(section.key),
+        reason: 'typed turn evidence for the extraction delta',
+        bytes: section.content === null ? 0 : Buffer.byteLength(section.content, 'utf8'),
+      })),
+    });
+    return {
+      bundleId: bundle.id,
+      filePaths: bundle.filePaths,
+      instructions: bundle.instructions,
+      modules,
+      input,
+      manifest,
+    };
+  }
+
   private composeExtractorInput(
     request: ExtractRequest,
     policy: DynamicAgentPolicy,
     projection?: ExtractionProjection,
   ): string {
+    return orderInputSections(this.buildExtractorInputSections(request, policy, projection));
+  }
+
+  private buildExtractorInputSections(
+    request: ExtractRequest,
+    policy: DynamicAgentPolicy,
+    projection?: ExtractionProjection,
+  ): InputSection[] {
     const planSnapshot = this.buildExtractorPlanSnapshot(request.plan, request.currentMessageId ?? null);
-    // L3: established purchase/support/RSVP turns carry no provider
-    // category priorities. The model reads the current lane from the plan
-    // snapshot and pending work, not from planning suggestions.
-    const established = deriveEstablishedExtractionDomain(request.plan);
-    const suggestedCategories = established === null
+    // G2: module + category selection is owned by the shared compiler.
+    // Established purchase/support/RSVP turns carry no provider category
+    // priorities and no planning module; the model reads the current lane
+    // from the plan snapshot and pending work, not planning suggestions.
+    const extractionModules = selectExtractionModules(
+      this.deriveExtractionCompilerContext(request.plan),
+    );
+    const extractionModuleIds = new Set(extractionModules.map((module) => module.id));
+    const suggestedCategories = extractionModuleIds.has('extraction_planning')
       ? this.buildEventCategoryPromptContext(
         request.plan.event_type,
         'extractor',
@@ -1714,24 +1864,31 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       ),
     });
     return [
-      `Estado del historial: ${request.messageContext.historyStatus}.`,
-      `Historial reciente para el extractor, cuerpos completos sin truncar orden medio (JSON, maximo 6 turnos x 2000 bytes = 12000 bytes): ${JSON.stringify(buildExtractorConversationHistory(request.messageContext))}`,
-      `Respuesta anterior del asistente (gist, JSON): ${JSON.stringify(buildPriorAnswerGist(request.messageContext))}`,
-      `Pregunta pendiente previa (ref, JSON): ${JSON.stringify(request.plan.owner_pending_question ?? null)}`,
-      `Mensaje del usuario: ${request.userMessage}`,
-      request.media && request.media.length > 0
-        ? `Metadatos de archivos recibidos (no se pueden abrir ni interpretar; JSON): ${JSON.stringify(request.media.map((item) => ({ kind: item.kind, mimeType: item.mimeType, filename: item.fileName })))}.`
-        : null,
-      `Plan base (JSON compacto): ${JSON.stringify(planSnapshot)}`,
-      allowedActionsLine,
-      suggestedCategories,
-      continuityEvidence,
-      imagePresence,
-      otpEvidence,
-      'requestedOperation identifica una operación concreta de capability_boundary.txt; no indica disponibilidad. Usa null cuando no se solicita una operación concreta. Decide por el significado completo y el contexto, nunca por palabras aisladas.',
-      'Regla de ambiguedad con historial: interpreta el mensaje con el historial reciente solo cuando el mensaje sostiene un tema; un agradecimiento, cierre o mensaje sin peticion no es una solicitud: devuelve un delta vacio. El saludo solo esta permitido en conversacion realmente nueva.',
-      'Extrae solo cambios nuevos del turno. Devuelve un delta vacio cuando el turno no trae cambios ni preguntas nuevas; el runtime conservara el estado persistido.',
-    ].filter((part): part is string => part !== null).join('\n');
+      { key: 'history_status', content: `Estado del historial: ${request.messageContext.historyStatus}.` },
+      { key: 'extractor_history', content: `Historial reciente para el extractor, cuerpos completos sin truncar orden medio (JSON, maximo 6 turnos x 2000 bytes = 12000 bytes): ${JSON.stringify(buildExtractorConversationHistory(request.messageContext))}` },
+      { key: 'prior_answer_gist', content: `Respuesta anterior del asistente (gist, JSON): ${JSON.stringify(buildPriorAnswerGist(request.messageContext))}` },
+      { key: 'pending_question_ref', content: `Pregunta pendiente previa (ref, JSON): ${JSON.stringify(request.plan.owner_pending_question ?? null)}` },
+      { key: 'user_message', content: `Mensaje del usuario: ${request.userMessage}` },
+      {
+        key: 'media_metadata',
+        content: request.media && request.media.length > 0
+          ? `Metadatos de archivos recibidos (no se pueden abrir ni interpretar; JSON): ${JSON.stringify(request.media.map((item) => ({ kind: item.kind, mimeType: item.mimeType, filename: item.fileName })))}.`
+          : null,
+      },
+      { key: 'plan_snapshot', content: `Plan base (JSON compacto): ${JSON.stringify(planSnapshot)}` },
+      { key: 'allowed_actions', content: allowedActionsLine },
+      { key: 'category_context', content: suggestedCategories },
+      { key: 'continuity_evidence', content: continuityEvidence },
+      { key: 'image_presence', content: imagePresence },
+      { key: 'otp_evidence', content: otpEvidence },
+      { key: 'operation_boundary_rule', content: 'requestedOperation identifica una operación concreta de capability_boundary.txt; no indica disponibilidad. Usa null cuando no se solicita una operación concreta. Decide por el significado completo y el contexto, nunca por palabras aisladas.' },
+      { key: 'ambiguity_history_rule', content: 'Regla de ambiguedad con historial: interpreta el mensaje con el historial reciente solo cuando el mensaje sostiene un tema; un agradecimiento, cierre o mensaje sin peticion no es una solicitud: devuelve un delta vacio. El saludo solo esta permitido en conversacion realmente nueva.' },
+      { key: 'delta_rule', content: 'Extrae solo cambios nuevos del turno. Devuelve un delta vacio cuando el turno no trae cambios ni preguntas nuevas; el runtime conservara el estado persistido.' },
+    ];
+    // G2 note: section sequence is unchanged (stable invariants first,
+    // dynamic last); only the boundary moved. Pure thanks still yields an
+    // empty delta while gratitude carrying a decision stays processed
+    // through the rules above.
   }
 
   private buildExtractorContinuityEvidence(
@@ -2030,20 +2187,137 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     });
   }
 
+  /**
+   * G3: typed reply-compiler context from node and structured evidence.
+   * Single derivation lives in model-request-projector.ts so instruction
+   * loading, input gating and stub doubles share it; this wrapper keeps the
+   * call sites unchanged.
+   */
+  private deriveReplyCompilerContext(
+    request: ComposeReplyRequest,
+  ): ModuleSelectionContext {
+    return deriveReplyCompilerContext(request);
+  }
+
   private composeConversationInput(
     request: ComposeReplyRequest,
     recommendationFunnel: RecommendationFunnelTrace,
     replyImageUrls: readonly ImageUrlAttachment[] = [],
     replyImageFiles: readonly ImageFileAttachment[] = [],
   ): string {
+    return this.buildReplyInputParts(request, recommendationFunnel, replyImageUrls, replyImageFiles)
+      .filter((part): part is { key: string; source: string; content: string } => part.content !== null)
+      .map((part) => part.content)
+      .join('\n\n');
+  }
+
+  /**
+   * G1/G3 actual reply request construction without a model call.
+   * Production path for composeReply(): selected module files load here and
+   * become the instructions actually sent, scoped tools are the tools
+   * actually exposed, and the manifest describes that exact request.
+   * Tests exercise this directly.
+   */
+  async buildReplyRequestSpec(
+    request: ComposeReplyRequest,
+  ): Promise<ReplyRequestSpec> {
+    const replyCompiler = this.deriveReplyCompilerContext(request);
+    const modules = selectReplyModules(replyCompiler);
+    const files = moduleFilesFor(modules);
+    const maximumTools = selectReplyTools(replyCompiler, request.currentNode);
+    const allowedTools = resolveDynamicTools({
+      plan: request.plan,
+      maximumTools,
+      searchReady: request.searchReady,
+      providerResults: request.providerResults,
+      capabilityManifest: this.options.capabilityManifest,
+      currentNode: request.currentNode,
+      closeConfirmed: request.extraction?.closeAction?.type === 'proceed_confirmed',
+    });
+    // An extracted confirmation does not supply a missing event date.
+    const groundedDate = resolveExplicitEventDate(null, this.closeDateEvidence(request));
+    const scopedTools = groundedDate === null
+      ? allowedTools.filter((name) => name !== 'finish_plan')
+      : allowedTools;
+    const bundle = await this.options.promptLoader.loadModuleFilesBundle(files, maximumTools);
+    const recommendationFunnel: RecommendationFunnelTrace = {
+      available_candidates: request.providerResults.length,
+      context_candidates: Math.min(
+        request.providerResults.length,
+        this.options.replyProviderLimit,
+      ),
+      context_candidate_ids: request.providerResults
+        .slice(0, this.options.replyProviderLimit)
+        .map((provider) => provider.id),
+      presentation_limit: this.options.presentationProviderLimit,
+    };
+    const replyImageUrls = this.resolveReplyImageUrls(request);
+    const replyImageFiles = this.resolveReplyImageFiles(request);
+    const parts = this.buildReplyInputParts(
+      request,
+      recommendationFunnel,
+      replyImageUrls,
+      replyImageFiles,
+      scopedTools,
+    );
+    const input = parts
+      .filter((part): part is { key: string; source: string; content: string } => part.content !== null)
+      .map((part) => part.content)
+      .join('\n\n');
+    const bytesByFile = new Map(
+      bundle.filePaths.map((file, index) => [file, bundle.fileBytes[index] ?? 0] as const),
+    );
+    const manifest = buildCompilerRequestManifest({
+      selectedModules: modules,
+      byteSizeOf: (id) =>
+        instructionModuleRegistry[id].files.reduce(
+          (total, file) => total + (bytesByFile.get(file) ?? 0),
+          0,
+        ),
+      tools: scopedTools.map((name): ManifestToolEntry => ({
+        name,
+        reason: `executable reply tool for ${replyCompiler.owner} tasks ${replyCompiler.tasks.join(',') || 'none'}`,
+      })),
+      factGroups: parts.map((part): ManifestFactGroup => ({
+        key: part.key,
+        source: part.source,
+        reason: 'typed turn evidence for the reply decision',
+        bytes: part.content === null ? 0 : Buffer.byteLength(part.content, 'utf8'),
+      })),
+    });
+    return {
+      bundleId: bundle.id,
+      filePaths: bundle.filePaths,
+      instructions: bundle.instructions,
+      modules,
+      input,
+      scopedTools,
+      manifest,
+    };
+  }
+
+  /**
+   * G3: tool guidance text names exactly the scoped tools exposed on this
+   * call. The spec path passes the resolved tools deterministically (no new
+   * model call); legacy callers without resolved tools fall back to the
+   * considered list.
+   */
+  private buildReplyInputParts(
+    request: ComposeReplyRequest,
+    recommendationFunnel: RecommendationFunnelTrace,
+    replyImageUrls: readonly ImageUrlAttachment[] = [],
+    replyImageFiles: readonly ImageFileAttachment[] = [],
+    resolvedTools?: readonly ToolName[],
+  ): Array<{ key: string; source: string; content: string | null }> {
     const authenticationOnlyReply =
       this.isAuthenticationOnlyInformationReply(request);
     const resolvedInformationReply =
       request.currentNode === 'resolver_consultas_informativas' ||
       request.currentNode === 'responder_invitacion';
+    const authorizedToolNames = resolvedTools ?? request.toolUsage.considered;
     const allowedTools =
-      request.toolUsage.considered.length > 0
-        ? request.toolUsage.considered.join(', ')
+      authorizedToolNames.length > 0
+        ? authorizedToolNames.join(', ')
         : 'ninguna';
     const stripProviders =
       request.currentNode === 'resolver_consultas_informativas';
@@ -2086,33 +2360,97 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     // plus authorized existing evidence, or asks only for the specific
     // missing factual information. Never an image or URL request.
     const hasImageEvidence = request.imageEvidence != null;
-    const parts: Array<string | null> = [
-      `Evidencia canónica del turno (JSON): ${JSON.stringify(evidence, null, 2)}`,
-      request.extraction.ambiguity?.status === 'ambiguous' &&
-      !this.ambiguityAnsweredByProjectedEvidence(request)
-        ? 'La evidencia de ambigüedad contiene alternativas sin resolver. Pide una aclaración breve y no elijas una alternativa por tu cuenta.'
-        : null,
+    // G3: reply module selection is owned by the shared compiler. Mixed
+    // tasks compose every applicable module; escalation stays an outcome
+    // attached to its task and never suppresses a completed answer module.
+    const replyCompiler = this.deriveReplyCompilerContext(request);
+    const replyModules = selectReplyModules(replyCompiler);
+    const replyModuleIds = new Set(replyModules.map((module) => module.id));
+    const omitBroadCatalogue = authenticationOnlyReply || resolvedInformationReply || isCloseReply || hasImageEvidence ||
+      replyOmitsCapabilityCatalogue(replyCompiler.owner) ||
+      replyModuleIds.has('reply_handoff_outcome') ||
+      request.handoffOutcome != null;
+    // S3: a free-form operational note is dropped when the turn already
+    // carries the same outcome as typed evidence the node contract renders
+    // (capability decision, handoff result, auth outcome). Genuine errors
+    // without typed outcomes keep their note instead of going silent.
+    const hasTypedOutcome = (request.capabilityDecision !== null &&
+      request.capabilityDecision !== undefined) ||
+      request.handoffOutcome != null ||
+      request.authenticationOutcome != null;
+    const omitOperationalNote = replyOmitsOperationalNote({ hasTypedOutcome });
+    // FAQ empty-evidence boundary: only when knowledge returned a completed
+    // FAQ result with no evidence (policy results carry their own facts).
+    // Reuses the retired contract wording verbatim; non-empty FAQ turns and
+    // unrelated lanes stay byte-identical.
+    const hasEmptyFaqEvidence = (request.informationResults ?? []).some(
+      (result) => result.kind === 'faq' && result.status === 'completed' &&
+        (result.evidence?.length ?? 0) === 0 &&
+        result.hostWithdrawalPolicy === undefined,
+    );
+    const parts: Array<{ key: string; source: string; content: string | null }> = [
+      { key: 'turn_evidence', source: 'buildReplyTurnEvidence', content: `Evidencia canónica del turno (JSON): ${JSON.stringify(evidence, null, 2)}` },
+      {
+        key: 'ambiguity_note',
+        source: 'extraction.ambiguity',
+        content: request.extraction.ambiguity?.status === 'ambiguous' &&
+        !this.ambiguityAnsweredByProjectedEvidence(request)
+          ? 'La evidencia de ambigüedad contiene alternativas sin resolver. Pide una aclaración breve y no elijas una alternativa por tu cuenta.'
+          : null,
+      },
+      {
+        key: 'faq_empty_note',
+        source: 'informationResults.faq',
+        content: hasEmptyFaqEvidence
+          ? 'Para FAQ, responde únicamente con la evidencia recuperada. Si evidence está vacío, di que no tienes esa información específica y ofrece apoyo humano.'
+          : null,
+      },
       // R5: the close prompt carries the actual close outcome/next field
       // only. Planning-category suggestions and the capability catalog are
       // unrelated branches on this node; the node contract owns close policy.
-      resolvedInformationReply || isCloseReply || hasImageEvidence
-        ? null
-        : this.buildEventCategoryPromptContext(request.plan.event_type, 'reply'),
-      authenticationOnlyReply || resolvedInformationReply || isCloseReply || hasImageEvidence
-        ? null
-        : `Capacidades habilitadas para este nodo:\n${this.summarizeEnabledCapabilities(request.currentNode)}`,
+      // S3: handoff/auth/support turns never receive planning categories or
+      // the broad catalogue even when tools are textually listed as none.
+      {
+        key: 'category_context',
+        source: 'plan.event_type',
+        content: omitBroadCatalogue
+          ? null
+          : this.buildEventCategoryPromptContext(request.plan.event_type, 'reply'),
+      },
+      {
+        key: 'capability_catalogue',
+        source: 'capabilityManifest',
+        content: omitBroadCatalogue
+          ? null
+          : `Capacidades habilitadas para este nodo:\n${this.summarizeEnabledCapabilities(request.currentNode)}`,
+      },
     ];
 
-    if (request.currentNode === 'entrevista') {
-      parts.push(`Categorías de proveedores disponibles: ${categoryBucketNames.join(', ')}. No inventar categorías fuera de esta lista.`);
+    // G3 relevance: the interview category appendix travels only with the
+    // planning owner module. Support turns running on stale planning nodes
+    // answer from typed evidence, never from a category menu.
+    if (request.currentNode === 'entrevista' && replyModuleIds.has('reply_planning_owner')) {
+      parts.push({
+        key: 'interview_categories',
+        source: 'providerCategoryBuckets',
+        content: `Categorías de proveedores disponibles: ${categoryBucketNames.join(', ')}. No inventar categorías fuera de esta lista.`,
+      });
     }
 
     if (!authenticationOnlyReply && !resolvedInformationReply) {
-      parts.push(`Herramientas autorizadas en este nodo: ${allowedTools}`);
+      parts.push({
+        key: 'authorized_tools',
+        source: 'resolved reply tools',
+        content: `Herramientas autorizadas en este nodo: ${allowedTools}`,
+      });
     }
 
-    if (request.errorMessage && !authenticationOnlyReply) {
-      parts.push(`Nota operativa: ${request.errorMessage}`);
+    if (request.errorMessage && !authenticationOnlyReply && !omitOperationalNote) {
+      parts.push({
+        key: 'operational_note',
+        source: 'errorMessage (no typed outcome)',
+        content: `Nota operativa: ${request.errorMessage}`,
+      });
     }
 
     if ((replyImageUrls.length > 0 || replyImageFiles.length > 0) && !authenticationOnlyReply) {
@@ -2120,12 +2458,14 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       // R2 single canonical occurrence: pixels ride as native image content
       // and the node contract carries the image policy; this pointer only
       // states relevance. No links, IDs or prose directions here.
-      parts.push(
-        `Imágenes adjuntas (${imageCount}): úsalas solo si aportan a la tarea actual o si la persona pregunta por lo visible.`,
-      );
+      parts.push({
+        key: 'image_pointer',
+        source: 'projected image attachments',
+        content: `Imágenes adjuntas (${imageCount}): úsalas solo si aportan a la tarea actual o si la persona pregunta por lo visible.`,
+      });
     }
 
-    return parts.filter(Boolean).join('\n\n');
+    return parts;
   }
   // S6 single serialization: the canonical customer_context evidence block
   // above is the only customerContext serialization. No second JSON append
@@ -3192,10 +3532,13 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
 
   private buildReplyModelSettings(
     request: ComposeReplyRequest,
+    compilerBundleId: string,
   ) {
+    // The cache key names the instructions actually sent so shared prefixes
+    // stay stable across turns with the same module identity.
     const settings = this.buildModelSettings({
       model: this.options.replyModel,
-      cacheKey: `reply:${request.currentNode}:${request.promptBundleId}`,
+      cacheKey: `reply:${request.currentNode}:${compilerBundleId}`,
     });
 
     return settings;
@@ -3843,7 +4186,17 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     node: ComposeReplyRequest['currentNode'],
     neutralizeUnselectedProviders = false,
   ): Record<string, unknown> {
-    if (node === 'resolver_consultas_informativas') {
+    // S3: handoff and support-terminal nodes carry the same narrow
+    // information snapshot as the resolver node: requested task status,
+    // unresolved alternatives and auth state only. Planning fields,
+    // provider needs and catalogue context never travel on these turns;
+    // the handoff outcome module owns the result facts.
+    if (
+      node === 'resolver_consultas_informativas' ||
+      node === 'solicitar_agente_humano' ||
+      node === 'ofrecer_agente_humano' ||
+      node === 'informar_error_reintento'
+    ) {
       return {
         current_node: plan.current_node,
         ...(plan.contact_email ? { contact_email: plan.contact_email } : {}),

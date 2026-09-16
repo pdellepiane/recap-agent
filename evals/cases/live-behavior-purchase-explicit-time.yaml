@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.purchase_explicit_time_alternatives
 suite: live_behavior_regression
-version: 2
+version: 3
 description: An explicit 05:00 vs 17:00 payment-time question keeps the recorded 21:31 hour with unknown timezone and never picks or converts an alternative; repeating the user-supplied transfer method is grounded.
 tags: [live, behavior, purchase, time, timezone, reported-interaction]
 targetModes: [live_lambda]
@@ -18,10 +18,14 @@ notes:
   - "El nombre registrado del evento es Claudia and Luis Felipe; repetirlo tal cual no es mezcla de idiomas."
   - "El registro trae paid_at 2026-08-30 21:31:00 sin zona horaria verificada y sin moneda. Ninguna de las dos horas propuestas por la persona coincide con el registro."
   - "R05 oracle revision v1 to v2, 2026-09-15, recheck-b9a7662d. Old explicit-time-keeps-recorded-hour kept the exact recorded hour but did not protect repeating the user-supplied bank-transfer method (recheck: payment method was in the user's question and is not itself an error; core requested fact fixed, minor relevance defect only). New contract keeps the exact 21:31 hour with zone unknown, keeps the ban on picking 05:00 or 17:00, on conversion, and on invented currency, and states that repeating the supplied transfer method is grounded. Keeps the mandatory semantic judge and hard severity. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
+  - "R05 oracle revision v2 to v3, 2026-09-16, Packet E1 node-pin removal. Old explicit-time-enters-information pinned the internal resolver_consultas_informativas node, prescribing implementation instead of evidencing behavior (matrix: a correct recorded-hour answer through any routing passed the read evidence but failed the node pin). New contract proves the same read-only invariant from receipts: fixture_effect_count rsvp.write 0/0/0 hard plus the retained gift-purchase read evidence. The unknown-time ban is unchanged: presenting 05:00, 17:00, or any converted hour as the backend fact still fails, and the recorded 21:31 with zone unknown still passes. Threshold and hard severity kept; no threshold reduction. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract. Expectation id explicit-time-enters-information is retained for ledger and run continuity; only its type changed from node_transition to fixture_effect_count."
 expectations:
   - id: explicit-time-enters-information
-    type: node_transition
-    to: resolver_consultas_informativas
+    type: fixture_effect_count
+    operation: rsvp.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
     severity: hard
   - id: explicit-time-uses-phone-orders
     type: tool_usage

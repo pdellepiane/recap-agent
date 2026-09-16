@@ -51,6 +51,11 @@ import type {
 } from '../src/runtime/provider-gateway';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
 import type { PlanStore, SavePlanInput } from '../src/storage/plan-store';
+import {
+  deriveReplyCompilerContext,
+  moduleFilesFor,
+  selectReplyModules,
+} from '../src/runtime/model-request-projector';
 import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import type { ProviderFitCriteria } from '../src/runtime/provider-fit';
 import type {
@@ -84,6 +89,21 @@ function providerNeedQuery(
     shouldAvoid: [],
     maxSelections: 1,
     allowCrossCategory: false,
+  };
+}
+
+/**
+ * Stub compiler identity: the double reports the exact registry modules the
+ * production compiler selects for the received request (single identity per
+ * sent request). The bundle id is stub-labeled; the module files are real.
+ */
+function stubCompilerPrompt(
+  request: ComposeReplyRequest,
+): NonNullable<ComposeReplyResult['compilerPrompt']> {
+  const modules = selectReplyModules(deriveReplyCompilerContext(request));
+  return {
+    bundleId: `stub-compiler:${modules.map((module) => module.id).join('+')}`,
+    filePaths: moduleFilesFor(modules),
   };
 }
 
@@ -169,7 +189,7 @@ class FakeRuntime implements AgentRuntime {
 
   async composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult> {
     this.composeRequests.push(request);
-    return { text: `reply:${request.currentNode}` };
+    return { text: `reply:${request.currentNode}`, compilerPrompt: stubCompilerPrompt(request) };
   }
 }
 
@@ -3991,7 +4011,9 @@ describe('AgentService', () => {
     expect(response.trace.state_machine_invariant_status).toBe('valid');
     expect(response.trace.plan_persisted).toBe(true);
     expect(response.trace.plan_persist_reason).toBe('reset_plan');
-    expect(response.trace.prompt_file_paths).toContain('nodes/reset_plan/system.txt');
+    expect(response.trace.prompt_bundle_id).toMatch(/^stub-compiler:shared_invariants\+reply_planning_owner$/u);
+    expect(response.trace.prompt_file_paths).toContain('shared/domain_scope.txt');
+    expect(response.trace.prompt_file_paths).not.toContain('nodes/reset_plan/system.txt');
     expect(gateway.searchCalls).toBe(0);
     expect(runtime.composeRequests).toHaveLength(1);
   });
@@ -9029,7 +9051,9 @@ describe('AgentService', () => {
     });
     expect(response.trace.route_kind).toBe('human_help_offer');
     expect(response.outbound.text).toBe('reply:ofrecer_agente_humano');
-    expect(response.trace.prompt_file_paths).toContain(
+    expect(response.trace.prompt_bundle_id).toMatch(/^stub-compiler:shared_invariants$/u);
+    expect(response.trace.prompt_file_paths).toContain('shared/base_system.txt');
+    expect(response.trace.prompt_file_paths).not.toContain(
       'nodes/ofrecer_agente_humano/response_contract.txt',
     );
     expect(gateway.operations).toEqual(['get', 'log:inbound']);

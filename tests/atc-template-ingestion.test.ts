@@ -45,7 +45,7 @@ describe('ATC template local export ingestion', () => {
     );
   });
 
-  it('formats supplemental FAQ files without appending to existing scraped FAQ docs', () => {
+  it('formats supplemental FAQ files as factual policy evidence without frontmatter or response scripts', () => {
     const source = loadLocalAtcTemplateExport(localExportPath);
     const ingestion = buildAtcTemplateIngestion(source);
     const sample = ingestion.activeTemplates[0];
@@ -53,10 +53,40 @@ describe('ATC template local export ingestion', () => {
 
     const markdown = formatAtcTemplateAsSupplementalMarkdown(sample);
 
-    expect(markdown).toContain('source: "atc_notion_template"');
-    expect(markdown).toContain('article_type: customer_service_template');
-    expect(markdown).toContain('## Customer-service response sample');
-    expect(markdown).toContain(sample.chatResponse.trim());
+    expect(markdown).toContain(`# ${sample.title}`);
+    expect(markdown).toContain('## Hechos de la política');
+    expect(markdown).toContain(`Estado: ${sample.estado}`);
+    expect(markdown).toContain(`Canal: ${sample.canal}`);
+    const strippedFacts = sample.chatResponse.trim().replace(/\[[^\n[\]]*\]/gu, '').trim();
+    expect(strippedFacts.length).toBeGreaterThan(0);
+    const normalize = (value: string): string => value.replace(/\s+/gu, ' ');
+    expect(normalize(markdown)).toContain(normalize(strippedFacts));
+    expect(markdown).not.toContain('---');
+    expect(markdown).not.toContain('semantic_trigger_hints');
+    expect(markdown).not.toContain('article_type');
+    expect(markdown).not.toContain('## Semantic trigger hints');
+    expect(markdown).not.toContain('## Customer-service response sample');
+    expect(markdown).not.toContain('routing keys');
+  });
+
+  it('strips bracketed alternatives while preserving policy facts', () => {
+    const template = {
+      title: 'Retiro de fondos',
+      slug: 'retiro-de-fondos',
+      actualizacion: 'Listo',
+      canal: 'Chat',
+      estado: 'Vigente',
+      tipo: 'Informativa',
+      triggers: ['retiro'],
+      chatResponse: 'Hola [Nombre], las solicitudes se procesan en hasta 72 horas hábiles [opción A/opción B].',
+    };
+    const markdown = formatAtcTemplateAsSupplementalMarkdown(template);
+
+    expect(markdown).toContain('las solicitudes se procesan en hasta 72 horas hábiles');
+    expect(markdown).not.toContain('[');
+    expect(markdown).not.toContain('"retiro"');
+    expect(markdown).not.toContain('- retiro');
+    expect(markdown).toContain('Estado: Vigente');
   });
 
   it('keeps the source export outside generated output paths', () => {

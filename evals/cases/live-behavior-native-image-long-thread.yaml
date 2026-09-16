@@ -1,6 +1,6 @@
 template: template.base-live
 suite: live_behavior_regression
-version: 1
+version: 2
 tags:
   - live
   - behavior
@@ -64,6 +64,7 @@ notes:
     backend package contract.
   - New specification, not an implementation-complete claim. Run separately for
     diagnosis; mandatory full suite still required.
+  - "R05 oracle revision v1 to v2, 2026-09-16, Packet E1 judge-truth binding. Old contextual-response-2/4 stated the visible amount S/ 250.00 in rubric prose with no digest-bound fixture truth, so a wrong amount failed only by prose comparison. New contract binds the existing E1 judgeGroundTruth digest mechanism to this case: the turn-1 image bytes are byte-identical to the live_behavior.image_file_delayed_question fixture (sha256 e6024548787bb4221c9dc53500f097e70e4c738283e2d684d70dba04c5cc764a, verified read-only against the case bytes, no repo writes), so the same manually verified text (Monto: S/ 250.00) is bound via judgeGroundTruth (boundInputTurn 1). Ground truth rides the judge context only via resolveJudgeOnlyImageGroundTruth, never runtime input, no new OCR/vision. Read-only amount is not backend approval. Thresholds 0.8, hard severity, requireJudge kept. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
 expectations:
   - id: image-arrival-silent
     type: trace_field_equals
@@ -127,7 +128,8 @@ expectations:
     severity: hard
   - id: contextual-response-2
     type: text_semantic
-    rubric: Answer the visible amount S/ 250.00 directly in Spanish. Do not recite
+    rubric: >-
+      Answer the visible amount directly in Spanish with the exact value from the judge-only ground truth for this fixture image (Monto S/ 250.00; verified amount S/ 250.00; read accuracy only, never backend payment approval). Do not recite
       unrelated receipt fields. Never ask the customer for an image, a
       replacement upload, or a URL. Do not invent facts or expose internal
       storage details. Judge meaning and usefulness rather than exact phrasing.
@@ -149,7 +151,7 @@ expectations:
     severity: hard
   - id: contextual-response-4
     type: text_semantic
-    rubric: Repeat only the previously answered amount S/ 250.00 in natural Spanish.
+    rubric: Repeat only the previously answered amount in natural Spanish, matching the judge-only ground truth for this fixture image (verified amount S/ 250.00).
       The earlier delivered answer is sufficient evidence; no exact wording or
       specific tool path is required. Never ask the customer for an image, a
       replacement upload, or a URL. Do not invent facts or expose internal
@@ -171,6 +173,12 @@ expectations:
     requireJudge: true
     turnIndex: 5
     severity: hard
+judgeGroundTruth:
+  imageDigest: e6024548787bb4221c9dc53500f097e70e4c738283e2d684d70dba04c5cc764a
+  verifiedText: 'Monto: S/ 250.00'
+  verifiedAmount: 'S/ 250.00'
+  verifiedAt: '2026-09-16'
+  boundInputTurn: 1
 budget:
   maxTurns: 6
   estimatedPromptTokensPerTurn: 6000

@@ -32,6 +32,26 @@ import {
   ModelOriginViolationError,
 } from '../src/runtime/model-composition';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
+import {
+  deriveReplyCompilerContext,
+  moduleFilesFor,
+  selectReplyModules,
+} from '../src/runtime/model-request-projector';
+
+/**
+ * Stub compiler identity: reports the exact registry modules the production
+ * compiler selects for the received request. The bundle id is stub-labeled;
+ * the module files are real.
+ */
+function stubCompilerPrompt(
+  request: ComposeReplyRequest,
+): NonNullable<ComposeReplyResult['compilerPrompt']> {
+  const modules = selectReplyModules(deriveReplyCompilerContext(request));
+  return {
+    bundleId: `stub-compiler:${modules.map((module) => module.id).join('+')}`,
+    filePaths: moduleFilesFor(modules),
+  };
+}
 
 const SENTINEL_A = [
   'Tomo nota del faro verde que parpadea dos veces sobre tu consulta.',
@@ -84,6 +104,7 @@ class SentinelRuntime implements AgentRuntime {
     return {
       text: '',
       structuredMessage: { type: 'generic', paragraphs_es: [...this.paragraphs] },
+      compilerPrompt: stubCompilerPrompt(request),
     };
   }
 }
@@ -208,8 +229,12 @@ describe('model output origin (R01)', () => {
     const response = await runSupportTurn(paragraphs);
     expect(response.outbound.delivery.action).toBe('send');
     expect(response.outbound.text).toBe(paragraphs.join('\n\n'));
+    expect(response.trace.prompt_bundle_id).toMatch(/^stub-compiler:shared_invariants\+reply_faq_policy\+reply_support_continuity$/u);
     expect(response.trace.prompt_file_paths).toContain(
       'nodes/resolver_consultas_informativas/support_continuity.txt',
+    );
+    expect(response.trace.prompt_file_paths).not.toContain(
+      'nodes/resolver_consultas_informativas/system.txt',
     );
   });
 
@@ -601,7 +626,7 @@ class OriginRecommendationRuntime implements AgentRuntime {
     const result: ComposeReplyResult = { text: '', structuredMessage: pristine };
     const origin = buildModelOriginReceipt(
       result,
-      request.replyBundle?.id ?? request.promptBundleId,
+      request.promptBundleId,
       planProviders,
     );
     const firstId = planProviders[0]?.id ?? 701;
@@ -855,7 +880,7 @@ class GenericMutationRuntime extends SentinelRuntime {
     const pristine = await super.composeReply(request);
     const origin = buildModelOriginReceipt(
       pristine,
-      request.replyBundle?.id ?? request.promptBundleId,
+      request.promptBundleId,
       request.providerResults,
     );
     const base = [...(pristine.structuredMessage as { paragraphs_es: string[] }).paragraphs_es];

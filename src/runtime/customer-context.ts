@@ -186,13 +186,18 @@ export function classifyAddress(args: {
 }
 
 /**
- * Venue parity: first resolved moment locationDescription/locationReference
- * maps into the existing CustomerAddress.street. One mapping, no new field,
- * single serialization. Nothing invented: null when no moment carries venue.
+ * Venue parity: resolved moment locationDescription/locationReference maps
+ * into the existing CustomerAddress.street. Moments are position-ordered; a
+ * single venue moment keeps the plain `description, reference` form while
+ * multiple venue moments keep labels (`first; Label: parts`) so ceremony
+ * and reception never mix. One mapping, no new field, single serialization.
+ * Nothing invented: null when no moment carries venue, country never used
+ * as street.
  */
 function resolveVenueStreet(event: {
   readonly detail?: {
     readonly moments?: readonly {
+      readonly label?: string | null;
       readonly locationDescription?: string | null;
       readonly locationReference?: string | null;
       readonly position?: number | null;
@@ -203,18 +208,32 @@ function resolveVenueStreet(event: {
   const ordered = [...moments].sort(
     (a, b) => (a.position ?? 0) - (b.position ?? 0),
   );
-  const first = ordered.find(
+  const venueMoments = ordered.filter(
     (moment) =>
       (moment.locationDescription?.trim() ?? '') !== '' ||
       (moment.locationReference?.trim() ?? '') !== '',
   );
-  if (!first) return null;
-  const parts = [
-    first.locationDescription?.trim() || null,
-    first.locationReference?.trim() || null,
-  ].filter((part): part is string => part !== null && part !== '');
-  if (parts.length === 0) return null;
-  return parts.join(', ');
+  if (venueMoments.length === 0) return null;
+  const venueParts = (moment: (typeof venueMoments)[number]): string | null => {
+    const parts = [
+      moment.locationDescription?.trim() || null,
+      moment.locationReference?.trim() || null,
+    ].filter((part): part is string => part !== null && part !== '');
+    if (parts.length === 0) return null;
+    return parts.join(', ');
+  };
+  const firstMoment = venueMoments[0];
+  if (firstMoment === undefined) return null;
+  const first = venueParts(firstMoment);
+  if (first === null) return null;
+  if (venueMoments.length === 1) return first;
+  const labeled = venueMoments.slice(1).map((moment) => {
+    const parts = venueParts(moment);
+    if (parts === null) return null;
+    const label = moment.label?.trim() ? moment.label.trim() : null;
+    return label !== null ? `${label}: ${parts}` : parts;
+  }).filter((entry): entry is string => entry !== null);
+  return labeled.length > 0 ? `${first}; ${labeled.join('; ')}` : first;
 }
 
 export type CustomerContextSnapshot = {
@@ -804,6 +823,14 @@ export function projectCustomerContext(
     ? projectedInvitations
     : projectedInvitations.map((invitation) => ({ ...invitation, rsvpState: 'unknown' as const }));
 
+  // S2: internal transaction references never reach model-visible detail.
+  // The runtime snapshot keeps the authorized record; the projection the
+  // model reads carries no customerTransactionNumber, so a denied
+  // transaction-reference disclosure cannot leak through model input.
+  const modelVisibleDetailed = snapshot.purchasesCarts.status === 'ready' && includePurchases
+    ? matchingDetailed.map(stripTransactionIdForModel)
+    : [];
+
   return {
     commonRefs: {
       orderIds: snapshot.purchasesCarts.purchases.map((purchase) => purchase.orderId),
@@ -828,9 +855,7 @@ export function projectCustomerContext(
     carts: snapshot.purchasesCarts.status === 'ready' && includeCarts
       ? snapshot.purchasesCarts.carts
       : [],
-    detailedPurchases: snapshot.purchasesCarts.status === 'ready' && includePurchases
-      ? matchingDetailed
-      : [],
+    detailedPurchases: modelVisibleDetailed,
     invitations: snapshot.invitationsEvents.status === 'ready' && includeInvitations
       ? invitations
       : [],
@@ -839,6 +864,16 @@ export function projectCustomerContext(
       : [],
     enrichment: enrichment ?? null,
   };
+}
+
+/**
+ * S2 model-visible transaction strip. The runtime snapshot retains the
+ * authorized backend record; the projected copy the model reads never
+ * carries customerTransactionNumber. Pure copy, single-copy sparse.
+ */
+export function stripTransactionIdForModel(purchase: PurchaseInformation): PurchaseInformation {
+  if (purchase.customerTransactionNumber == null) return purchase;
+  return { ...purchase, customerTransactionNumber: null };
 }
 
 /**

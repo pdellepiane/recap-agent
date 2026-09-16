@@ -12,6 +12,11 @@ import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import { OpenAiAgentRuntime } from '../src/runtime/openai-agent-runtime';
 import type { AgentRuntime } from '../src/runtime/contracts';
 import { PromptLoader } from '../src/runtime/prompt-loader';
+import {
+  deriveReplyCompilerContext,
+  moduleFilesFor,
+  selectReplyModules,
+} from '../src/runtime/model-request-projector';
 import type { ProviderGateway } from '../src/runtime/provider-gateway';
 import { localTurnMessageContext } from '../src/runtime/turn-message-context';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
@@ -420,6 +425,21 @@ describe('R5 authoritative close projection', () => {
   });
 });
 
+/**
+ * Stub compiler identity: reports the exact registry modules the production
+ * compiler selects for the received request. The bundle id is stub-labeled;
+ * the module files are real.
+ */
+function stubCompilerPrompt(
+  request: ComposeReplyRequest,
+): NonNullable<ComposeReplyResult['compilerPrompt']> {
+  const modules = selectReplyModules(deriveReplyCompilerContext(request));
+  return {
+    bundleId: `stub-compiler:${modules.map((module) => module.id).join('+')}`,
+    filePaths: moduleFilesFor(modules),
+  };
+}
+
 class SentinelRuntime implements AgentRuntime {
   constructor(private readonly paragraphs: string[]) {}
 
@@ -427,10 +447,11 @@ class SentinelRuntime implements AgentRuntime {
     return baseExtraction();
   }
 
-  async composeReply(): Promise<ComposeReplyResult> {
+  async composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult> {
     return {
       text: '',
       structuredMessage: { type: 'generic', paragraphs_es: [...this.paragraphs] },
+      compilerPrompt: stubCompilerPrompt(request),
     };
   }
 }
@@ -451,7 +472,7 @@ class CountingExtractionRuntime implements AgentRuntime {
 
   async composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult> {
     this.composeRequests.push(request);
-    return { text: this.replyText };
+    return { text: this.replyText, compilerPrompt: stubCompilerPrompt(request) };
   }
 }
 
@@ -495,7 +516,9 @@ describe('completed close output origin', () => {
     expect(response.outbound.delivery.action).toBe('send');
     expect(response.outbound.text).toBe(paragraphs.join('\n\n'));
     expect(response.trace.next_node).toBe('necesidad_cubierta');
-    expect(response.trace.prompt_file_paths).toContain(
+    expect(response.trace.prompt_bundle_id).toMatch(/^stub-compiler:shared_invariants\+reply_planning_owner$/u);
+    expect(response.trace.prompt_file_paths).toContain('shared/domain_scope.txt');
+    expect(response.trace.prompt_file_paths).not.toContain(
       'nodes/necesidad_cubierta/response_contract.txt',
     );
   });
