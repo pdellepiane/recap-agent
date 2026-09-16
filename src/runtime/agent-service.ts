@@ -234,7 +234,10 @@ import {
   type CustomerCapabilitySignals,
   type OwnerDomainSignals,
 } from './owner-routing';
-import { projectSupportHandoffEvidence } from './reply-evidence-projector';
+import {
+  projectSupportHandoffEvidence,
+  type SupportHandoffReplyOutcome,
+} from './reply-evidence-projector';
 import { buildFinishPlanSummary, buildProviderQuoteReceipts } from './finish-plan-debug';
 import {
   createAuthOperationId,
@@ -246,6 +249,20 @@ export type HandleTurnResponse = {
   plan: PlanSnapshot;
   outbound: NormalizedOutboundMessage;
   trace: TurnTrace;
+};
+
+/**
+ * Completed RSVP work carried into the single reply-composition boundary.
+ * The typed invitation evidence (or null when no invitation was resolved)
+ * travels with the JSON outcome string plus an optional typed handoff
+ * outcome for the multi-person handoff. Terminal information paths apply
+ * this same carryover instead of dropping the RSVP facts; the string is
+ * never the only carrier downstream.
+ */
+export type CompletedRsvpCarryover = {
+  evidence: ComposeReplyRequest['rsvpPhoneEvidence'];
+  outcome: string;
+  handoffOutcome?: SupportHandoffReplyOutcome;
 };
 
 type SelectionResolution =
@@ -2777,6 +2794,18 @@ export class AgentService {
           }
         }
       }
+      // Distinct gateway outcomes stay distinct through the existing
+      // projector: registered/deduped success claims the request, a failed
+      // call keeps its failure/unknown outcome with reason, and a
+      // never-attempted effect (missing phone, unconfigured gateway) stays
+      // null instead of collapsing into handoff_unknown. The rich JSON note
+      // below still travels as the outcome carrier for RSVP-specific facts
+      // (no attendance was registered); only the typed outcome is taken here.
+      const handoffEvidence = projectSupportHandoffEvidence({
+        result: handoffGatewayResult ?? { status: 'success', message: 'retained_confirmed_handoff' },
+        phonePresent: handoffPhoneNumber !== null,
+        confirmedReceipt: handoffStatus === 'registered',
+      });
       const handoffOperationalNote = JSON.stringify({
         outcome: 'rsvp_multi_person_handoff',
         status: handoffStatus,
@@ -2828,7 +2857,11 @@ export class AgentService {
       if (args.extraction.informationRequests.length > 0) {
         return this.handleInformationFlow({
           ...args, workingPlan: planToSaveHandoff, extraction: args.extraction,
-          completedRsvp: { evidence: null, outcome: handoffOperationalNote },
+          completedRsvp: {
+            evidence: null,
+            outcome: handoffOperationalNote,
+            handoffOutcome: handoffEvidence.handoffOutcome,
+          },
         });
       }
       const reply = await composeModelReply(this.dependencies.runtime, {
@@ -2847,6 +2880,8 @@ export class AgentService {
         promptFilePaths: [],
         toolUsage: args.toolUsage,
         rsvpPhoneEvidence: null,
+        rsvpWorkCompleted: true,
+        handoffOutcome: handoffEvidence.handoffOutcome,
       });
       args.timingMs.compose_reply += Date.now() - composeStartedAt;
       args.tokenUsage.reply = reply.tokenUsage ?? null;
@@ -3283,6 +3318,7 @@ export class AgentService {
       promptFilePaths: [],
       toolUsage: args.toolUsage,
       rsvpPhoneEvidence,
+      rsvpWorkCompleted: true,
     });
     args.timingMs.compose_reply += Date.now() - composeStartedAt;
     args.tokenUsage.reply = reply.tokenUsage ?? null;
@@ -3867,6 +3903,33 @@ export class AgentService {
       candidate_event_ids: sortedInvitations.map((invitation) => invitation.eventId),
     });
     return projection;
+  }
+
+  /**
+   * Single shared reply-composition boundary for completed RSVP work. Every
+   * reply composed after the RSVP lane ran — the information-flow reply and
+   * every terminal auth/declined/support/host-withdrawal reply — applies
+   * this same carryover so the completed action survives as typed facts
+   * (invitation evidence, work marker, typed handoff outcome when the
+   * multi-person handoff produced one). The JSON outcome string rides along
+   * for the details that live only there; it is never the only carrier. A
+   * terminal path's own non-null handoff outcome keeps precedence over the
+   * carried one; a never-attempted effect never fabricates an outcome.
+   */
+  private withCompletedRsvp(
+    request: ComposeReplyRequest,
+    carryover?: CompletedRsvpCarryover | null,
+  ): ComposeReplyRequest {
+    if (!carryover) return request;
+    return {
+      ...request,
+      rsvpPhoneEvidence: carryover.evidence,
+      errorMessage: carryover.outcome,
+      rsvpWorkCompleted: true,
+      ...(carryover.handoffOutcome != null && request.handoffOutcome == null
+        ? { handoffOutcome: carryover.handoffOutcome }
+        : {}),
+    };
   }
 
   /**
@@ -7424,10 +7487,7 @@ export class AgentService {
     messageContext: TurnMessageContext;
     handleTurnStartedAt: number;
     imageTurn?: ImageTurnContext;
-    completedRsvp?: {
-      evidence: ComposeReplyRequest['rsvpPhoneEvidence'];
-      outcome: string;
-    };
+    completedRsvp?: CompletedRsvpCarryover;
   }): Promise<HandleTurnResponse> {
     const declined = args.extraction.informationRequests.some((request) =>
       (request.kind === 'purchase' || request.kind === 'associated_event') && request.authAction === 'decline_authentication');
@@ -8174,7 +8234,7 @@ export class AgentService {
       extraction?: ExtractionResult;
       turnDecision?: TurnDecision;
       errorMessage?: string | null;
-    }): Promise<ComposeReplyResult> => composeModelReply(this.dependencies.runtime, {
+    }): Promise<ComposeReplyResult> => composeModelReply(this.dependencies.runtime, this.withCompletedRsvp({
       currentNode,
       previousNode: args.previousNode,
       userMessage: args.inbound.text,
@@ -8187,20 +8247,19 @@ export class AgentService {
       turnDecision: overrides.turnDecision ?? this.informationTurnDecision(
         operationalNote ?? 'information_batch',
       ),
-      errorMessage: args.completedRsvp?.outcome ?? overrides.errorMessage ?? operationalNote,
+      errorMessage: overrides.errorMessage ?? operationalNote,
       promptBundleId: PENDING_COMPILER_PROMPT_ID,
       promptFilePaths: [],
       toolUsage: args.toolUsage,
       informationResults,
       customerContext,
-      rsvpPhoneEvidence: args.completedRsvp?.evidence,
       owner: planForInformation.owner ?? null,
       continuity: this.resolveContinuityProjection(planForInformation, args.messageContext),
       pendingQuestionRef: args.workingPlan.owner_pending_question ?? null,
       imageEvidence: overrides.imageEvidence ?? defaultImageEvidence,
       imageUrlAttachments: overrides.imageUrlAttachments ?? ownerProjection.urls,
       imageFileAttachments: overrides.imageFileAttachments ?? ownerProjection.files,
-    });
+    }, args.completedRsvp));
     let composedReply: ComposeReplyResult;
     let deliveredTurnDecision = this.informationTurnDecision(operationalNote ?? 'information_batch');
     let deliveredOperationalNote = operationalNote;
@@ -8408,7 +8467,7 @@ export class AgentService {
     });
     let reply: ComposeReplyResult;
     try {
-      reply = await composeModelReply(this.dependencies.runtime, {
+      reply = await composeModelReply(this.dependencies.runtime, this.withCompletedRsvp({
         currentNode,
         previousNode: args.previousNode,
         userMessage: args.inbound.text,
@@ -8431,7 +8490,7 @@ export class AgentService {
         }),
         imageUrlAttachments: ownerProjection.urls,
         imageFileAttachments: ownerProjection.files,
-      });
+      }, args.completedRsvp));
     } catch (error) {
       // The pre-compose save moved after render; a compose failure still
       // persists the plan before returning the typed operational failure.
@@ -8633,13 +8692,19 @@ export class AgentService {
       }
     }
     const handedOff = handoff?.status === 'success';
-    const handoffOutcome = handoff === null
-      ? null
-      : handedOff
-        ? 'handoff_requested' as const
-        : handoff.status === 'failed' && handoff.outcome !== 'unknown'
-          ? 'handoff_failed' as const
-          : 'handoff_unknown' as const;
+    // Distinct gateway outcomes stay distinct through the existing
+    // projector: requested/failed/unknown keep their outcome with reason,
+    // and a never-attempted effect (skipped capability, missing phone)
+    // projects null instead of collapsing into handoff_unknown. No new
+    // interpretation layer; the existing outcome+reason travels through.
+    const handoffEvidence = handoff
+      ? projectSupportHandoffEvidence({
+        result: handoff,
+        phonePresent: phone !== null,
+        confirmedReceipt: handedOff,
+      })
+      : null;
+    const handoffOutcome = handoffEvidence?.handoffOutcome ?? null;
     const currentNode: DecisionNode = handedOff
       ? 'solicitar_agente_humano' : 'resolver_consultas_informativas';
     const planToSave = mergePlan(plan, {
@@ -8674,7 +8739,7 @@ export class AgentService {
       extraction: args.extraction,
       imageTurn: args.imageTurn,
     });
-    const reply = await composeModelReply(this.dependencies.runtime, {
+    const reply = await composeModelReply(this.dependencies.runtime, this.withCompletedRsvp({
       currentNode,
       previousNode: args.previousNode,
       userMessage: args.inbound.text,
@@ -8700,7 +8765,7 @@ export class AgentService {
       }),
       imageUrlAttachments: ownerProjection.urls,
       imageFileAttachments: ownerProjection.files,
-    });
+    }, args.completedRsvp));
     args.timingMs.compose_reply += Date.now() - composeStartedAt;
     args.tokenUsage.reply = reply.tokenUsage ?? null;
     args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
@@ -8898,6 +8963,8 @@ export class AgentService {
     responseClassifierTrace?: MessageResponseClassifierTrace;
     messageContext: TurnMessageContext;
     handleTurnStartedAt: number;
+    imageTurn?: ImageTurnContext;
+    completedRsvp?: CompletedRsvpCarryover | null;
   }): Promise<HandleTurnResponse> {
     const remainingRequests = args.requests.filter((request) => request.kind === 'faq');
     // Refusal closes the protected request without renewing the OTP budget:
@@ -8918,7 +8985,7 @@ export class AgentService {
       plan: planToSave,
       reason: 'information_authentication_declined',
     });
-    const reply = await composeModelReply(this.dependencies.runtime, {
+    const reply = await composeModelReply(this.dependencies.runtime, this.withCompletedRsvp({
       currentNode: 'resolver_consultas_informativas',
       previousNode: args.previousNode,
       userMessage: args.inbound.text,
@@ -8942,7 +9009,7 @@ export class AgentService {
         noFurtherCredentialRequests: true,
       },
       informationResults: [],
-    });
+    }, args.completedRsvp));
     args.tokenUsage.reply = reply.tokenUsage ?? null;
     args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
     args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage.classifier, args.tokenUsage.extraction, args.tokenUsage.reply);
@@ -9104,6 +9171,8 @@ export class AgentService {
     responseClassifierTrace?: MessageResponseClassifierTrace;
     messageContext: TurnMessageContext;
     handleTurnStartedAt: number;
+    imageTurn?: ImageTurnContext;
+    completedRsvp?: CompletedRsvpCarryover | null;
   }): Promise<HandleTurnResponse> {
     const gateway = this.dependencies.agentConversationGateway ?? new NoopAgentConversationGateway('not_configured');
     const phoneNumber = this.resolveEscalationPhone(args.inbound);
@@ -9173,7 +9242,7 @@ export class AgentService {
         : receipt?.outcome === 'handoff_failed'
           ? 'handoff_failed' as const
           : null;
-    const reply = await composeModelReply(this.dependencies.runtime, {
+    const reply = await composeModelReply(this.dependencies.runtime, this.withCompletedRsvp({
       currentNode: 'resolver_consultas_informativas',
       previousNode: args.previousNode,
       userMessage: args.inbound.text,
@@ -9207,7 +9276,7 @@ export class AgentService {
       },
       handoffOutcome,
       informationResults: [],
-    });
+    }, args.completedRsvp));
     args.tokenUsage.reply = reply.tokenUsage ?? null;
     args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
     args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage.classifier, args.tokenUsage.extraction, args.tokenUsage.reply);

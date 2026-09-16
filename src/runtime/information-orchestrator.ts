@@ -231,7 +231,7 @@ export class InformationOrchestrator {
       canUseTrustedPhone &&
       args.trustedPhone &&
       this.capabilityAvailable('event.association.read', this.gatewayMethodConfigured('getGuestEventsByPhone')) &&
-      args.requests.some((request) => request.kind === 'associated_event')
+      args.requests.some((request) => request.kind === 'associated_event' || request.kind === 'purchase')
         ? this.lookupGuestEvents(args.trustedPhone)
         : null;
     const outcomes = new Map<number, { result: InformationTaskResult; durationMs: number }>();
@@ -295,6 +295,20 @@ export class InformationOrchestrator {
       .filter(({ request }) => request.kind === 'purchase')
       .map(({ index }) => index);
     await executeIndexes(nonPurchaseIndexes);
+    // Entry roots together: purchase turns share the same phone-authorized
+    // guest-event root that associated_event requests consume, so
+    // event-scoped purchases are reused within the turn instead of running
+    // a second scoped discovery. Single shared flight, bounded existing
+    // hydration, read-only; turns without purchase work or with their own
+    // associated_event request seed nothing here.
+    await this.seedPhoneContextFromGuestRoot({
+      requests: args.requests,
+      guestEventsPromise,
+      trustedPhone: args.trustedPhone ?? null,
+      eventDetailLookups,
+      phoneContext,
+      deadlineMs: args.deadlineMs ?? null,
+    });
     await executeIndexes(purchaseIndexes);
 
     const results = this.reconcilePhoneContextResults(
@@ -705,6 +719,57 @@ export class InformationOrchestrator {
         error: 'Guest event lookup failed.',
         retryable: true,
       };
+    }
+  }
+
+  /**
+   * Entry-root seeding for purchase turns. When the turn carries purchase
+   * work but no associated_event request, the shared phone-authorized
+   * guest-event root (same single flight the event path consumes) still
+   * seeds the per-turn phone context through the existing bounded
+   * hydration, keyed by the purchase event hints. Read-only gateway reads
+   * only, shared per-turn detail cache, invocation deadline honored;
+   * failures record nothing and never throw, so the purchase path falls
+   * back to its own roots unchanged.
+   */
+  private async seedPhoneContextFromGuestRoot(args: {
+    requests: PendingInformationRequest[];
+    guestEventsPromise: Promise<AgentGuestEventsResult> | null;
+    trustedPhone: AgentAuthByPhoneInput | null;
+    eventDetailLookups: EventDetailCache;
+    phoneContext: PhoneContextSnapshot;
+    deadlineMs: number | null;
+  }): Promise<void> {
+    if (!args.guestEventsPromise) return;
+    if (args.requests.some((request) => request.kind === 'associated_event')) return;
+    if (!args.requests.some((request) => request.kind === 'purchase')) return;
+    let guestEvents: AgentGuestEventsResult;
+    try {
+      guestEvents = await args.guestEventsPromise;
+    } catch {
+      return;
+    }
+    if (guestEvents.status !== 'success' || guestEvents.events.length === 0) return;
+    const hints = Array.from(new Set(
+      args.requests.flatMap((request) =>
+        request.kind === 'purchase' && request.eventHint?.trim()
+          ? [request.eventHint.trim()]
+          : [],
+      ),
+    ));
+    const passes = hints.length > 0 ? hints : [null];
+    for (const hint of passes) {
+      const hydration = await this.hydrateRelevantEventDetails({
+        events: guestEvents.events,
+        eventHint: hint,
+        trustedPhone: args.trustedPhone,
+        scope: 'trusted_phone_guest',
+        detailCache: args.eventDetailLookups,
+        deadlineMs: args.deadlineMs,
+      });
+      for (const purchase of hydration.purchases) {
+        this.mergePhonePurchase(args.phoneContext, purchase, 'event');
+      }
     }
   }
 

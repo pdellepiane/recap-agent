@@ -304,6 +304,14 @@ export type ComposeReplyRequest = {
   } | null;
   rsvpPhoneEvidence?: RsvpPhoneReplyEvidence | null;
   /**
+   * Typed marker that this reply carries completed RSVP work whose outcome
+   * details travel in errorMessage alongside the typed rsvpPhoneEvidence
+   * (or a typed handoffOutcome when no invitation was resolved). Present
+   * only on turns where the RSVP lane completed work, so unrelated turns
+   * stay byte-identical. Facts only, never reply prose.
+   */
+  rsvpWorkCompleted?: boolean;
+  /**
    * L4 Customer operations projection: common references plus the
    * question-relevant snapshot detail. Absent (null/undefined) means the
    * turn is not a Customer operations turn and nothing is projected, so

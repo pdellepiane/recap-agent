@@ -136,7 +136,7 @@ import {
 } from '../core/image-attachments';
 import type { ImageAttachmentRef } from '../core/image-attachments';
 import type { ImageFileAttachment, ImageObservation, ImageUrlAttachment } from './contracts';
-import type { CustomerContextProjection } from './customer-context';
+import type { CustomerContextProjection, InvitationEventSummary } from './customer-context';
 
 const SUPPORT_EMAIL = 'hola@sinenvolturas.com';
 
@@ -2375,12 +2375,18 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     // S3: a free-form operational note is dropped when the turn already
     // carries the same outcome as typed evidence the node contract renders
     // (capability decision, handoff result, auth outcome). Genuine errors
-    // without typed outcomes keep their note instead of going silent.
+    // without typed outcomes keep their note instead of going silent. A
+    // completed-RSVP carryover is exempt: its outcome details (requested
+    // action, verification state, attendance effect) live only in the note
+    // next to the typed invitation evidence, so suppressing it on mixed
+    // RSVP+information/image or terminal turns would drop the completed
+    // action from the reply input.
     const hasTypedOutcome = (request.capabilityDecision !== null &&
       request.capabilityDecision !== undefined) ||
       request.handoffOutcome != null ||
       request.authenticationOutcome != null || request.imageEvidence != null;
-    const omitOperationalNote = replyOmitsOperationalNote({ hasTypedOutcome });
+    const omitOperationalNote = replyOmitsOperationalNote({ hasTypedOutcome }) &&
+      request.rsvpWorkCompleted !== true;
     // FAQ empty-evidence boundary: only when knowledge returned a completed
     // FAQ result with no evidence (policy results carry their own facts).
     // Reuses the retired contract wording verbatim; non-empty FAQ turns and
@@ -2599,6 +2605,10 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     const evidenceProviders = args.request.currentNode === 'crear_lead_cerrar'
       ? args.providerResults.filter((provider) => closeEligibleProviderIds.has(provider.id))
       : args.providerResults;
+    // P3 proven-profile projection: RSVP per-record facts collapse to a
+    // profile reference only with the merge established; the merged profile
+    // copy (with the RSVP facts filled in) is the single copy that travels.
+    const rsvpProfile = this.resolveRsvpProfileProjection(args.request);
 
     return {
       nodes: {
@@ -2693,7 +2703,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       ...(args.request.currentNode === 'crear_lead_cerrar'
         ? { close_submission_receipt: buildCloseSubmissionReceipt(args.request.toolUsage.outputs) }
         : {}),
-      rsvp_phone_evidence: this.projectRsvpEvidenceWithProfile(args.request),
+      rsvp_phone_evidence: rsvpProfile.evidence,
       rsvp_party: args.request.currentNode === 'responder_invitacion' && args.request.extraction.rsvpParty
           ? {
             scope: args.request.extraction.rsvpParty.scope,
@@ -2740,9 +2750,8 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
         this.buildProviderEvidence(provider, index + 1),
       ),
       recommendation_funnel: args.recommendationFunnel,
-      ...(args.request.customerContext !== null &&
-      args.request.customerContext !== undefined
-        ? { customer_context: args.request.customerContext }
+      ...(rsvpProfile.profile !== null && rsvpProfile.profile !== undefined
+        ? { customer_context: rsvpProfile.profile }
         : {}),
     };
   }
@@ -3024,13 +3033,21 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
   /**
    * R6 RSVP time facts. Projects the stored event date verbatim with its
    * hour24 reading and unknown timezone for the model-owned sentence.
-   * Present only on responder_invitacion when phone evidence carries a
-   * date, so unrelated turns stay byte-identical. Facts only, never prose.
+   * Present on responder_invitacion when phone evidence carries a date, and
+   * on information turns carrying completed RSVP work (mixed turns), so the
+   * completed action keeps its event time even after a profile collapse.
+   * Unrelated turns stay byte-identical. Facts only, never prose.
    */
   private buildRsvpTimeFacts(
     request: ComposeReplyRequest,
   ): Pick<ReplyTurnEvidence, 'rsvp_event_time'> {
-    if (request.currentNode !== 'responder_invitacion') return {};
+    if (
+      request.currentNode !== 'responder_invitacion' &&
+      !(request.currentNode === 'resolver_consultas_informativas' &&
+        request.rsvpWorkCompleted === true)
+    ) {
+      return {};
+    }
     const evidence = request.rsvpPhoneEvidence;
     if (!evidence || evidence.state === 'unavailable') return {};
     const rawDate = evidence.state === 'resolved_single'
@@ -4406,43 +4423,144 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
   }
 
   /**
-   * P3 RSVP single-serialization projection. With a canonical profile
-   * present, per-record names/dates/states (already in
-   * customer_context.invitations + candidates) collapse to a profile
-   * reference carrying only state/coverage/resolution/reason + counts.
-   * Without a profile the full evidence travels unchanged.
+   * P3 RSVP single-serialization projection with merge proof. With a
+   * canonical profile present, per-record names/dates/states collapse to a
+   * profile reference ONLY after the matching event/guest/fresh-attendance
+   * facts are established inside that same profile: each RSVP event fact
+   * must match exactly one profile invitation slot (name, plus date when
+   * both sides carry one), and the slot absorbs the RSVP facts it lacks
+   * (missing name/datetime, unknown attendance). When any fact cannot be
+   * established — no profile, no unique match, or an unmatched candidate —
+   * the full evidence travels unchanged instead of hiding known facts
+   * behind a bare reference. Without a profile the full evidence travels
+   * unchanged, so owners without a profile keep their evidence.
    */
-  private projectRsvpEvidenceWithProfile(
+  private resolveRsvpProfileProjection(
     request: ComposeReplyRequest,
-  ): ReplyTurnEvidence['rsvp_phone_evidence'] {
+  ): {
+    evidence: ReplyTurnEvidence['rsvp_phone_evidence'];
+    profile: CustomerContextProjection | null;
+  } {
     const evidence = request.rsvpPhoneEvidence ?? null;
-    if (evidence === null || request.customerContext == null) {
-      return evidence;
+    const profile = request.customerContext ?? null;
+    if (evidence === null || profile == null) {
+      return { evidence, profile };
+    }
+    if (evidence.state === 'unavailable') {
+      return {
+        evidence: {
+          state: 'unavailable',
+          profile_ref: 'customer_context',
+          coverage: evidence.coverage,
+          resolution: evidence.resolution,
+          reason: evidence.reason,
+        },
+        profile,
+      };
+    }
+    const facts = evidence.state === 'resolved_single'
+      ? [evidence.event]
+      : evidence.candidates;
+    const merged = this.mergeRsvpFactsIntoProfile(profile, facts);
+    if (merged === null) {
+      return { evidence, profile };
     }
     if (evidence.state === 'resolved_single') {
       return {
-        state: 'resolved_single',
-        profile_ref: 'customer_context',
-        coverage: evidence.coverage,
-        resolution: evidence.resolution,
+        evidence: {
+          state: 'resolved_single',
+          profile_ref: 'customer_context',
+          coverage: evidence.coverage,
+          resolution: evidence.resolution,
+        },
+        profile: merged,
       };
     }
-    if (evidence.state === 'needs_event_selection') {
-      return {
+    return {
+      evidence: {
         state: 'needs_event_selection',
         profile_ref: 'customer_context',
         coverage: evidence.coverage,
         resolution: evidence.resolution,
         candidate_count: evidence.candidates.length,
-      };
-    }
-    return {
-      state: 'unavailable',
-      profile_ref: 'customer_context',
-      coverage: evidence.coverage,
-      resolution: evidence.resolution,
-      reason: evidence.reason,
+      },
+      profile: merged,
     };
+  }
+
+  /**
+   * Fill-only merge of RSVP event facts into a profile copy. Matching is
+   * strict and unique per fact (non-empty name equality, date equality when
+   * both sides carry a date, distinct slots across facts); a name alone
+   * never merges into an ambiguous slot. Attendance must agree (an unknown
+   * slot absorbs the fresh RSVP state; a stateless fact needs nothing):
+   * two concrete decided states that disagree describe different records,
+   * so the merge fails. Only absent profile values are filled (missing
+   * name/datetime, unknown attendance); concrete profile states stand
+   * untouched. Returns null when any fact cannot be established so the
+   * caller retains the full evidence.
+   */
+  private mergeRsvpFactsIntoProfile(
+    profile: CustomerContextProjection,
+    facts: ReadonlyArray<{
+      readonly event_name: string | null;
+      readonly event_date: string | null;
+      readonly invitation_record: 'available' | 'unavailable';
+      readonly rsvp_state: 'pending' | 'attending' | 'declining' | 'unavailable';
+    }>,
+  ): CustomerContextProjection | null {
+    const invitations = [...profile.invitations];
+    const used = new Set<number>();
+    const mergedSlots = new Map<number, InvitationEventSummary>();
+    for (const fact of facts) {
+      const name = fact.event_name?.trim() ? fact.event_name.trim() : null;
+      if (name === null) return null;
+      let match = -1;
+      for (let index = 0; index < invitations.length; index += 1) {
+        if (used.has(index)) continue;
+        const slot = invitations[index];
+        if (!slot || slot.eventName?.trim() !== name) continue;
+        if (
+          fact.event_date !== null &&
+          slot.eventDatetime !== undefined &&
+          slot.eventDatetime !== fact.event_date
+        ) {
+          continue;
+        }
+        if (match >= 0) return null;
+        match = index;
+      }
+      if (match < 0) return null;
+      used.add(match);
+      const slot = invitations[match];
+      if (!slot) return null;
+      // Attendance agreement: an unknown slot absorbs the fresh RSVP state
+      // and a stateless RSVP fact needs no agreement, but two concrete
+      // decided states that disagree describe different records (or a stale
+      // one), so the merge cannot be established and the evidence is kept.
+      const slotState = slot.rsvpState;
+      const factState = fact.rsvp_state;
+      const statesAgree = slotState === 'unknown' ||
+        factState === 'unavailable' ||
+        slotState === factState;
+      if (!statesAgree) return null;
+      mergedSlots.set(match, {
+        ...slot,
+        ...(slot.eventName == null && fact.event_name != null
+          ? { eventName: fact.event_name }
+          : {}),
+        ...(slot.eventDatetime == null && fact.event_date != null
+          ? { eventDatetime: fact.event_date }
+          : {}),
+        ...(slot.rsvpState === 'unknown' && fact.rsvp_state !== 'unavailable'
+          ? { rsvpState: fact.rsvp_state }
+          : {}),
+      });
+    }
+    for (const [index, slot] of mergedSlots) {
+      invitations[index] = slot;
+    }
+    return { ...profile, invitations };
   }
 
   private projectInformationResultForReply(
