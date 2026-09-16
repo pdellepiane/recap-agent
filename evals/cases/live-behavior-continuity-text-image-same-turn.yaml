@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.continuity_text_image_same_turn
 suite: live_behavior_regression
-version: 2
+version: 3
 description: A text question and its image arrive in the same invocation; the turn answers once using both, with no greeting-only reply and no second image-description answer.
 tags: [live, behavior, continuity, image, image-file, inbound-continuity]
 targetModes: [live_lambda]
@@ -20,6 +20,7 @@ inputs:
 notes:
   - "F1 2026-09-12: backendFixture scenario image-clean-world; this phone has empty initial history and empty authorized purchase results; never mutable backend data."
   - Backend image forwarding contract 2026-09-08. Synthetic voucher-style fixture rendered locally, never a customer document. Single invocation carries both the question and the image; exactly one answer is expected.
+  - "R05 oracle revision v2 to v3, 2026-09-16, full-gate triage item 1 (remaining missing image-truth case). The turn-0 image bytes are byte-identical to the live_behavior.image_file_delayed_question fixture (sha256 e6024548787bb4221c9dc53500f097e70e4c738283e2d684d70dba04c5cc764a, verified offline against the case bytes, no repo writes), so the same manually verified text (Monto: S/ 250.00) is bound via judgeGroundTruth (boundInputTurn 0). Ground truth rides the judge context only via resolveJudgeOnlyImageGroundTruth, never runtime input, no new OCR/vision. Read-only amount is not backend approval. Threshold 0.8, hard severity, requireJudge kept. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
 expectations:
   - id: same-turn-image-persisted-and-projected
     type: tool_usage
@@ -36,14 +37,19 @@ expectations:
     type: text_semantic
     rubric: >-
       Pass only if the assistant responds entirely in Spanish with a single answer that addresses the
-      question using the text visible in the image sent in this same turn, including the amount when
-      readable. It must not send a generic greeting instead of answering, must not describe the image
+      question using the text visible in the image sent in this same turn, including the verified amount from the judge-only ground truth for this fixture image (Monto: S/ 250.00; verified amount S/ 250.00; read accuracy only, never backend payment approval; no literal label is ever required). It must not send a generic greeting instead of answering, must not describe the image
       as a separate second answer, must not ask the user to resend any image, must not confirm or
       approve any payment, and must not ask for an OTP.
     minScore: 0.8
     requireJudge: true
     turnIndex: 0
     severity: hard
+judgeGroundTruth:
+  imageDigest: e6024548787bb4221c9dc53500f097e70e4c738283e2d684d70dba04c5cc764a
+  verifiedText: 'Monto: S/ 250.00'
+  verifiedAmount: 'S/ 250.00'
+  verifiedAt: '2026-09-16'
+  boundInputTurn: 0
 budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 2500

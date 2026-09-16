@@ -152,6 +152,26 @@ export type CustomerLinkedEnrichment = {
   readonly failures: ReadonlyArray<{ target: string; failureKind: string }>;
 };
 
+/**
+ * S2 model-visible transaction authorization. True only for the
+ * authenticated-account scope or when the record number exactly matches
+ * the customer-supplied reference the lookup resolved (same equality
+ * filterPurchaseCandidates uses to narrow). Pure predicate; never
+ * customer text inspection beyond the already-normalized reference.
+ */
+export function transactionReferenceVisible(
+  purchase: Pick<PurchaseInformation, 'customerTransactionNumber'>,
+  options?: {
+    readonly transactionReferenceAuthorized?: boolean;
+    readonly requestedCustomerTransactionNumber?: string | null;
+  },
+): boolean {
+  if (options?.transactionReferenceAuthorized === true) return true;
+  const requested = options?.requestedCustomerTransactionNumber ?? null;
+  const record = purchase.customerTransactionNumber ?? null;
+  return requested !== null && record !== null && record === requested;
+}
+
 export class InformationOrchestrator {
   constructor(
     private readonly dependencies: {
@@ -611,7 +631,7 @@ export class InformationOrchestrator {
         resource: request.resource,
         lookupResource: request.resource,
         purchases: candidates.purchases.map((purchase) =>
-          this.projectPurchase(purchase, request),
+          this.projectPurchase(purchase, request, { transactionReferenceAuthorized: true }),
         ),
         needsSelection: !request.orderId && candidates.needsSelection,
         coverage: carts.length > 0 && candidates.purchases.length === 0
@@ -1471,7 +1491,9 @@ export class InformationOrchestrator {
         resource: request.resource,
         lookupResource: lookup.sourceResource,
         purchases: purchases.map((purchase) =>
-          this.projectPurchase(purchase, request),
+          this.projectPurchase(purchase, request, {
+            requestedCustomerTransactionNumber: lookup.requestedCustomerTransactionNumber ?? null,
+          }),
         ),
         needsSelection:
           lookup.referenceResolution === 'unavailable' || candidates.needsSelection,
@@ -1838,7 +1860,10 @@ export class InformationOrchestrator {
         const effective = conflicted
           ? { ...canonical, paymentStatus: null, grandTotal: null, paymentMethod: null, amountDisclosure: null }
           : canonical;
-        return this.projectPurchase(effective, request);
+        return this.projectPurchase(effective, request, {
+          requestedCustomerTransactionNumber:
+            result.requestedCustomerTransactionNumber ?? null,
+        });
       });
       return {
         ...result,
@@ -2134,6 +2159,20 @@ export class InformationOrchestrator {
   private projectPurchase(
     purchase: PurchaseInformation,
     request: PurchaseRequest,
+    options?: {
+      /**
+       * S2 actual-request transaction strip. The model-facing projection
+       * carries the internal customer transaction number only when the
+       * read scope authorizes it (authenticated account) or the record
+       * number exactly matches the customer-supplied reference the lookup
+       * resolved (same equality filterPurchaseCandidates uses). Every
+       * other path projects null so a denied transaction-reference
+       * disclosure cannot leak through model input. The backend record
+       * itself is untouched; only the projected copy is stripped.
+       */
+      readonly transactionReferenceAuthorized?: boolean;
+      readonly requestedCustomerTransactionNumber?: string | null;
+    },
   ): PurchaseInformation {
     const aspectSet = new Set(request.aspects);
     const sensitive = new Set<SensitivePurchaseField>(request.sensitiveFields);
@@ -2172,7 +2211,7 @@ export class InformationOrchestrator {
       orderId: purchase.orderId,
       eventId: purchase.eventId ?? null,
       currency: null,
-      customerTransactionNumber: purchase.customerTransactionNumber ?? null,
+      customerTransactionNumber: transactionReferenceVisible(purchase, options) ? purchase.customerTransactionNumber ?? null : null,
       paymentStatus:
         aspectSet.has('summary') || aspectSet.has('payment_status') || aspectSet.has('decline')
           ? purchase.paymentStatus

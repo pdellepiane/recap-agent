@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.rsvp_cinthya_campaign_invitation_not_reported_missing
 suite: live_behavior_regression
-version: 7
+version: 8
 description: A campaign-grounded RSVP for Julisabeth y Andrés must reconcile both phone-scoped reads and must not be reported as a missing invitation; confirmed state alone passes.
 tags: [live, behavior, rsvp, attendance, reported-interaction, campaign-context, concurrent-read]
 targetModes: [live_lambda]
@@ -41,6 +41,7 @@ expectations:
 notes:
   - "R05 oracle revision v5 to v6, 2026-09-12, Packet F3. Old preserves-campaign-grounded-invitation required an explicit thank-you, failing a reply that reported confirmed state without a new mutation or auth loop (matrix: fails only missing explicit thank-you). New contract drops the thank-you demand while keeping confirmed-state reporting. Old v5 runs preserved; baseline and candidate must rerun on this v6 contract."
   - "R05 oracle revision v6 to v7, 2026-09-16, Packet E1 node-pin removal. Old enters-rsvp-node pinned the internal responder_invitacion node, prescribing implementation instead of evidencing behavior (matrix: a correct confirmed-state answer through any routing passed the read evidence but failed the node pin). New contract proves the same read-only invariant from receipts: fixture_effect_count rsvp.write 0/0/0 hard plus the retained phone-scoped read evidence. The rubric never claims a campaign informed the decision; the fixture world declares no campaign history for this subject and the judge labels that absence honestly. Threshold and hard severity kept; no threshold reduction. Old v6 runs preserved; baseline and candidate must rerun on this v7 contract. Expectation id enters-rsvp-node is retained for ledger and run continuity; only its type changed from node_transition to fixture_effect_count."
+  - "R05 oracle revision v7 to v8, 2026-09-16, final support rescue task 4 (campaign fixture repair). The v7 note above is superseded only in its campaign-history sentence: evals/fixtures/guest-julisabeth-andres.json now supplies delivered outbound campaign evidence (recentMessages, direction outbound, source campaign, sent_at timestamp, status delivered) for subject 51904523314, so the campaign-grounded description is literal fixture data with source/direction/time provenance, never an inference from the case title. Rubric, thresholds, severity, and read-only receipt evidence are unchanged; the judge sees the same history through the FIXTURE HISTORY section. Provenance is recorded in the fixture note; baseline and candidate share identical fixture bytes. Old v7 runs preserved; baseline and candidate must rerun on this v8 contract."
 budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 1600

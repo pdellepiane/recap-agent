@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.rsvp_confirmed_state_is_reported
 suite: live_behavior_regression
-version: 6
+version: 7
 description: A user-level invitation that already has attendance confirmed is reported via hybrid fragment plus natural tissue without another mutation.
 tags: [live, behavior, rsvp, attendance, current-state, trusted-phone]
 targetModes: [live_lambda]
@@ -44,7 +44,7 @@ expectations:
   - id: reports-existing-confirmation-naturally
     type: text_semantic
     rubric: >-
-      Pass only if the assistant responds entirely in Spanish in its own natural wording, reporting that attendance for "Otra celebración prueba" on 19 de agosto de 2026 is already confirmed, and making clear that no new change or registration was needed or made. Factual requirements are attending polarity, the event name, the date, and the no-write fact; no exact deterministic phrase is required. It must not imply a new mutation was made, must not ask for email or a code, must not mention internal states or tools, and must not state the opposite polarity.
+      Pass only if the assistant responds entirely in Spanish in its own natural wording, reporting that attendance for "Otra celebración prueba" is already confirmed. Factual requirements are attending polarity and the event name; the recorded date (19 de agosto de 2026, any clear rendering) supports grounding but a missing date alone never fails, while a wrong date or flipped polarity does. The response must not claim a new mutation was made; no explicit no-write recital is required. It must not ask for email or a code, must not mention internal states or tools, and must not state the opposite polarity.
     minScore: 0.9
     requireJudge: true
     severity: hard
@@ -56,6 +56,8 @@ expectations:
     type: text_not_contains
     phrases: ["RSVP", "rsvp"]
     severity: hard
+notes:
+  - "R05 oracle revision v6 to v7, 2026-09-16, final support rescue task 5. The old contract demanded attending polarity, event name, date, and an explicit no-write recital as joint factual requirements, failing useful confirmed-state answers that omitted the date or the recital. New contract keeps attending polarity and event name as hard requirements, treats the recorded date as supporting detail (wrong date still fails), and bans false new-mutation claims without demanding a recital. Threshold 0.9, hard severity, requireJudge kept. Old v6 runs preserved; baseline and candidate must rerun on this v7 contract."
 budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 1600

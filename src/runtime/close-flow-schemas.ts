@@ -32,6 +32,31 @@ export const closeActionSchema = z.object({
 
 export type CloseAction = z.input<typeof closeActionSchema>;
 
+/**
+ * Shared close-flow 500 repair (live_feedback.token_seeded_close_flow,
+ * run a5f25bd5: final output failed schema validation at
+ * "closeAction.reason", reason required when type is clarify).
+ *
+ * A clarify without reason (or defer_need without category) carries no
+ * actionable content, so the caller normalizes it to null instead of
+ * letting the void action poison structured output validation and turn
+ * the whole turn into an HTTP 500. Fully specified actions pass through
+ * untouched; every other schema violation still throws at parse. Applied
+ * at the extraction normalization boundary in openai-agent-runtime.
+ */
+export function repairVoidCloseAction(
+  action: CloseAction | null | undefined,
+): CloseAction | null {
+  if (action == null) return null;
+  if (action.type === 'clarify' && (action.reason == null || action.reason.length === 0)) {
+    return null;
+  }
+  if (action.type === 'defer_need' && action.category == null) {
+    return null;
+  }
+  return action;
+}
+
 const contactedProviderSchema = z.object({
   providerId: z.number().int().positive(),
   category: providerCategorySchema,

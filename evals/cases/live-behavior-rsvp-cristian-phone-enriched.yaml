@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.rsvp_cristian_phone_enriched_confirmation
 suite: live_behavior_regression
-version: 6
+version: 7
 description: Cristian's completed invitation is resolved via hybrid fragment plus natural tissue without a false missing-invitation answer.
 tags: [live, behavior, rsvp, phone-enrichment, reported-interaction, cristian]
 targetModes: [live_lambda]
@@ -27,7 +27,7 @@ expectations:
   - id: cristian-existing-confirmation-is-reported
     type: text_semantic
     rubric: >-
-      Pass only if the assistant responds entirely in Spanish in its own natural wording, reporting that attendance for "Michelle & Jorge" on 10 October 2026 at 20:15 (any clear rendering of that factual date) is already confirmed, and making clear that no new change or registration was needed or made. Factual requirements are attending polarity, the event name, the date, and the no-write fact; no exact deterministic phrase is required. It must not imply a new mutation was made, must not ask for email or a code, must not mention internal states or tools, and must not state the opposite polarity.
+      Pass only if the assistant responds entirely in Spanish in its own natural wording, reporting that attendance for "Michelle & Jorge" is already confirmed. Factual requirements are attending polarity and the event name; the recorded date (10 October 2026 at 20:15, any clear rendering) supports grounding but a missing date alone never fails, while a wrong date or flipped polarity does. The response must not claim a new mutation was made; no explicit no-write recital is required. It must not ask for email or a code, must not mention internal states or tools, and must not state the opposite polarity.
     minScore: 0.9
     requireJudge: true
     severity: hard
@@ -39,6 +39,8 @@ expectations:
     type: text_not_contains
     phrases: ["RSVP", "rsvp"]
     severity: hard
+notes:
+  - "R05 oracle revision v6 to v7, 2026-09-16, final support rescue tasks 4 and 5. Fixture: evals/fixtures/rsvp-cristian-michelle-jorge.json now supplies delivered outbound campaign evidence (recentMessages, direction outbound, source campaign, sent_at timestamp, status delivered) for the subject, with provenance in the fixture note; baseline and candidate share identical bytes. Rubric: the old contract demanded attending polarity, event name, date, and an explicit no-write recital as joint factual requirements, failing useful confirmed-state answers that omitted the date or the recital. New contract keeps attending polarity and event name as hard requirements, treats the recorded date as supporting detail (wrong date still fails), and bans false new-mutation claims without demanding a recital. Threshold 0.9, hard severity, requireJudge kept. Old v6 runs preserved; baseline and candidate must rerun on this v7 contract."
 budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 1500

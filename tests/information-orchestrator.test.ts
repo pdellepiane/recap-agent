@@ -1855,3 +1855,103 @@ function eventLookup(): UserEventLookupResult {
     },
   };
 }
+
+describe('S2 actual-request payment parity and transaction strip', () => {
+  function accountOrchestrator(agentGateway: FakeAgentGateway): InformationOrchestrator {
+    return new InformationOrchestrator({
+      knowledgeGateway: { async search() { throw new Error('unused'); } },
+      providerGateway: {} as ProviderGateway,
+      agentGateway,
+    });
+  }
+
+  async function completedPurchase(
+    orchestrator: InformationOrchestrator,
+    executeArgs: Parameters<InformationOrchestrator['execute']>[0],
+  ) {
+    const execution = await orchestrator.execute(executeArgs);
+    const result = execution.results[0];
+    if (!result || result.status !== 'completed' || result.kind !== 'purchase') {
+      throw new Error('Expected a completed purchase result.');
+    }
+    return result;
+  }
+
+  it('keeps one canonical total/paid pair with nonzero paid on the account path', async () => {
+    const agentGateway = new FakeAgentGateway();
+    agentGateway.giftResult = {
+      status: 'success',
+      resource: 'gift_purchases',
+      purchases: [{ ...giftPurchase(), customerTransactionNumber: 'ACC-999' }],
+    };
+    const result = await completedPurchase(accountOrchestrator(agentGateway), {
+      requests: [purchaseRequest('parity-1', [])],
+      authentication: { token: 'jwt', email: 'user@example.com' },
+      authBlock: null,
+    });
+    const projected = result.purchases[0];
+    expect(projected?.amountDisclosure).toEqual({
+      total: 300,
+      paid: 300,
+      currency: null,
+      currencySymbol: null,
+      paymentMethod: 'Transferencia',
+      presentation: 'recorded_method_no_currency',
+    });
+    expect(projected?.grandTotal).toBeNull();
+    expect(projected?.payment?.amount).toBeNull();
+    expect(projected?.customerTransactionNumber).toBe('ACC-999');
+  });
+
+  it('leaves paid unknown and never computes a remaining balance', async () => {
+    const agentGateway = new FakeAgentGateway();
+    agentGateway.giftResult = {
+      status: 'success',
+      resource: 'gift_purchases',
+      purchases: [{ ...giftPurchase(), payment: null, customerTransactionNumber: 'ACC-999' }],
+    };
+    const result = await completedPurchase(accountOrchestrator(agentGateway), {
+      requests: [purchaseRequest('parity-2', [])],
+      authentication: { token: 'jwt', email: 'user@example.com' },
+      authBlock: null,
+    });
+    expect(result.purchases[0]?.amountDisclosure).toMatchObject({ total: 300, paid: null });
+    expect(JSON.stringify(result)).not.toContain('remaining');
+  });
+
+  it('strips internal transaction numbers on phone browse while keeping two distinct records', async () => {
+    const agentGateway = new FakeAgentGateway();
+    agentGateway.guestOrdersResult = {
+      status: 'success',
+      resource: 'orders',
+      purchases: [
+        { ...giftPurchase(), orderId: 'ORD-browse-1', customerTransactionNumber: '701001' },
+        { ...giftPurchase(), orderId: 'ORD-browse-2', customerTransactionNumber: '701002' },
+      ],
+    };
+    const result = await completedPurchase(accountOrchestrator(agentGateway), {
+      requests: [{
+        requestId: 'browse-1',
+        kind: 'purchase',
+        resource: 'orders',
+        query: 'Estado de mis compras',
+        orderId: null,
+        aspects: ['summary', 'payment_status'],
+        sensitiveFields: [],
+        authAction: 'none',
+      }],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
+    });
+    expect(result.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
+      ['ORD-browse-1', 'ORD-browse-2'],
+    );
+    for (const purchase of result.purchases) {
+      expect(purchase.customerTransactionNumber).toBeNull();
+      expect(purchase.amountDisclosure?.total).toBe(300);
+    }
+    expect(JSON.stringify(result)).not.toContain('701001');
+    expect(JSON.stringify(result)).not.toContain('701002');
+  });
+});

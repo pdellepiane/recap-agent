@@ -76,6 +76,7 @@ import {
   type OpenAiInformationRequest,
   type StructuredExtraction,
 } from './extraction-schemas';
+import { repairVoidCloseAction } from './close-flow-schemas';
 import type {
   RuntimeCapabilityManifest,
   RuntimeOperationId,
@@ -1224,7 +1225,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       conversationSummary: extraction.conversationSummary ?? '',
       selectedProviderHints: extraction.selectedProviderHints ?? [],
       selectedProviderReferences: extraction.selectedProviderReferences ?? [],
-      closeAction: extraction.closeAction ?? null,
+      closeAction: repairVoidCloseAction(extraction.closeAction ?? null),
       pauseRequested: extraction.pauseRequested ?? false,
       contactName: extraction.contactName ?? null,
       contactEmail: extraction.contactEmail ?? null,

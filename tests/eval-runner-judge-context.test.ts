@@ -189,6 +189,98 @@ describe('buildSemanticJudgeContext judge-context completeness', () => {
   });
 });
 
+describe('final support rescue judge-evidence completeness (2026-09-16)', () => {
+  it('projects candidate-visible pending requests and delivery dispositions', () => {
+    const turn = makeTurn('No me llega ningún código.', 0, 'Ya pedimos ayuda humana.');
+    const plan = turn.plan as unknown as { information_state: { pending_requests: unknown[] } };
+    plan.information_state.pending_requests = [
+      {
+        requestId: 'information-1',
+        kind: 'purchase',
+        resource: 'gift_purchases',
+        query: 'Revisar el estado del regalo pagado por la persona.',
+      },
+    ];
+    turn.delivery = { action: 'send', reason: 'reply_composed' };
+    turn.outputOrigin = {
+      status: 'verified',
+      candidateSha256: 'a'.repeat(64),
+      deliveredSha256: 'a'.repeat(64),
+      transformationVersion: 'transport-v2',
+      mismatchFields: [],
+    };
+    const ctx = buildSemanticJudgeContext([turn], 0);
+    expect(ctx).toContain('solicitud_pendiente');
+    expect(ctx).toContain('Revisar el estado del regalo');
+    expect(ctx).toContain('entrega turno 0');
+    expect(ctx).toContain('accion=send');
+    expect(ctx).toContain('origen=verified');
+  });
+
+  it('marks failure dispositions as operational failures, never silence', () => {
+    const turn = makeTurn('Es mi comprobante, confirma mi pago con esto.', 0, '');
+    turn.delivery = { action: 'failure', reason: 'generation_failed' };
+    const ctx = buildSemanticJudgeContext([turn], 0);
+    expect(ctx).toContain('accion=failure');
+    expect(ctx).toContain('nunca silencio legitimo');
+  });
+
+  it('projects retained recommended providers with price levels', () => {
+    const turn = makeTurn('Quiero la opción más económica.', 0, 'respuesta');
+    const plan = turn.plan as unknown as { provider_needs: unknown[] };
+    plan.provider_needs = [
+      {
+        category: 'Catering',
+        status: 'shortlisted',
+        selected_provider_ids: [],
+        recommended_providers: [
+          { id: 90, title: 'Opción Esencial', location: 'Miraflores', priceLevel: 'low' },
+          { id: 109, title: 'EDO Sushi Bar', location: 'Barranco', priceLevel: 'high' },
+        ],
+      },
+    ];
+    const ctx = buildSemanticJudgeContext([turn], 0);
+    expect(ctx).toContain('recommendedProviders');
+    expect(ctx).toContain('Miraflores');
+    expect(ctx).toContain('priceLevel');
+  });
+
+  it('projects fixture message source and timestamps for campaign provenance', () => {
+    const turns = [makeTurn('Tengo un carrito abandonado de Carlos y Adriana')];
+    const currentCase = makeCase({
+      inputs: [
+        {
+          text: 'Tengo un carrito abandonado de Carlos y Adriana',
+          channel: 'whatsapp',
+          contactPhone: '+51965765765',
+          sessionId: 's',
+        } as unknown as EvalCase['inputs'][number],
+      ],
+      notes: [],
+      backendFixture: { scenario: 'purchase-sonia-765' },
+    });
+    const ctx = buildSemanticJudgeContext(turns, 0, currentCase);
+    expect(ctx).toContain('FIXTURE HISTORY');
+    expect(ctx).toContain('"source":"campaign"');
+    expect(ctx).toContain('sent_at');
+  });
+
+  it('binds digest-verified image truth for the same-turn continuity case', async () => {
+    const { EvalLoader } = await import('../src/evals/loader');
+    const { resolveJudgeOnlyImageGroundTruth } = await import('../src/evals/runner');
+    const catalog = await new EvalLoader('evals').loadCatalog();
+    const currentCase = catalog.cases.find(
+      (entry) => entry.id === 'live_behavior.continuity_text_image_same_turn',
+    );
+    expect(currentCase).toBeDefined();
+    if (!currentCase) throw new Error('Missing same-turn case.');
+    const truth = resolveJudgeOnlyImageGroundTruth(currentCase, 0);
+    expect(truth).not.toBeNull();
+    expect(truth ?? '').toContain('S/ 250.00');
+    expect(truth ?? '').toContain('judge use only, never candidate knowledge, never runtime input');
+  });
+});
+
 describe('finalization output-origin and transport gates', () => {
   it('passes every delivered turn with consistent verified evidence', () => {
     const delivered = 'respuesta entregada';

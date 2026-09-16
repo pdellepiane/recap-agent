@@ -70,19 +70,21 @@ describe('S1 fixture migration linkage for the 25 catalog-resolved cases', () =>
     }
   });
 
-  it('admits every migrated case except the provider-search mustCall case to the parallel lane', async () => {
+  it('admits every migrated case to the parallel lane', async () => {
     const catalog = await new EvalLoader('evals').loadCatalog();
     for (const id of CASE_IDS) {
       const currentCase = catalog.cases.find((entry) => entry.id === id);
       if (!currentCase) throw new Error(`Missing case ${id}`);
       const verdict = classifyEvalCaseLane(currentCase);
       if (id === 'live_behavior.wedding_planner_location_completes_search') {
-        // Runner-owned limitation (another lane owns runner.ts): its
-        // mustCall search_providers_from_plan has no fixture-operation
-        // mapping, so it stays external until that mapping plus the Lambda
-        // provider-search delegation land. Fixture linkage above still
-        // scopes its conversation backend.
-        expect(verdict.lane, id).toBe('external');
+        // 2026-09-16 final support rescue: the runner-owned provider-tool
+        // mapping (GATEWAY_PROVIDER_TOOL_METHODS, committed in 2113f105)
+        // landed after this comment was written, so search_providers_from_plan
+        // now resolves to FixtureProviderGateway.searchProviders and the case
+        // classifies parallel. The stale external expectation below is
+        // updated, not quarantined: lane classification is shared
+        // fixture-isolation integrity, firmly in scope.
+        expect(verdict.lane, id).toBe('parallel');
         continue;
       }
       expect(verdict.lane, `${id}: ${verdict.reason}`).toBe('parallel');

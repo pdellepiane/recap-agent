@@ -794,3 +794,66 @@ describe('actual reply request auth, image, approval and faq-empty gating', () =
     expect(handoff.input).toContain('Herramientas autorizadas en este nodo: ninguna');
   });
 });
+
+describe('actual reply request venue parity across two distinct records', () => {
+  function secondGuestEvent(eventId: number) {
+    return {
+      ...guestEvent(eventId),
+      name: 'María y José',
+      place: 'Arequipa',
+      country: 'Perú',
+      detail: {
+        withTime: false,
+        timezone: null,
+        celebrateds: [],
+        moments: [
+          moment('Ceremonia', 'Parroquia San Francisco', 'Calle Santa Catalina 100'),
+          moment('Recepción', 'Casa Andina', 'Avenida Lima 200'),
+        ],
+        dresscode: null,
+        commonAsked: [],
+        contactInfo: [],
+      },
+    };
+  }
+
+  it('keeps reception name, street and city for two distinct events without mixing them', async () => {
+    const runtime = testRuntime();
+    const first = venueExecution('req-venue-1', 702201);
+    const secondResults = (first.results[0] as unknown as {
+      result: { events: unknown[] };
+    }).result;
+    const execution: CustomerExecution = {
+      results: [
+        {
+          ...first.results[0],
+          result: { ...secondResults, events: [...secondResults.events, secondGuestEvent(903314)] },
+        } as unknown as InformationTaskResult,
+      ],
+      summaries: first.summaries,
+    };
+    const snapshot = assembleCustomerContext({
+      execution,
+      identity: null,
+      currentContext: null,
+      nowIso: NOW,
+    });
+    expect(snapshot.invitationsEvents.invitations).toHaveLength(2);
+    const customerContext = projectCustomerContext(snapshot, {
+      focus: 'general',
+      relevantEventIds: [702201, 903314],
+    });
+    const spec = await runtime.buildReplyRequestSpec(
+      replyRequest(supportPlan(), {
+        customerContext,
+        informationResults: [...execution.results],
+      }),
+    );
+    expect(spec.input).toContain('Julisabeth y Andrés');
+    expect(spec.input).toContain('Hacienda Recoveco');
+    expect(spec.input).toContain('María y José');
+    expect(spec.input).toContain('Casa Andina');
+    expect(spec.input).toContain('Arequipa');
+    expect(spec.input).toContain('Parroquia San Francisco');
+  });
+});

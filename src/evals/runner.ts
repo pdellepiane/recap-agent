@@ -2597,7 +2597,7 @@ export function buildSemanticJudgeContext(
         currentNode: plan.current_node, lifecycleState: plan.lifecycle_state,
         eventType: plan.event_type, location: plan.location, guestRange: plan.guest_range,
         activeNeedCategory: plan.active_need_category,
-        providerNeeds: plan.provider_needs.map((need) => ({ category: need.category, status: need.status, selectedProviderIds: [...need.selected_provider_ids] })),
+        providerNeeds: plan.provider_needs.map((need) => ({ category: need.category, status: need.status, selectedProviderIds: [...need.selected_provider_ids], recommendedProviders: projectRecommendedProviders(need) })),
         auth: { status: plan.user_auth.status, method: plan.user_auth.auth_method, awaitingPhoneConfirmation: plan.user_auth.awaiting_phone_confirmation },
         contactFields: turn.trace.contact_validation_summary,
         informationAccess: turn.trace.information_execution_summary.map((entry) => ({ method: entry.accessMethod ?? null, resource: entry.resource ?? null, coverage: entry.coverage ?? null })),
@@ -2659,7 +2659,7 @@ export function buildSemanticJudgeContext(
   const fixtureMessages = loadSubjectScopedFixtureMessages(currentCase, selectedIndex);
   const declaresFixture = resolveEffectiveFixtureScenario(currentCase, selectedIndex) !== null;
   const fixtureSection = fixtureMessages !== null && fixtureMessages.length > 0
-    ? `FIXTURE HISTORY (declared world context, never attribute to candidate): fixture ${resolveEffectiveFixtureScenario(currentCase, selectedIndex) ?? 'desconocido'} mensajes declarados (id, direction, body): ${JSON.stringify(fixtureMessages)}`
+    ? `FIXTURE HISTORY (declared world context, never attribute to candidate): fixture ${resolveEffectiveFixtureScenario(currentCase, selectedIndex) ?? 'desconocido'} mensajes declarados (id, direction, source, body, status, sent_at): ${JSON.stringify(fixtureMessages)}`
     : declaresFixture
       ? `FIXTURE HISTORY: fixture ${resolveEffectiveFixtureScenario(currentCase, selectedIndex) ?? 'desconocido'} sin mensajes para el sujeto de este caso; no se transfirio historial de otros sujetos.`
       : 'FIXTURE HISTORY: none';
@@ -2824,6 +2824,8 @@ function buildCanonicalEvidenceLines(
   lines.push(buildConversationSummaryLine(turns, selectedIndex));
   lines.push(...SYSTEM_OPERATIONAL_NOTE_LINES);
   lines.push(...buildToolFactLines(turns));
+  lines.push(...buildPendingRequestLines(turns));
+  lines.push(...buildDeliveryDispositionLines(turns));
   if (currentCase !== undefined && selectedIndex !== undefined) {
     lines.push(...buildPurchaseProjectionLines(currentCase, selectedIndex));
     lines.push(...buildEventPlaceProjectionLines(currentCase, selectedIndex));
@@ -2872,6 +2874,91 @@ function buildToolFactLines(turns: EvalTurnResult[]): string[] {
       `hechos_herramienta autorizados disponibles para la respuesta, turno ${turn.turnIndex} (solo hechos sanitizados; lo ausente es desconocido, nunca exito): ` +
       `herramientas=[${called || 'ninguna'}] ${lookupLine} ${outputLine}`
     );
+  });
+}
+
+/**
+ * 2026-09-16 final support rescue, task 2: retained shortlist facts the
+ * candidate saw (seed or evolved plan). Titles and locations pass through
+ * the candidate-path redaction; ids, price levels travel raw. Unknown-safe:
+ * unit-built partial plans may omit the list, which projects as empty, never
+ * invented. Lets the judge resolve comparative references (cheaper-option)
+ * from the same shortlist the candidate used.
+ */
+function projectRecommendedProviders(need: { recommended_providers?: unknown }): Array<{
+  id: number | null;
+  title: string;
+  location: string | null;
+  priceLevel: string | null;
+}> {
+  const raw = need.recommended_providers;
+  if (!Array.isArray(raw)) return [];
+  return raw.map((entry) => {
+    const record = (typeof entry === 'object' && entry !== null ? entry : {}) as Record<string, unknown>;
+    return {
+      id: typeof record['id'] === 'number' ? record['id'] : null,
+      title: typeof record['title'] === 'string' ? redactArtifactText(record['title']).slice(0, 80) : '',
+      location: typeof record['location'] === 'string' ? redactArtifactText(record['location']).slice(0, 80) : null,
+      priceLevel: typeof record['priceLevel'] === 'string' ? record['priceLevel'] : null,
+    };
+  });
+}
+
+/**
+ * 2026-09-16 final support rescue, task 2: candidate-visible pending-request
+ * facts. Projects the protected/preserved questions the candidate saw in
+ * plan state (OTP nondelivery/terminal protected queries, phone-unclear event
+ * question, purchase follow-ups): kind, resource where present, and the
+ * redacted query text. Values come from the evaluated plan snapshot only;
+ * an empty list is unknown, never success. The fixture-world truth below
+ * stays separate so a missing projection remains diagnosable.
+ */
+function buildPendingRequestLines(turns: EvalTurnResult[]): string[] {
+  if (turns.length === 0) {
+    return ['solicitud_pendiente=ningun_turno (lo ausente es desconocido, nunca exito ni confirmacion)'];
+  }
+  return turns.map((turn) => {
+    // Unknown-safe: unit-built partial plans may omit information_state.
+    const planRecord = getEvaluationPlan(turn) as unknown as {
+      information_state?: { pending_requests?: unknown };
+    };
+    const pending = planRecord.information_state?.pending_requests;
+    if (!Array.isArray(pending) || pending.length === 0) {
+      return `solicitud_pendiente turno ${turn.turnIndex}=ninguna (sin preguntas preservadas en el estado; lo ausente es desconocido)`;
+    }
+    const items = pending.map((request) => {
+      const record = request as unknown as Record<string, unknown>;
+      const kind = typeof record['kind'] === 'string' ? String(record['kind']) : 'desconocida';
+      const resource = typeof record['resource'] === 'string' ? String(record['resource']) : 'sin_recurso';
+      const query = typeof record['query'] === 'string' && record['query'].length > 0
+        ? redactArtifactText(String(record['query'])).slice(0, 300)
+        : 'sin_pregunta';
+      return `${kind}/${resource}: ${query}`;
+    });
+    return `solicitud_pendiente turno ${turn.turnIndex} (preguntas preservadas visibles para el candidato; repetir el tema pendiente es continuidad, responderla sin autorizacion sigue fallando): ${items.join(' | ')}`;
+  });
+}
+
+/**
+ * 2026-09-16 final support rescue, task 2: null-delivery semantics. Projects
+ * the wire disposition of every evaluated turn: send means delivered text is
+ * present, suppress means validated silence (see disposition), failure means
+ * a generation or transport failure that is never success, and an absent
+ * disposition is unknown, never confirmation. Lets the judge tell a blank
+ * delivery-absence failure apart from legitimate silence without guessing.
+ */
+function buildDeliveryDispositionLines(turns: EvalTurnResult[]): string[] {
+  if (turns.length === 0) {
+    return ['entrega=ningun_turno (lo ausente es desconocido, nunca exito ni confirmacion)'];
+  }
+  return turns.map((turn) => {
+    const action = turn.delivery?.action ?? 'desconocida';
+    const reason = turn.delivery?.reason ?? 'sin_motivo';
+    const origin = turn.outputOrigin?.status ?? 'sin_evidencia';
+    const delivered = typeof turn.deliveredText === 'string' && turn.deliveredText.length > 0
+      ? 'texto_entregado=si'
+      : 'texto_entregado=no';
+    return `entrega turno ${turn.turnIndex}: accion=${action} motivo=${reason} origen=${origin} ${delivered} (failure o envio vacio sin disposicion valida es fallo operativo, nunca silencio legitimo)`;
   });
 }
 
@@ -3089,7 +3176,7 @@ export function resolveDispatchFixtureScenario(
 function loadSubjectScopedFixtureMessages(
   currentCase: EvalCase,
   selectedIndex: number,
-): Array<{ id: number; direction: string; body: string }> | null {
+): Array<{ id: number; direction: string; source: string | null; body: string; status: string; sent_at: string | null }> | null {
   const scenario = resolveEffectiveFixtureScenario(currentCase, selectedIndex);
   if (!scenario) {
     return null;
@@ -3102,19 +3189,26 @@ function loadSubjectScopedFixtureMessages(
     const fixturePath = path.join(process.cwd(), 'evals', 'fixtures', `${scenario}.json`);
     const raw = fsSync.readFileSync(fixturePath, 'utf8');
     const parsed = JSON.parse(raw) as {
-      recentMessages?: Record<string, { messages?: Array<{ id: number; direction: string; body: string }> }>;
+      recentMessages?: Record<string, { messages?: Array<{ id: number; direction: string; source?: unknown; body: string; status?: unknown; sent_at?: unknown }> }>;
     };
     if (!parsed.recentMessages || typeof parsed.recentMessages !== 'object') {
       return [];
     }
-    const collected: Array<{ id: number; direction: string; body: string }> = [];
+    const collected: Array<{ id: number; direction: string; source: string | null; body: string; status: string; sent_at: string | null }> = [];
     for (const [subjectKey, entry] of Object.entries(parsed.recentMessages)) {
       if (!subjectPhones.some((phone) => phoneKeysMatch(phone, subjectKey))) {
         continue;
       }
       const msgs = entry?.messages ?? [];
       for (const m of msgs.slice(0, 20)) {
-        collected.push({ id: m.id, direction: m.direction, body: redactArtifactText(m.body) });
+        collected.push({
+          id: m.id,
+          direction: m.direction,
+          source: typeof m.source === 'string' ? m.source : null,
+          body: redactArtifactText(m.body),
+          status: typeof m.status === 'string' ? m.status : 'desconocido',
+          sent_at: typeof m.sent_at === 'string' ? m.sent_at : null,
+        });
       }
     }
     return collected;

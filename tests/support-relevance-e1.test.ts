@@ -230,7 +230,7 @@ describe('support relevance packet E1 judge evidence', () => {
     });
   });
 
-  it('declares a fixture world for campaign cases and labels absent history honestly', async () => {
+  it('declares a fixture world for campaign cases and projects delivered campaign history', async () => {
     const catalog = await loadCatalog();
     const evalDirectory = path.resolve(process.cwd(), 'evals', 'fixtures');
     const campaign = catalog.cases.filter((entry) => entry.tags.includes('campaign-context'));
@@ -245,8 +245,15 @@ describe('support relevance packet E1 judge evidence', () => {
       (entry) => entry.id === 'live_behavior.rsvp_cinthya_campaign_invitation_not_reported_missing',
     );
     expect(cinthya).toBeDefined();
+    // 2026-09-16 final support rescue task 4: the fixture now supplies
+    // delivered outbound campaign evidence instead of honestly labeled
+    // absence, so the judge must see the campaign message with its
+    // source/direction/time provenance.
     const context = buildSemanticJudgeContext([], 0, cinthya as EvalCase);
-    expect(context).toContain('sin mensajes para el sujeto de este caso');
+    expect(context).toContain('FIXTURE HISTORY');
+    expect(context).toContain('"source":"campaign"');
+    expect(context).toContain('"direction":"outbound"');
+    expect(context).toContain('sent_at');
   });
 
   it('registers the support-relevance E1 entries against mandatory live cases', async () => {
