@@ -328,6 +328,14 @@ const FIXTURE_EFFECT_OPERATIONS: Record<string, FixtureCaseOperation[]> = {
   'handoff.write': ['requestHumanTakeover'],
 };
 
+// 2026-09-16: read-only provider-search tools route through
+// FixtureProviderGateway (fixture-scoped, no cross-case state). The
+// wedding-planner E1 case pins mustCall on search_providers_from_plan.
+const GATEWAY_PROVIDER_TOOL_METHODS: Record<string, string[]> = {
+  search_providers_from_plan: ['searchProviders'],
+  search_providers_by_query_intent: ['searchProvidersByQueryIntent'],
+};
+
 const PROVIDER_EFFECT_METHODS: Record<string, string[]> = {
   'provider.quote.write': ['createQuoteRequest'],
   'provider.favorite.write': ['addVendorToEventFavorites'],
@@ -381,6 +389,11 @@ export function collectFixtureCaseOperations(currentCase: EvalCase): {
     const mapped = GATEWAY_TOOL_OPERATIONS[tool];
     if (mapped) {
       for (const operation of mapped) conversation.add(operation);
+      return;
+    }
+    const providerMapped = GATEWAY_PROVIDER_TOOL_METHODS[tool];
+    if (providerMapped) {
+      for (const method of providerMapped) provider.add(method);
       return;
     }
     if (LOCAL_EVAL_TOOLS.has(tool)) {
