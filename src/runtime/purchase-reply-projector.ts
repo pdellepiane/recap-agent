@@ -160,15 +160,15 @@ function trustedAmount(value: number | null | undefined): number | null {
 export function disclosedPurchaseTotal(
   purchase: PurchaseInformation,
 ): number | null {
-  return trustedAmount(purchase.grandTotal) ??
-    trustedAmount(purchase.amountDisclosure?.total ?? null);
+  return trustedAmount(purchase.amountDisclosure?.total ?? null) ??
+    trustedAmount(purchase.grandTotal);
 }
 
 export function disclosedPurchaseMethod(
   purchase: PurchaseInformation,
 ): string | null {
-  return trustedText(purchase.paymentMethod ?? purchase.payment?.method ?? null) ??
-    trustedText(purchase.amountDisclosure?.paymentMethod ?? null);
+  return trustedText(purchase.amountDisclosure?.paymentMethod ?? null) ??
+    trustedText(purchase.paymentMethod ?? purchase.payment?.method ?? null);
 }
 
 /**
@@ -181,8 +181,8 @@ export function disclosedPurchaseMethod(
 export function disclosedPurchaseCurrency(
   purchase: PurchaseInformation,
 ): string | null {
-  return trustedText(purchase.currency) ??
-    trustedText(purchase.amountDisclosure?.currency ?? null);
+  return trustedText(purchase.amountDisclosure?.currency ?? null) ??
+    trustedText(purchase.currency);
 }
 
 export function disclosedPurchaseCurrencySymbol(
@@ -190,8 +190,8 @@ export function disclosedPurchaseCurrencySymbol(
 ): string | null {
   const currency = disclosedPurchaseCurrency(purchase);
   if (currency === null) return null;
-  return trustedText(purchase.currencySymbol) ??
-    trustedText(purchase.amountDisclosure?.currencySymbol ?? null);
+  return trustedText(purchase.amountDisclosure?.currencySymbol ?? null) ??
+    trustedText(purchase.currencySymbol);
 }
 
 function toCartView(cart: CartInformation): CartReplyView {

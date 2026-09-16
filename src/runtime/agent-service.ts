@@ -227,7 +227,6 @@ import {
   type CustomerContextProjection,
   type CustomerContextSnapshot,
   type CustomerEnrichmentSummary,
-  type CustomerProjectionFocus,
   type RankableCandidate,
 } from './customer-context';
 import {
@@ -2653,6 +2652,12 @@ export class AgentService {
     plan: PlanSnapshot,
     extraction: ExtractionResult,
   ): boolean {
+    // An event reference resolves a read target; it is not an attendance
+    // instruction. Preserve explicit RSVP mutations and party selections,
+    // but let factual requests reach the information executor.
+    if (extraction.informationRequests.length > 0 && extraction.requestedOperation !== 'rsvp.state.read' &&
+      extraction.rsvpAction == null && extraction.rsvpCandidateGuestId == null &&
+      extraction.rsvpParty == null) return false;
     // S1: typed topic/request evidence enables authorized reads independent
     // of rsvpAction (see hasCurrentMessageRsvpReference). Bare intent
     // without typed reference keeps the prior route (probe-0 deferral
@@ -2685,7 +2690,6 @@ export class AgentService {
     }
 
     return (
-      plan.rsvp_state.status !== 'none' ||
       extraction.actionIntent === 'responder_invitacion' ||
       hasExplicitRsvpSelection ||
       (extraction.rsvpEventReference !== null &&
@@ -2817,6 +2821,16 @@ export class AgentService {
         } : {}),
       });
       const composeStartedAt = Date.now();
+      // A2 single reply: a concurrent information question rides the same
+      // turn. No RSVP effect ran here, so the handoff outcome travels as the
+      // completed-work carrier and the information executor composes the
+      // single model-authored reply.
+      if (args.extraction.informationRequests.length > 0) {
+        return this.handleInformationFlow({
+          ...args, workingPlan: planToSaveHandoff, extraction: args.extraction,
+          completedRsvp: { evidence: null, outcome: handoffOperationalNote },
+        });
+      }
       const reply = await composeModelReply(this.dependencies.runtime, {
         currentNode,
         previousNode: args.previousNode,
@@ -3174,7 +3188,7 @@ export class AgentService {
             tool: 'get_guest_event_detail',
             output: JSON.stringify({
               status: verification.readStatus,
-              attendance_confirmed: verification.attendanceConfirmed,
+              requested_attendance_change_verified: verification.attendanceConfirmed,
               fresh_read: verification.freshRead,
             }),
           });
@@ -3237,6 +3251,19 @@ export class AgentService {
       pendingState,
       selectedInvitation,
     });
+    const rsvpPhoneEvidence = replyPhoneEvidence
+      ? this.projectRsvpPhoneEvidenceForReply(replyPhoneEvidence, selectedInvitation,
+        args.extraction.rsvpEventReference ?? null)
+      : null;
+    // RSVP is work within the customer turn. A completed action/selection
+    // does not swallow other questions; the existing information executor
+    // adds their facts before the single model-authored reply.
+    if (replyExtraction.informationRequests.length > 0) {
+      return this.handleInformationFlow({
+        ...args, workingPlan: planToSave, extraction: replyExtraction,
+        completedRsvp: { evidence: rsvpPhoneEvidence, outcome: operationalNote },
+      });
+    }
     const composeStartedAt = Date.now();
     const reply = await composeModelReply(this.dependencies.runtime, {
       currentNode,
@@ -3255,13 +3282,7 @@ export class AgentService {
       promptBundleId: PENDING_COMPILER_PROMPT_ID,
       promptFilePaths: [],
       toolUsage: args.toolUsage,
-      rsvpPhoneEvidence: replyPhoneEvidence
-        ? this.projectRsvpPhoneEvidenceForReply(
-            replyPhoneEvidence,
-            selectedInvitation,
-            args.extraction.rsvpEventReference ?? null,
-          )
-        : null,
+      rsvpPhoneEvidence,
     });
     args.timingMs.compose_reply += Date.now() - composeStartedAt;
     args.tokenUsage.reply = reply.tokenUsage ?? null;
@@ -3853,7 +3874,8 @@ export class AgentService {
    * from a verified fresh read acquired in THIS invocation (same guest AND
    * same event id). A write echo, the requested action, an event-name match
    * alone, or a replayed historical receipt never rewrites observed state.
-   * Unconfirmed outcomes leave evidence untouched.
+   * Unconfirmed outcomes leave evidence untouched: only a verified change
+   * or an observed-state recovery carries a fresh matched observation.
    */
   private applyVerifiedRsvpReadToPhoneEvidence(
     evidence: RsvpPhoneEvidence,
@@ -3861,7 +3883,8 @@ export class AgentService {
   ): RsvpPhoneEvidence {
     const observed = verification.observed;
     if (
-      verification.status !== 'verified' ||
+      (verification.status !== 'verified' && verification.status !== 'observed_state') ||
+      verification.readStatus !== 'matched' ||
       verification.replayed ||
       !verification.freshRead ||
       !observed || observed.source !== 'fresh_read' ||
@@ -3991,7 +4014,7 @@ export class AgentService {
             source: verification.observed.source,
           }
         : null,
-      attendance_confirmed: verification.attendanceConfirmed,
+      requested_attendance_change_verified: verification.attendanceConfirmed,
       effect_applied: verification.effectApplied,
       observed_without_attribution: verification.observedWithoutAttribution,
       companion: {
@@ -4210,7 +4233,7 @@ export class AgentService {
       requested_plus_one_response: plusOneResponse,
       selected_candidate: selectedCandidate,
       grounded_campaign_event: groundedCampaignEvent,
-      backend_result: result ? this.summarizeRsvpResult(result) : null,
+      backend_result: !verification && result ? this.summarizeRsvpResult(result) : null,
       // Packet B verification receipt: typed facts only. Only a verified
       // attendance authorizes a confirmation; companion persistence is
       // unverifiable through the existing backend read and never claimed.
@@ -4220,6 +4243,8 @@ export class AgentService {
           ? verification.effectApplied
             ? 'communicate_confirmed_state'
             : 'communicate_existing_state'
+          : verification.plusOneEcho !== null
+            ? 'communicate_companion_result_with_verification_scope'
           : result?.status === 'multiple_pending'
             ? 'select_one_event'
             : 'human_review_or_retry'
@@ -4357,7 +4382,7 @@ export class AgentService {
     extraction: ExtractionResult,
   ): boolean {
     const continuity = messageContext.continuity;
-    if (!continuity?.hasPriorContext) {
+    if (!continuity?.hasPriorContext && extraction.reportedEventRole == null) {
       return false;
     }
     // Image turns stay on the resolver bundle with their own evidence; a
@@ -4488,7 +4513,7 @@ export class AgentService {
       extraction: clarificationExtraction,
     });
     const reply = await composeModelReply(this.dependencies.runtime, {
-      currentNode: 'aclarar_pedir_faltante',
+      currentNode: providerClarification ? 'aclarar_pedir_faltante' : 'resolver_consultas_informativas',
       previousNode: args.previousNode,
       userMessage: args.inbound.text,
       messageContext: args.messageContext,
@@ -6853,7 +6878,10 @@ export class AgentService {
       relevantOrderIds,
       relevantEventIds,
     });
-    const focus = this.deriveCustomerProjectionFocus(purchaseRequests, hasRsvpSignals);
+    // B0/B1: the canonical profile carries every authorized record; the
+    // resolved target above is the relevance reference for the reply and
+    // for mutations. No focus-based copy is built or sent.
+    const focus = 'general' as const;
     // P3 fact parity: name hints never match stable IDs, so resolve them
     // against known authorized names once and reuse the resolved IDs for
     // enrichment and for the detail projection below. A uniquely resolved
@@ -7250,44 +7278,6 @@ export class AgentService {
   }
 
   /**
-   * S6 typed focus for minimum disclosure. Cart relevance comes ONLY from
-   * structured purchase aspects/query evidence expressing checkout/cart work
-   * (the `payment_options` aspect the extractor emits for cart checkout and
-   * payment-option questions). Image presence, support continuations and
-   * voucher reports are never cart-intent proxies: a payment question with
-   * an image stays payment-focused, and payment+receipt / payment+thanks
-   * (dedication/thanks aspects) stay payment-focused. An explicit cart
-   * checkout is supported; a request genuinely about both receives both
-   * (general). No keyword detection, no new classifier.
-   */
-  private deriveCustomerProjectionFocus(
-    purchaseRequests: ReadonlyArray<{ aspects: readonly PurchaseAspect[] }>,
-    hasRsvpSignals: boolean,
-  ): CustomerProjectionFocus {
-    const hasPurchaseWork = purchaseRequests.length > 0;
-    if (hasRsvpSignals && !hasPurchaseWork) return 'rsvp';
-    const orderAspects: ReadonlySet<string> = new Set([
-      'summary',
-      'payment_status',
-      'payment_details',
-      'validation_window',
-      'shipping',
-      'dedication',
-      'thanks',
-      'decline',
-    ]);
-    const orderSignal = purchaseRequests.some((request) =>
-      request.aspects.some((aspect) => orderAspects.has(aspect)),
-    );
-    const cartSignal = purchaseRequests.some((request) =>
-      request.aspects.some((aspect) => aspect === 'payment_options'),
-    );
-    if (orderSignal && !cartSignal) return 'payment';
-    if (cartSignal && !orderSignal) return 'cart';
-    return 'general';
-  }
-
-  /**
    * Explicit relevant attachment selection. Only references linked to the
    * current inbound message travel to the model; stored references from
    * earlier turns are never resent on recency alone. Later-turn reuse needs
@@ -7434,6 +7424,10 @@ export class AgentService {
     messageContext: TurnMessageContext;
     handleTurnStartedAt: number;
     imageTurn?: ImageTurnContext;
+    completedRsvp?: {
+      evidence: ComposeReplyRequest['rsvpPhoneEvidence'];
+      outcome: string;
+    };
   }): Promise<HandleTurnResponse> {
     const declined = args.extraction.informationRequests.some((request) =>
       (request.kind === 'purchase' || request.kind === 'associated_event') && request.authAction === 'decline_authentication');
@@ -7639,7 +7633,7 @@ export class AgentService {
       (args.extraction.rsvpAction !== null && args.extraction.rsvpAction !== undefined) ||
       (args.extraction.closeAction !== null && args.extraction.closeAction !== undefined) ||
       (args.extraction.rsvpCandidateGuestId !== null && args.extraction.rsvpCandidateGuestId !== undefined);
-    const hasActionConflict = executesActionThisTurn && requests.length > 0;
+    const hasActionConflict = executesActionThisTurn && requests.length > 0 && !args.completedRsvp;
     const isRetiredPhoneConfirmationRecovery =
       planForInformation.user_auth.awaiting_phone_confirmation &&
       Boolean(args.inbound.contactPhone) &&
@@ -8193,12 +8187,13 @@ export class AgentService {
       turnDecision: overrides.turnDecision ?? this.informationTurnDecision(
         operationalNote ?? 'information_batch',
       ),
-      errorMessage: overrides.errorMessage ?? operationalNote,
+      errorMessage: args.completedRsvp?.outcome ?? overrides.errorMessage ?? operationalNote,
       promptBundleId: PENDING_COMPILER_PROMPT_ID,
       promptFilePaths: [],
       toolUsage: args.toolUsage,
       informationResults,
       customerContext,
+      rsvpPhoneEvidence: args.completedRsvp?.evidence,
       owner: planForInformation.owner ?? null,
       continuity: this.resolveContinuityProjection(planForInformation, args.messageContext),
       pendingQuestionRef: args.workingPlan.owner_pending_question ?? null,
@@ -8606,24 +8601,50 @@ export class AgentService {
     const policy = result?.status === 'completed' && result.kind === 'faq'
       ? result.hostWithdrawalPolicy : null;
     let handoff: AgentGatewayResult | null = null;
+    let receipt = plan.human_help_receipt ?? null;
     const phone = this.resolveEscalationPhone(args.inbound);
     if (needsHandoff) {
-      handoff = phone
-        ? await this.requestHumanTakeoverWithTrace(gateway, phone, args.toolUsage)
-        : this.missingPhoneEscalationResult();
+      const decision = decideHumanHelpAttempt({
+        conversationId: plan.plan_id, inboundId: args.inbound.messageId,
+        scope: 'protected_request', trustedPhone: phone,
+        gatewayCapable: this.capabilityManifest['human.takeover.write'].available,
+        prior: receipt, explicitRetry: this.isExplicitHumanRequest(plan, args.extraction),
+      });
+      if (decision.action === 'attempt' && phone) {
+        receipt = applyHandoffResult({ dedupeKey: decision.dedupeKey,
+          inboundId: args.inbound.messageId, phone, gatewayStatus: 'unknown' });
+        await this.dependencies.planStore.save({
+          plan: mergePlan(plan, { human_help_receipt: receipt }), reason: 'human_help_intent',
+        });
+        try {
+          handoff = await this.requestHumanTakeoverWithTrace(gateway, phone, args.toolUsage);
+          receipt = handoff.status === 'skipped' ? plan.human_help_receipt ?? null
+            : applyHandoffResult({ dedupeKey: decision.dedupeKey,
+              inboundId: args.inbound.messageId, phone,
+              gatewayStatus: resolveHandoffGatewayStatus(handoff) });
+        } catch {
+          handoff = { status: 'failed', error: 'handoff_outcome_unknown', retryable: false, outcome: 'unknown' };
+        }
+      } else if (receipt?.outcome === 'handoff_requested') {
+        handoff = { status: 'success', message: 'retained_confirmed_handoff' };
+      } else {
+        handoff = phone ? { status: 'skipped', reason: 'not_configured', message: decision.reason }
+          : this.missingPhoneEscalationResult();
+      }
     }
     const handedOff = handoff?.status === 'success';
     const handoffOutcome = handoff === null
       ? null
       : handedOff
         ? 'handoff_requested' as const
-        : handoff.status === 'failed'
+        : handoff.status === 'failed' && handoff.outcome !== 'unknown'
           ? 'handoff_failed' as const
           : 'handoff_unknown' as const;
     const currentNode: DecisionNode = handedOff
       ? 'solicitar_agente_humano' : 'resolver_consultas_informativas';
     const planToSave = mergePlan(plan, {
       current_node: currentNode,
+      human_help_receipt: receipt,
       ...(handedOff ? { intent: 'solicitar_humano' as const } : {}),
       information_state: {
         ...plan.information_state,
@@ -8632,12 +8653,19 @@ export class AgentService {
       },
       ...(handoff ? { human_escalation: {
         status: handedOff ? 'requested' as const : 'none' as const,
-        requested_at: handedOff ? new Date().toISOString() : null,
+        // A reused success keeps its original request time; only a fresh
+        // dispatch stamps a new one.
+        requested_at: handedOff
+          ? plan.human_escalation.requested_at ?? new Date().toISOString()
+          : null,
         phone_number: phone,
         last_error: handoff.status === 'failed' ? handoff.error
           : handoff.status === 'skipped' ? handoff.message : null,
       } } : {}),
     });
+    // The final receipt is durable before the reply is composed; a crash
+    // between compose and delivery still leaves the dedupe record behind.
+    await this.dependencies.planStore.save({ plan: planToSave, reason: 'host_withdrawal_policy_and_support' });
     const composeStartedAt = Date.now();
     // R2: host-withdrawal replies share the resolved attachment projection
     // and the continuity reference.
@@ -8691,7 +8719,6 @@ export class AgentService {
       planToSave,
     );
     const finalPlan = planToSave;
-    await this.dependencies.planStore.save({ plan: finalPlan, reason: 'host_withdrawal_policy_and_support' });
     args.timingMs.total = Date.now() - args.handleTurnStartedAt;
     return {
       plan: finalPlan,

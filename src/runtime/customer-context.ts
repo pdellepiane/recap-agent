@@ -695,7 +695,7 @@ export type CustomerContextProjection = {
     readonly invitationsEvents: CustomerSectionStatus;
   };
   readonly purchases: readonly PurchaseCartSummary[];
-  /** Carts are retained for later cart questions but excluded from payment focus. */
+  /** Carts ride the canonical profile as distinct records for later cart questions. */
   readonly carts: readonly CartInformation[];
   readonly detailedPurchases: readonly PurchaseInformation[];
   readonly invitations: readonly InvitationEventSummary[];
@@ -706,10 +706,11 @@ export type CustomerContextProjection = {
 
 /**
  * P3 compact candidate summary. Stable field order
- * (kind, orderId/eventId, eventName, eventDate, state); only set fields
- * are emitted so duplicate/null-value noise stays out of model input.
- * Amounts, venue detail and provenance travel only with the resolved
- * record detail, never here.
+ * (kind, orderId/eventId, eventName, eventDate, createdAt, total, currency,
+ * state); only set fields are emitted so duplicate/null-value noise stays
+ * out of model input. Candidate totals mirror the resolved record detail
+ * (amountDisclosure first) and never conflict with it; venue detail and
+ * provenance travel only with the resolved record detail, never here.
  */
 export type CompactCandidateSummary = {
   readonly kind: 'order' | 'event';
@@ -717,16 +718,20 @@ export type CompactCandidateSummary = {
   readonly eventId?: number | string;
   readonly eventName?: string;
   readonly eventDate?: string;
+  readonly createdAt?: string;
+  readonly total?: number;
+  readonly currency?: string;
   readonly state?: string;
 };
 
 /**
  * P3 compact candidate index over the retained snapshot. Every known
  * authorized purchase and invitation appears once with identifiers, names,
- * dates and record state only (stable snapshot order, nulls omitted, no
- * amounts, no venue detail, no provenance). Full detail for the resolved
- * or relevant records is projected separately, so facts are serialized
- * once. No date cutoff: historical candidates stay listed.
+ * dates, totals and record state (stable snapshot order, nulls omitted, no
+ * venue detail, no provenance). Full detail for every authorized record is
+ * projected alongside, so each fact has one home per section and candidate
+ * amounts never conflict with the detail disclosure. No date cutoff:
+ * historical candidates stay listed.
  */
 export function buildCompactCandidateSummaries(
   snapshot: CustomerContextSnapshot,
@@ -741,7 +746,8 @@ export function buildCompactCandidateSummaries(
     );
     for (const purchase of snapshot.purchasesCarts.purchases) {
       const detail = detailByOrderId.get(purchase.orderId);
-      const eventDate = detail?.eventDate ?? detail?.createdAt ?? null;
+      const eventDate = detail?.eventDate ?? null;
+      const total = detail?.amountDisclosure?.total ?? detail?.grandTotal ?? purchase.grandTotal;
       candidates.push({
         kind: 'order',
         ...(purchase.orderId.trim().length > 0 ? { orderId: purchase.orderId } : {}),
@@ -749,6 +755,9 @@ export function buildCompactCandidateSummaries(
           ? { eventName: purchase.eventName }
           : {}),
         ...(eventDate ? { eventDate } : {}),
+        ...(detail?.createdAt ? { createdAt: detail.createdAt } : {}),
+        ...(total != null ? { total } : {}),
+        ...(detail?.currency ? { currency: detail.currency } : {}),
         ...(purchase.paymentStatus !== null && purchase.paymentStatus.trim().length > 0
           ? { state: purchase.paymentStatus }
           : {}),
@@ -775,11 +784,13 @@ export function buildCompactCandidateSummaries(
 }
 
 /**
- * Minimum-disclosure projection: common references plus only the
- * question-relevant detail. Inactive sections stay absent. A payment
- * question never receives cart facts; a cart question never receives
- * payment details. No automatic first-record selection: without an
- * explicit target, candidates stay unresolved in current context.
+ * One canonical authorized customer profile. Every authorized record the
+ * runtime already holds (purchases, carts, detailed purchases, invitations
+ * with full attendance state) is projected once; nothing is hidden by
+ * question focus or age. Response relevance travels through the caller's
+ * target reference (relevant order/event IDs order relevant records first),
+ * never through a second filtered copy. Authorization boundaries are
+ * unchanged: transaction references stay stripped from model-visible detail.
  */
 export function projectCustomerContext(
   snapshot: CustomerContextSnapshot,
@@ -790,45 +801,29 @@ export function projectCustomerContext(
   const relevantEventIds = new Set(
     (query.relevantEventIds ?? []).map((id) => String(id)),
   );
-  const hasTarget = relevantOrderIds.size > 0 || relevantEventIds.size > 0;
-
-  const matchingPurchases = hasTarget
-    ? snapshot.purchasesCarts.purchases.filter((purchase) =>
-      relevantOrderIds.has(purchase.orderId),
-    )
-    : [];
-  const matchingDetailed = hasTarget
-    ? snapshot.purchasesCarts.detailedPurchases.filter((purchase) =>
-      relevantOrderIds.has(purchase.orderId),
-    )
-    : [];
-  const matchingInvitations = hasTarget
-    ? snapshot.invitationsEvents.invitations.filter((invitation) =>
-      invitation.eventId !== null && relevantEventIds.has(String(invitation.eventId)),
-    )
-    : [];
-
-  const includePurchases = query.focus === 'payment' || query.focus === 'general';
-  const includeCarts = query.focus === 'cart' || query.focus === 'general';
-  const includeInvitations = query.focus === 'rsvp' || query.focus === 'general';
-
-  const projectedInvitations = snapshot.invitationsEvents.status === 'ready' && includeInvitations
-    ? matchingInvitations
-    : [];
-  // Attendance claims belong to the RSVP lane: outside an RSVP-focused
-  // turn the projection keeps invitation identity (names, venues) but
-  // withholds attendance state, so event-fact or thanks turns cannot
-  // manufacture an unrequested attendance claim from a pending record.
-  const invitations = query.focus === 'rsvp'
-    ? projectedInvitations
-    : projectedInvitations.map((invitation) => ({ ...invitation, rsvpState: 'unknown' as const }));
+  const orderRank = (orderId: string): number => relevantOrderIds.has(orderId) ? 0 : 1;
+  const eventRank = (eventId: number | string | null): number =>
+    eventId !== null && relevantEventIds.has(String(eventId)) ? 0 : 1;
 
   // S2: internal transaction references never reach model-visible detail.
   // The runtime snapshot keeps the authorized record; the projection the
   // model reads carries no customerTransactionNumber, so a denied
   // transaction-reference disclosure cannot leak through model input.
-  const modelVisibleDetailed = snapshot.purchasesCarts.status === 'ready' && includePurchases
-    ? matchingDetailed.map(stripTransactionIdForModel)
+  const modelVisibleDetailed = snapshot.purchasesCarts.status === 'ready'
+    ? [...snapshot.purchasesCarts.detailedPurchases]
+      .sort((left, right) => orderRank(left.orderId) - orderRank(right.orderId))
+      .map(stripTransactionIdForModel)
+    : [];
+  const purchases = snapshot.purchasesCarts.status === 'ready'
+    ? [...snapshot.purchasesCarts.purchases]
+      .sort((left, right) => orderRank(left.orderId) - orderRank(right.orderId))
+    : [];
+  const carts = snapshot.purchasesCarts.status === 'ready'
+    ? [...snapshot.purchasesCarts.carts]
+    : [];
+  const invitations = snapshot.invitationsEvents.status === 'ready'
+    ? [...snapshot.invitationsEvents.invitations]
+      .sort((left, right) => eventRank(left.eventId) - eventRank(right.eventId))
     : [];
 
   return {
@@ -840,25 +835,20 @@ export function projectCustomerContext(
       pendingQuestion: snapshot.currentContext.pendingQuestion,
     },
     // P3: compact summaries of ALL candidates in stable snapshot order
-    // (identifiers + names/dates/state only, nulls omitted, no amounts),
-    // while purchases/detailedPurchases/invitations below keep only the
-    // resolved/relevant full detail. Section availability is retained so
-    // exhaustion is never claimed from an unrequested/failed source.
+    // (identifiers + names/dates/state/amounts, nulls omitted), while
+    // purchases/detailedPurchases/invitations below keep the full authorized
+    // detail. Section availability is retained so exhaustion is never
+    // claimed from an unrequested/failed source. Candidate amounts mirror
+    // the detail disclosure and never conflict with it.
     candidates: buildCompactCandidateSummaries(snapshot),
     sections: {
       purchasesCarts: snapshot.purchasesCarts.status,
       invitationsEvents: snapshot.invitationsEvents.status,
     },
-    purchases: snapshot.purchasesCarts.status === 'ready' && includePurchases
-      ? matchingPurchases
-      : [],
-    carts: snapshot.purchasesCarts.status === 'ready' && includeCarts
-      ? snapshot.purchasesCarts.carts
-      : [],
+    purchases,
+    carts,
     detailedPurchases: modelVisibleDetailed,
-    invitations: snapshot.invitationsEvents.status === 'ready' && includeInvitations
-      ? invitations
-      : [],
+    invitations,
     actionOutcomes: snapshot.actionOutcomes.status === 'ready'
       ? [...snapshot.actionOutcomes.outcomes]
       : [],

@@ -719,9 +719,12 @@ export class InformationOrchestrator {
    * inferred target (explicit reference, active-question entity, campaign
    * context, compatible state and temporal proximity as validated by the
    * caller) — explicit-hint-only gating is removed, so a validated inferred
-   * hint hydrates the same as an explicit one. Only hint-matched
-   * names/slugs are hydrated: a hint-free question keeps summaries so the
-   * reply can clarify instead of guessing. Failures are recorded, never
+   * hint hydrates the same as an explicit one. A uniquely matched hint
+   * hydrates its events; an absent, generic or unmatched hint hydrates the
+   * already authorized alternatives within the same bounds, so venue facts
+   * survive a failed name match. Reading alternatives never selects a
+   * mutation target and never declares an unmatched named event found.
+   * Failures are recorded, never
    * thrown, and a bound or deadline never claims a complete profile.
    */
   async hydrateRelevantEventDetails(args: {
@@ -741,21 +744,18 @@ export class InformationOrchestrator {
       truncatedByBound: false,
     };
     const hint = args.eventHint?.trim() ? args.eventHint : null;
-    if (!hint) {
-      return outcome;
-    }
     if ((args.depth ?? 0) >= enrichmentBounds.maxRelationshipEdges) {
       outcome.truncatedByBound = true;
       return outcome;
     }
-    const matched = args.events.filter((event) =>
+    const matched = hint ? args.events.filter((event) =>
       sharedEventMatches(event.name, hint) || sharedEventMatches(event.slug, hint),
-    );
-    if (matched.length === 0) {
-      return outcome;
-    }
-    const targets = matched.slice(0, enrichmentBounds.maxConcurrentReads);
-    outcome.truncatedByBound = matched.length > targets.length;
+    ) : [];
+    // Read authorized alternatives before asking. A failed name match must
+    // not erase venue facts; reading candidates does not select a mutation target.
+    const candidates = matched.length > 0 ? matched : args.events;
+    const targets = candidates.slice(0, enrichmentBounds.maxConcurrentReads);
+    outcome.truncatedByBound = candidates.length > targets.length;
     const cache: EventDetailCache = args.detailCache ?? new Map<
       string,
       Promise<PhoneEventDetailResult>

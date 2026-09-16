@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { providerCategorySchema } from '../core/provider-category';
 
-export const closeActionSchema = z.object({
+export const closeActionWireSchema = z.object({
   type: z.enum([
     'confirm_close',
     'proceed_confirmed',
@@ -13,7 +13,9 @@ export const closeActionSchema = z.object({
   ]),
   category: providerCategorySchema.nullable().default(null),
   reason: z.string().min(1).nullable().default(null),
-}).superRefine((action, context) => {
+});
+
+export const closeActionSchema = closeActionWireSchema.superRefine((action, context) => {
   if (action.type === 'defer_need' && action.category === null) {
     context.addIssue({
       code: 'custom',

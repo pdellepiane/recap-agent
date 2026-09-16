@@ -1848,7 +1848,8 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       this.deriveExtractionCompilerContext(request.plan),
     );
     const extractionModuleIds = new Set(extractionModules.map((module) => module.id));
-    const suggestedCategories = extractionModuleIds.has('extraction_planning')
+    const suggestedCategories = extractionModuleIds.has('extraction_planning') &&
+      this.deriveExtractionCompilerContext(request.plan).hasPlanningDetail
       ? this.buildEventCategoryPromptContext(
         request.plan.event_type,
         'extractor',
@@ -2378,7 +2379,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     const hasTypedOutcome = (request.capabilityDecision !== null &&
       request.capabilityDecision !== undefined) ||
       request.handoffOutcome != null ||
-      request.authenticationOutcome != null;
+      request.authenticationOutcome != null || request.imageEvidence != null;
     const omitOperationalNote = replyOmitsOperationalNote({ hasTypedOutcome });
     // FAQ empty-evidence boundary: only when knowledge returned a completed
     // FAQ result with no evidence (policy results carry their own facts).
@@ -2396,7 +2397,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
         source: 'extraction.ambiguity',
         content: request.extraction.ambiguity?.status === 'ambiguous' &&
         !this.ambiguityAnsweredByProjectedEvidence(request)
-          ? 'La evidencia de ambigüedad contiene alternativas sin resolver. Pide una aclaración breve y no elijas una alternativa por tu cuenta.'
+          ? 'Contrasta las interpretaciones con los hechos e imágenes disponibles. Responde si la evidencia resuelve la referencia; pregunta solo si persisten alternativas que cambian la respuesta o la acción.'
           : null,
       },
       {
@@ -4448,6 +4449,11 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     result: InformationTaskResult,
     request: ComposeReplyRequest,
   ): unknown {
+    if (result.status === 'failed' && result.failureKind === 'not_found') {
+      // Scoped absence is evidence, not an escalation or a prewritten reply.
+      const { message: _message, ...facts } = result;
+      return this.stripRawFields(facts);
+    }
     if (result.status === 'completed' && result.kind === 'faq') {
       if (result.hostWithdrawalPolicy !== undefined) {
         return {

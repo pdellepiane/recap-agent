@@ -4,7 +4,7 @@ import { eventTypeSchema } from '../core/event-type';
 import { actionIntentValues, type ActionIntent } from '../core/plan';
 import { providerCategorySchema } from '../core/provider-category';
 import { providerNeedSubQuerySchema } from '../core/provider-sub-query';
-import { closeActionSchema } from './close-flow-schemas';
+import { closeActionSchema, closeActionWireSchema } from './close-flow-schemas';
 import { providerFitCriteriaSchema } from './provider-fit';
 import {
   purchaseAspectValues,
@@ -345,7 +345,10 @@ export function createDynamicExtractionSchema(args: {
         }
       : {}),
     ...(args.capabilities.close
-      ? { closeAction: extractionSchema.shape.closeAction }
+      // SDK validation runs before normalizeExtraction. Nullable wire fields
+      // must reach that boundary so an incomplete non-effect cannot abort
+      // the turn. The domain schema remains strict for executable actions.
+      ? { closeAction: closeActionWireSchema.nullable().default(null) }
       : {}),
     ...(args.capabilities.pause
       ? { pauseRequested: extractionSchema.shape.pauseRequested }
