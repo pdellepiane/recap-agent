@@ -1030,3 +1030,46 @@ behaviorChanges:
   - id: venue-street-parity-event-detail-moments
     implementedBy: "98231045"
     liveCaseIds: [live_behavior.accountless_guest_event_uses_phone_without_otp]
+# 2026-09-16 support-relevance Packet E1 (implemented by 2b3583b3):
+# judge-packet repair independent of runtime. Amount answers need the exact
+# verified value in any wording (never a literal label), the judge scores the
+# complete utterance, handoff promises without a confirmed effect fail while
+# concise omission of internal mechanics passes, and the judge-only image line
+# names its bound input turn with selectedIndex gating.
+  - id: e1-support-amount-value-not-literal
+    implementedBy: "2b3583b3"
+    liveCaseIds: [live_behavior.image_file_delayed_question, live_behavior.image_readable_captionless]
+  - id: e1-support-full-utterance-handoff-omission
+    implementedBy: "2b3583b3"
+    liveCaseIds: [live_behavior.host_withdrawal_diana_policy_and_support]
+# 2026-09-16 compiler-migration remediation (implemented by 2b3583b3):
+# reply instructions come from the compiler registry (auth split into its own
+# gated file, image/approval limits gated by task, receipt and transaction
+# stripping, contact/extraction gating, factual ATC format).
+  - id: compiler-migration-owns-reply-requests
+    implementedBy: "2b3583b3"
+    liveCaseIds: [live_behavior.accountless_guest_event_uses_phone_without_otp]
+  - id: auth-split-terminal-limitation-gated
+    implementedBy: "2b3583b3"
+    liveCaseIds: [live_behavior.otp_terminal_handoff_failed, live_behavior.otp_terminal_handoff_unknown]
+  - id: handoff-scoping-composes-with-answer
+    implementedBy: "2b3583b3"
+    liveCaseIds: [live_behavior.host_withdrawal_diana_policy_and_support]
+  - id: transaction-strip-model-request
+    implementedBy: "2b3583b3"
+    liveCaseIds: [live_behavior.owner_customer_payment_relevance]
+  - id: contact-extraction-gating
+    implementedBy: "2b3583b3"
+    liveCaseIds: [live_behavior.mailbox_issue_deferral_and_clarification_preserve_support]
+  - id: image-limits-gated-on-media-context
+    implementedBy: "2b3583b3"
+    liveCaseIds: [live_behavior.image_file_delayed_question, live_behavior.image_readable_captionless]
+  - id: approval-boundary-receipt-guard
+    implementedBy: "2b3583b3"
+    liveCaseIds: [live_behavior.owner_customer_payment_relevance]
+  - id: faq-empty-evidence-limitation
+    implementedBy: "2b3583b3"
+    liveCaseIds: [live_behavior.support_detail_continuity]
+  - id: atc-factual-supplemental-format
+    implementedBy: "2b3583b3"
+    liveCaseIds: [live_behavior.host_withdrawal_diana_policy_and_support, live_behavior.host_withdrawal_general_policy_only]
