@@ -305,6 +305,212 @@ describe('RSVP verified effect twins', () => {
     expect(receipt?.status).toBe('complete');
     expect(receipt?.outcome?.successClaimAllowed).toBe(false);
   });
+
+  it('(i) authentication decline preempts before any RSVP effect runs', async () => {
+    // Auth control routes straight to the information flow: the declined
+    // terminal reply carries no RSVP facts because no RSVP effect completed
+    // on this turn — nothing is invented, and no write runs.
+    const store = new InMemoryRsvpEffectStore();
+    const runtime = new TwinRuntime([twinExtraction({
+      action: 'attending',
+      informationRequests: [{
+        kind: 'purchase',
+        resource: 'orders',
+        query: '¿Cuál es el estado de mi pago?',
+        orderId: null,
+        aspects: ['payment_status'],
+        sensitiveFields: [],
+        authAction: 'decline_authentication',
+      }],
+    })]);
+    const gateway = new TwinGateway(
+      [responded({ action: 'attending', willAttend: true })],
+      [readDetail({ willAttend: true })],
+    );
+    const service = twinService(runtime, gateway, store);
+
+    const result = await service.handleTurn(twinInbound('Confirmo. No quiero dar mi correo', 'wamid-twin-i'));
+
+    expect(gateway.writes).toHaveLength(0);
+    expect(runtime.composeRequests).toHaveLength(1);
+    const request = runtime.composeRequests[0];
+    expect(request?.rsvpPhoneEvidence).toBeUndefined();
+    expect(request?.rsvpWorkCompleted).toBeUndefined();
+    expect(request?.errorMessage).toBeNull();
+    expect(request?.authenticationOutcome).toMatchObject({
+      status: 'declined',
+      reason: 'authentication_declined',
+    });
+    expect(result.outbound.text).toBe('TWIN_MODEL_SENTINEL');
+  });
+
+  it('(j) completed write survives phone-scoped-miss escalation as typed facts', async () => {
+    // The event question misses on the trusted-phone scope and escalates,
+    // but the verified RSVP write already ran: the terminal reply carries
+    // both the completed-action typed evidence and the terminal auth facts.
+    const store = new InMemoryRsvpEffectStore();
+    const runtime = new TwinRuntime([twinExtraction({
+      action: 'attending',
+      informationRequests: [{
+        kind: 'associated_event',
+        query: '¿Dónde es la recepción?',
+        eventHint: null,
+      }],
+    })]);
+    const gateway = new TwinGateway(
+      [responded({ action: 'attending', willAttend: true })],
+      [readDetail({ willAttend: true })],
+    );
+    const service = twinService(runtime, gateway, store);
+
+    const result = await service.handleTurn(twinInbound('Confirmo. ¿Dónde es la recepción?', 'wamid-twin-j'));
+
+    expect(gateway.writes).toHaveLength(1);
+    expect(runtime.composeRequests).toHaveLength(1);
+    const request = runtime.composeRequests[0];
+    expect(request?.rsvpPhoneEvidence).toMatchObject({
+      state: 'resolved_single',
+      event: { rsvp_state: 'attending', invitation_record: 'available' },
+    });
+    expect(request?.rsvpWorkCompleted).toBe(true);
+    const note = request?.errorMessage ?? '';
+    expect(note).toContain('"verification_status":"verified"');
+    expect(request?.authenticationOutcome).toMatchObject({
+      status: 'terminal',
+      reason: 'phone_information_not_found',
+      handoffOutcome: 'handoff_requested',
+    });
+    expect(request?.handoffOutcome).toBe('handoff_requested');
+    expect(result.outbound.text).toBe('TWIN_MODEL_SENTINEL');
+  });
+
+  it('(k) multi-person handoff plus an information question carries the typed handoff outcome', async () => {
+    // No RSVP effect ran, so there is no invitation evidence; the handoff
+    // outcome still travels as a typed fact into the single combined reply,
+    // never as a string-only note.
+    const store = new InMemoryRsvpEffectStore();
+    const runtime = new TwinRuntime([twinExtraction({
+      action: null,
+      party: {
+        scope: 'self_and_others',
+        mentioned_names: ['María', 'José'],
+        companion_count: 'multiple',
+        plus_one_response: 'unknown',
+      },
+      informationRequests: [{
+        kind: 'faq',
+        query: '¿A qué hora es la recepción?',
+      }],
+    })]);
+    const gateway = new TwinGateway([], []);
+    const service = twinService(runtime, gateway, store, {
+      execute: async () => ({
+        results: [{
+          requestId: 'faq-1',
+          kind: 'faq',
+          status: 'completed',
+          evidence: [{ fileId: 'venue-1', filename: 'venue.md', score: 0.9, text: 'La recepción es a las 19:00.' }],
+        }],
+        summaries: [{
+          requestId: 'faq-1',
+          kind: 'faq',
+          status: 'completed',
+          source: 'agent_api',
+          outcomeCode: 'completed_with_results',
+          retryable: null,
+          queryHash: 'q',
+          evidence: [],
+          resultCount: 1,
+          durationMs: 40,
+        }],
+      }),
+    });
+
+    const result = await service.handleTurn(twinInbound('Confirmamos María y José. ¿A qué hora es?', 'wamid-twin-k'));
+
+    expect(gateway.writes).toHaveLength(0);
+    expect(runtime.composeRequests).toHaveLength(1);
+    const request = runtime.composeRequests[0];
+    expect(request?.rsvpPhoneEvidence).toBeNull();
+    expect(request?.rsvpWorkCompleted).toBe(true);
+    expect(request?.handoffOutcome).toBe('handoff_requested');
+    const note = request?.errorMessage ?? '';
+    expect(note).toContain('"outcome":"rsvp_multi_person_handoff"');
+    expect(note).toContain('"attendance_registered":false');
+    expect(request?.informationResults).toEqual([
+      expect.objectContaining({ kind: 'faq', status: 'completed' }),
+    ]);
+    expect(result.outbound.text).toBe('TWIN_MODEL_SENTINEL');
+  });
+
+  it('(l) completed write survives the purchase-detail handoff terminal as typed facts', async () => {
+    // The dedication read fails retryably on the trusted phone and the turn
+    // escalates, but the verified RSVP write already ran: the terminal reply
+    // carries both the completed-action typed evidence and the terminal auth
+    // facts in one composed request.
+    const store = new InMemoryRsvpEffectStore();
+    const runtime = new TwinRuntime([twinExtraction({
+      action: 'attending',
+      informationRequests: [{
+        kind: 'purchase',
+        resource: 'orders',
+        query: 'Quiero dejar una dedicatoria en mi compra',
+        orderId: null,
+        aspects: ['dedication'],
+        sensitiveFields: [],
+        authAction: 'none',
+      }],
+    })]);
+    const gateway = new TwinGateway(
+      [responded({ action: 'attending', willAttend: true })],
+      [readDetail({ willAttend: true })],
+    );
+    const service = twinService(runtime, gateway, store, {
+      execute: async () => ({
+        results: [{
+          requestId: 'information-1',
+          kind: 'purchase',
+          status: 'failed',
+          retryable: true,
+          failureKind: 'request_failed',
+          message: 'No pude leer el detalle de la compra.',
+        }],
+        summaries: [{
+          requestId: 'information-1',
+          kind: 'purchase',
+          status: 'failed',
+          source: 'agent_api',
+          outcomeCode: 'failed_retryable',
+          retryable: true,
+          queryHash: 'q',
+          evidence: [],
+          resultCount: 0,
+          durationMs: 40,
+        }],
+      }),
+    });
+
+    const result = await service.handleTurn(twinInbound('Confirmo. Quiero dejar una dedicatoria', 'wamid-twin-l'));
+
+    expect(gateway.writes).toHaveLength(1);
+    expect(runtime.composeRequests).toHaveLength(1);
+    const request = runtime.composeRequests[0];
+    expect(request?.rsvpPhoneEvidence).toMatchObject({
+      state: 'resolved_single',
+      event: { rsvp_state: 'attending', invitation_record: 'available' },
+    });
+    expect(request?.rsvpWorkCompleted).toBe(true);
+    const note = request?.errorMessage ?? '';
+    expect(note).toContain('"verification_status":"verified"');
+    expect(note).toContain('"requested_attendance_change_verified":true');
+    expect(request?.authenticationOutcome).toMatchObject({
+      status: 'terminal',
+      reason: 'phone_purchase_detail_unavailable',
+      handoffOutcome: 'handoff_requested',
+    });
+    expect(request?.handoffOutcome).toBe('handoff_requested');
+    expect(result.outbound.text).toBe('TWIN_MODEL_SENTINEL');
+  });
 });
 
 class TwinRuntime implements AgentRuntime {

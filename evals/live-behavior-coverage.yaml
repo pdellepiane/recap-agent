@@ -1075,6 +1075,11 @@ behaviorChanges:
     liveCaseIds: [live_behavior.host_withdrawal_diana_policy_and_support, live_behavior.host_withdrawal_general_policy_only]
 # 2026-09-16 customer-support release, Evaluation lane E: oracle revisions without threshold changes plus one new integration
 # case, implemented by runtime 44d18c73. One entry per behavior change.
+# 2026-09-16 declined-state oracle acceptance (evaluator-owned v6 to v7):
+# a truthful declined-state report suffices with no mandatory unsolicited
+# change offer; the offer is optional and never required for full credit.
+# No runtime, threshold, severity, or judge change; truthful-state,
+# authorization, no-false-success, and identity checks retained.
   - id: support-release-e1-accountless-venue-effect-receipt
     implementedBy: "44d18c73"
     liveCaseIds: [live_behavior.accountless_guest_event_uses_phone_without_otp]
@@ -1093,3 +1098,6 @@ behaviorChanges:
   - id: support-release-e3-customer-event-task-continuity
     implementedBy: "44d18c73"
     liveCaseIds: [live_behavior.customer_event_task_continuity]
+  - id: support-release-e4-declined-state-report-suffices
+    implementedBy: "44d18c73"
+    liveCaseIds: [live_behavior.rsvp_declined_state_offers_one_change]

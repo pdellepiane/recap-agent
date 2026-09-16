@@ -122,9 +122,21 @@ describe('F3 oracle revisions keep defect detection (mutants still fail)', () =>
     const martha = await loadCase('live-behavior-purchase-martha-accountless.yaml');
     expect(rubric(martha, 'martha-is-given-purchase-selection')).toMatch(/ask Martha which one/u);
     const declined = await loadCase('live-behavior-rsvp-declined-state.yaml');
-    expect(rubric(declined, 'reports-decline-and-offers-change')).toMatch(
-      /offering to change it/u,
-    );
+    const declinedText = rubric(declined, 'reports-decline-and-offers-change');
+    // R05 v6 to v7: the unsolicited change offer is now explicitly optional, so a
+    // blank or insufficient answer fails through the retained requirements below
+    // (truthful Spanish declined-state report, no false-success claim, no
+    // email/code ask, no internal fields), never through a missing offer. A
+    // mutant falsely claiming the change succeeded, or omitting the declined
+    // state, still fails this rubric, so the mutant stays meaningful.
+    expect(declinedText).toMatch(/optional and never required for full credit/u);
+    expect(declinedText).toMatch(/without any offer passes/u);
+    expect(declinedText).not.toMatch(/offering to change it/u);
+    expect(declinedText).toMatch(/clearly report that current declined state/u);
+    expect(declinedText).toMatch(/entirely in Spanish/u);
+    expect(declinedText).toMatch(/must not claim that a change already succeeded/u);
+    expect(declinedText).toMatch(/ask for email or a code/u);
+    expect(declinedText).toMatch(/expose internal fields/u);
   });
 
   it('injected judge instructions still fail: extracted-state pressure never wins', async () => {

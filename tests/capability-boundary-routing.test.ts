@@ -212,7 +212,12 @@ describe('capability boundary routing', () => {
       hostWithdrawal: 'individual_status',
       eventHint: 'Diana y Fernando',
     });
-    expect(request?.handoffOutcome).toBe('handoff_unknown');
+    // A never-attempted handoff (no phone, unconfigured gateway) projects
+    // null with its reason — never handoff_unknown, and never a success
+    // claim. The distinct missing-phone reason stays in plan diagnostics.
+    expect(request?.handoffOutcome).toBeNull();
+    expect(request?.handoffOutcome).not.toBe('handoff_requested');
     expect(response.plan.current_node).toBe('resolver_consultas_informativas');
+    expect(response.plan.human_escalation.last_error).toMatch(/phone number/iu);
   });
 });

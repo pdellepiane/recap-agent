@@ -1,3 +1,4 @@
+import fs from 'node:fs/promises';
 import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -324,5 +325,83 @@ describe('run manifest identity (O0)', () => {
     });
     const manifest = await readRunManifestArtifact(path.join(result.runDir, 'manifest.json'));
     expect(manifest.cases.orderedIds).toEqual(result.report.results.map((entry) => entry.caseId));
+  });
+
+  it('reconciles frozen support-gate counts from the catalog suite (119 total / 111 support)', async () => {
+    const catalog = await new EvalLoader(evalsDir).loadCatalog();
+    const suite = catalog.suites.find((entry) => entry.id === 'live_behavior_regression');
+    expect(suite).toBeDefined();
+    const suiteIds = new Set(suite?.caseIds ?? []);
+    const frozen = JSON.parse(
+      await fs.readFile(
+        path.join(repoRoot, 'docs/plan/2026-09-09-lean-conversation/support-gate-2026-09-16.json'),
+        'utf8',
+      ),
+    ) as { supportDenominator: number; supportIds: string[]; planningDiagnosticOnly: string[] };
+    // Computed from the catalog/suite files, never a stale hardcode elsewhere.
+    expect(suiteIds.size).toBe(119);
+    expect(frozen.supportDenominator).toBe(111);
+    expect(frozen.supportIds).toHaveLength(111);
+    expect(new Set([...frozen.supportIds, ...frozen.planningDiagnosticOnly])).toEqual(suiteIds);
+    expect(frozen.supportIds).toContain('live_behavior.customer_event_task_continuity');
+    const selectedCases = await loadLiveCases();
+    expect(selectedCases).toHaveLength(suiteIds.size);
+    expect(new Set(selectedCases.map((entry) => entry.id))).toEqual(suiteIds);
+  });
+
+  it('declined-state oracle v7 accepts a truthful report with no mandatory change offer', async () => {
+    const catalog = await new EvalLoader(evalsDir).loadCatalog();
+    const declined = catalog.cases.find(
+      (entry) => entry.id === 'live_behavior.rsvp_declined_state_offers_one_change',
+    );
+    expect(declined).toBeDefined();
+    expect(declined?.version).toBe(7);
+    const semantic = declined?.expectations.find(
+      (entry) => entry.id === 'reports-decline-and-offers-change',
+    );
+    expect(semantic?.type).toBe('text_semantic');
+    if (semantic?.type !== 'text_semantic') return;
+    expect(semantic.severity).toBe('hard');
+    expect(semantic.requireJudge).toBe(true);
+    expect(semantic.minScore).toBe(0.9);
+    // v7 acceptance: a truthful declined-state report passes with no offer.
+    expect(semantic.rubric).toMatch(/optional and never required for full credit/);
+    expect(semantic.rubric).not.toMatch(/offer to change it so attendance is confirmed/);
+    // Retained hard runtime evidence (composed-request behavior, not fixture inspection).
+    const toolUsage = declined?.expectations.find(
+      (entry) => entry.id === 'reads-state-without-premature-mutation',
+    );
+    expect(toolUsage?.type).toBe('tool_usage');
+    if (toolUsage?.type !== 'tool_usage') return;
+    expect(toolUsage.severity).toBe('hard');
+    expect(toolUsage.mustCall).toContain('lookup_rsvp_invitations');
+    expect(toolUsage.mustNotCall).toContain('guest_rsvp');
+    const node = declined?.expectations.find((entry) => entry.id === 'remains-in-rsvp-node');
+    expect(node?.severity).toBe('hard');
+  });
+
+  it('task-continuity oracle binds per-turn runtime effects instead of fixture inspection', async () => {
+    const catalog = await new EvalLoader(evalsDir).loadCatalog();
+    const continuity = catalog.cases.find(
+      (entry) => entry.id === 'live_behavior.customer_event_task_continuity',
+    );
+    expect(continuity).toBeDefined();
+    expect(continuity?.inputs).toHaveLength(4);
+    const effects = (continuity?.expectations ?? []).filter(
+      (entry) => entry.type === 'fixture_effect_count',
+    );
+    // One hard effect receipt per turn: three zero-write turns plus the single Marta write.
+    expect(effects.filter((entry) => entry.severity === 'hard')).toHaveLength(4);
+    const tools = (continuity?.expectations ?? []).filter((entry) => entry.type === 'tool_usage');
+    expect(tools.length).toBeGreaterThan(0);
+    for (const entry of tools) {
+      expect(entry.severity).toBe('hard');
+    }
+    for (const entry of continuity?.expectations ?? []) {
+      if (entry.type === 'text_semantic') {
+        expect(entry.severity).toBe('hard');
+        expect(entry.requireJudge).toBe(true);
+      }
+    }
   });
 });

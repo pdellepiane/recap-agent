@@ -1,8 +1,8 @@
 template: template.base-live
 id: live_behavior.rsvp_declined_state_offers_one_change
 suite: live_behavior_regression
-version: 6
-description: A declined invitation reports its current state and offers a clear confirmation to change it to attending, as a question or conditional offer, in natural wording without fixed phrases.
+version: 7
+description: A declined invitation truthfully reports its current declined state in natural wording without fixed phrases; a change offer is optional and never required for full credit.
 tags: [live, behavior, rsvp, attendance, current-state, confirmation]
 targetModes: [live_lambda]
 backendFixture:
@@ -49,7 +49,7 @@ expectations:
   - id: reports-decline-and-offers-change
     type: text_semantic
     rubric: >-
-      The selected invitation currently says the guest will not attend. The answer must be natural and entirely in Spanish, clearly report that current declined state, and offer to change it so attendance is confirmed, in the model's own wording without any fixed required phrase: either one explicit question offering to change it, or one unambiguous conditional offer that requires the user's decision to proceed, both satisfy the offer. It must not claim that a change already succeeded, ask for email or a code, or expose internal fields.
+      The selected invitation currently says the guest will not attend. The answer must be natural and entirely in Spanish and clearly report that current declined state in the model's own wording without any fixed required phrase. A change offer or question is optional and never required for full credit; a truthful sufficient declined-state report without any offer passes. It must not claim that a change already succeeded, ask for email or a code, or expose internal fields.
     minScore: 0.9
     requireJudge: true
     severity: hard
@@ -61,6 +61,7 @@ notes:
   - "R05 oracle revision v2 to v3, 2026-09-12, Packet F3. Old deterministic-declining-offers-explicit-question demanded exact phrases (Figura que no asistirás plus ¿Deseas que confirme tu asistencia?) and deterministic-declining-omits-no-change banned one sentence, forcing scripts around an otherwise understandable truthful reply (matrix: hard exact-question/forbidden-no-change phrasing forces scripts). Both deterministic expectations are removed; the semantic contract judges declined-state reporting plus a natural change offer. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
   - "R05 oracle revision v3 to v4, 2026-09-15, recheck-b9a7662d. Old reports-decline-and-offers-change demanded interrogative syntax although the fixture notes already describe a natural conditional change offer as actionable (recheck: requiring interrogative syntax is overstrict). New contract accepts either one explicit question or one unambiguous conditional offer requiring the user's decision; interrogative form alone never decides. Keeps the mandatory semantic judge, hard severity, no-write-without-intent tool checks, and identity/effect assertions unchanged. Old v3 runs preserved; baseline and candidate must rerun on this v4 contract."
   - "R05 oracle revision v5 to v6, 2026-09-16, evaluator-owned P2 read-only alignment. Old waits-for-one-change-confirmation / preserves-attending-change pinned the retired staging contract (status awaiting_action, pending_action attending), but the P2 runtime read-only branch always returns emptyRsvpState (status none, pending_action null; an inferred read target is never persisted as later-action consent), so the candidate correctly holds none/null and the old pins failed a correct reply. New contract asserts none/null; the seedPlan keeps the retired staged shape as the incoming boundary to prove normalization. Semantic offer expectation, authorization/effect/identity checks, hard requireJudge, and threshold 0.9 unchanged. Old v5 runs preserved; baseline and candidate must rerun on this v6 contract."
+  - "R05 oracle revision v6 to v7, 2026-09-16, evaluator-owned declined-report sufficiency. Old reports-decline-and-offers-change required one unsolicited offer to change (explicit question or conditional offer) although a truthful sufficient declined-state report with no offer is already a correct read-only answer (old defect: mandatory unsolicited offer penalizes a correct minimal reply and pressures the model toward unrequested prose). New acceptance: a natural Spanish declined-state report passes with or without a change offer; the offer is optional and never required for full credit. Failing counterexample that still fails v7: a reply claiming the change already succeeded (false success) or asking for email or a code (authorization breach). Passing counterexample that failed v6: a reply that only reports Figura que no asistirás a Otra celebración prueba, with no offer sentence, grounded in the s11 fixture read via lookup_rsvp_invitations with zero guest_rsvp writes. Truthful-state, authorization, no-false-success, and identity checks retained; hard severity, requireJudge, and threshold 0.9 unchanged. Old v6 runs preserved; baseline and candidate must rerun on this v7 contract."
 budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 1600

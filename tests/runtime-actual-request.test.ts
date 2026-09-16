@@ -288,6 +288,67 @@ function venueRequest(eventId: number): {
   return { customerContext, informationResults };
 }
 
+function rsvpProfileExecution(requestId: string, eventId: number): CustomerExecution {
+  return {
+    results: [
+      {
+        requestId,
+        kind: 'associated_event',
+        status: 'completed',
+        result: {
+          lookup: { email: null, phone: '+51900000000' },
+          user: null,
+          events: [{
+            relation: 'guest',
+            guestId: 41,
+            eventId,
+            slug: 'matrimonio-ana-luis',
+            url: null,
+            name: 'Matrimonio de Ana y Luis',
+            place: null,
+            type: null,
+            datetime: '2026-09-12',
+            stage: null,
+            isVisible: null,
+            isPublic: null,
+            currency: null,
+            country: null,
+            guestStatus: { hasResponded: true, willAttend: null, hasCouple: null, responseDate: null },
+            hostType: null,
+            hostPermission: null,
+            hostStatus: null,
+            celebratedType: null,
+            amountCollected: null,
+            amountTransferred: null,
+            transactionsCount: null,
+            invitedGuestCount: null,
+            confirmedGuestCount: null,
+            orders: [],
+          }],
+          counts: { ownerEvents: 0, guestEvents: 1, hostEvents: 0, celebratedEvents: 0, recentOrders: 0 },
+        },
+        accessMethod: 'trusted_phone_guest',
+      } as unknown as InformationTaskResult,
+    ],
+    summaries: [
+      {
+        requestId,
+        kind: 'associated_event',
+        status: 'completed',
+        source: 'agent_api',
+        outcomeCode: 'completed_with_results',
+        retryable: null,
+        queryHash: 'q',
+        evidence: [],
+        resultCount: 1,
+        durationMs: 90,
+        accessMethod: 'trusted_phone_guest',
+        eventDetailCount: 0,
+      } as InformationExecutionSummary,
+    ],
+  };
+}
+
 describe('actual extraction request owns its instructions', () => {
   it('loads only established support modules and keeps the delta rule', async () => {
     const runtime = testRuntime();
@@ -541,6 +602,112 @@ describe('actual reply request owns its instructions', () => {
     );
     expect(spec.input).toContain('profile_ref');
     expect(spec.input).not.toContain('COD12345');
+  });
+
+  it('retains the completed-RSVP outcome note alongside typed image evidence', async () => {
+    // Mixed RSVP+image turns carry the completed action as typed invitation
+    // evidence plus its outcome details in the note. The note-suppression
+    // for typed image outcomes must not drop the RSVP outcome: the string
+    // is never the only carrier, but its details live nowhere else.
+    const runtime = testRuntime();
+    const spec = await runtime.buildReplyRequestSpec(
+      replyRequest(supportPlan(), {
+        rsvpPhoneEvidence: {
+          state: 'resolved_single',
+          coverage: 'complete',
+          resolution: 'authoritative_invitation',
+          event: {
+            event_name: 'Matrimonio de Ana y Luis',
+            event_date: '2026-09-12',
+            invitation_record: 'available',
+            rsvp_state: 'attending',
+          },
+        },
+        rsvpWorkCompleted: true,
+        errorMessage: JSON.stringify({
+          outcome: 'responded',
+          verification_status: 'verified',
+          requested_attendance_change_verified: true,
+        }),
+        imageEvidence: { status: 'available', reason: null, captionPresent: false },
+      }),
+    );
+    const ids = spec.modules.map((module) => module.id);
+    expect(ids).toContain('reply_rsvp_facts');
+    expect(ids).toContain('reply_image_context');
+    expect(spec.input).toContain('Matrimonio de Ana y Luis');
+    expect(spec.input).toContain('verification_status');
+    expect(spec.input).toContain('requested_attendance_change_verified');
+  });
+
+  it('collapses RSVP facts to a profile reference only with the merge established', async () => {
+    // The profile invitation carries the same event with unknown attendance;
+    // the fresh RSVP state merges into that slot, so the collapsed reference
+    // hides nothing: the state travels inside the single profile copy.
+    const runtime = testRuntime();
+    const execution = rsvpProfileExecution('req-rsvp-profile', 205);
+    const snapshot = assembleCustomerContext({
+      execution,
+      identity: { customerRef: '+51900000001', scope: 'trusted_phone', source: 'agent_api' },
+      currentContext: null,
+      nowIso: NOW,
+    });
+    const customerContext = projectCustomerContext(snapshot, { focus: 'general', relevantEventIds: [205] });
+    const spec = await runtime.buildReplyRequestSpec(
+      replyRequest(supportPlan(), {
+        customerContext,
+        informationResults: [...execution.results],
+        rsvpPhoneEvidence: {
+          state: 'resolved_single',
+          coverage: 'complete',
+          resolution: 'authoritative_invitation',
+          event: {
+            event_name: 'Matrimonio de Ana y Luis',
+            event_date: '2026-09-12',
+            invitation_record: 'available',
+            rsvp_state: 'attending',
+          },
+        },
+        rsvpWorkCompleted: true,
+        errorMessage: JSON.stringify({ outcome: 'responded', verification_status: 'verified' }),
+      }),
+    );
+    expect(spec.input).toContain('profile_ref');
+    expect(spec.input).toContain('Matrimonio de Ana y Luis');
+    expect(spec.input).toContain('"rsvpState": "attending"');
+    expect(spec.input).toContain('verification_status');
+  });
+
+  it('retains cross-event RSVP facts instead of hiding them behind a bare reference', async () => {
+    // The profile knows only Julisabeth y Andrés while the completed RSVP
+    // resolved Matrimonio de Ana y Luis: no slot establishes the merge, so
+    // the full RSVP evidence travels and the known facts stay visible in
+    // the actual composed payload.
+    const runtime = testRuntime();
+    const { customerContext, informationResults } = venueRequest(702201);
+    const spec = await runtime.buildReplyRequestSpec(
+      replyRequest(supportPlan(), {
+        customerContext,
+        informationResults,
+        rsvpPhoneEvidence: {
+          state: 'resolved_single',
+          coverage: 'complete',
+          resolution: 'authoritative_invitation',
+          event: {
+            event_name: 'Matrimonio de Ana y Luis',
+            event_date: '2026-09-12',
+            invitation_record: 'available',
+            rsvp_state: 'attending',
+          },
+        },
+        rsvpWorkCompleted: true,
+        errorMessage: JSON.stringify({ outcome: 'responded', verification_status: 'verified' }),
+      }),
+    );
+    expect(spec.input).toContain('profile_ref');
+    expect(spec.input).toContain('Julisabeth y Andrés');
+    expect(spec.input).toContain('Matrimonio de Ana y Luis');
+    expect(spec.input).toContain('verification_status');
   });
 
   it('builds both specs without model or gateway calls', async () => {

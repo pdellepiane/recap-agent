@@ -257,8 +257,10 @@ describe('customer event task continuity offline twin (E3)', () => {
       'Gracias.',
     ];
     const writesPerTurn: number[] = [];
+    const readsPerTurn: number[] = [];
     for (const [index, text] of texts.entries()) {
-      const before = captured.writes.length;
+      const writesBefore = captured.writes.length;
+      const readsBefore = captured.readEventIds.length;
       await service.handleTurn({
         channel: 'whatsapp',
         externalUserId: USER,
@@ -267,18 +269,144 @@ describe('customer event task continuity offline twin (E3)', () => {
         messageId: `continuity-twin-${index}`,
         receivedAt: new Date().toISOString(),
       });
-      writesPerTurn.push(captured.writes.length - before);
+      writesPerTurn.push(captured.writes.length - writesBefore);
+      readsPerTurn.push(captured.readEventIds.length - readsBefore);
     }
 
     expect(writesPerTurn).toEqual([0, 1, 0, 0]);
     expect(captured.writes).toHaveLength(1);
     expect(captured.writes[0]?.guest_id).toBe(MARTA_GUEST);
+    expect(captured.writes[0]?.action).toBe('attending');
     expect(captured.readEventIds).toContain(MARTA_EVENT);
     expect(runtime.composeRequests).toHaveLength(4);
+
+    // Per-turn composed reply payload facts: each turn composes exactly one
+    // reply from the captured evidence, so the IDs, datetimes, and verified
+    // outcome below are the facts the model actually saw on that turn.
+    const readSlices: number[][] = [];
+    let readCursor = 0;
+    for (const count of readsPerTurn) {
+      readSlices.push(captured.readEventIds.slice(readCursor, readCursor + count));
+      readCursor += count;
+    }
+
+    // Turn 0 (Ana 2026-09-20 18:00): read-only Ana facts, zero writes.
+    expect(readSlices[0]).toEqual([ANA_EVENT]);
+    const turn0 = runtime.composeRequests[0];
+    const turn0Info = turn0?.informationResults?.find(
+      (result) => result.kind === 'associated_event' && result.status === 'completed',
+    );
+    if (turn0Info?.kind !== 'associated_event' || turn0Info?.status !== 'completed') {
+      throw new Error('Turn 0 is missing its completed associated_event facts.');
+    }
+    expect(turn0Info.result.events).toHaveLength(1);
+    expect(turn0Info.result.events[0]).toMatchObject({
+      guestId: ANA_GUEST,
+      eventId: ANA_EVENT,
+      name: 'Boda Ana y Luis',
+      datetime: '2026-09-20T18:00:00.000Z',
+    });
+    expect(turn0?.customerContext?.commonRefs.eventIds).toEqual([ANA_EVENT]);
+    expect(turn0?.customerContext?.invitations).toHaveLength(1);
+    expect(turn0?.customerContext?.invitations[0]).toMatchObject({
+      eventId: ANA_EVENT,
+      eventName: 'Boda Ana y Luis',
+      rsvpState: 'pending',
+      eventDatetime: '2026-09-20T18:00:00.000Z',
+    });
+    expect(turn0?.rsvpPhoneEvidence).toBeUndefined();
+    expect(turn0?.rsvpWorkCompleted).toBeUndefined();
+
+    // Turn 1 (Marta): one verified same-ID effect plus the 2026-09-21 19:00
+    // facts in a single combined payload.
+    expect(readSlices[1]?.every((eventId) => eventId === MARTA_EVENT)).toBe(true);
+    expect(readSlices[1]?.length).toBeGreaterThan(0);
+    const turn1 = runtime.composeRequests[1];
+    expect(turn1?.rsvpPhoneEvidence).toMatchObject({
+      state: 'resolved_single',
+      event: {
+        event_name: 'Cumpleaños Marta',
+        event_date: '2026-09-21T19:00:00.000Z',
+        rsvp_state: 'attending',
+      },
+    });
+    expect(turn1?.rsvpWorkCompleted).toBe(true);
+    const turn1Note = turn1?.errorMessage ?? '';
+    expect(turn1Note).toContain('"verification_status":"verified"');
+    expect(turn1Note).toContain('"requested":{"guest_id":80002,"event_id":8002');
+    expect(turn1Note).toContain('"observed":{"guest_id":80002,"event_id":8002');
+    expect(turn1Note).toContain('"requested_attendance_change_verified":true');
+    expect(turn1Note).toContain('"write_count":1');
+    expect(turn1Note).toContain('"fresh_read":true');
+    const turn1Info = turn1?.informationResults?.find(
+      (result) => result.kind === 'associated_event' && result.status === 'completed',
+    );
+    if (turn1Info?.kind !== 'associated_event' || turn1Info?.status !== 'completed') {
+      throw new Error('Turn 1 is missing its completed associated_event facts.');
+    }
+    expect(turn1Info.result.events).toHaveLength(1);
+    expect(turn1Info.result.events[0]).toMatchObject({
+      guestId: MARTA_GUEST,
+      eventId: MARTA_EVENT,
+      name: 'Cumpleaños Marta',
+      datetime: '2026-09-21T19:00:00.000Z',
+    });
+    expect(turn1Info.result.events[0]?.guestStatus?.willAttend).toBe(true);
+    expect(turn1?.customerContext?.invitations).toHaveLength(1);
+    expect(turn1?.customerContext?.invitations[0]).toMatchObject({
+      eventId: MARTA_EVENT,
+      eventName: 'Cumpleaños Marta',
+      rsvpState: 'attending',
+      eventDatetime: '2026-09-21T19:00:00.000Z',
+    });
+
+    // Turn 2 (Ana 18:00 again): zero new writes and no Marta facts leaking
+    // into the Ana payload.
+    expect(readSlices[2]).toEqual([ANA_EVENT]);
+    const turn2 = runtime.composeRequests[2];
+    const turn2Info = turn2?.informationResults?.find(
+      (result) => result.kind === 'associated_event' && result.status === 'completed',
+    );
+    if (turn2Info?.kind !== 'associated_event' || turn2Info?.status !== 'completed') {
+      throw new Error('Turn 2 is missing its completed associated_event facts.');
+    }
+    expect(turn2Info.result.events).toHaveLength(1);
+    expect(turn2Info.result.events[0]).toMatchObject({
+      guestId: ANA_GUEST,
+      eventId: ANA_EVENT,
+      name: 'Boda Ana y Luis',
+      datetime: '2026-09-20T18:00:00.000Z',
+    });
+    expect(turn2?.customerContext?.invitations).toHaveLength(1);
+    expect(turn2?.customerContext?.invitations[0]).toMatchObject({
+      eventId: ANA_EVENT,
+      eventName: 'Boda Ana y Luis',
+      rsvpState: 'pending',
+      eventDatetime: '2026-09-20T18:00:00.000Z',
+    });
+    const turn2Facts = JSON.stringify({
+      informationResults: turn2?.informationResults,
+      customerContext: turn2?.customerContext,
+    });
+    expect(turn2Facts).not.toContain('8002');
+    expect(turn2Facts).not.toContain('Marta');
+    expect(turn2Facts).not.toContain('2026-09-21');
+    expect(turn2?.rsvpPhoneEvidence).toBeUndefined();
+    expect(turn2?.errorMessage ?? '').not.toContain('"verification_status":"verified"');
+
+    // Turn 3 (thanks close/silence): zero restarting reads and writes, and a
+    // fact-free close payload.
+    expect(readsPerTurn[3]).toBe(0);
+    expect(readSlices[3]).toEqual([]);
+    const turn3 = runtime.composeRequests[3];
+    expect(turn3?.informationResults).toEqual([]);
+    expect(turn3?.customerContext).toBeNull();
+    expect(turn3?.rsvpPhoneEvidence).toBeUndefined();
+    expect(turn3?.rsvpWorkCompleted).toBeUndefined();
+    expect(turn3?.errorMessage).toBeNull();
   });
 
-  it('registers the live continuity case with per-turn hard effects and hard judges', async () => {
-    const evalDirectory = path.resolve(process.cwd(), 'evals');
+  it('registers the live continuity case with per-turn hard effects and hard judges', async () => {    const evalDirectory = path.resolve(process.cwd(), 'evals');
     const catalog = await new EvalLoader(evalDirectory).loadCatalog();
     const live = catalog.cases.find((candidate) => candidate.id === 'live_behavior.customer_event_task_continuity');
     expect(live).toBeDefined();
