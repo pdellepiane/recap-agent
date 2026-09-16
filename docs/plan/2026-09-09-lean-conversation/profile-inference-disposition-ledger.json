@@ -4,7 +4,7 @@
  "inventory": "docs/plan/2026-09-09-lean-conversation/profile-inference-test-inventory-2026-09-15.json",
  "totalCases": 117,
  "totalExpectations": 529,
- "currentExpectations": 527,
+ "currentExpectations": 528,
  "removed": [
   {
    "case": "live_behavior.repeated_otp_failure_preserves_gift_query",
@@ -72,52 +72,60 @@
   {
    "case": "live_behavior.wedding_planner_location_completes_search",
    "expectation": "explicit-need-asks-missing-context"
+  },
+  {
+   "case": "live_behavior.host_withdrawal_diana_policy_and_support",
+   "expectation": "one-handoff-effect-in-thread"
   }
  ],
  "counts": {
-  "retain": 515,
+  "replace": 12,
+  "retain": 504,
   "revise": 12
  },
  "byType": {
+  "budget_constraints": {
+   "retain": 1
+  },
+  "fixture_effect_count": {
+   "replace": 11,
+   "retain": 19
+  },
   "node_transition": {
-   "retain": 62
-  },
-  "tool_usage": {
-   "retain": 151
-  },
-  "text_semantic": {
-   "retain": 141,
-   "revise": 5
-  },
-  "text_not_contains": {
-   "retain": 61
+   "retain": 51
   },
   "plan_field_equals": {
-   "retain": 38
+   "retain": 34,
+   "revise": 4
   },
   "plan_field_subset": {
    "retain": 17
   },
-  "trace_field_number": {
-   "retain": 1
+  "provider_result_count": {
+   "retain": 2
   },
-  "trace_field_equals": {
-   "retain": 17
+  "text_not_contains": {
+   "retain": 61
+  },
+  "text_semantic": {
+   "replace": 1,
+   "retain": 138,
+   "revise": 8
   },
   "token_usage_present": {
    "retain": 9
   },
-  "fixture_effect_count": {
-   "retain": 18
+  "tool_usage": {
+   "retain": 151
+  },
+  "trace_field_equals": {
+   "retain": 16
+  },
+  "trace_field_number": {
+   "retain": 1
   },
   "trace_field_subset": {
    "retain": 4
-  },
-  "provider_result_count": {
-   "retain": 2
-  },
-  "budget_constraints": {
-   "retain": 1
   }
  },
  "rows": [
@@ -185,12 +193,12 @@
    "case": "live_behavior.accountless_event_answer_precedes_remaining_private_auth",
    "file": "live-behavior-accountless-event-before-private-auth.yaml",
    "expectation": "routes-to-information",
-   "type": "node_transition",
+   "type": "fixture_effect_count",
    "severity": "hard",
    "requireJudge": null,
    "turnIndex": null,
-   "disposition": "retain",
-   "rationale": "Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned.",
+   "disposition": "replace",
+   "rationale": "Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned. [2026-09-16 E2 ledger repair: implementation pin node_transition replaced by fixture_effect_count; old runs preserved.]",
    "source": "rule"
   },
   {
@@ -245,12 +253,12 @@
    "case": "live_behavior.accountless_guest_event_uses_phone_without_otp",
    "file": "live-behavior-accountless-guest-event.yaml",
    "expectation": "routes-to-associated-event-information",
-   "type": "node_transition",
+   "type": "fixture_effect_count",
    "severity": "hard",
    "requireJudge": null,
    "turnIndex": null,
-   "disposition": "retain",
-   "rationale": "Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned.",
+   "disposition": "replace",
+   "rationale": "Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned. [2026-09-16 E2 ledger repair: implementation pin node_transition replaced by fixture_effect_count; old runs preserved.]",
    "source": "rule"
   },
   {
@@ -737,12 +745,12 @@
    "case": "live_behavior.current_campaign_order_over_historical_declined_maria_jose",
    "file": "live-behavior-current-campaign-order-maria-jose.yaml",
    "expectation": "current-order-enters-information",
-   "type": "node_transition",
+   "type": "fixture_effect_count",
    "severity": "hard",
    "requireJudge": null,
    "turnIndex": 0,
-   "disposition": "retain",
-   "rationale": "Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned.",
+   "disposition": "replace",
+   "rationale": "Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned. [2026-09-16 E2 ledger repair: implementation pin node_transition replaced by fixture_effect_count; old runs preserved.]",
    "source": "rule"
   },
   {
@@ -1109,12 +1117,12 @@
    "case": "live_behavior.host_withdrawal_diana_policy_and_support",
    "file": "live-behavior-host-withdrawal-diana.yaml",
    "expectation": "later-event-message-stays-with-human-team",
-   "type": "trace_field_equals",
+   "type": "text_semantic",
    "severity": "hard",
    "requireJudge": null,
    "turnIndex": 2,
-   "disposition": "retain",
-   "rationale": "Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).",
+   "disposition": "replace",
+   "rationale": "Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay). [2026-09-16 E2 ledger repair: implementation pin trace_field_equals replaced by text_semantic; old runs preserved.]",
    "source": "rule"
   },
   {
@@ -1127,6 +1135,18 @@
    "turnIndex": 2,
    "disposition": "retain",
    "rationale": "Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).",
+   "source": "rule"
+  },
+  {
+   "case": "live_behavior.host_withdrawal_diana_policy_and_support",
+   "file": "live-behavior-host-withdrawal-diana.yaml",
+   "expectation": "one-handoff-effect-in-thread",
+   "type": "fixture_effect_count",
+   "severity": "hard",
+   "requireJudge": null,
+   "turnIndex": 2,
+   "disposition": "retain",
+   "rationale": "2026-09-16 customer-support release E1 v3: repeated takeover is forbidden via authoritative per-turn effect receipts (handoff.write 0/0/0 at turn 2); a reused turn-1 success receipt never counts as a new effect. Read-only policy lookup remains permitted.",
    "source": "rule"
   },
   {
@@ -1961,12 +1981,12 @@
    "case": "live_behavior.image_url_unavailable_evidence",
    "file": "live-behavior-image-url-unavailable.yaml",
    "expectation": "expired-url-stays-informative",
-   "type": "node_transition",
+   "type": "fixture_effect_count",
    "severity": "hard",
    "requireJudge": null,
    "turnIndex": null,
-   "disposition": "retain",
-   "rationale": "Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned.",
+   "disposition": "replace",
+   "rationale": "Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned. [2026-09-16 E2 ledger repair: implementation pin node_transition replaced by fixture_effect_count; old runs preserved.]",
    "source": "rule"
   },
   {
@@ -2885,12 +2905,12 @@
    "case": "live_behavior.owner_customer_payment_relevance",
    "file": "live-behavior-owner-customer-payment-relevance.yaml",
    "expectation": "payment-turn-enters-information",
-   "type": "node_transition",
+   "type": "fixture_effect_count",
    "severity": "hard",
    "requireJudge": null,
    "turnIndex": 0,
-   "disposition": "retain",
-   "rationale": "Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned.",
+   "disposition": "replace",
+   "rationale": "Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned. [2026-09-16 E2 ledger repair: implementation pin node_transition replaced by fixture_effect_count; old runs preserved.]",
    "source": "rule"
   },
   {
@@ -3065,12 +3085,12 @@
    "case": "live_behavior.pending_balance_validation_luis",
    "file": "live-behavior-pending-balance-luis.yaml",
    "expectation": "pending-balance-enters-information",
-   "type": "node_transition",
+   "type": "fixture_effect_count",
    "severity": "hard",
    "requireJudge": null,
    "turnIndex": 0,
-   "disposition": "retain",
-   "rationale": "Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned.",
+   "disposition": "replace",
+   "rationale": "Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned. [2026-09-16 E2 ledger repair: implementation pin node_transition replaced by fixture_effect_count; old runs preserved.]",
    "source": "rule"
   },
   {
@@ -3641,12 +3661,12 @@
    "case": "live_behavior.purchase_explicit_time_alternatives",
    "file": "live-behavior-purchase-explicit-time.yaml",
    "expectation": "explicit-time-enters-information",
-   "type": "node_transition",
+   "type": "fixture_effect_count",
    "severity": "hard",
    "requireJudge": null,
    "turnIndex": null,
-   "disposition": "retain",
-   "rationale": "Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned.",
+   "disposition": "replace",
+   "rationale": "Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned. [2026-09-16 E2 ledger repair: implementation pin node_transition replaced by fixture_effect_count; old runs preserved.]",
    "source": "rule"
   },
   {
@@ -4397,12 +4417,12 @@
    "case": "live_behavior.rsvp_cinthya_campaign_invitation_not_reported_missing",
    "file": "live-behavior-rsvp-cinthya-campaign.yaml",
    "expectation": "enters-rsvp-node",
-   "type": "node_transition",
+   "type": "fixture_effect_count",
    "severity": "hard",
    "requireJudge": null,
    "turnIndex": null,
-   "disposition": "retain",
-   "rationale": "Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned.",
+   "disposition": "replace",
+   "rationale": "Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned. [2026-09-16 E2 ledger repair: implementation pin node_transition replaced by fixture_effect_count; old runs preserved.]",
    "source": "rule"
   },
   {
@@ -4709,12 +4729,12 @@
    "case": "live_behavior.rsvp_host_set_declining_consistent",
    "file": "live-behavior-rsvp-host-set-declining-consistent.yaml",
    "expectation": "declining-enters-rsvp-node",
-   "type": "node_transition",
+   "type": "fixture_effect_count",
    "severity": "hard",
    "requireJudge": null,
    "turnIndex": null,
-   "disposition": "retain",
-   "rationale": "Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned.",
+   "disposition": "replace",
+   "rationale": "Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned. [2026-09-16 E2 ledger repair: implementation pin node_transition replaced by fixture_effect_count; old runs preserved.]",
    "source": "rule"
   },
   {
@@ -4757,12 +4777,12 @@
    "case": "live_behavior.rsvp_jose_campaign_invitation_not_reported_missing",
    "file": "live-behavior-rsvp-jose-campaign.yaml",
    "expectation": "enters-rsvp-node",
-   "type": "node_transition",
+   "type": "fixture_effect_count",
    "severity": "hard",
    "requireJudge": null,
    "turnIndex": null,
-   "disposition": "retain",
-   "rationale": "Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned.",
+   "disposition": "replace",
+   "rationale": "Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned. [2026-09-16 E2 ledger repair: implementation pin node_transition replaced by fixture_effect_count; old runs preserved.]",
    "source": "rule"
   },
   {
@@ -4817,12 +4837,12 @@
    "case": "live_behavior.rsvp_missing_action_requires_explicit_decision",
    "file": "live-behavior-rsvp-missing-action.yaml",
    "expectation": "enters-rsvp-node",
-   "type": "node_transition",
+   "type": "fixture_effect_count",
    "severity": "hard",
    "requireJudge": null,
    "turnIndex": null,
-   "disposition": "retain",
-   "rationale": "Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned.",
+   "disposition": "replace",
+   "rationale": "Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned. [2026-09-16 E2 ledger repair: implementation pin node_transition replaced by fixture_effect_count; old runs preserved.]",
    "source": "rule"
   },
   {

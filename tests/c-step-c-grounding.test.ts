@@ -88,7 +88,9 @@ function cart() {
 
 describe('C1 purchase projector carries currency provenance and balance distinction', () => {
   it('prefers the amount disclosure for currency before the nulled direct fields', () => {
-    expect(disclosedPurchaseCurrency({ currency: 'USD', amountDisclosure: { currency: 'PEN' } } as never)).toBe('USD');
+    // B3 single amount truth: the canonical disclosure wins over a legacy
+    // direct field when both are present; direct fields are fallback only.
+    expect(disclosedPurchaseCurrency({ currency: 'USD', amountDisclosure: { currency: 'PEN' } } as never)).toBe('PEN');
     expect(disclosedPurchaseCurrency({ currency: null, amountDisclosure: { currency: 'PEN' } } as never)).toBe('PEN');
     expect(disclosedPurchaseCurrency({ currency: null, amountDisclosure: null } as never)).toBeNull();
     expect(disclosedPurchaseCurrencySymbol(

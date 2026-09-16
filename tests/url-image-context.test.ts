@@ -517,11 +517,13 @@ describe('established owner URL path', () => {
     const customerContext = request?.customerContext;
     expect(customerContext).toBeDefined();
     const serialized = JSON.stringify(customerContext);
-    // Relevant facts travel; the unrelated order total never does.
+    // One canonical profile: every authorized record travels once, with the
+    // requested order leading by reference instead of hiding the rest.
     expect(serialized).toContain('150.5');
-    expect(serialized).not.toContain('999.75');
+    expect(serialized).toContain('999.75');
     expect(customerContext?.commonRefs.orderIds).toEqual(expect.arrayContaining(['ORD-A', 'ORD-B']));
-    expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-A']);
+    expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-A', 'ORD-B']);
+    expect(customerContext?.carts.map((entry) => entry.cartId)).toEqual(['cart-sentinel-9', 'cart-other-1']);
     expect(request?.imageUrlAttachments).toEqual([{ url: URL_A, messageId: 'wamid.owner2' }]);
     expect(response.plan.image_attachments).toHaveLength(1);
   });
@@ -562,11 +564,26 @@ describe('established owner URL path', () => {
     };
     await turn('wamid.stable1');
     const base = seen[0];
-    // Unrelated order total changes: projection bytes stay identical.
+    // Unrelated order total changes: only that entity's evidence moves;
+    // the requested order's evidence stays byte-identical.
     const drifted = purchaseResultFor('information-2', 'ORD-B', 111.11, 'cart-other-1');
     liveResults = [relevant.result, drifted.result];
     await turn('wamid.stable2');
-    expect(seen[1]).toBe(base);
+    expect(seen[1]).not.toBe(base);
+    const entityEvidence = (serialized: string | undefined, orderId: string): string => {
+      const projection = JSON.parse(serialized ?? '{}') as {
+        purchases: Array<{ orderId: string }>;
+        detailedPurchases: Array<{ orderId: string }>;
+        candidates: Array<{ orderId?: string }>;
+      };
+      return JSON.stringify({
+        purchases: projection.purchases.filter((entry) => entry.orderId === orderId),
+        detailed: projection.detailedPurchases.filter((entry) => entry.orderId === orderId),
+        candidates: projection.candidates.filter((entry) => entry.orderId === orderId),
+      });
+    };
+    expect(entityEvidence(seen[1], 'ORD-A')).toBe(entityEvidence(base, 'ORD-A'));
+    expect(entityEvidence(seen[1], 'ORD-B')).not.toBe(entityEvidence(base, 'ORD-B'));
     // Relevant status changes: projection bytes move.
     const approvedBase = relevant.result.kind === 'purchase' && relevant.result.status === 'completed'
       ? relevant.result

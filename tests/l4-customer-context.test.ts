@@ -396,20 +396,23 @@ describe('l4 customer snapshot assembly', () => {
 });
 
 describe('l4 relevance projection and minimum disclosure', () => {
-  it('excludes the cart from payment focus but retains it for cart questions', () => {
+  it('keeps every authorized record in one canonical profile under any focus', () => {
     const snapshot = snapshotWithPurchaseAndCart();
     expect(snapshot.purchasesCarts.carts).toHaveLength(1);
     const payment = projectCustomerContext(snapshot, {
       focus: 'payment',
       relevantOrderIds: ['ord-1'],
     });
-    expect(payment.carts).toEqual([]);
-    expect(payment.purchases.map((entry) => entry.orderId)).toEqual(['ord-1']);
-    expect(payment.detailedPurchases).toHaveLength(1);
+    expect(payment.purchases.map((entry) => entry.orderId)).toEqual(['ord-1', 'ord-2']);
+    expect(payment.carts.map((entry) => entry.cartId)).toEqual(['cart-9']);
+    expect(payment.detailedPurchases.map((entry) => entry.orderId)).toEqual(['ord-1', 'ord-2']);
+    // Relevance travels by reference: the requested record leads, the rest
+    // stays visible for inference instead of being hidden.
+    expect(payment.purchases[0]?.orderId).toBe('ord-1');
     const cartView = projectCustomerContext(snapshot, { focus: 'cart' });
     expect(cartView.carts).toHaveLength(1);
-    expect(cartView.detailedPurchases).toEqual([]);
-    expect(cartView.purchases).toEqual([]);
+    expect(cartView.purchases).toHaveLength(2);
+    expect(cartView.detailedPurchases).toHaveLength(2);
   });
 
   it('leaves inactive sections absent from the projection', () => {
@@ -422,7 +425,7 @@ describe('l4 relevance projection and minimum disclosure', () => {
     expect(payment.commonRefs.eventIds).toEqual([]);
   });
 
-  it('keeps projection bytes stable when irrelevant history changes', () => {
+  it('surfaces a changed customer fact in that entity only, without duplicating it', () => {
     const base = snapshotWithPurchaseAndCart();
     const changed = assembleCustomerContext({
       execution: {
@@ -440,9 +443,37 @@ describe('l4 relevance projection and minimum disclosure', () => {
       nowIso: NOW,
     });
     const query = { focus: 'payment' as const, relevantOrderIds: ['ord-1'] };
-    expect(JSON.stringify(projectCustomerContext(changed, query))).toBe(
-      JSON.stringify(projectCustomerContext(base, query)),
-    );
+    const baseProjection = projectCustomerContext(base, query);
+    const changedProjection = projectCustomerContext(changed, query);
+    // The new authorized fact is visible instead of hidden...
+    expect(JSON.stringify(changedProjection)).not.toBe(JSON.stringify(baseProjection));
+    // ...but only inside ord-2's own entity evidence.
+    const entityEvidence = (
+      projection: ReturnType<typeof projectCustomerContext>,
+      orderId: string,
+    ): string => JSON.stringify({
+      purchases: projection.purchases.filter((entry) => entry.orderId === orderId),
+      detailed: projection.detailedPurchases.filter((entry) => entry.orderId === orderId),
+      candidates: projection.candidates.filter((entry) => entry.orderId === orderId),
+    });
+    expect(entityEvidence(changedProjection, 'ord-1')).toBe(entityEvidence(baseProjection, 'ord-1'));
+    expect(entityEvidence(changedProjection, 'ord-2')).not.toBe(entityEvidence(baseProjection, 'ord-2'));
+    // One home per fact: a single serialization per section with totals
+    // that never conflict with the detail disclosure.
+    const orderIds = changedProjection.purchases.map((entry) => entry.orderId);
+    expect(new Set(orderIds).size).toBe(orderIds.length);
+    for (const candidate of changedProjection.candidates) {
+      if (candidate.kind !== 'order' || candidate.orderId === undefined) continue;
+      const detail = changedProjection.detailedPurchases.find(
+        (entry) => entry.orderId === candidate.orderId,
+      );
+      const detailTotal = detail?.amountDisclosure?.total ?? detail?.grandTotal ?? null;
+      if (candidate.total !== undefined && detailTotal !== null) {
+        expect(candidate.total).toBe(detailTotal);
+      }
+    }
+    // Relevance still travels by reference: the requested order leads.
+    expect(changedProjection.purchases[0]?.orderId).toBe('ord-1');
     const relevantChanged = assembleCustomerContext({
       execution: {
         results: [
@@ -687,12 +718,15 @@ describe('l4 packet C — semantic target selection', () => {
     expect(ranked.map((candidate) => candidate.orderId)).toHaveLength(2);
   });
 
-  it('gives an ambiguous target no detail to write from', () => {
+  it('keeps every candidate visible on a dateless question while writes stay gated', () => {
     const snapshot = snapshotWithPurchaseAndCart();
     const projection = projectCustomerContext(snapshot, { focus: 'payment' });
-    expect(projection.purchases).toEqual([]);
-    expect(projection.detailedPurchases).toEqual([]);
+    expect(projection.purchases.map((entry) => entry.orderId)).toEqual(['ord-1', 'ord-2']);
+    expect(projection.detailedPurchases).toHaveLength(2);
     expect(projection.commonRefs.orderIds).toEqual(['ord-1', 'ord-2']);
+    // No automatic target: the unresolved pair stays candidates, so no
+    // mutation target is inferred from visibility alone.
+    expect(resolveRelevantTarget({ orderIds: ['ord-1', 'ord-2'], eventIds: [] }).kind).toBe('candidates');
   });
 
   it('keys bounded traversal visits by type, id and scope', () => {
@@ -822,7 +856,7 @@ describe('l4 packet C — bounded event hydration', () => {
     expect(calls).toEqual([7]);
   });
 
-  it('hydrates nothing for a dateless reference-free question', async () => {
+  it('hydrates authorized alternatives for a dateless reference-free question', async () => {
     const calls: number[] = [];
     const orchestrator = hydrationOrchestrator(eventGateway(
       [eventSummary(1, 'Fiesta Sol'), eventSummary(2, 'Fiesta Luna')],
@@ -835,13 +869,15 @@ describe('l4 packet C — bounded event hydration', () => {
       trustedPhone: HYDRATION_PHONE,
       scope: 'trusted_phone_guest',
     });
-    expect(outcome.readsAttempted).toBe(0);
-    expect(outcome.details.size).toBe(0);
+    // Bounded alternative reads preserve venue facts before asking; reading
+    // them selects no mutation target.
+    expect(outcome.readsAttempted).toBe(2);
+    expect(outcome.details.size).toBe(2);
     expect(outcome.truncatedByBound).toBe(false);
-    expect(calls).toEqual([]);
+    expect(calls).toEqual([1, 2]);
   });
 
-  it('keeps summaries without reads when the hint matches nothing', async () => {
+  it('hydrates authorized alternatives when the hint matches nothing', async () => {
     const calls: number[] = [];
     const orchestrator = hydrationOrchestrator(eventGateway(
       [eventSummary(1, 'Fiesta Sol')],
@@ -854,8 +890,11 @@ describe('l4 packet C — bounded event hydration', () => {
       trustedPhone: HYDRATION_PHONE,
       scope: 'trusted_phone_guest',
     });
-    expect(outcome.readsAttempted).toBe(0);
-    expect(calls).toEqual([]);
+    // A failed name match never becomes venue-unavailable: the known
+    // alternative rides the profile for model resolution.
+    expect(outcome.readsAttempted).toBe(1);
+    expect(outcome.details.size).toBe(1);
+    expect(calls).toEqual([1]);
   });
 
   it('stops at the invocation deadline without throwing', async () => {
@@ -944,7 +983,8 @@ describe('l4 packet C — bounded event hydration', () => {
     }
   });
 
-  it('projects hydrated venue detail without asking for confirmation', async () => {    const calls: number[] = [];
+  it('projects hydrated venue detail without asking for confirmation', async () => {
+    const calls: number[] = [];
     const orchestrator = hydrationOrchestrator(eventGateway(
       [eventSummary(8, 'Fiesta Sol'), eventSummary(10, 'Fiesta Sol')],
       (id) => detailSuccess(id, 'Fiesta Sol'),
@@ -973,14 +1013,18 @@ describe('l4 packet C — bounded event hydration', () => {
       focus: 'rsvp',
       relevantEventIds: [8],
     });
-    expect(projection.invitations).toHaveLength(1);
+    // Both authorized invitations ride one canonical profile; the requested
+    // event leads by reference instead of hiding the other.
+    expect(projection.invitations).toHaveLength(2);
+    expect(projection.invitations[0]?.eventId).toBe(8);
     expect(projection.invitations[0]?.address?.city).toBe('Cusco');
     expect(projection.commonRefs.eventIds).toHaveLength(2);
   });
 
-  it('withholds invitation attendance outside RSVP focus while keeping identity', () => {
-    // A pending record must not leak an attendance claim into event-fact
-    // answers: general focus keeps names, RSVP focus keeps the state.
+  it('keeps invitation attendance visible under every focus with identity intact', () => {
+    // The canonical profile never hides an authorized attendance fact by
+    // focus: general turns see the same typed state as RSVP turns, and the
+    // current question (not the profile) selects what the answer covers.
     const execution: CustomerExecution = {
       results: [eventResult('ev-1', [guestEvent(8, 'Fiesta Sol')])],
       summaries: [{
@@ -1007,7 +1051,7 @@ describe('l4 packet C — bounded event hydration', () => {
     const general = projectCustomerContext(snapshot, { focus: 'general', relevantEventIds: [8] });
     expect(general.invitations).toHaveLength(1);
     expect(general.invitations[0]?.eventName).toBe('Fiesta Sol');
-    expect(general.invitations[0]?.rsvpState).toBe('unknown');
+    expect(general.invitations[0]?.rsvpState).toBe('pending');
 
     const rsvp = projectCustomerContext(snapshot, { focus: 'rsvp', relevantEventIds: [8] });
     expect(rsvp.invitations).toHaveLength(1);

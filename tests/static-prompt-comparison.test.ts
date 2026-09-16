@@ -118,9 +118,15 @@ describe('per-branch historical baseline via git show', () => {
     // 2026-09-16 oracle-audit hostdecl hedge grounding: +281 bytes in
     // responder_invitacion (verified-record states/dates question, no false
     // cannot-verify hedge when grounded). Model wording only. Previous pin 9027.
+    // 2026-09-16 customer-support subtractive pass: companion verification
+    // scope wording in responder_invitacion/system.txt plus shared grounding
+    // invariants in base_system.txt, minus shared-prompt tightening that
+    // removed the node-obedience recital and capability-list verbosity.
+    // Net +49 on this branch; customer-turn instructions sit below the
+    // 1c15bce7 baseline on every measured scenario. Previous pin 9308.
     const currentRsvp = current.find((branch) => branch.branchId === 'responder_invitacion:resolved_single');
-    expect(currentRsvp?.instructionBytes).toBe(9308);
-    expect((currentRsvp?.instructionBytes ?? 0) - (anchorRsvp?.instructionBytes ?? 0)).toBe(1075);
+    expect(currentRsvp?.instructionBytes).toBe(9357);
+    expect((currentRsvp?.instructionBytes ?? 0) - (anchorRsvp?.instructionBytes ?? 0)).toBe(1124);
   }, 20_000);
 });
 

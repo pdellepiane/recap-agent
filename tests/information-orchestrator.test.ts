@@ -634,7 +634,7 @@ describe('InformationOrchestrator', () => {
       trustedPhone: { phone_extension: '+51', phone_number: '973296571' },
     });
 
-    expect(agentGateway.eventDetailCalls).toBe(0);
+    expect(agentGateway.eventDetailCalls).toBe(2);
     expect(execution.results[0]).toMatchObject({
       status: 'completed',
       accessMethod: 'trusted_phone_guest',

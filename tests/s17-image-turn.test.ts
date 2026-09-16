@@ -1272,10 +1272,10 @@ describe('Approval-boundary ambiguity projection', () => {
     ).toBe(true);
   });
 
-  it('keeps the ambiguity when no purchase read was attempted', () => {
+  it('can answer that a receipt alone cannot prove approval without a purchase read', () => {
     expect(
       answeredByEvidence(boundaryRequest({ storedAttachments: 1 })),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it('keeps a scoped miss ambiguous without receipt context', () => {
@@ -1415,5 +1415,21 @@ describe('Approval-boundary ambiguity projection', () => {
     const composed = runtime.composeRequests.at(-1);
     expect(composed?.extraction.ambiguity?.status).toBe('clear');
     expect(composed?.extraction.ambiguity?.interpretations ?? []).toHaveLength(0);
+    // E4 narrow scope: the performed read stays an empty outcome. The twin
+    // proves the boundary answer synthesizes no completed purchase, approves
+    // no payment, and marks only the read that actually ran.
+    const boundaryResults = (composed as unknown as {
+      informationResults?: Array<{
+        kind?: string;
+        status?: string;
+        purchases?: unknown[];
+        paymentStatus?: string | null;
+      }>;
+    })?.informationResults ?? [];
+    expect(boundaryResults).toHaveLength(1);
+    expect(boundaryResults[0]?.kind).toBe('purchase');
+    expect(boundaryResults[0]?.status).toBe('completed');
+    expect(boundaryResults[0]?.purchases ?? []).toHaveLength(0);
+    expect(boundaryResults[0]?.paymentStatus ?? null).toBeNull();
   });
 });

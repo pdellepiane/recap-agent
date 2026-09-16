@@ -116,6 +116,28 @@ describe('host withdrawal minimum disclosure and role correction', () => {
     expect(runtime.resolveOutputSchema(welcome).safeParse({ type: 'welcome', greeting_es: 'Hola', scope_es: 'Te ayudo con tu evento', ask_es: '¿Qué necesitas?' }).success).toBe(true);
   });
 
+  it('projects a scoped not-found result as facts without escalation prose', () => {
+    // C2: a scoped absence is evidence. The reply projection keeps status,
+    // scope, retryability and failure kind, and never carries a prewritten
+    // team-review sentence or an image-transport diagnostic.
+    const runtime = createRuntimeForTokenUsageTests() as unknown as {
+      projectInformationResultForReply: (result: InformationTaskResult, request: ComposeReplyRequest) => unknown;
+    };
+    const request = createComposeRequest('resolver_consultas_informativas');
+    const projected = runtime.projectInformationResultForReply({
+      requestId: 'img-1',
+      kind: 'purchase',
+      status: 'failed',
+      retryable: false,
+      failureKind: 'not_found',
+      message: 'The team needs to review the voucher',
+      accessMethod: 'trusted_phone_purchase',
+    } as unknown as InformationTaskResult, request) as Record<string, unknown>;
+    expect(projected).toMatchObject({ status: 'failed', failureKind: 'not_found' });
+    expect(projected).not.toHaveProperty('message');
+    expect(JSON.stringify(projected)).not.toMatch(/team|review|human/i);
+  });
+
   it('projects a typed policy without source article content, irrelevant instructions, or duplicate evidence', () => {
     const runtime = createRuntimeForTokenUsageTests() as unknown as {
       projectInformationResultForReply: (result: InformationTaskResult) => unknown;
@@ -940,7 +962,7 @@ describe('OpenAiAgentRuntime capability context', () => {
     expect(snapshot.provider_needs[0]?.missing_fields).toEqual(['ubicación']);
   });
 
-  it('preserves extractor ambiguity evidence and forces a clarification-shaped reply', () => {
+  it('preserves extractor ambiguity evidence with evidence-first resolution guidance', () => {
     const runtime = createRuntimeForTokenUsageTests();
     const request = createComposeRequest('entrevista');
     request.userMessage = 'Si confirmo';
@@ -969,7 +991,7 @@ describe('OpenAiAgentRuntime capability context', () => {
 
     expect(input).toContain('"status": "ambiguous"');
     expect(input).toContain('"interpretations"');
-    expect(input).toContain('Pide una aclaración breve');
+    expect(input).toContain('Contrasta las interpretaciones');
     expect(input).not.toContain(request.extraction.ambiguity.clarificationQuestion ?? '');
     expect(schema.safeParse({
       type: 'generic',
@@ -2154,7 +2176,7 @@ describe('L3 established-lane minimal extraction requests', () => {
     expect(captured.input).not.toContain('Prioridad completa');
   });
 
-  it('keeps planning fields and category priorities on transient planning turns', async () => {
+  it('omits initial category priorities on transient planning turns without established detail', async () => {
     const runtime = createRuntimeForTokenUsageTests();
     const plan = structuredClone(createL3BaseRequest('entrevista').plan);
     const captured = await captureL3ExtractionRequest(
@@ -2170,8 +2192,10 @@ describe('L3 established-lane minimal extraction requests', () => {
       'providerQueryIntents',
     ]));
     expect(captured.filePaths).toContain('extractors/planning.txt');
-    expect(captured.input).toContain('Categorías sugeridas');
-    expect(captured.input).toContain('Prioridad completa');
+    // A3: no initial category appendix without established planning
+    // detail. The planning module and schema still carry the real request.
+    expect(captured.input).not.toContain('Categorías sugeridas');
+    expect(captured.input).not.toContain('Prioridad completa');
   });
 
   it('keeps unsupported operations expressible without full schemas', async () => {

@@ -85,9 +85,9 @@ describe('run manifest identity (O0)', () => {
 
     expect(manifest.schemaVersion).toBe(RUN_MANIFEST_SCHEMA_VERSION);
     expect(manifest.releaseReadyClaim).toBe(false);
-    expect(manifest.cases.orderedIds).toHaveLength(118); // 2026-09-16: 117 + rsvp_host_set_declining_unique_guest (intended new case)
-    expect(new Set(manifest.cases.orderedIds).size).toBe(118); // 2026-09-16: matches 118 suite caseIds
-    expect(manifest.cases.identities).toHaveLength(118); // 2026-09-16: re-pinned for new declining-unique-guest case
+    expect(manifest.cases.orderedIds).toHaveLength(119); // 2026-09-16 E3: 118 + live_behavior.customer_event_task_continuity (four-turn continuity case)
+    expect(new Set(manifest.cases.orderedIds).size).toBe(119); // 2026-09-16 E3: matches 119 suite caseIds
+    expect(manifest.cases.identities).toHaveLength(119); // 2026-09-16 E3: re-pinned for the new task-continuity case
     expect(() => runManifestSchema.parse(manifest)).not.toThrow();
     expect(() => assertUniqueConfigCasePairs(manifest.cases.identities)).not.toThrow();
   });

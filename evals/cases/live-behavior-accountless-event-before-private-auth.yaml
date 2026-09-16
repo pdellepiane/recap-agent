@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.accountless_event_answer_precedes_remaining_private_auth
 suite: live_behavior_regression
-version: 3
+version: 4
 description: A mixed event and purchase question reuses the phone-enriched event and its scoped purchases without account authentication.
 tags: [live, behavior, associated-event, accountless-guest, mixed-information, phone-first]
 targetModes: [live_lambda]
@@ -16,8 +16,11 @@ inputs:
       scenario: guest-julisabeth-andres
 expectations:
   - id: routes-to-information
-    type: node_transition
-    to: resolver_consultas_informativas
+    type: fixture_effect_count
+    operation: rsvp.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
     severity: hard
   - id: reads-and-reuses-phone-enriched-event
     type: tool_usage
@@ -48,3 +51,6 @@ budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 1900
   estimatedCompletionTokensPerTurn: 350
+
+notes:
+  - "R05 oracle revision v3 to v4, 2026-09-16, customer-support release E2. Old routes-to-information pinned the internal resolver_consultas_informativas node, prescribing implementation instead of evidencing behavior (matrix: a correct venue-plus-scoped-purchase answer through any routing passed the read evidence but failed the node pin). New contract proves the same read-only invariant from receipts: fixture_effect_count rsvp.write 0/0/0 hard plus the retained phone-enriched event read evidence. The mandatory venue facts and no-OTP core are unchanged: an answer missing Hacienda Recoveco or demanding email/OTP still fails. Threshold and hard severity kept; no threshold reduction. Old v3 runs preserved; baseline and candidate must rerun on this v4 contract. Expectation id routes-to-information is retained for ledger and run continuity; only its type changed from node_transition to fixture_effect_count."

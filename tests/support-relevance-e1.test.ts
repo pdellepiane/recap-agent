@@ -289,6 +289,8 @@ describe('support relevance packet E1 judge evidence', () => {
       { id: 'live_behavior.purchase_explicit_time_alternatives', operation: 'rsvp.write' },
       { id: 'live_behavior.current_campaign_order_over_historical_declined_maria_jose', operation: 'rsvp.write' },
       { id: 'live_behavior.image_url_unavailable_evidence', operation: 'rsvp.write' },
+      { id: 'live_behavior.accountless_event_answer_precedes_remaining_private_auth', operation: 'rsvp.write' },
+      { id: 'live_behavior.rsvp_missing_action_requires_explicit_decision', operation: 'rsvp.write' },
     ];
     for (const { id, operation } of readOnlyCases) {
       const live = byId.get(id);

@@ -301,7 +301,7 @@ describe('S6 single customerContext serialization', () => {
 });
 
 describe('S6 cart relevance from structured checkout evidence', () => {
-  it('keeps a payment question with a current image out of cart facts (D9)', async () => {
+  it('keeps the cart as a distinct record on a payment question with a current image (D9)', async () => {
     const runtime = new ScriptedPurchaseRuntime(['payment_status']);
     const pair = purchaseResultWithCart('information-1', 'ORD-A', 'cart-image-1');
     const service = serviceWith(runtime, [pair.result], [pair.summary]);
@@ -311,7 +311,9 @@ describe('S6 cart relevance from structured checkout evidence', () => {
     expect(runtime.composeRequests).toHaveLength(1);
     const customerContext = runtime.composeRequests[0]?.customerContext;
     expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-A']);
-    expect(customerContext?.carts).toEqual([]);
+    // One canonical profile: the cart rides along as its own record type
+    // while payment evidence stays on the requested order.
+    expect(customerContext?.carts.map((entry) => entry.cartId)).toEqual(['cart-image-1']);
   });
 
   it('projects cart facts for an explicit checkout question', async () => {
@@ -333,7 +335,7 @@ describe('S6 cart relevance from structured checkout evidence', () => {
     expect(note).toContain('carrito abandonado');
   });
 
-  it('keeps payment plus thanks payment-focused', async () => {
+  it('keeps payment plus thanks answerable from the order with the cart retained', async () => {
     const runtime = new ScriptedPurchaseRuntime(['payment_details', 'thanks']);
     const pair = purchaseResultWithCart('information-1', 'ORD-A', 'cart-thanks-1');
     const service = serviceWith(runtime, [pair.result], [pair.summary]);
@@ -343,7 +345,7 @@ describe('S6 cart relevance from structured checkout evidence', () => {
     expect(runtime.composeRequests).toHaveLength(1);
     const customerContext = runtime.composeRequests[0]?.customerContext;
     expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-A']);
-    expect(customerContext?.carts).toEqual([]);
+    expect(customerContext?.carts.map((entry) => entry.cartId)).toEqual(['cart-thanks-1']);
   });
 
   it('receives both records for a genuinely-both question', async () => {
@@ -359,7 +361,7 @@ describe('S6 cart relevance from structured checkout evidence', () => {
     expect(customerContext?.carts.map((entry) => entry.cartId)).toContain('cart-both-1');
   });
 
-  it('keeps a voucher report payment-focused instead of cart-focused', async () => {
+  it('keeps a voucher report answerable from the order with the cart retained', async () => {
     const runtime = new ScriptedPurchaseRuntime(['payment_status'], {
       kind: 'report_issue',
       topic: 'payment_proof',
@@ -373,10 +375,10 @@ describe('S6 cart relevance from structured checkout evidence', () => {
     expect(runtime.composeRequests).toHaveLength(1);
     const customerContext = runtime.composeRequests[0]?.customerContext;
     expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-A']);
-    expect(customerContext?.carts).toEqual([]);
+    expect(customerContext?.carts.map((entry) => entry.cartId)).toEqual(['cart-voucher-1']);
   });
 
-  it('does not reveal an abandoned cart on a payment receipt', async () => {
+  it('does not surface an abandoned cart in the payment operational note', async () => {
     const runtime = new ScriptedPurchaseRuntime(['payment_status']);
     const pair = purchaseResultWithCart('information-1', 'ORD-A', 'cart-receipt-1');
     const service = serviceWith(
@@ -392,7 +394,9 @@ describe('S6 cart relevance from structured checkout evidence', () => {
     const note = runtime.composeRequests[0]?.errorMessage ?? '';
     expect(note).not.toContain('carrito abandonado');
     expect(note).not.toContain('opción general de pago');
+    // The cart stays in the canonical context as a distinct record; the
+    // payment answer simply does not use it.
     const customerContext = runtime.composeRequests[0]?.customerContext;
-    expect(customerContext?.carts).toEqual([]);
+    expect(customerContext?.carts.map((entry) => entry.cartId)).toEqual(['cart-receipt-1']);
   });
 });

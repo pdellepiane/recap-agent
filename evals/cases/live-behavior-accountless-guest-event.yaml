@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.accountless_guest_event_uses_phone_without_otp
 suite: live_behavior_regression
-version: 2
+version: 3
 description: An invited WhatsApp guest without an account receives event details through the trusted phone without being pushed into email OTP.
 tags: [live, behavior, associated-event, accountless-guest, phone-first, reported-interaction]
 targetModes: [live_lambda]
@@ -16,8 +16,11 @@ inputs:
       scenario: guest-julisabeth-andres
 expectations:
   - id: routes-to-associated-event-information
-    type: node_transition
-    to: resolver_consultas_informativas
+    type: fixture_effect_count
+    operation: rsvp.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
     severity: hard
   - id: uses-phone-enriched-event-context-directly
     type: tool_usage
@@ -40,3 +43,6 @@ budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 1800
   estimatedCompletionTokensPerTurn: 300
+
+notes:
+  - "R05 v3 (2026-09-16, customer-support release E1): old contract pinned the internal route (node_transition to resolver_consultas_informativas). Old defect: a correct venue answer composed through any other routing passed the read evidence but failed the pin, grading implementation instead of behavior. New acceptance: zero RSVP mutations from effect receipts (fixture_effect_count rsvp.write 0/0/0 hard) plus mandatory actual venue facts (Hacienda Recoveco, Avenida Manuel Valle, Lima) and no email/OTP demand. Failing counterexample: an answer that performs a guest_rsvp write, omits the reception location, or asks for an OTP fails. Threshold and hard severity kept; earlier verdicts unchanged."

@@ -2,9 +2,9 @@
 
 Status: implementation ledger; no live acceptance claimed. September 15, 2026.
 Directive: `profile-inference-directive-2026-09-15.md`. Checklist: `profile-inference-test-inventory-2026-09-15.json` (117 cases, review flags are candidates, not defects).
-Machine-readable twin: `profile-inference-disposition-ledger.json` (527 current rows plus the 5 removed-and-replaced originals with replacement pointers, covering all 529). Count is discovered from the loaded catalog, never hardcoded.
+Machine-readable twin: `profile-inference-disposition-ledger.json` (528 current rows plus the 5 removed-and-replaced originals with replacement pointers, covering all 529). Count is discovered from the loaded catalog, never hardcoded.
 
-Totals: 117 cases, 529 original expectations (527 current: 5 removed-and-replaced, 3 added as replacements). Current dispositions: retain 515, revise 12, replace 0; every original is accounted for below (current rows plus the removed list, each with a replacement pointer).
+Totals: 117 cases, 529 original expectations (528 current: 5 removed-and-replaced, 4 added as replacements). Current dispositions: retain 504, revise 12, replace 12; every original is accounted for below (current rows plus the removed list, each with a replacement pointer).
 
 ## Disposition rules (applied per expectation, overrides win)
 
@@ -24,6 +24,7 @@ Totals: 117 cases, 529 original expectations (527 current: 5 removed-and-replace
 - `live_behavior.wedding_planner_location_completes_search` v1->v2: two literal anyOf pins replaced by one semantic outcome check.
 - Runner: global judge rules extended (accept grounded inference + useful extra detail; fail missing topics / unsupported certainty / unrelated dumps / unnecessary clarification); `resolveJudgeOnlyImageGroundTruth` supplies digest-bound ground truth to judges only. Case schema gains optional `judgeGroundTruth` (judge-only, never loaded into runtime input).
 - 2026-09-16 evaluator-owned audit fixes (7 pins revised, no replacements): `live_behavior.image_conversation_continuity` v3->v4 binds the same E1 digest mechanism (turn-0 bytes byte-identical to the delayed-question fixture, e6024548..., verified read-only); `live_feedback.token_seeded_contact_correction` v1->v2 scopes both semantic contact-info clauses so a close-flow event-date request stays admissible (seed carries no event date; selection-defer-close EX1 v2 precedent); `live_behavior.rsvp_missing_action_requires_explicit_decision` v4->v5 and `live_behavior.rsvp_declined_state_offers_one_change` v5->v6 revise the retired awaiting_action/attending staging pins to the P2 read-only contract (none/null). All keep hard severity, requireJudge, and thresholds; seeds keep the retired staged shape as the incoming boundary. Old runs preserved (R05).
+- 2026-09-16 customer-support release E1/E2 ledger repair (12 rows): node_transition pins already replaced in YAML by receipt-backed fixture_effect_count checks (accountless guest event, accountless pre-auth, owner payment, Luis, explicit-time, Martha-adjacent maria-jose current-order, image-url-unavailable, cinthya, jose, host-declining-consistent, missing-action) and one trace_field_equals pin replaced by a semantic judge (Diana later-event-message) now carry disposition replace with the conversion rationale; Diana gains the added turn-2 `one-handoff-effect-in-thread` receipt row (handoff.write 0/0/0, reused success never a new effect). Old runs preserved (R05).
 - Coverage registry: new entries registered separately per behavior change (unique-guest declining, ambiguous-identity declining, continuation-proof ambiguity, judge-only image truth, S07 complete-utterance, counter removals, literal-pin replacements).
 
 ## Removed expectations (replaced, all 5 originals accounted for)
@@ -46,7 +47,7 @@ Totals: 117 cases, 529 original expectations (527 current: 5 removed-and-replace
 
 ### live_behavior.accountless_event_answer_precedes_remaining_private_auth (`live-behavior-accountless-event-before-private-auth.yaml`, v3)
 
-- [retain] `routes-to-information` (node_transition, hard): Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned.
+- [replace] `routes-to-information` (fixture_effect_count, 2026-09-16 E2: implementation pin replaced; hard): Receipt-backed invariant replacing the retired implementation pin; old runs preserved.
 - [retain] `reads-and-reuses-phone-enriched-event` (tool_usage, hard): Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
 - [retain] `keeps-email-auth-ready-for-the-private-query` (plan_field_equals, hard): Typed state invariant (auth cleared, handoff persisted, rsvp lifecycle, owner, selection safety); kept. Only selection/attempt counters are replaced, handled as overrides.
 - [retain] `answers-event-and-reuses-scoped-purchase` (text_semantic, hard requireJudge=True): Hard semantic judge kept (requireJudge:true mandatory). Global judge rules now also require: accept grounded inference + useful extra detail; fail missing topics, unsupported certainty, unrelated dumps, and unnecessary clarification when context/tools suffice.
@@ -54,7 +55,7 @@ Totals: 117 cases, 529 original expectations (527 current: 5 removed-and-replace
 
 ### live_behavior.accountless_guest_event_uses_phone_without_otp (`live-behavior-accountless-guest-event.yaml`, v2)
 
-- [retain] `routes-to-associated-event-information` (node_transition, hard): Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned.
+- [replace] `routes-to-associated-event-information` (fixture_effect_count, 2026-09-16 E2: implementation pin replaced; hard): Receipt-backed invariant replacing the retired implementation pin; old runs preserved.
 - [retain] `uses-phone-enriched-event-context-directly` (tool_usage, hard): Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
 - [retain] `leaves-no-authentication-request-pending` (plan_field_equals, hard): Typed state invariant (auth cleared, handoff persisted, rsvp lifecycle, owner, selection safety); kept. Only selection/attempt counters are replaced, handled as overrides.
 - [retain] `answers-from-the-invited-event-without-otp` (text_semantic, hard requireJudge=True): Hard semantic judge kept (requireJudge:true mandatory). Global judge rules now also require: accept grounded inference + useful extra detail; fail missing topics, unsupported certainty, unrelated dumps, and unnecessary clarification when context/tools suffice.
@@ -122,7 +123,7 @@ Totals: 117 cases, 529 original expectations (527 current: 5 removed-and-replace
 
 ### live_behavior.current_campaign_order_over_historical_declined_maria_jose (`live-behavior-current-campaign-order-maria-jose.yaml`, v2)
 
-- [retain] `current-order-enters-information` (node_transition, hard turn=0): Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned.
+- [replace] `current-order-enters-information` (fixture_effect_count, 2026-09-16 E2: implementation pin replaced; hard turn=0): Receipt-backed invariant replacing the retired implementation pin; old runs preserved.
 - [retain] `current-order-uses-phone-partitions` (tool_usage, hard turn=0): Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
 - [retain] `current-pending-suppresses-historical-declined` (text_semantic, hard requireJudge=True turn=0): Hard semantic judge kept (requireJudge:true mandatory). Global judge rules now also require: accept grounded inference + useful extra detail; fail missing topics, unsupported certainty, unrelated dumps, and unnecessary clarification when context/tools suffice.
 - [retain] `shortfall-remains-pending` (text_semantic, hard requireJudge=True turn=1): Hard semantic judge kept (requireJudge:true mandatory). Global judge rules now also require: accept grounded inference + useful extra detail; fail missing topics, unsupported certainty, unrelated dumps, and unnecessary clarification when context/tools suffice.
@@ -171,8 +172,9 @@ Totals: 117 cases, 529 original expectations (527 current: 5 removed-and-replace
 - [retain] `withdrawal-topic-retained` (plan_field_subset, hard turn=1): Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
 - [retain] `supported-policy-not-invented-withdrawal-status` (text_semantic, hard requireJudge=True turn=1): Hard semantic judge kept (requireJudge:true mandatory). Global judge rules now also require: accept grounded inference + useful extra detail; fail missing topics, unsupported certainty, unrelated dumps, and unnecessary clarification when context/tools suffice.
 - [retain] `handoff-is-persisted` (plan_field_equals, hard turn=1): Typed state invariant (auth cleared, handoff persisted, rsvp lifecycle, owner, selection safety); kept. Only selection/attempt counters are replaced, handled as overrides.
-- [retain] `later-event-message-stays-with-human-team` (trace_field_equals, hard turn=2): Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
+- [replace] `later-event-message-stays-with-human-team` (text_semantic, 2026-09-16 E2: implementation pin replaced; hard turn=2): Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
 - [retain] `no-repeated-takeover-or-rsvp` (tool_usage, hard turn=2): Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
+- [retain] `one-handoff-effect-in-thread` (fixture_effect_count, hard turn=2, 2026-09-16 E1 v3): repeated takeover forbidden via authoritative per-turn effect receipts (handoff.write 0/0/0 at turn 2); a reused turn-1 success receipt never counts as a new effect. Read-only policy lookup remains permitted.: Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
 
 ### live_behavior.host_withdrawal_pending_event_followup (`live-behavior-host-withdrawal-event-followup.yaml`, v1)
 
@@ -308,7 +310,7 @@ Totals: 117 cases, 529 original expectations (527 current: 5 removed-and-replace
 ### live_behavior.image_url_unavailable_evidence (`live-behavior-image-url-unavailable.yaml`, v3)
 
 - [retain] `expired-url-uses-native-context` (tool_usage, hard): Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
-- [retain] `expired-url-stays-informative` (node_transition, hard): Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned.
+- [replace] `expired-url-stays-informative` (fixture_effect_count, 2026-09-16 E2: implementation pin replaced; hard): Receipt-backed invariant replacing the retired implementation pin; old runs preserved.
 - [retain] `expired-url-no-link-leak` (text_not_contains, hard): Prohibition check (forbidden secrets/identifiers, no-invention bans, no-resend/no-URL bans, vocabulary bans); literal form allowed for genuinely forbidden content. Kept.
 - [retain] `expired-url-unavailable-not-proof` (text_semantic, hard requireJudge=True): Hard semantic judge kept (requireJudge:true mandatory). Global judge rules now also require: accept grounded inference + useful extra detail; fail missing topics, unsupported certainty, unrelated dumps, and unnecessary clarification when context/tools suffice.
 
@@ -427,7 +429,7 @@ Totals: 117 cases, 529 original expectations (527 current: 5 removed-and-replace
 
 ### live_behavior.owner_customer_payment_relevance (`live-behavior-owner-customer-payment-relevance.yaml`, v2)
 
-- [retain] `payment-turn-enters-information` (node_transition, hard turn=0): Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned.
+- [replace] `payment-turn-enters-information` (fixture_effect_count, 2026-09-16 E2: implementation pin replaced; hard turn=0): Receipt-backed invariant replacing the retired implementation pin; old runs preserved.
 - [retain] `payment-turn-uses-phone-orders` (tool_usage, hard turn=0): Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
 - [retain] `payment-turn-persists-customer-owner` (plan_field_equals, hard turn=0): Typed state invariant (auth cleared, handoff persisted, rsvp lifecycle, owner, selection safety); kept. Only selection/attempt counters are replaced, handled as overrides.
 - [retain] `payment-reply-excludes-cart` (text_not_contains, hard turn=0): Prohibition check (forbidden secrets/identifiers, no-invention bans, no-resend/no-URL bans, vocabulary bans); literal form allowed for genuinely forbidden content. Kept.
@@ -451,7 +453,7 @@ Totals: 117 cases, 529 original expectations (527 current: 5 removed-and-replace
 
 ### live_behavior.pending_balance_validation_luis (`live-behavior-pending-balance-luis.yaml`, v2)
 
-- [retain] `pending-balance-enters-information` (node_transition, hard turn=0): Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned.
+- [replace] `pending-balance-enters-information` (fixture_effect_count, 2026-09-16 E2: implementation pin replaced; hard turn=0): Receipt-backed invariant replacing the retired implementation pin; old runs preserved.
 - [retain] `pending-balance-uses-phone-partitions` (tool_usage, hard turn=0): Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
 - [retain] `balance-unknown-no-currency` (text_semantic, hard requireJudge=True turn=0): Hard semantic judge kept (requireJudge:true mandatory). Global judge rules now also require: accept grounded inference + useful extra detail; fail missing topics, unsupported certainty, unrelated dumps, and unnecessary clarification when context/tools suffice.
 - [retain] `voucher-does-not-confirm` (text_semantic, hard requireJudge=True turn=1): Hard semantic judge kept (requireJudge:true mandatory). Global judge rules now also require: accept grounded inference + useful extra detail; fail missing topics, unsupported certainty, unrelated dumps, and unnecessary clarification when context/tools suffice.
@@ -529,7 +531,7 @@ Totals: 117 cases, 529 original expectations (527 current: 5 removed-and-replace
 
 ### live_behavior.purchase_explicit_time_alternatives (`live-behavior-purchase-explicit-time.yaml`, v2)
 
-- [retain] `explicit-time-enters-information` (node_transition, hard): Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned.
+- [replace] `explicit-time-enters-information` (fixture_effect_count, 2026-09-16 E2: implementation pin replaced; hard): Receipt-backed invariant replacing the retired implementation pin; old runs preserved.
 - [retain] `explicit-time-uses-phone-orders` (tool_usage, hard): Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
 - [retain] `explicit-time-keeps-recorded-hour` (text_semantic, hard requireJudge=True): Hard semantic judge kept (requireJudge:true mandatory). Global judge rules now also require: accept grounded inference + useful extra detail; fail missing topics, unsupported certainty, unrelated dumps, and unnecessary clarification when context/tools suffice.
 
@@ -628,7 +630,7 @@ Totals: 117 cases, 529 original expectations (527 current: 5 removed-and-replace
 
 ### live_behavior.rsvp_cinthya_campaign_invitation_not_reported_missing (`live-behavior-rsvp-cinthya-campaign.yaml`, v6)
 
-- [retain] `enters-rsvp-node` (node_transition, hard): Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned.
+- [replace] `enters-rsvp-node` (fixture_effect_count, 2026-09-16 E2: implementation pin replaced; hard): Receipt-backed invariant replacing the retired implementation pin; old runs preserved.
 - [retain] `reads-user-level-state-without-account-auth` (tool_usage, hard): Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
 - [retain] `preserves-campaign-grounded-invitation` (text_semantic, hard requireJudge=True): Hard semantic judge kept (requireJudge:true mandatory). Global judge rules now also require: accept grounded inference + useful extra detail; fail missing topics, unsupported certainty, unrelated dumps, and unnecessary clarification when context/tools suffice.
 - [retain] `no-rsvp-vocabulary` (text_not_contains, hard): Prohibition check (forbidden secrets/identifiers, no-invention bans, no-resend/no-URL bans, vocabulary bans); literal form allowed for genuinely forbidden content. Kept.
@@ -669,14 +671,14 @@ Totals: 117 cases, 529 original expectations (527 current: 5 removed-and-replace
 
 ### live_behavior.rsvp_host_set_declining_consistent (`live-behavior-rsvp-host-set-declining-consistent.yaml`, v4)
 
-- [retain] `declining-enters-rsvp-node` (node_transition, hard): Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned.
+- [replace] `declining-enters-rsvp-node` (fixture_effect_count, 2026-09-16 E2: implementation pin replaced; hard): Receipt-backed invariant replacing the retired implementation pin; old runs preserved.
 - [retain] `declining-query-performs-no-write` (tool_usage, hard): Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
 - [revise] `declining-reported-for-named-event` (text_semantic, hard requireJudge=True): Fixture corrected to distinguishable evidence (distinct datetimes per record); rubric accepts the identified-guest direct report or one bounded distinguishing question naming states/dates, never a guessed mutation, never asking the user to distinguish identical labels. Case v3->v4.
 - [retain] `no-rsvp-vocabulary` (text_not_contains, hard): Prohibition check (forbidden secrets/identifiers, no-invention bans, no-resend/no-URL bans, vocabulary bans); literal form allowed for genuinely forbidden content. Kept.
 
 ### live_behavior.rsvp_jose_campaign_invitation_not_reported_missing (`live-behavior-rsvp-jose-campaign.yaml`, v7)
 
-- [retain] `enters-rsvp-node` (node_transition, hard): Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned.
+- [replace] `enters-rsvp-node` (fixture_effect_count, 2026-09-16 E2: implementation pin replaced; hard): Receipt-backed invariant replacing the retired implementation pin; old runs preserved.
 - [retain] `reads-user-level-state-without-account-auth` (tool_usage, hard): Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
 - [retain] `preserves-campaign-grounded-invitation` (text_semantic, hard requireJudge=True): Hard semantic judge kept (requireJudge:true mandatory). Global judge rules now also require: accept grounded inference + useful extra detail; fail missing topics, unsupported certainty, unrelated dumps, and unnecessary clarification when context/tools suffice.
 - [retain] `fragment-not-inverted` (text_not_contains, hard): Prohibition check (forbidden secrets/identifiers, no-invention bans, no-resend/no-URL bans, vocabulary bans); literal form allowed for genuinely forbidden content. Kept.
@@ -684,7 +686,7 @@ Totals: 117 cases, 529 original expectations (527 current: 5 removed-and-replace
 
 ### live_behavior.rsvp_missing_action_requires_explicit_decision (`live-behavior-rsvp-missing-action.yaml`, v5)
 
-- [retain] `enters-rsvp-node` (node_transition, hard): Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned.
+- [replace] `enters-rsvp-node` (fixture_effect_count, 2026-09-16 E2: implementation pin replaced; hard): Receipt-backed invariant replacing the retired implementation pin; old runs preserved.
 - [revise] `preserves-awaiting-action-state` (plan_field_equals, hard): 2026-09-16 P2 read-only alignment (case v4->v5): retired awaiting_action staging pin revised to the P2 read-only contract value none (emptyRsvpState); seedPlan keeps the retired staged shape as the incoming boundary to prove normalization.
 - [revise] `preserves-attending-change` (plan_field_equals, hard): 2026-09-16 P2 read-only alignment (case v4->v5): retired attending pending_action pin revised to the P2 read-only contract value null (emptyRsvpState).
 - [retain] `does-not-mutate-without-decision` (tool_usage, hard): Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).

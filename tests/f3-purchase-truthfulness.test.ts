@@ -15,9 +15,11 @@ import { createEmptyPlan } from '../src/core/plan';
 
 describe('F3 purchase evidence projection', () => {
   it('keeps disclosure readers grounded in canonical amount and method fields', () => {
-    expect(disclosedPurchaseTotal({ grandTotal: 10, amountDisclosure: { total: 12 } } as never)).toBe(10);
+    // B3 single amount truth: amountDisclosure wins over legacy direct
+    // fields; direct fields are fallback only.
+    expect(disclosedPurchaseTotal({ grandTotal: 10, amountDisclosure: { total: 12 } } as never)).toBe(12);
     expect(disclosedPurchaseTotal({ grandTotal: null, amountDisclosure: { total: 12 } } as never)).toBe(12);
-    expect(disclosedPurchaseMethod({ paymentMethod: null, payment: { method: 'Transferencia' }, amountDisclosure: { paymentMethod: 'Yape' } } as never)).toBe('Transferencia');
+    expect(disclosedPurchaseMethod({ paymentMethod: null, payment: { method: 'Transferencia' }, amountDisclosure: { paymentMethod: 'Yape' } } as never)).toBe('Yape');
   });
 
   it('exports only factual purchase projection helpers, never reply renderers', async () => {

@@ -168,7 +168,7 @@ beforeEach(() => {
 });
 
 describe('l4 customer context production wiring', () => {
-  it('feeds a payment question only the relevant order facts, never cart facts', async () => {
+  it('feeds a payment question the full canonical profile with the relevant order first', async () => {
     const runtime = new PaymentQuestionRuntime();
     const relevant = purchaseResult('information-1', 'ORD-A', RELEVANT_TOTAL, 'cart-relevant-1');
     const unrelated = purchaseResult('information-2', 'ORD-B', UNRELATED_TOTAL, UNRELATED_CART);
@@ -184,15 +184,15 @@ describe('l4 customer context production wiring', () => {
     const request = runtime.composeRequests[0];
     const customerContext = request?.customerContext;
     expect(customerContext).toBeDefined();
+    // One canonical profile: every authorized record rides once as its own
+    // entity; the requested order leads by reference instead of hiding the
+    // rest. Carts stay distinct records for later cart questions.
+    expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-A', 'ORD-B']);
+    expect(customerContext?.detailedPurchases.map((entry) => entry.orderId)).toEqual(['ORD-A', 'ORD-B']);
+    expect(customerContext?.carts.map((entry) => entry.cartId)).toEqual(['cart-relevant-1', UNRELATED_CART]);
     const serialized = JSON.stringify(customerContext);
-    // Unrelated-data sentinels: neither the other order total nor any cart travels.
     expect(serialized).toContain(String(RELEVANT_TOTAL));
-    expect(serialized).not.toContain(String(UNRELATED_TOTAL));
-    expect(serialized).not.toContain(UNRELATED_CART);
-    expect(serialized).not.toContain('cart-relevant-1');
-    expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-A']);
-    expect(customerContext?.carts).toEqual([]);
-    expect(customerContext?.detailedPurchases).toHaveLength(1);
+    expect(serialized).toContain(String(UNRELATED_TOTAL));
     // The serving owner travels with the request.
     expect(request?.owner).toBe('customer_assistance');
   });
@@ -212,7 +212,7 @@ describe('l4 customer context production wiring', () => {
     expect(runtime.composeRequests[0]?.customerContext).toBeNull();
   });
 
-  it('answers an explicit years-old order instead of the newest record', async () => {
+  it('leads with an explicit years-old order instead of the newest record', async () => {
     const runtime = new PaymentQuestionRuntime('ORD-OLD');
     const newest = purchaseResult('information-1', 'ORD-NEW', UNRELATED_TOTAL, 'cart-new');
     const explicit = purchaseResult('information-2', 'ORD-OLD', 75.25, 'cart-old');
@@ -226,13 +226,15 @@ describe('l4 customer context production wiring', () => {
 
     expect(runtime.composeRequests).toHaveLength(1);
     const customerContext = runtime.composeRequests[0]?.customerContext;
-    expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-OLD']);
+    // No age cutoff and no newest-first hiding: the explicit old target
+    // leads by reference while the newer record stays visible.
+    expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-OLD', 'ORD-NEW']);
     const serialized = JSON.stringify(customerContext);
     expect(serialized).toContain('75.25');
-    expect(serialized).not.toContain(String(UNRELATED_TOTAL));
+    expect(serialized).toContain(String(UNRELATED_TOTAL));
   });
 
-  it('keeps an ambiguous target out of writes while retaining the index', async () => {
+  it('keeps an ambiguous target out of writes while retaining every record', async () => {
     const runtime = new PaymentQuestionRuntime(null);
     const relevant = purchaseResult('information-1', 'ORD-A', RELEVANT_TOTAL, 'cart-relevant-1');
     const unrelated = purchaseResult('information-2', 'ORD-B', UNRELATED_TOTAL, UNRELATED_CART);
@@ -246,9 +248,12 @@ describe('l4 customer context production wiring', () => {
 
     expect(runtime.composeRequests).toHaveLength(1);
     const customerContext = runtime.composeRequests[0]?.customerContext;
-    expect(customerContext?.purchases).toEqual([]);
-    expect(customerContext?.detailedPurchases).toEqual([]);
-    expect(customerContext?.carts).toEqual([]);
+    // Both candidates stay visible; write-gating comes from the unresolved
+    // target reference (candidates, never an inferred mutation), not from
+    // hiding records.
+    expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-A', 'ORD-B']);
+    expect(customerContext?.detailedPurchases).toHaveLength(2);
+    expect(customerContext?.carts).toHaveLength(2);
     expect(customerContext?.commonRefs.orderIds).toEqual(['ORD-A', 'ORD-B']);
   });
 });
@@ -375,10 +380,10 @@ describe('l4 S7 bounded enrichment through public AgentService', () => {
     expect(enrichCalls).toHaveLength(1);
     expect(enrichCalls[0]?.orderIds).toEqual(['ORD-OLD']);
     const customerContext = runtime.composeRequests[0]?.customerContext;
-    expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-OLD']);
+    expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-OLD', 'ORD-NEW']);
     const serialized = JSON.stringify(customerContext);
     expect(serialized).toContain('75.25');
-    expect(serialized).not.toContain(String(UNRELATED_TOTAL));
+    expect(serialized).toContain(String(UNRELATED_TOTAL));
   });
 
   it('never auto-selects the pending newest order: ambiguous enriches nothing', async () => {
@@ -405,8 +410,10 @@ describe('l4 S7 bounded enrichment through public AgentService', () => {
 
     expect(enrichCalls).toHaveLength(0);
     const customerContext = runtime.composeRequests[0]?.customerContext;
-    expect(customerContext?.purchases).toEqual([]);
-    expect(customerContext?.detailedPurchases).toEqual([]);
+    // Linked-detail enrichment stays explicit-only, but the profile itself
+    // hides nothing: both candidates ride the canonical context.
+    expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-NEW', 'ORD-OLD']);
+    expect(customerContext?.detailedPurchases).toHaveLength(2);
     expect(customerContext?.commonRefs.orderIds).toEqual(['ORD-NEW', 'ORD-OLD']);
   });
 

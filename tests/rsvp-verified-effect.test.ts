@@ -56,7 +56,7 @@ describe('RSVP verified effect twins', () => {
     });
     const note = runtime.composeRequests[0]?.errorMessage ?? '';
     expect(note).toContain('"verification_status":"verified"');
-    expect(note).toContain('"attendance_confirmed":true');
+    expect(note).toContain('"requested_attendance_change_verified":true');
     expect(note).toContain('"persisted_before_reply":true');
     // A genuine verified update yields a model-written confirmation: the
     // stub stands in for the model; the runtime supplies facts only.
@@ -144,7 +144,7 @@ describe('RSVP verified effect twins', () => {
     expect(gateway.writes).toHaveLength(1);
     const note = runtime.composeRequests[0]?.errorMessage ?? '';
     expect(note).toContain('"verification_status":"verified"');
-    expect(note).toContain('"attendance_confirmed":true');
+    expect(note).toContain('"requested_attendance_change_verified":true');
     expect(note).toContain('"saved":false');
     expect(note).toContain('"verification":"unavailable"');
     expect(runtime.composeRequests[0]?.rsvpPhoneEvidence).toMatchObject({
@@ -221,6 +221,62 @@ describe('RSVP verified effect twins', () => {
     const note = secondRuntime.composeRequests[0]?.errorMessage ?? '';
     expect(note).toContain('"replayed":true');
     expect(note).toContain('"fresh_read":false');
+  });
+
+  it('(h) explicit attendance plus a venue question yields one write and one combined reply', async () => {
+    // A2: RSVP is work within the customer turn. The verified write and the
+    // information read compose a single model-authored reply; the completed
+    // action is carried into the information outcome, never re-run.
+    const store = new InMemoryRsvpEffectStore();
+    const runtime = new TwinRuntime([twinExtraction({
+      action: 'attending',
+      informationRequests: [{
+        kind: 'faq',
+        query: '¿A qué hora es la recepción?',
+      }],
+    })]);
+    const gateway = new TwinGateway(
+      [responded({ action: 'attending', willAttend: true })],
+      [readDetail({ willAttend: true })],
+    );
+    const service = twinService(runtime, gateway, store, {
+      execute: async () => ({
+        results: [{
+          requestId: 'faq-1',
+          kind: 'faq',
+          status: 'completed',
+          evidence: [{ fileId: 'venue-1', filename: 'venue.md', score: 0.9, text: 'La recepción es a las 19:00.' }],
+        }],
+        summaries: [{
+          requestId: 'faq-1',
+          kind: 'faq',
+          status: 'completed',
+          source: 'agent_api',
+          outcomeCode: 'completed_with_results',
+          retryable: null,
+          queryHash: 'q',
+          evidence: [],
+          resultCount: 1,
+          durationMs: 40,
+        }],
+      }),
+    });
+
+    const result = await service.handleTurn(twinInbound('Confirmo mi asistencia. ¿A qué hora es?', 'wamid-twin-h'));
+
+    expect(gateway.writes).toHaveLength(1);
+    expect(gateway.reads).toBe(1);
+    expect(runtime.composeRequests).toHaveLength(1);
+    const note = runtime.composeRequests[0]?.errorMessage ?? '';
+    expect(note).toContain('"verification_status":"verified"');
+    expect(runtime.composeRequests[0]?.informationResults).toEqual([
+      expect.objectContaining({ kind: 'faq', status: 'completed' }),
+    ]);
+    expect(runtime.composeRequests[0]?.rsvpPhoneEvidence).toMatchObject({
+      state: 'resolved_single',
+      event: { rsvp_state: 'attending' },
+    });
+    expect(result.outbound.text).toBe('TWIN_MODEL_SENTINEL');
   });
 
   it('(g) restart after write before receipt recovers by read with no second write', async () => {
@@ -393,10 +449,11 @@ function twinExtraction(args: {
     companion_count?: 'one' | 'multiple' | 'unknown';
     plus_one_response?: 'yes' | 'no' | 'unknown';
   } | null;
+  informationRequests?: ExtractionResult['informationRequests'];
 }): ExtractionResult {
   return {
     actionIntent: 'responder_invitacion',
-    informationRequests: [],
+    informationRequests: args.informationRequests ?? [],
     rsvpAction: args.action,
     rsvpDecisionSource: 'current_message',
     rsvpCandidateGuestId: null,
@@ -434,6 +491,7 @@ function twinService(
   runtime: AgentRuntime,
   gateway: AgentConversationGateway,
   effectStore: InMemoryRsvpEffectStore,
+  informationOrchestrator?: { execute: () => Promise<{ results: unknown[]; summaries: unknown[] }> },
 ): AgentService {
   const invitations: UserEventLookupResult['events'] = [{
     relation: 'guest',
@@ -483,6 +541,7 @@ function twinService(
     } as unknown as ProviderGateway,
     agentConversationGateway: gateway,
     rsvpEffectStore: effectStore,
+    ...(informationOrchestrator ? { informationOrchestrator: informationOrchestrator as never } : {}),
     promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
     renderers: { whatsapp: new WhatsAppMessageRenderer() },
   });

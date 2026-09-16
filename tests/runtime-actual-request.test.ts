@@ -397,6 +397,21 @@ describe('actual reply request owns its instructions', () => {
     expect(spec.manifest.promptIdentity).toBe(ids.join('+'));
   });
 
+  it('keeps a role correction out of planning modules, tools and categories', async () => {
+    // A3: identifying as host/guest updates reportedEventRole without
+    // inventing planning work. A role-only turn loads no planning module,
+    // offers no provider tools, and carries no category appendix.
+    const runtime = testRuntime();
+    const spec = await runtime.buildExtractionRequestSpec(
+      extractRequest('Soy la anfitriona del evento, no la invitada', supportPlan()),
+    );
+    const ids = spec.modules.map((module) => module.id);
+    expect(ids).not.toContain('extraction_planning');
+    expect(spec.instructions).not.toContain('extractors/planning.txt');
+    expect(spec.input).not.toContain('Categorías sugeridas');
+    expect(spec.manifest.tools).toEqual([]);
+  });
+
   it('keeps unrelated planning state out of support guidance and tools', async () => {
     const runtime = testRuntime();
     const plan = supportPlan({

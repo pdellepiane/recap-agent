@@ -675,7 +675,7 @@ describe('AgentService RSVP flow', () => {
     await service.handleTurn(inbound('Sí'));
 
     expect((runtime.composeRequests[0]?.rsvpPhoneEvidence as unknown as { state: string; event: { rsvp_state: string } }).event.rsvp_state).toBe('declining');
-    expect(runtime.composeRequests[0]?.errorMessage).toContain('"status":"already_responded"');
+    expect(runtime.composeRequests[0]?.errorMessage).toContain('"gateway_status":"already_responded"');
     expect(runtime.composeRequests[0]?.errorMessage).not.toContain('quedó registrada');
   });
 
@@ -704,7 +704,7 @@ describe('AgentService RSVP flow', () => {
     const result = await service.handleTurn(inbound('Sí asistiré'));
 
     expect(result.plan.rsvp_state.status).toBe('none');
-    expect(runtime.composeRequests[0]?.errorMessage).toContain(`"status":"${expectedNote}"`);
+    expect(runtime.composeRequests[0]?.errorMessage).toContain(`"gateway_status":"${expectedNote}"`);
     expect(runtime.composeRequests[0]?.errorMessage).not.toContain(
       'quedó registrada',
     );

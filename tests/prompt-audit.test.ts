@@ -22,7 +22,7 @@ describe('prompt audit', () => {
     expect(result.violations).toEqual([]);
     expect(result.entries).toHaveLength(34);
     expect(entry(result, 'contacto_inicial')).toMatchObject({
-      serializedRequestBytes: 7279,
+      serializedRequestBytes: 7134,
       maximumToolCount: 0,
     });
     expect(entry(result, 'resolver_consultas_informativas')).toMatchObject({
@@ -141,7 +141,11 @@ describe('prompt audit', () => {
     // evidence-resolved clarification exception, conditional currency/balance,
     // profile_ref reads, answer-every-part). No fixed prose; hard paragraph
     // mandates removed. Previous pin 20240.
-    expect(entry(result, 'resolver_consultas_informativas').serializedRequestBytes).toBe(20482);
+    // 2026-09-16 customer-support subtractive pass: -145 bytes from the
+    // shared base_system.txt tightening (node-obedience recital and
+    // capability-list verbosity removed; grounding invariants kept).
+    // Previous pin 20482.
+    expect(entry(result, 'resolver_consultas_informativas').serializedRequestBytes).toBe(20337);
     expect(entry(result, 'responder_invitacion')).toMatchObject({
       maximumToolCount: 0,
     });

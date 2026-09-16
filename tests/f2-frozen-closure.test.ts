@@ -217,13 +217,14 @@ describe('F2c frozen concise and suppression guard', () => {
       messageId: 'm-tito-2', receivedAt: '2026-09-04T15:02:00.000Z', contactPhone: '+51900004780',
     });
     expect(gateway.rsvpCalls).toBe(0);
-    expect(second.plan.rsvp_state.status).toBe('none');
-    expect(second.plan.rsvp_state.selection_attempts).toBe(0);
-    expect(second.plan.rsvp_state.pending_action).toBeNull();
+    // A1: the pending selection is retained but never resumed by gratitude:
+    // no new request evidence, no replay, no write. The current turn is a
+    // plain closing, so no RSVP outcome note is manufactured for it.
+    expect(second.plan.rsvp_state.status).toBe('awaiting_event_selection');
     const note = composeNotes[1] ?? '';
-    expect(note).toContain('"offer_action":false');
-    expect(note).toContain('"mutation_performed":false');
     expect(note).not.toContain('select_one_event');
-    expect(note).not.toContain('await_user_decision');
+    expect(note).not.toContain('mutation_result');
+    expect(note).not.toContain('quedó registrada');
+    expect(second.outbound.text).toBe('tissue');
   });
 });

@@ -1738,6 +1738,9 @@ describe('AgentService first-class information flow', () => {
       eventHint: null,
     }]);
     eventQuestion.rsvpEventReference = 'Boda Laura & Marcos';
+    eventQuestion.actionIntent = 'responder_invitacion';
+    eventQuestion.rsvpDecisionSource = 'current_message';
+    eventQuestion.requestedOperation = 'event.detail.read';
     const runtime = new InformationRuntime([eventQuestion]);
     const gateway = new FakePurchaseGateway();
     gateway.authByPhoneResult = { status: 'user_not_found' };
@@ -3700,8 +3703,13 @@ it('R4 merges a structured provide_detail eventReference into the unique pending
       selection_candidates: [], last_completed_request: null,
     },
   }) });
-  const runtime = new InformationRuntime([{
+  const detailExtraction: ExtractionResult = {
     ...extraction([]),
+    supportAct: { kind: 'provide_detail', topic: 'unknown', detail: 'unknown', eventReference: 'Diana y Fernando' },
+  };
+  const runtime = new InformationRuntime([detailExtraction, detailExtraction, {
+    ...extraction([]),
+    actionIntent: 'solicitar_humano',
     supportAct: { kind: 'provide_detail', topic: 'unknown', detail: 'unknown', eventReference: 'Diana y Fernando' },
   }]);
   const knowledge = new FakeKnowledgeGateway();
@@ -3722,6 +3730,19 @@ it('R4 merges a structured provide_detail eventReference into the unique pending
   const compose = runtime.composeRequests[0];
   expect(compose?.informationResults?.[0]).toMatchObject({ kind: 'faq', status: 'completed', hostWithdrawalPolicy: { maxBusinessHours: 72 } });
   expect(compose?.handoffOutcome).toBe('handoff_requested');
+  expect(result.plan.human_help_receipt?.outcome).toBe('handoff_requested');
+  const firstReceiptAt = result.plan.human_help_receipt?.updatedAt ?? null;
+  await service.handleTurn({ channel: 'whatsapp', externalUserId: 'r4-withdrawal-detail', contactPhone: '+51999999999',
+    text: 'Evento: Diana y Fernando', messageId: 'r4-event-again', receivedAt: new Date().toISOString() });
+  expect(gateway.takeoverCalls).toBe(1);
+  // A fresh explicit human re-request after the persisted success reuses the
+  // receipt: no second dispatch, the original request time stands, and the
+  // outcome still reports the confirmed handoff.
+  const rerequest = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'r4-withdrawal-detail', contactPhone: '+51999999999',
+    text: 'Necesito un agente humano', messageId: 'r4-event-human-again', receivedAt: new Date().toISOString() });
+  expect(gateway.takeoverCalls).toBe(1);
+  expect(rerequest.plan.human_help_receipt?.outcome).toBe('handoff_requested');
+  expect(rerequest.plan.human_help_receipt?.updatedAt).toBe(firstReceiptAt);
 });
 
 it('R4 keeps ambiguous withdrawal targets ambiguous instead of selecting one', async () => {

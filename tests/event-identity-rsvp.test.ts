@@ -119,16 +119,20 @@ describe('event identity RSVP regressions', () => {
     const note = JSON.parse(runtime.composeRequests[0]?.errorMessage ?? '{}') as {
       next_action: string;
       selected_candidate: { guest_id: number };
-      backend_result: { status: string; guest_id: number; event_id: number };
+      backend_result: { status: string; guest_id: number; event_id: number } | null;
       verification: {
         verification_status: string;
+        gateway_status: string;
+        requested_attendance_change_verified: boolean;
         requested: { guest_id: number; event_id: number };
         observed: { guest_id: number; event_id: number; attendance: string } | null;
       };
     };
     expect(note.next_action).toBe('communicate_confirmed_state');
     expect(note.selected_candidate.guest_id).toBe(22);
-    expect(note.backend_result).toMatchObject({ status: 'responded', guest_id: 22, event_id: 2 });
+    expect(note.backend_result).toBeNull();
+    expect(note.verification.gateway_status).toBe('responded');
+    expect(note.verification.requested_attendance_change_verified).toBe(true);
     expect(note.verification.verification_status).toBe('verified');
     expect(note.verification.requested).toMatchObject({ guest_id: 22, event_id: 2 });
     expect(note.verification.observed).toMatchObject({ guest_id: 22, event_id: 2, attendance: 'attending' });
