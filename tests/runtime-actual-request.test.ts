@@ -640,10 +640,12 @@ describe('actual reply request owns its instructions', () => {
     expect(spec.input).toContain('requested_attendance_change_verified');
   });
 
-  it('collapses RSVP facts to a profile reference only with the merge established', async () => {
-    // The profile invitation carries the same event with unknown attendance;
-    // the fresh RSVP state merges into that slot, so the collapsed reference
-    // hides nothing: the state travels inside the single profile copy.
+  it('keeps RSVP facts and profile invitations as separate evidence without ID-based merge', async () => {
+    // RSVP evidence carries no event/guest IDs, so a name/date match cannot
+    // prove the RSVP fact and the profile invitation are the same record.
+    // Both travel unchanged: the full RSVP event facts stay visible and the
+    // profile slot keeps its own attendance instead of absorbing the fresh
+    // state. The completed verification receipt rides typed evidence.
     const runtime = testRuntime();
     const execution = rsvpProfileExecution('req-rsvp-profile', 205);
     const snapshot = assembleCustomerContext({
@@ -672,10 +674,106 @@ describe('actual reply request owns its instructions', () => {
         errorMessage: JSON.stringify({ outcome: 'responded', verification_status: 'verified' }),
       }),
     );
-    expect(spec.input).toContain('profile_ref');
     expect(spec.input).toContain('Matrimonio de Ana y Luis');
-    expect(spec.input).toContain('"rsvpState": "attending"');
+    expect(spec.input).toContain('"rsvp_state": "attending"');
+    expect(spec.input).not.toContain('"rsvpState": "attending"');
     expect(spec.input).toContain('verification_status');
+  });
+
+  it('carries completed RSVP verification facts on auth-gated mixed turns', async () => {
+    // Exact mixed-turn regression: an RSVP write completed and an
+    // auth-gated information turn follows (every result needs input, so the
+    // reply is authentication-only and the free-form operational note is
+    // dropped). The verification facts must still serialize into the actual
+    // model input as typed evidence, not just the ComposeReplyRequest.
+    const runtime = testRuntime();
+    const needsInput = {
+      requestId: 'req-auth',
+      kind: 'purchase',
+      status: 'needs_input',
+      nextInput: 'email',
+      guidance: {
+        reason: 'email_required',
+        email: null,
+        requirements: ['explain_account_information_access'],
+      },
+    } as unknown as InformationTaskResult;
+    const spec = await runtime.buildReplyRequestSpec(
+      replyRequest(supportPlan(), {
+        informationResults: [needsInput],
+        rsvpPhoneEvidence: {
+          state: 'resolved_single',
+          coverage: 'complete',
+          resolution: 'authoritative_invitation',
+          event: {
+            event_name: 'Matrimonio de Ana y Luis',
+            event_date: '2026-09-12',
+            invitation_record: 'available',
+            rsvp_state: 'attending',
+          },
+        },
+        rsvpWorkCompleted: true,
+        errorMessage: JSON.stringify({
+          outcome: 'mutation_result',
+          requested_action: 'attending',
+          requested_plus_one_response: null,
+          verification: {
+            verification_status: 'verified',
+            gateway_status: 'responded',
+            requested: { guest_id: 41, event_id: 205, action: 'attending', plus_one_response: null },
+            observed: { guest_id: 41, event_id: 205, attendance: 'attending', source: 'fresh_read' },
+            requested_attendance_change_verified: true,
+            effect_applied: true,
+            replayed: false,
+            fresh_read: true,
+          },
+          next_action: 'communicate_confirmed_state',
+        }),
+      }),
+    );
+    expect(spec.input).not.toContain('Nota operativa');
+    expect(spec.input).toContain('rsvp_completed_effect');
+    expect(spec.input).toContain('"verification_status": "verified"');
+    expect(spec.input).toContain('"requested_attendance_change_verified": true');
+    expect(spec.input).toContain('"effect_applied": true');
+  });
+
+  it('forwards skipped host-withdrawal handoff status and reason as reply evidence', async () => {
+    // A never-attempted handoff projects a null typed outcome, so the typed
+    // attempt status and reason travel in the operational note. The
+    // serialized model input must distinguish unavailable-capability from
+    // missing-phone from evidence.
+    const runtime = testRuntime();
+    const policyResult = {
+      requestId: 'req-host-withdrawal',
+      kind: 'faq',
+      status: 'completed',
+      evidence: [{ filename: 'politica-de-retiros.md', text: 'Plazo general de procesamiento: hasta 72 horas hábiles.' }],
+      hostWithdrawalPolicy: { maxBusinessHours: 72 },
+    } as unknown as InformationTaskResult;
+    const withdrawalRequest = (overrides: Record<string, unknown>) => replyRequest(supportPlan(), {
+      informationResults: [policyResult],
+      extraction: baseExtraction({
+        actionIntent: 'solicitar_humano',
+        informationRequests: [{
+          kind: 'faq',
+          query: 'Hice un retiro y aún no lo recibo.',
+          hostWithdrawal: 'individual_status',
+          eventHint: 'Diana y Fernando',
+        }],
+      }),
+      handoffOutcome: null,
+      ...overrides,
+    });
+    const missingPhone = await runtime.buildReplyRequestSpec(
+      withdrawalRequest({ errorMessage: 'Local human escalation soft-pause only: missing_phone_number.' }),
+    );
+    expect(missingPhone.input).toContain('missing_phone_number');
+    const unconfigured = await runtime.buildReplyRequestSpec(
+      withdrawalRequest({ errorMessage: 'Local human escalation soft-pause only: not_configured.' }),
+    );
+    expect(unconfigured.input).toContain('not_configured');
+    expect(unconfigured.input).not.toContain('missing_phone_number');
   });
 
   it('retains cross-event RSVP facts instead of hiding them behind a bare reference', async () => {

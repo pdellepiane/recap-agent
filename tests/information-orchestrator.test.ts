@@ -1574,6 +1574,82 @@ describe('InformationOrchestrator', () => {
     expect(second.eventDetails.size).toBe(1);
     expect(agentGateway.eventDetailCalls).toBe(callsAfterFirst + 1);
   });
+
+  it('seeds the full guest root once and reuses it with honest coverage on purchase-only turns', async () => {
+    // A purchase-only turn shares the single phone-authorized guest-event
+    // root: one guest-events flight, bounded hydration merged once into the
+    // snapshot (details, failures, truncation plus purchases), and the
+    // purchase request reuses those results instead of a second scoped
+    // discovery. Five candidates exceed the read bound, so the reused
+    // event-scoped purchases report partial — never a complete profile.
+    const agentGateway = new FakeAgentGateway();
+    agentGateway.guestEventsResult = {
+      status: 'success',
+      events: [
+        guestEvent(81, 'Boda Ana y Luis'),
+        guestEvent(82, 'Boda María y José'),
+        guestEvent(83, 'Boda Laura y Marcos'),
+        guestEvent(84, 'Boda Diana y Fernando'),
+        guestEvent(85, 'Boda Sol y Luna'),
+      ],
+    };
+    agentGateway.enrichedEventDetailResult = {
+      status: 'success',
+      event: {
+        eventId: 81,
+        name: 'Boda Ana y Luis',
+        slug: 'event-81',
+        url: null,
+        datetime: null,
+        type: null,
+        typeDetail: null,
+        stage: null,
+        city: 'Lima',
+        country: 'Perú',
+        currency: null,
+        withTime: false,
+        timezone: null,
+        celebrateds: [],
+        moments: [],
+        dresscode: null,
+        commonAsked: [],
+        contactInfo: [],
+        attendance: null,
+        purchases: [giftPurchase()],
+      },
+    };
+    const orchestrator = new InformationOrchestrator({
+      knowledgeGateway: { async search() { throw new Error('unused'); } },
+      providerGateway: {} as ProviderGateway,
+      agentGateway,
+    });
+
+    const execution = await orchestrator.execute({
+      requests: [{
+        requestId: 'purchase-root-only',
+        kind: 'purchase',
+        resource: 'orders',
+        query: '¿Cuál es el estado de mi compra?',
+        orderId: null,
+        aspects: ['summary'],
+        sensitiveFields: [],
+        authAction: 'none',
+      }],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
+    });
+
+    expect(agentGateway.guestEventCalls).toBe(1);
+    expect(agentGateway.guestOrdersCalls).toBe(0);
+    expect(agentGateway.guestGiftCalls).toBe(0);
+    expect(execution.results[0]).toMatchObject({
+      status: 'completed',
+      accessMethod: 'trusted_phone_event_purchase',
+      coverage: 'partial',
+      purchases: [{ orderId: 'ORD-000880' }],
+    });
+  });
 });
 
 class FakeAgentGateway implements AgentConversationGateway {

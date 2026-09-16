@@ -82,6 +82,17 @@ type PhoneContextSnapshot = {
   purchasePartitionByOrderId: Map<string, PurchasePartition>;
   cartsById: Map<string, CartInformation>;
   inconsistentOrderIds: Set<string>;
+  /**
+   * Entry-root seeding: the full shared phone-authorized guest-event root
+   * (association facts, hydrated event details, failures, truncation) merged
+   * once per turn. Purchase execution reuses these results from the snapshot
+   * instead of re-running scoped discovery.
+   */
+  rootSeeded: boolean;
+  rootGuestEvents: AgentGuestEventSummary[];
+  rootEventDetails: Map<number, HydratedEventDetail>;
+  rootEventFailures: Array<{ eventId: number; failureKind: EventDetailHydrationFailureKind }>;
+  rootTruncatedByBound: boolean;
 };
 
 /**
@@ -225,6 +236,11 @@ export class InformationOrchestrator {
       purchasePartitionByOrderId: new Map(),
       cartsById: new Map(),
       inconsistentOrderIds: new Set(),
+      rootSeeded: false,
+      rootGuestEvents: [],
+      rootEventDetails: new Map(),
+      rootEventFailures: [],
+      rootTruncatedByBound: false,
     };
     const guestEventsPromise =
       !args.authentication &&
@@ -294,14 +310,15 @@ export class InformationOrchestrator {
       .map((request, index) => ({ request, index }))
       .filter(({ request }) => request.kind === 'purchase')
       .map(({ index }) => index);
-    await executeIndexes(nonPurchaseIndexes);
     // Entry roots together: purchase turns share the same phone-authorized
     // guest-event root that associated_event requests consume, so
     // event-scoped purchases are reused within the turn instead of running
-    // a second scoped discovery. Single shared flight, bounded existing
-    // hydration, read-only; turns without purchase work or with their own
-    // associated_event request seed nothing here.
-    await this.seedPhoneContextFromGuestRoot({
+    // a second scoped discovery. The seeding runs together with the
+    // non-purchase requests over the same single shared flight (bounded
+    // existing hydration, read-only), and the purchase requests below reuse
+    // the merged snapshot results; turns without purchase work or with
+    // their own associated_event request seed nothing here.
+    const rootSeed = this.seedPhoneContextFromGuestRoot({
       requests: args.requests,
       guestEventsPromise,
       trustedPhone: args.trustedPhone ?? null,
@@ -309,6 +326,8 @@ export class InformationOrchestrator {
       phoneContext,
       deadlineMs: args.deadlineMs ?? null,
     });
+    await executeIndexes(nonPurchaseIndexes);
+    await rootSeed;
     await executeIndexes(purchaseIndexes);
 
     const results = this.reconcilePhoneContextResults(
@@ -725,12 +744,16 @@ export class InformationOrchestrator {
   /**
    * Entry-root seeding for purchase turns. When the turn carries purchase
    * work but no associated_event request, the shared phone-authorized
-   * guest-event root (same single flight the event path consumes) still
-   * seeds the per-turn phone context through the existing bounded
-   * hydration, keyed by the purchase event hints. Read-only gateway reads
-   * only, shared per-turn detail cache, invocation deadline honored;
-   * failures record nothing and never throw, so the purchase path falls
-   * back to its own roots unchanged.
+   * guest-event root (same single flight the event path consumes) seeds the
+   * per-turn phone context once through the existing bounded hydration,
+   * keyed by the purchase event hints. The FULL root outcome is merged into
+   * the canonical snapshot — association facts, hydrated event details,
+   * failures and truncation alongside the event-scoped purchases — and the
+   * purchase execution below reuses those snapshot results instead of
+   * re-running scoped discovery. Read-only gateway reads only, shared
+   * per-turn detail cache, invocation deadline honored; failures record
+   * nothing and never throw, so the purchase path falls back to its own
+   * roots unchanged.
    */
   private async seedPhoneContextFromGuestRoot(args: {
     requests: PendingInformationRequest[];
@@ -743,6 +766,7 @@ export class InformationOrchestrator {
     if (!args.guestEventsPromise) return;
     if (args.requests.some((request) => request.kind === 'associated_event')) return;
     if (!args.requests.some((request) => request.kind === 'purchase')) return;
+    if (args.phoneContext.rootSeeded) return;
     let guestEvents: AgentGuestEventsResult;
     try {
       guestEvents = await args.guestEventsPromise;
@@ -750,6 +774,8 @@ export class InformationOrchestrator {
       return;
     }
     if (guestEvents.status !== 'success' || guestEvents.events.length === 0) return;
+    args.phoneContext.rootSeeded = true;
+    args.phoneContext.rootGuestEvents = [...guestEvents.events];
     const hints = Array.from(new Set(
       args.requests.flatMap((request) =>
         request.kind === 'purchase' && request.eventHint?.trim()
@@ -758,6 +784,7 @@ export class InformationOrchestrator {
       ),
     ));
     const passes = hints.length > 0 ? hints : [null];
+    const seenFailures = new Set<string>();
     for (const hint of passes) {
       const hydration = await this.hydrateRelevantEventDetails({
         events: guestEvents.events,
@@ -767,6 +794,21 @@ export class InformationOrchestrator {
         detailCache: args.eventDetailLookups,
         deadlineMs: args.deadlineMs,
       });
+      if (hydration.truncatedByBound) {
+        args.phoneContext.rootTruncatedByBound = true;
+      }
+      for (const [eventId, detail] of hydration.details) {
+        if (!args.phoneContext.rootEventDetails.has(eventId)) {
+          args.phoneContext.rootEventDetails.set(eventId, detail);
+        }
+      }
+      for (const failure of hydration.failures) {
+        const key = `${failure.eventId}:${failure.failureKind}`;
+        if (!seenFailures.has(key)) {
+          seenFailures.add(key);
+          args.phoneContext.rootEventFailures.push(failure);
+        }
+      }
       for (const purchase of hydration.purchases) {
         this.mergePhonePurchase(args.phoneContext, purchase, 'event');
       }
@@ -1447,6 +1489,12 @@ export class InformationOrchestrator {
       phoneContext,
     );
     if (eventScopedPurchases.length > 0) {
+      // Reuses the entry-root seeding above: the event details, association
+      // facts, failures and truncation merged once into the snapshot decide
+      // coverage here, so a bound or a failed detail read never claims a
+      // complete profile.
+      const seededCoverageIncomplete = phoneContext.rootSeeded &&
+        (phoneContext.rootTruncatedByBound || phoneContext.rootEventFailures.length > 0);
       return {
         requestId: request.requestId,
         kind: 'purchase',
@@ -1457,7 +1505,7 @@ export class InformationOrchestrator {
         ),
         needsSelection: !request.orderId && eventScopedPurchases.length > 1,
         accessMethod: 'trusted_phone_event_purchase',
-        coverage: 'complete',
+        coverage: seededCoverageIncomplete ? 'partial' : 'complete',
       };
     }
     const lookup = await this.lookupPhonePurchase(

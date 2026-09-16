@@ -219,5 +219,9 @@ describe('capability boundary routing', () => {
     expect(request?.handoffOutcome).not.toBe('handoff_requested');
     expect(response.plan.current_node).toBe('resolver_consultas_informativas');
     expect(response.plan.human_escalation.last_error).toMatch(/phone number/iu);
+    // The typed attempt status and reason also travel through the existing
+    // reply evidence (not just the plan), so the model distinguishes
+    // missing-phone from unavailable-capability from evidence.
+    expect(request?.errorMessage).toContain('missing_phone_number');
   });
 });

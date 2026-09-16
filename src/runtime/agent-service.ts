@@ -8751,7 +8751,13 @@ export class AgentService {
       providerResults: [],
       turnDecision: handedOff ? this.humanEscalationTurnDecision('host_withdrawal_status_unsupported')
         : this.informationTurnDecision('host_withdrawal_policy_and_support'),
-      errorMessage: null,
+      // Skipped handoff attempts (unavailable capability, missing phone)
+      // project a null typed outcome, so the typed attempt status and
+      // reason travel here through the existing reply evidence instead of
+      // going silent: the model distinguishes unavailable-capability from
+      // missing-phone from evidence. Requested/failed outcomes already ride
+      // the typed handoff outcome and suppress this note as redundant.
+      errorMessage: handoffEvidence?.operationalNote ?? null,
       promptBundleId: PENDING_COMPILER_PROMPT_ID,
       promptFilePaths: [],
       toolUsage: args.toolUsage,
