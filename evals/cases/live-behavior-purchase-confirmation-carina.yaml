@@ -22,13 +22,19 @@ inputs:
   - text: Me podrían mandar una conformidad de pago
     channel: whatsapp
     contactPhone: "+51900000301"
+    backendFixture:
+      scenario: purchase-confirmation-carina
   - text: Quisiera que me manden una conformidad de pago, compré un regalo
     channel: whatsapp
     contactPhone: "+51900000301"
+    backendFixture:
+      scenario: purchase-confirmation-carina
   - text: Solo quiero consultar el estado registrado y el monto de mi regalo para
       ANDREA & RODRIGO, no que envíen un documento.
     channel: whatsapp
     contactPhone: "+51900000301"
+    backendFixture:
+      scenario: purchase-confirmation-carina
 expectations:
   - id: ambiguous-request-clarifies-before-lookup
     type: trace_field_equals

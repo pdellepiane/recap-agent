@@ -26,6 +26,8 @@ inputs:
     image:
       error: media_unavailable
       mime_type: image/jpeg
+    backendFixture:
+      scenario: image-clean-world
 notes:
   - "B4 S3 2026-09-14: backendFixture scenario image-clean-world; this phone has empty initial history and empty authorized purchase results; never mutable backend data."
   - "The seeded plan carries only an OLD-IMAGE file reference whose Files expiry already elapsed. The new input image is unavailable (no bytes). Known fact: no current pixels exist, so no amount, date or issuer can be reported and image_file_silence must fail. The candidate must speak: explain the image cannot be read and then either answer from authorized evidence already available or ask only for the specific missing factual information. It must never persist silently, substitute the old reference, narrate internal file identifiers or expiry mechanics, request an image, a resend, or a URL, or invent content."

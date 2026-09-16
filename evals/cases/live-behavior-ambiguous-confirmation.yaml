@@ -4,9 +4,13 @@ suite: live_behavior_regression
 version: 1
 description: An underspecified confirmation over a multi-option shortlist must ask what is being confirmed instead of restarting or choosing arbitrarily.
 tags: [live, behavior, ambiguity, clarification, reported-interaction]
+backendFixture:
+  scenario: plan-ambiguous-confirmation
 inputs:
   - text: Sí confirmo.
     sessionId: live-behavior-ambiguous-confirmation-session
+    backendFixture:
+      scenario: plan-ambiguous-confirmation
 seedPlan:
   current_node: recomendar
   event_type: boda

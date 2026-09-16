@@ -17,6 +17,7 @@ import type {
   QuoteRequestInput,
 } from './provider-gateway';
 import type { ProviderDetail, ProviderSummary } from '../core/provider';
+import { providerSummarySchema } from '../core/provider';
 import type { FixtureData } from './eval-fixture-gateway';
 import type { EvalFixtureStateStore } from './eval-fixture-state';
 import { InMemoryEvalFixtureStateStore } from './eval-fixture-state';
@@ -100,6 +101,61 @@ export class FixtureProviderGateway implements ProviderGateway {
     return toRecord(readSection(this.data, 'provider'));
   }
 
+  /**
+   * Fixture-declared provider summaries. Entries failing strict validation
+   * are dropped (never repaired or invented); an absent section is an empty
+   * result, never a real-backend read.
+   */
+  private readProviderSummaries(key: string): ProviderSummary[] {
+    const fixture = this.providerFixture();
+    const raw = fixture[key];
+    if (!Array.isArray(raw)) {
+      return [];
+    }
+    const summaries: ProviderSummary[] = [];
+    for (const entry of raw) {
+      const parsed = providerSummarySchema.safeParse(entry);
+      if (parsed.success) {
+        summaries.push(parsed.data);
+      }
+    }
+    return summaries;
+  }
+
+  private readProviderSearchResult(key: string): ProviderGatewaySearchResult {
+    const fixture = this.providerFixture();
+    const section = toRecord(fixture[key]);
+    const raw = section['providers'];
+    if (!Array.isArray(raw)) {
+      return { providers: [] };
+    }
+    const providers: ProviderSummary[] = [];
+    for (const entry of raw) {
+      const parsed = providerSummarySchema.safeParse(entry);
+      if (parsed.success) {
+        providers.push(parsed.data);
+      }
+    }
+    return { providers };
+  }
+
+  private readProviderSummariesById(key: string, providerId: number): ProviderSummary[] {
+    const fixture = this.providerFixture();
+    const byId = toRecord(fixture[key]);
+    const raw = byId[String(providerId)];
+    if (!Array.isArray(raw)) {
+      return [];
+    }
+    const summaries: ProviderSummary[] = [];
+    for (const entry of raw) {
+      const parsed = providerSummarySchema.safeParse(entry);
+      if (parsed.success) {
+        summaries.push(parsed.data);
+      }
+    }
+    return summaries;
+  }
+
   async listCategories(): Promise<MarketplaceCategory[]> {
     if (this.unavailable()) {
       this.track('listCategories', {}, 'failed');
@@ -167,8 +223,9 @@ export class FixtureProviderGateway implements ProviderGateway {
       this.track('searchProvidersByKeyword', { ...input }, 'failed');
       return { providers: [] };
     }
+    const result = this.readProviderSearchResult('searchProvidersByKeyword');
     this.track('searchProvidersByKeyword', { ...input }, 'success');
-    return { providers: [] };
+    return result;
   }
 
   async searchProvidersByCategoryLocation(input: CategoryLocationProviderSearchInput): Promise<ProviderGatewaySearchResult> {
@@ -176,8 +233,9 @@ export class FixtureProviderGateway implements ProviderGateway {
       this.track('searchProvidersByCategoryLocation', { ...input }, 'failed');
       return { providers: [] };
     }
+    const result = this.readProviderSearchResult('searchProvidersByCategoryLocation');
     this.track('searchProvidersByCategoryLocation', { ...input }, 'success');
-    return { providers: [] };
+    return result;
   }
 
   async searchProvidersByQueryIntent(input: QueryIntentProviderSearchInput): Promise<ProviderGatewaySearchResult> {
@@ -185,8 +243,9 @@ export class FixtureProviderGateway implements ProviderGateway {
       this.track('searchProvidersByQueryIntent', { category: input.category }, 'failed');
       return { providers: [] };
     }
+    const result = this.readProviderSearchResult('searchProvidersByQueryIntent');
     this.track('searchProvidersByQueryIntent', { category: input.category }, 'success');
-    return { providers: [] };
+    return result;
   }
 
   async getRelevantProviders(): Promise<ProviderSummary[]> {
@@ -194,8 +253,9 @@ export class FixtureProviderGateway implements ProviderGateway {
       this.track('getRelevantProviders', {}, 'failed');
       return [];
     }
+    const providers = this.readProviderSummaries('relevantProviders');
     this.track('getRelevantProviders', {}, 'success');
-    return [];
+    return providers;
   }
 
   async getProviderDetail(providerId: number): Promise<ProviderDetail | null> {
@@ -225,8 +285,9 @@ export class FixtureProviderGateway implements ProviderGateway {
       this.track('getRelatedProviders', { providerId }, 'failed');
       return [];
     }
+    const providers = this.readProviderSummariesById('relatedProvidersById', providerId);
     this.track('getRelatedProviders', { providerId }, 'success');
-    return [];
+    return providers;
   }
 
   async listProviderReviews(providerId: number): Promise<ProviderReview[]> {
@@ -234,8 +295,16 @@ export class FixtureProviderGateway implements ProviderGateway {
       this.track('listProviderReviews', { providerId }, 'failed');
       return [];
     }
+    const fixture = this.providerFixture();
+    const byId = toRecord(fixture['reviewsById']);
+    const raw = byId[String(providerId)];
     this.track('listProviderReviews', { providerId }, 'success');
-    return [];
+    if (!Array.isArray(raw)) {
+      return [];
+    }
+    return raw.filter((entry): entry is ProviderReview =>
+      entry !== null && typeof entry === 'object',
+    );
   }
 
   async getEventVendorContext(eventId: number): Promise<Record<string, unknown> | null> {
@@ -243,7 +312,13 @@ export class FixtureProviderGateway implements ProviderGateway {
       this.track('getEventVendorContext', { eventId }, 'failed');
       return null;
     }
-    this.track('getEventVendorContext', { eventId }, 'not_found');
+    const fixture = this.providerFixture();
+    const byId = toRecord(fixture['eventVendorContextById']);
+    const direct = byId[String(eventId)];
+    this.track('getEventVendorContext', { eventId }, direct ? 'success' : 'not_found');
+    if (direct !== null && typeof direct === 'object' && !Array.isArray(direct)) {
+      return direct as Record<string, unknown>;
+    }
     return null;
   }
 
@@ -257,8 +332,9 @@ export class FixtureProviderGateway implements ProviderGateway {
       this.track('listEventFavoriteProviders', { ...args }, 'failed');
       return [];
     }
+    const providers = this.readProviderSummariesById('eventFavoriteProvidersById', args.eventId);
     this.track('listEventFavoriteProviders', { ...args }, 'success');
-    return [];
+    return providers;
   }
 
   async listUserEventsVendorContext(userId: number): Promise<Record<string, unknown>[]> {
@@ -266,8 +342,15 @@ export class FixtureProviderGateway implements ProviderGateway {
       this.track('listUserEventsVendorContext', { userId }, 'failed');
       return [];
     }
+    const fixture = this.providerFixture();
+    const raw = fixture['userEventsVendorContext'];
     this.track('listUserEventsVendorContext', { userId }, 'success');
-    return [];
+    if (!Array.isArray(raw)) {
+      return [];
+    }
+    return raw.filter((entry): entry is Record<string, unknown> =>
+      entry !== null && typeof entry === 'object' && !Array.isArray(entry),
+    );
   }
 
   async lookupUserEventContext(input: UserEventLookupInput): Promise<UserEventLookupResult | null> {

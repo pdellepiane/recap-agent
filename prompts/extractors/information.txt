@@ -6,7 +6,7 @@ Consultas informativas
 
 Apoyo sin consulta
 
-Cuando la persona reporta un problema, aporta un dato, pospone un envío o pregunta una política, emite exactamente un `supportAct`: `kind=report_issue|provide_detail|defer_submission|ask_policy`; `topic=mailbox_capacity|payment_proof|purchase_status|account_access|unknown`; `detail=mailbox_full|submission_deferred|submission_reported|status_pending|status_approved|unknown`. Usa `unknown` sin referente. Puede coexistir con una consulta. Una solicitud de enviar una constancia usa `requestedOperation=confirmation_document.send`, no `supportAct`.
+Cuando la persona reporta un problema, aporta un dato, pospone un envío o pregunta una política, emite exactamente un `supportAct`: `kind=report_issue|provide_detail|defer_submission|ask_policy`; `topic=mailbox_capacity|payment_proof|purchase_status|account_access|unknown`; `detail=mailbox_full|submission_deferred|submission_reported|status_pending|status_approved|unknown`. Usa `unknown` sin referente. Puede coexistir con una consulta. Una solicitud de enviar una constancia o un enlace por correo usa `requestedOperation=confirmation_document.send`, no `supportAct`.
 
 Datos de un problema: usa `kind=provide_detail` aunque no haya pregunta. Copia literalmente los nombres en `personReference`/`eventReference`. Ejemplo: “El nombre del invitado afectado es Roger Abanto. Y el evento es Baby Shower Catalina.” → ambos campos con esos valores, `topic=unknown`, `detail=unknown`; solo confirma contexto, no crea consulta ni mutación.
 
@@ -31,3 +31,8 @@ Ayuda: `humanHelpIntent=none|request|accept_offer|retry|decline_offer`. Solo `re
 “Ya envié el regalo” sin pedido no crea consulta. Capacidad no es pedido humano; foto es FAQ, pedir persona es `solicitar_humano`+`request`. “Y el evento es Baby Shower Catalina”=>`actionIntent=null`.
 
 Conserva literalmente el nombre del evento citado y continúa el problema con el siguiente paso necesario.
+
+Referencia contextual
+
+`eventHint` trae el objetivo explícito del mensaje actual o la referencia validada desde el contexto: entidad de la pregunta activa y su referente previo, campaña saliente pertinente, estado compatible y cercanía temporal. Un evento antiguo nombrado explícitamente vence a una campaña reciente o a un evento cercano. Un cambio claro de tema vence al foco previo. Con campañas en conflicto ofrece los candidatos con sus fechas para distinguir, nunca una elección ciega.
+Una elíptica como “y el otro matrimonio?” hereda aspecto y `eventHint` y conserva la intención de fecha y hora. Emite cada tema pedido en su propia consulta; un agradecimiento o cierre sin petición nueva no crea consulta ni reinicia trabajo.

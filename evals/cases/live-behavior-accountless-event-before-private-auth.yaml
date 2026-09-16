@@ -5,11 +5,15 @@ version: 3
 description: A mixed event and purchase question reuses the phone-enriched event and its scoped purchases without account authentication.
 tags: [live, behavior, associated-event, accountless-guest, mixed-information, phone-first]
 targetModes: [live_lambda]
+backendFixture:
+  scenario: guest-julisabeth-andres
 inputs:
   - text: ¿Dónde será la recepción y cuál es el estado de mi compra?
     channel: whatsapp
     contactPhone: "+51904523314"
     sessionId: live-accountless-event-before-private-auth-session
+    backendFixture:
+      scenario: guest-julisabeth-andres
 expectations:
   - id: routes-to-information
     type: node_transition

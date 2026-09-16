@@ -495,9 +495,10 @@ describe('AgentService RSVP flow', () => {
     const result = await service.handleTurn(inbound('¿Cómo está mi invitación?'));
 
     expect(gateway.inputs).toEqual([]);
+    // P3 (P2 intended change): read-only never stages awaiting_action.
     expect(result.plan.rsvp_state).toMatchObject({
-      status: 'awaiting_action',
-      pending_action: 'attending',
+      status: 'none',
+      pending_action: null,
     });
     expect((runtime.composeRequests[0]?.rsvpPhoneEvidence as unknown as { state: string; event: { rsvp_state: string } }).event.rsvp_state).toBe('pending');
     expect((runtime.composeRequests[0]?.rsvpPhoneEvidence as unknown as { state: string }).state).toBe('resolved_single');

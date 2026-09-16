@@ -1,15 +1,19 @@
 template: template.base-live
 id: live_behavior.rsvp_missing_action_requires_explicit_decision
 suite: live_behavior_regression
-version: 3
+version: 5
 description: An RSVP request without an attendance decision reports the selected invitation state, invites a concrete attendance decision in natural wording, and does not mutate it.
 tags: [live, behavior, rsvp, attendance, explicit-decision]
 targetModes: [live_lambda]
+backendFixture:
+  scenario: s11-rsvp-durability-declining
 inputs:
   - text: Quiero responder mi invitación.
     channel: whatsapp
     contactPhone: "+51973296571"
     sessionId: live-rsvp-missing-action-session
+    backendFixture:
+      scenario: s11-rsvp-durability-declining
 seedPlan:
   current_node: responder_invitacion
   intent: responder_invitacion
@@ -22,12 +26,6 @@ seedPlan:
         event_date: "2026-08-19 05:00:00"
     requested_at: "2026-08-17T15:00:00.000Z"
     selection_attempts: 0
-rsvpIsolation:
-  setup:
-    guestId: 584353
-    eventName: Otra celebración prueba
-    phone: "+51973296571"
-    targetState: declining
 expectations:
   - id: enters-rsvp-node
     type: node_transition
@@ -36,12 +34,12 @@ expectations:
   - id: preserves-awaiting-action-state
     type: plan_field_equals
     path: rsvp_state.status
-    expected: awaiting_action
+    expected: none
     severity: hard
   - id: preserves-attending-change
     type: plan_field_equals
     path: rsvp_state.pending_action
-    expected: attending
+    expected: null
     severity: hard
   - id: does-not-mutate-without-decision
     type: tool_usage
@@ -61,7 +59,10 @@ expectations:
     severity: hard
 notes:
   - "R05 oracle revision v2 to v3, 2026-09-15, recheck-b9a7662d. Old asks-for-explicit-rsvp-decision demanded one clear interrogative question although the reply state and conditional offer already invite a concrete decision (recheck: understandable but weaker next-step prompt; do not demand a question mark). New contract accepts either an explicit question or an unambiguous conditional invitation requiring the user's decision; grammatical form alone never decides. Keeps the mandatory semantic judge, hard severity, no-write-without-intent tool checks, and identity/effect assertions unchanged. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
+  - "R05 oracle revision v4 to v5, 2026-09-16, evaluator-owned P2 read-only alignment. Old preserves-awaiting-action-state / preserves-attending-change pinned the retired staging contract (status awaiting_action, pending_action attending), but the P2 runtime read-only branch always returns emptyRsvpState (status none, pending_action null; an inferred read target is never persisted as later-action consent), so the candidate correctly holds none/null and the old pins failed a correct reply. New contract asserts none/null; the seedPlan keeps the retired staged shape as the incoming boundary to prove normalization. Semantic offer expectation, authorization/effect/identity checks, hard requireJudge, and threshold 0.9 unchanged. Old v4 runs preserved; baseline and candidate must rerun on this v5 contract."
 budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 1400
   estimatedCompletionTokensPerTurn: 250
+
+# September 15 isolation revision: fixture initial state replaces external setup; no real backend mutation is required.

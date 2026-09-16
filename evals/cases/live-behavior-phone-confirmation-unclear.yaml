@@ -5,11 +5,15 @@ version: 2
 description: A stale imprecise answer after the retired confirmation prompt must use phone-scoped event context directly instead of asking again.
 tags: [live, behavior, authentication, phone-first, reported-interaction]
 targetModes: [live_lambda]
+backendFixture:
+  scenario: phone-confirmation-unclear
 inputs:
   - text: Este
     channel: whatsapp
     contactPhone: "$TERMINAL_CONTACT_PHONE"
     sessionId: phone-confirmation-unclear-session
+    backendFixture:
+      scenario: phone-confirmation-unclear
 seedPlan:
   current_node: resolver_consultas_informativas
   user_auth:

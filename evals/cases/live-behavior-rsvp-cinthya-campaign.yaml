@@ -5,11 +5,15 @@ version: 6
 description: A campaign-grounded RSVP for Julisabeth y Andrés must reconcile both phone-scoped reads and must not be reported as a missing invitation; confirmed state alone passes.
 tags: [live, behavior, rsvp, attendance, reported-interaction, campaign-context, concurrent-read]
 targetModes: [live_lambda]
+backendFixture:
+  scenario: guest-julisabeth-andres
 inputs:
   - text: Gracias, confirmo asistencia
     channel: whatsapp
     contactPhone: "+51904523314"
     sessionId: live-rsvp-cinthya-campaign-session
+    backendFixture:
+      scenario: guest-julisabeth-andres
 expectations:
   - id: enters-rsvp-node
     type: node_transition

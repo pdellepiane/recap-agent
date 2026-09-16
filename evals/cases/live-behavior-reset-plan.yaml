@@ -4,11 +4,15 @@ suite: live_behavior_regression
 version: 1
 description: An explicit request to start over must atomically replace the stored event plan before replying.
 tags: [live, behavior, planning, reset, state-machine, reported-interaction]
+backendFixture:
+  scenario: plan-reset-clean
 inputs:
   - text: No no, quisiera empezar de nuevo, ¿podemos?
     channel: whatsapp
     contactPhone: "+51973296571"
     sessionId: live-behavior-reset-plan-session
+    backendFixture:
+      scenario: plan-reset-clean
 seedPlan:
   current_node: recomendar
   lifecycle_state: active

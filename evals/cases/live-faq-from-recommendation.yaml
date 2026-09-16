@@ -8,6 +8,8 @@ tags:
   - faq
   - knowledge-base
   - state-machine
+backendFixture:
+  scenario: faq-recommendation-node
 seedPlan:
   current_node: recomendar
   intent: buscar_proveedores
@@ -19,6 +21,8 @@ seedPlan:
   conversation_summary: Boda en Lima con Catering como necesidad activa.
 inputs:
   - text: antes de elegir, ¿qué comisión cobra Sin Envolturas por los regalos?
+    backendFixture:
+      scenario: faq-recommendation-node
 expectations:
   - id: recommendation-to-faq
     type: node_transition

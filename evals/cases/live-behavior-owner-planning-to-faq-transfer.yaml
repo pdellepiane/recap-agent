@@ -5,13 +5,21 @@ version: 2
 description: A planning interview followed by a general information question transfers once to the FAQ owner and answers honestly from available evidence, never inventing a fee.
 tags: [live, behavior, ownership, planning, faq]
 targetModes: [live_lambda]
+backendFixture:
+  scenario: plan-owner-faq-transfer
 inputs:
   - text: Hola!
     sessionId: live-owner-planning-to-faq-session
+    backendFixture:
+      scenario: plan-owner-faq-transfer
   - text: Estoy buscando un proveedor para mi matrimonio, ¿qué opciones tienes?
     sessionId: live-owner-planning-to-faq-session
+    backendFixture:
+      scenario: plan-owner-faq-transfer
   - text: ¿Cuánto cobra Sin Envolturas por sus servicios?
     sessionId: live-owner-planning-to-faq-session
+    backendFixture:
+      scenario: plan-owner-faq-transfer
 expectations:
   - id: planning-turn-does-not-search-early
     type: tool_usage

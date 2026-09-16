@@ -4,9 +4,13 @@ suite: live_behavior_regression
 version: 1
 description: Fresh multi-front provider request should consume tokens and remain multi-need in live Lambda.
 tags: [live, feedback, token, multi-need]
+backendFixture:
+  scenario: token-multifront-fresh
 inputs:
   - text: Quiero planear una boda moderna y elegante en Lima para 120 personas. Necesito catering con sushi, fotografía y video natural, música en vivo elegante, florería blanca y verde, y local sofisticado de noche. Presupuesto medio-alto.
     sessionId: live-feedback-multifront-session
+    backendFixture:
+      scenario: token-multifront-fresh
 expectations:
   - id: tokens-all-turns
     type: token_usage_present

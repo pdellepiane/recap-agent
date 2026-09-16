@@ -5,11 +5,15 @@ version: 6
 description: A user-level invitation that already has attendance confirmed is reported via hybrid fragment plus natural tissue without another mutation.
 tags: [live, behavior, rsvp, attendance, current-state, trusted-phone]
 targetModes: [live_lambda]
+backendFixture:
+  scenario: rsvp-confirmed-otra-celebracion
 inputs:
   - text: ¿Mi asistencia a Otra celebración prueba ya está confirmada?
     channel: whatsapp
     contactPhone: "+51973296571"
     sessionId: live-rsvp-confirmed-state-session
+    backendFixture:
+      scenario: rsvp-confirmed-otra-celebracion
 seedPlan:
   current_node: responder_invitacion
   intent: responder_invitacion

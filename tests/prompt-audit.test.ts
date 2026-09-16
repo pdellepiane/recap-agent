@@ -136,18 +136,27 @@ describe('prompt audit', () => {
     // outcome_kind/permitted_next_action/none, keeping model-written
     // Spanish prose with identical empty-outcome semantics. Previous pin
     // 20273.
-    expect(entry(result, 'resolver_consultas_informativas').serializedRequestBytes).toBe(20240);
+    // 2026-09-16 P3 useful completeness: +242 bytes serialized in
+    // resolver_consultas_informativas (aspect-plus-related detail, projected-
+    // evidence-resolved clarification exception, conditional currency/balance,
+    // profile_ref reads, answer-every-part). No fixed prose; hard paragraph
+    // mandates removed. Previous pin 20240.
+    expect(entry(result, 'resolver_consultas_informativas').serializedRequestBytes).toBe(20482);
     expect(entry(result, 'responder_invitacion')).toMatchObject({
       maximumToolCount: 0,
     });
+    // 2026-09-16 P2 contextual inference (measured 5394/2513/11306/14152):
+    // base_system shared invariants (+2 lines), rsvp inferred-target rules
+    // (+2), information reference priority (+5). Model-written extraction
+    // rules, no fixed prose. Gates widened to intended growth.
     expect(entry(result, 'extractor:rsvp').serializedRequestBytes)
-      .toBeLessThan(5_000);
+      .toBeLessThan(5_600);
     expect(entry(result, 'extractor:conversation_only').serializedRequestBytes)
-      .toBeLessThan(2_500);
+      .toBeLessThan(2_600);
     expect(entry(result, 'extractor:initial_planning_information').serializedRequestBytes)
-      .toBeLessThan(10_300);
+      .toBeLessThan(11_500);
     expect(entry(result, 'extractor:shortlist').serializedRequestBytes)
-      .toBeLessThan(13_300);
+      .toBeLessThan(14_300);
     for (const auditEntry of result.entries) {
       expect(auditEntry.ruleIds).toHaveLength(auditEntry.filePaths.length);
       expect(auditEntry.remoteInputTokens).toBeNull();

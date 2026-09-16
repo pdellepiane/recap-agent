@@ -14,6 +14,8 @@ inputs:
     sessionId: live-image-url-unavailable-session
     image:
       url: https://example.com/media/comprobante-vencido.png?sig=vencido
+    backendFixture:
+      scenario: image-clean-world
 notes:
   - "F1 2026-09-12: backendFixture scenario image-clean-world; this phone has empty initial history and empty authorized purchase results; never mutable backend data."
   - Well-formed https URL that cannot return an image, exercising the fetch-failure path.

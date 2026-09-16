@@ -5,11 +5,15 @@ version: 6
 description: Cristian's completed invitation is resolved via hybrid fragment plus natural tissue without a false missing-invitation answer.
 tags: [live, behavior, rsvp, phone-enrichment, reported-interaction, cristian]
 targetModes: [live_lambda]
+backendFixture:
+  scenario: rsvp-cristian-michelle-jorge
 inputs:
   - text: Hola buen día, ya confirmé, gracias
     channel: whatsapp
     contactPhone: "+51942633292"
     sessionId: live-rsvp-cristian-phone-enriched-session
+    backendFixture:
+      scenario: rsvp-cristian-michelle-jorge
 expectations:
   - id: cristian-enters-rsvp
     type: node_transition

@@ -59,8 +59,11 @@ describe('RSVP mutation authorization (awaiting_action vs awaiting_event_selecti
     expect(gateway.inputs).toEqual([]);
     expect(result.trace.tools_called).not.toContain('guest_rsvp');
     expect(result.trace.tools_called).toContain('lookup_rsvp_invitations');
-    expect(result.plan.rsvp_state.status).toBe('awaiting_action');
-    expect(result.plan.rsvp_state.pending_action).toBe('attending');
+    // P3 (P2 intended change): a pre-existing awaiting_action does not
+    // survive a read-only turn; the declining state is still reported and
+    // the one-change offer travels in prose via offer_action.
+    expect(result.plan.rsvp_state.status).toBe('none');
+    expect(result.plan.rsvp_state.pending_action).toBeNull();
     expect(runtime.composeRequests[0]?.errorMessage).toContain('"invitation_state":"declining"');
   });
 
@@ -215,8 +218,12 @@ describe('RSVP mutation authorization (awaiting_action vs awaiting_event_selecti
     expect(gateway.inputs).toEqual([]);
     expect(result.trace.tools_called).not.toContain('guest_rsvp');
     expect(result.trace.tools_called).toContain('lookup_rsvp_invitations');
-    expect(result.plan.rsvp_state.status).toBe('awaiting_action');
-    expect(result.plan.rsvp_state.pending_action).toBe('attending');
+    // P3 (P2 intended change): a plan_state replay is not a current-turn
+    // decision, so a pre-existing awaiting_action does not survive; the
+    // declining state is still reported and the one-change offer travels in
+    // prose via offer_action.
+    expect(result.plan.rsvp_state.status).toBe('none');
+    expect(result.plan.rsvp_state.pending_action).toBeNull();
     expect(runtime.composeRequests[0]?.errorMessage).toContain('"invitation_state":"declining"');
   });
 

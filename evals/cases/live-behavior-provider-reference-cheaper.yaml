@@ -4,9 +4,13 @@ suite: live_behavior_regression
 version: 1
 description: A comparative reference to the cheaper shortlisted provider must resolve from retained provider evidence.
 tags: [live, behavior, provider-selection, reference, price]
+backendFixture:
+  scenario: provider-cheaper-option
 inputs:
   - text: Quiero la opción más económica.
     sessionId: live-behavior-provider-cheaper-session
+    backendFixture:
+      scenario: provider-cheaper-option
 seedPlan:
   current_node: recomendar
   event_type: boda

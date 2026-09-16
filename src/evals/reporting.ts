@@ -420,6 +420,159 @@ export function classifyPrimaryFailureReason(args: {
   return 'product_fact_completeness';
 }
 
+/**
+ * Packet E2 — diagnostic cause vocabulary for human audit.
+ *
+ * The raw gate verdict (status, hardGatePassed, finalScore, per-expectation
+ * scores) is recorded by the runner and never rewritten: this cause is a
+ * separate adjudication label computed from the same evidence, never a
+ * replacement for the raw scores. Human audit annotations live only in the
+ * sidecar built by `annotateDiagnosticCauseForReview` below; that helper is
+ * pure and returns a new object, so annotating a result cannot overwrite its
+ * raw verdict. The five classes follow the profile-inference directive:
+ * real product fact/effect/omission, minor relevance/clarification,
+ * evaluator missing evidence, fixture inconsistency, infrastructure.
+ */
+export const DIAGNOSTIC_CAUSES = [
+  'product_fact_effect_omission',
+  'minor_relevance_clarification',
+  'evaluator_missing_evidence',
+  'fixture_inconsistency',
+  'infrastructure',
+] as const;
+
+export type DiagnosticCause = (typeof DIAGNOSTIC_CAUSES)[number];
+
+/**
+ * Packet E2 fixture-inconsistency signals. The declared fixture world does
+ * not match what the case needed: image ground-truth digest mismatch or
+ * missing bound image, fixture/projection defects, fixture drift, or
+ * incomplete fixture coverage. These refine a non-infrastructure primary
+ * reason into `fixture_inconsistency`; they never override an
+ * infrastructure verdict (an untrusted verdict stays infrastructure first).
+ */
+const FIXTURE_INCONSISTENCY_PATTERNS = [
+  /judge-only image ground truth.*(digest mismatch|no image data|projection defect)/i,
+  /fixture.*(drifted|inconsist|projection defect|not fully fixture-isolated|coverage incomplete)/i,
+  /digest mismatch against the bound input image/i,
+  /proyeccion.*(no_disponible|defecto diagnosticable)/i,
+  /proyeccion_compra=no_disponible/i,
+  /proyeccion_evento=no_disponible/i,
+];
+
+export type DiagnosticAdjudicationInput = {
+  status: 'passed' | 'failed' | 'errored' | 'skipped';
+  planDiffSummary: readonly string[];
+  expectationResults: ReadonlyArray<{
+    passed: boolean;
+    severity: 'hard' | 'soft';
+    type: string;
+    message: string;
+  }>;
+  primaryFailureReason?: PrimaryFailureReason | null;
+};
+
+/**
+ * Packet E2 adjudicated cause, derived from the already-recorded primary
+ * reason plus fixture-inconsistency refinement. Pure: reads the input,
+ * returns a cause or null for non-failures, never mutates anything.
+ * Priority is deterministic: infrastructure verdicts stay infrastructure;
+ * fixture inconsistency refines any other failure class; evaluator,
+ * product, and minor causes follow the primary reason unchanged.
+ */
+export function adjudicateDiagnosticCause(
+  args: DiagnosticAdjudicationInput,
+): DiagnosticCause | null {
+  if (args.status === 'passed' || args.status === 'skipped') {
+    return null;
+  }
+  const primary = args.primaryFailureReason ??
+    classifyPrimaryFailureReason({
+      status: args.status,
+      planDiffSummary: args.planDiffSummary,
+      expectationResults: args.expectationResults,
+    });
+  if (primary === null) {
+    return null;
+  }
+  if (primary === 'infrastructure_error') {
+    return 'infrastructure';
+  }
+  const searchable = [...args.planDiffSummary];
+  for (const result of args.expectationResults) {
+    if (result.severity === 'hard' && !result.passed) {
+      searchable.push(`${result.type}: ${result.message}`);
+    }
+  }
+  if (FIXTURE_INCONSISTENCY_PATTERNS.some((pattern) => searchable.some((text) => pattern.test(text)))) {
+    return 'fixture_inconsistency';
+  }
+  switch (primary) {
+    case 'evaluator_defect':
+      return 'evaluator_missing_evidence';
+    case 'unnecessary_interaction':
+      return 'minor_relevance_clarification';
+    case 'product_effect_identity':
+    case 'product_fact_completeness':
+      return 'product_fact_effect_omission';
+    default:
+      return 'product_fact_effect_omission';
+  }
+}
+
+export type DiagnosticAnnotation = {
+  caseId: string;
+  runId: string;
+  raw: {
+    status: 'passed' | 'failed' | 'errored' | 'skipped';
+    hardGatePassed: boolean;
+    finalScore: number;
+  };
+  primaryFailureReason: PrimaryFailureReason | null;
+  diagnosticCause: DiagnosticCause | null;
+};
+
+/**
+ * Packet E2 human-audit sidecar. Copies the raw verdict fields into a new
+ * annotation object alongside the adjudicated cause. The source result is
+ * only read, never written: raw scores stay exactly as the runner recorded
+ * them, and the annotation can be stored or displayed without touching the
+ * persisted artifact.
+ */
+export function annotateDiagnosticCauseForReview(args: {
+  caseId: string;
+  runId: string;
+  status: DiagnosticAnnotation['raw']['status'];
+  hardGatePassed: boolean;
+  finalScore: number;
+  planDiffSummary: readonly string[];
+  expectationResults: DiagnosticAdjudicationInput['expectationResults'];
+  primaryFailureReason?: PrimaryFailureReason | null;
+}): DiagnosticAnnotation {
+  const primary = args.primaryFailureReason ??
+    classifyPrimaryFailureReason({
+      status: args.status,
+      planDiffSummary: args.planDiffSummary,
+      expectationResults: args.expectationResults,
+    });
+  return {
+    caseId: args.caseId,
+    runId: args.runId,
+    raw: {
+      status: args.status,
+      hardGatePassed: args.hardGatePassed,
+      finalScore: args.finalScore,
+    },
+    primaryFailureReason: primary,
+    diagnosticCause: adjudicateDiagnosticCause({
+      status: args.status,
+      planDiffSummary: args.planDiffSummary,
+      expectationResults: args.expectationResults,
+      primaryFailureReason: primary,
+    }),
+  };
+}
+
 export async function writeRunManifestArtifact(args: {
   runDir: string;
   manifest: RunManifest;

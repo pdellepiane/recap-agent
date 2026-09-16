@@ -7,11 +7,15 @@ version: 7
 description: A campaign-grounded RSVP for Gia Antonella is resolved via hybrid fragment plus natural tissue without claiming a new mutation.
 tags: [live, behavior, rsvp, attendance, reported-interaction, campaign-context]
 targetModes: [live_lambda]
+backendFixture:
+  scenario: rsvp-jose-gia-antonella
 inputs:
   - text: Si confirmamos la asistencia
     channel: whatsapp
     contactPhone: "+51941438449"
     sessionId: live-rsvp-jose-campaign-session
+    backendFixture:
+      scenario: rsvp-jose-gia-antonella
 expectations:
   - id: enters-rsvp-node
     type: node_transition

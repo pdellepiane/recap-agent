@@ -4,9 +4,13 @@ suite: live_behavior_regression
 version: 2
 description: A mixed-language request must be understood while every user-visible natural-language word in the reply remains Spanish; catalog labels stay usable and the email request is preserved.
 tags: [live, behavior, language, spanish-only]
+backendFixture:
+  scenario: spanish-only-catering
 inputs:
   - text: Necesito catering para un baby shower en Miraflores. Please send the RSVP link by email.
     sessionId: live-behavior-spanish-only-session
+    backendFixture:
+      scenario: spanish-only-catering
 expectations:
   - id: tokens-present
     type: token_usage_present

@@ -835,6 +835,22 @@ export const evalCaseSchema = z.object({
   }).optional(),
   expectations: z.array(expectationSchema).default([]),
   scorers: z.array(scorerSchema).default([]),
+  /**
+   * Packet E1 judge-only image ground truth. Manually verified text read
+   * from the fixture image pixels, bound to the sha256 digest of the exact
+   * input image data the case sends. This block feeds the semantic-judge
+   * context only (see resolveJudgeOnlyImageGroundTruth in runner.ts); it is
+   * never loaded into runtime model input, never leaks expected answers to
+   * the candidate, and performs no OCR or vision call. A read-only amount
+   * recorded here is read accuracy, never backend payment approval.
+   */
+  judgeGroundTruth: z.object({
+    imageDigest: z.string().regex(/^[a-f0-9]{64}$/u),
+    verifiedText: z.string().min(1),
+    verifiedAmount: z.string().nullable().default(null),
+    verifiedAt: z.string().min(1),
+    boundInputTurn: z.number().int().nonnegative(),
+  }).optional(),
   budget: budgetSchema.optional(),
   rsvpIsolation: rsvpIsolationHooksSchema.optional(),
   backendFixture: backendFixtureInputSchema.optional(),

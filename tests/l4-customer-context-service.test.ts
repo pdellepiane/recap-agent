@@ -481,3 +481,77 @@ describe('l4 S7 bounded enrichment through public AgentService', () => {
     expect(writeCalls).toBe(0);
   });
 });
+
+describe('l4 P1 canonical profile through public AgentService', () => {
+  it('coalesces duplicate scoped route results without detail loss', async () => {
+    const runtime = new PaymentQuestionRuntime('ORD-A');
+    const summaryOnly = purchaseResult('information-1', 'ORD-A', RELEVANT_TOTAL, 'cart-ORD-A');
+    const detailed = purchaseResult('information-2', 'ORD-A', RELEVANT_TOTAL, 'cart-ORD-A');
+    if (
+      detailed.result.status !== 'completed' || detailed.result.kind !== 'purchase' ||
+      summaryOnly.result.status !== 'completed' || summaryOnly.result.kind !== 'purchase'
+    ) {
+      throw new Error('Expected completed purchase fixtures.');
+    }
+    const withDetail = {
+      result: {
+        ...detailed.result,
+        purchases: detailed.result.purchases.map((purchase) => ({
+          ...purchase,
+          items: [{ giftName: 'Regalo', quantity: 1, amount: RELEVANT_TOTAL, rowTotal: RELEVANT_TOTAL, type: 'gift' }],
+        })),
+      },
+      summary: detailed.summary,
+    };
+    const { service } = serviceWith(
+      runtime,
+      [summaryOnly.result, withDetail.result],
+      [summaryOnly.summary, withDetail.summary],
+    );
+
+    await service.handleTurn(inbound('¿Cuál es el estado de mi pago?', '+51900000001'));
+
+    expect(runtime.composeRequests).toHaveLength(1);
+    const customerContext = runtime.composeRequests[0]?.customerContext;
+    expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-A']);
+    expect(customerContext?.detailedPurchases).toHaveLength(1);
+    expect(customerContext?.detailedPurchases[0]?.items).toHaveLength(1);
+  });
+
+  it('preserves ready facts when a duplicate scoped read fails', async () => {
+    const runtime = new PaymentQuestionRuntime('ORD-A');
+    const relevant = purchaseResult('information-1', 'ORD-A', RELEVANT_TOTAL, 'cart-ORD-A');
+    const failed: InformationTaskResult = {
+      requestId: 'information-2',
+      kind: 'purchase',
+      status: 'failed',
+      retryable: true,
+      failureKind: 'request_failed',
+      message: 'lookup failed',
+    };
+    const failedSummary: InformationExecutionSummary = {
+      requestId: 'information-2',
+      kind: 'purchase',
+      status: 'failed',
+      source: 'agent_api',
+      outcomeCode: 'request_failed',
+      retryable: true,
+      queryHash: 'q',
+      evidence: [],
+      resultCount: 0,
+      durationMs: 10,
+    };
+    const { service } = serviceWith(
+      runtime,
+      [relevant.result, failed],
+      [relevant.summary, failedSummary],
+    );
+
+    await service.handleTurn(inbound('¿Cuál es el estado de mi pago?', '+51900000001'));
+
+    expect(runtime.composeRequests).toHaveLength(1);
+    const customerContext = runtime.composeRequests[0]?.customerContext;
+    expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-A']);
+    expect(customerContext?.commonRefs.orderIds).toContain('ORD-A');
+  });
+});

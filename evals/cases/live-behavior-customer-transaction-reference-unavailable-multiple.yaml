@@ -12,6 +12,8 @@ inputs:
     channel: whatsapp
     contactPhone: "+51900001303"
     sessionId: live-customer-transaction-reference-multiple-session
+    backendFixture:
+      scenario: s13-reference-unavailable-multiple
 notes:
   - S13 frozen world s13-reference-unavailable-multiple as of 2026-09-09T00:00:00.000Z. Synthetic identity only; two orders with no customer references for Evento de prueba A and Evento de prueba B with distinct status and authorized totals, no carts. Output must follow this world, never mutable backend data.
   - "R05 oracle revision v1 to v2, 2026-09-12, Packet F3. Old multiple-asks-grounded-selection chased omitted names while missing the real defect: the reply inserted S/ although the stored candidate evidence carries no currency (matrix: unsupported currency assertion). New contract explicitly labels event dates and forbids inventing currency symbols or codes. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."

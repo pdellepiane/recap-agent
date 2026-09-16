@@ -37,7 +37,7 @@ import {
   projectSafeTrace,
   redactArtifactText,
 } from '../../runtime/artifact-redaction';
-import { attachEvaluationState, buildCumulativeFixtureEffectSummaries } from '../evaluation-state';
+import { attachEvaluationState, buildFixtureEffectSummariesFromReceipts } from '../evaluation-state';
 
 export async function runOfflineCase(args: {
   currentCase: EvalCase;
@@ -116,7 +116,10 @@ export async function runOfflineCase(args: {
       plan: getEvaluationPlan(turn),
       input: turn.input,
       outputText: turn.outputText,
-      fixtureEffects: buildCumulativeFixtureEffectSummaries(turns, turn.turnIndex),
+      // Test-repair §4: offline performs no fixture-scoped writes, so the
+      // verified ledger is honestly empty (observed zero). Writes are never
+      // inferred from tools_called or tool outputs here.
+      fixtureEffects: buildFixtureEffectSummariesFromReceipts([]),
     });
   }
 

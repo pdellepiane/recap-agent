@@ -1,0 +1,57 @@
+template: template.base-live
+id: live_behavior.rsvp_host_set_declining_unique_guest
+suite: live_behavior_regression
+version: 1
+description: A read-only state query for the single authorized invitation whose host-set attendance is declining must report declining without a mutation and without requiring hasResponded=true.
+tags:
+  - live
+  - behavior
+  - rsvp
+  - host-policy
+  - event-identity
+  - i3
+targetModes:
+  - live_lambda
+backendFixture:
+  scenario: rsvp-host-declining-unique
+inputs:
+  - text: ¿Cuál es el estado de mi invitación a Otra celebración prueba?
+    channel: whatsapp
+    contactPhone: "+51973296571"
+    sessionId: live-rsvp-host-set-declining-unique-session
+    backendFixture:
+      scenario: rsvp-host-declining-unique
+notes:
+  - "Packet E1 host-declining split, test 1 of 2 (2026-09-15, profile-inference directive). Unique authorized guest 584353 with host-set declining despite hasResponded=false. willAttend takes precedence; hasResponded is provenance only. Never require hasResponded=true. Permanent history; additive, no existing case deleted."
+expectations:
+  - id: declining-enters-rsvp-node
+    type: node_transition
+    to: responder_invitacion
+    severity: hard
+  - id: declining-query-performs-no-write
+    type: tool_usage
+    mustCall:
+      - lookup_rsvp_invitations
+    mustNotCall:
+      - guest_rsvp
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+    severity: hard
+  - id: declining-reported-without-response-flag
+    type: text_semantic
+    rubric: >-
+      The user asked for the invitation state for Otra celebración prueba. The single authorized attendance for the identified guest is declining, with hasResponded false because the host can set attendance independently. The response must be natural and entirely in Spanish and must clearly report the declined attendance. It must not claim attendance is confirmed or attending, must not claim a new mutation was made, must not ask for email or a code, must not require or imply that a prior response record must exist, and must not expose internal identifiers. Useful extra grounded detail (event date) passes. No fixed wording is required.
+    minScore: 0.85
+    requireJudge: true
+    severity: hard
+  - id: no-rsvp-vocabulary
+    type: text_not_contains
+    phrases: ["RSVP", "rsvp"]
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1500
+  estimatedCompletionTokensPerTurn: 250
+
+# September 15 isolation revision: fixture initial state replaces external setup; no real backend mutation is required.

@@ -879,7 +879,7 @@ describe('AgentService first-class information flow', () => {
     expect(purchaseGateway.ordersCalls + purchaseGateway.giftCalls).toBe(0);
   });
 
-  it('keeps a purchase request marked ambiguous as unresolved evidence instead of executing it', async () => {
+  it('executes an ambiguous read-only purchase request and lets the model resolve from the result', async () => {
     const recordedExtraction = extraction([
       {
         kind: 'purchase',
@@ -917,13 +917,27 @@ describe('AgentService first-class information flow', () => {
     });
 
     const results = runtime.composeRequests.at(-1)?.informationResults ?? [];
-    // L3/E08: model-produced ambiguity is typed unresolved evidence. The
-    // purchase request is not executed, not persisted as pending, and the
-    // model clarifies (specific order versus all orders) next.
+    // Ambiguity no longer withholds authorized read-only requests: the
+    // purchase read executes (email input still required without
+    // authentication) and the model resolves from the executed result plus
+    // the preserved ambiguity evidence instead of asking blind.
+    expect(results).toEqual([
+      expect.objectContaining({
+        kind: 'purchase',
+        status: 'needs_input',
+        nextInput: 'email',
+      }),
+    ]);
+    const purchaseBlock = results.find(
+      (result) => result.kind === 'purchase' && result.status === 'needs_input',
+    );
     expect(
-      results.find((result) => result.kind === 'purchase'),
-    ).toBeUndefined();
-    expect(response.plan.information_state.pending_requests).toEqual([]);
+      purchaseBlock?.status === 'needs_input' ? purchaseBlock.guidance : null,
+    ).toEqual(createInformationAuthGuidance('email_required', null));
+    expect(response.plan.information_state.pending_requests).toHaveLength(1);
+    expect(response.plan.information_state.pending_requests[0]?.kind).toBe(
+      'purchase',
+    );
     expect(response.trace.extraction_summary.ambiguity_status).toBe('ambiguous');
     const composed = runtime.composeRequests.at(-1)?.extraction;
     expect(composed?.ambiguity?.status).toBe('ambiguous');
@@ -933,6 +947,85 @@ describe('AgentService first-class information flow', () => {
     ]);
     expect(response.outbound.text).toBe('Respuesta informativa.');
     expect(runtime.composeRequests.at(-1)?.errorMessage).toBeNull();
+  });
+
+  it('asks once without executing when ambiguity leaves no executable read', async () => {
+    const recordedExtraction = extraction([]);
+    recordedExtraction.ambiguity = {
+      status: 'ambiguous',
+      clarificationQuestion: '¿Te refieres al pago o a un evento?',
+      interpretations: ['el pago', 'el evento'],
+    };
+    const runtime = new InformationRuntime([recordedExtraction]);
+    const knowledge = new FakeKnowledgeGateway();
+    const gateway = new FakePurchaseGateway();
+    const service = createService({
+      runtime,
+      knowledgeGateway: knowledge,
+      purchaseGateway: gateway,
+      providerGateway: providerGateway(),
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'bare-ambiguous-no-read',
+      text: 'No entiendo bien',
+      messageId: 'bare-ambiguous-no-read-1',
+      receivedAt: new Date().toISOString(),
+    });
+
+    // Bare ambiguity with no purchase/event/faq read still asks exactly
+    // once: one model composition carrying the ambiguity, zero lookups,
+    // nothing persisted as pending.
+    expect(runtime.composeRequests).toHaveLength(1);
+    expect(knowledge.calls).toBe(0);
+    expect(gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.guestEventCalls + gateway.authByPhoneCalls).toBe(0);
+    expect(response.plan.information_state.pending_requests).toEqual([]);
+    expect(response.trace.extraction_summary.ambiguity_status).toBe('ambiguous');
+    expect(runtime.composeRequests.at(-1)?.extraction.ambiguity?.status).toBe('ambiguous');
+    expect(runtime.composeRequests.at(-1)?.informationResults ?? []).toEqual([]);
+    expect(response.outbound.text).toBe('Respuesta informativa.');
+  });
+
+  it('still withholds reads when an ambiguous turn also executes a typed action', async () => {
+    const recordedExtraction = {
+      ...extraction([purchaseRequest(null)]),
+      rsvpAction: 'attending' as const,
+    };
+    recordedExtraction.ambiguity = {
+      status: 'ambiguous',
+      clarificationQuestion: '¿Quieres consultar tu compra o confirmar asistencia?',
+      interpretations: ['consultar la compra', 'confirmar asistencia'],
+    };
+    const runtime = new InformationRuntime([recordedExtraction]);
+    const knowledge = new FakeKnowledgeGateway();
+    const gateway = new FakePurchaseGateway();
+    const service = createService({
+      runtime,
+      knowledgeGateway: knowledge,
+      purchaseGateway: gateway,
+      providerGateway: providerGateway(),
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'ambiguous-action-conflict',
+      text: 'Quiero ver mi compra y confirmar asistencia',
+      messageId: 'ambiguous-action-conflict-1',
+      receivedAt: new Date().toISOString(),
+    });
+
+    // Mutation authorization is unchanged: a typed executing action
+    // conflicting with information work asks which to resolve first and
+    // executes neither route.
+    expect(knowledge.calls).toBe(0);
+    expect(gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.guestEventCalls + gateway.authByPhoneCalls).toBe(0);
+    expect(runtime.composeRequests).toHaveLength(1);
+    expect(runtime.composeRequests.at(-1)?.informationResults ?? []).toEqual([]);
+    expect(runtime.composeRequests.at(-1)?.errorMessage).toContain(
+      'una sola pregunta breve',
+    );
+    expect(response.outbound.text).toBe('Respuesta informativa.');
   });
 
   it('asks briefly for account verification when the user already supplied an order number', async () => {
@@ -2774,7 +2867,7 @@ describe('AgentService first-class information flow', () => {
     expect(changed.trace.tools_called).not.toContain('request_user_login_code');
   });
 
-  it('persists information requests and executes neither side when a turn also asks for an exclusive action', async () => {
+  it('executes information requests immediately when a turn also carries a bare provider action intent', async () => {
     const runtime = new InformationRuntime([
       extraction(
         [{ kind: 'faq', query: '¿Cuánto cobra Sin Envolturas?' }],
@@ -2817,12 +2910,15 @@ describe('AgentService first-class information flow', () => {
     });
 
     expect(response.plan.current_node).toBe('resolver_consultas_informativas');
-    expect(response.plan.information_state.pending_requests).toHaveLength(1);
-    expect(knowledgeGateway.calls).toBe(0);
-    expect(runtime.composeRequests.at(-1)?.informationResults).toEqual([]);
-    expect(runtime.composeRequests.at(-1)?.errorMessage).toContain(
-      'confirmar cuál quiere resolver primero',
-    );
+    // Accountless preemption repair: a bare actionIntent (typed
+    // rsvpAction/closeAction/candidate absent) never preempts the lookup,
+    // so the FAQ executes immediately and nothing persists as pending.
+    expect(response.plan.information_state.pending_requests).toHaveLength(0);
+    expect(knowledgeGateway.calls).toBe(1);
+    expect(runtime.composeRequests.at(-1)?.informationResults).toEqual([
+      expect.objectContaining({ kind: 'faq', status: 'completed' }),
+    ]);
+    expect(runtime.composeRequests.at(-1)?.errorMessage).toBeNull();
     expect(purchaseGateway.recentMessageCalls).toBe(1);
     expect(runtime.extractRequests.at(-1)?.messageContext).toEqual(
       expect.objectContaining({

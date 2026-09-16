@@ -1,8 +1,8 @@
 template: template.base-live
 id: live_behavior.rsvp_host_set_declining_consistent
 suite: live_behavior_regression
-version: 2
-description: A read-only state query for an invitation whose host-set attendance is declining must report declining consistently without a mutation and without claiming who responded.
+version: 4
+description: A read-only state query where two distinguishable invitation records exist must report the identified guest's declining state or ask one bounded distinguishing question, never guessing a mutation.
 tags:
   - live
   - behavior
@@ -12,25 +12,19 @@ tags:
   - i3
 targetModes:
   - live_lambda
+backendFixture:
+  scenario: rsvp-host-declining
 inputs:
   - text: ¿Cuál es el estado de mi invitación a Otra celebración prueba?
     channel: whatsapp
     contactPhone: "+51973296571"
     sessionId: live-rsvp-host-set-declining-session
-rsvpIsolation:
-  setup:
-    guestId: 584353
-    eventName: Otra celebración prueba
-    phone: "+51973296571"
-    targetState: declining
-  teardown:
-    guestId: 584353
-    eventName: Otra celebración prueba
-    phone: "+51973296571"
-    restore: true
+    backendFixture:
+      scenario: rsvp-host-declining
 notes:
   - "I3 2026-09-14, event-identity-review: willAttend boolean takes precedence everywhere and hasResponded is provenance only. This case proves the declining value displays consistently end to end for the requested event. Service-level twins prove hasResponded=false with willAttend true/false displays attending/declining. Never fixed phrases and no claim about who personally responded unless evidenced."
   - "v2 2026-09-15 guest-identity pin: the declining state must be reported for the identified guest 584353's own invitation to Otra celebración prueba. Same-event enriched attendance for that guest never overwrites the host-set state, and another guest's record for a same-named event never substitutes for it. rsvpIsolation setup reads the actual prior backend state, verifies the declining write with a fresh read, and teardown restores the prior read."
+  - "E1 v4 2026-09-15, profile-inference directive (Packet E1 host-declining split, test 2 of 2): fixture corrected to distinguishable authorized evidence (guest 584353 declining on 2026-08-19, guest 584354 attending on 2026-08-24). The response may report the identified guest's declined attendance directly, or ask exactly one bounded question naming both invitations with their states and dates so the requester chooses. It must never guess a mutation, never claim the user can distinguish records from identical labels, and never substitute the other guest's attending record. R05: old v3 runs preserved; baseline and candidate must rerun on this v4 contract."
 expectations:
   - id: declining-enters-rsvp-node
     type: node_transition
@@ -49,7 +43,7 @@ expectations:
   - id: declining-reported-for-named-event
     type: text_semantic
     rubric: >-
-      The user asked for the invitation state for Otra celebración prueba. The authoritative attendance for the identified guest 584353 is declining, while another guest record for the same event is attending. The response must be natural and entirely in Spanish and must never assert that attendance is confirmed or attending for the requester's invitation, never claim a new mutation was made, and never substitute the other guest's attending record for the identified guest's own invitation. It may either clearly report the identified guest's declined attendance, or ask exactly one bounded question naming both invitations with their states so the requester chooses. It must not assert who personally responded unless the evidence shows it, must not ask for email or a code, and must not expose internal identifiers. No fixed wording is required.
+      The user asked for the invitation state for Otra celebración prueba. The authorized evidence holds two distinguishable records: the identified guest 584353 is declining on 2026-08-19 with hasResponded false because the host can set attendance independently, while another guest record for a same-named event is attending on 2026-08-24. The response must be natural and entirely in Spanish and must never assert that attendance is confirmed or attending for the requester's invitation, never claim a new mutation was made, and never substitute the other guest's attending record for the identified guest's own invitation. It may either clearly report the identified guest's declined attendance, or ask exactly one bounded question naming both invitations with their states and dates so the requester chooses. It must not assert who personally responded unless the evidence shows it, must not ask for email or a code, and must not expose internal identifiers. Useful extra grounded detail passes. No fixed wording is required.
     minScore: 0.85
     requireJudge: true
     severity: hard
@@ -61,3 +55,5 @@ budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 1500
   estimatedCompletionTokensPerTurn: 250
+
+# September 15 isolation revision: fixture initial state replaces external setup; no real backend mutation is required.

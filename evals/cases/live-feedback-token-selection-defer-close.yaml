@@ -1,18 +1,28 @@
 template: template.base-live
 id: live_feedback.token_seeded_selection_defer_close
 suite: live_behavior_regression
-version: 3
+version: 4
 description: Seeded multi-need plan should consume tokens while selecting one need, deferring a need after every option is declined, and entering close flow.
 tags: [live, feedback, token, seeded-plan, multi-need]
+backendFixture:
+  scenario: gate-selected-provider-close
 inputs:
   - text: confirmo Carlos Schult para foto
     sessionId: live-feedback-multineed-session
+    backendFixture:
+      scenario: gate-selected-provider-close
   - text: para catering no quiero ninguna
     sessionId: live-feedback-multineed-session
+    backendFixture:
+      scenario: gate-selected-provider-close
   - text: ahora cerremos el plan
     sessionId: live-feedback-multineed-session
+    backendFixture:
+      scenario: gate-selected-provider-close
   - text: soy Carolina, carolina@example.com, teléfono +51 954779071
     sessionId: live-feedback-multineed-session
+    backendFixture:
+      scenario: gate-selected-provider-close
 seedPlan:
   current_node: elicitacion_necesidades
   event_type: boda
@@ -92,3 +102,5 @@ budget:
   maxTurns: 4
   estimatedPromptTokensPerTurn: 1600
   estimatedCompletionTokensPerTurn: 450
+
+# September 15 isolation revision: fixture initial state replaces external setup; no real backend mutation is required.

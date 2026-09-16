@@ -4,8 +4,12 @@ suite: live_behavior_regression
 version: 1
 description: A nonphysical gift purchase must not create shipment or physical-delivery claims.
 tags: [live, behavior, purchase, shipping, disclosure]
+backendFixture:
+  scenario: plan-no-purchase-empty
 inputs:
   - text: Compré un regalo digital para una boda. ¿Cuándo lo despachan y en qué fecha llega?
+    backendFixture:
+      scenario: plan-no-purchase-empty
 expectations:
   - id: enters-information-flow
     type: node_transition

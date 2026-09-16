@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import path from 'node:path';
 import { AgentService } from '../src/runtime/agent-service';
 import type { AgentConversationGateway } from '../src/runtime/agent-conversation-gateway';
-import type { AgentRuntime, ExtractionResult } from '../src/runtime/contracts';
+import type { AgentRuntime, ComposeReplyRequest, ExtractionResult } from '../src/runtime/contracts';
 import { PromptLoader } from '../src/runtime/prompt-loader';
 import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
@@ -30,8 +30,10 @@ function extractionNull(): ExtractionResult {
 }
 
 class NullRuntime implements AgentRuntime {
+  readonly composeRequests: ComposeReplyRequest[] = [];
   async extract(): Promise<ExtractionResult> { return extractionNull(); }
-  async composeReply(): Promise<{ text: string; structuredMessage: { type: 'generic'; paragraphs_es: string[] } }> {
+  async composeReply(request: ComposeReplyRequest): Promise<{ text: string; structuredMessage: { type: 'generic'; paragraphs_es: string[] } }> {
+    this.composeRequests.push(request);
     return { text: 'tissue', structuredMessage: { type: 'generic', paragraphs_es: ['tissue'] } };
   }
 }
@@ -70,9 +72,10 @@ describe('F2 declined read-only offers one change', () => {
       contact_phone_number: '973296571',
     });
     await store.save({ plan: seeded, reason: 'seed' });
+    const runtime = new NullRuntime();
     const service = new AgentService({
       planStore: store,
-      runtime: new NullRuntime(),
+      runtime,
       providerGateway: { async lookupUserEventContext(): Promise<UserEventLookupResult | null> {
         const events = lookupDeclining();
         return { lookup: { email: null, phone: '973296571' }, user: null, events, counts: { ownerEvents: 0, guestEvents: events.length, hostEvents: 0, celebratedEvents: 0, recentOrders: 0 } };
@@ -86,8 +89,13 @@ describe('F2 declined read-only offers one change', () => {
       text: '¿Cómo figura mi asistencia a Otra celebración prueba?',
       messageId: 'm1', receivedAt: '2026-08-27T15:00:00.000Z', contactPhone: '+51973296571',
     });
-    expect(result.plan.rsvp_state.status).toBe('awaiting_action');
-    expect(result.plan.rsvp_state.pending_action).toBe('attending');
+    // P3 signal-derived offer: a read-only declining query never stages
+    // awaiting_action as later-action consent, and with no typed
+    // current-message RSVP signal (no event reference or candidate guest
+    // id) the prose offer is also withheld (offer_action false).
+    expect(result.plan.rsvp_state.status).toBe('none');
+    expect(result.plan.rsvp_state.pending_action).toBeNull();
     expect(result.outbound.text).toBe('tissue');
+    expect(runtime.composeRequests[0]?.errorMessage).toContain('"offer_action":false');
   });
 });

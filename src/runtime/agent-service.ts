@@ -176,7 +176,6 @@ import {
 } from './information-orchestrator';
 import {
   buildRuntimeCapabilityManifest,
-  isServableInformationRead,
   resolveCapabilityDecision,
   type CapabilityDecision,
   type RuntimeCapabilityDescriptor,
@@ -187,9 +186,11 @@ import { NoopKnowledgeRetrievalGateway } from './knowledge-retrieval-gateway';
 import {
   buildTurnMessageContext,
   deriveConversationContinuity,
+  isProvenanceBoundCampaignMessage,
   localTurnMessageContext,
   orderMessagesByServerTime,
   recentConversationMessageLimit,
+  selectProvenanceBoundCampaignMessages,
   unavailableTurnMessageContext,
   withConversationContinuity,
   type TurnMessageContext,
@@ -215,15 +216,19 @@ import {
 } from '../audit/expected-render';
 import {
   assembleCustomerContext,
+  createEntryCustomerSnapshot,
   enrichmentScopeKey,
   expandInlinePurchaseDetail,
+  isPurePublicFaqTurn,
+  mergeExecutionIntoSnapshot,
   projectCustomerContext,
-  rankCandidatesByRelevance,
   resolveRelevantTarget,
   selectEnrichmentTargets,
   type CustomerContextProjection,
+  type CustomerContextSnapshot,
   type CustomerEnrichmentSummary,
   type CustomerProjectionFocus,
+  type RankableCandidate,
 } from './customer-context';
 import {
   applyOwnerForTurn,
@@ -2927,14 +2932,19 @@ export class AgentService {
         args.extraction.rsvpEventReference,
         args.messageContext,
       );
-      const hasCampaignInvitationContext = args.messageContext.recentMessages.some(
-        (message) => message.source === 'admin_campaign',
+      // P2: campaign context is provenance-bound (outbound reminder-family
+      // messages only). A campaign source label alone — including inbound
+      // text claiming to be a campaign — never carries outbound authority.
+      const provenanceCampaigns = selectProvenanceBoundCampaignMessages(
+        args.messageContext.recentMessages,
       );
-      const currentReminder = args.messageContext.recentMessages
-        .filter((message) => message.direction === 'outbound'
-          && (message.source === 'frontend_followup' || message.source === 'admin_campaign'))
-        .sort((left, right) => left.id - right.id)
-        .at(-1) ?? null;
+      const hasCampaignInvitationContext = provenanceCampaigns.length > 0;
+      const newestCampaign = provenanceCampaigns.at(-1) ?? null;
+      const currentReminder = newestCampaign !== null
+        ? (args.messageContext.recentMessages.find(
+          (message) => message.id === newestCampaign.sourceMessageId,
+        ) ?? null)
+        : null;
       const hasReminderContext = currentReminder !== null;
       const needsMismatchHandoff = action !== null
         && (hasReminderContext || groundedCampaignEvent !== null || hasCampaignInvitationContext)
@@ -3044,20 +3054,30 @@ export class AgentService {
       const hasRequestedMutation = actionToSubmit !== null || plusOneResponse !== null;
 
       if (!action && plusOneResponse === null) {
-        // Packet C gratitude guard: the established read-only behavior is
-        // kept, except a stale plan_state replay or a turn with no current
-        // RSVP intent (gratitude/no-new-request) never stages an offer
-        // merely because current attendance is declining. The reply still
-        // states the resolved current state from evidence.
+        // P2: a read-only state answer never persists its inferred target as
+        // consent to a later action. The Packet C gratitude guard stays (a
+        // stale plan_state replay or a no-new-request turn never stages an
+        // offer merely because attendance is declining), and the reply may
+        // still offer one change in prose via offerAction — but only an
+        // explicit next-turn decision arms state. The resolved current state
+        // is still reported from evidence.
         const hasCurrentRsvpIntent = args.extraction.actionIntent === 'responder_invitacion';
-        const shouldOfferDecliningChange = selectedInvitation.state === 'declining' && hasCurrentRsvpIntent;
+        // Declining prose offer derives from a typed current-message RSVP
+        // signal (event reference or candidate guest id), never from
+        // actionIntent alone: a read-only declining query with its own
+        // signal may offer one change in prose, while gratitude turns and
+        // stale replays without a signal offer nothing. Staging stays
+        // none/null; no new state, no keyword matching.
+        const hasTypedCurrentRsvpSignal = decisionSource === 'current_message' &&
+          (args.extraction.rsvpEventReference != null ||
+            (args.extraction.rsvpCandidateGuestId ?? null) !== null);
+        const shouldOfferDecliningChange = selectedInvitation.state === 'declining' &&
+          isReadOnlyStateQuery && hasTypedCurrentRsvpSignal;
         const staleReplayWithoutIntent = decisionSource !== 'current_message' && !hasCurrentRsvpIntent;
         const offerAction = (!isReadOnlyStateQuery || shouldOfferDecliningChange) &&
           !staleReplayWithoutIntent;
         operationalNote = this.rsvpCurrentStateNote(selectedInvitation, offerAction);
-        nextRsvpState = offerAction && (selectedInvitation.state === 'pending' || selectedInvitation.state === 'declining')
-          ? this.awaitingRsvpActionState(selectedInvitation, 'attending')
-          : this.emptyRsvpState();
+        nextRsvpState = this.emptyRsvpState();
       } else if (!hasRequestedMutation && action && currentAction === action) {
         operationalNote = this.rsvpCurrentStateNote(selectedInvitation, false);
         nextRsvpState = this.emptyRsvpState();
@@ -3401,12 +3421,16 @@ export class AgentService {
       const associatedSummaries = guestEvents?.status === 'success'
         ? guestEvents.events
         : [];
-      // I1 enrichment is unique-compatible-match. An explicit reference
-      // resolves against the summaries and enriches only its unique match;
-      // zero or multiple matches enrich nothing (never the first hit, never
-      // a sole unrelated event). Without a reference a single summary may
-      // enrich; several stay bare for disambiguation. Bounded: at most one
-      // detail read, never every event.
+      // I1 enrichment is unique-compatible-match over the validated inferred
+      // target. The reference arrives from the existing extraction
+      // (eventHint/rsvpEventReference): an explicit current reference or a
+      // model-grounded inference from campaign/conversation context — never a
+      // second runtime selector. It resolves against the summaries and
+      // enriches only its unique match; zero or multiple matches enrich
+      // nothing (never the first hit, never a sole unrelated event, never a
+      // recency pick). Without a reference a single summary may enrich;
+      // several stay bare for disambiguation. Bounded: at most one detail
+      // read, never every event.
       const normalizedReference = this.normalizeSelectionText(eventReference ?? '');
       const referenceMatches = normalizedReference.length > 0
         ? associatedSummaries.filter((event) => {
@@ -4096,27 +4120,6 @@ export class AgentService {
     return args.invitations.length === 1 ? args.invitations[0] ?? null : null;
   }
 
-  private awaitingRsvpActionState(
-    invitation: RsvpInvitation,
-    action: 'attending' | 'declining',
-  ): PlanSnapshot['rsvp_state'] {
-    if (invitation.guestId === null) {
-      return this.emptyRsvpState();
-    }
-    return {
-      status: 'awaiting_action',
-      pending_action: action,
-      pending_plus_one_response: null,
-      candidates: [{
-        guest_id: invitation.guestId,
-        event_name: invitation.eventName,
-        event_date: invitation.eventDate,
-      }],
-      requested_at: new Date().toISOString(),
-      selection_attempts: 0,
-    };
-  }
-
   private emptyRsvpState(): PlanSnapshot['rsvp_state'] {
     return {
       status: 'none',
@@ -4237,6 +4240,15 @@ export class AgentService {
     return result.status;
   }
 
+  /**
+   * P2 provenance-bound campaign grounding. A reference grounds only against
+   * outbound reminder-family messages (admin_campaign, frontend_followup):
+   * inbound text claiming to be a campaign never acquires outbound authority.
+   * Unknown delivery stays uncertain — grounding identifies the referenced
+   * event, it never claims confirmed delivery, attendance, or authorization.
+   * The validated inferred target comes from the existing extraction
+   * (eventHint/rsvpEventReference); this only validates it, never infers.
+   */
   private groundedRsvpCampaignEvent(
     eventReference: string | null | undefined,
     messageContext: TurnMessageContext,
@@ -4249,7 +4261,7 @@ export class AgentService {
       return null;
     }
     const isGrounded = messageContext.recentMessages.some((message) => {
-      if (message.source !== 'admin_campaign') {
+      if (!isProvenanceBoundCampaignMessage(message)) {
         return false;
       }
       const normalizedBody = this.normalizeSelectionText(message.body);
@@ -6764,6 +6776,8 @@ export class AgentService {
     informationResults: InformationTaskResult[];
     informationSummaries: InformationExecutionSummary[];
     contactPhone: string | null | undefined;
+    /** P1 entry snapshot built before resolution; reused through reply. */
+    entrySnapshot?: CustomerContextSnapshot | null;
     orchestrator?: InformationOrchestrator | null;
     authentication?: InformationAuthentication | null;
     deadlineMs?: number | null;
@@ -6830,14 +6844,30 @@ export class AgentService {
       relevantEventIds,
     });
     const focus = this.deriveCustomerProjectionFocus(purchaseRequests, hasRsvpSignals);
-    const explicitOrderId = relevantOrderIds[0] ?? null;
-    const explicitEventHint = relevantEventIds[0] ?? null;
-    // Unresolved candidates stay discoverable for a focused read or
-    // clarification, ordered explicit-first (explicit reference dominates
-    // observed state and recency; recency only breaks ties). Nothing is
-    // dropped, so an older explicit target is never hidden by newer history.
-    // No pending/answered tracking is added here: continuity reuses the
-    // existing pending-request and outbound-history state.
+    // P3 fact parity: name hints never match stable IDs, so resolve them
+    // against known authorized names once and reuse the resolved IDs for
+    // enrichment and for the detail projection below. A uniquely resolved
+    // result (explicit match or single-record target) is the detail target
+    // even when the extraction carries no ID, so its date/hour/venue and
+    // per-record state project from the profile instead of a second facts
+    // payload. Ambiguous turns still resolve nothing and stay candidates.
+    const resolvedEventIds = this.resolveExplicitEventIds(knownEventEntries, relevantEventIds);
+    const detailOrderIds = Array.from(new Set([
+      ...relevantOrderIds,
+      ...(target.kind === 'target' && target.orderId !== null ? [target.orderId] : []),
+    ]));
+    const detailEventIds = Array.from(new Set([
+      ...resolvedEventIds,
+      ...(target.kind === 'target' && target.eventId !== null ? [target.eventId] : []),
+    ]));
+    // P2 presentation-only ordering. Unresolved candidates stay discoverable
+    // for a focused read or clarification, ordered by actual temporal
+    // proximity without filtering. Fixed score weights are not conversational
+    // authority: an explicit reference already resolved to a target above, so
+    // nothing here selects, hides, or authorizes — recency alone never
+    // triggers a read detail choice or a mutation. No pending/answered
+    // tracking is added here: continuity reuses the existing pending-request
+    // and outbound-history state.
     let unresolvedCandidateOrderIds: string[] = [];
     let unresolvedCandidateEventIds: (number | string)[] = [];
     if (target.kind === 'candidates') {
@@ -6845,7 +6875,7 @@ export class AgentService {
         if (result.status !== 'completed' || result.kind !== 'purchase') return [];
         return result.purchases.map((purchase) => [purchase.orderId, purchase] as const);
       }));
-      unresolvedCandidateOrderIds = rankCandidatesByRelevance(
+      unresolvedCandidateOrderIds = this.orderUnresolvedCandidatesByTemporalProximity(
         target.orderIds.map((orderId) => {
           const known = knownPurchasesById.get(orderId);
           return {
@@ -6856,7 +6886,6 @@ export class AgentService {
             eventDate: known?.eventDate ?? null,
           };
         }),
-        { explicitOrderId, explicitEventHint, questionFocus: focus },
       ).map((candidate) => candidate.orderId);
       const knownEventsById = new Map(args.informationResults.flatMap((result) => {
         if (result.status !== 'completed' || result.kind !== 'associated_event') return [];
@@ -6866,7 +6895,7 @@ export class AgentService {
             : [[String(event.eventId), event] as const],
         );
       }));
-      unresolvedCandidateEventIds = rankCandidatesByRelevance(
+      unresolvedCandidateEventIds = this.orderUnresolvedCandidatesByTemporalProximity(
         target.eventIds.map((eventId) => {
           const known = knownEventsById.get(String(eventId));
           return {
@@ -6877,7 +6906,6 @@ export class AgentService {
             eventDate: known?.datetime ?? null,
           };
         }),
-        { explicitOrderId, explicitEventHint, questionFocus: focus },
       ).map((candidate) => {
         const original = target.eventIds.find((id) => String(id) === candidate.orderId);
         return original ?? candidate.orderId;
@@ -6907,7 +6935,7 @@ export class AgentService {
       knownOrderIds,
       knownEventIds,
       relevantOrderIds,
-      relevantEventIds: this.resolveExplicitEventIds(knownEventEntries, relevantEventIds),
+      relevantEventIds: resolvedEventIds,
       alreadyDetailedOrderIds: detailedOrderIds,
       alreadyDetailedEventIds: detailedEventIds,
     });
@@ -6966,25 +6994,107 @@ export class AgentService {
         failures: [],
       };
     }
-    const snapshot = assembleCustomerContext({
-      execution: { results: enrichedResults, summaries: args.informationSummaries },
+    const currentContextEvidence = {
+      relevantEventIds,
+      relevantOrderIds,
+      pendingQuestion: args.plan.open_questions[0] ??
+        args.plan.owner_pending_question ??
+        null,
+      unresolvedCandidateOrderIds,
+      unresolvedCandidateEventIds,
+    };
+    // P1 single canonical copy: when an entry snapshot was built before
+    // resolution, enrich that same snapshot (failed routes preserve its
+    // known data and provenance); otherwise assemble fresh. Execution
+    // summaries keep operation/result status + refs for audit, never a
+    // second customer-data payload: the profile holds facts + coverage and
+    // action receipts stay typed outcomes.
+    const snapshot = args.entrySnapshot
+      ? mergeExecutionIntoSnapshot({
+        base: args.entrySnapshot,
+        execution: { results: enrichedResults, summaries: args.informationSummaries },
+        identity,
+        currentContext: currentContextEvidence,
+        nowIso,
+      })
+      : assembleCustomerContext({
+        execution: { results: enrichedResults, summaries: args.informationSummaries },
+        identity,
+        currentContext: currentContextEvidence,
+        nowIso,
+      });
+    return projectCustomerContext(snapshot, {
+      focus,
+      relevantOrderIds: detailOrderIds,
+      relevantEventIds: detailEventIds,
+    }, enrichment);
+  }
+
+  /**
+   * P1 canonical profile entry. Builds the entry snapshot on
+   * customer_assistance entry before reference resolution needs evidence,
+   * reusing the existing owner router: only the customer_assistance owner
+   * with a purchase/event/RSVP signal and grounded identity prefetches.
+   * Pure public FAQ turns and planning-only turns return null (no prefetch).
+   * No extraction or reference-inference changes here (P2 owns them).
+   */
+  private resolveEntryCustomerSnapshot(args: {
+    plan: PlanSnapshot;
+    extraction: ExtractionResult;
+    requests: PendingInformationRequest[];
+    contactPhone: string | null | undefined;
+  }): CustomerContextSnapshot | null {
+    if (isPurePublicFaqTurn(args.requests)) {
+      return null;
+    }
+    const purchaseRequests = args.requests.filter(
+      (request) => request.kind === 'purchase',
+    );
+    const eventRequests = args.requests.filter(
+      (request) => request.kind === 'associated_event',
+    );
+    const hasRsvpSignals = args.extraction.actionIntent === 'responder_invitacion' ||
+      (args.extraction.rsvpAction !== null && args.extraction.rsvpAction !== undefined) ||
+      (args.extraction.rsvpCandidateGuestId !== null && args.extraction.rsvpCandidateGuestId !== undefined) ||
+      (args.extraction.rsvpEventReference !== null && args.extraction.rsvpEventReference !== undefined) ||
+      (args.extraction.rsvpParty !== null && args.extraction.rsvpParty !== undefined);
+    if (purchaseRequests.length === 0 && eventRequests.length === 0 && !hasRsvpSignals) {
+      return null;
+    }
+    if (args.plan.owner !== 'customer_assistance') {
+      return null;
+    }
+    const trustedPhone = splitInternationalPhone(args.contactPhone ?? null);
+    const nowIso = new Date().toISOString();
+    const identity = trustedPhone
+      ? {
+        customerRef: (args.contactPhone ?? '').trim(),
+        scope: 'trusted_phone',
+        source: 'channel_contact_phone',
+        fetchedAt: nowIso,
+      }
+      : hasValidUserAuthToken(args.plan) && args.plan.user_auth.email
+        ? {
+          customerRef: args.plan.user_auth.email,
+          scope: 'account',
+          source: 'authenticated_account',
+          fetchedAt: nowIso,
+        }
+        : null;
+    if (!identity) return null;
+    return createEntryCustomerSnapshot({
       identity,
       currentContext: {
-        relevantEventIds,
-        relevantOrderIds,
+        relevantEventIds: [],
+        relevantOrderIds: [],
         pendingQuestion: args.plan.open_questions[0] ??
           args.plan.owner_pending_question ??
           null,
-        unresolvedCandidateOrderIds,
-        unresolvedCandidateEventIds,
+        unresolvedCandidateOrderIds: [],
+        unresolvedCandidateEventIds: [],
       },
       nowIso,
     });
-    return projectCustomerContext(snapshot, {
-      focus,
-      relevantOrderIds,
-      relevantEventIds,
-    }, enrichment);
   }
 
   /**
@@ -7101,6 +7211,35 @@ export class AgentService {
   }
 
   /**
+   * P2 presentation-only ordering for unresolved candidates. Sorts by
+   * absolute temporal distance of the event date (falling back to record
+   * creation) to today; missing or invalid dates stay last in stable order.
+   * Nothing is filtered and nothing is selected: every candidate stays
+   * retrievable for a focused read or a one-question distinction. No date
+   * cutoff is applied — explicit years-old records remain listed — and the
+   * order never authorizes a read choice or a write on its own.
+   */
+  private orderUnresolvedCandidatesByTemporalProximity(
+    candidates: RankableCandidate[],
+  ): RankableCandidate[] {
+    const nowMs = Date.now();
+    const distanceOf = (candidate: RankableCandidate): number => {
+      const raw = candidate.eventDate ?? candidate.createdAt;
+      if (!raw) {
+        return Number.POSITIVE_INFINITY;
+      }
+      const parsed = Date.parse(raw);
+      return Number.isNaN(parsed) ? Number.POSITIVE_INFINITY : Math.abs(parsed - nowMs);
+    };
+    return candidates
+      .map((candidate, index) => ({ candidate, index, distance: distanceOf(candidate) }))
+      .sort((left, right) =>
+        left.distance !== right.distance ? left.distance - right.distance : left.index - right.index,
+      )
+      .map((entry) => entry.candidate);
+  }
+
+  /**
    * S6 typed focus for minimum disclosure. Cart relevance comes ONLY from
    * structured purchase aspects/query evidence expressing checkout/cart work
    * (the `payment_options` aspect the extractor emits for cart checkout and
@@ -7155,35 +7294,41 @@ export class AgentService {
   }
 
   /**
-   * Single-image ambiguity resolution for the information skip. When the
-   * extractor linked the question to one prior image (prior_single), the
-   * image itself is the answerable target: an available image lets the model
-   * answer from pixels plus record (a visible receipt is described, never
-   * confirmed as approval), and an expired reference states unreadability as
-   * an answerable fact with the record behind it. Only genuine
-   * multi-candidate ambiguity (no single linked image) skips execution to
-   * ask. Typed linkage only; image-turn gates are untouched.
+   * Single ambiguity gate for the information flow. Authorized read-only
+   * requests execute despite extractor ambiguity: the lookup runs and the
+   * reply model resolves using the consolidated profile, the executed
+   * results and the conversation, asking only when the remaining ambiguity
+   * prevents a useful answer. Execution is withheld only when no executable
+   * read remains (bare ambiguity with no purchase/event/faq read, or a
+   * host-withdrawal faq whose handoff side effect still needs an explicit
+   * target). Thread-continuation turns (retired phone recovery,
+   * last-completed context) always execute, and a receipt-anchored approval
+   * boundary still answers from the record. The prior single-image and
+   * servable-candidate carve-outs are subsumed here: any live read executes,
+   * so no per-case exception is needed. Typed evidence only; no phrase
+   * detection, no new state, no extra model call. Mutation authorization is
+   * untouched: executing actions still conflict above and RSVP writes still
+   * require an explicit requested action with verified event/guest.
    */
-  private priorSingleImageResolvesAmbiguity(extraction: ExtractionResult): boolean {
-    return (extraction.imageReference?.status ?? 'none') === 'prior_single';
-  }
-
-  /**
-   * Mixed-availability ambiguity carrying an available servable read does
-   * not divert the information flow to a clarification question when a live
-   * purchase/event request can serve the fact: the lookup executes and the
-   * record answers. Typed candidate IDs, manifest availability and request
-   * kinds only; no phrase detection, no new state.
-   */
-  private availableReadServesAmbiguousRequest(extraction: ExtractionResult): boolean {
-    const candidates = extraction.ambiguity?.candidateOperations ?? [];
-    if (candidates.length === 0) return false;
-    const hasLiveRequest = extraction.informationRequests.some((request) =>
-      request.kind === 'purchase' || request.kind === 'associated_event');
-    if (!hasLiveRequest) return false;
-    return candidates.some((candidate) =>
-      isServableInformationRead(candidate) &&
-      this.capabilityManifest[candidate]?.available === true);
+  private shouldWithholdReadsForAmbiguity(args: {
+    extraction: ExtractionResult;
+    requests: PendingInformationRequest[];
+    plan: PlanSnapshot;
+    preservingLastCompletedContext: boolean;
+    isRetiredPhoneConfirmationRecovery: boolean;
+  }): boolean {
+    if (args.extraction.ambiguity?.status !== 'ambiguous') return false;
+    if (args.preservingLastCompletedContext || args.isRetiredPhoneConfirmationRecovery) return false;
+    const hasExecutableRead = args.requests.some((request) =>
+      request.kind === 'purchase' ||
+      request.kind === 'associated_event' ||
+      (request.kind === 'faq' && !request.hostWithdrawal));
+    if (hasExecutableRead) return false;
+    if (this.approvalBoundaryServesAmbiguousRequest({
+      extraction: args.extraction,
+      plan: args.plan,
+    })) return false;
+    return true;
   }
 
   /**
@@ -7474,9 +7619,17 @@ export class AgentService {
       return this.handleHostWithdrawalInformation(args, planForInformation, requests);
     }
 
-    const hasActionConflict =
-      args.extraction.actionIntent !== null &&
-      requests.length > 0;
+    // Accountless preemption repair: only an action executing this turn
+    // (typed rsvpAction, closeAction or candidate guest id) conflicts with
+    // information work. A bare actionIntent — including a past-tense
+    // attestation of an already completed action carried as context — never
+    // preempts the lookup: the phone-scoped read must still run. Typed
+    // evidence only; no keyword matching.
+    const executesActionThisTurn =
+      (args.extraction.rsvpAction !== null && args.extraction.rsvpAction !== undefined) ||
+      (args.extraction.closeAction !== null && args.extraction.closeAction !== undefined) ||
+      (args.extraction.rsvpCandidateGuestId !== null && args.extraction.rsvpCandidateGuestId !== undefined);
+    const hasActionConflict = executesActionThisTurn && requests.length > 0;
     const isRetiredPhoneConfirmationRecovery =
       planForInformation.user_auth.awaiting_phone_confirmation &&
       Boolean(args.inbound.contactPhone) &&
@@ -7484,16 +7637,13 @@ export class AgentService {
         (request) =>
           request.kind === 'associated_event' || request.kind === 'purchase',
       );
-    const hasAmbiguity =
-      args.extraction.ambiguity?.status === 'ambiguous' &&
-      !preservingLastCompletedContext &&
-      !isRetiredPhoneConfirmationRecovery &&
-      !this.priorSingleImageResolvesAmbiguity(args.extraction) &&
-      !this.availableReadServesAmbiguousRequest(args.extraction) &&
-      !this.approvalBoundaryServesAmbiguousRequest({
-        extraction: args.extraction,
-        plan: planForInformation,
-      });
+    const hasAmbiguity = this.shouldWithholdReadsForAmbiguity({
+      extraction: args.extraction,
+      requests,
+      plan: planForInformation,
+      preservingLastCompletedContext,
+      isRetiredPhoneConfirmationRecovery,
+    });
     const informationExtraction = isRetiredPhoneConfirmationRecovery ||
       preservingLastCompletedContext
       ? {
@@ -7514,6 +7664,10 @@ export class AgentService {
       : args.extraction;
     let informationResults: InformationTaskResult[] = [];
     let informationSummaries: InformationExecutionSummary[] = [];
+    // P1 canonical profile entry snapshot, built before reference
+    // resolution needs evidence and reused through reply. Null for pure
+    // public FAQ / planning-only turns (no prefetch).
+    let entryCustomerSnapshot: CustomerContextSnapshot | null = null;
     let operationalNote: string | null = null;
     const protectedAuthAction = requests
       .filter((request) => request.kind === 'purchase' || request.kind === 'associated_event')
@@ -7612,6 +7766,17 @@ export class AgentService {
       });
     } else {
       const informationStartedAt = Date.now();
+      // P1 canonical profile entry: build the entry snapshot on
+      // customer_assistance entry before reference resolution needs
+      // evidence. The owner router is preserved; pure public FAQ and
+      // planning-only turns never prefetch customer data. The same
+      // snapshot object enriches through execution + linked detail + reply.
+      entryCustomerSnapshot = this.resolveEntryCustomerSnapshot({
+        plan: planForInformation,
+        extraction: informationExtraction,
+        requests,
+        contactPhone: args.inbound.contactPhone,
+      });
       const authResolution = await this.resolveInformationAuthentication({
         plan: planForInformation,
         userMessage: args.inbound.text,
@@ -7741,11 +7906,17 @@ export class AgentService {
         guestEventResult?.status === 'completed' &&
         guestEventResult.kind === 'associated_event'
       ) {
-        const currentReminderForEvent = args.messageContext.recentMessages
-          .filter((message) => message.direction === 'outbound'
-            && (message.source === 'frontend_followup' || message.source === 'admin_campaign'))
-          .sort((left, right) => left.id - right.id)
-          .at(-1) ?? null;
+        // P2: the vigente reminder is the newest provenance-bound campaign
+        // message (outbound only, server-time order). Inbound text claiming
+        // to be a campaign never counts as the reminder.
+        const newestProvenanceCampaign = selectProvenanceBoundCampaignMessages(
+          args.messageContext.recentMessages,
+        ).at(-1) ?? null;
+        const currentReminderForEvent = newestProvenanceCampaign !== null
+          ? (args.messageContext.recentMessages.find(
+            (message) => message.id === newestProvenanceCampaign.sourceMessageId,
+          ) ?? null)
+          : null;
         const detailedEventCount = guestEventResult.result.events.filter(
           (event) => event.detail !== undefined,
         ).length;
@@ -7944,6 +8115,7 @@ export class AgentService {
       informationResults,
       informationSummaries,
       contactPhone: args.inbound.contactPhone,
+      entrySnapshot: entryCustomerSnapshot,
       orchestrator: this.dependencies.informationOrchestrator ?? new InformationOrchestrator({
         knowledgeGateway: new NoopKnowledgeRetrievalGateway(),
         providerGateway: this.dependencies.providerGateway,

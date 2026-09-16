@@ -5,11 +5,15 @@ version: 1
 description: An explicit privacy or security refusal must close the protected request without repeating email authentication or forcing human support.
 tags: [live, behavior, authentication, privacy, refusal, reported-interaction]
 targetModes: [live_lambda]
+backendFixture:
+  scenario: auth-refusal-closed
 inputs:
   - text: No doy mis datos personales y no quiero continuar con esta verificación.
     channel: whatsapp
     contactPhone: "$PHONE_FIRST_FALLBACK_CONTACT_PHONE"
     sessionId: live-auth-refusal-closes-query-session
+    backendFixture:
+      scenario: auth-refusal-closed
 seedPlan:
   current_node: resolver_consultas_informativas
   user_auth:

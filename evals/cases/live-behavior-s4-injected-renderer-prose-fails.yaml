@@ -5,9 +5,13 @@ version: 1
 description: S4/D6 full-context provenance control through live Lambda. A genuine Miraflores provider card must deliver with verified output origin and the correct card identity; reference-serializer parity means injected or drifted renderer prose cannot verify itself.
 tags: [live, behavior, provider-selection, reference, location, provenance, s4]
 targetModes: [live_lambda]
+backendFixture:
+  scenario: provider-miraflores-option
 inputs:
   - text: Quiero la opción que está en Miraflores.
     sessionId: live-s4-renderer-provenance-session
+    backendFixture:
+      scenario: provider-miraflores-option
 seedPlan:
   current_node: recomendar
   event_type: boda

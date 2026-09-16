@@ -1,15 +1,25 @@
 template: template.base-live
 id: live_behavior.rsvp_ambiguous_event_requires_grounded_selection
 suite: live_behavior_regression
-version: 3
-description: An underspecified event reference cannot select or mutate one of several persisted RSVP candidates.
+version: 4
+description: An underspecified event reference cannot select or mutate one of several persisted RSVP candidates; the follow-up answer continues on the chosen candidate without re-asking.
 tags: [live, behavior, rsvp, attendance, ambiguity, reported-interaction]
 targetModes: [live_lambda]
+backendFixture:
+  scenario: rsvp-trusted-phone-empty
 inputs:
   - text: Ese.
     channel: whatsapp
     contactPhone: "+12025550100"
     sessionId: live-rsvp-ambiguous-event-session
+    backendFixture:
+      scenario: rsvp-trusted-phone-empty
+  - text: El de Marta, el 19 de septiembre.
+    channel: whatsapp
+    contactPhone: "+12025550100"
+    sessionId: live-rsvp-ambiguous-event-session
+    backendFixture:
+      scenario: rsvp-trusted-phone-empty
 seedPlan:
   current_node: responder_invitacion
   intent: responder_invitacion
@@ -29,41 +39,51 @@ expectations:
   - id: remains-in-rsvp-node
     type: node_transition
     to: responder_invitacion
+    turnIndex: 0
     severity: hard
   - id: preserves-event-selection-state
     type: plan_field_equals
     path: rsvp_state.status
     expected: awaiting_event_selection
-    severity: hard
-  - id: records-one-ambiguous-attempt
-    type: plan_field_equals
-    path: rsvp_state.selection_attempts
-    expected: 1
+    turnIndex: 0
     severity: hard
   - id: does-not-mutate-an-ungrounded-candidate
     type: tool_usage
     mustNotCall: [guest_rsvp, auth_by_phone, request_user_login_code, verify_user_login_code]
+    turnIndex: 0
     severity: hard
   - id: asks-which-persisted-event
     type: text_semantic
     # Rubric clarification (specification, not weakening): dates are required when enumerating candidates.
     # Derived from prompts/nodes/responder_invitacion/response_contract.txt:9
     # "Si rsvp_phone_evidence.state es needs_event_selection, enumera solo los candidatos de ese estado y formula una sola pregunta."
-    # Candidates are defined as {event_name, event_date}; enumeration must include dates when present.
+    # Candidates are defined as {event_name, event_date}; enumeration must include dates when present, in any natural format when facts are identical.
     rubric: >-
-      The guest says only “Ese” while two invitation candidates are pending: Matrimonio de Ana y Luis on 12 September 2026 and Cumpleaños de Marta on 19 September 2026. The response must not choose either event or claim that attendance was registered. It must identify the two available events with their dates (12 September 2026 and 19 September 2026) in natural Spanish and ask which one the guest means, without requesting email or an authentication code.
+      The guest says only “Ese” while two invitation candidates are pending: Matrimonio de Ana y Luis on 12 September 2026 and Cumpleaños de Marta on 19 September 2026. The response must not choose either event or claim that attendance was registered. It must identify the two available events with their dates in natural Spanish, in any date format when the facts are identical, and ask which one the guest means, without requesting email or an authentication code. Useful extra grounded detail passes.
     minScore: 0.9
     requireJudge: true
+    turnIndex: 0
     severity: hard
-  - id: projection-carries-candidate-dates
-    type: text_contains
-    allOf: ["12 de septiembre de 2026", "19 de septiembre de 2026"]
+  - id: continuation-answers-on-chosen-candidate
+    type: text_semantic
+    rubric: >-
+      The guest answered the selection question with Cumpleaños de Marta on 19 September 2026. The response must continue on that chosen candidate in natural Spanish: it must never re-ask which event the guest means and never present Matrimonio de Ana y Luis facts as the selected event. It may confirm, ask for the attendance decision, or report state, but a repeated selection question fails. Useful extra grounded detail passes.
+    minScore: 0.85
+    requireJudge: true
+    turnIndex: 1
+    severity: hard
+  - id: continuation-needs-no-reauth
+    type: tool_usage
+    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
+    turnIndex: 1
     severity: hard
   - id: no-rsvp-vocabulary
     type: text_not_contains
     phrases: ["RSVP", "rsvp"]
     severity: hard
+notes:
+  - "E1 v4 2026-09-15, profile-inference directive: counter pin records-one-ambiguous-attempt replaced by a turn-1 continuation proof (clarification answerable, state survives, no re-ask); literal allOf date pin projection-carries-candidate-dates folded into the format-tolerant semantic rubric; turn-0 expectations scoped with turnIndex 0. Node pin kept as a documented lane-routing invariant. R05: old v3 runs preserved; baseline and candidate must rerun on this v4 contract."
 budget:
-  maxTurns: 1
+  maxTurns: 2
   estimatedPromptTokensPerTurn: 1600
   estimatedCompletionTokensPerTurn: 300

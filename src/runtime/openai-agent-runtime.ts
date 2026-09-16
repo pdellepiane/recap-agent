@@ -304,6 +304,37 @@ type RuntimeContext = {
   toolUsage: ComposeReplyRequest['toolUsage'];
 };
 
+/**
+ * P3 canonical-profile reference for RSVP evidence. When the canonical
+ * customer_context profile is present on the turn, overlapping customer
+ * facts (event names, dates, attendance states) live there exactly once;
+ * this reference keeps only the independent outcome facts (state,
+ * coverage, resolution, reason) plus counts and a pointer to the profile.
+ * When no profile is present the full rsvp_phone_evidence shape travels
+ * unchanged, so owners without a profile keep their evidence.
+ */
+export type RsvpProfileReference =
+  | {
+      state: 'resolved_single';
+      profile_ref: 'customer_context';
+      coverage: 'complete' | 'partial';
+      resolution: 'authoritative_invitation' | 'event_association_only' | 'not_found';
+    }
+  | {
+      state: 'needs_event_selection';
+      profile_ref: 'customer_context';
+      coverage: 'complete' | 'partial';
+      resolution: 'authoritative_invitation' | 'event_association_only' | 'not_found';
+      candidate_count: number;
+    }
+  | {
+      state: 'unavailable';
+      profile_ref: 'customer_context';
+      coverage: 'complete' | 'partial';
+      resolution: 'authoritative_invitation' | 'event_association_only' | 'not_found';
+      reason: 'no_invitations' | 'missing_event_identity' | 'lookup_failed';
+    };
+
 type ReplyTurnEvidence = {
   nodes: {
     previous: string;
@@ -352,7 +383,7 @@ type ReplyTurnEvidence = {
     no_further_credential_requests?: boolean;
   } | null;
   close_submission_receipt?: CloseSubmissionInput | null;
-  rsvp_phone_evidence: ComposeReplyRequest['rsvpPhoneEvidence'];
+  rsvp_phone_evidence: ComposeReplyRequest['rsvpPhoneEvidence'] | RsvpProfileReference | null;
   rsvp_party: {
     scope: string;
     mentioned_names: string[];
@@ -2259,7 +2290,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
             args.request.extraction.ambiguity?.status === 'ambiguous',
           ),
       information_results: (args.request.informationResults ?? []).map((result) =>
-        this.projectInformationResultForReply(result, args.request),
+        this.projectInformationResultForReplyWithProfile(result, args.request),
       ),
       capability_outcome: args.request.capabilityDecision
         ? {
@@ -2320,7 +2351,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       ...(args.request.currentNode === 'crear_lead_cerrar'
         ? { close_submission_receipt: buildCloseSubmissionReceipt(args.request.toolUsage.outputs) }
         : {}),
-      rsvp_phone_evidence: args.request.rsvpPhoneEvidence ?? null,
+      rsvp_phone_evidence: this.projectRsvpEvidenceWithProfile(args.request),
       rsvp_party: args.request.currentNode === 'responder_invitacion' && args.request.extraction.rsvpParty
           ? {
             scope: args.request.extraction.rsvpParty.scope,
@@ -3947,6 +3978,116 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     }
 
     return value;
+  }
+
+  /**
+   * P3 single-serialization projection. When the canonical customer_context
+   * profile is present, overlapping customer facts in completed purchase /
+   * associated_event results are replaced with a reference to the profile:
+   * independent effect/outcome facts (status, coverage, outcome kind,
+   * reference counts, access provenance, disclosures, next action,
+   * missing/ambiguous inputs) are preserved, the duplicated customer-data
+   * payload travels only in customer_context. FAQ evidence, needs_input
+   * guidance and failed messages carry no customer facts and travel
+   * unchanged. When no profile is present the full projection travels, so
+   * owners without a profile keep their evidence. No compatibility shim:
+   * consumers read customer_context for facts on profile turns. No extra
+   * model pass, no new histories or tools.
+   */
+  private projectInformationResultForReplyWithProfile(
+    result: InformationTaskResult,
+    request: ComposeReplyRequest,
+  ): unknown {
+    if (request.customerContext == null) {
+      return this.projectInformationResultForReply(result, request);
+    }
+    if (result.status === 'completed' && result.kind === 'purchase') {
+      const purchaseRequests = request.extraction.informationRequests.filter(
+        (informationRequest) => informationRequest.kind === 'purchase',
+      );
+      const reportedPurchase = purchaseRequests.find(
+        (informationRequest) => informationRequest.amount !== null &&
+          informationRequest.amount !== undefined,
+      );
+      const full = projectCompletedPurchaseForModel(result, {
+        requestedAspects: purchaseRequests.flatMap(
+          (informationRequest) => informationRequest.aspects,
+        ),
+        referenceAuthorized: result.accessMethod === 'authenticated_account',
+        userReported: {
+          amount: reportedPurchase?.amount ?? null,
+        },
+        permittedNextAction: request.extraction.requestedOperation === 'purchase.modify'
+          ? 'human_support'
+          : null,
+        missingInputs: result.needsSelection ? ['purchase_selection'] : [],
+        ambiguousInputs: request.extraction.ambiguity?.status === 'ambiguous'
+          ? ['purchase_interpretation']
+          : [],
+      }) as Record<string, unknown>;
+      const { outcome: _droppedCustomerPayload, ...reference } = full;
+      void _droppedCustomerPayload;
+      return { ...reference, profile_ref: 'customer_context' };
+    }
+    if (result.status === 'completed' && result.kind === 'associated_event') {
+      const stripped = this.stripRawFields(result) as Record<string, unknown>;
+      const nested = (stripped.result ?? {}) as Record<string, unknown>;
+      const events = Array.isArray(nested.events) ? nested.events : [];
+      const eventIds = events.flatMap((event) => {
+        const id = (event as Record<string, unknown>).eventId;
+        return typeof id === 'number' || typeof id === 'string' ? [id] : [];
+      });
+      return {
+        requestId: stripped.requestId,
+        kind: stripped.kind,
+        status: stripped.status,
+        profile_ref: 'customer_context',
+        event_count: events.length,
+        event_ids: eventIds,
+        ...('accessMethod' in stripped ? { access_method: stripped.accessMethod } : {}),
+      };
+    }
+    return this.projectInformationResultForReply(result, request);
+  }
+
+  /**
+   * P3 RSVP single-serialization projection. With a canonical profile
+   * present, per-record names/dates/states (already in
+   * customer_context.invitations + candidates) collapse to a profile
+   * reference carrying only state/coverage/resolution/reason + counts.
+   * Without a profile the full evidence travels unchanged.
+   */
+  private projectRsvpEvidenceWithProfile(
+    request: ComposeReplyRequest,
+  ): ReplyTurnEvidence['rsvp_phone_evidence'] {
+    const evidence = request.rsvpPhoneEvidence ?? null;
+    if (evidence === null || request.customerContext == null) {
+      return evidence;
+    }
+    if (evidence.state === 'resolved_single') {
+      return {
+        state: 'resolved_single',
+        profile_ref: 'customer_context',
+        coverage: evidence.coverage,
+        resolution: evidence.resolution,
+      };
+    }
+    if (evidence.state === 'needs_event_selection') {
+      return {
+        state: 'needs_event_selection',
+        profile_ref: 'customer_context',
+        coverage: evidence.coverage,
+        resolution: evidence.resolution,
+        candidate_count: evidence.candidates.length,
+      };
+    }
+    return {
+      state: 'unavailable',
+      profile_ref: 'customer_context',
+      coverage: evidence.coverage,
+      resolution: evidence.resolution,
+      reason: evidence.reason,
+    };
   }
 
   private projectInformationResultForReply(

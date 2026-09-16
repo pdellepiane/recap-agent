@@ -1,27 +1,40 @@
 template: template.base-live
 id: live_behavior.wedding_planner_location_completes_search
 suite: live_behavior_regression
-version: 1
+version: 2
 description: A wedding-planner request should collect the remaining search context compactly and search immediately when the location follow-up completes it.
 tags: [live, behavior, planning, provider-search, reported-interaction]
+backendFixture:
+  scenario: plan-wedding-planner-lima
 inputs:
   - text: Hola!
     sessionId: live-behavior-wedding-planner-location-session
+    backendFixture:
+      scenario: plan-wedding-planner-lima
   - text: Estoy buscando un proveedor para mi matrimonio, ¿qué opciones tienes? O mejor, dime los wedding planners que tengas.
     sessionId: live-behavior-wedding-planner-location-session
+    backendFixture:
+      scenario: plan-wedding-planner-lima
   - text: Entre 100-200 aprox
     sessionId: live-behavior-wedding-planner-location-session
+    backendFixture:
+      scenario: plan-wedding-planner-lima
   - text: En Lima Perú
     sessionId: live-behavior-wedding-planner-location-session
+    backendFixture:
+      scenario: plan-wedding-planner-lima
 expectations:
-  - id: explicit-need-asks-location
-    type: text_contains
-    anyOf: [ciudad, zona, ubicación, dónde]
+  - id: explicit-need-asks-missing-context
+    type: text_semantic
+    rubric: >-
+      After the user asks for wedding planners without giving a location or guest count, the turn-1 response must naturally ask for the missing search context (the event location and the guest scale or budget) in the model's own Spanish wording without any fixed required word. Any natural question covering both missing fields in the same turn passes; a search before that context, or dropping either field, fails.
+    minScore: 0.85
+    requireJudge: true
     turnIndex: 1
-  - id: explicit-need-asks-scale-or-budget-in-same-turn
-    type: text_contains
-    anyOf: [invitados, presupuesto]
-    turnIndex: 1
+    severity: hard
+  # E1 v2: literal anyOf pins explicit-need-asks-location and explicit-need-asks-scale-or-budget-in-same-turn
+  # replaced by the semantic outcome check above; mandatory vocabulary never gates natural wording.
+  # R05: old v1 runs preserved; baseline and candidate must rerun on this v2 contract.
   - id: no-search-before-required-context
     type: tool_usage
     mustNotCall:

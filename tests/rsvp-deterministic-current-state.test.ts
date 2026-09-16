@@ -52,7 +52,8 @@ describe('RSVP model output and typed current state', () => {
       renderers: { whatsapp: new WhatsAppMessageRenderer() },
     });
     const result = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'user-declining', text: '¿Cómo figura mi asistencia?', messageId: 'msg-2', receivedAt: '2026-08-27T15:00:00.000Z', contactPhone: '+51973296571' });
-    expect(result.plan.rsvp_state).toMatchObject({ status: 'awaiting_action', pending_action: 'attending' });
+    // P3 (P2 intended change): read-only never stages awaiting_action.
+    expect(result.plan.rsvp_state).toMatchObject({ status: 'none', pending_action: null });
     expect(result.outbound.text).toContain('MODELO_OFERTA');
     expect(runtime.composeRequests[0]?.errorMessage).toContain('"invitation_state":"declining"');
   });

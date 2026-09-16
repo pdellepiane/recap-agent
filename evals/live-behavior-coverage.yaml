@@ -967,3 +967,66 @@ behaviorChanges:
 # was implemented for them in any commit, so no implementedBy SHA exists and
 # no fabricated hash is recorded here. Register distinct entries with real
 # commit SHAs only after an implementing change lands and passes the gate.
+# 2026-09-15 Packet E1 note (evaluation worker, uncommitted working tree):
+# the entries below implement the profile-inference directive expectation
+# audit. implementedBy temporarily names the working-tree HEAD (3c85b877);
+# the coordinator replaces each with the real atomic-commit SHA at commit
+# time, one entry per behavior change, never reusing an older entry as
+# coverage for a later change.
+  - id: e1-host-declining-unique-guest-readonly
+    implementedBy: 3c85b877
+    liveCaseIds: [live_behavior.rsvp_host_set_declining_unique_guest]
+  - id: e1-host-declining-ambiguous-identity-distinguishable
+    implementedBy: 3c85b877
+    liveCaseIds: [live_behavior.rsvp_host_set_declining_consistent]
+  - id: e1-ambiguous-selection-continuation-proof
+    implementedBy: 3c85b877
+    liveCaseIds: [live_behavior.rsvp_ambiguous_event_requires_grounded_selection]
+  - id: e1-judge-only-image-ground-truth
+    implementedBy: 3c85b877
+    liveCaseIds: [live_behavior.image_file_delayed_question, live_behavior.image_readable_captionless]
+  - id: e1-s07-complete-utterance-zero-write
+    implementedBy: 3c85b877
+    liveCaseIds: [live_behavior.s07_attending_identical_no_write]
+  - id: e1-otp-attempt-counter-removal
+    implementedBy: 3c85b877
+    liveCaseIds: [live_behavior.repeated_otp_failure_preserves_gift_query]
+  - id: e1-literal-pin-to-semantic-wedding-planner
+    implementedBy: 3c85b877
+    liveCaseIds: [live_behavior.wedding_planner_location_completes_search]
+  - id: e1-inference-tolerant-judge-rules
+    implementedBy: 3c85b877
+    liveCaseIds: [live_behavior.rsvp_tia_niur_ambiguous_clarifies, live_behavior.current_campaign_order_over_historical_declined_maria_jose, live_behavior.spanish_only_mixed_language_request]
+# 2026-09-15 Packet E2 note (evaluation worker, uncommitted working tree):
+# diagnostic truth only: raw gate verdicts stay separate from the adjudicated
+# cause, fixture inconsistency is reported distinctly, and turn-boundary
+# evidence isolation is proved by tests. No runtime, prompt, or conversational
+# behavior change. implementedBy temporarily names the working-tree HEAD
+# (3c85b877); the coordinator replaces each with the real atomic-commit SHA
+# at commit time, one entry per behavior change, never reusing an older entry
+# as coverage for a later change.
+  - id: e2-raw-verdict-vs-adjudicated-cause
+    implementedBy: 3c85b877
+    liveCaseIds: [live_behavior.s11_rsvp_durability_confirms_once, live_behavior.s07_attending_identical_no_write]
+  - id: e2-fixture-inconsistency-reporting
+    implementedBy: 3c85b877
+    liveCaseIds: [live_behavior.image_file_delayed_question]
+  - id: e2-turn-boundary-evidence-isolation
+    implementedBy: 3c85b877
+    liveCaseIds: [live_behavior.rsvp_ambiguous_event_requires_grounded_selection]
+# 2026-09-16 oracle-audit follow-up (Fixer, uncommitted working tree):
+# narrow typed-action conflict gate, read-only declining offer on typed
+# signal, and venue street parity already had implementing bytes in the tree
+# but no registry entries. implementedBy temporarily names the working-tree
+# HEAD (3c85b877); the coordinator replaces each with the real atomic-commit
+# SHA at commit time, one entry per behavior change, never reusing an older
+# entry as coverage for a later change.
+  - id: narrow-typed-action-conflict-gate
+    implementedBy: 3c85b877
+    liveCaseIds: [live_behavior.accountless_event_answer_precedes_remaining_private_auth]
+  - id: read-only-declining-offer-on-typed-signal
+    implementedBy: 3c85b877
+    liveCaseIds: [live_behavior.rsvp_declined_state_offers_one_change]
+  - id: venue-street-parity-event-detail-moments
+    implementedBy: 3c85b877
+    liveCaseIds: [live_behavior.accountless_guest_event_uses_phone_without_otp]

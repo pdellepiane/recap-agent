@@ -94,6 +94,13 @@ export type InvitationEventSummary = {
   readonly eventName: string | null;
   readonly role: 'guest' | 'host' | 'owner' | null;
   readonly rsvpState: 'pending' | 'attending' | 'declining' | 'unknown';
+  /**
+   * P3 fact parity: server event datetime (date + hour when the backend
+   * provides time). Sparse: present only when the completed result reports
+   * it, so event-fact answers read date/hour from the profile instead of a
+   * second facts payload.
+   */
+  readonly eventDatetime?: string;
   readonly address: CustomerAddress | null;
 };
 
@@ -176,6 +183,38 @@ export function classifyAddress(args: {
     city,
     country,
   };
+}
+
+/**
+ * Venue parity: first resolved moment locationDescription/locationReference
+ * maps into the existing CustomerAddress.street. One mapping, no new field,
+ * single serialization. Nothing invented: null when no moment carries venue.
+ */
+function resolveVenueStreet(event: {
+  readonly detail?: {
+    readonly moments?: readonly {
+      readonly locationDescription?: string | null;
+      readonly locationReference?: string | null;
+      readonly position?: number | null;
+    }[] | null;
+  } | null;
+}): string | null {
+  const moments = event.detail?.moments ?? [];
+  const ordered = [...moments].sort(
+    (a, b) => (a.position ?? 0) - (b.position ?? 0),
+  );
+  const first = ordered.find(
+    (moment) =>
+      (moment.locationDescription?.trim() ?? '') !== '' ||
+      (moment.locationReference?.trim() ?? '') !== '',
+  );
+  if (!first) return null;
+  const parts = [
+    first.locationDescription?.trim() || null,
+    first.locationReference?.trim() || null,
+  ].filter((part): part is string => part !== null && part !== '');
+  if (parts.length === 0) return null;
+  return parts.join(', ');
 }
 
 export type CustomerContextSnapshot = {
@@ -369,6 +408,21 @@ export function assembleCustomerContext(args: {
     statusForResult(result, purchaseSummaries[index]),
   );
   const purchasePagination = paginationFor(purchaseSummaries);
+  // P1 canonical coalesce: duplicate route results for the same stable
+  // orderId + compatible access scope merge without detail loss; cross-scope
+  // duplicates stay explicit so cached broader access never masquerades as
+  // current authorization. Failed routes contribute nothing here, so known
+  // data assembled elsewhere is never erased by a failure.
+  const coalescedDetailed = coalescePurchasesByStableId(
+    purchaseResults.flatMap((result) =>
+      result.status === 'completed'
+        ? result.purchases.map((purchase) => ({
+          purchase,
+          accessMethod: result.accessMethod ?? null,
+        }))
+        : [],
+    ),
+  );
   const purchasesCarts: PurchasesCartsSection = purchaseResults.length === 0
     ? {
       section: 'purchases_carts',
@@ -379,57 +433,46 @@ export function assembleCustomerContext(args: {
     }
     : {
       section: 'purchases_carts',
-      status: worstStatus(purchaseStatuses.map((entry) => entry.status)),
+      status: purchaseStatuses.some((entry) => entry.status === 'ready')
+        ? 'ready'
+        : worstStatus(purchaseStatuses.map((entry) => entry.status)),
       source: purchaseResults.length > 0 ? 'agent_api' : null,
       fetchedAt: args.nowIso,
       scope: args.identity?.scope ?? null,
       completeness: purchasePagination.paginationExhausted === false ||
-        purchaseStatuses.some((entry) => entry.completeness === 'partial')
+        purchaseStatuses.some((entry) => entry.completeness === 'partial') ||
+        (purchaseStatuses.some((entry) => entry.status === 'ready') &&
+          purchaseStatuses.some((entry) => entry.status === 'failed' || entry.status === 'unavailable'))
         ? 'partial'
         : 'complete',
       paginationExhausted: purchasePagination.paginationExhausted,
       historyLimit: purchasePagination.historyLimit,
-      purchases: purchaseResults.flatMap((result) =>
-        result.status === 'completed'
-          ? result.purchases.map((purchase) => ({
-            orderId: purchase.orderId,
-            eventId: purchase.eventId ?? null,
-            eventName: purchase.eventName ?? null,
-            paymentStatus: purchase.paymentStatus,
-            grandTotal: purchase.grandTotal,
-          }))
-          : [],
-      ),
+      purchases: coalescedDetailed.map((purchase) => ({
+        orderId: purchase.orderId,
+        eventId: purchase.eventId ?? null,
+        eventName: purchase.eventName ?? null,
+        paymentStatus: purchase.paymentStatus,
+        grandTotal: purchase.grandTotal,
+      })),
       carts: purchaseResults.flatMap((result) =>
         result.status === 'completed' ? (result.carts ?? []) : [],
       ),
-      detailedPurchases: purchaseResults.flatMap((result) =>
-        result.status === 'completed' ? result.purchases : [],
-      ),
+      detailedPurchases: coalescedDetailed,
     };
 
   const eventStatuses = eventResults.map((result, index) =>
     statusForResult(result, eventSummaries[index]),
   );
   const eventPagination = paginationFor(eventSummaries);
-  const invitationsEvents: InvitationsEventsSection = eventResults.length === 0
-    ? {
-      section: 'invitations_events',
-      ...emptyBase(),
-      invitations: [],
-    }
-    : {
-      section: 'invitations_events',
-      status: worstStatus(eventStatuses.map((entry) => entry.status)),
-      source: 'agent_api',
-      fetchedAt: args.nowIso,
-      scope: args.identity?.scope ?? null,
-      completeness: eventPagination.paginationExhausted === false ? 'partial' : 'complete',
-      paginationExhausted: eventPagination.paginationExhausted,
-      historyLimit: eventPagination.historyLimit,
-      invitations: eventResults.flatMap((result) =>
-        result.status === 'completed'
-          ? result.result.events.map((event) => ({
+  // P1 slot coalesce: stable (event + guest + scope) slots collapse
+  // duplicate reads; same event with different guests keeps distinct slots.
+  // Names never form a key, so cross-route name equality is not identity.
+  const coalescedInvitations = coalesceInvitationsBySlot(
+    eventResults.flatMap((result) =>
+      result.status === 'completed'
+        ? result.result.events.flatMap((event) => {
+          if (event.eventId === null || event.eventId === undefined) return [];
+          const invitation: InvitationEventSummary = {
             eventId: event.eventId,
             eventName: event.name,
             role: event.relation === 'guest' || event.relation === 'host' || event.relation === 'owner'
@@ -444,15 +487,45 @@ export function assembleCustomerContext(args: {
                   : event.guestStatus.willAttend === false
                     ? 'declining'
                     : 'unknown',
+            ...(event.datetime ? { eventDatetime: event.datetime } : {}),
             address: classifyAddress({
               kind: 'venue',
               source: 'event_detail',
+              street: resolveVenueStreet(event),
               city: event.place,
               country: event.country,
             }),
-          }))
-          : [],
-      ),
+          };
+          return [{
+            invitation,
+            guestId: event.guestId ?? null,
+            accessScope: result.accessMethod ?? args.identity?.scope ?? null,
+          }];
+        })
+        : [],
+    ),
+  );
+  const invitationsEvents: InvitationsEventsSection = eventResults.length === 0
+    ? {
+      section: 'invitations_events',
+      ...emptyBase(),
+      invitations: [],
+    }
+    : {
+      section: 'invitations_events',
+      status: eventStatuses.some((entry) => entry.status === 'ready')
+        ? 'ready'
+        : worstStatus(eventStatuses.map((entry) => entry.status)),
+      source: 'agent_api',
+      fetchedAt: args.nowIso,
+      scope: args.identity?.scope ?? null,
+      completeness: eventPagination.paginationExhausted === false ||
+        (eventStatuses.some((entry) => entry.status === 'ready') &&
+          eventStatuses.some((entry) => entry.status === 'failed' || entry.status === 'unavailable'))
+        ? 'partial' : 'complete',
+      paginationExhausted: eventPagination.paginationExhausted,
+      historyLimit: eventPagination.historyLimit,
+      invitations: coalescedInvitations,
     };
 
   const actionOutcomes: ActionOutcomesSection = {
@@ -582,6 +655,26 @@ export type CustomerContextProjection = {
     readonly eventIds: readonly (number | string)[];
     readonly pendingQuestion: string | null;
   };
+  /**
+   * P3 compact candidate index. One lightweight summary per known
+   * candidate (all authorized orders + invitations in stable snapshot
+   * order), carrying only identifiers, names, dates and record state —
+   * never amounts or venue detail. Full authorized detail for the
+   * resolved/relevant records travels in purchases/detailedPurchases/
+   * invitations below, so the model sees every candidate once without a
+   * second facts payload. Null fields are omitted so noise never grows.
+   */
+  readonly candidates: readonly CompactCandidateSummary[];
+  /**
+   * P3 section availability. Retains the authoritative load state behind
+   * the projection (ready, not_found, unavailable, failed, partial via
+   * completeness) so "no other records" is never inferred from an
+   * unrequested or failed source.
+   */
+  readonly sections: {
+    readonly purchasesCarts: CustomerSectionStatus;
+    readonly invitationsEvents: CustomerSectionStatus;
+  };
   readonly purchases: readonly PurchaseCartSummary[];
   /** Carts are retained for later cart questions but excluded from payment focus. */
   readonly carts: readonly CartInformation[];
@@ -591,6 +684,76 @@ export type CustomerContextProjection = {
   /** Null/absent when no linked-detail enrichment ran on this turn. */
   readonly enrichment?: CustomerEnrichmentSummary | null;
 };
+
+/**
+ * P3 compact candidate summary. Stable field order
+ * (kind, orderId/eventId, eventName, eventDate, state); only set fields
+ * are emitted so duplicate/null-value noise stays out of model input.
+ * Amounts, venue detail and provenance travel only with the resolved
+ * record detail, never here.
+ */
+export type CompactCandidateSummary = {
+  readonly kind: 'order' | 'event';
+  readonly orderId?: string;
+  readonly eventId?: number | string;
+  readonly eventName?: string;
+  readonly eventDate?: string;
+  readonly state?: string;
+};
+
+/**
+ * P3 compact candidate index over the retained snapshot. Every known
+ * authorized purchase and invitation appears once with identifiers, names,
+ * dates and record state only (stable snapshot order, nulls omitted, no
+ * amounts, no venue detail, no provenance). Full detail for the resolved
+ * or relevant records is projected separately, so facts are serialized
+ * once. No date cutoff: historical candidates stay listed.
+ */
+export function buildCompactCandidateSummaries(
+  snapshot: CustomerContextSnapshot,
+): CompactCandidateSummary[] {
+  const candidates: CompactCandidateSummary[] = [];
+  if (
+    snapshot.purchasesCarts.status === 'ready' ||
+    snapshot.purchasesCarts.status === 'not_found'
+  ) {
+    const detailByOrderId = new Map(
+      snapshot.purchasesCarts.detailedPurchases.map((purchase) => [purchase.orderId, purchase] as const),
+    );
+    for (const purchase of snapshot.purchasesCarts.purchases) {
+      const detail = detailByOrderId.get(purchase.orderId);
+      const eventDate = detail?.eventDate ?? detail?.createdAt ?? null;
+      candidates.push({
+        kind: 'order',
+        ...(purchase.orderId.trim().length > 0 ? { orderId: purchase.orderId } : {}),
+        ...(purchase.eventName !== null && purchase.eventName.trim().length > 0
+          ? { eventName: purchase.eventName }
+          : {}),
+        ...(eventDate ? { eventDate } : {}),
+        ...(purchase.paymentStatus !== null && purchase.paymentStatus.trim().length > 0
+          ? { state: purchase.paymentStatus }
+          : {}),
+      });
+    }
+  }
+  if (
+    snapshot.invitationsEvents.status === 'ready' ||
+    snapshot.invitationsEvents.status === 'not_found'
+  ) {
+    for (const invitation of snapshot.invitationsEvents.invitations) {
+      candidates.push({
+        kind: 'event',
+        ...(invitation.eventId !== null ? { eventId: invitation.eventId } : {}),
+        ...(invitation.eventName !== null && invitation.eventName.trim().length > 0
+          ? { eventName: invitation.eventName }
+          : {}),
+        ...(invitation.eventDatetime ? { eventDate: invitation.eventDatetime } : {}),
+        ...(invitation.rsvpState !== 'unknown' ? { state: invitation.rsvpState } : {}),
+      });
+    }
+  }
+  return candidates;
+}
 
 /**
  * Minimum-disclosure projection: common references plus only the
@@ -648,6 +811,16 @@ export function projectCustomerContext(
         invitation.eventId === null ? [] : [invitation.eventId],
       ),
       pendingQuestion: snapshot.currentContext.pendingQuestion,
+    },
+    // P3: compact summaries of ALL candidates in stable snapshot order
+    // (identifiers + names/dates/state only, nulls omitted, no amounts),
+    // while purchases/detailedPurchases/invitations below keep only the
+    // resolved/relevant full detail. Section availability is retained so
+    // exhaustion is never claimed from an unrequested/failed source.
+    candidates: buildCompactCandidateSummaries(snapshot),
+    sections: {
+      purchasesCarts: snapshot.purchasesCarts.status,
+      invitationsEvents: snapshot.invitationsEvents.status,
     },
     purchases: snapshot.purchasesCarts.status === 'ready' && includePurchases
       ? matchingPurchases
@@ -974,6 +1147,306 @@ export function hasConfirmedOutcome(
   return snapshot.actionOutcomes.outcomes.some(
     (outcome) => outcome.dedupeKey === dedupeKey && outcome.receipt === 'confirmed',
   );
+}
+
+/**
+ * Packet P1 canonical profile helpers. One logical profile per turn, built
+ * with existing types and orchestrator caches. Entry snapshot is created on
+ * customer_assistance entry before reference resolution needs evidence;
+ * every authorized lookup result (phone, account, purchase detail, event
+ * detail) enriches the same snapshot. Pure public FAQ / planning-only turns
+ * never prefetch customer data; the owner router is unchanged.
+ */
+
+/** True when every request is public FAQ: no customer prefetch allowed. */
+export function isPurePublicFaqTurn(
+  requests: readonly { kind: string }[],
+): boolean {
+  return requests.length > 0 &&
+    requests.every((request) => request.kind === 'faq');
+}
+
+/**
+ * Entry snapshot before reference resolution needs evidence. Carries
+ * identity + current context only; purchases/invitations stay not_requested
+ * until authorized reads enrich the same object through
+ * mergeExecutionIntoSnapshot. Reused through resolution + reply.
+ */
+export function createEntryCustomerSnapshot(args: {
+  readonly identity: IdentityEvidence | null;
+  readonly currentContext: CurrentContextEvidence | null;
+  readonly nowIso: string;
+}): CustomerContextSnapshot {
+  return assembleCustomerContext({
+    execution: null,
+    identity: args.identity,
+    currentContext: args.currentContext,
+    nowIso: args.nowIso,
+  });
+}
+
+/**
+ * Attendance slot key. Same event with different guests never shares a
+ * slot: the guest id is part of the key, never the display name.
+ */
+export function attendanceSlotKey(
+  eventId: number | string,
+  guestId: number | string | null | undefined,
+  accessScope: string,
+): string {
+  return `event:${String(eventId)}:guest:${guestId ?? 'unknown'}:scope:${accessScope}`;
+}
+
+/**
+ * Scope compatibility for merge. Exact scope equality merges; the two
+ * trusted-phone purchase families share one phone scope and merge. Any
+ * other cross-scope pair (account vs phone, public vs scoped) never merges:
+ * name equality alone is never identity. Authorization changes therefore
+ * cannot reuse broader cached access through a merge.
+ */
+export function purchaseScopesCompatible(
+  left: string | null | undefined,
+  right: string | null | undefined,
+): boolean {
+  if (left == null || right == null) return left === right;
+  if (left === right) return true;
+  const phoneFamily = new Set(['trusted_phone_purchase', 'trusted_phone_event_purchase']);
+  return phoneFamily.has(left) && phoneFamily.has(right);
+}
+
+type CoalescablePurchase = {
+  readonly purchase: PurchaseInformation;
+  readonly accessMethod: string | null;
+};
+
+const CONFLICT_COMPARED_PURCHASE_FIELDS = [
+  'paymentStatus',
+  'grandTotal',
+  'paymentMethod',
+  'eventName',
+  'eventDate',
+  'customerTransactionNumber',
+  'shippingStatus',
+] as const;
+
+function purchaseFieldValue(
+  purchase: PurchaseInformation,
+  field: (typeof CONFLICT_COMPARED_PURCHASE_FIELDS)[number],
+): unknown {
+  switch (field) {
+    case 'paymentStatus': return purchase.paymentStatus;
+    case 'grandTotal': return purchase.grandTotal;
+    case 'paymentMethod': return purchase.paymentMethod;
+    case 'eventName': return purchase.eventName;
+    case 'eventDate': return purchase.eventDate;
+    case 'customerTransactionNumber': return purchase.customerTransactionNumber ?? null;
+    case 'shippingStatus': return purchase.shippingStatus;
+  }
+}
+
+function isAuthoritativeValue(value: unknown): boolean {
+  if (value === null || value === undefined) return false;
+  if (typeof value === 'string' && value.trim().length === 0) return false;
+  if (Array.isArray(value) && value.length === 0) return false;
+  return true;
+}
+
+/**
+ * Coalesce duplicate route results without detail loss. Same stable orderId
+ * plus compatible access scope merges by filling missing fields
+ * (authoritative detail supplies what summaries lack); conflicting fresh
+ * records keep the conflict explicit by nulling the contested field instead
+ * of picking a side. Incompatible scopes stay separate entries so a cached
+ * broader read can never masquerade as current authorization.
+ */
+export function coalescePurchasesByStableId(
+  entries: readonly CoalescablePurchase[],
+): PurchaseInformation[] {
+  const byOrderId = new Map<string, PurchaseInformation[]>();
+  const scopeByOrderId = new Map<string, string | null>();
+  const deferred: PurchaseInformation[] = [];
+  for (const entry of entries) {
+    const bucket = byOrderId.get(entry.purchase.orderId);
+    if (!bucket) {
+      byOrderId.set(entry.purchase.orderId, [entry.purchase]);
+      scopeByOrderId.set(entry.purchase.orderId, entry.accessMethod);
+      continue;
+    }
+    const bucketScope = scopeByOrderId.get(entry.purchase.orderId) ?? null;
+    if (!purchaseScopesCompatible(bucketScope, entry.accessMethod)) {
+      deferred.push(entry.purchase);
+      continue;
+    }
+    bucket.push(entry.purchase);
+  }
+  const merged: PurchaseInformation[] = [];
+  for (const group of byOrderId.values()) {
+    const base = group[0];
+    if (!base || group.length === 1) {
+      if (base) merged.push(base);
+      continue;
+    }
+    let canonical: PurchaseInformation = { ...base, items: [...base.items] };
+    for (const incoming of group.slice(1)) {
+      canonical = mergeTwoPurchases(canonical, incoming);
+    }
+    merged.push(canonical);
+  }
+  merged.push(...deferred);
+  return merged;
+}
+
+function mergeTwoPurchases(
+  current: PurchaseInformation,
+  incoming: PurchaseInformation,
+): PurchaseInformation {
+  const merged: PurchaseInformation = {
+    ...current,
+    eventId: current.eventId ?? incoming.eventId ?? null,
+    currency: current.currency ?? incoming.currency ?? null,
+    currencySymbol: current.currencySymbol ?? incoming.currencySymbol ?? null,
+    paymentStatus: current.paymentStatus ?? incoming.paymentStatus,
+    shippingStatus: current.shippingStatus ?? incoming.shippingStatus,
+    grandTotal: current.grandTotal ?? incoming.grandTotal,
+    paymentMethod: current.paymentMethod ?? incoming.paymentMethod,
+    eventName: current.eventName ?? incoming.eventName,
+    eventDate: current.eventDate ?? incoming.eventDate,
+    eventUrl: current.eventUrl ?? incoming.eventUrl,
+    createdAt: current.createdAt ?? incoming.createdAt,
+    items: current.items.length > 0 ? current.items : incoming.items,
+    payment: current.payment ?? incoming.payment,
+    dedication: current.dedication ?? incoming.dedication,
+    thanks: current.thanks ?? incoming.thanks,
+    isThanked: current.isThanked ?? incoming.isThanked,
+    customerTransactionNumber:
+      current.customerTransactionNumber ?? incoming.customerTransactionNumber ?? null,
+  };
+  for (const field of CONFLICT_COMPARED_PURCHASE_FIELDS) {
+    const left = purchaseFieldValue(current, field);
+    const right = purchaseFieldValue(incoming, field);
+    if (
+      isAuthoritativeValue(left) && isAuthoritativeValue(right) &&
+      JSON.stringify(left) !== JSON.stringify(right)
+    ) {
+      switch (field) {
+        case 'paymentStatus': merged.paymentStatus = null; break;
+        case 'grandTotal': merged.grandTotal = null; break;
+        case 'paymentMethod': merged.paymentMethod = null; break;
+        case 'eventName': merged.eventName = null; break;
+        case 'eventDate': merged.eventDate = null; break;
+        case 'customerTransactionNumber': merged.customerTransactionNumber = null; break;
+        case 'shippingStatus': merged.shippingStatus = null; break;
+      }
+    }
+  }
+  if (merged.paymentStatus === null || merged.grandTotal === null) {
+    merged.amountDisclosure = null;
+  }
+  return merged;
+}
+
+type CoalescableInvitation = {
+  readonly invitation: InvitationEventSummary;
+  readonly guestId: number | string | null;
+  readonly accessScope: string | null;
+};
+
+/**
+ * Coalesce invitations by stable slot (event + guest + scope). Same event
+ * with different guests keeps distinct slots; duplicate reads of the same
+ * slot collapse to one without losing venue detail. Name equality never
+ * forms a key.
+ */
+export function coalesceInvitationsBySlot(
+  entries: readonly CoalescableInvitation[],
+): InvitationEventSummary[] {
+  const seen = new Map<string, InvitationEventSummary>();
+  for (const entry of entries) {
+    if (entry.invitation.eventId === null) {
+      continue;
+    }
+    const key = attendanceSlotKey(
+      entry.invitation.eventId,
+      entry.guestId,
+      entry.accessScope ?? 'unknown',
+    );
+    const existing = seen.get(key);
+    if (!existing) {
+      seen.set(key, entry.invitation);
+      continue;
+    }
+    const mergedDatetime = existing.eventDatetime ?? entry.invitation.eventDatetime;
+    seen.set(key, {
+      ...existing,
+      ...(mergedDatetime ? { eventDatetime: mergedDatetime } : {}),
+      address: existing.address ?? entry.invitation.address,
+      rsvpState: existing.rsvpState !== 'unknown'
+        ? existing.rsvpState
+        : entry.invitation.rsvpState,
+    });
+  }
+  return [...seen.values()];
+}
+
+/**
+ * Enrich an entry snapshot with a fresh execution without erasing known
+ * data. Ready sections merge (coalesced by stable id + scope); failed or
+ * unavailable routes preserve the base section and its provenance/fetchedAt.
+ * Bounds keep partial completeness, never exhaustive claims.
+ */
+export function mergeExecutionIntoSnapshot(args: {
+  readonly base: CustomerContextSnapshot;
+  readonly execution: CustomerExecution | null;
+  readonly identity: IdentityEvidence | null;
+  readonly currentContext: CurrentContextEvidence | null;
+  readonly nowIso: string;
+}): CustomerContextSnapshot {
+  if (!args.execution) {
+    return args.base;
+  }
+  const fresh = assembleCustomerContext({
+    execution: args.execution,
+    identity: args.identity ?? {
+      customerRef: args.base.identityAccess.customerRef,
+      scope: args.base.identityAccess.scope,
+      source: args.base.identityAccess.source,
+      fetchedAt: args.base.identityAccess.fetchedAt,
+    },
+    currentContext: args.currentContext ?? {
+      relevantEventIds: [...args.base.currentContext.relevantEventIds],
+      relevantOrderIds: [...args.base.currentContext.relevantOrderIds],
+      pendingQuestion: args.base.currentContext.pendingQuestion,
+      unresolvedCandidateOrderIds: [...args.base.currentContext.unresolvedCandidateOrderIds],
+      unresolvedCandidateEventIds: [...args.base.currentContext.unresolvedCandidateEventIds],
+    },
+    nowIso: args.nowIso,
+  });
+  const keepPurchases = fresh.purchasesCarts.status === 'failed' ||
+    fresh.purchasesCarts.status === 'unavailable' ||
+    fresh.purchasesCarts.status === 'not_requested' ||
+    (fresh.purchasesCarts.status === 'not_found' && args.base.purchasesCarts.status === 'ready')
+    ? args.base.purchasesCarts
+    : fresh.purchasesCarts;
+  const keepInvitations = fresh.invitationsEvents.status === 'failed' ||
+    fresh.invitationsEvents.status === 'unavailable' ||
+    fresh.invitationsEvents.status === 'not_requested' ||
+    (fresh.invitationsEvents.status === 'not_found' && args.base.invitationsEvents.status === 'ready')
+    ? args.base.invitationsEvents
+    : fresh.invitationsEvents;
+  return {
+    identityAccess: args.base.identityAccess.status === 'ready'
+      ? args.base.identityAccess
+      : fresh.identityAccess,
+    currentContext: fresh.currentContext.status === 'ready'
+      ? fresh.currentContext
+      : args.base.currentContext,
+    purchasesCarts: keepPurchases,
+    invitationsEvents: keepInvitations,
+    actionOutcomes: fresh.actionOutcomes.status === 'ready'
+      ? fresh.actionOutcomes
+      : args.base.actionOutcomes,
+    timingsMs: { ...args.base.timingsMs, ...fresh.timingsMs },
+  };
 }
 
 /**

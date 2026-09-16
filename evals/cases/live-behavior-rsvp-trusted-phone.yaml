@@ -5,11 +5,15 @@ version: 3
 description: A clear RSVP decision uses the trusted channel phone and reports the scoped lookup outcome honestly without inventing an invitation.
 tags: [live, behavior, rsvp, attendance, trusted-phone, agent-api]
 targetModes: [live_lambda]
+backendFixture:
+  scenario: rsvp-trusted-phone-empty
 inputs:
   - text: Sí, confirmo que asistiré a la invitación pendiente.
     channel: whatsapp
     contactPhone: "+12025550100"
     sessionId: live-rsvp-trusted-phone-session
+    backendFixture:
+      scenario: rsvp-trusted-phone-empty
 expectations:
   - id: enters-rsvp-node
     type: node_transition

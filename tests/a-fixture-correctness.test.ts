@@ -2,7 +2,7 @@ import { describe, expect, it, vi, afterEach } from 'vitest';
 import { FixtureAgentConversationGateway, parseFixtureDisabledOperations } from '../src/runtime/eval-fixture-gateway';
 import { InMemoryEvalFixtureStateStore } from '../src/runtime/eval-fixture-state';
 import { applyHandoffResult, resolveHandoffGatewayStatus } from '../src/runtime/human-help-policy';
-import { attachEvaluationState, buildCumulativeFixtureEffectSummaries } from '../src/evals/evaluation-state';
+import { attachEvaluationState, buildFixtureEffectSummariesFromReceipts } from '../src/evals/evaluation-state';
 import { evaluateFixtureEffectCountForTesting } from '../src/evals/runner';
 import { expectationSchema } from '../src/evals/case-schema';
 import type { EvalTurnResult } from '../src/evals/case-schema';
@@ -169,7 +169,7 @@ describe('A1/A2/A3 fixture correctness', () => {
     expect(await store.count('run-x', 'case-a', 'otp.verify')).toBe(0);
   });
 
-  it('fixture_effect_count schema parses and runner enforces cumulative receipts', async () => {
+  it('fixture_effect_count schema parses and runner enforces per-turn receipt boundaries', async () => {
     const parsed = expectationSchema.safeParse({
       type: 'fixture_effect_count',
       operation: 'handoff.write',
@@ -179,21 +179,43 @@ describe('A1/A2/A3 fixture correctness', () => {
       expectedReplays: 0,
     });
     expect(parsed.success).toBe(true);
+    // Test-repair §4: the ledger derives from recorded receipts only, never
+    // from tools_called. Turn 0 carries a tool call but no receipt exists yet.
+    const store = new InMemoryEvalFixtureStateStore();
     const t0 = makeTurn(0, ['request_human_takeover'], 'requested');
     const t1 = makeTurn(1, [], 'requested');
     const t2 = makeTurn(2, [], 'requested');
     const turns = [t0, t1, t2];
-    for (const t of turns) {
+    await store.record({
+      runId: 'run-a5', caseId: 'case-handoff', scenario: 's', operation: 'handoff.write',
+      args: {}, resultStatus: 'success',
+    });
+    // Turn 0/1 boundary: exactly one recorded receipt.
+    const boundary01 = buildFixtureEffectSummariesFromReceipts(await store.list('run-a5', 'case-handoff'));
+    for (const t of [t0, t1] as const) {
       attachEvaluationState(t, {
         plan: t.plan as never,
         input: t.input,
         outputText: t.outputText,
-        fixtureEffects: buildCumulativeFixtureEffectSummaries(turns, t.turnIndex),
+        fixtureEffects: boundary01,
       });
     }
+    // A later write lands after the turn 0/1 boundary: it satisfies turn 2
+    // only and never retroactively satisfies turn 0.
+    await store.record({
+      runId: 'run-a5', caseId: 'case-handoff', scenario: 's', operation: 'handoff.write',
+      args: {}, resultStatus: 'success',
+    });
+    attachEvaluationState(t2, {
+      plan: t2.plan as never,
+      input: t2.input,
+      outputText: t2.outputText,
+      fixtureEffects: buildFixtureEffectSummariesFromReceipts(await store.list('run-a5', 'case-handoff')),
+    });
     expect(evaluateFixtureEffectCountForTesting({ turns, operation: 'handoff.write', turnIndex: 0, expectedAttempts: 1, expectedSuccesses: 1, expectedReplays: 0 }).passed).toBe(true);
     expect(evaluateFixtureEffectCountForTesting({ turns, operation: 'handoff.write', turnIndex: 1, expectedAttempts: 1, expectedSuccesses: 1, expectedReplays: 0 }).passed).toBe(true);
-    expect(evaluateFixtureEffectCountForTesting({ turns, operation: 'handoff.write', turnIndex: 2, expectedAttempts: 1, expectedSuccesses: 1, expectedReplays: 0 }).passed).toBe(true);
+    expect(evaluateFixtureEffectCountForTesting({ turns, operation: 'handoff.write', turnIndex: 0, expectedAttempts: 2, expectedSuccesses: 2, expectedReplays: 0 }).passed).toBe(false);
+    expect(evaluateFixtureEffectCountForTesting({ turns, operation: 'handoff.write', turnIndex: 2, expectedAttempts: 2, expectedSuccesses: 2, expectedReplays: 0 }).passed).toBe(true);
     expect(evaluateFixtureEffectCountForTesting({ turns, operation: 'handoff.write', turnIndex: 2, expectedAttempts: 2, expectedSuccesses: 1, expectedReplays: 0 }).passed).toBe(false);
   });
 

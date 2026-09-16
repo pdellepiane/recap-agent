@@ -178,6 +178,76 @@ export function isReminderNarrativeAuthoritative(): boolean {
   return false;
 }
 
+/**
+ * P2 contextual reference inference: provenance-bound campaign projection.
+ *
+ * A campaign message carries reference context only with existing
+ * provenance: same conversation/customer envelope (inherited from the stored
+ * messages), outbound direction, a reminder-family source, and its timestamp.
+ * Delivered status is reported when known; unknown delivery stays uncertain
+ * (identification only, never a delivery claim). Inbound text claiming to be
+ * a campaign never acquires outbound authority. No backend campaign
+ * parameter is introduced; the current message envelope is reused.
+ */
+export const campaignContextMessageLimit = 5;
+export const campaignBodyExcerptLimit = 500;
+
+export type CampaignDeliveryCertainty = 'delivered' | 'uncertain';
+
+export type CampaignMessageProvenance = {
+  readonly sourceMessageId: number;
+  readonly source: string;
+  readonly delivery: CampaignDeliveryCertainty;
+  readonly sentAt: string | null;
+  readonly bodyExcerpt: string;
+};
+
+const deliveredCampaignStatusValues = new Set(['delivered', 'read', 'seen']);
+
+/** Explicit receipt only; anything unknown stays uncertain. */
+export function campaignDeliveryCertainty(
+  status: string | null | undefined,
+): CampaignDeliveryCertainty {
+  const normalized = status?.trim().toLowerCase() ?? '';
+  return normalized !== '' && deliveredCampaignStatusValues.has(normalized)
+    ? 'delivered'
+    : 'uncertain';
+}
+
+/**
+ * Single provenance predicate for campaign reference context. Outbound
+ * direction plus a reminder-family source (admin_campaign, frontend_followup
+ * share the reminder category in conversation-continuity-policy) is required;
+ * inbound text with a campaign source never qualifies.
+ */
+export function isProvenanceBoundCampaignMessage(
+  message: AgentConversationMessage,
+): boolean {
+  return message.direction === 'outbound' && isReminderSource(message.source);
+}
+
+/**
+ * Newest provenance-bound campaign messages in server-time order, bounded in
+ * count with bounded body excerpts. Feeds model-extraction reference
+ * inference (via the existing extractor history, which already carries
+ * direction/source/body/sent_at) and runtime grounding validation. The result
+ * is reference evidence only: never attendance, authorization, or consent.
+ */
+export function selectProvenanceBoundCampaignMessages(
+  messages: readonly AgentConversationMessage[],
+): CampaignMessageProvenance[] {
+  return orderMessagesByServerTime(messages)
+    .filter(isProvenanceBoundCampaignMessage)
+    .slice(-campaignContextMessageLimit)
+    .map((message) => ({
+      sourceMessageId: message.id,
+      source: message.source ?? '',
+      delivery: campaignDeliveryCertainty(message.status),
+      sentAt: message.sentAt ?? message.createdAt,
+      bodyExcerpt: message.body.trim().slice(0, campaignBodyExcerptLimit),
+    }));
+}
+
 export type TurnMessageContext = {
   historyStatus: ConversationHistoryStatus;
   contextSource: 'agent_api' | 'local_plan';

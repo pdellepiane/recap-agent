@@ -1458,6 +1458,122 @@ describe('InformationOrchestrator', () => {
       presentation: 'recorded_method_no_currency',
     });
   });
+
+  it('P1 performs a repeated scoped account lookup once per turn', async () => {
+    const agentGateway = new FakeAgentGateway();
+    agentGateway.ordersResult = {
+      status: 'success',
+      resource: 'orders',
+      // P1 fixture: two purchases so the single-order auto-detail follow-up
+      // does not trigger; the repeated identical list lookups dedupe to one
+      // gateway call per turn.
+      purchases: [{
+        orderId: 'ORD-1',
+        paymentStatus: 'pending',
+        shippingStatus: null,
+        grandTotal: 100,
+        paymentMethod: 'transfer',
+        eventName: 'Boda',
+        eventDate: null,
+        eventUrl: null,
+        createdAt: null,
+        items: [],
+      }, {
+        orderId: 'ORD-2',
+        paymentStatus: 'pending',
+        shippingStatus: null,
+        grandTotal: 50,
+        paymentMethod: 'transfer',
+        eventName: 'Boda Dos',
+        eventDate: null,
+        eventUrl: null,
+        createdAt: null,
+        items: [],
+      }],
+    };
+    const orchestrator = new InformationOrchestrator({
+      knowledgeGateway: { async search() { throw new Error('unused'); } },
+      providerGateway: {} as ProviderGateway,
+      agentGateway,
+    });
+    const requestFor = (requestId: string): PendingInformationRequest => ({
+      requestId,
+      kind: 'purchase',
+      resource: 'orders',
+      query: 'estado',
+      orderId: null,
+      aspects: ['payment_status'],
+      sensitiveFields: [],
+      authAction: 'none',
+    });
+    const execution = await orchestrator.execute({
+      requests: [requestFor('a-1'), requestFor('a-2')],
+      authentication: { token: 'jwt-same-scope', email: 'user@example.com' },
+      authBlock: null,
+    });
+    expect(execution.results).toHaveLength(2);
+    expect(agentGateway.ordersCalls).toBe(1);
+  });
+
+  it('P1 scopes event detail by access scope instead of reusing broader access', async () => {
+    const agentGateway = new FakeAgentGateway();
+    agentGateway.guestEventsResult = {
+      status: 'success',
+      events: [guestEvent(5, 'Fiesta Sol'), guestEvent(6, 'Fiesta Luna')],
+    };
+    agentGateway.enrichedEventDetailResult = {
+      status: 'success',
+      event: {
+        eventId: 5,
+        name: 'Fiesta Sol',
+        slug: 'event-5',
+        url: null,
+        datetime: null,
+        type: null,
+        typeDetail: null,
+        stage: null,
+        city: 'Cusco',
+        country: 'Perú',
+        currency: null,
+        withTime: false,
+        timezone: null,
+        celebrateds: [],
+        moments: [],
+        dresscode: null,
+        commonAsked: [],
+        contactInfo: [],
+        attendance: null,
+        purchases: [],
+      },
+    };
+    // P1 fixture: the public re-fetch under a different access scope must
+    // also succeed so the scope-separated second read proves a fresh gateway
+    // call instead of reusing broader cached access.
+    agentGateway.publicEventDetailResult = agentGateway.enrichedEventDetailResult;
+    const orchestrator = new InformationOrchestrator({
+      knowledgeGateway: { async search() { throw new Error('unused'); } },
+      providerGateway: {} as ProviderGateway,
+      agentGateway,
+    });
+    const first = await orchestrator.enrichCustomerLinkedDetail({
+      orderIds: [],
+      eventIds: [5],
+      authentication: null,
+      trustedPhone: { phone_extension: '+51', phone_number: '900000001' },
+      scope: 'trusted_phone_guest:+51900000001',
+    });
+    expect(first.eventDetails.size).toBe(1);
+    const callsAfterFirst = agentGateway.eventDetailCalls;
+    const second = await orchestrator.enrichCustomerLinkedDetail({
+      orderIds: [],
+      eventIds: [5],
+      authentication: null,
+      trustedPhone: null,
+      scope: 'public',
+    });
+    expect(second.eventDetails.size).toBe(1);
+    expect(agentGateway.eventDetailCalls).toBe(callsAfterFirst + 1);
+  });
 });
 
 class FakeAgentGateway implements AgentConversationGateway {

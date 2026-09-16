@@ -463,9 +463,13 @@ export function projectCompletedPurchaseForModel(
     referenceAuthorized: context.referenceAuthorized ?? false,
     userReported: context.userReported ?? {},
   });
+  // P3 useful completeness: the denial list keeps genuinely sensitive
+  // identifiers only. "Unrequested fields" is not denied: the model answers
+  // every requested part and may add useful related detail already present
+  // in the projected evidence (status, amount/method, date/venue) without
+  // dumping unrelated histories.
   const deniedDisclosures = [
     'internal_identifiers',
-    'unrequested_fields',
     ...(context.referenceAuthorized ? [] : ['transaction_reference']),
   ];
   // R6 question-relevant next action. A cart on the outcome never drags a

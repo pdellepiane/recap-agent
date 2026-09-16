@@ -190,6 +190,14 @@ export class InformationOrchestrator {
       string,
       Promise<AgentPhonePurchaseLookupResult | undefined>
     >();
+    // P1 auth-scoped per-turn caches: repeated scoped lookups run once per
+    // turn. Phone keys carry the verified phone scope; account keys carry a
+    // token hash scope so an auth change can never reuse broader cached
+    // access. Event detail keys carry the same access scope.
+    const accountPurchaseLookups = new Map<
+      string,
+      Promise<AgentPurchaseLookupResult | undefined>
+    >();
     const eventDetailLookups: EventDetailCache = new Map();
     const phoneContext: PhoneContextSnapshot = {
       purchasesByOrderId: new Map(),
@@ -226,6 +234,7 @@ export class InformationOrchestrator {
           eventDetailLookups,
           phoneContext,
           args.deadlineMs ?? null,
+          accountPurchaseLookups,
         );
           return { result, durationMs: Date.now() - startedAt };
         }),
@@ -338,6 +347,7 @@ export class InformationOrchestrator {
     eventDetailLookups: EventDetailCache,
     phoneContext: PhoneContextSnapshot,
     deadlineMs: number | null,
+    accountPurchaseLookups?: Map<string, Promise<AgentPurchaseLookupResult | undefined>>,
   ): Promise<InformationTaskResult> {
     if (request.kind === 'faq') {
       if (!this.capabilityAvailable('faq.read')) {
@@ -556,6 +566,7 @@ export class InformationOrchestrator {
       request,
       authentication.token,
       request.orderId,
+      accountPurchaseLookups,
     );
     if (!lookup) {
       return {
@@ -580,6 +591,7 @@ export class InformationOrchestrator {
             request,
             authentication.token,
             onlyOrder.orderId,
+            accountPurchaseLookups,
           ) ?? lookup;
       }
     }
@@ -682,11 +694,15 @@ export class InformationOrchestrator {
    * pass (summary -> detail here; detail -> purchases returned for the
    * caller to merge), four concurrent reads, an access-scoped visited set
    * so cyclic order -> event -> order links terminate, the current
-   * invocation deadline, and a per-turn cache for identical reads. Only
-   * explicitly relevant candidates (hint-matched names/slugs) are hydrated:
-   * a dateless, reference-free question keeps summaries so the reply can
-   * clarify instead of guessing. Failures are recorded, never thrown, and a
-   * bound or deadline never claims a complete profile.
+   * invocation deadline, and a per-turn cache for identical reads. P3: the
+   * hint is the extraction-supplied eventHint carrying the validated
+   * inferred target (explicit reference, active-question entity, campaign
+   * context, compatible state and temporal proximity as validated by the
+   * caller) — explicit-hint-only gating is removed, so a validated inferred
+   * hint hydrates the same as an explicit one. Only hint-matched
+   * names/slugs are hydrated: a hint-free question keeps summaries so the
+   * reply can clarify instead of guessing. Failures are recorded, never
+   * thrown, and a bound or deadline never claims a complete profile.
    */
   async hydrateRelevantEventDetails(args: {
     events: readonly AgentGuestEventSummary[];
@@ -747,6 +763,7 @@ export class InformationOrchestrator {
           args.trustedPhone,
           this.dependencies.agentGateway,
           cache,
+          args.scope,
         );
         return { event, detail };
       }),
@@ -905,6 +922,7 @@ export class InformationOrchestrator {
           args.trustedPhone,
           this.dependencies.agentGateway,
           cache,
+          args.scope,
         );
         return { read, outcome: detail };
       }),
@@ -1034,6 +1052,7 @@ export class InformationOrchestrator {
         trustedPhone,
         phoneGateway,
         eventDetailLookups,
+        'trusted_phone_guest',
       );
     } catch {
       return {
@@ -1058,6 +1077,7 @@ export class InformationOrchestrator {
             null,
             phoneGateway,
             eventDetailLookups,
+            'public',
           );
         } catch {
           publicDetail = null;
@@ -1122,6 +1142,7 @@ export class InformationOrchestrator {
     trustedPhone: AgentAuthByPhoneInput | null,
     phoneGateway: AgentConversationGateway,
     eventDetailLookups: EventDetailCache,
+    accessScope?: string | null,
   ): Promise<PhoneEventDetailResult> {
     if (
       !phoneGateway.getEventDetail ||
@@ -1133,7 +1154,11 @@ export class InformationOrchestrator {
         retryable: false,
       };
     }
-    const cacheKey = `${eventId}:${trustedPhone ? `${trustedPhone.phone_extension}:${trustedPhone.phone_number}` : 'public'}`;
+    // P1 auth-scoped cache key: the same event id under a different access
+    // scope never reuses cached detail, and a public fallback never
+    // collides with an authorized scoped read.
+    const scope = accessScope ?? (trustedPhone ? 'trusted_phone_guest' : 'public');
+    const cacheKey = `${scope}:${eventId}:${trustedPhone ? `${trustedPhone.phone_extension}:${trustedPhone.phone_number}` : 'public'}`;
     const existing = eventDetailLookups.get(cacheKey);
     if (existing) {
       return await existing;
@@ -2038,10 +2063,13 @@ export class InformationOrchestrator {
     request: PurchaseRequest,
     token: string,
     orderId: string | null,
+    cache?: Map<string, Promise<AgentPurchaseLookupResult | undefined>>,
   ): Promise<AgentPurchaseLookupResult | undefined> {
     // Authenticated reads keep the declared resource, which normalization
     // already coerced to the typed aspects (gift detail aspects read the
-    // gift route). One partition only, never both.
+    // gift route). One partition only, never both. P1: repeated scoped
+    // lookups run once per turn under a token-hash scope so an auth change
+    // can never reuse broader cached access.
     const partition = resolvePurchaseResourceForAspects(
       request.resource,
       request.aspects,
@@ -2051,6 +2079,30 @@ export class InformationOrchestrator {
       true,
     )) {
       return undefined;
+    }
+    const scopeKey = cache
+      ? [
+        'account',
+        crypto.createHash('sha256').update(token).digest('hex').slice(0, 16),
+        partition,
+        orderId ?? '*',
+      ].join(':')
+      : null;
+    if (scopeKey && cache) {
+      const existing = cache.get(scopeKey);
+      if (existing) {
+        return await existing;
+      }
+      const pending = (async (): Promise<AgentPurchaseLookupResult | undefined> => (
+        partition === 'orders'
+          ? await this.dependencies.agentGateway.getOrders?.({ token, orderId })
+          : await this.dependencies.agentGateway.getGiftPurchases?.({
+            token,
+            orderId,
+          })
+      ))();
+      cache.set(scopeKey, pending);
+      return await pending;
     }
     return partition === 'orders'
       ? await this.dependencies.agentGateway.getOrders?.({ token, orderId })

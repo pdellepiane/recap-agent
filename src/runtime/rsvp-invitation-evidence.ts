@@ -32,6 +32,13 @@ function isValidActionableCandidate(invitation: TrustedRsvpInvitation): boolean 
  * Only IDs returned by existing phone lookup/detail APIs can authorize a
  * write. IDs or URLs taken from message text are accepted as input solely so
  * tests can prove they are ignored; they never select a candidate.
+ *
+ * P2 write contract: a mutation needs an explicit requested action plus one
+ * verified event/guest. Campaign or conversation context may supply the
+ * semantic title that identifies the target, but proximity alone never
+ * authorizes or disambiguates a write: an empty reference resolves only a
+ * sole verified invitation, and several candidates stay ambiguous. A
+ * read-only inferred target is never persisted as later-action consent.
  */
 export function decideRsvpInvitationAction(args: {
   readonly trusted: readonly TrustedRsvpInvitation[];

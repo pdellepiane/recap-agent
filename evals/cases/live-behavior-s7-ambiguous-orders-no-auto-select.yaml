@@ -12,6 +12,8 @@ inputs:
     channel: whatsapp
     contactPhone: "+51900001303"
     sessionId: live-s7-ambiguous-orders-session
+    backendFixture:
+      scenario: image-multi-pending
 notes:
   - "B4 S7 2026-09-14: backendFixture scenario image-multi-pending; synthetic identity only with two ACTUAL pending orders (Evento de prueba A 120.50, Evento de prueba B 89.90), no customer references, empty initial history; never mutable backend data. The ambiguous question carries no order identity, so recency must never authorize a lookup, selection or mutation."
   - "Known IDs and authorized scopes are prerequisites; a name or recency never authorizes a selection. The pending newest order must not be auto-selected among ambiguous records and no write may be attempted."

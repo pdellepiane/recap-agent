@@ -271,6 +271,8 @@ describe('S6 single customerContext serialization', () => {
 
   const projection: CustomerContextProjection = {
     commonRefs: { orderIds: ['ORD-A'], eventIds: [], pendingQuestion: null },
+    candidates: [{ kind: 'order', orderId: 'ORD-A', eventName: 'Evento Prueba', state: 'pending' }],
+    sections: { purchasesCarts: 'ready', invitationsEvents: 'not_requested' },
     purchases: [{
       orderId: 'ORD-A',
       eventId: null,

@@ -5,15 +5,21 @@ version: 1
 description: Jose greets then sends an acknowledgement/deferral with available history. No provider interview, tools, repeated welcome or RSVP mutation.
 tags: [live, behavior, continuity, reported-interaction, jose-screenshot]
 targetModes: [live_lambda]
+backendFixture:
+  scenario: continuity-jose-acknowledgement
 inputs:
   - text: Hola, buenas tardes
     channel: whatsapp
     contactPhone: "+51900005050"
     sessionId: live-jose-campaign-acknowledgement-session
+    backendFixture:
+      scenario: continuity-jose-acknowledgement
   - text: Gracias, por ahora lo dejamos asi
     channel: whatsapp
     contactPhone: "+51900005050"
     sessionId: live-jose-campaign-acknowledgement-session
+    backendFixture:
+      scenario: continuity-jose-acknowledgement
 expectations:
   - id: acknowledgement-performs-no-provider-or-rsvp-effect
     type: tool_usage

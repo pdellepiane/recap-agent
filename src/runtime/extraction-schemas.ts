@@ -154,6 +154,14 @@ export function normalizeRequestedOperation(
 export const openAiInformationRequestSchema = z.object({
   kind: z.enum(['faq', 'associated_event', 'purchase']),
   query: z.string().min(1),
+  /**
+   * P2 validated inferred target. Carries the explicit current reference or
+   * the model-grounded inference (active question entity, relevant outbound
+   * campaign, compatible record state and temporal proximity). The runtime
+   * grounds it against authorized profile evidence before any lookup or
+   * hydration; an unmatched hint selects nothing and recency alone never
+   * authorizes. No second selector field exists; reuse this one.
+   */
   eventHint: z.string().nullable(),
   resource: z.enum(purchaseResourceValues).nullable(),
   orderId: z.string().nullable(),
@@ -202,6 +210,13 @@ export const extractionSchema = z.object({
   rsvpAction: z.enum(rsvpActionValues).nullable().default(null),
   rsvpDecisionSource: z.enum(rsvpDecisionSourceValues).default('plan_state').catch('plan_state'),
   rsvpCandidateGuestId: z.number().int().positive().nullable().default(null),
+  /**
+   * P2 validated inferred target for RSVP. Summarizes the event name/date
+   * from the current attendance topic, or the model-grounded inference from
+   * outbound campaign/conversation context — never an invented identifier.
+   * The runtime validates it against the trusted invitation set; conflicting
+   * campaigns stay ambiguous with no guessed mutation. No second selector.
+   */
   rsvpEventReference: z.string().trim().min(1).nullable().default(null),
   rsvpParty: rsvpPartySchema.nullable().optional(),
   intentConfidence: z.number().min(0).max(1).nullable(),

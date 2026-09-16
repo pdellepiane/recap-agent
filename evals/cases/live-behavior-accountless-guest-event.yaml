@@ -5,11 +5,15 @@ version: 2
 description: An invited WhatsApp guest without an account receives event details through the trusted phone without being pushed into email OTP.
 tags: [live, behavior, associated-event, accountless-guest, phone-first, reported-interaction]
 targetModes: [live_lambda]
+backendFixture:
+  scenario: guest-julisabeth-andres
 inputs:
   - text: Respondí la invitación por WhatsApp. ¿Dónde será la recepción y fiesta?
     channel: whatsapp
     contactPhone: "+51904523314"
     sessionId: live-accountless-guest-event-session
+    backendFixture:
+      scenario: guest-julisabeth-andres
 expectations:
   - id: routes-to-associated-event-information
     type: node_transition

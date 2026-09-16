@@ -1,15 +1,19 @@
 template: template.base-live
 id: live_behavior.rsvp_paolo_mariana_resolved_single
 suite: live_behavior_regression
-version: 5
+version: 6
 description: Paolo & Mariana attending invitation reports the already-resolved RSVP result for the named event; it does not ask the user to choose among invitations when one is resolved, and states source time exactly.
 tags: [live, behavior, rsvp, paolo-mariana, resolved-single, projection]
 targetModes: [live_lambda]
+backendFixture:
+  scenario: rsvp-resolved-attending
 inputs:
   - text: Hola, quisiera confirmar el estado de mi invitacion a Otra celebración prueba
     channel: whatsapp
     contactPhone: "+51973296571"
     sessionId: live-rsvp-paolo-mariana-resolved-single-session
+    backendFixture:
+      scenario: rsvp-resolved-attending
 seedPlan:
   current_node: responder_invitacion
   intent: responder_invitacion
@@ -22,12 +26,6 @@ seedPlan:
         event_date: "2026-08-19 05:00:00"
     requested_at: "2026-08-17T15:00:00.000Z"
     selection_attempts: 0
-rsvpIsolation:
-  setup:
-    guestId: 584353
-    eventName: Otra celebración prueba
-    phone: "+51973296571"
-    targetState: attending
 expectations:
   - id: enters-rsvp-node
     type: node_transition
@@ -55,3 +53,5 @@ budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 1500
   estimatedCompletionTokensPerTurn: 250
+
+# September 15 isolation revision: fixture initial state replaces external setup; no real backend mutation is required.

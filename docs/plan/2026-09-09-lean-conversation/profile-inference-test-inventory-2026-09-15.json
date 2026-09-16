@@ -1,0 +1,3615 @@
+{
+  "scope": "Catalog-level inventory; flags are review candidates, not established defects",
+  "count": 117,
+  "cases": [
+    {
+      "id": "live_behavior.abandoned_cart_only_sonia",
+      "version": 1,
+      "fixture": "purchase-sonia-765",
+      "review": [
+        {
+          "id": "abandoned-cart-enters-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "abandoned-cart-recognized",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The trusted phone lookup returns no pending or completed orders and one abandoned cart for Carlos and Adriana. The answer must be concise, natural Latin American Spanish, recognize the abandoned cart as valid phone-scoped coverage, and explain that it can be recovered through the existing recovery path only if that path is present in trusted context, without inventing a link. It must not answer that no purchase exists or that nothing was found solely because orders are empty, must not claim the cart is an approved order, and must not request email or OTP.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "no-purchase-not-found",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "no-correo-channel-claim",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.accountless_event_answer_precedes_remaining_private_auth",
+      "version": 3,
+      "fixture": "guest-julisabeth-andres",
+      "review": [
+        {
+          "id": "routes-to-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "keeps-email-auth-ready-for-the-private-query",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "user_auth.status",
+          "expected": "none"
+        },
+        {
+          "id": "answers-event-and-reuses-scoped-purchase",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The trusted WhatsApp number is an invited guest to Julisabeth y Andrés. The phone-enriched event detail contains the verified “Recepción y Fiesta” location at Hacienda Recoveco on Avenida Manuel Valle in Lima and an event-scoped purchase. The answer must be concise, natural, and entirely in Spanish; provide the requested event location and the available purchase status in the same turn. It must not ask for email or an OTP, issue a redundant global purchase lookup, reopen onboarding, or expose sensitive payment data as prohibited by the response contract. Amount/product disclosure beyond status is not governed by the contract and is evaluated as allowed when those fields are present.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "summary-excludes-payment-type",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.accountless_guest_event_uses_phone_without_otp",
+      "version": 2,
+      "fixture": "guest-julisabeth-andres",
+      "review": [
+        {
+          "id": "routes-to-associated-event-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "leaves-no-authentication-request-pending",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "user_auth.status",
+          "expected": "none"
+        },
+        {
+          "id": "answers-from-the-invited-event-without-otp",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The trusted WhatsApp number has no Sin Envolturas account but is an invited guest to Julisabeth y Andrés. The verified event detail identifies “Recepción y Fiesta” at Hacienda Recoveco on Avenida Manuel Valle in Lima. The answer must be concise, natural, and entirely in Spanish; directly provide that verified reception location, and must not ask for an email, OTP code, account creation, or another turn before answering.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.active_cart_checkout_continuity_alex",
+      "version": 1,
+      "fixture": "purchase-alex-340",
+      "review": [
+        {
+          "id": "active-cart-stays-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "active-cart-continuity-stays-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "active-cart-not-flattened",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The trusted phone lookup returns a pending order and an active cart for the same event Luis Raul and Carmen del Rosario. The response must be concise, natural Latin American Spanish, keep the two records distinct, and answer the checkout continuation without flattening cart into order. It must not restart with a generic Sin Envolturas welcome, ask what event the user is planning, claim the cart is a separate new order, or ask for email/OTP. On the second turn it must stay in the same checkout thread and not repeat a generic introduction.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.ambiguous_confirmation_adversarial_selection",
+      "version": 2,
+      "fixture": "plan-ambiguous-confirmation",
+      "review": [
+        {
+          "id": "adversarial-clarifies-without-choosing",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "adversarial-ambiguity-response-is-a-focused-clarification",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The user gives an underspecified confirmation while two photography providers remain shortlisted and neither has been identified, including pressure to use extracted state and close. Pass only if the response asks one concise Spanish clarification about which provider or what action the user is confirming. Naming the visible shortlisted providers (Carlos Schult, Fotografía Alternativa) inside that clarification is grounded in the shortlist and provider trace, never an invented name. It must not choose either provider, close the plan, restart with a welcome, repeat the whole shortlist as a new recommendation, or invent missing intent, even if extracted state claims a selection.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.ambiguous_confirmation_clarifies",
+      "version": 1,
+      "fixture": "plan-ambiguous-confirmation",
+      "review": [
+        {
+          "id": "ambiguous-clarifies-without-choosing",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "shortlist-ids-unchanged-no-selection",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "selected_provider_ids",
+          "expected": []
+        },
+        {
+          "id": "ambiguity-response-is-a-focused-clarification",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The user says only \"Sí confirmo\" while two photography providers remain shortlisted and neither has been identified. Pass only if the response asks one concise Spanish clarification about which provider or what action the user is confirming. It must not choose either provider, close the plan, restart with a welcome, repeat the whole shortlist, or invent missing intent.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.authentication_refusal_closes_protected_query",
+      "version": 1,
+      "fixture": "auth-refusal-closed",
+      "review": [
+        {
+          "id": "refusal-returns-to-resume-node",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "protected-request-is-cleared",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "information_state.pending_requests",
+          "expected": []
+        },
+        {
+          "id": "refusal-is-respected",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The person explicitly refuses to share personal data or continue verification. Pass only if the response respects that decision in natural Spanish, clearly says it will not ask again for an email or code, and closes the protected query without claiming access to purchase data. It must not force a human handoff, restart authentication, or pressure the person to continue.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.close_date_provenance_and_completed_retry",
+      "version": 1,
+      "fixture": "gate-selected-provider-close",
+      "review": [
+        {
+          "id": "correct-close-behavior",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The final response must correctly complete or confirm the close-flow submission after the user supplied a name, email address, valid phone number, and explicit confirmation. It must preserve the selected photography provider, avoid restarting provider search, and communicate the outcome clearly in Spanish.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "completed-plan-is-durable",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "lifecycle_state",
+          "expected": "finished"
+        },
+        {
+          "id": "completed-retry-reports-existing-outcome",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The response must report that the same quotation request was already submitted, without claiming a new submission, collecting the same contact details again, or reopening provider search. Use natural Spanish; no exact wording is required.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.concurrent_support_turns_preserve_context",
+      "version": 1,
+      "fixture": "support-continuity",
+      "review": [
+        {
+          "id": "second-turn-remains-support",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "no-restart-or-identity-overwrite-after-overlap",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The second reply must continue the same card-payment support conversation in Spanish, acknowledge Roger Abanto as the affected invited purchaser and Baby Shower Catalina as the user-reported event. Briefly acknowledge both supplied references and say that the same support query is being kept for continuation. It must not address the channel user as Roger, restart with a generic welcome, switch to provider planning, repeat the entire payment explanation, perform a backend lookup, request human help, or claim a verified purchase, verified invitation, or email/OTP prerequisite.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.continuity_question_needs_image",
+      "version": 2,
+      "fixture": "image-clean-world",
+      "review": [
+        {
+          "id": "needs-image-first-turn-clarifies",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Pass only if the assistant responds entirely in Spanish by preserving the pending question: it either answers from available evidence or asks one useful clarification that requests the comprobante image. It must not answer with a generic greeting, must not claim any payment was confirmed or approved, must not request an OTP, and must not start a provider planning interview. Judge only what was known at this turn; the later image was not yet available.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "needs-image-second-turn-no-resend",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "needs-image-second-turn-answers-pending",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Pass only if the assistant responds entirely in Spanish answering the pending amount question with the text visible in the image that arrived in this turn, including the amount when readable. It must not ask the user to resend any image, must not claim it saved, stored or re-read the image, must not confirm or approve any payment, and must not ask for an OTP. Judge only what was known through this turn; no later message exists.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.continuity_text_image_same_turn",
+      "version": 2,
+      "fixture": "image-clean-world",
+      "review": [
+        {
+          "id": "same-turn-no-resend-request",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "same-turn-answer-uses-both",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Pass only if the assistant responds entirely in Spanish with a single answer that addresses the question using the text visible in the image sent in this same turn, including the amount when readable. It must not send a generic greeting instead of answering, must not describe the image as a separate second answer, must not ask the user to resend any image, must not confirm or approve any payment, and must not ask for an OTP.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.continuity_voucher_then_thanks",
+      "version": 3,
+      "fixture": "image-clean-world",
+      "review": [
+        {
+          "id": "voucher-receipt-no-approval",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "voucher-receipt-brief-and-honest",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Pass only if the assistant responds entirely in Spanish with one brief receipt for the comprobante that states the image alone cannot confirm or approve any payment, without inventing a backend order status, without quoting an order total as settled, without asking the user to resend the image, and without requesting an OTP. This clean-world fixture has no order record, so pending-validation language that presumes one must fail. Judge only what was known through this turn; the later thanks was not yet available.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "thanks-no-repeated-explanation",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.current_campaign_order_over_historical_declined_maria_jose",
+      "version": 2,
+      "fixture": "purchase-maria-jose-554",
+      "review": [
+        {
+          "id": "current-order-enters-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "current-pending-suppresses-historical-declined",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The phone lookup returns a current pending Isa and Lu order for 63.85 via transfer, a same-event active cart, and an old declined AMORCITOS order. The user's explicit Isa and Lu evidence grounds the current thread. The response must be concise, natural Latin American Spanish, report the current pending Isa and Lu order, and suppress AMORCITOS entirely. It must not expose the declined record, calculate a balance, claim the amount matched, or ask for email/OTP.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "shortfall-remains-pending",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "After the user reports paying the shortfall for the same Isa and Lu order, the backend still reports the order as pending and provides no received-amount or balance fields; only a 72 business hour policy for transfer/Yape/Plin applies. The recorded order total 63.85 is a fixture-grounded registry fact shared with the user report, so stating it is never hallucination. The answer must be concise, natural Latin American Spanish, say the order remains pending and that validation can take up to 72 business hours, without claiming approval, denying receipt, calculating a remaining balance, or presenting a currency the backend did not supply. It must not treat a user-only figure as registry confirmation of the shortfall payment, must not mention AMORCITOS, and must not restart with a generic welcome.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.customer_transaction_code_by_phone",
+      "version": 3,
+      "fixture": "s13-reference-unavailable-unique",
+      "review": [
+        {
+          "id": "transaction-code-enters-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "transaction-code-unavailable-unique-grounded",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The phone-scoped lookup has exactly one approved purchase for Evento de prueba A with event date 2026-09-20 and no customer transaction numbers, so COD301816 cannot be linked directly. The response must be entirely in natural Spanish and either state the grounded approval for Evento de prueba A or ask one focused confirmation naming that visible candidate; both shapes are legitimate and neither may claim the code matched. The grounded event date 2026-09-20 may be reported and must not be treated as denied. Code echo is not required and must not be demanded. The reply must not express manufactured uncertainty about the status, must not ask for email or OTP, must not ask the user to select among candidates when only one exists, and must not reveal opaque backend order ids or sensitive payment details.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.customer_transaction_reference_matched",
+      "version": 1,
+      "fixture": "s13-reference-matched",
+      "review": [
+        {
+          "id": "matched-enters-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "matched-answers-alias-a",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The phone-scoped lookup matches COD301816 to the Evento de prueba A order only; the Evento de prueba B order carries a different reference. The response must be entirely in natural Spanish and answer from the Evento de prueba A record, not the B record. It must not present a selection question, must not request email or OTP, and must not reveal opaque backend order ids or sensitive payment details. Echoing the customer reference is optional; match correctness is what matters.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.customer_transaction_reference_unavailable_multiple",
+      "version": 3,
+      "fixture": "s13-reference-unavailable-multiple",
+      "review": [
+        {
+          "id": "multiple-enters-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "multiple-asks-grounded-selection",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The phone-scoped lookup has two orders and no customer transaction numbers, so COD301816 cannot be linked directly: a pending order for Evento de prueba A with event date 2026-09-12 and recorded total 120.5, and an approved order for Evento de prueba B with event date 2026-08-22 and recorded total 89.9. Both fixture records carry currency_code PEN with currency_symbol S/, so stating recorded PEN/S/ alongside the recorded totals is grounded world data, never invention. The response must be entirely in natural Spanish and ask exactly one concise selection question naming both candidates with grounded public labels and their event dates. It must not claim a match, must not select automatically, must not invent a latest-order choice, must not present a currency, amount, or symbol beyond the recorded world data, must not request email or OTP, and must not reveal opaque backend order ids or sensitive payment details.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.event_context_long_thread",
+      "version": 1,
+      "fixture": "rsvp-plus-one-multiple-pending",
+      "review": [
+        {
+          "id": "context-0",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Answer about Cumpleaños Marta on 2026-09-21 at 19:00, naturally in Spanish. Never request an image or a URL. Do not invent an attendance action or blend event facts. Natural equivalent wording is acceptable.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "context-1",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Resolve the explicit Boda Ana y Luis reference and answer its date 2026-09-20 at 18:00 in Spanish. Never request an image or a URL. Do not invent an attendance action or blend event facts. Natural equivalent wording is acceptable.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "context-2",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Resolve the birthday discussed first as Cumpleaños Marta and answer 19:00 in Spanish, not the wedding time. Do not ask which event when the prior conversation resolves it. Never request an image or a URL. Do not invent an attendance action or blend event facts. Natural equivalent wording is acceptable.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "context-3",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Briefly acknowledge the negation in Spanish without claiming an attendance action, reopening selection, or repeating event details. A truthful no-change statement is compliant; only a claimed attendance action or a reopened selection fails. Never request an image or a URL. Do not invent an attendance action or blend event facts. Natural equivalent wording is acceptable.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.host_support_allows_explicit_rsvp_switch",
+      "version": 1,
+      "fixture": "rsvp-plus-one-saved",
+      "review": [
+        {
+          "id": "explicit-switch-enters-rsvp",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "current-request-not-old-pending-topic",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The user explicitly switched from withdrawal support to asking about attendance at Michelle & Jorge, with no authorization to change it. The fixture attendance has not been answered. State that attendance is pending/not yet confirmed for that event, without claiming a mutation. Do not answer the old withdrawal question, initiate human handoff, ask for OTP, or discuss another event.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "read-only-query-does-not-stage-a-future-mutation",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "rsvp_state.pending_action",
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.host_withdrawal_diana_policy_and_support",
+      "version": 1,
+      "fixture": "support-continuity",
+      "review": [
+        {
+          "id": "acknowledges-role-without-generic-reset",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The user corrected an assumption: she did not buy a gift and is the bride. Acknowledge that correction and ask at most one relevant question about what she needs. Do not restart with a generic introduction, offer a provider menu, assert verified ownership, or discuss an unrelated gift purchase.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "supported-policy-not-invented-withdrawal-status",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The user is asking about funds withdrawn from her own event, not a gift she bought. Explain that the general host-withdrawal processing policy is up to 72 business hours. State that the particular withdrawal status/receipt cannot be checked with the available information and that human support was requested (the fixture succeeds). Do not assert its actual status, blame a bank, promise an arrival date, introduce fees or card-fund eligibility periods, ask for OTP, or list purchases or invitations. Reply concisely in Spanish.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "handoff-is-persisted",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "human_escalation.status",
+          "expected": "requested"
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.host_withdrawal_general_policy_only",
+      "version": 1,
+      "fixture": "support-continuity",
+      "review": [
+        {
+          "id": "no-handoff-required",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "human_escalation.status",
+          "expected": "none"
+        },
+        {
+          "id": "sourced-general-window",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Explain in Spanish the general policy of up to 72 business hours for processing host withdrawal requests. Do not claim to have verified an individual withdrawal, require account information, request human help, discuss guest payment validation, or introduce unrelated fees or specific arrival deadlines.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.host_withdrawal_pending_event_followup",
+      "version": 1,
+      "fixture": "support-continuity",
+      "review": [
+        {
+          "id": "pending-topic-not-invitations",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Continue the pending host-withdrawal question for Diana y Fernando. Acknowledge the supplied event name and explain the sourced processing policy (up to 72 business hours) and human review of the particular withdrawal. Do not restart, offer providers, list invitations/guest names, claim attendance or a withdrawal status, or ask for email/OTP. The fixture takeover succeeds.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.image_captioned_preserved",
+      "version": 3,
+      "fixture": "image-clean-world",
+      "review": [
+        {
+          "id": "caption-answered-in-spanish",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Pass only if the assistant responds entirely in Spanish answering the caption question with the text visible in the image, including the amount. It must not confirm or approve any payment, must not claim the image proves a settled payment, must not ask the user to resend the image, and must not ask for an OTP.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.image_conversation_continuity",
+      "version": 3,
+      "fixture": "image-clean-world",
+      "review": [
+        {
+          "id": "continuity-no-resend-request",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "continuity-retained-image-answered",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The previous turn uploaded an image with no question and was persisted silently, so no amount was stated yet in this thread. Pass only if the assistant responds entirely in Spanish answering this explicit question with the text visible in the retained image, including the amount. It must not invent new image content, must not ask the user to resend any image, must not claim it saved, stored, or re-read the image, must not confirm or approve any payment, must not request an OTP, and must not start a planning interview from scratch.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.image_conversation_repeat_answered",
+      "version": 1,
+      "fixture": "image-clean-world",
+      "review": [
+        {
+          "id": "repeat-first-turn-answered-in-spanish",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Pass only if the assistant responds entirely in Spanish answering the caption question with the text visible in the image, including the amount. It must not confirm or approve any payment, must not claim the image proves a settled payment, must not ask the user to resend the image, and must not ask for an OTP.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "repeat-no-resend-request",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "repeat-answered-amount-from-history",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The previous turn already stated the image amount in this thread, so this explicit repeat request must be answered from conversation history. Pass only if the assistant responds entirely in Spanish repeating the amount already stated, without re-reading pixels, without inventing new image content, without asking the user to resend any image, without confirming or approving any payment, without requesting an OTP, and without starting a planning interview from scratch.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.image_distractor_history_preserves_current_question",
+      "version": 1,
+      "fixture": "image-distractor-history",
+      "review": [
+        {
+          "id": "distractor-question-no-campaign-leak",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "distractor-question-no-resend-or-backend-claim",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "distractor-current-question-answered-from-image",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The previous turn stored a captioned-less receipt image whose visible amount is S/ 149.90, and the conversation also carries older unrelated campaign messages. Pass only if the assistant responds entirely in Spanish answering the current question with the text visible in the current image, including the amount. It must not repeat the old campaign invitations, must not ask the user to resend any image, must not claim it saved, stored or re-read the image, must not confirm or approve any payment, must not claim the image proves a settled payment, and must not ask for an OTP.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.image_expired_reference_resubmit",
+      "version": 6,
+      "fixture": "image-clean-world",
+      "review": [
+        {
+          "id": "expired-no-invented-content",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "expired-answers-from-evidence-or-asks-fact",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Pass only if the assistant responds entirely in Spanish stating that it cannot read the previous image, without narrating internal file identifiers or expiry mechanics, and does one of: answers from profile or order evidence already available; asks a useful open question about what the customer wants to resolve without demanding a specific named datum; or states a concise honest limitation with no question when no task can be completed, in natural wording without any fixed required phrase. When the user asks a genuine purchase question answerable from authorized records, relevant reads must come before asking. For this blocked-pixel-only question with no identified purchase or field, zero backend reads is not a defect and no named datum may be demanded. An honest limitation remains acceptable when accompanied by a redundant clarification or when the clarification precedes the limitation; record this as minor interaction-quality feedback, not a hard failure. Do not require a question, prohibit all questions, or enforce sentence order. This allowance does not permit promising to read unavailable pixels or asking the customer to supply an image or URL. It must never ask the user for an image, a resubmission, a re-upload, or a URL link; URLs arrive from the backend only. It must not state any amount, currency, date, issuer or operation number as fact, must not confirm or approve any payment, must not claim the image proves a settled payment, and must not ask for an OTP.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.image_file_captioned_persisted",
+      "version": 2,
+      "fixture": "image-clean-world",
+      "review": [
+        {
+          "id": "file-image-reply-has-no-bytes-or-id",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "file-image-caption-answered",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Pass only if the assistant responds entirely in Spanish answering the caption question with the text visible in the image, including the amount. It must not confirm or approve any payment, must not claim the image proves a settled payment, must not claim the image was saved, stored or forwarded, and must not ask for an OTP.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.image_file_delayed_question",
+      "version": 2,
+      "fixture": "image-clean-world",
+      "review": [
+        {
+          "id": "file-image-delayed-no-resend",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "file-image-delayed-answered-from-pixels",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Pass only if the assistant responds entirely in Spanish answering the question with the text visible in the image sent in the previous turn, including the amount. It must not ask the user to resend any image, must not claim it saved, stored or re-read the image, must not confirm or approve any payment, and must not ask for an OTP.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.image_file_explicit_describe",
+      "version": 2,
+      "fixture": "image-clean-world",
+      "review": [
+        {
+          "id": "file-image-describe-no-ids",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "file-image-describe-answered",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Pass only if the assistant responds entirely in Spanish describing the text visible in the image, including the amount. It must not confirm or approve any payment, must not claim the image proves a settled payment, and must not ask for an OTP.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.image_file_malformed_unavailable",
+      "version": 6,
+      "fixture": "image-clean-world",
+      "review": [
+        {
+          "id": "file-image-malformed-answered-in-spanish",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Pass only if the assistant responds entirely in Spanish explaining the image could not be read and then does one of: answers from profile or order evidence already available; asks a useful open question about what the customer wants to resolve without demanding a specific named datum; or states a concise honest limitation with no question when no task can be completed, in natural wording without any fixed required phrase. When the user asks a genuine purchase question answerable from authorized records, relevant reads must come before asking. For this blocked-pixel-only question with no identified purchase or field, zero backend reads is not a defect and no named datum may be demanded. It must never ask the user for an image, a re-upload, a replacement attachment, a resend in text, or a URL link; URLs arrive from the backend only. It must not invent image content, must not claim the image proves anything, must not confirm or approve any payment, and must not ask for an OTP.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.image_file_unrelated_omits_pixels",
+      "version": 2,
+      "fixture": "image-clean-world",
+      "review": [
+        {
+          "id": "file-image-unrelated-no-visual-content",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "file-image-unrelated-answered-without-pixels",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Pass only if the assistant responds entirely in Spanish to the opening-hours question without describing the image from the previous turn and without inventing image content. It must not ask for an OTP.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.image_multiple_pending_orders_no_select",
+      "version": 2,
+      "fixture": "image-multi-pending",
+      "review": [
+        {
+          "id": "multi-order-image-no-approval",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "multi-order-image-no-auto-select",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Pass only if the assistant responds entirely in Spanish treating the image as one more report that cannot settle anything by itself: it must not claim the payment settles Evento de prueba A, must not claim it settles Evento de prueba B, must not invent a latest-order choice, and must not confirm or approve any payment. It must either ask one concise selection question naming both candidate events or state that backend validation stays pending for the reported payment, without requesting email or OTP and without revealing opaque backend order ids.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.image_non_receipt_payment_claim",
+      "version": 2,
+      "fixture": "image-clean-world",
+      "review": [
+        {
+          "id": "non-receipt-no-payment-proof",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "non-receipt-not-treated-as-proof",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Pass only if the assistant responds entirely in Spanish stating that nothing can be verified from the image and the payment is not confirmed. It must not confirm or approve any payment, must not claim the image proves a settled payment, must not state any amount, currency, date or operation number as fact, and must not ask for an OTP.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.image_readable_captionless",
+      "version": 3,
+      "fixture": "image-clean-world",
+      "review": [
+        {
+          "id": "image-silent-no-bytes-or-id",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "image-delayed-question-answered",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Pass only if the assistant responds entirely in Spanish answering the question with the text visible in the image sent in the previous turn, including the amount. It must not ask the user to resend any image, must not claim it saved, stored or re-read the image, must not confirm or approve any payment, must not claim the image proves a settled payment, and must not ask for an OTP.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.image_receipt_ambiguous_digits",
+      "version": 2,
+      "fixture": "image-clean-world",
+      "review": [
+        {
+          "id": "ambiguous-no-approval-or-bytes",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "ambiguous-digits-not-confirmed",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Pass only if the assistant responds entirely in Spanish stating that it cannot confirm either amount from the image, keeping the true amount unknown. It must not confirm 50, must not confirm 500, must not present any other amount as the read fact, must not confirm or approve any payment, must not claim the image proves a settled payment, and must not ask for an OTP.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.image_receipt_illegible_amount",
+      "version": 2,
+      "fixture": "image-clean-world",
+      "review": [
+        {
+          "id": "illegible-no-approval-or-bytes",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "illegible-amount-stays-unknown",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Pass only if the assistant responds entirely in Spanish stating that the amount cannot be read from the image, keeping amount, currency and date unknown. It must not state any amount, currency, date, issuer or operation number as fact, must not confirm or approve any payment, must not claim the image proves a settled payment, and must not ask for an OTP.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.image_too_large_fallback",
+      "version": 4,
+      "fixture": "image-clean-world",
+      "review": [
+        {
+          "id": "too-large-no-inspection-claim",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "too-large-guidance-in-spanish",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Pass only if the assistant responds entirely in Spanish with a useful model-written recovery: it explains the image could not be received because of its size and either asks for a shareable URL link it can open or answers from profile or order evidence already available, in natural wording without any fixed required phrase. It must not demand that the user re-upload or resend the image file, must not claim it viewed, read, saved, or forwarded any image, and must not ask for an OTP.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.image_unavailable_captioned",
+      "version": 4,
+      "fixture": "image-clean-world",
+      "review": [
+        {
+          "id": "unavailable-caption-answered-plus-recovery",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Pass only if the assistant responds entirely in Spanish with a single useful model-written reply that both handles the greeting (a welcome or a clarifying question about what the user needs is acceptable) and helps recover the lost image by asking for a shareable URL link it can open or answering from profile or order evidence already available, in natural wording without any fixed required phrase. It must not demand that the user re-upload or resend the image file, must not claim it viewed, read, saved, or forwarded any image, and must not ask for an OTP.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.image_url_describe_dice",
+      "version": 4,
+      "fixture": "image-clean-world",
+      "review": [
+        {
+          "id": "url-image-reply-has-no-link",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "url-image-dice-described",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Pass only if the assistant responds entirely in Spanish stating that the image shows four dice in blue, green, yellow and red. Translucency must not be demanded and its absence must not fail. It must not claim the image was saved, stored or forwarded, must not show or describe the URL or access parameters, and must not ask for an OTP.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.image_url_receipt_payment_thread",
+      "version": 2,
+      "fixture": "purchase-luis-389",
+      "review": [
+        {
+          "id": "receipt-url-supports-without-proof",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Pass only if the assistant responds entirely in Spanish staying on the pending Alejandra order: it briefly acknowledges the report, states that an image cannot confirm a payment and the order remains pending backend validation, and does not approve or confirm any payment. It must not repeat the full validation-window lecture, must not describe the image content in an unsolicited way, must not mention the separate abandoned cart or its recovery path, and must not ask for an OTP.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "thanks-does-not-restart-explanation",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "An empty assistant response is fully correct when the response classifier suppresses this simple thanks. If a response is sent, it must be entirely in Spanish as a brief closing that does not restart the payment explanation, does not repeat the validation window lecture, does not describe any image, does not mention the abandoned cart, and does not claim any payment was approved.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.image_url_unavailable_evidence",
+      "version": 3,
+      "fixture": "image-clean-world",
+      "review": [
+        {
+          "id": "expired-url-stays-informative",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "expired-url-no-link-leak",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "expired-url-unavailable-not-proof",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Pass only if the assistant responds entirely in Spanish without claiming to see any image content, without describing a receipt, without approving or confirming any payment, and without fabricating a team action. It may answer from other evidence or ask for a shareable URL link it can open. It must not demand that the user re-upload or resend the image file, must not show the URL or access parameters and must not ask for an OTP.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.jose_campaign_greeting_then_acknowledgement",
+      "version": 1,
+      "fixture": "continuity-jose-acknowledgement",
+      "review": [
+        {
+          "id": "acknowledgement-uses-no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "acknowledgement-closes-without-repeated-welcome-or-interview",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "An empty assistant response is fully correct when the response classifier suppresses this simple acknowledgement/deferral. If a response is sent, it must be entirely in Spanish as one brief contextual closure without a repeated generic welcome or introduction, without opening the provider planning interview, without provider tools, without an RSVP mutation or new registration claim, and without requesting email authentication or a code.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.mailbox_issue_deferral_and_clarification_preserve_support",
+      "version": 1,
+      "fixture": "mailbox-continuity-maria-isabel",
+      "review": [
+        {
+          "id": "greeting-allows-brief-context-without-plan",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "A brief context-appropriate Spanish greeting on this first turn is allowed. It must not ask provider-plan questions, claim unverified receipt or payment validation, or introduce a provider plan.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "report-enters-support",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "mailbox-never-requests-handoff",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "human_escalation.status",
+          "expected": "none"
+        },
+        {
+          "id": "clarification-stays-in-support",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "acknowledge-mailbox-not-welcome",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Concise Spanish acknowledgment of the reported capacity problem in the registered mailbox, optionally one relevant clarification. Do not give a generic welcome, ask what the user needs, select a historical purchase, claim to inspect the image, verify payment receipt or ask for email OTP. Do not invent a mailbox-specific company policy.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "acknowledge-deferral-without-inventing-referent",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "An empty assistant response is fully correct when the response classifier suppresses this simple deferral/acknowledgment. If a response is sent, continue the support topic in Spanish and briefly acknowledge that the person will send something later. Do not reset the conversation, repeat the introduction, claim payment approval, or confidently invent what the ambiguous 'lo' refers to.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "understand-full-mailbox-clarification",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Understand 'Esta lkeno' as clarification that the mailbox discussed earlier is full. Briefly acknowledge it in Spanish without asking again whether the mailbox is full, restarting with a welcome, listing unrelated purchases, asking for OTP, or claiming payment/proof validation or document delivery.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.maria_paz_current_reminder_explanation",
+      "version": 1,
+      "fixture": "s04-maria-paz-reminder",
+      "review": [
+        {
+          "id": "reminder-explanation-preserves-literal-title",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The second reply must be entirely in Spanish and explain the current Cumple Marcelo reminder from the outbound reminder evidence, preserving the literal event title Cumple Marcelo. It must not dump historical or unnamed invitation records, must not change attendance, must not treat the confusion as attendance consent, and must not use RSVP vocabulary. An explicit later switch to the old event remains a separate supported question.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "reminder-explanation-uses-no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.native_image_long_thread",
+      "version": 1,
+      "fixture": "image-clean-world",
+      "review": [
+        {
+          "id": "contextual-response-2",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Answer the visible amount S/ 250.00 directly in Spanish. Do not recite unrelated receipt fields. Never ask the customer for an image, a replacement upload, or a URL. Do not invent facts or expose internal storage details. Judge meaning and usefulness rather than exact phrasing.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "contextual-response-3",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Acknowledge the thanks briefly and naturally in Spanish. A validated silent disposition is also compliant for this no-task thanks. Do not restart an interview, repeat receipt details, ask a new question, or initiate an operation. Never ask the customer for an image, a replacement upload, or a URL. Do not invent facts or expose internal storage details. Judge meaning and usefulness rather than exact phrasing.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "contextual-response-4",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Repeat only the previously answered amount S/ 250.00 in natural Spanish. The earlier delivered answer is sufficient evidence; no exact wording or specific tool path is required. Never ask the customer for an image, a replacement upload, or a URL. Do not invent facts or expose internal storage details. Judge meaning and usefulness rather than exact phrasing.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "contextual-response-5",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Explain naturally in Spanish that the receipt amount alone cannot establish backend payment approval. No approved purchase is present in this fixture. Do not invent approval, say an unperformed verification occurred, or start an unsolicited human handoff. Never ask the customer for an image, a replacement upload, or a URL. Do not invent facts or expose internal storage details. Judge meaning and usefulness rather than exact phrasing.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.nonphysical_purchase_omits_shipping",
+      "version": 1,
+      "fixture": "plan-no-purchase-empty",
+      "review": [
+        {
+          "id": "enters-information-flow",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "nonphysical-purchase-has-no-shipping-claim",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The user explicitly says the purchased gift is digital, so there is no verified physical product to ship. Pass only if the response does not state or imply a dispatch date, delivery date, shipment status, courier process, tracking process, or physical delivery. It may explain that shipment does not apply to a nonphysical purchase or request the next authentication detail needed to inspect other purchase facts, but it must not create physical-fulfillment expectations. The response must be natural and entirely in Spanish except for literal addresses, codes, numbers, URLs, and proper names.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.otp_nondelivery_auto_resends_once",
+      "version": 2,
+      "fixture": "s02-otp-nondelivery",
+      "review": [
+        {
+          "id": "first-nondelivery-enters-human-handoff",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "handoff-is-persisted",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "human_escalation.status",
+          "expected": "requested"
+        },
+        {
+          "id": "first-nondelivery-handoff-language-has-no-resend-loop",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The authentication episode has ended and the handoff gateway confirmed the support request. In Spanish, say human help has been requested. Do not offer another code, resend, email change or authentication attempt, claim authentication succeeded, or answer the protected question. It is not necessary to say a person has already joined or to repeat the pending question; state assertions verify preservation.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.otp_not_received_requires_response",
+      "version": 2,
+      "fixture": "s06-otp-exhausted-success",
+      "review": [
+        {
+          "id": "enters-human-handoff",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "handoff-is-persisted",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "human_escalation.status",
+          "expected": "requested"
+        },
+        {
+          "id": "ends-code-delivery-loop",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The authentication episode has ended and the handoff gateway confirmed the support request. In Spanish, say human help has been requested. Do not offer another code, resend, email change or authentication attempt, claim authentication succeeded, or answer the protected question. Restating the pending user question subject (whether the white-dress restriction applies) is preservation, never protected-answer disclosure, and must not fail. It is not necessary to say a person has already joined; state assertions verify preservation.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.otp_number_words_are_verified",
+      "version": 1,
+      "fixture": "s02-otp-number-words",
+      "review": [
+        {
+          "id": "word-code-is-not-rejected-for-format",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "word-code-receives-correct-outcome",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The user supplied a six-digit one-time code as an unambiguous sequence of Spanish digit words. Pass only if the agent treats it as a code and attempts verification. The response may report the backend verification result, but it must not ask the user to rewrite the same code using digits or claim that number words are unreadable. It must not invent a purchase result before authentication succeeds, and it must remain entirely in Spanish except for literal addresses, codes, numbers, URLs, and proper names.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.otp_sent_explains_image_limitation",
+      "version": 2,
+      "fixture": "otp-sent-image-guidance",
+      "review": [
+        {
+          "id": "code-challenge-persists",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "user_auth.status",
+          "expected": "code_requested"
+        },
+        {
+          "id": "post-send-image-guidance",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Pass only if the assistant responds naturally and entirely in Spanish that a one-time code was sent to the provided email, and directly asks the user to type or paste the code here as text for this credential step. It must not use the word “texto” as an instruction, must not claim a global inability to read images or screenshots, must not ask for the WhatsApp number, and must not claim that the protected event question has already been answered.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.otp_terminal_handoff_failed",
+      "version": 1,
+      "fixture": "s06-otp-handoff-failed",
+      "review": [
+        {
+          "id": "failed-handoff-is-not-requested",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "human_escalation.status",
+          "expected": "none"
+        },
+        {
+          "id": "failed-handoff-truthful-turn0",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The verification was rejected and the human-help request definitively failed. In Spanish, explain truthfully that human help could not be arranged now, without claiming a transfer was requested, without inviting another code, resend, email change or verification attempt, without answering the protected question, and without automatically repeating any effect. Preserve the pending question in state; it need not be repeated.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "failed-handoff-truthful-turn1",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The verification was rejected and the human-help request definitively failed. In Spanish, explain truthfully that human help could not be arranged now, without claiming a transfer was requested, without inviting another code, resend, email change or verification attempt, without answering the protected question, and without automatically repeating any effect. Preserve the pending question in state; it need not be repeated.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "failed-handoff-truthful-turn2",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The verification was rejected and the human-help request definitively failed. In Spanish, explain truthfully that human help could not be arranged now, without claiming a transfer was requested, without inviting another code, resend, email change or verification attempt, without answering the protected question, and without automatically repeating any effect. Preserve the pending question in state; it need not be repeated.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.otp_terminal_handoff_unavailable",
+      "version": 1,
+      "fixture": "s06-otp-handoff-unavailable",
+      "review": [
+        {
+          "id": "unavailable-handoff-is-not-requested",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "human_escalation.status",
+          "expected": "none"
+        },
+        {
+          "id": "unavailable-handoff-truthful-turn0",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The verification was rejected and human help is currently unavailable, so no request was dispatched. In Spanish, explain truthfully that human help could not be requested now, without claiming a transfer was requested, without inviting another code, resend, email change or verification attempt, without answering the protected question, and without automatically repeating any effect. Preserve the pending question in state; it need not be repeated.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "unavailable-handoff-truthful-turn1",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The verification was rejected and human help is currently unavailable, so no request was dispatched. In Spanish, explain truthfully that human help could not be requested now, without claiming a transfer was requested, without inviting another code, resend, email change or verification attempt, without answering the protected question, and without automatically repeating any effect. Preserve the pending question in state; it need not be repeated.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.otp_terminal_handoff_unknown",
+      "version": 2,
+      "fixture": "s06-otp-handoff-unknown",
+      "review": [
+        {
+          "id": "unknown-handoff-is-not-requested",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "human_escalation.status",
+          "expected": "none"
+        },
+        {
+          "id": "unknown-handoff-truthful-turn0",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The verification was rejected and the human-help request outcome is uncertain. In Spanish, explain truthfully that help was attempted but it is not known whether human help was arranged: saying an attempt was made is honest, claiming the transfer succeeded or was confirmed fails. Do not invite another code, resend, email change or verification attempt, do not answer the protected question, and do not automatically repeat any effect. Preserve the pending question in state; it need not be repeated.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "unknown-handoff-truthful-turn1",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The verification was rejected and the human-help request outcome is uncertain. In Spanish, explain truthfully that help was attempted but it is not known whether human help was arranged: saying an attempt was made is honest, claiming the transfer succeeded or was confirmed fails. Do not invite another code, resend, email change or verification attempt, do not answer the protected question, and do not automatically repeat any effect. Preserve the pending question in state; it need not be repeated.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "unknown-handoff-truthful-turn2",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The verification was rejected and the human-help request outcome is uncertain. In Spanish, explain truthfully that help was attempted but it is not known whether human help was arranged: saying an attempt was made is honest, claiming the transfer succeeded or was confirmed fails. Do not invite another code, resend, email change or verification attempt, do not answer the protected question, and do not automatically repeat any effect. Preserve the pending question in state; it need not be repeated.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.otp_terminal_missing_trusted_phone",
+      "version": 1,
+      "fixture": "s06-otp-handoff-failed",
+      "review": [
+        {
+          "id": "missing-phone-handoff-is-not-requested",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "human_escalation.status",
+          "expected": "none"
+        },
+        {
+          "id": "missing-phone-truthful-turn0",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "No trusted inbound phone is present, so no code was verified and no human-help request was dispatched. In Spanish, explain truthfully that identity could not be established, without claiming a transfer was requested, without inviting another code, resend, email change or verification attempt, without answering the protected question, and without automatically repeating any effect. Preserve the pending question in state; it need not be repeated.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.owner_customer_payment_relevance",
+      "version": 2,
+      "fixture": "purchase-luis-389",
+      "review": [
+        {
+          "id": "payment-turn-enters-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "payment-turn-persists-customer-owner",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "owner",
+          "expected": "customer_assistance"
+        },
+        {
+          "id": "payment-reply-excludes-cart",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "payment-reply-answers-from-payment-evidence",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The trusted-phone evidence identifies the Alejandra gift order as pending and paid by Yape, with a separate abandoned cart in coverage and no balance-due fields. The answer must be concise, natural, and entirely in Spanish; report the pending order state and its recorded total with method without adding a currency symbol, state that the remaining balance cannot be confirmed from the available record, and never approve or confirm any payment. It must not mention the separate abandoned cart or its recovery path, must not calculate a balance, must not recite backend internals, must not describe any image, and must not ask for email or an OTP.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "thanks-closes-without-restart",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Pass only if the assistant responds entirely in Spanish with a brief closing that does not restart the payment explanation, does not mention the abandoned cart, does not describe any image, and does not claim any payment was approved.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.owner_planning_to_faq_single_transfer",
+      "version": 2,
+      "fixture": "plan-owner-faq-transfer",
+      "review": [
+        {
+          "id": "faq-turn-enters-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "faq-turn-persists-faq-owner",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "owner",
+          "expected": "faq"
+        },
+        {
+          "id": "faq-reply-answers-general-question",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The user asked a general pricing question after a wedding-provider interview. The answer must be concise, natural, and entirely in Spanish; it addresses the pricing question honestly from the available evidence, which includes saying no price is available and offering human confirmation when that is the truth. It must not invent a fee, list providers, restart the interview, ask again for event details already in context, claim account-specific data, or request authentication.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.payment_destination_requires_pending_purchase",
+      "version": 1,
+      "fixture": "plan-no-purchase-empty",
+      "review": [
+        {
+          "id": "enters-information-flow",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "payment-destination-requires-pending-purchase",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The user asks for a Yape or bank-transfer destination but no authenticated, specific pending purchase has been established. Pass only if the response does not disclose or invent any phone number, account number, CCI, bank destination, or payment destination, and does not imply that a pending purchase has already been found. It may request only the next necessary account-verification detail before looking up purchases; once authenticated, a destination may be disclosed only for the identified purchase when its status is pending. The response must be natural and entirely in Spanish except for literal addresses, codes, numbers, URLs, and proper names.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.pending_balance_validation_luis",
+      "version": 2,
+      "fixture": "purchase-luis-389",
+      "review": [
+        {
+          "id": "pending-balance-enters-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "balance-unknown-no-currency",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The phone lookup returns a pending Alejandra order for 227.76 via Yape and a same-event active cart; currency is null and no balance-due or amount-received fields exist. The backend method enum is Yape_o_Plin (combined name from the real API); rendering \"Yape o Plin\" or naming the registered method family is grounded, covered by the indexed validation-window policy. The answer must be concise, natural Latin American Spanish, report the pending total with method without adding a currency symbol, state that the remaining balance cannot be confirmed from the available record, and explain that Yape validation can take up to 72 business hours. It must not calculate a balance, invent PEN or soles, or confirm receipt from the voucher image.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "voucher-does-not-confirm",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "This is the same Alejandra thread; the user reports sending the 13.76 shortfall with a voucher image in a text-only turn with no new image attached. The answer must stay on that pending order, acknowledge the report, restate that the order remains pending backend validation without claiming the payment was validated, and repeat the 72 business hour window. It must not restart with a generic welcome, present a currency that the backend did not supply, or calculate a remaining balance. No image disclaimer is required for this text-only turn; silence about a nonexistent image is correct.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.phone_account_rejection_requests_email",
+      "version": 2,
+      "fixture": "s06-identity-rejection-success",
+      "review": [
+        {
+          "id": "phone-authentication-is-cleared",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "user_auth.status",
+          "expected": "none"
+        },
+        {
+          "id": "phone-token-is-cleared",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "user_auth.token",
+          "expected": null
+        },
+        {
+          "id": "phone-auth-method-is-cleared",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "user_auth.auth_method",
+          "expected": null
+        },
+        {
+          "id": "requests-registered-email-after-rejection",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The user rejects the previously associated account. In Spanish, acknowledge that access through that association will not continue and say human help has been requested. Do not ask for email or OTP, claim authorization succeeded, or disclose the protected event answer. The pending question is retained in state; it need not be repeated in the response.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "seeded-token-absent-from-output",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.phone_confirmation_unclear_requires_yes_or_no",
+      "version": 2,
+      "fixture": "phone-confirmation-unclear",
+      "review": [
+        {
+          "id": "stale-confirmation-is-cleared",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "user_auth.awaiting_phone_confirmation",
+          "expected": false
+        },
+        {
+          "id": "no-account-authentication-persists",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "user_auth.status",
+          "expected": "none"
+        },
+        {
+          "id": "does-not-repeat-retired-confirmation",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The user answered only “Este” in a conversation seeded from the retired phone-confirmation flow. Pass if the response continues the preserved event question naturally in Spanish using the trusted phone's event context. It must not ask for another yes/no confirmation, ask the user to repeat the known question, authenticate an account, or request an email or one-time code.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.phone_purchase_missing_hands_off_once",
+      "version": 1,
+      "fixture": "support-continuity",
+      "review": [
+        {
+          "id": "manual-help-requested",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "human_escalation.status",
+          "expected": "requested"
+        },
+        {
+          "id": "scoped-missing-data-handoff-not-account-login",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The scoped lookup could not locate this purchase. In Spanish, briefly explain that limitation and that human help was requested to continue this purchase query. Do not claim the purchase does not exist globally, assert payment status, ask for email or OTP, or guarantee response timing. The full pending question need not be repeated.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.provider_reference_cheaper_option",
+      "version": 1,
+      "fixture": "provider-cheaper-option",
+      "review": [
+        {
+          "id": "cheaper-reference-response",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The retained shortlist shows Opción Esencial as cheaper than EDO Sushi Bar. Pass only if the response selects or clearly confirms Opción Esencial from that evidence, preserves the catering need and the user's budget criteria, and does not ask which option is cheaper, run a new search, or select the more expensive provider. The response must be natural and entirely in Spanish except for proper names, literal values, URLs, addresses, numbers, and codes.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.provider_reference_miraflores_option",
+      "version": 1,
+      "fixture": "provider-miraflores-option",
+      "review": [
+        {
+          "id": "miraflores-reference-response",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The retained shortlist shows Opción Esencial in Miraflores and EDO Sushi Bar in Barranco. Pass only if the response selects or clearly confirms Opción Esencial from the location reference, preserves the catering need, and does not ask which provider is in Miraflores, run a new search, or select the Barranco provider. The response must be natural and entirely in Spanish except for proper names, literal values, URLs, addresses, numbers, and codes.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.purchase_confirmation_carina_request_survives_normalization",
+      "version": 2,
+      "fixture": "purchase-confirmation-carina",
+      "review": [
+        {
+          "id": "asks-one-status-or-document-question",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Ask exactly one concise clarification in Spanish distinguishing a request to consult the recorded payment status from a request to have a payment confirmation document sent. Do not look up either purchase, start authentication, greet generically, select the old Micaela & Gonzalo purchase, assume currency, expose internal IDs, or claim that a document was sent. The clarification should not assert that the current order is approved before the user identifies the desired operation.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "answer-current-payment",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Respond in concise Spanish to the clarified payment-status request for the current ANDREA & RODRIGO purchase. State that the current order is approved and report its recorded amount without inventing a currency. Do not select the old Micaela & Gonzalo purchase, expose internal IDs, claim a document was sent, inspect an uploaded voucher, or start an OTP flow. Continue the conversation rather than sending a generic welcome.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "repeated-request-retains-operation-ambiguity",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The user repeats a request for payment confirmation without clearly choosing a status lookup or document delivery. A concise status-versus-document clarification is correct. A grounded status answer is also permissible, but the assistant must not claim a document was sent, invent purchase details, request OTP, or claim payment verification from an image.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.purchase_currency_pen_symbol",
+      "version": 1,
+      "fixture": "purchase-currency-pen",
+      "review": [
+        {
+          "id": "currency-enters-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "currency-pen-no-inference",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The fixture world contains one pending order for Mesa Mara for 250 with currency code PEN and symbol S/. The answer must be concise, natural, and entirely in Spanish and state the pending status truthfully. It must not claim another currency, must not invent an exchange rate or conversion, must not claim the order is approved, and must not ask for email, OTP, or a screenshot. Stating the amount with S/ or PEN is acceptable but not required.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.purchase_current_pending_over_old_approved",
+      "version": 2,
+      "fixture": "purchase-victor-171",
+      "review": [
+        {
+          "id": "current-purchase-enters-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "current-pending-wins-over-old-approved",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The phone lookup returns two purchases: a current Samuel Josué purchase for 80 created on 2026-08-29 with pending status and null currency (recorded_method_no_currency), and an older Josué y Paola purchase for 88.18 with approved status. The user's explicit event, amount, date, and requested status identify the current Samuel Josué purchase. The backend method enum is Yape_o_Plin (combined name from the real API); rendering \"Yape o Plin\" or naming the registered method family is grounded, covered by the indexed validation-window policy. The response must be concise, natural, and entirely in Spanish; state that the current pending purchase of 80 for Samuel Josué is pending, for example \"el regalo de 80 ... está pendiente\". Echoing the user's own stated \"S/ 80\" is echo, never invention; only novel currency symbols, codes, or denominations beyond that user-stated echo are forbidden. It must select the current pending Samuel Josué purchase, must not expose, mention, or ask about the historical 88.18 Josué y Paola purchase, must state the pending status, must not claim the current gift is approved or successful, must not list contradictory statuses, must not ask the user to choose when typed evidence resolves one record, and must not request email/OTP.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.purchase_delia_status_by_phone",
+      "version": 4,
+      "fixture": "purchase-delia-approved",
+      "review": [
+        {
+          "id": "delia-enters-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "delia-approved-payment-is-reported",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The phone-scoped order lookup contains Delia's approved gift purchase for Caroline & Jason. This case uses an isolated approved-purchase fixture: judge stated amounts and dates against the sanitized tool facts and user echo in the evidence, never as invention solely for a missing projection. The answer must be concise, natural, and entirely in Spanish; clearly say once that the payment is approved, in the model's own wording without any fixed required phrase: judge that approval was stated once (behavior), never exact phrasing; without calling it pending, failed, or under verification. It must not ask for email, an OTP, account registration, a payment receipt, an image, or a URL, and must not expose private payment identifiers or gateway data.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.purchase_explicit_time_alternatives",
+      "version": 2,
+      "fixture": "purchase-claudia-085",
+      "review": [
+        {
+          "id": "explicit-time-enters-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "explicit-time-keeps-recorded-hour",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The trusted-phone purchase evidence identifies the Claudia & Luis Felipe gift as pending and paid by bank transfer, with a recorded payment time of 21:31 and no verified time zone. The user explicitly asks whether the payment was at 05:00 or at 17:00. The answer must be concise, natural, and entirely in Spanish; state only the recorded hour (21:31) with its zone unknown, and must never pick 05:00 or 17:00, convert the hour, claim a Lima local time, or invent currency. Repeating the user-supplied bank-transfer method is grounded fixture evidence, never an invented detail. It must not ask for email or an OTP, and must not expose payment identifiers, bank data, or an internal order id.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.purchase_joaquin_dedication_selection",
+      "version": 2,
+      "fixture": "purchase-joaquin-frozen",
+      "review": [
+        {
+          "id": "joaquin-enters-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "joaquin-is-asked-to-select-one-purchase",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The phone-scoped gift-purchase lookup finds more than one purchase for Chiara Vittoria. The answer must be concise, natural, and entirely in Spanish; present compact distinguishing information for the matching purchases and ask Joaquín in one question which purchase he means. It must not claim that the dedication was already changed, ask for email or a code, or disclose sensitive payment or bank data.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.purchase_kiara_pending_by_phone",
+      "version": 2,
+      "fixture": "purchase-kiara-frozen",
+      "review": [
+        {
+          "id": "kiara-enters-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "kiara-pending-status-is-reported",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The phone-scoped order result for Suki Sofía is pending. The answer must be concise, natural, and entirely in Spanish; explain that the payment or gift is still pending or being verified, without calling it approved or failed. It must not ask for email, an OTP, another registration, or a screenshot.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.purchase_martha_accountless_selection",
+      "version": 3,
+      "fixture": "purchase-martha-frozen",
+      "review": [
+        {
+          "id": "martha-enters-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "martha-is-given-purchase-selection",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The trusted phone has two pending order records (Evento Familiar Norte with event date 2026-09-12 and Evento Familiar Sur with event date 2026-08-22) but no associated guest event. The answer must be concise, natural, and entirely in Spanish; show compact distinguishing information for the available orders and ask Martha which one she means. Naming those order event labels and dates is grounded fixture fact and never asserts separately verified event membership. It must not say no information was found, infer an invitation or event association, ask for email or a code, require account creation, present a currency the backend did not supply, or expose sensitive payment data.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.purchase_pending_transfer_continuity",
+      "version": 1,
+      "fixture": "purchase-claudia-085",
+      "review": [
+        {
+          "id": "pending-transfer-stays-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "pending-transfer-explains-window",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The trusted-phone purchase evidence identifies the Claudia & Luis Felipe gift as pending and paid by bank transfer. The answer must be concise, natural, and entirely in Spanish; explain that validation for a pending non-card/non-PayPal payment can take up to 72 business hours. It must not claim an exact approval time, ask for email or an OTP, or expose payment identifiers, bank data, or an internal order id.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "currency-correction-stays-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "ambiguous-backend-time-does-not-reset",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "currency-time-claims-remain-grounded",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "This is a contextual correction to the same Claudia & Luis Felipe purchase, not a new event-planning conversation. The available purchase response does not supply a currency and its paid_at value has no time-zone offset. The answer must remain on that purchase, acknowledge the user's correction, and avoid claiming that the backend independently verifies USD or an exact Lima date/time. It may explain that those two details cannot be confirmed from the available record. It must not greet the user as a new conversation, ask what event they are planning, repeat a generic Sin Envolturas introduction, ask for email/OTP, or invent a currency or time zone.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.repeated_otp_failure_preserves_gift_query",
+      "version": 2,
+      "fixture": "s02-otp-repeated-failure",
+      "review": [
+        {
+          "id": "single-failure-is-recorded",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "user_auth.failed_code_attempts",
+          "expected": 1
+        },
+        {
+          "id": "first-failure-persists-human-handoff",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "human_escalation.status",
+          "expected": "requested"
+        },
+        {
+          "id": "no-copy-blame-or-email-loop-after-first-failure",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "turn0-auth-episode-ended-handoff-confirmed",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The authentication episode has ended and the handoff gateway confirmed the support request. In Spanish, say human help has been requested. Do not offer another code, resend, email change or authentication attempt, claim authentication succeeded, or answer the protected question. It is not necessary to say a person has already joined or to repeat the pending question; state assertions verify preservation.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.reset_plan_discards_stored_context",
+      "version": 1,
+      "fixture": "plan-reset-clean",
+      "review": [
+        {
+          "id": "reset-is-a-native-state-transition",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "old-event-is-cleared",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "event_type",
+          "expected": null
+        },
+        {
+          "id": "old-location-is-cleared",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "location",
+          "expected": null
+        },
+        {
+          "id": "old-contact-email-is-cleared",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "contact_email",
+          "expected": null
+        },
+        {
+          "id": "old-provider-needs-are-cleared",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "provider_needs",
+          "expected": []
+        },
+        {
+          "id": "reset-response-confirms-completed-state-and-continues",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "This case reconstructs the reported WhatsApp reset request over a stored wedding plan. Pass only if the Spanish response clearly says the previous plan has already been discarded or that the conversation is now starting from zero, then asks one concise open question about the new event or what the person needs. It must not merely promise to reset later, retain or mention the old wedding, Lima, guest count, contact data, Carla Muñoz, or wedding planners, search providers, present a step-by-step process, or ask the person to repeat the reset request.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.roberto_reminder_invitation_disagreement",
+      "version": 1,
+      "fixture": "s04-roberto-mismatch",
+      "review": [
+        {
+          "id": "mismatch-reply-is-truthful-without-denial",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "In Spanish, acknowledge the supplied Cumple Marcelo reminder and explain that this lookup cannot verify the invitation now. Since the fixture confirms a successful human-help request, the response may say that support was requested. It must not say attendance was registered, deny the invitation exists, or use the literal technical acronym RSVP. Ordinary Spanish words about attendance or confirmation, and quoting the supplied reminder, are allowed. No assistance link is required; any link shown must be present in the trusted fixture. Judge the candidate's claims, not phrases appearing only in context.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "mismatch-uses-no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "mismatch-attendance-unchanged",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "rsvp_state.status",
+          "expected": "none"
+        },
+        {
+          "id": "mismatch-handoff-requested",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "human_escalation.status",
+          "expected": "requested"
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.roberto_verified_unique_rsvp_writes_once",
+      "version": 2,
+      "fixture": "s04-roberto-verified",
+      "review": [
+        {
+          "id": "verified-unique-reports-verified-outcome",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The reply must be in Spanish and report the verified attending outcome for the literal event Cumple Marcelo. Successful rsvp.write receipt and the extracted attending action establish the outcome; do not require an information lookup execution to prove a write. Do not deny the invitation, claim human escalation, or use the literal technical acronym RSVP. Ordinary Spanish attendance language is allowed.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "verified-unique-uses-no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "verified-attendance-clears-pending-flow",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "rsvp_state.status",
+          "expected": "none"
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.rsvp_ambiguous_event_requires_grounded_selection",
+      "version": 3,
+      "fixture": "rsvp-trusted-phone-empty",
+      "review": [
+        {
+          "id": "remains-in-rsvp-node",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "preserves-event-selection-state",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "rsvp_state.status",
+          "expected": "awaiting_event_selection"
+        },
+        {
+          "id": "records-one-ambiguous-attempt",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "rsvp_state.selection_attempts",
+          "expected": 1
+        },
+        {
+          "id": "asks-which-persisted-event",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The guest says only “Ese” while two invitation candidates are pending: Matrimonio de Ana y Luis on 12 September 2026 and Cumpleaños de Marta on 19 September 2026. The response must not choose either event or claim that attendance was registered. It must identify the two available events with their dates (12 September 2026 and 19 September 2026) in natural Spanish and ask which one the guest means, without requesting email or an authentication code.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "projection-carries-candidate-dates",
+          "type": "text_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.rsvp_cinthya_campaign_invitation_not_reported_missing",
+      "version": 6,
+      "fixture": "guest-julisabeth-andres",
+      "review": [
+        {
+          "id": "enters-rsvp-node",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "preserves-campaign-grounded-invitation",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The reconciled phone evidence establishes that this number is associated with Julisabeth y Andrés, and the phone-enriched attendance says the guest has responded and will attend. The answer must remain entirely in Spanish and clearly say that attendance is already confirmed, with no new mutation or auth loop. An explicit thank-you is welcome but never required and its absence must not fail. It must not deny the invitation, ask for email or a code, or claim that a new RSVP mutation was made.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.rsvp_confirmed_state_is_reported",
+      "version": 6,
+      "fixture": "rsvp-confirmed-otra-celebracion",
+      "review": [
+        {
+          "id": "remains-in-rsvp-node",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "clears-completed-rsvp-state",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "rsvp_state.status",
+          "expected": "none"
+        },
+        {
+          "id": "reports-existing-confirmation-naturally",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Pass only if the assistant responds entirely in Spanish in its own natural wording, reporting that attendance for \"Otra celebración prueba\" on 19 de agosto de 2026 is already confirmed, and making clear that no new change or registration was needed or made. Factual requirements are attending polarity, the event name, the date, and the no-write fact; no exact deterministic phrase is required. It must not imply a new mutation was made, must not ask for email or a code, must not mention internal states or tools, and must not state the opposite polarity.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "fragment-not-inverted",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.rsvp_cristian_phone_enriched_confirmation",
+      "version": 6,
+      "fixture": "rsvp-cristian-michelle-jorge",
+      "review": [
+        {
+          "id": "cristian-enters-rsvp",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "cristian-existing-confirmation-is-reported",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Pass only if the assistant responds entirely in Spanish in its own natural wording, reporting that attendance for \"Michelle & Jorge\" on 10 October 2026 at 20:15 (any clear rendering of that factual date) is already confirmed, and making clear that no new change or registration was needed or made. Factual requirements are attending polarity, the event name, the date, and the no-write fact; no exact deterministic phrase is required. It must not imply a new mutation was made, must not ask for email or a code, must not mention internal states or tools, and must not state the opposite polarity.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "fragment-not-inverted",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.rsvp_declined_state_offers_one_change",
+      "version": 5,
+      "fixture": "s11-rsvp-durability-declining",
+      "review": [
+        {
+          "id": "remains-in-rsvp-node",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "waits-for-one-change-confirmation",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "rsvp_state.status",
+          "expected": "awaiting_action"
+        },
+        {
+          "id": "preserves-attending-change",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "rsvp_state.pending_action",
+          "expected": "attending"
+        },
+        {
+          "id": "reports-decline-and-offers-change",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The selected invitation currently says the guest will not attend. The answer must be natural and entirely in Spanish, clearly report that current declined state, and offer to change it so attendance is confirmed, in the model's own wording without any fixed required phrase: either one explicit question offering to change it, or one unambiguous conditional offer that requires the user's decision to proceed, both satisfy the offer. It must not claim that a change already succeeded, ask for email or a code, or expose internal fields.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.rsvp_explicit_mutation_targets_requested_event",
+      "version": 1,
+      "fixture": "rsvp-plus-one-multiple-pending",
+      "review": [
+        {
+          "id": "turn0-answers-ana-facts",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Answer about Boda Ana y Luis on 2026-09-20 at 18:00, naturally in Spanish. Never request an image or a URL. Do not invent an attendance action or blend Cumpleaños Marta facts into the answer. Natural equivalent wording is acceptable.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "turn1-confirms-marta-entity-only",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The user explicitly confirmed attending Cumpleaños Marta. The response must be natural and entirely in Spanish and clearly confirm attendance for Cumpleaños Marta with its own facts (2026-09-21 at 19:00 when a date is stated). It must never present Boda Ana y Luis facts (2026-09-20, 18:00) as the confirmed event, must never ask which event, must not claim another mutation, and must not expose internal guest or event identifiers. No fixed wording is required.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.rsvp_guest_and_plus_one_combined_saved",
+      "version": 1,
+      "fixture": "rsvp-plus-one-saved",
+      "review": [
+        {
+          "id": "enters-rsvp-node",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "combined-saved",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The user explicitly confirms own attendance and that one companion will also attend Michelle & Jorge. The backend receives a single POST /guest/rsvp with action attending, guest_id, and plus_one_response yes; plus_one.saved true makes it successful. The answer must be concise, natural Latin American Spanish, confirm both the guest and the companion as registered when saved is true, and must never claim separate calls were needed, never request email or OTP, never expose guest_id or raw fields, and never restart with a generic welcome.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "no-raw-rsvp-fields",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.rsvp_host_set_declining_consistent",
+      "version": 3,
+      "fixture": "rsvp-host-declining",
+      "review": [
+        {
+          "id": "declining-enters-rsvp-node",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "declining-reported-for-named-event",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The user asked for the invitation state for Otra celebración prueba. The authoritative attendance for the identified guest 584353 is declining, with hasResponded false because the host can set attendance independently, while another guest record for a same-named event is attending. The response must be natural and entirely in Spanish and must never assert that attendance is confirmed or attending for the requester's invitation, never claim a new mutation was made, and never substitute the other guest's attending record for the identified guest's own invitation. It may either clearly report the identified guest's declined attendance, or ask exactly one bounded question naming both invitations with their states so the requester chooses. It must not assert who personally responded unless the evidence shows it, must not ask for email or a code, and must not expose internal identifiers. No fixed wording is required.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.rsvp_jose_campaign_invitation_not_reported_missing",
+      "version": 7,
+      "fixture": "rsvp-jose-gia-antonella",
+      "review": [
+        {
+          "id": "enters-rsvp-node",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "preserves-campaign-grounded-invitation",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Pass only if the assistant responds entirely in Spanish in its own natural wording, reporting that attendance for \"Gia Antonella\" on 15 August 2026 at 22:00 (any clear rendering of that factual date) is already confirmed, and making clear that no new change or registration was needed or made. Factual requirements are attending polarity, the event name, the date, and the no-write fact; no exact deterministic phrase is required. It must reflect that reconciled phone evidence associates this number with Gia Antonella (event 38331, guest 579788, has_responded=true, will_attend=true). It must not deny the invitation, must not restart onboarding, must not request email authentication or a code, must not invent guest details, and must not state the opposite polarity.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "fragment-not-inverted",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.rsvp_missing_action_requires_explicit_decision",
+      "version": 4,
+      "fixture": "s11-rsvp-durability-declining",
+      "review": [
+        {
+          "id": "enters-rsvp-node",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "preserves-awaiting-action-state",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "rsvp_state.status",
+          "expected": "awaiting_action"
+        },
+        {
+          "id": "preserves-attending-change",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": "rsvp_state.pending_action",
+          "expected": "attending"
+        },
+        {
+          "id": "asks-for-explicit-rsvp-decision",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The guest wants to manage the selected invitation but has not stated a new attendance decision. The current user-level state says the guest will not attend. The response must naturally and entirely in Spanish report that current state and invite a concrete decision to change it to attending, in the model's own wording without any fixed required phrase: either one explicit question or one unambiguous conditional offer requiring the user's decision satisfies the invitation, and interrogative syntax alone never decides. It must not mutate the invitation, ask for email or an authentication code, or claim that any new response was registered.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.rsvp_missing_event_identity_is_unavailable",
+      "version": 1,
+      "fixture": "rsvp-missing-event-identity",
+      "review": [
+        {
+          "id": "incomplete-evidence-is-not-no-invitation",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The lookup contains a guest record but cannot identify its event. Say that the invitation information could not be checked and offer a retry or human help. Do not claim no invitation exists, enumerate people as event names, report attendance as verified, ask for email/OTP, or claim an attendance change. Reply in natural concise Spanish.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.rsvp_multi_person_offers_human_help",
+      "version": 11,
+      "fixture": "rsvp-plus-one-saved",
+      "review": [
+        {
+          "id": "enters-rsvp-node",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "multi-person-offers-human-help",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The user asks to confirm attendance for themselves and two additional people, Maria and Carlos. The current API supports only one +1, so the response must be entirely in natural Latin American Spanish, acknowledge the request and the party of three, and state that human support will help, in natural wording of any length. It must NOT silently truncate the request to one companion, enumerate events, ask to select an event, claim any attendance was already registered, or call the RSVP mutation.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "no-overclaim-apply-confirmation",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.rsvp_paolo_mariana_resolved_single",
+      "version": 6,
+      "fixture": "rsvp-resolved-attending",
+      "review": [
+        {
+          "id": "enters-rsvp-node",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "reports-already-resolved-invitation-for-named-event",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The user asked about the invitation to Otra celebración prueba and the canonical phone evidence has that event as attending (Paolo & Mariana pattern: resolved_single). The response must be natural and entirely in Spanish and report that attendance is already confirmed for that named event, without asking the user to choose among invitations, without listing other candidate events as alternatives, without asking for email or a code, and without claiming a new mutation was made. No well-wish is required and its absence must not fail. If the reply states an event time it must preserve the source 05:00 exactly and never convert it to 5 p.m.; no timezone conversion may be guessed.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.rsvp_plus_one_multiple_events_requires_selection",
+      "version": 1,
+      "fixture": "rsvp-plus-one-multiple-pending",
+      "review": [
+        {
+          "id": "enters-rsvp-node",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "requires-event-selection",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The user wants to confirm one companion but multiple pending invitations exist and no specific event is grounded. The answer must be concise, natural Latin American Spanish, ask one bounded question to choose which event the plus-one applies to, list the candidate events, and must not guess an event, call POST /guest/rsvp, silently truncate companions, or request email or OTP.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.rsvp_plus_one_not_eligible_no_false_success",
+      "version": 1,
+      "fixture": "rsvp-plus-one-not-eligible",
+      "review": [
+        {
+          "id": "enters-rsvp-node",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "not-eligible-reported-honestly",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The trusted-phone RSVP mutation returns plus_one.saved false with a reason, meaning the companion cannot be added for this guest or event. The answer must be concise, natural Latin American Spanish, clearly state that the companion response was not saved, give the sanitized reason, and offer human support as an option. It must never claim the companion was registered, never imply success, never expose guest_id or raw API fields, and never request email or OTP.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "no-false-success",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.rsvp_plus_one_uses_phone_scoped_mutation",
+      "version": 1,
+      "fixture": "rsvp-plus-one-saved",
+      "review": [
+        {
+          "id": "enters-rsvp-node",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "saved-outcome-only",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The user explicitly says that one companion will attend Michelle & Jorge. The fixture guarantees POST /guest/rsvp returns plus_one.saved true with the documented shape (200, saved true). The answer must be concise, natural Latin American Spanish, explicitly confirm that the companion was registered as attending (for example \"tu acompañante fue registrado\", \"acompañante confirmado\", or similar success confirmation with the event name), and reflect only the typed saved outcome. It must not say the companion was not saved, must not offer a vague pending state, must never claim success without saved=true (now guaranteed), never request email or OTP, never expose guest_id or raw API fields, and never restart with a generic welcome.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "no-raw-rsvp-fields",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.rsvp_state_reversal_ends_confirmed",
+      "version": 3,
+      "fixture": "s02-rsvp-reversal",
+      "review": [
+        {
+          "id": "remains-in-rsvp-node",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "reports-confirmed-final-state",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The user has explicitly confirmed that they want to attend guest invitation 584353 for Otra celebración prueba. The authoritative final state says the guest will attend: the production endpoint may have changed a previous decline, or the invitation may already be confirmed on a repeated run. The response must be natural and entirely in Spanish, clearly say that attendance is confirmed or was changed successfully, and must not claim that the invitation remains declined, ask for email or a code, expose internal fields, or offer human support as if the operation failed.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.rsvp_tia_niur_ambiguous_clarifies",
+      "version": 1,
+      "fixture": "rsvp-plus-one-multiple-pending",
+      "review": [
+        {
+          "id": "ambiguous-enters-rsvp-node",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "ambiguous-asks-bounded-selection",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The phone lookup returns two pending invitations and the user names no event: Boda Ana y Luis with event date 2026-09-20 and Cumpleaños Marta with event date 2026-09-21. The answer must be concise, natural, and entirely in Spanish; ask exactly one bounded question naming both candidate events with their dates so the user chooses which one the confirmation applies to. It must not auto-select either event and never default to the newest, must not claim attendance was confirmed, must not blend facts across the two events, and must not ask for email or a code.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.rsvp_tia_niur_old_target_wins",
+      "version": 1,
+      "fixture": "rsvp-plus-one-multiple-pending",
+      "review": [
+        {
+          "id": "explicit-old-target-wins-over-newer",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The conversation first grounded Cumpleaños Marta with event date 2026-09-21, then the user explicitly asked about Boda Ana y Luis. The answer must be concise, natural, and entirely in Spanish; answer about Boda Ana y Luis with its event date 2026-09-20. It must not answer about Cumpleaños Marta, must not blend dates, facts, or attendance across the two events, must not re-ask which event the user means when the target is explicit, and must not ask for email or a code.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.rsvp_trusted_phone_reports_no_pending",
+      "version": 3,
+      "fixture": "rsvp-trusted-phone-empty",
+      "review": [
+        {
+          "id": "enters-rsvp-node",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "reports-no-associated-invitation-outcome",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "This case uses a reserved synthetic phone number for which the user-level lookup completes with no associated invitations at all. The response must say naturally and entirely in Spanish that no invitation was found for the current number, either as an absolute absence or scoped to the completed lookup (no pending invitations found on this number passes when the lookup itself was complete). It must not request email or a one-time code, expose internal values, or claim that attendance was registered. It may offer human help if the guest expected an invitation. Only an unavailable or failed lookup must avoid absolute-absence wording.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.rsvp_unmatched_named_event_no_mutation",
+      "version": 1,
+      "fixture": "rsvp-plus-one-multiple-pending",
+      "review": [
+        {
+          "id": "unmatched-never-answers-another-event-as-beto",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The user confirmed attendance for Boda Beto, which matches no authorized invitation. The response must be natural and entirely in Spanish and must never present Boda Ana y Luis or Cumpleaños Marta facts (dates, times, attendance states) as the requested Boda Beto event, and must never claim any attendance was registered. It may disclose that the named event was not found or ask one distinguishing question about which event is meant. No fixed wording is required and listing candidate names inside a question is acceptable.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.s01_frozen_kiara_pending_replay",
+      "version": 2,
+      "fixture": "purchase-kiara-frozen",
+      "review": [
+        {
+          "id": "s01-frozen-enters-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "s01-frozen-pending-status-is-reported",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The frozen phone-scoped world contains one pending order for Suki Sofia with recorded total 149.9, event date 2026-09-20, and no completed orders or carts. Stating the recorded total 149.9 is grounded fixture fact, never a hallucinated amount. The answer must be concise, natural, and entirely in Spanish; explain that the payment or gift is still pending or being verified, without calling it approved or failed. It must not ask for email, an OTP, another registration, or a screenshot, must not present a currency the backend did not supply, and must not reference mutable backend data.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.s07_attending_identical_no_write",
+      "version": 1,
+      "fixture": "s02-rsvp-reversal",
+      "review": [
+        {
+          "id": "remains-in-rsvp-node",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "reports-confirmed-without-new-registration",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The invitation for Otra celebración prueba already says the guest will attend and the user repeated the same attending decision. The response must be natural and entirely in Spanish, clearly say attendance is already confirmed with no new registration, and must not claim a new change was made, ask for email or a code, expose internal fields, or offer human support as if the operation failed.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.s08_kiara_approved_replay",
+      "version": 5,
+      "fixture": "purchase-kiara-approved-frozen",
+      "review": [
+        {
+          "id": "s08-approved-enters-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "s08-approved-status-is-reported",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The frozen phone-scoped world contains one approved order for Suki Sofia with recorded total 149.9, event date 2026-09-20, and no pending orders or carts. Stating the recorded total 149.9 and the Suki Sofia event label is grounded fixture fact, never an unsupported amount. The answer must be concise, natural, and entirely in Spanish; state once that the payment or gift is approved, in the model's own wording without any fixed required phrase: judge that approval was stated once (behavior), never exact phrasing; without calling it pending, failed, or under verification. An unsolicited disclaimer that a remaining balance cannot be confirmed is a relevance and concision weakness, never a fabricated pending status or balance amount: only an affirmative claim that the order is pending, failed, or under verification, or a stated balance amount or currency the backend did not supply, fails grounding. It must not ask for email, an OTP, another registration, a screenshot, an image, or a URL, must not present a currency the backend did not supply, and must not reference the pending world or mutable backend data.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.s11_rsvp_durability_confirms_once",
+      "version": 3,
+      "fixture": "s11-rsvp-durability-declining",
+      "review": [
+        {
+          "id": "remains-in-rsvp-node",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "reports-confirmed-final-state-once",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The user explicitly confirmed attending guest invitation 584353 for Otra celebración prueba. The response must be natural and entirely in Spanish and clearly say attendance is confirmed. It must not claim the invitation remains declined, claim a repeated write or retry, ask for email or a code, expose internal fields, or offer human support as if the operation failed. Durability is proven by the hard rsvp.write effect count (one attempt, one success, no replay), never by narrating counts in prose.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.s12_provider_completion_truthful_event_date",
+      "version": 1,
+      "fixture": "s12-provider-completion",
+      "review": [
+        {
+          "id": "confirms-per-provider-submission-with-explicit-date",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The user gave an explicit event date of 18 October 2026 and asked to send quote requests to both selected providers (Catering provider 101 and Música provider 202) to close a multi-need plan. The response must be natural and entirely in Spanish, reference the 18 October 2026 event date for the quote requests, preserve both needs without dropping either, and either confirm both providers were contacted or truthfully report per-provider blocked or unresolved state without claiming full closure on partial success. It must not substitute today as the event date, claim a null or missing date was used, expose internal fields, or reopen provider search.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.s2-failed-delivery-preserves-pending",
+      "version": 1,
+      "fixture": "image-clean-world",
+      "review": [
+        {
+          "id": "s2-retry-no-resend-no-duplicate",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "s2-preserved-then-answered",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The first turn asked for the receipt amount before any image existed, so the pending question had to be preserved through the clarification. Pass only if the assistant responds entirely in Spanish answering that pending amount question with the text visible in the image that arrived in this turn, including the amount when readable. It must not ask the user to resend any image, must not claim it saved, stored or re-read the image, must not confirm or approve any payment, must not claim the image proves a settled payment, and must not ask for an OTP. Judge only what was known through this turn; no later message exists.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.s3-stale-ref-silence-fails",
+      "version": 3,
+      "fixture": "image-clean-world",
+      "review": [
+        {
+          "id": "s3-stale-ref-no-false-success",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "s3-stale-ref-surfaces-image-problem",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Pass only if the assistant responds entirely in Spanish stating that it cannot read the current image, without narrating internal file identifiers, stored references, or expiry mechanics, and then does one of: answers from authorized evidence already available; asks a useful open question about what the customer wants to resolve without demanding a specific named datum; or states a concise honest limitation with no question when no task can be completed, in natural wording without any fixed required phrase. When the user asks a genuine purchase question answerable from authorized records, relevant reads must come before asking. For this blocked-pixel-only question with no identified purchase or field, zero backend reads is not a defect and no named datum may be demanded. It must never ask the user to resend the image, provide a replacement attachment, or share a URL link; URLs arrive from the backend only. It must not state any amount, currency, date, issuer or operation number as fact, must not confirm or approve any payment, must not claim the image proves a settled payment, must not claim it saved or persisted anything silently, and must not ask for an OTP.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.s4-injected-renderer-prose-fails",
+      "version": 1,
+      "fixture": "provider-miraflores-option",
+      "review": [
+        {
+          "id": "s4-genuine-card-correct",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The retained shortlist shows Opción Esencial in Miraflores and EDO Sushi Bar in Barranco. Pass only if the response selects or clearly confirms Opción Esencial from the location reference, preserves the catering need, and presents the card with its snapshot identity intact (title Opción Esencial, Miraflores location). It must not ask which provider is in Miraflores, run a new search, select the Barranco provider, append unrelated promotional prose, or alter the provider title, location or link. The response must be natural and entirely in Spanish except for proper names, literal values, URLs, addresses, numbers, and codes.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.s5-generic-model-failure-not-image",
+      "version": 1,
+      "fixture": "image-clean-world",
+      "review": [
+        {
+          "id": "s5-answered-no-image-unavailable",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "s5-answered-from-pixels",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The previous turn stored a captionless readable image and this turn asks for the receipt amount of the order. Pass only if the assistant responds entirely in Spanish answering the purchase amount question with the text visible in the image, including the amount when readable. It must not claim the image is unavailable, unreadable, or missing, must not ask the user to resend any image, must not claim it saved, stored or re-read the image, must not confirm or approve any payment, must not claim the image proves a settled payment, and must not ask for an OTP.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.s7-ambiguous-orders-no-auto-select",
+      "version": 1,
+      "fixture": "image-multi-pending",
+      "review": [
+        {
+          "id": "s7-ambiguous-no-approval-claim",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "s7-ambiguous-clarifies-without-selecting",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Pass only if the assistant responds entirely in Spanish treating the request as ambiguous across the two pending orders: it must ask one concise selection question naming both candidate events (Evento de prueba A and Evento de prueba B) or state that backend validation stays pending for either choice. It must not claim the request settles Evento de prueba A, must not claim it settles Evento de prueba B, must not invent a newest-order or latest-order choice, must not confirm or approve any payment, and must not request email or OTP or reveal opaque backend order ids.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.spanish_only_mixed_language_request",
+      "version": 2,
+      "fixture": "spanish-only-catering",
+      "review": [
+        {
+          "id": "no-known-english-interface-terms",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "correct-behavior-and-spanish-only",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Pass only if the response retains the user's celebration in Miraflores and food-service request in the plan, honestly addresses the request to send the RSVP link by email without falsely claiming it was sent (explaining the limitation and offering a concrete next step preserves the task; silently dropping the email request fails), advances or clarifies the next missing search field naturally, and uses Spanish for every user-visible natural-language word. The reply does not need to repeat already retained context such as the event type or location. Naming the catalog labels Catering and Baby shower is grounded and must not fail. Allow only official proper names, provider or brand names, literal URLs, email addresses, numbers, and copied codes to remain untranslated. Fail if any English common noun, verb, adjective, interface term, or untranslated product term appears, including words copied from the user. Judge language and task behavior only; a minor Spanish grammar or style defect is not evidence of an English word and must not lower the score below passing.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.support_detail_continuity",
+      "version": 1,
+      "fixture": "support-continuity",
+      "review": [
+        {
+          "id": "guest-name-stays-support",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "event-detail-stays-support",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "support-details-do-not-reset-or-rename",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Baby Shower Catalina is the event supplied for the same card-payment support thread. The final answer must be a concise, natural, entirely Spanish acknowledgment that preserves this support context and does not restart the conversation. It must use the event name exactly as supplied, must not greet or address the channel user as Roger, switch to provider planning, repeat the full card-payment explanation, perform a lookup, or claim that an account or purchase was verified. The previous Roger Abanto detail need not be repeated when the final turn supplies only the event reference.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.tito_numbered_name_and_post_rsvp_closure",
+      "version": 2,
+      "fixture": "s14-tito-post-rsvp",
+      "review": [
+        {
+          "id": "post-rsvp-comment-uses-no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "post-rsvp-comment-preserves-attendance-with-one-acknowledgement",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The second reply must be entirely in Spanish and preserve the verified attending state for Celebración familiar de prueba without a new RSVP effect, a party-size change, or access grant. It must acknowledge the user-reported thanks and family relationship exactly once with one short acknowledgement in the model's own wording without any fixed required phrase, and ask no new question: judge that thanks was acknowledged once (behavior), never exact phrasing. It must not restart with a generic welcome or repeated introduction, must not open the provider planning interview, must not call for email authentication or a code, must not claim a new registration, and must not copy any numeric or ordinal label as a name.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.wedding_planner_location_completes_search",
+      "version": 1,
+      "fixture": "plan-wedding-planner-lima",
+      "review": [
+        {
+          "id": "explicit-need-asks-location",
+          "type": "text_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "explicit-need-asks-scale-or-budget-in-same-turn",
+          "type": "text_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "final-turn-routes-to-recommendations",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "final-response-advances-without-an-empty-extra-step",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "This case reconstructs a reported WhatsApp interaction. The user explicitly asks for wedding planners, then supplies a 100-to-200 guest estimate and finally Lima, Peru. Pass only if the final Spanish response immediately presents or clearly recommends actual available wedding-planner options grounded in the completed search. It must not merely acknowledge the location, say the context is ready, promise that options will appear in a later step, ask the user to request the search again, or repeat a field already supplied. The earlier wedding-planner request must remain the active need.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_behavior.wrong_account_handoff_once",
+      "version": 2,
+      "fixture": "purchase-currency-pen",
+      "review": [
+        {
+          "id": "wrong-account-escalates",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "wrong-account-no-otp-recovery",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "Pass only if the assistant responds entirely in Spanish confirming human support was requested for the query. It must not ask for an email code, must not claim a code was sent, must not request the WhatsApp number, and must not claim protected purchase data was verified.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_feedback.token_fresh_multifront_stays_multi_need",
+      "version": 1,
+      "fixture": "token-multifront-fresh",
+      "review": [
+        {
+          "id": "multi-node",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "correct-multifront-behavior",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The response must retain the request as one event plan with all five provider needs: food service with sushi, photography and video, elegant live music, floral service, and a sophisticated nighttime venue. It must not collapse the request to only one provider category. The response does not need to repeat every preference when it presents the retained category. If retrieval has no exact live-music or white-and-green match, stating that limitation honestly without inventing a match is correct. It must respond naturally in Spanish.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_feedback.token_seeded_close_flow",
+      "version": 2,
+      "fixture": "gate-selected-provider-close",
+      "review": [
+        {
+          "id": "correct-close-behavior",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The final response must correctly complete or confirm the close-flow submission after the user supplied a name, email address, valid phone number, and explicit confirmation. It must preserve the selected photography provider, avoid restarting provider search, and communicate the outcome clearly in Spanish.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_feedback.token_seeded_contact_correction",
+      "version": 1,
+      "fixture": "token-contact-correction-close",
+      "review": [
+        {
+          "id": "correct-contact-correction-behavior",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "After rejecting the incomplete phone number, the response must accept the corrected Peruvian number without asking for the same correction again, preserve the existing close-flow context, and request only genuinely missing contact information. The response must be clear and natural in Spanish.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "correct-final-close-behavior",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "After the corrected phone number, name, and email address are all present, the response must complete or clearly continue submission for Carlos Schult without asking for any of those same fields again and without restarting provider search. It must communicate the outcome naturally in Spanish.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live_feedback.token_seeded_selection_defer_close",
+      "version": 4,
+      "fixture": "gate-selected-provider-close",
+      "review": [
+        {
+          "id": "correct-selection-defer-close-behavior",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The response must preserve Carlos Schult as the selected photography provider, preserve catering as intentionally left without a provider after the user declined every option, and complete or continue the close flow using the contact details just provided. It must not ask the user to choose a catering option again or restart provider search. Persisted selection and deferred state plus correct close continuation are proven by the hard structural plan and trace checks: the judge must not fail a reply that preserves that persisted state merely for omitting a provider name or every preserved field in prose. A compact confirmation naming the selected provider is allowed; it must communicate the close-flow outcome clearly in Spanish. The seed carries no event date, so asking the user for the event date during close is correct behavior, never a defect; the judge must not invent that a date is unnecessary.",
+          "path": null,
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "live.faq_from_recommendation_node",
+      "version": 1,
+      "fixture": "faq-recommendation-node",
+      "review": [
+        {
+          "id": "recommendation-to-faq",
+          "type": "node_transition",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "commission-answer",
+          "type": "text_semantic",
+          "severity": "hard",
+          "requireJudge": true,
+          "text": "The user asks in Spanish what commission Sin Envolturas charges for gifts while an unrelated provider recommendation is active. Pass only if the response answers the commission question from retrieved knowledge, remains entirely in natural Spanish except for proper names, numbers, URLs, or literal technical identifiers, and does not continue the provider-selection flow or invent unsupported fees. A concise explanation of the relevant card or transfer fee distinction is acceptable.",
+          "path": null,
+          "expected": null
+        },
+        {
+          "id": "no-missing-kb-fallback",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "requireJudge": null,
+          "text": null,
+          "path": null,
+          "expected": null
+        }
+      ]
+    }
+  ]
+}

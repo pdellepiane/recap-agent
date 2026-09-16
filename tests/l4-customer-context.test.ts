@@ -336,6 +336,63 @@ describe('l4 customer snapshot assembly', () => {
     );
     expect(snapshot.invitationsEvents.invitations[0]?.address?.street).toBeNull();
   });
+
+  it('maps the first resolved moment venue into the existing street field', () => {
+    const execution: CustomerExecution = {
+      results: [
+        eventResult('req-venue', [{
+          ...guestEvent(702201, 'Julisabeth y Andrés', null),
+          place: 'Lima',
+          detail: {
+            withTime: false,
+            timezone: null,
+            city: 'Lima',
+            celebrateds: [],
+            moments: [{
+              label: 'Recepción y Fiesta',
+              description: 'Recepción y fiesta en Hacienda Recoveco',
+              datetime: '2026-11-15',
+              withTime: false,
+              locationDescription: 'Hacienda Recoveco',
+              locationReference: 'Avenida Manuel Valle en Lima',
+              locationUrl: null,
+              locationCoords: null,
+              position: 0,
+            }],
+            dresscode: null,
+            commonAsked: [],
+            contactInfo: [],
+          },
+        }]),
+      ],
+      summaries: [
+        {
+          requestId: 'req-venue',
+          kind: 'associated_event',
+          status: 'completed',
+          source: 'agent_api',
+          outcomeCode: 'completed_with_results',
+          retryable: null,
+          queryHash: 'q',
+          evidence: [],
+          resultCount: 1,
+          durationMs: 90,
+          accessMethod: 'trusted_phone_guest',
+          eventDetailCount: 1,
+        },
+      ],
+    };
+    const snapshot = assembleCustomerContext({
+      execution,
+      identity: null,
+      currentContext: null,
+      nowIso: NOW,
+    });
+    expect(snapshot.invitationsEvents.invitations[0]?.address?.street).toBe(
+      'Hacienda Recoveco, Avenida Manuel Valle en Lima',
+    );
+    expect(snapshot.invitationsEvents.invitations[0]?.address?.city).toBe('Lima');
+  });
 });
 
 describe('l4 relevance projection and minimum disclosure', () => {
@@ -1136,5 +1193,172 @@ describe('l4 packet S7 — bounded linked-detail enrichment', () => {
     });
     expect(outcome.giftPurchases).toEqual([]);
     expect(outcome.unavailable).toContain('order:ord-1');
+  });
+});
+
+describe('l4 packet P1 — canonical profile and lookup reuse', () => {
+  it('coalesces duplicate route results without losing detail', async () => {
+    const {
+      coalescePurchasesByStableId,
+    } = await import('../src/runtime/customer-context');
+    const summary = purchase('ord-1', { items: [], payment: null });
+    const detail = purchase('ord-1', {
+      items: [{ giftName: 'Regalo', quantity: 1, amount: 150, rowTotal: 150, type: 'gift' }],
+      payment: { method: 'transfer', amount: 150, paidAt: '2026-09-01T00:00:00.000Z' },
+    });
+    const merged = coalescePurchasesByStableId([
+      { purchase: summary, accessMethod: 'trusted_phone_purchase' },
+      { purchase: detail, accessMethod: 'trusted_phone_purchase' },
+    ]);
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.items).toHaveLength(1);
+    expect(merged[0]?.payment?.amount).toBe(150);
+    const execution: CustomerExecution = {
+      results: [
+        purchaseResult('req-1', [summary]),
+        purchaseResult('req-2', [detail]),
+      ],
+      summaries: [purchaseSummary('req-1', 40), purchaseSummary('req-2', 50)],
+    };
+    const snapshot = assembleCustomerContext({
+      execution,
+      identity: { customerRef: '+51900000001', scope: 'trusted_phone', source: 'agent_api' },
+      currentContext: null,
+      nowIso: NOW,
+    });
+    expect(snapshot.purchasesCarts.detailedPurchases).toHaveLength(1);
+    expect(snapshot.purchasesCarts.detailedPurchases[0]?.items).toHaveLength(1);
+  });
+
+  it('keeps conflicting fresh records explicit instead of picking a side', async () => {
+    const { coalescePurchasesByStableId } = await import('../src/runtime/customer-context');
+    const merged = coalescePurchasesByStableId([
+      { purchase: purchase('ord-1', { paymentStatus: 'pending' }), accessMethod: 'trusted_phone_purchase' },
+      { purchase: purchase('ord-1', { paymentStatus: 'approved' }), accessMethod: 'trusted_phone_purchase' },
+    ]);
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.paymentStatus).toBeNull();
+  });
+
+  it('never merges across incompatible access scopes', async () => {
+    const { coalescePurchasesByStableId, purchaseScopesCompatible } = await import('../src/runtime/customer-context');
+    expect(purchaseScopesCompatible('trusted_phone_purchase', 'trusted_phone_event_purchase')).toBe(true);
+    expect(purchaseScopesCompatible('trusted_phone_purchase', 'authenticated_account')).toBe(false);
+    expect(purchaseScopesCompatible('authenticated_account', 'authenticated_account')).toBe(true);
+    const merged = coalescePurchasesByStableId([
+      { purchase: purchase('ord-1'), accessMethod: 'trusted_phone_purchase' },
+      { purchase: purchase('ord-1'), accessMethod: 'authenticated_account' },
+    ]);
+    expect(merged).toHaveLength(2);
+  });
+
+  it('keeps same event with different guests in distinct attendance slots', async () => {
+    const { coalesceInvitationsBySlot, attendanceSlotKey } = await import('../src/runtime/customer-context');
+    expect(attendanceSlotKey(5, 42, 'trusted_phone_guest')).not.toBe(
+      attendanceSlotKey(5, 43, 'trusted_phone_guest'),
+    );
+    const merged = coalesceInvitationsBySlot([
+      {
+        invitation: {
+          eventId: 5, eventName: 'Fiesta Sol', role: 'guest', rsvpState: 'pending',
+          address: null,
+        },
+        guestId: 42,
+        accessScope: 'trusted_phone_guest',
+      },
+      {
+        invitation: {
+          eventId: 5, eventName: 'Fiesta Sol', role: 'guest', rsvpState: 'attending',
+          address: null,
+        },
+        guestId: 43,
+        accessScope: 'trusted_phone_guest',
+      },
+    ]);
+    expect(merged).toHaveLength(2);
+  });
+
+  it('preserves known data when a failed route arrives and never asserts absence', async () => {
+    const { mergeExecutionIntoSnapshot, createEntryCustomerSnapshot } = await import('../src/runtime/customer-context');
+    const base = createEntryCustomerSnapshot({
+      identity: { customerRef: '+51900000001', scope: 'trusted_phone', source: 'agent_api' },
+      currentContext: null,
+      nowIso: NOW,
+    });
+    const ready = assembleCustomerContext({
+      execution: {
+        results: [purchaseResult('req-1', [purchase('ord-1')])],
+        summaries: [purchaseSummary('req-1', 40)],
+      },
+      identity: { customerRef: '+51900000001', scope: 'trusted_phone', source: 'agent_api' },
+      currentContext: null,
+      nowIso: NOW,
+    });
+    const enriched = mergeExecutionIntoSnapshot({
+      base,
+      execution: {
+        results: [purchaseResult('req-1', [purchase('ord-1')])],
+        summaries: [purchaseSummary('req-1', 40)],
+      },
+      identity: null,
+      currentContext: null,
+      nowIso: NOW,
+    });
+    expect(enriched.purchasesCarts.status).toBe('ready');
+    void ready;
+    const preserved = mergeExecutionIntoSnapshot({
+      base: enriched,
+      execution: {
+        results: [failedResult('req-2', 'purchase', 'request_failed')],
+        summaries: [failedSummary('req-2', 'purchase', 10)],
+      },
+      identity: null,
+      currentContext: null,
+      nowIso: NOW,
+    });
+    expect(preserved.purchasesCarts.status).toBe('ready');
+    expect(preserved.purchasesCarts.detailedPurchases).toHaveLength(1);
+  });
+
+  it('skips prefetch for pure public FAQ turns', async () => {
+    const { isPurePublicFaqTurn, createEntryCustomerSnapshot } = await import('../src/runtime/customer-context');
+    expect(isPurePublicFaqTurn([{ kind: 'faq' }, { kind: 'faq' }])).toBe(true);
+    expect(isPurePublicFaqTurn([{ kind: 'faq' }, { kind: 'purchase' }])).toBe(false);
+    expect(isPurePublicFaqTurn([])).toBe(false);
+    const entry = createEntryCustomerSnapshot({
+      identity: { customerRef: '+51900000001', scope: 'trusted_phone', source: 'agent_api' },
+      currentContext: null,
+      nowIso: NOW,
+    });
+    expect(entry.purchasesCarts.status).toBe('not_requested');
+    expect(entry.invitationsEvents.status).toBe('not_requested');
+    expect(entry.identityAccess.status).toBe('ready');
+  });
+
+  it('observes read-after-write refresh over an invalidated section', async () => {
+    const { mergeExecutionIntoSnapshot } = await import('../src/runtime/customer-context');
+    const ready = assembleCustomerContext({
+      execution: {
+        results: [purchaseResult('req-1', [purchase('ord-1')])],
+        summaries: [purchaseSummary('req-1', 40)],
+      },
+      identity: { customerRef: '+51900000001', scope: 'trusted_phone', source: 'agent_api' },
+      currentContext: null,
+      nowIso: NOW,
+    });
+    const invalidated = invalidateSectionAfterWrite(ready, 'purchases_carts');
+    expect(invalidated.purchasesCarts.status).toBe('loading');
+    const refreshed = mergeExecutionIntoSnapshot({
+      base: invalidated,
+      execution: {
+        results: [purchaseResult('req-2', [purchase('ord-1', { paymentStatus: 'approved' })])],
+        summaries: [purchaseSummary('req-2', 30)],
+      },
+      identity: null,
+      currentContext: null,
+      nowIso: NOW,
+    });
+    expect(refreshed.purchasesCarts.status).toBe('ready');
+    expect(refreshed.purchasesCarts.detailedPurchases[0]?.paymentStatus).toBe('approved');
   });
 });

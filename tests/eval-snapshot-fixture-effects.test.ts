@@ -15,7 +15,7 @@ import { createEmptyPlan } from '../src/core/plan';
 import { projectSafePlan } from '../src/runtime/artifact-redaction';
 import { redactEvalTurnsForSnapshot } from '../src/evals/reporting';
 import { validateImageOnlySilence } from '../src/evals/silence';
-import { collectOriginGateFailures, evaluateFixtureEffectCountForTesting } from '../src/evals/runner';
+import { collectOriginGateFailures, evaluateFixtureEffectCountForTesting, buildSemanticJudgeContext } from '../src/evals/runner';
 import { attendanceToIsolationState } from '../src/evals/rsvp-isolation';
 
 function baseTrace(overrides: Record<string, unknown> = {}): Record<string, unknown> {
@@ -422,5 +422,143 @@ describe('recheck-b9a7662d verified fixture receipts (no inferred success)', () 
     expect(attendanceToIsolationState({ willAttend: true, hasResponded: false })).toBe('attending');
     expect(attendanceToIsolationState({ willAttend: false, hasResponded: false })).toBe('declining');
     expect(attendanceToIsolationState({ willAttend: null, hasResponded: false })).toBe('pending');
+  });
+});
+
+describe('§3 integrated execute->snapshot->teardown->judge evidence pipeline', () => {
+  it('one snapshot drives silence, origin, effect, and judge evidence without leaking secrets', async () => {
+    const messageId = 'pipe-silence-0';
+    const original = makeImageSilenceTurn(messageId);
+    const [snapshot] = snapshotEvaluationTurns([original]);
+    if (!snapshot) throw new Error('Missing snapshot turn.');
+    // Teardown wipes the live original after the snapshot boundary.
+    const livePlan = getPrivatePlanForEvidence(original) as unknown as { image_attachments: unknown[] };
+    livePlan.image_attachments.length = 0;
+    // Every gate still reads the immutable snapshot identically.
+    expect(validateImageOnlySilence(snapshot, {
+      observedMessageId: messageId,
+      nowMs: Date.now(),
+    }).exempt).toBe(true);
+    expect(collectOriginGateFailures([snapshot])).toEqual([]);
+    expect(getEvaluationInput(snapshot).text).toBe('');
+    expect(getEvaluationOutputText(snapshot)).toBe('');
+    expect(getEvaluationFixtureEffects(snapshot)).not.toBeNull();
+    const judgeContext = buildSemanticJudgeContext([snapshot], 0, undefined);
+    expect(judgeContext).not.toContain('file-secret-123');
+    expect(judgeContext).not.toContain('secret-token-canary-xyz');
+  });
+
+  it('teardown-time writes never satisfy an earlier snapshot boundary', async () => {
+    const store = new InMemoryEvalFixtureStateStore();
+    await store.record({
+      runId: 'run-pipe', caseId: 'case-pipe', scenario: 's', operation: 'rsvp.write',
+      args: { guestId: 22 }, resultStatus: 'responded',
+    });
+    const turn = makeSpeechTurn(0, 'Confirmado para el evento.');
+    attachEvaluationState(turn, {
+      plan: getPrivatePlanForEvidence(turn),
+      input: turn.input,
+      outputText: turn.outputText,
+      fixtureEffects: buildFixtureEffectSummariesFromReceipts(await store.list('run-pipe', 'case-pipe')),
+    });
+    const [snapshot] = snapshotEvaluationTurns([turn]);
+    if (!snapshot) throw new Error('Missing snapshot turn.');
+    // Teardown-time mutation: the original is rewritten and a later write lands.
+    attachEvaluationState(turn, {
+      plan: getPrivatePlanForEvidence(turn),
+      input: { text: 'mutated after snapshot' },
+      outputText: 'mutated after snapshot',
+      fixtureEffects: buildFixtureEffectSummariesFromReceipts([]),
+    });
+    await store.record({
+      runId: 'run-pipe', caseId: 'case-pipe', scenario: 's', operation: 'rsvp.write',
+      args: { guestId: 22 }, resultStatus: 'responded',
+    });
+    expect(evaluateFixtureEffectCountForTesting({
+      turns: [snapshot], operation: 'rsvp.write',
+      expectedAttempts: 1, expectedSuccesses: 1, expectedReplays: 0,
+    }).passed).toBe(true);
+    expect(evaluateFixtureEffectCountForTesting({
+      turns: [snapshot], operation: 'rsvp.write',
+      expectedAttempts: 2, expectedSuccesses: 2, expectedReplays: 0,
+    }).passed).toBe(false);
+    expect(getEvaluationOutputText(snapshot)).toBe('Confirmado para el evento.');
+  });
+});
+
+describe('§4 authoritative effect ledger matrix', () => {
+  it('records a single success exactly', async () => {
+    const store = new InMemoryEvalFixtureStateStore();
+    await store.record({
+      runId: 'run-ok', caseId: 'case-ok', scenario: 's', operation: 'otp.request',
+      args: {}, resultStatus: 'sent',
+    });
+    const ledger = buildFixtureEffectSummariesFromReceipts(await store.list('run-ok', 'case-ok'));
+    expect(ledger.find((entry) => entry.operation === 'otp.request')).toMatchObject({
+      attempts: 1, successes: 1, replays: 0, outcome: 'success', receiptPresent: true,
+    });
+  });
+
+  it('excludes stale pre-baseline receipts (observed zero, never missing)', async () => {
+    const store = new InMemoryEvalFixtureStateStore();
+    await store.record({
+      runId: 'run-stale', caseId: 'case-stale', scenario: 's', operation: 'rsvp.write',
+      args: {}, resultStatus: 'responded',
+    });
+    // The turn boundary starts after the stale receipt: baseline filter.
+    const baseline = new Set((await store.list('run-stale', 'case-stale')).map((receipt) => receipt.syntheticId));
+    const conversational = (await store.list('run-stale', 'case-stale'))
+      .filter((receipt) => !baseline.has(receipt.syntheticId));
+    const ledger = buildFixtureEffectSummariesFromReceipts(conversational);
+    expect(ledger.find((entry) => entry.operation === 'rsvp.write')).toMatchObject({
+      attempts: 0, successes: 0, outcome: 'none', receiptPresent: true,
+    });
+  });
+
+  it('a wrong-target write counts as an attempt and never silently satisfies an exact expectation', async () => {
+    const store = new InMemoryEvalFixtureStateStore();
+    await store.record({
+      runId: 'run-target', caseId: 'case-target', scenario: 's', operation: 'rsvp.write',
+      args: { guestId: 22, eventId: 2 }, resultStatus: 'responded',
+    });
+    await store.record({
+      runId: 'run-target', caseId: 'case-target', scenario: 's', operation: 'rsvp.write',
+      args: { guestId: 999, eventId: 888 }, resultStatus: 'responded',
+    });
+    const receipts = await store.list('run-target', 'case-target');
+    // Receipt identity and write args are preserved for audit.
+    expect(receipts.map((receipt) => receipt.args)).toContainEqual({ guestId: 999, eventId: 888 });
+    const ledger = buildFixtureEffectSummariesFromReceipts(receipts);
+    expect(ledger.find((entry) => entry.operation === 'rsvp.write')).toMatchObject({
+      attempts: 2, successes: 2, outcome: 'success',
+    });
+    const turn = makeSpeechTurn(0, 'hola');
+    attachEvaluationState(turn, {
+      plan: getPrivatePlanForEvidence(turn),
+      input: turn.input,
+      outputText: turn.outputText,
+      fixtureEffects: ledger,
+    });
+    // Target-identity correctness belongs to plan/trace assertions; the
+    // count alone must not pass an exact 1/1/0 expectation.
+    expect(evaluateFixtureEffectCountForTesting({
+      turns: [turn], operation: 'rsvp.write',
+      expectedAttempts: 1, expectedSuccesses: 1, expectedReplays: 0,
+    }).passed).toBe(false);
+  });
+
+  it('wrong run/case scope never leaks across operations', async () => {
+    const store = new InMemoryEvalFixtureStateStore();
+    await store.record({
+      runId: 'run-scope', caseId: 'case-a', scenario: 's', operation: 'provider.quote.write',
+      args: {}, resultStatus: 'confirmed',
+    });
+    const otherCase = buildFixtureEffectSummariesFromReceipts(await store.list('run-scope', 'case-b'));
+    expect(otherCase.find((entry) => entry.operation === 'provider.quote.write')).toMatchObject({
+      attempts: 0, successes: 0, outcome: 'none',
+    });
+    const filtered = await store.list('run-scope', 'case-a', 'provider.quote.write');
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0]?.resultStatus).toBe('confirmed');
   });
 });

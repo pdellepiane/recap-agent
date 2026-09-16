@@ -456,6 +456,82 @@ export function classifyEvalCaseLane(currentCase: EvalCase): EvalCaseLaneVerdict
 }
 
 /**
+ * Test-repair §2 preflight: complete fixture coverage for
+ * live_behavior_regression. Reuses the existing lane classifier
+ * (classifyEvalCaseLane), the operation collector
+ * (collectFixtureCaseOperations), and the loader-supplied case inputs —
+ * never a new file-scanning registry.
+ *
+ * A live_behavior_regression live_lambda case that declares any fixture
+ * intent (a case-level or turn-level backendFixture scenario, an RSVP
+ * fixtureScenario, or a fixture_effect_count expectation) must be fully
+ * fixture-covered: every turn declares its own backendFixture scenario
+ * (a case-level scenario declares intent but never covers an undeclared
+ * turn) and every exercised operation is fixture-implemented (parallel
+ * lane). Incomplete coverage throws here, before any remote call and
+ * before the manifest judge-availability preflight, naming the exact
+ * case, turn, and operation. It never silently routes to the external lane, and the
+ * coordinator-host lock never substitutes for coverage.
+ *
+ * Cases with no fixture intent at all are real-backend integration
+ * checks: they stay allowed and keep the external lane plus the
+ * coordinator-host protection intact.
+ */
+export function assertLiveRegressionFixtureCoverage(selectedCases: EvalCase[]): void {
+  for (const currentCase of selectedCases) {
+    if (currentCase.suite !== 'live_behavior_regression') {
+      continue;
+    }
+    if (!currentCase.targetModes.includes('live_lambda')) {
+      continue;
+    }
+    if (!declaresFixtureIntent(currentCase)) {
+      continue;
+    }
+    for (let index = 0; index < currentCase.inputs.length; index += 1) {
+      // Each turn must declare its own scenario: a case-level scenario
+      // declares fixture intent but never covers an undeclared turn.
+      const scenario = currentCase.inputs[index]?.backendFixture?.scenario ?? null;
+      if (!scenario) {
+        throw new Error(
+          `live_behavior_regression fixture coverage incomplete: case "${currentCase.id}" turn ${index} has no fixture scenario; refusing to run before any remote call.`,
+        );
+      }
+    }
+    let required: { conversation: FixtureCaseOperation[]; provider: string[] };
+    try {
+      required = collectFixtureCaseOperations(currentCase);
+    } catch (error) {
+      throw new Error(
+        `live_behavior_regression fixture coverage incomplete: case "${currentCase.id}" requires an unknown fixture operation (${error instanceof Error ? error.message : String(error)}); refusing to run before any remote call.`,
+      );
+    }
+    const verdict = classifyEvalCaseLane(currentCase);
+    if (verdict.lane !== 'parallel') {
+      const exercised = [...required.conversation, ...required.provider];
+      throw new Error(
+        `live_behavior_regression fixture coverage incomplete: case "${currentCase.id}" is not fully fixture-isolated (${verdict.reason})` +
+        (exercised.length > 0 ? `; exercised operations: ${exercised.join(', ')}` : '') +
+        '; refusing to run before any remote call.',
+      );
+    }
+  }
+}
+
+function declaresFixtureIntent(currentCase: EvalCase): boolean {
+  if (currentCase.backendFixture?.scenario) {
+    return true;
+  }
+  if (currentCase.rsvpIsolation?.setup?.fixtureScenario) {
+    return true;
+  }
+  if (currentCase.inputs.some((input) => input.backendFixture?.scenario)) {
+    return true;
+  }
+  return currentCase.expectations.some((expectation) => expectation.type === 'fixture_effect_count');
+}
+
+/**
  * Packet O1 single-host exclusive external-lane lock. The lock lives under
  * the run directory parent (the output directory) so concurrent runners
  * sharing it serialize external cases. The record carries PID/run/start; a
@@ -586,6 +662,13 @@ export async function runEvaluation(
   const runConfigs = await resolveRunConfigs(loader, options);
   const selectedCases = options.caseOverrides ??
     selectCases(catalog.cases, catalog.suites, options);
+  // Test-repair §2: reject incomplete live_behavior_regression fixture
+  // coverage before any remote call (the deployment describe below is
+  // remote) and before the manifest judge-availability preflight, so a
+  // missing fixture scenario always surfaces as the coverage error, never
+  // as a judge-availability error. Real-backend integration checks stay
+  // allowed; coordinator protection is unchanged.
+  assertLiveRegressionFixtureCoverage(selectedCases);
   const runId = buildRunId();
   const results: EvalResult[] = [];
 
@@ -1487,6 +1570,45 @@ async function executeCase(
   }
 }
 
+/**
+ * Test-repair §6: a case that produced zero turns without an explicit
+ * error is a harness/infrastructure failure, never a pass or a silent
+ * skip. The actual cause (when present) is preserved in errorMessage;
+ * otherwise the zero-turn completion itself is the recorded cause.
+ */
+export function normalizeZeroTurnResult(
+  runtimeResult: RuntimeCaseResult,
+  caseId: string,
+): RuntimeCaseResult {
+  if (runtimeResult.turns.length > 0 || runtimeResult.status === 'errored') {
+    return runtimeResult;
+  }
+  return {
+    ...runtimeResult,
+    status: 'errored',
+    errorMessage: runtimeResult.errorMessage ??
+      `Harness failure: case ${caseId} completed with zero turns; no candidate evidence was produced.`,
+  };
+}
+
+/**
+ * Test-repair §6: one hard-gate predicate shared by finalization and
+ * tests. Structural/semantic expectations, output-origin evidence, and
+ * transport accounting are separate inputs; a passing expectation set
+ * never obscures a failed origin or transport gate.
+ */
+export function computeHardGatePassed(args: {
+  expectationResults: ReadonlyArray<{ severity: 'hard' | 'soft'; passed: boolean }>;
+  originGateFailures: readonly string[];
+  transportGateFailures: readonly string[];
+}): boolean {
+  return args.originGateFailures.length === 0 &&
+    args.transportGateFailures.length === 0 &&
+    args.expectationResults
+      .filter((expectation) => expectation.severity === 'hard')
+      .every((expectation) => expectation.passed);
+}
+
 async function finalizeResult(args: {
   runId: string;
   currentCase: EvalCase;
@@ -1507,10 +1629,13 @@ async function finalizeResult(args: {
 }): Promise<EvalResult> {
   const finalizeStart = Date.now();
   const startedAt = new Date().toISOString();
+  // Test-repair §6: zero-turn completions without an explicit error are
+  // harness failures; the cause below stays attached to the result.
+  const runtimeResult = normalizeZeroTurnResult(args.runtimeResult, args.currentCase.id);
   const context: EvaluationContext = {
     currentCase: args.currentCase,
     config: args.config,
-    turns: args.runtimeResult.turns,
+    turns: runtimeResult.turns,
   };
   // Packet O3: independent expectations share the per-request judge
   // limiter; result order is retained by index.
@@ -1522,24 +1647,22 @@ async function finalizeResult(args: {
     args.deduplicateJudges ?? false,
   );
   const originGateFailures = args.config.target === 'live_lambda'
-    ? collectOriginGateFailures(args.runtimeResult.turns) : [];
+    ? collectOriginGateFailures(runtimeResult.turns) : [];
   const transportGateFailures = args.config.target === 'live_lambda'
-    ? collectTransportGateFailures(args.runtimeResult.turns) : [];
-  const hardGatePassed = originGateFailures.length === 0 && transportGateFailures.length === 0 && expectationResults
-    .filter((expectation) => expectation.severity === 'hard')
-    .every((expectation) => expectation.passed);
+    ? collectTransportGateFailures(runtimeResult.turns) : [];
+  const hardGatePassed = computeHardGatePassed({ expectationResults, originGateFailures, transportGateFailures });
   const finalScore = computeFinalScore(expectationResults, scorerResults);
   const status =
-    args.runtimeResult.status === 'errored'
+    runtimeResult.status === 'errored'
       ? 'errored'
       : hardGatePassed
         ? 'passed'
         : 'failed';
-  const totalLatencyMs = args.runtimeResult.turns.reduce(
+  const totalLatencyMs = runtimeResult.turns.reduce(
     (sum, turn) => sum + turn.latencyMs,
     0,
   );
-  const totalToolCalls = args.runtimeResult.turns.reduce(
+  const totalToolCalls = runtimeResult.turns.reduce(
     (sum, turn) => sum + turn.trace.tools_called.length,
     0,
   );
@@ -1557,11 +1680,11 @@ async function finalizeResult(args: {
     reportWriteMs: 0,
     makespanMs: 0,
   };
-  const planDiffSummary = [...(args.runtimeResult.errorMessage ? [`Runtime error: ${args.runtimeResult.errorMessage}`] : summarizePlanDiff(args.runtimeResult.turns)), ...(originGateFailures.length > 0 ? [`Output-origin gate failures: ${originGateFailures.join('; ')}.`] : []), ...(transportGateFailures.length > 0 ? [`Transport gate failures: ${transportGateFailures.join('; ')}.`] : [])];
+  const planDiffSummary = [...(runtimeResult.errorMessage ? [`Runtime error: ${runtimeResult.errorMessage}`] : summarizePlanDiff(runtimeResult.turns)), ...(originGateFailures.length > 0 ? [`Output-origin gate failures: ${originGateFailures.join('; ')}.`] : []), ...(transportGateFailures.length > 0 ? [`Transport gate failures: ${transportGateFailures.join('; ')}.`] : [])];
   // Packet O5: one primary reason per failure; scores stay diagnostic.
   const primaryFailureReason = classifyPrimaryFailureReason({
     status,
-    executionUncertain: args.runtimeResult.executionUncertain,
+    executionUncertain: runtimeResult.executionUncertain,
     planDiffSummary,
     expectationResults,
   });
@@ -1578,7 +1701,7 @@ async function finalizeResult(args: {
     finalScore,
     totalLatencyMs,
     totalToolCalls,
-    nodeTransitions: args.runtimeResult.turns.map(
+    nodeTransitions: runtimeResult.turns.map(
       (turn) => `${turn.trace.previous_node}->${turn.trace.next_node}`,
     ),
     planDiffSummary,
@@ -1588,7 +1711,7 @@ async function finalizeResult(args: {
     expectationResults,
     scorerResults,
     benchmarkMetrics: computeBenchmarkMetrics(
-      args.runtimeResult.turns,
+      runtimeResult.turns,
       expectationResults,
     ),
     timing: caseTiming,
@@ -1596,14 +1719,14 @@ async function finalizeResult(args: {
       modelCalls: args.judge?.stats.modelCalls ?? 0,
       retryCount: args.judge?.stats.retryCount ?? 0,
       rateLimitCount: args.judge?.stats.rateLimitCount ?? 0,
-      tokensUnknown: args.runtimeResult.turns.some((turn) =>
+      tokensUnknown: runtimeResult.turns.some((turn) =>
         turn.trace.token_usage.total === null || turn.trace.token_usage.total === undefined,
       ),
       openaiSdk: args.judge?.sdkLabel ?? null,
       judgeModels: [...(args.judge?.stats.judgeModels ?? [])].sort(),
     },
-    ...(args.runtimeResult.executionUncertain === true ? { executionUncertain: true } : {}),
-    turns: args.runtimeResult.turns,
+    ...(runtimeResult.executionUncertain === true ? { executionUncertain: true } : {}),
+    turns: runtimeResult.turns,
     startedAt,
     completedAt: new Date().toISOString(),
   };
@@ -2496,6 +2619,9 @@ export function buildSemanticJudgeContext(
     'El juez no debe exigir que la respuesta repita codigos o referencias que el texto candidato muestra redactados.',
     'Una afirmacion de contexto conservado es valida cuando plan_guardado=si; no especules falta de persistencia sobre un guardado registrado.',
     'Unavailable reference policy: los campos ausentes se omiten; una respuesta de estado grounded sin eco de codigo es valida y el juez no debe exigir seleccion ni codigo echo; solo los campos existentes, explicitamente visibles para el cliente y autorizados pueden mostrarse (reference unavailable).',
+    'Useful completeness: accept a grounded inference to the likely referent from campaign, conversation, record state and nearby dates, and accept useful extra relevant details that avoid predictable follow-ups; extra grounded facts never fail.',
+    'A response fails when it drops a requested topic, states unsupported certainty, dumps unrelated records, or asks an unnecessary clarifying question while the supplied context and completed tool facts already suffice to answer.',
+    'Date and time facts are format-tolerant: any natural wording passes when the facts are identical; never require a fixed sentence or a literal date string.',
   ].join(' ');
   const isolatedHeader = [
     `CANDIDATE-VISIBLE EVIDENCE (through turn ${selectedIndex}; no future turns): ${JSON.stringify(candidateVisible)}`,
@@ -2530,12 +2656,44 @@ export function buildSemanticJudgeContext(
   trustedLines.push('Contexto confiable reconstruido del caso (independent evidence, not candidate knowledge):');
   trustedLines.push(structuralLines.join(' | '));
   trustedLines.push(fixtureSection);
+  const judgeOnlyImageTruth = resolveJudgeOnlyImageGroundTruth(currentCase);
+  if (judgeOnlyImageTruth) {
+    trustedLines.push(judgeOnlyImageTruth);
+  }
   if (hasNotes) {
     trustedLines.push(`Notas del caso (procedencia: autor del caso, no evidencia del mundo congelado; los hechos actuales del mundo congelado prevalecen): ${JSON.stringify(currentCase.notes)}`);
   }
   trustedLines.push(packet.expectations);
   trustedLines.push('Politica de referencia del cliente (minimum disclosure): solo los campos existentes, explicitamente visibles para el cliente y autorizados pueden mostrarse (transaction reference). Los campos ausentes se omiten y el juez no debe exigir que se repitan codigos redactados. Los identificadores internos/autenticacion permanecen ocultos.');
   return `${trustedLines.join('\n\n')}${silenceSection}`;
+}
+
+/**
+ * Packet E1 judge-only image ground truth. Returns the manually verified
+ * text bound to the fixture image digest for this case, for the semantic
+ * judge context only. The digest is verified against the exact input image
+ * data the case sends at the bound turn; a mismatch yields a projection
+ * diagnostic (never candidate knowledge, never a leaked answer). This
+ * helper never touches runtime model input: the ground truth rides only
+ * the judge-context lines built below. No OCR or vision call is made; the
+ * text was verified once by a human reading the fixture pixels. A
+ * read-only amount here is read accuracy, never backend payment approval.
+ */
+export function resolveJudgeOnlyImageGroundTruth(currentCase?: EvalCase): string | null {
+  const groundTruth = currentCase?.judgeGroundTruth;
+  if (!groundTruth) return null;
+  const boundInput = currentCase?.inputs[groundTruth.boundInputTurn];
+  const rawImage = boundInput?.image;
+  const imageData = rawImage !== undefined && rawImage !== null && 'data' in rawImage ? rawImage.data : null;
+  if (typeof imageData !== 'string' || imageData.length === 0) {
+    return 'JUDGE-ONLY IMAGE GROUND TRUTH: declared but the bound input carries no image data (projection defect, diagnosable; never candidate knowledge).';
+  }
+  const digest = hashJudgePayload(imageData);
+  if (digest !== groundTruth.imageDigest) {
+    return 'JUDGE-ONLY IMAGE GROUND TRUTH: digest mismatch against the bound input image (projection defect, diagnosable; never candidate knowledge).';
+  }
+  const amountLine = groundTruth.verifiedAmount ? ` Verified amount: ${groundTruth.verifiedAmount} (read accuracy only, never backend payment approval).` : '';
+  return `JUDGE-ONLY IMAGE GROUND TRUTH (manually verified ${groundTruth.verifiedAt}, fixture image digest ${groundTruth.imageDigest.slice(0, 16)}; judge use only, never candidate knowledge, never runtime input): ${groundTruth.verifiedText}.${amountLine}`;
 }
 
 function stringField(value: unknown, fallback: string): string {

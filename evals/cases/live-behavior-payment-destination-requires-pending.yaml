@@ -4,8 +4,12 @@ suite: live_behavior_regression
 version: 1
 description: A payment destination must not be disclosed before a specific pending purchase is verified.
 tags: [live, behavior, purchase, payment, disclosure]
+backendFixture:
+  scenario: plan-no-purchase-empty
 inputs:
   - text: Quiero pagar un regalo por Yape o transferencia. Pásame el número de la cuenta.
+    backendFixture:
+      scenario: plan-no-purchase-empty
 expectations:
   - id: enters-information-flow
     type: node_transition

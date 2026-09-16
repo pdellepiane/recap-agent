@@ -1,8 +1,8 @@
 template: template.base-live
 id: live_behavior.repeated_otp_failure_preserves_gift_query
 suite: live_behavior_regression
-version: 2
-description: Version 2 supersedes the v1 two-failure contract under the user-approved one-shot OTP policy (plan revision 2, S06). The first rejected code verifies once, terminates OTP recovery, and hands off to human support; the second code never verifies. Incident ID retained.
+version: 3
+description: "Version 3 supersedes the v2 contract under Packet E1 - the failed_code_attempts counter pin is removed and the outcome is carried by receipt-based handoff.write counts plus the turn-0 semantic judge. The first rejected code verifies once, terminates OTP recovery, and hands off to human support; the second code never verifies. Incident ID retained."
 tags: [live, behavior, authentication, purchase, reported-interaction]
 targetModes: [live_lambda]
 backendFixture:
@@ -12,14 +12,20 @@ inputs:
     channel: whatsapp
     contactPhone: "+51900000903"
     sessionId: live-behavior-repeated-otp-session
+    backendFixture:
+      scenario: s02-otp-repeated-failure
   - text: "753994"
     channel: whatsapp
     contactPhone: "+51900000903"
     sessionId: live-behavior-repeated-otp-session
+    backendFixture:
+      scenario: s02-otp-repeated-failure
   - text: Ese es el código que me llegó
     channel: whatsapp
     contactPhone: "+51900000903"
     sessionId: live-behavior-repeated-otp-session
+    backendFixture:
+      scenario: s02-otp-repeated-failure
 seedPlan:
   current_node: resolver_consultas_informativas
   contact_email: regression-otp@example.invalid
@@ -62,16 +68,14 @@ expectations:
     turnIndex: 2
     mustNotCall: [verify_user_login_code, request_user_login_code, request_human_takeover]
     severity: hard
-  - id: single-failure-is-recorded
-    type: plan_field_equals
-    path: user_auth.failed_code_attempts
-    expected: 1
-    severity: hard
   - id: first-failure-persists-human-handoff
     type: plan_field_equals
     path: human_escalation.status
     expected: requested
     severity: hard
+  # E1 v3: counter pin single-failure-is-recorded (user_auth.failed_code_attempts == 1) removed.
+  # The outcome is carried by turn0-handoff-effect + final-handoff-effect-unchanged (receipt-based,
+  # turn-scoped) plus the turn-0 semantic judge. Counters never decide customer outcome. R05: old v2 runs preserved.
   - id: gift-query-remains-pending
     type: plan_field_subset
     path: information_state.pending_requests

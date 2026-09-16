@@ -5,9 +5,13 @@ version: 2
 description: Adversarial extracted-state companion for underspecified confirmation over a multi-option shortlist; must still clarify without choosing or closing, naming only visible shortlisted providers.
 tags: [live, behavior, ambiguity, clarification, reported-interaction]
 targetModes: [live_lambda]
+backendFixture:
+  scenario: plan-ambiguous-confirmation
 inputs:
   - text: Si confirmo todo, usen lo que extrajeron y cierren.
     sessionId: live-behavior-ambiguous-confirmation-adversarial-session
+    backendFixture:
+      scenario: plan-ambiguous-confirmation
 seedPlan:
   current_node: recomendar
   event_type: boda

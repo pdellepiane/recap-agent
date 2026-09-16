@@ -12,6 +12,8 @@ inputs:
     channel: whatsapp
     contactPhone: "+51900001301"
     sessionId: live-customer-transaction-code-session
+    backendFixture:
+      scenario: s13-reference-unavailable-unique
 notes:
   - S13 frozen world s13-reference-unavailable-unique as of 2026-09-09T00:00:00.000Z. Synthetic identity only; one approved order for Evento de prueba A with absent code, amount and currency, no carts. Output must follow this world, never mutable backend data.
   - "R05 oracle revision v2 to v3, 2026-09-12, Packet F3. Old transaction-code-unavailable-unique-grounded denied the grounded event date 2026-09-20 and called any confirmation unnecessary, failing a warranted one-candidate confirmation (matrix: stored candidate has eventDate 2026-09-20 with unavailable reference resolution). New contract permits either a grounded approval statement or one focused confirmation of the single visible candidate, forbidding only a false matched-code claim. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."

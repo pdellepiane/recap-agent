@@ -112,9 +112,15 @@ describe('per-branch historical baseline via git show', () => {
     // rsvp_event_time.hour24 when projected, so the Marta turn can carry
     // 19:00; responder response_contract stays mandate-free. Previous pin
     // 8872.
+    // 2026-09-16 P3 useful completeness: +94 bytes in responder_invitacion
+    // (venue-when-useful, answer-every-part, brief-not-paragraph rule). No
+    // fixed prose; hard paragraph mandates removed. Previous pin 8933.
+    // 2026-09-16 oracle-audit hostdecl hedge grounding: +281 bytes in
+    // responder_invitacion (verified-record states/dates question, no false
+    // cannot-verify hedge when grounded). Model wording only. Previous pin 9027.
     const currentRsvp = current.find((branch) => branch.branchId === 'responder_invitacion:resolved_single');
-    expect(currentRsvp?.instructionBytes).toBe(8933);
-    expect((currentRsvp?.instructionBytes ?? 0) - (anchorRsvp?.instructionBytes ?? 0)).toBe(700);
+    expect(currentRsvp?.instructionBytes).toBe(9308);
+    expect((currentRsvp?.instructionBytes ?? 0) - (anchorRsvp?.instructionBytes ?? 0)).toBe(1075);
   }, 20_000);
 });
 

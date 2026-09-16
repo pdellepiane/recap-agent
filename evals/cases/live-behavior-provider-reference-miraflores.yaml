@@ -4,9 +4,13 @@ suite: live_behavior_regression
 version: 1
 description: A location reference to the Miraflores shortlisted provider must resolve from retained provider evidence.
 tags: [live, behavior, provider-selection, reference, location]
+backendFixture:
+  scenario: provider-miraflores-option
 inputs:
   - text: Quiero la opción que está en Miraflores.
     sessionId: live-behavior-provider-miraflores-session
+    backendFixture:
+      scenario: provider-miraflores-option
 seedPlan:
   current_node: recomendar
   event_type: boda

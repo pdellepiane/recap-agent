@@ -1,15 +1,19 @@
 template: template.base-live
 id: live_behavior.rsvp_declined_state_offers_one_change
 suite: live_behavior_regression
-version: 4
+version: 6
 description: A declined invitation reports its current state and offers a clear confirmation to change it to attending, as a question or conditional offer, in natural wording without fixed phrases.
 tags: [live, behavior, rsvp, attendance, current-state, confirmation]
 targetModes: [live_lambda]
+backendFixture:
+  scenario: s11-rsvp-durability-declining
 inputs:
   - text: ¿Cómo figura mi asistencia a Otra celebración prueba?
     channel: whatsapp
     contactPhone: "+51973296571"
     sessionId: live-rsvp-declined-state-session
+    backendFixture:
+      scenario: s11-rsvp-durability-declining
 seedPlan:
   current_node: responder_invitacion
   intent: responder_invitacion
@@ -22,12 +26,6 @@ seedPlan:
         event_date: "2026-08-19 05:00:00"
     requested_at: "2026-08-17T15:00:00.000Z"
     selection_attempts: 0
-rsvpIsolation:
-  setup:
-    guestId: 584353
-    eventName: Otra celebración prueba
-    phone: "+51973296571"
-    targetState: declining
 expectations:
   - id: remains-in-rsvp-node
     type: node_transition
@@ -41,12 +39,12 @@ expectations:
   - id: waits-for-one-change-confirmation
     type: plan_field_equals
     path: rsvp_state.status
-    expected: awaiting_action
+    expected: none
     severity: hard
   - id: preserves-attending-change
     type: plan_field_equals
     path: rsvp_state.pending_action
-    expected: attending
+    expected: null
     severity: hard
   - id: reports-decline-and-offers-change
     type: text_semantic
@@ -62,7 +60,10 @@ expectations:
 notes:
   - "R05 oracle revision v2 to v3, 2026-09-12, Packet F3. Old deterministic-declining-offers-explicit-question demanded exact phrases (Figura que no asistirás plus ¿Deseas que confirme tu asistencia?) and deterministic-declining-omits-no-change banned one sentence, forcing scripts around an otherwise understandable truthful reply (matrix: hard exact-question/forbidden-no-change phrasing forces scripts). Both deterministic expectations are removed; the semantic contract judges declined-state reporting plus a natural change offer. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
   - "R05 oracle revision v3 to v4, 2026-09-15, recheck-b9a7662d. Old reports-decline-and-offers-change demanded interrogative syntax although the fixture notes already describe a natural conditional change offer as actionable (recheck: requiring interrogative syntax is overstrict). New contract accepts either one explicit question or one unambiguous conditional offer requiring the user's decision; interrogative form alone never decides. Keeps the mandatory semantic judge, hard severity, no-write-without-intent tool checks, and identity/effect assertions unchanged. Old v3 runs preserved; baseline and candidate must rerun on this v4 contract."
+  - "R05 oracle revision v5 to v6, 2026-09-16, evaluator-owned P2 read-only alignment. Old waits-for-one-change-confirmation / preserves-attending-change pinned the retired staging contract (status awaiting_action, pending_action attending), but the P2 runtime read-only branch always returns emptyRsvpState (status none, pending_action null; an inferred read target is never persisted as later-action consent), so the candidate correctly holds none/null and the old pins failed a correct reply. New contract asserts none/null; the seedPlan keeps the retired staged shape as the incoming boundary to prove normalization. Semantic offer expectation, authorization/effect/identity checks, hard requireJudge, and threshold 0.9 unchanged. Old v5 runs preserved; baseline and candidate must rerun on this v6 contract."
 budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 1600
   estimatedCompletionTokensPerTurn: 300
+
+# September 15 isolation revision: fixture initial state replaces external setup; no real backend mutation is required.
