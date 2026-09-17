@@ -2753,6 +2753,11 @@ export class AgentService {
     let result: AgentGuestRsvpResult | null = null;
     let operationalNote: string;
     let nextRsvpState = pendingState;
+    // Existing-state versus this-turn-effect evidence: true only when this
+    // turn attempted a mutation through the verified executor below (a
+    // receipt with verification provenance exists in the outcome). Read-only
+    // state answers attempt nothing, so they never claim completed work.
+    let rsvpMutationAttempted = false;
 
     const handoffParty = args.extraction.rsvpParty;
     const hasExplicitSingleCompanionEvidence = handoffParty?.companion_count === 'one' || (
@@ -3185,6 +3190,7 @@ export class AgentService {
           leaseOwnerId: args.inbound.turnLease?.ownerId ?? undefined,
         });
         args.timingMs.rsvp_execution += Date.now() - executionStartedAt;
+        rsvpMutationAttempted = true;
         // Replay integrity: the trace reports only calls performed in THIS
         // invocation. A replayed historical receipt carries historical
         // write/read counts but performed nothing now; logging them would
@@ -3318,7 +3324,10 @@ export class AgentService {
       promptFilePaths: [],
       toolUsage: args.toolUsage,
       rsvpPhoneEvidence,
-      rsvpWorkCompleted: true,
+      // No mutation was attempted on read-only/selection/unavailable turns,
+      // so no completed-effect receipt is claimed; the current-state evidence
+      // above stays the reply basis.
+      rsvpWorkCompleted: rsvpMutationAttempted,
     });
     args.timingMs.compose_reply += Date.now() - composeStartedAt;
     args.tokenUsage.reply = reply.tokenUsage ?? null;
@@ -7715,22 +7724,34 @@ export class AgentService {
     if (supportAcknowledgment && !supportContinuesPurchaseThread) {
       // Actionable-answer repair: an unresolved purchase/event-detail
       // request plus sufficient newly supplied typed context (event or
-      // person reference, role correction, or event reference) must reach
-      // the existing information executor before composition instead of
-      // taking the acknowledgment-only shortcut. Reuses pending_requests
-      // and structured extraction; no keyword matching, no new state
-      // machine, no new intent type. A bare support_query_open flag with no
-      // such context still acknowledges below.
+      // person reference, role correction, event reference, or a supplied
+      // credential field) must reach the existing information executor
+      // before composition instead of taking the acknowledgment-only
+      // shortcut. Reuses pending_requests and structured extraction; no
+      // keyword matching, no new state machine, no new intent type. A bare
+      // support_query_open flag with no such context still acknowledges
+      // below. Only live pending requests resume here: completed, declined
+      // and refused work never re-enters through this branch.
       const supportEventReference = supportAct?.kind === 'provide_detail'
         ? supportAct.eventReference?.trim() ?? null
         : null;
       const supportPersonReference = supportAct?.kind === 'provide_detail'
         ? supportAct.personReference?.trim() ?? null
         : null;
+      // A supplied credential satisfies the required next input of a
+      // pending protected request through the existing auth requirements
+      // below. It never authorizes anything on its own, and a role
+      // statement alone still authorizes nothing.
+      const suppliedCredentialEmail = this.isValidEmail(args.extraction.contactEmail)
+        ? args.extraction.contactEmail
+        : this.extractEmailFromText(args.inbound.text);
+      const suppliedCredentialCode = this.extractUserLoginCode(args.inbound.text);
       const hasNewResolvingContext = (supportEventReference?.length ?? 0) > 0 ||
         (supportPersonReference?.length ?? 0) > 0 ||
         args.extraction.reportedEventRole != null ||
-        args.extraction.rsvpEventReference != null;
+        args.extraction.rsvpEventReference != null ||
+        suppliedCredentialEmail != null ||
+        suppliedCredentialCode != null;
       const resumablePendingRequests = planWithContact.information_state.pending_requests.filter(
         (request) => request.kind === 'purchase' || request.kind === 'associated_event',
       );
@@ -8543,10 +8564,21 @@ export class AgentService {
     if (!act || !this.isSupportAcknowledgment(act)) {
       throw new Error('Support acknowledgment requires typed support evidence.');
     }
+    // Preserve the known support topic in the existing conversation
+    // projection: when guest/event details arrive on a completed support
+    // thread with no summary yet, the completed request's own query carries
+    // the topic (for example the card problem) into the reply context. This
+    // synthesizes no request and executes nothing; the turn stays a
+    // lightweight acknowledgment.
+    const completed = plan.information_state.last_completed_request;
+    const completedSupportTopic = completed?.kind === 'faq' ? completed.query.trim() : '';
+    const summaryBase = plan.conversation_summary.trim().length > 0 || completedSupportTopic.length === 0
+      ? plan.conversation_summary
+      : completedSupportTopic;
     const planWithSupportContext = mergePlan(plan, {
       conversation_summary: this.supportConversationSummary(
         act,
-        plan.conversation_summary,
+        summaryBase,
       ),
     });
     const currentNode: DecisionNode = 'resolver_consultas_informativas';
@@ -8559,33 +8591,43 @@ export class AgentService {
       extraction: args.extraction,
       imageTurn: args.imageTurn,
     });
-    let reply: ComposeReplyResult;
-    try {
-      reply = await composeModelReply(this.dependencies.runtime, this.withCompletedRsvp({
-        currentNode,
-        previousNode: args.previousNode,
-        userMessage: args.inbound.text,
-        messageContext: args.messageContext,
-        plan: planWithSupportContext,
-        extraction: args.extraction,
-        missingFields: [],
-        searchReady: false,
-        providerResults: [],
-        turnDecision,
-        errorMessage: null,
-        promptBundleId: PENDING_COMPILER_PROMPT_ID,
-        promptFilePaths: [],
-        toolUsage: args.toolUsage,
-        owner: planWithSupportContext.owner ?? null,
-        continuity: this.resolveContinuityProjection(planWithSupportContext, args.messageContext),
-        imageEvidence: this.imageEvidenceForProjection({
-          imageTurn: args.imageTurn,
-          projection: ownerProjection,
-        }),
-        imageUrlAttachments: ownerProjection.urls,
-        imageFileAttachments: ownerProjection.files,
-      }, args.completedRsvp));
-    } catch (error) {
+    // Shared acknowledgment composition: the original user text, existing
+    // facts and completed receipts ride every attempt; only the image
+    // projection varies on the unavailable-media retry below.
+    const composeAck = (
+      imageEvidence: ComposeReplyRequest['imageEvidence'],
+      attachments: {
+        urls: Array<{ url: string; messageId: string }>;
+        files: ImageFileAttachment[];
+      },
+    ): Promise<ComposeReplyResult> => composeModelReply(this.dependencies.runtime, this.withCompletedRsvp({
+      currentNode,
+      previousNode: args.previousNode,
+      userMessage: args.inbound.text,
+      messageContext: args.messageContext,
+      plan: planWithSupportContext,
+      extraction: args.extraction,
+      missingFields: [],
+      searchReady: false,
+      providerResults: [],
+      turnDecision,
+      errorMessage: null,
+      promptBundleId: PENDING_COMPILER_PROMPT_ID,
+      promptFilePaths: [],
+      toolUsage: args.toolUsage,
+      owner: planWithSupportContext.owner ?? null,
+      continuity: this.resolveContinuityProjection(planWithSupportContext, args.messageContext),
+      // The existing pending-question projection rides the acknowledgment
+      // so the reply keeps the known open thread instead of re-asking it.
+      // Null when no question is open; never synthesized here.
+      pendingQuestionRef: planWithSupportContext.owner_pending_question ??
+        planWithSupportContext.open_questions[0] ??
+        null,
+      imageEvidence,
+      imageUrlAttachments: attachments.urls,
+      imageFileAttachments: attachments.files,
+    }, args.completedRsvp));
+    const failAcknowledgment = async (error: unknown): Promise<HandleTurnResponse> => {
       // The pre-compose save moved after render; a compose failure still
       // persists the plan before returning the typed operational failure.
       // Failure outbound records no latest-response text.
@@ -8637,6 +8679,77 @@ export class AgentService {
           informationExecution: [],
         }),
       };
+    };
+    let reply: ComposeReplyResult;
+    let planPersistReason = 'support_continuity_acknowledgment';
+    try {
+      reply = await composeAck(
+        this.imageEvidenceForProjection({
+          imageTurn: args.imageTurn,
+          projection: ownerProjection,
+        }),
+        { urls: ownerProjection.urls, files: ownerProjection.files },
+      );
+    } catch (error) {
+      // S5: ONLY a typed image-access failure (invalid image payload,
+      // download 404, exact download diagnostic) retries once without pixels
+      // through the existing shared recovery operation. Auth, model
+      // composition/schema/guardrail, quota/rate-limit, timeout, server and
+      // persistence failures keep their real classification on the failure
+      // path and are never disguised as unavailable images.
+      if (!isImageFileAccessFailure(error)) {
+        return failAcknowledgment(error);
+      }
+      const fallbackSource = args.imageTurn?.kind ??
+        (ownerProjection.files.length > 0 ? 'file' : 'url');
+      const fallbackToolLabel = fallbackSource === 'file' ? 'image_file_context' : 'image_url_context';
+      // Both attempts stay recorded; the label keeps the reply_failed
+      // prefix so attempt accounting is stable.
+      this.recordDeterministicToolOutput(args.toolUsage, fallbackToolLabel, {
+        stage: 'reply_failed_file_access',
+        error_name: error instanceof Error ? error.name : 'unknown',
+        file_access: true,
+        ...(args.imageTurn ? { ref_stored: args.imageTurn.refStored } : { retained_projection: true }),
+      });
+      // The retry carries explicit unavailable-media evidence with the same
+      // user text, facts and receipts. It performs no repeat extraction,
+      // upload, read/write effect, authentication or takeover, and requests
+      // no URL or resend. The reply stays model-authored; a failed retry
+      // records an explicit delivery failure, never fake silence.
+      try {
+        reply = await composeAck(
+          this.withImageObservation(
+            {
+              status: 'unavailable',
+              reason: 'image_unavailable',
+              captionPresent: args.imageTurn?.captionPresent ?? false,
+              source: fallbackSource,
+              refStored: args.imageTurn?.refStored ?? true,
+            },
+            {
+              plan: planWithSupportContext,
+              imageTurn: args.imageTurn,
+              pixelsProjected: false,
+              depositMentioned: this.isDepositMentioned(args.extraction),
+            },
+          ),
+          { urls: [], files: [] },
+        );
+      } catch (retryError) {
+        return failAcknowledgment(retryError);
+      }
+      // R3: the retry keeps the failed attempt in totals instead of
+      // overwriting it with success-only numbers.
+      reply = this.withFallbackCallEvidence(error, reply);
+      this.recordDeterministicToolOutput(args.toolUsage, fallbackToolLabel, {
+        fallback_reply_received: true,
+        // S5: the failed attempt never yields token usage, so the retry
+        // usage is at most partial evidence — never a complete accounting.
+        // Missing usage is recorded as unavailable, never zero.
+        token_usage: reply.tokenUsage ? 'partial' : 'unavailable',
+        ...(args.imageTurn ? { ref_stored: args.imageTurn.refStored } : { retained_projection: true }),
+      });
+      planPersistReason = fallbackSource === 'file' ? 'image_file_unavailable' : 'image_url_unavailable';
     }
     args.tokenUsage.reply = reply.tokenUsage ?? null;
     args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
@@ -8661,7 +8774,7 @@ export class AgentService {
     const planToSave = planWithSupportContext;
     await this.dependencies.planStore.save({
       plan: planToSave,
-      reason: 'support_continuity_acknowledgment',
+      reason: planPersistReason,
     });
     return {
       plan: planToSave,
@@ -8682,7 +8795,7 @@ export class AgentService {
         providerResults: [],
         recommendationFunnel: this.resolveRecommendationFunnel(null, []),
         planPersisted: true,
-        planPersistReason: 'support_continuity_acknowledgment',
+        planPersistReason,
         timingMs: args.timingMs,
         tokenUsage: args.tokenUsage,
         messageContext: args.messageContext,
@@ -8699,17 +8812,28 @@ export class AgentService {
     act: InformationSupportAct,
     currentSummary: string,
   ): string {
-    if (act.topic === 'mailbox_capacity' && act.detail === 'mailbox_full') {
-      return 'La persona informó que el buzón de su correo registrado está lleno; la consulta de soporte sigue abierta.';
-    }
-    if (act.topic === 'payment_proof' && act.detail === 'submission_reported') {
-      return 'La persona informó que envió un comprobante; su contenido y el estado del pago no han sido verificados.';
-    }
+    // The acknowledgment must not erase the known support topic (for
+    // example the card problem already supplied): a prior summary is kept
+    // and the turn note is appended once, never duplicated. A deferral
+    // keeps the prior summary untouched, as before.
+    const prior = currentSummary.trim();
     if (act.kind === 'defer_submission') {
-      return currentSummary ||
-        'La persona indicó que enviará la información después; la consulta de soporte sigue abierta.';
+      return prior.length > 0
+        ? currentSummary
+        : 'La persona indicó que enviará la información después; la consulta de soporte sigue abierta.';
     }
-    return 'La persona aportó información a una consulta de soporte que sigue abierta.';
+    const noteForAct = ((): string => {
+      if (act.topic === 'mailbox_capacity' && act.detail === 'mailbox_full') {
+        return 'La persona informó que el buzón de su correo registrado está lleno; la consulta de soporte sigue abierta.';
+      }
+      if (act.topic === 'payment_proof' && act.detail === 'submission_reported') {
+        return 'La persona informó que envió un comprobante; su contenido y el estado del pago no han sido verificados.';
+      }
+      return 'La persona aportó información a una consulta de soporte que sigue abierta.';
+    })();
+    if (prior.length === 0) return noteForAct;
+    if (prior === noteForAct || prior.endsWith(noteForAct)) return prior;
+    return `${prior} ${noteForAct}`;
   }
 
   /**

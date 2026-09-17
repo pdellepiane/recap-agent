@@ -21,6 +21,7 @@ import type {
   ExtractionResult,
 } from '../src/runtime/contracts';
 import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
+import { OpenAiAgentRuntime } from '../src/runtime/openai-agent-runtime';
 import { PromptLoader } from '../src/runtime/prompt-loader';
 import type { ProviderGateway, UserEventLookupResult } from '../src/runtime/provider-gateway';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
@@ -763,3 +764,179 @@ function twinInbound(text: string, messageId: string) {
     contactPhone: '+51973296571',
   };
 }
+
+/**
+ * Lane C: existing attendance versus this-turn effect. A confirmed-state turn
+ * that performs no mutation must serialize current-state evidence with no
+ * completed-work claim and no completed-effect receipt, while a fresh
+ * verified write (or an attempted write the backend reports as already
+ * responded) keeps its distinct receipt. No wording requirement: a natural
+ * confirmed-attendance statement passes on the existing-state evidence.
+ */
+describe('RSVP existing-state versus this-turn-effect evidence', () => {
+  function attendingTwinService(
+    runtime: AgentRuntime,
+    gateway: AgentConversationGateway,
+    effectStore: InMemoryRsvpEffectStore,
+  ): AgentService {
+    const invitations: UserEventLookupResult['events'] = [{
+      relation: 'guest',
+      guestId: 41,
+      eventId: 205,
+      slug: null,
+      url: null,
+      name: 'Matrimonio de Ana y Luis',
+      place: null,
+      type: null,
+      datetime: '2026-09-12',
+      stage: null,
+      isVisible: null,
+      isPublic: null,
+      currency: null,
+      country: null,
+      guestStatus: { hasResponded: true, willAttend: true, hasCouple: null, responseDate: '2026-08-13T15:00:00.000Z' },
+      hostType: null,
+      hostPermission: null,
+      hostStatus: null,
+      celebratedType: null,
+      amountCollected: null,
+      amountTransferred: null,
+      transactionsCount: null,
+      invitedGuestCount: null,
+      confirmedGuestCount: null,
+      orders: [],
+    }];
+    return new AgentService({
+      planStore: new InMemoryPlanStore(),
+      runtime,
+      providerGateway: {
+        async lookupUserEventContext(): Promise<UserEventLookupResult | null> {
+          return {
+            lookup: { email: null, phone: '973296571' },
+            user: null,
+            events: invitations,
+            counts: {
+              ownerEvents: 0,
+              guestEvents: invitations.length,
+              hostEvents: 0,
+              celebratedEvents: 0,
+              recentOrders: 0,
+            },
+          };
+        },
+      } as unknown as ProviderGateway,
+      agentConversationGateway: gateway,
+      rsvpEffectStore: effectStore,
+      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
+      renderers: { whatsapp: new WhatsAppMessageRenderer() },
+    });
+  }
+
+  function specRuntime(): OpenAiAgentRuntime {
+    return new OpenAiAgentRuntime({
+      apiKey: 'test-key',
+      replyModel: 'gpt-test',
+      extractorModel: 'gpt-test',
+      replyProviderLimit: 4,
+      presentationProviderLimit: 5,
+      providerDetailLookupLimit: 3,
+      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
+      providerGateway: {} as never,
+    });
+  }
+
+  it('existing confirmed attendance without a write claims no completed work and no effect receipt', async () => {
+    const store = new InMemoryRsvpEffectStore();
+    const runtime = new TwinRuntime([twinExtraction({ action: 'attending' })]);
+    const gateway = new TwinGateway([], []);
+    const service = attendingTwinService(runtime, gateway, store);
+
+    const result = await service.handleTurn(twinInbound('Gracias, confirmo asistencia', 'wamid-twin-existing'));
+
+    expect(gateway.writes).toHaveLength(0);
+    expect(runtime.composeRequests).toHaveLength(1);
+    const request = runtime.composeRequests[0];
+    expect(request?.rsvpPhoneEvidence).toMatchObject({
+      state: 'resolved_single',
+      event: { rsvp_state: 'attending', invitation_record: 'available' },
+    });
+    expect(request?.rsvpWorkCompleted).toBe(false);
+    const note = request?.errorMessage ?? '';
+    expect(note).toContain('"outcome":"current_state"');
+    expect(note).toContain('"mutation_performed":false');
+    expect(note).not.toContain('verification_status');
+    expect(result.outbound.text).toBe('TWIN_MODEL_SENTINEL');
+
+    // The serialized model input keeps the existing state visible and
+    // carries no completed-effect receipt for a turn that wrote nothing.
+    if (!request) throw new Error('Missing compose request.');
+    const spec = await specRuntime().buildReplyRequestSpec(request);
+    expect(spec.input).toContain('rsvp_phone_evidence');
+    expect(spec.input).toContain('attending');
+    expect(spec.input).not.toContain('rsvp_completed_effect');
+  });
+
+  it('a fresh verified write keeps its applied-effect receipt as distinct this-turn evidence', async () => {
+    const store = new InMemoryRsvpEffectStore();
+    const runtime = new TwinRuntime([twinExtraction({ action: 'attending' })]);
+    const gateway = new TwinGateway(
+      [responded({ action: 'attending', willAttend: true })],
+      [readDetail({ willAttend: true })],
+    );
+    const service = twinService(runtime, gateway, store);
+
+    const result = await service.handleTurn(twinInbound('Confirmo mi asistencia', 'wamid-twin-fresh'));
+
+    expect(gateway.writes).toHaveLength(1);
+    expect(runtime.composeRequests).toHaveLength(1);
+    const request = runtime.composeRequests[0];
+    expect(request?.rsvpWorkCompleted).toBe(true);
+    const note = request?.errorMessage ?? '';
+    expect(note).toContain('"verification_status":"verified"');
+    expect(note).toContain('"effect_applied":true');
+    expect(result.outbound.text).toBe('TWIN_MODEL_SENTINEL');
+
+    if (!request) throw new Error('Missing compose request.');
+    const spec = await specRuntime().buildReplyRequestSpec(request);
+    expect(spec.input).toContain('rsvp_completed_effect');
+    expect(spec.input).toContain('"effect_applied": true');
+    expect(spec.input).toContain('"gateway_status": "responded"');
+  });
+
+  it('an attempted write the backend reports as already responded stays unapplied existing state', async () => {
+    const store = new InMemoryRsvpEffectStore();
+    const runtime = new TwinRuntime([twinExtraction({ action: 'attending' })]);
+    const gateway = new TwinGateway(
+      [{
+        status: 'already_responded',
+        currentAction: 'attending',
+        requestedAction: 'attending',
+        guestId: 41,
+        eventId: 205,
+        eventName: 'Matrimonio de Ana y Luis',
+        eventDate: '2026-09-12',
+      }],
+      [readDetail({ willAttend: true })],
+    );
+    const service = twinService(runtime, gateway, store);
+
+    const result = await service.handleTurn(twinInbound('Confirmo mi asistencia', 'wamid-twin-stale-write'));
+
+    // The write was attempted, so the turn owns a receipt — but the receipt
+    // proves no fresh application: existing state, not a new registration.
+    expect(gateway.writes).toHaveLength(1);
+    expect(runtime.composeRequests).toHaveLength(1);
+    const request = runtime.composeRequests[0];
+    expect(request?.rsvpWorkCompleted).toBe(true);
+    const note = request?.errorMessage ?? '';
+    expect(note).toContain('"gateway_status":"already_responded"');
+    expect(note).toContain('"effect_applied":false');
+    expect(result.outbound.text).toBe('TWIN_MODEL_SENTINEL');
+
+    if (!request) throw new Error('Missing compose request.');
+    const spec = await specRuntime().buildReplyRequestSpec(request);
+    expect(spec.input).toContain('rsvp_completed_effect');
+    expect(spec.input).toContain('"effect_applied": false');
+    expect(spec.input).toContain('"gateway_status": "already_responded"');
+  });
+});

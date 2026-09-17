@@ -540,3 +540,72 @@ describe('R3 invalid local image', () => {
     expect(outputs).not.toContain('file-r3-image-1');
   });
 });
+
+describe('R3 support-acknowledgment image recovery', () => {
+  function supportAckRuntime(): R3StubRuntime {
+    const runtime = new R3StubRuntime();
+    runtime.scripted = {
+      supportAct: {
+        kind: 'provide_detail',
+        topic: 'payment_proof',
+        detail: 'submission_reported',
+        eventReference: null,
+        personReference: null,
+      },
+    };
+    return runtime;
+  }
+
+  it('retries an image-download 404 once without the attachment and keeps support facts', async () => {
+    const runtime = supportAckRuntime();
+    runtime.failures = [typedDownloadFailure()];
+    const { service, imageStore } = serviceWith(runtime);
+    const image = normalizeInboundImage({ data: JPEG_MINIMAL, mime_type: 'image/jpeg' });
+    const response = await service.handleTurn(inboundWithImage(image, 'Es mi comprobante de pago'));
+
+    // A delivered model-authored reply, never the blank failure delivery.
+    expect(response.outbound.delivery.action).toBe('send');
+    expect(response.outbound.text).not.toBeNull();
+    // Failed attempt plus exactly one retry: no repeat extraction, no
+    // repeat upload, no doubled effects.
+    expect(runtime.attempts).toBe(2);
+    expect(runtime.extractCalls).toBe(1);
+    expect(imageStore.uploads).toBe(1);
+    expect(runtime.composeRequests).toHaveLength(1);
+    const retry = runtime.composeRequests[0];
+    expect(retry?.imageFileAttachments ?? []).toEqual([]);
+    expect(retry?.imageUrlAttachments ?? []).toEqual([]);
+    expect(retry?.imageEvidence).toMatchObject({ status: 'unavailable', reason: 'image_unavailable' });
+    // The retry carries the original user text and the support facts.
+    expect(retry?.userMessage).toBe('Es mi comprobante de pago');
+    expect(response.plan.conversation_summary).toContain('comprobante');
+    // This stayed the acknowledgment path, not the information executor.
+    expect(response.trace.operational_note).toContain('acknowledged from scoped evidence');
+    // Both attempts stay recorded with the failed attempt in totals.
+    const outputs = JSON.stringify(response.trace.tool_outputs);
+    expect(outputs).toContain('reply_failed_file_access');
+    expect(outputs).toContain('fallback_reply_received');
+    expect(outputs).toContain('\\"token_usage\\": \\"partial\\"');
+    expect(response.trace.plan_persist_reason).toBe('image_file_unavailable');
+    expect(response.trace.openai_calls.reply?.attemptCount).toBe(2);
+  });
+
+  it('keeps a generic compose failure on the real failure path without an unavailable retry', async () => {
+    const runtime = supportAckRuntime();
+    runtime.failures = [new Error('server error')];
+    const { service } = serviceWith(runtime);
+    const image = normalizeInboundImage({ data: JPEG_MINIMAL, mime_type: 'image/jpeg' });
+    const response = await service.handleTurn(inboundWithImage(image, 'Es mi comprobante de pago'));
+
+    // Explicit delivery failure, never fake silence and never an
+    // unavailable-image diagnosis of a generic outage.
+    expect(response.outbound.delivery.action).toBe('failure');
+    expect(response.outbound.text).toBeNull();
+    expect(runtime.attempts).toBe(1);
+    expect(runtime.composeRequests).toHaveLength(0);
+    const outputs = JSON.stringify(response.trace.tool_outputs);
+    expect(outputs).not.toContain('reply_failed_file_access');
+    expect(outputs).not.toContain('fallback_reply_received');
+    expect(response.trace.plan_persist_reason).toBe('support_continuity_acknowledgment');
+  });
+});
