@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.rsvp_plus_one_not_eligible_no_false_success
 suite: live_behavior_regression
-version: 1
+version: 2
 description: Plus-one not eligible returns saved false and is reported honestly without false success.
 tags: [live, behavior, rsvp, plus-one, eligibility, spanish]
 targetModes: [live_lambda]
@@ -16,8 +16,11 @@ backendFixture:
   scenario: rsvp-plus-one-not-eligible
 expectations:
   - id: enters-rsvp-node
-    type: node_transition
-    to: responder_invitacion
+    type: fixture_effect_count
+    operation: handoff.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
     severity: hard
   - id: phone-scoped-mutation-attempted
     type: tool_usage
@@ -33,9 +36,11 @@ expectations:
     severity: hard
   - id: no-false-success
     type: text_not_contains
-    phrases: ["registrado con éxito", "acompañante registrado", "saved=true"]
+    phrases: ["saved=true"]
     severity: hard
 budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 1500
   estimatedCompletionTokensPerTurn: 180
+notes:
+  - "R05 v2 (2026-09-17, support assessment hardening items 5 and 7): enters-rsvp-node no longer pins the internal responder_invitacion node. Old defect: a correct honest rejection composed through any routing passed the phone-scoped mutation evidence but failed the node pin, grading implementation instead of behavior. New contract proves the same stay-in-RSVP invariant observably: zero handoff effects from receipts (fixture_effect_count handoff.write 0/0/0 hard) together with the retained phone-scoped mutation attempt and the honest-report semantic judge. Expectation id enters-rsvp-node is retained for ledger and run continuity; only its type changed from node_transition to fixture_effect_count. The no-false-success word blacklist drops registrado con éxito and acompañante registrado: an honest negation such as no quedó registrado con éxito contains those phrases and would fail a correct reply, while the hard semantic no-false-success rule is preserved unchanged. Only the exact raw-API token saved=true stays as a deterministic check, and the rubric still bans raw API fields. Threshold and hard severity kept; no threshold reduction. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."

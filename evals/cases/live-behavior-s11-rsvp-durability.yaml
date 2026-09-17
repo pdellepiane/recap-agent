@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.s11_rsvp_durability_confirms_once
 suite: live_behavior_regression
-version: 3
+version: 4
 description: S11 durability twin of the reversal world. The explicit attending decision ends confirmed with exactly one RSVP write receipt and no unsupported success claim. Reads the declining fixture world so the attending decision authorizes exactly one durable write. Intent-before-write, result-before-reply, and post-write read are packet-B TODO, not yet structurally asserted.
 tags: [live, behavior, rsvp, durability, s11]
 targetModes: [live_lambda]
@@ -39,10 +39,14 @@ rsvpIsolation:
     restore: true
 notes:
   - "Packet A 2026-09-14: added the rsvp.write receipt-count skeleton (attempts=1 successes=1 replays=0) as the only currently available execution receipt. TODO packet B: intent persisted before write, confirmed result persisted before reply, and a post-write authoritative read are not yet structurally asserted because those receipt fields do not exist in the runtime; this passing result is not yet a full durability proof. Keep the rubric honest until packet B lands."
+  - "R05 v4 (2026-09-17, support assessment hardening item 5): remains-in-rsvp-node no longer pins the internal responder_invitacion node. Old defect: a correct confirmed-attendance reply composed through any routing passed the write receipt and read evidence but failed the node pin, grading implementation instead of behavior. New contract proves the same stay-in-RSVP invariant observably: zero handoff effects from receipts (fixture_effect_count handoff.write 0/0/0 hard) together with the retained single RSVP write receipt, the authoritative read evidence, and the confirmed-state semantic judge. Expectation id remains-in-rsvp-node is retained for ledger and run continuity; only its type changed from node_transition to fixture_effect_count. Threshold and hard severity kept; no threshold reduction. Old v3 runs preserved; baseline and candidate must rerun on this v4 contract."
 expectations:
   - id: remains-in-rsvp-node
-    type: node_transition
-    to: responder_invitacion
+    type: fixture_effect_count
+    operation: handoff.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
     severity: hard
   - id: reads-authoritative-rsvp-state
     type: tool_usage

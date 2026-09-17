@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.host_withdrawal_diana_policy_and_support
 suite: live_behavior_regression
-version: 4
+version: 5
 description: Diana corrects her role, asks about a missing host withdrawal, and supplies her event; answer sourced policy and hand off without buyer or invitation detours.
 tags: [live, behavior, faq, host-withdrawal, continuity, reported-interaction, diana]
 targetModes: [live_lambda]
@@ -31,6 +31,14 @@ expectations:
     type: tool_usage
     mustNotCall: [lookup_guest_orders_by_phone, lookup_rsvp_invitations, request_user_login_code]
     turnIndex: 0
+    severity: hard
+  - id: no-handoff-effect-before-policy-turn
+    type: fixture_effect_count
+    operation: handoff.write
+    turnIndex: 0
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
     severity: hard
   - id: acknowledges-role-without-generic-reset
     type: text_semantic
@@ -77,6 +85,14 @@ expectations:
     expected: requested
     turnIndex: 1
     severity: hard
+  - id: single-handoff-effect-after-policy-turn
+    type: fixture_effect_count
+    operation: handoff.write
+    turnIndex: 1
+    expectedAttempts: 1
+    expectedSuccesses: 1
+    expectedReplays: 0
+    severity: hard
   - id: later-event-message-stays-with-human-team
     type: text_semantic
     rubric: >-
@@ -109,6 +125,7 @@ notes:
   - "R05 v4 (2026-09-17, actionable-answer package Lane B): cumulative-from-case-baseline ledger repair plus role-correction and turn-2 rubric repair. Old defect: the turn-2 pin expected handoff.write 0/0/0, reading turnIndex as a per-turn delta; under the harness cumulative semantics the turn-1 confirmed handoff receipt is still present at turn 2, so the old pin failed a correct run. New acceptance: cumulative handoff attempts/successes/replays = 0/0/0, 1/1/0, 1/1/0 across turns 0-2, checked together with the retained no-resubmission tool pin; a real second takeover dispatch (2/2/0) still fails, and a reused turn-1 success receipt never counts as a new effect. Turn-0 role correction now passes on a relevant acknowledgment alone with no pending task; a question is optional. Turn 2 may retain the supplied event name in conversational context without claiming an external team record update sans receipt. Threshold and hard severity kept; no threshold reduction. Old v3 runs preserved; baseline and candidate must rerun on this v4 contract."
   - "R05 v3 (2026-09-16, customer-support release E1): a repeated read-only policy lookup (knowledge_base_search) is permitted and removed from the turn-2 mustNotCall list. Repeated takeover remains forbidden and is checked against effect receipts (fixture_effect_count handoff.write 0/0/0 at turn 2), not wording: a reused turn-1 success receipt never counts as a new effect. Failing counterexample: a second request_human_takeover dispatch, a guest_rsvp write, or a promised follow-up with no new confirmed effect fails. Earlier runs unchanged."
   - "R05 oracle revision v1 to v2, 2026-09-16, Packet E1 implementation-pin removal. Old later-event-message-stays-with-human-team pinned the internal prompt_bundle_id deterministic:human_escalation_soft_pause, prescribing the prompt-building implementation instead of evidencing behavior (matrix: a correct brief enrichment that stayed with the human team but composed through a different bundle failed the pin). New contract judges the same behavior semantically: brief enrichment with the event name, no resubmitted takeover, no planning restart, no promised follow-up without a confirmed effect. The handoff promise-vs-omission distinction follows the shared judge rule: concise omission of internal mechanics passes, an unconfirmed follow-up promise fails. Threshold and hard severity kept; no threshold reduction. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
+  - "R05 v5 (2026-09-17, support assessment hardening item 1): the cumulative 0/1/1 handoff ledger described in v4 is now pinned on every turn. Old gap: only the turn-2 pin existed, so a stray turn-0 write or a missing turn-1 dispatch had no per-turn receipt check. New turn-0 no-handoff-effect-before-policy-turn (0/0/0) and turn-1 single-handoff-effect-after-policy-turn (1/1/0) complete the cumulative series with the retained turn-2 pin; a second mutation (2/2/0) still fails and missing ledger evidence errors instead of passing as zero. Same-turn forbidden writes, role-correction acceptance, and turn-2 rubric are unchanged. Threshold and hard severity kept; no threshold reduction. Old v4 runs preserved; baseline and candidate must rerun on this v5 contract."
 budget:
   maxTurns: 3
   estimatedPromptTokensPerTurn: 1700

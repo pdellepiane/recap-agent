@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.spanish_only_mixed_language_request
 suite: live_behavior_regression
-version: 2
+version: 3
 description: A mixed-language request must be understood while every user-visible natural-language word in the reply remains Spanish; catalog labels stay usable and the email request is preserved.
 tags: [live, behavior, language, spanish-only]
 backendFixture:
@@ -19,10 +19,7 @@ expectations:
     type: text_not_contains
     phrases:
       - RSVP
-      - email
       - chat
-      - web
-      - link
       - feedback
       - marketplace
       - delivery
@@ -37,6 +34,7 @@ expectations:
     severity: hard
 notes:
   - "R05 oracle revision v1 to v2, 2026-09-12, Packet F3. Old no-known-english-product-terms banned the valid catalog labels catering and baby shower, failing an understandable reply (matrix: catalog words are understandable labels). Those two entries are removed; interface terms stay banned. Old correct-behavior-and-spanish-only let the reply ignore the RSVP-by-email request entirely (matrix: secondary question dropped). New contract fails a reply that silently drops the email request while still forbidding false sent claims; the one-question planning policy may sequence the work but never discards it. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
+  - "R05 v3 (2026-09-17, support assessment hardening item 7): email, link, and web leave the deterministic blacklist. Old defect: the pin could fail a reply solely for the widely understood word email, or for a backend-provided URL or email address the rubric explicitly allows to remain untranslated, grading vocabulary instead of language behavior. The hard semantic judge keeps full Spanish-only enforcement with those allowances. Remaining interface terms stay banned deterministically. Threshold 0.95, hard severity, requireJudge kept; no threshold reduction. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
 budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 1600

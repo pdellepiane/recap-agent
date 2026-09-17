@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.purchase_martha_accountless_selection
 suite: live_behavior_regression
-version: 3
+version: 4
 description: Martha's purchases are found by trusted phone even though she has no account, and multiple records are presented for selection without OTP; order labels never imply verified event membership.
 tags: [live, behavior, purchase, phone-orders, accountless, selection, reported-interaction, martha]
 targetModes: [live_lambda]
@@ -17,10 +17,14 @@ inputs:
 notes:
   - S01 frozen incident world purchase-martha-frozen as of 2026-09-05T01:33:57.291Z. Synthetic identity only; multiple frozen orders with no guest event, selection required.
   - "R05 oracle revision v2 to v3, 2026-09-12, Packet F3. Old martha-is-given-purchase-selection let the judge conflate naming order event labels with claiming separately verified event membership (matrix: two order event labels/dates/amounts/status are fixture facts). New contract names both fixture orders and states labels never imply membership verification, tightened with event-date semantics and no invented currency. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
+  - "R05 v4 (2026-09-17, support assessment hardening item 5): martha-enters-information no longer pins the internal resolver_consultas_informativas node. Old defect: a correct purchase-selection reply from phone-scoped order evidence composed through any routing passed the read evidence but failed the node pin, grading implementation instead of behavior. New contract proves the same read-only invariant observably: zero RSVP effects from receipts (fixture_effect_count rsvp.write 0/0/0 hard) together with the retained phone-orders read evidence and the purchase-selection semantic judge. Expectation id martha-enters-information is retained for ledger and run continuity; only its type changed from node_transition to fixture_effect_count. Threshold and hard severity kept; no threshold reduction. Old v3 runs preserved; baseline and candidate must rerun on this v4 contract."
 expectations:
   - id: martha-enters-information
-    type: node_transition
-    to: resolver_consultas_informativas
+    type: fixture_effect_count
+    operation: rsvp.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
     severity: hard
   - id: martha-uses-phone-orders-without-auth
     type: tool_usage

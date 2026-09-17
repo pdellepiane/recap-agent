@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.owner_planning_to_faq_single_transfer
 suite: live_behavior_regression
-version: 2
+version: 3
 description: A planning interview followed by a general information question transfers once to the FAQ owner and answers honestly from available evidence, never inventing a fee.
 tags: [live, behavior, ownership, planning, faq]
 targetModes: [live_lambda]
@@ -28,9 +28,20 @@ expectations:
       - search_providers_by_query_intent
     turnIndex: 1
     severity: hard
+  - id: planning-turn-continues-interview
+    type: text_semantic
+    rubric: >-
+      The user asked for wedding-provider options while the planning interview still misses required details. The answer must be concise, natural, and entirely in Spanish; continue the interview by naturally asking for the next missing detail without running a provider search, listing providers, or presenting results. It must not invent providers or fees, must not transfer to another topic prematurely, and must not request authentication.
+    minScore: 0.85
+    requireJudge: true
+    turnIndex: 1
+    severity: hard
   - id: faq-turn-enters-information
-    type: node_transition
-    to: resolver_consultas_informativas
+    type: fixture_effect_count
+    operation: provider.quote.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
     turnIndex: 2
     severity: hard
   - id: faq-turn-runs-no-provider-search
@@ -58,6 +69,7 @@ expectations:
     severity: hard
 notes:
   - "R05 oracle revision v1 to v2, 2026-09-12, Packet F3. Old faq-reply-answers-general-question failed a reply that honestly said no price was available and offered human confirmation although the judge rationale approved that behavior (matrix: do not invent fees or add irrelevant planning questions). New contract names honest unavailability plus human confirmation a pass and fails only invented fees and interview restarts. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
+  - "R05 v3 (2026-09-17, support assessment hardening items 5 and 8): faq-turn-enters-information no longer pins the internal resolver_consultas_informativas node. Old defect: a correct honest pricing reply through any routing passed the no-search evidence and the persisted faq owner but failed the node pin, grading implementation instead of behavior. New contract proves the same no-side-effect invariant observably: zero provider quote dispatches from receipts (fixture_effect_count provider.quote.write 0/0/0 hard at turn 2) together with the retained no-provider-search evidence, the persisted faq owner, and the honest-answer semantic judge. Expectation id faq-turn-enters-information is retained for ledger and run continuity; only its type changed from node_transition to fixture_effect_count. Turn 1 gains a hard semantic judge (planning-turn-continues-interview, 0.85) so the actionable interview turn is covered instead of inferred from the final reply; this adds one judge call to the panel budget. Thresholds, remaining severity, and requireJudge kept; no threshold reduction. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
 budget:
   maxTurns: 3
   estimatedPromptTokensPerTurn: 2000

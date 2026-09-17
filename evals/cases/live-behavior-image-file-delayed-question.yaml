@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.image_file_delayed_question
 suite: live_behavior_regression
-version: 3
+version: 4
 description: Image-only turn persists the file reference; a text question in a separate later invocation is answered from the reloaded plan without asking for the image again.
 tags: [live, behavior, image, image-file, base64-persistence, delayed-question]
 targetModes: [live_lambda]
@@ -27,6 +27,7 @@ notes:
   - "F1 2026-09-12: backendFixture scenario image-clean-world; this phone has empty initial history and empty authorized purchase results; never mutable backend data."
   - "Backend image forwarding contract 2026-09-08. Synthetic voucher-style fixture rendered locally, never a customer document. The two inputs run as separate invocations against the same conversation; ordering is by invocation, with no sleep or debounce."
   - "E1 v3 2026-09-15, profile-inference directive (delayed images): judge-only manually verified ground truth bound to the fixture image digest via the judge-context pathway (resolveJudgeOnlyImageGroundTruth); never runtime input, no new OCR/vision. Read-only amount is not backend approval. R05: old v2 runs preserved."
+  - "R05 v4 (2026-09-17, support assessment hardening items 6 and 7): the exact plan_persist_reason image_file_silence pin is replaced with observable behavior. Old defect: the trace string pinned an internal persist reason instead of the customer-visible behavior. New acceptance: deliberate first-turn suppression is judged through the existing validated-silence route (file-image-first-turn-silent-persist-reason is now a hard text_semantic on turn 0 that passes legitimate image-only silence; expectation id retained for ledger continuity, only its type changed), persisted attachment usability on the next turn is judged by the retained turn-1 semantic, and zero unauthorized effects are proved by hard rsvp.write and handoff.write 0/0/0 receipt pins on turn 0. The native image_file_context binding proof and the digest-bound judge-only pixel ground truth are preserved. The file-image-delayed-no-resend word blacklist is removed: ordinary resend phrases could reject a valid paraphrase, while the hard semantic no-resend rule is preserved unchanged. Turn 0 gains a hard semantic judge (0.8); this adds one judge call to the panel budget. Thresholds and remaining severity kept; no threshold reduction. Old v3 runs preserved; baseline and candidate must rerun on this v4 contract."
 expectations:
   - id: file-image-first-turn-persists
     type: tool_usage
@@ -35,15 +36,32 @@ expectations:
     turnIndex: 0
     severity: hard
   - id: file-image-first-turn-silent-persist-reason
-    type: trace_field_equals
-    path: plan_persist_reason
-    expected: image_file_silence
+    type: text_semantic
+    rubric: >-
+      This turn carries only an image with no question and no outstanding task. An empty assistant
+      response is fully correct when the image-only silence is legitimate: the attachment is
+      persisted and no text is delivered. If a response is sent, it must be entirely in Spanish, must
+      not answer an unasked question, must not claim any payment was approved, must not ask for an
+      OTP, and must not ask the user to resend the image.
+    minScore: 0.8
+    requireJudge: true
     turnIndex: 0
     severity: hard
-  - id: file-image-delayed-no-resend
-    type: text_not_contains
-    phrases: [Puedes enviarla de nuevo, supera el tamaño permitido, no puedo ver]
-    turnIndex: 1
+  - id: file-image-first-turn-no-rsvp-effect
+    type: fixture_effect_count
+    operation: rsvp.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    turnIndex: 0
+    severity: hard
+  - id: file-image-first-turn-no-handoff-effect
+    type: fixture_effect_count
+    operation: handoff.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    turnIndex: 0
     severity: hard
   - id: file-image-delayed-answered-from-pixels
     type: text_semantic

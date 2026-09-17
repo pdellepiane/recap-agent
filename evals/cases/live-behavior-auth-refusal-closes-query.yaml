@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.authentication_refusal_closes_protected_query
 suite: live_behavior_regression
-version: 1
+version: 2
 description: An explicit privacy or security refusal must close the protected request without repeating email authentication or forcing human support.
 tags: [live, behavior, authentication, privacy, refusal, reported-interaction]
 targetModes: [live_lambda]
@@ -42,8 +42,11 @@ seedPlan:
     selection_candidates: []
 expectations:
   - id: refusal-returns-to-resume-node
-    type: node_transition
-    to: entrevista
+    type: fixture_effect_count
+    operation: handoff.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
     severity: hard
   - id: refusal-does-not-call-authentication-or-handoff
     type: tool_usage
@@ -65,3 +68,5 @@ budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 1700
   estimatedCompletionTokensPerTurn: 250
+notes:
+  - "R05 v2 (2026-09-17, support assessment hardening item 5): refusal-returns-to-resume-node no longer pins the internal entrevista node. Old defect: a correct refusal-respecting close composed through any routing passed the cleared-request evidence and the no-auth-tool evidence but failed the node pin, grading implementation instead of behavior. New contract proves the same no-forced-handoff close observably: zero handoff effects from receipts (fixture_effect_count handoff.write 0/0/0 hard) together with the retained cleared protected request, the no-authentication-or-handoff tool evidence, and the refusal-respected semantic judge. Expectation id refusal-returns-to-resume-node is retained for ledger and run continuity; only its type changed from node_transition to fixture_effect_count. Threshold and hard severity kept; no threshold reduction. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."

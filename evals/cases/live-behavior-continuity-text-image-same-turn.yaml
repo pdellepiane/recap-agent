@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.continuity_text_image_same_turn
 suite: live_behavior_regression
-version: 3
+version: 4
 description: A text question and its image arrive in the same invocation; the turn answers once using both, with no greeting-only reply and no second image-description answer.
 tags: [live, behavior, continuity, image, image-file, inbound-continuity]
 targetModes: [live_lambda]
@@ -21,16 +21,12 @@ notes:
   - "F1 2026-09-12: backendFixture scenario image-clean-world; this phone has empty initial history and empty authorized purchase results; never mutable backend data."
   - Backend image forwarding contract 2026-09-08. Synthetic voucher-style fixture rendered locally, never a customer document. Single invocation carries both the question and the image; exactly one answer is expected.
   - "R05 oracle revision v2 to v3, 2026-09-16, full-gate triage item 1 (remaining missing image-truth case). The turn-0 image bytes are byte-identical to the live_behavior.image_file_delayed_question fixture (sha256 e6024548787bb4221c9dc53500f097e70e4c738283e2d684d70dba04c5cc764a, verified offline against the case bytes, no repo writes), so the same manually verified text (Monto: S/ 250.00) is bound via judgeGroundTruth (boundInputTurn 0). Ground truth rides the judge context only via resolveJudgeOnlyImageGroundTruth, never runtime input, no new OCR/vision. Read-only amount is not backend approval. Threshold 0.8, hard severity, requireJudge kept. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
+  - "R05 v4 (2026-09-17, support assessment hardening items 6 and 7): the same-turn-no-resend-request word blacklist is removed. Ordinary resend phrases could reject a valid paraphrase, while the hard semantic no-resend rule is preserved unchanged. Correct native context use is judged by the retained hard semantic (single answer from same-turn pixels with judge-only amount) together with the native image_file_context binding proof and the digest-bound judge-only pixel ground truth; no retired tool name is required. Threshold 0.8, hard severity, requireJudge kept; no threshold reduction. Old v3 runs preserved; baseline and candidate must rerun on this v4 contract."
 expectations:
   - id: same-turn-image-persisted-and-projected
     type: tool_usage
     mustCall: [image_file_context]
     mustNotCall: [image_inspect]
-    turnIndex: 0
-    severity: hard
-  - id: same-turn-no-resend-request
-    type: text_not_contains
-    phrases: [Puedes enviarla de nuevo, supera el tamaño permitido, no puedo ver]
     turnIndex: 0
     severity: hard
   - id: same-turn-answer-uses-both

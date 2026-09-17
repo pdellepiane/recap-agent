@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.owner_customer_payment_relevance
 suite: live_behavior_regression
-version: 4
+version: 5
 description: A pending Alejandra order question persists the Customer operations owner and answers from payment evidence while the separate abandoned cart stays out of the payment reply; the unknown balance is never computed and thanks closes without restarting.
 tags: [live, behavior, ownership, customer-context, purchase, cart-relevance]
 targetModes: [live_lambda]
@@ -25,6 +25,7 @@ notes:
   - Same Alejandra pending-order thread as pending_balance_validation_luis with a separate abandoned cart present in phone coverage. The payment projection must exclude cart facts while retaining them for a later cart question.
   - "R05 oracle revision v1 to v2, 2026-09-12, Packet F3. Old payment-reply-answers-from-payment-evidence asked what is still missing without marking the balance unknown, and pending-state language could demand backend recitals (matrix: first answer understandable; pending language need not recite backend or disclaim a nonexistent image). New contract states the unknown balance and forbids backend recital, cart mention, and currency invention while keeping the no-approval core. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
   - "R05 oracle revision v2 to v3, 2026-09-16, Packet E1 node-pin removal. Old payment-turn-enters-information pinned the internal resolver_consultas_informativas node, prescribing implementation instead of evidencing behavior (matrix: a correct payment answer from payment evidence through any routing passed the read evidence but failed the node pin). New contract proves the same no-handoff invariant from receipts: fixture_effect_count handoff.write 0/0/0 hard plus the retained phone-orders read evidence. The invented-balance ban is unchanged: any computed remaining balance still fails the semantic judge. Threshold and hard severity kept; no threshold reduction. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract. Expectation id payment-turn-enters-information is retained for ledger and run continuity; only its type changed from node_transition to fixture_effect_count."
+  - "R05 v5 (2026-09-17, support assessment hardening items 3 and 7): thanks now accepts classifier-suppressed delivery or a brief natural acknowledgment; neither restarts the payment explanation or claims approval, and no visible reply is required solely to make a judge score possible. The payment-reply-excludes-cart text_not_contains pin is removed: ordinary words such as carrito or abandonado could reject a valid paraphrase, while the hard semantic no-unrelated-cart rule is preserved unchanged. The Yape label is named as the recorded payment method only, never evidence the order is paid. Thresholds, hard severity, and requireJudge kept; no threshold reduction. Old v4 runs preserved; baseline and candidate must rerun on this v5 contract."
 expectations:
   - id: payment-turn-enters-information
     type: fixture_effect_count
@@ -46,15 +47,10 @@ expectations:
     expected: customer_assistance
     turnIndex: 0
     severity: hard
-  - id: payment-reply-excludes-cart
-    type: text_not_contains
-    phrases: ["carrito", "abandonado", "cart/recover"]
-    turnIndex: 0
-    severity: hard
   - id: payment-reply-answers-from-payment-evidence
     type: text_semantic
     rubric: >-
-      The trusted-phone evidence identifies the Alejandra gift order as pending and paid by Yape, with a separate abandoned cart in coverage and no balance-due fields. The answer must be concise, natural, and entirely in Spanish; report the pending order state and its recorded total with method without adding a currency symbol, state that the remaining balance cannot be confirmed from the available record, and never approve or confirm any payment. It must not mention the separate abandoned cart or its recovery path, must not calculate a balance, may briefly explain that paid amount or currency is missing; this is a factual limitation, not forbidden backend internals, must not describe any image, and must not ask for email or an OTP.
+      The trusted-phone evidence identifies the Alejandra gift order as pending and paid by Yape, with a separate abandoned cart in coverage and no balance-due fields. The Yape label names only the recorded payment method, never evidence the order is paid or approved. The answer must be concise, natural, and entirely in Spanish; report the pending order state and its recorded total with method without adding a currency symbol, state that the remaining balance cannot be confirmed from the available record, and never approve or confirm any payment. It must not mention the separate abandoned cart or its recovery path, must not calculate a balance, may briefly explain that paid amount or currency is missing; this is a factual limitation, not forbidden backend internals, must not describe any image, and must not ask for email or an OTP.
     minScore: 0.9
     requireJudge: true
     turnIndex: 0
@@ -62,7 +58,11 @@ expectations:
   - id: thanks-closes-without-restart
     type: text_semantic
     rubric: >-
-      Pass only if the assistant responds entirely in Spanish with a brief closing that does not restart the payment explanation, does not mention the abandoned cart, does not describe any image, and does not claim any payment was approved.
+      The user only says thanks after the payment question was answered. An empty assistant response
+      is fully correct when the response classifier suppresses this simple thanks. If a response
+      is sent, it must be entirely in Spanish as a brief natural acknowledgment that does not
+      restart the payment explanation, does not mention the abandoned cart, does not describe any
+      image, and does not claim any payment was approved.
     minScore: 0.8
     requireJudge: true
     turnIndex: 1

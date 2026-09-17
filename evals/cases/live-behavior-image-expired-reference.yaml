@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.image_expired_reference_resubmit
 suite: live_behavior_regression
-version: 6
+version: 7
 description: A question about an expired persisted image reference must not guess pixels; recovery answers from available evidence or asks only for the specific missing fact, never an image or URL.
 tags: [live, behavior, image, image-file, expiry]
 targetModes: [live_lambda]
@@ -36,10 +36,6 @@ expectations:
     mustCall: []
     mustNotCall: [image_inspect, guest_rsvp, auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover]
     severity: hard
-  - id: expired-no-invented-content
-    type: text_not_contains
-    phrases: [pago aprobado, pago confirmado, hemos confirmado tu pago, pago verificado]
-    severity: hard
   - id: expired-answers-from-evidence-or-asks-fact
     type: text_semantic
     rubric: >-
@@ -53,3 +49,5 @@ budget:
   estimatedCompletionTokensPerTurn: 300
 
 # R05 v5 to v6: redundant clarification is minor quality feedback when the limitation is honest; unchanged threshold, factual and image/URL safeguards. Historical runs remain unchanged; matched reruns required.
+
+# R05 v6 to v7 (2026-09-17, support assessment hardening item 7): the expired-no-invented-content word blacklist is removed. Ordinary approval phrases could reject a valid paraphrase, while the hard semantic no-fabrication and no-approval rules are preserved unchanged. Deterministic tool evidence (no inspect, no writes) and the hard semantic judge carry the behavior. Threshold and hard severity kept; no threshold reduction. Historical runs remain unchanged; matched reruns required.

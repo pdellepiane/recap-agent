@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
@@ -249,7 +250,7 @@ describe('Lane B actionable-answer oracle repairs keep defect detection (2026-09
 
   it('Diana ledger is cumulative and the role correction needs no question', async () => {
     const diana = await loadCase('live-behavior-host-withdrawal-diana.yaml');
-    expect(diana.version).toBe(4);
+    expect(diana.version).toBe(5);
     expect(effectCounts(diana, 'one-handoff-effect-in-thread')).toEqual([1, 1, 0]);
     const roleText = rubric(diana, 'acknowledges-role-without-generic-reset');
     expect(roleText).toMatch(/optional/);
@@ -261,26 +262,40 @@ describe('Lane B actionable-answer oracle repairs keep defect detection (2026-09
     expect(laterText).toMatch(/without.{0,40}receipt/);
   });
 
-  it('concurrent support drops the kept-open recital and renames the deterministic pin', async () => {
+  it('concurrent support proves overlap with observable effects, not telemetry pins', async () => {
     const concurrent = await loadCase('live-behavior-concurrent-support-turns.yaml');
-    expect(concurrent.version).toBe(2);
+    expect(concurrent.version).toBe(3);
     expect(
       concurrent.expectations.some((candidate) => candidate.id === 'support-detail-acknowledgment-is-deterministic'),
       'the implementation-prescribing expectation name must be gone',
     ).toBe(false);
+    expect(
+      concurrent.expectations.some((candidate) => candidate.id === 'second-turn-actually-contended'),
+      'the scheduler retry-count pin must be gone as customer quality',
+    ).toBe(false);
+    for (const expectation of concurrent.expectations) {
+      expect(expectation.type, `${concurrent.id}/${expectation.id}`).not.toBe('node_transition');
+      if (expectation.type === 'trace_field_equals') {
+        expect(['previous_node', 'route_kind', 'plan_persist_reason']).not.toContain(
+          (expectation as unknown as { path?: string }).path,
+        );
+      }
+    }
     const renamed = concurrent.expectations.find(
       (candidate) => candidate.id === 'support-detail-acknowledgment-lightweight-route',
     );
-    expect(renamed?.type).toBe('trace_field_equals');
+    expect(renamed?.type).toBe('fixture_effect_count');
     const text = rubric(concurrent, 'no-restart-or-identity-overwrite-after-overlap');
     expect(text).not.toMatch(/kept for continuation/);
     expect(text).toMatch(/Roger Abanto/);
     expect(text).toMatch(/Baby Shower Catalina/);
+    const firstTurn = rubric(concurrent, 'first-support-question-answered');
+    expect(firstTurn).toMatch(/card/);
   });
 
   it('pending-question completion has hard structural plus hard judged semantics on every turn', async () => {
     const pending = await loadCase('live-behavior-support-pending-question-completed.yaml');
-    expect(pending.version).toBe(1);
+    expect(pending.version).toBe(2);
     for (const turnIndex of [0, 1, 2]) {
       const effect = pending.expectations.find(
         (candidate) => candidate.type === 'fixture_effect_count' && candidate.turnIndex === turnIndex,
@@ -355,5 +370,253 @@ describe('F3 oracle revisions preserve minScore, hard severity, and requireJudge
       expect(expectation?.requireJudge, `${file}/${id}`).toBe(true);
       expect(expectation?.minScore, `${file}/${id}`).toBe(minScore);
     }
+  });
+});
+
+describe('Support assessment oracle hardening keeps defect detection (2026-09-17, items 1-10)', () => {
+  it('Diana ledger is cumulative on every turn: 0/0/0, 1/1/0, 1/1/0', async () => {
+    const diana = await loadCase('live-behavior-host-withdrawal-diana.yaml');
+    expect(diana.version).toBe(5);
+    expect(effectCounts(diana, 'no-handoff-effect-before-policy-turn')).toEqual([0, 0, 0]);
+    expect(effectCounts(diana, 'single-handoff-effect-after-policy-turn')).toEqual([1, 1, 0]);
+    expect(effectCounts(diana, 'one-handoff-effect-in-thread')).toEqual([1, 1, 0]);
+  });
+
+  it('pending-question turn0 accepts a bounded question or both labeled times; turn1 answers regardless', async () => {
+    const pending = await loadCase('live-behavior-support-pending-question-completed.yaml');
+    const turn0 = rubric(pending, 'turn0-ambiguous-time-asks-bounded-selection');
+    expect(turn0).toMatch(/bounded question/);
+    expect(turn0).toMatch(/both candidate times/);
+    expect(turn0).toMatch(/correctly labeled/);
+    expect(turn0).toMatch(/must not swap/);
+    const turn1 = rubric(pending, 'turn1-reference-answered-grounded');
+    expect(turn1).toMatch(/Regardless of whether turn0/);
+    expect(turn1).toMatch(/same turn/);
+    expect(turn1).toMatch(/must not ask another clarifying question/);
+  });
+
+  it('thanks accepts suppressed delivery or a brief ack; Yape is a recorded method, not proof of payment', async () => {
+    const ownerPayment = await loadCase('live-behavior-owner-customer-payment-relevance.yaml');
+    expect(ownerPayment.version).toBe(5);
+    const thanks = rubric(ownerPayment, 'thanks-closes-without-restart');
+    expect(thanks).toMatch(/empty assistant response is fully correct/);
+    expect(thanks).toMatch(/brief natural acknowledgment/);
+    expect(rubric(ownerPayment, 'payment-reply-answers-from-payment-evidence')).toMatch(
+      /names only the recorded payment method/,
+    );
+  });
+
+  it('accountless mixed answers permit only fixture-authorized roots with a consistent disclosure rubric', async () => {
+    const mixed = await loadCase('live-behavior-accountless-event-before-private-auth.yaml');
+    expect(mixed.version).toBe(5);
+    const reads = mixed.expectations.find(
+      (candidate) => candidate.id === 'reads-and-reuses-phone-enriched-event',
+    );
+    expect(reads?.mustCall).toContain('lookup_guest_events_by_phone');
+    expect(reads?.mustNotCall ?? []).not.toContain('lookup_guest_orders_by_phone');
+    expect(reads?.mustNotCall ?? []).not.toContain('lookup_guest_gift_purchases_by_phone');
+    expect(reads?.mustNotCall).toContain('guest_rsvp');
+    const text = rubric(mixed, 'answers-event-and-reuses-scoped-purchase');
+    expect(text).toMatch(/account-wide lookup beyond/);
+    expect(text).toMatch(/need not name any card method/);
+    expect(mixed.expectations.some((candidate) => candidate.id === 'summary-excludes-payment-type')).toBe(
+      false,
+    );
+  });
+
+  it('no node, route, previous-node, retry-count, or persist-reason pins remain in the panel', async () => {
+    for (const file of [
+      'live-behavior-support-pending-question-completed.yaml',
+      'live-behavior-accountless-guest-event.yaml',
+      'live-behavior-purchase-martha-accountless.yaml',
+      'live-behavior-owner-customer-payment-relevance.yaml',
+      'live-behavior-current-campaign-order-maria-jose.yaml',
+      'live-behavior-customer-event-task-continuity.yaml',
+      'live-behavior-rsvp-unmatched-named-event-no-mutation.yaml',
+      'live-behavior-s11-rsvp-durability.yaml',
+      'live-behavior-rsvp-host-set-declining-consistent.yaml',
+      'live-behavior-rsvp-plus-one-not-eligible.yaml',
+      'live-behavior-host-withdrawal-diana.yaml',
+      'live-behavior-otp-terminal-handoff-unknown.yaml',
+      'live-behavior-auth-refusal-closes-query.yaml',
+      'live-behavior-accountless-event-before-private-auth.yaml',
+      'live-behavior-continuity-text-image-same-turn.yaml',
+      'live-behavior-image-file-delayed-question.yaml',
+      'live-behavior-continuity-question-needs-image.yaml',
+      'live-behavior-image-expired-reference.yaml',
+      'live-behavior-s01-frozen-world-identity.yaml',
+      'live-behavior-concurrent-support-turns.yaml',
+      'live-behavior-owner-planning-to-faq-transfer.yaml',
+      'live-behavior-spanish-only.yaml',
+      'live-feedback-token-close-flow.yaml',
+      'live-behavior-jose-campaign-acknowledgement.yaml',
+    ]) {
+      const cases = await loadCase(file);
+      for (const expectation of cases.expectations) {
+        expect(expectation.type, `${file}/${expectation.id}`).not.toBe('node_transition');
+        if (expectation.type === 'trace_field_equals') {
+          expect(
+            ['previous_node', 'route_kind', 'plan_persist_reason'],
+            `${file}/${expectation.id}`,
+          ).not.toContain(
+            (expectation as unknown as { path?: string }).path,
+          );
+        }
+        if (expectation.type === 'trace_field_number') {
+          expect((expectation as unknown as { path?: string }).path, `${file}/${expectation.id}`).not.toBe(
+            'turn_coordination.attempts',
+          );
+        }
+      }
+    }
+  });
+
+  it('replaced pins prove the same invariants from receipts, reads, and judges', async () => {
+    const s11 = await loadCase('live-behavior-s11-rsvp-durability.yaml');
+    expect(s11.version).toBe(4);
+    expect(effectCounts(s11, 'remains-in-rsvp-node')).toEqual([0, 0, 0]);
+    const plusOne = await loadCase('live-behavior-rsvp-plus-one-not-eligible.yaml');
+    expect(plusOne.version).toBe(2);
+    expect(effectCounts(plusOne, 'enters-rsvp-node')).toEqual([0, 0, 0]);
+    const s01 = await loadCase('live-behavior-s01-frozen-world-identity.yaml');
+    expect(s01.version).toBe(3);
+    expect(effectCounts(s01, 's01-frozen-enters-information')).toEqual([0, 0, 0]);
+    const martha = await loadCase('live-behavior-purchase-martha-accountless.yaml');
+    expect(martha.version).toBe(4);
+    expect(effectCounts(martha, 'martha-enters-information')).toEqual([0, 0, 0]);
+    const refusal = await loadCase('live-behavior-auth-refusal-closes-query.yaml');
+    expect(refusal.version).toBe(2);
+    expect(effectCounts(refusal, 'refusal-returns-to-resume-node')).toEqual([0, 0, 0]);
+    const faq = await loadCase('live-behavior-owner-planning-to-faq-transfer.yaml');
+    expect(faq.version).toBe(3);
+    const faqPin = faq.expectations.find(
+      (candidate) => candidate.id === 'faq-turn-enters-information',
+    );
+    expect(faqPin?.type).toBe('fixture_effect_count');
+  });
+
+  it('delayed image asserts suppression, next-turn usability, and zero effects without the persist string', async () => {
+    const delayed = await loadCase('live-behavior-image-file-delayed-question.yaml');
+    expect(delayed.version).toBe(4);
+    expect(
+      delayed.expectations.some((candidate) => candidate.type === 'trace_field_equals'),
+      'no trace string pin may remain',
+    ).toBe(false);
+    const firstTurn = delayed.expectations.find(
+      (candidate) => candidate.id === 'file-image-first-turn-silent-persist-reason',
+    );
+    expect(firstTurn?.type).toBe('text_semantic');
+    expect(firstTurn?.severity).toBe('hard');
+    expect(firstTurn?.requireJudge).toBe(true);
+    expect(firstTurn?.minScore).toBe(0.8);
+    expect(rubric(delayed, 'file-image-first-turn-silent-persist-reason')).toMatch(
+      /image-only silence is legitimate/,
+    );
+    expect(effectCounts(delayed, 'file-image-first-turn-no-rsvp-effect')).toEqual([0, 0, 0]);
+    expect(effectCounts(delayed, 'file-image-first-turn-no-handoff-effect')).toEqual([0, 0, 0]);
+    const persists = delayed.expectations.find(
+      (candidate) => candidate.id === 'file-image-first-turn-persists',
+    );
+    expect(persists?.mustCall).toContain('image_file_context');
+  });
+
+  it('conversational blacklists are gone while hard semantic bans stay', async () => {
+    const plusOne = await loadCase('live-behavior-rsvp-plus-one-not-eligible.yaml');
+    const noFalse = plusOne.expectations.find((candidate) => candidate.id === 'no-false-success');
+    expect(noFalse?.phrases).toEqual(['saved=true']);
+    expect(rubric(plusOne, 'not-eligible-reported-honestly')).toMatch(/never claim the companion was registered/);
+    const spanish = await loadCase('live-behavior-spanish-only.yaml');
+    expect(spanish.version).toBe(3);
+    const banned = spanish.expectations.find(
+      (candidate) => candidate.id === 'no-known-english-interface-terms',
+    );
+    const phrases = (banned?.phrases ?? []).join('\n').toLowerCase();
+    expect(phrases).not.toContain('email');
+    expect(phrases).not.toContain('link');
+    expect(phrases).not.toContain('\nweb\n');
+    for (const [file, gone, kept] of [
+      ['live-behavior-owner-customer-payment-relevance.yaml', 'payment-reply-excludes-cart', /abandoned cart/],
+      ['live-behavior-continuity-text-image-same-turn.yaml', 'same-turn-no-resend-request', /must not ask the user to resend/],
+      ['live-behavior-continuity-question-needs-image.yaml', 'needs-image-second-turn-no-resend', /must not ask the user to resend/],
+      ['live-behavior-image-file-delayed-question.yaml', 'file-image-delayed-no-resend', /must not ask the user to resend/],
+      ['live-behavior-image-expired-reference.yaml', 'expired-no-invented-content', /must not confirm or approve any payment/],
+    ] as Array<[string, string, RegExp]>) {
+      const cases = await loadCase(file);
+      expect(cases.expectations.some((candidate) => candidate.id === gone), `${file}/${gone}`).toBe(false);
+      const banKept = cases.expectations.some(
+        (candidate) => candidate.type === 'text_semantic' && kept.test(candidate.rubric ?? ''),
+      );
+      expect(banKept, `${file} keeps the hard semantic ban`).toBe(true);
+    }
+  });
+
+  it('every actionable panel turn has a hard semantic judge; added budget is three calls', async () => {
+    // Added judges: concurrent turn0, planning-interview turn1, delayed-image turn0.
+    // Token close-flow intermediate turns stay structural (contact-collection statements, not
+    // actionable questions): no-submit, provider-preserved, and no-early-search pins plus the
+    // final submission judge. Jose turn0 (greeting) and delayed turn0 image-only input are not
+    // actionable questions either; the delayed silence judge still covers that turn.
+    for (const [file, id, minScore, turnIndex] of [
+      ['live-behavior-concurrent-support-turns.yaml', 'first-support-question-answered', 0.9, 0],
+      ['live-behavior-owner-planning-to-faq-transfer.yaml', 'planning-turn-continues-interview', 0.85, 1],
+      ['live-behavior-image-file-delayed-question.yaml', 'file-image-first-turn-silent-persist-reason', 0.8, 0],
+    ] as Array<[string, string, number, number]>) {
+      const cases = await loadCase(file);
+      const expectation = cases.expectations.find((candidate) => candidate.id === id);
+      expect(expectation, `${file} is missing ${id}`).toBeDefined();
+      expect(expectation?.type).toBe('text_semantic');
+      expect(expectation?.severity).toBe('hard');
+      expect(expectation?.requireJudge).toBe(true);
+      expect(expectation?.minScore).toBe(minScore);
+      expect(expectation?.turnIndex).toBe(turnIndex);
+    }
+    const close = await loadCase('live-feedback-token-close-flow.yaml');
+    expect(close.version).toBe(2);
+    const noSubmit = close.expectations.find(
+      (candidate) => candidate.id === 'contact-details-alone-do-not-submit',
+    );
+    expect(noSubmit?.severity).toBe('hard');
+  });
+
+  it('image truth stays judge-only and digest-bound; runtime inputs carry no oracle facts', async () => {
+    for (const [file, turn] of [
+      ['live-behavior-continuity-text-image-same-turn.yaml', 0],
+      ['live-behavior-image-file-delayed-question.yaml', 0],
+      ['live-behavior-continuity-question-needs-image.yaml', 1],
+    ] as Array<[string, number]>) {
+      const raw = YAML.parse(
+        await fs.readFile(path.join(CASE_DIR, file), 'utf8'),
+      ) as unknown as {
+        inputs: Array<{ image?: { data?: string } }>;
+        judgeGroundTruth?: { imageDigest?: string; verifiedAmount?: string; boundInputTurn?: number };
+      };
+      const truth = raw.judgeGroundTruth;
+      expect(truth, `${file} keeps judge-only ground truth`).toBeDefined();
+      expect(truth?.boundInputTurn).toBe(turn);
+      const imageData = raw.inputs[turn]?.image?.data;
+      expect(typeof imageData).toBe('string');
+      const digest = crypto.createHash('sha256').update(imageData as string, 'utf8').digest('hex');
+      expect(digest, `${file} truth binds the exact attachment bytes`).toBe(truth?.imageDigest);
+      expect(truth?.verifiedAmount).toBeTruthy();
+      const cases = await loadCase(file);
+      const semantic = cases.expectations.find((candidate) => candidate.type === 'text_semantic' && candidate.turnIndex === (file.includes('delayed') ? 1 : turn));
+      expect(semantic?.rubric ?? '', `${file} reads pixels without proving approval`).toMatch(
+        /never backend payment approval/,
+      );
+    }
+  });
+
+  it('takeover receipts prove submission only; bare acknowledgments stay valid', async () => {
+    const diana = await loadCase('live-behavior-host-withdrawal-diana.yaml');
+    expect(rubric(diana, 'supported-policy-not-invented-withdrawal-status')).toMatch(
+      /human support was requested/,
+    );
+    expect(rubric(diana, 'later-event-message-stays-with-human-team')).toMatch(/no new confirmed effect fails/);
+    const close = await loadCase('live-feedback-token-close-flow.yaml');
+    expect(rubric(close, 'correct-close-behavior')).toMatch(/submission/);
+    const jose = await loadCase('live-behavior-jose-campaign-acknowledgement.yaml');
+    expect(rubric(jose, 'acknowledgement-closes-without-repeated-welcome-or-interview')).toMatch(
+      /empty assistant response is fully correct/,
+    );
   });
 });

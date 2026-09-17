@@ -51,7 +51,7 @@ Totals: 117 cases, 529 original expectations (528 current: 5 removed-and-replace
 - [retain] `reads-and-reuses-phone-enriched-event` (tool_usage, hard): Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
 - [retain] `keeps-email-auth-ready-for-the-private-query` (plan_field_equals, hard): Typed state invariant (auth cleared, handoff persisted, rsvp lifecycle, owner, selection safety); kept. Only selection/attempt counters are replaced, handled as overrides.
 - [retain] `answers-event-and-reuses-scoped-purchase` (text_semantic, hard requireJudge=True): Hard semantic judge kept (requireJudge:true mandatory). Global judge rules now also require: accept grounded inference + useful extra detail; fail missing topics, unsupported certainty, unrelated dumps, and unnecessary clarification when context/tools suffice.
-- [retain] `summary-excludes-payment-type` (text_not_contains, hard): Prohibition check (forbidden secrets/identifiers, no-invention bans, no-resend/no-URL bans, vocabulary bans); literal form allowed for genuinely forbidden content. Kept.
+- [replace] `summary-excludes-payment-type` (REMOVED 2026-09-17): card-word blacklist removed per assessment hardening item 4/7; scoped aspect-grounded disclosure ban kept in the semantic rubric.
 
 ### live_behavior.accountless_guest_event_uses_phone_without_otp (`live-behavior-accountless-guest-event.yaml`, v2)
 
@@ -92,7 +92,8 @@ Totals: 117 cases, 529 original expectations (528 current: 5 removed-and-replace
 ### live_behavior.concurrent_support_turns_preserve_context (`live-behavior-concurrent-support-turns.yaml`, v1)
 
 - [retain] `first-support-question` (tool_usage, hard turn=0): Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
-- [retain] `second-turn-actually-contended` (trace_field_number, hard turn=1): Numeric trace invariant (not a conversational counter); kept as a documented runtime invariant.
+- [replace] `second-turn-actually-contended` (REMOVED 2026-09-17): scheduler retry-count pin removed as customer quality per hardening item 5; replaced by turn-0 `first-support-question-answered` semantic judge plus receipt pins.
+- [retain] `first-support-question-answered` (text_semantic, hard requireJudge=True turn=0): turn-0 actionable card-support question covered by its own judge instead of inferred from the final reply.
 - [retain] `second-turn-remains-support` (node_transition, hard turn=1): Lane-routing assertion to a documented runtime node (responder_invitacion / resolver_consultas_informativas / handoff / close lanes); kept as a documented runtime invariant. Routing is runtime-owned.
 - [retain] `second-turn-loads-first-turn-plan` (trace_field_equals, hard turn=1): Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
 - [retain] `support-detail-acknowledgment-does-not-call-backend` (tool_usage, hard turn=1): Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
@@ -104,13 +105,13 @@ Totals: 117 cases, 529 original expectations (528 current: 5 removed-and-replace
 - [retain] `needs-image-first-turn-no-tools` (tool_usage, hard turn=0): Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
 - [retain] `needs-image-first-turn-clarifies` (text_semantic, hard requireJudge=True turn=0): Hard semantic judge kept (requireJudge:true mandatory). Global judge rules now also require: accept grounded inference + useful extra detail; fail missing topics, unsupported certainty, unrelated dumps, and unnecessary clarification when context/tools suffice.
 - [retain] `needs-image-second-turn-projected` (tool_usage, hard turn=1): Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
-- [retain] `needs-image-second-turn-no-resend` (text_not_contains, hard turn=1): Prohibition check (forbidden secrets/identifiers, no-invention bans, no-resend/no-URL bans, vocabulary bans); literal form allowed for genuinely forbidden content. Kept.
+- [replace] `needs-image-second-turn-no-resend` (REMOVED 2026-09-17): resend blacklist removed per hardening item 7; hard semantic no-resend rule kept.
 - [retain] `needs-image-second-turn-answers-pending` (text_semantic, hard requireJudge=True turn=1): Hard semantic judge kept (requireJudge:true mandatory). Global judge rules now also require: accept grounded inference + useful extra detail; fail missing topics, unsupported certainty, unrelated dumps, and unnecessary clarification when context/tools suffice.
 
 ### live_behavior.continuity_text_image_same_turn (`live-behavior-continuity-text-image-same-turn.yaml`, v2)
 
 - [retain] `same-turn-image-persisted-and-projected` (tool_usage, hard turn=0): Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
-- [retain] `same-turn-no-resend-request` (text_not_contains, hard turn=0): Prohibition check (forbidden secrets/identifiers, no-invention bans, no-resend/no-URL bans, vocabulary bans); literal form allowed for genuinely forbidden content. Kept.
+- [replace] `same-turn-no-resend-request` (REMOVED 2026-09-17): resend blacklist removed per hardening item 7; hard semantic no-resend rule kept.
 - [retain] `same-turn-answer-uses-both` (text_semantic, hard requireJudge=True turn=0): Hard semantic judge kept (requireJudge:true mandatory). Global judge rules now also require: accept grounded inference + useful extra detail; fail missing topics, unsupported certainty, unrelated dumps, and unnecessary clarification when context/tools suffice.
 
 ### live_behavior.continuity_voucher_then_thanks (`live-behavior-continuity-voucher-then-thanks.yaml`, v3)
@@ -174,7 +175,8 @@ Totals: 117 cases, 529 original expectations (528 current: 5 removed-and-replace
 - [retain] `handoff-is-persisted` (plan_field_equals, hard turn=1): Typed state invariant (auth cleared, handoff persisted, rsvp lifecycle, owner, selection safety); kept. Only selection/attempt counters are replaced, handled as overrides.
 - [replace] `later-event-message-stays-with-human-team` (text_semantic, 2026-09-16 E2: implementation pin replaced; hard turn=2): Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
 - [retain] `no-repeated-takeover-or-rsvp` (tool_usage, hard turn=2): Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
-- [retain] `one-handoff-effect-in-thread` (fixture_effect_count, hard turn=2, 2026-09-16 E1 v3): repeated takeover forbidden via authoritative per-turn effect receipts (handoff.write 0/0/0 at turn 2); a reused turn-1 success receipt never counts as a new effect. Read-only policy lookup remains permitted.: Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
+- [retain] `one-handoff-effect-in-thread` (fixture_effect_count, hard turn=2, 2026-09-17 v5): cumulative per-turn receipt pins (0/0/0, 1/1/0, 1/1/0); a reused success receipt never counts as a new effect, and a second mutation fails. Read-only policy lookup remains permitted.
+- [retain] `no-handoff-effect-before-policy-turn` (fixture_effect_count, hard turn=0) + `single-handoff-effect-after-policy-turn` (fixture_effect_count, hard turn=1): cumulative series pins added 2026-09-17.: Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
 
 ### live_behavior.host_withdrawal_pending_event_followup (`live-behavior-host-withdrawal-event-followup.yaml`, v1)
 
@@ -219,7 +221,7 @@ Totals: 117 cases, 529 original expectations (528 current: 5 removed-and-replace
 ### live_behavior.image_expired_reference_resubmit (`live-behavior-image-expired-reference.yaml`, v6)
 
 - [retain] `expired-no-inspect-no-write` (tool_usage, hard): Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
-- [retain] `expired-no-invented-content` (text_not_contains, hard): Prohibition check (forbidden secrets/identifiers, no-invention bans, no-resend/no-URL bans, vocabulary bans); literal form allowed for genuinely forbidden content. Kept.
+- [replace] `expired-no-invented-content` (REMOVED 2026-09-17): invented-content blacklist removed per hardening item 7; hard semantic evidence-or-ask rule kept.
 - [retain] `expired-answers-from-evidence-or-asks-fact` (text_semantic, hard requireJudge=True): Hard semantic judge kept (requireJudge:true mandatory). Global judge rules now also require: accept grounded inference + useful extra detail; fail missing topics, unsupported certainty, unrelated dumps, and unnecessary clarification when context/tools suffice.
 
 ### live_behavior.image_file_captioned_persisted (`live-behavior-image-file-captioned.yaml`, v2)
@@ -232,7 +234,7 @@ Totals: 117 cases, 529 original expectations (528 current: 5 removed-and-replace
 
 - [retain] `file-image-first-turn-persists` (tool_usage, hard turn=0): Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
 - [retain] `file-image-first-turn-silent-persist-reason` (trace_field_equals, hard turn=0): Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
-- [retain] `file-image-delayed-no-resend` (text_not_contains, hard turn=1): Prohibition check (forbidden secrets/identifiers, no-invention bans, no-resend/no-URL bans, vocabulary bans); literal form allowed for genuinely forbidden content. Kept.
+- [replace] `file-image-delayed-no-resend` (REMOVED 2026-09-17): resend blacklist removed per hardening items 6/7; hard semantic no-resend rule kept; added `file-image-first-turn-no-rsvp-effect` + `file-image-first-turn-no-handoff-effect` receipt pins (fixture_effect_count, hard turn=0).
 - [revise] `file-image-delayed-answered-from-pixels` (text_semantic, hard requireJudge=True turn=1): Rubric now references judge-only manually verified ground truth (Monto S/ 250.00) bound to the fixture image digest e6024548...; ground truth rides the judge context only, never runtime input. Read-only amount is not backend approval. Case v2->v3.
 
 ### live_behavior.image_file_explicit_describe (`live-behavior-image-file-explicit-describe.yaml`, v2)
@@ -432,7 +434,7 @@ Totals: 117 cases, 529 original expectations (528 current: 5 removed-and-replace
 - [replace] `payment-turn-enters-information` (fixture_effect_count, 2026-09-16 E2: implementation pin replaced; hard turn=0): Receipt-backed invariant replacing the retired implementation pin; old runs preserved.
 - [retain] `payment-turn-uses-phone-orders` (tool_usage, hard turn=0): Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
 - [retain] `payment-turn-persists-customer-owner` (plan_field_equals, hard turn=0): Typed state invariant (auth cleared, handoff persisted, rsvp lifecycle, owner, selection safety); kept. Only selection/attempt counters are replaced, handled as overrides.
-- [retain] `payment-reply-excludes-cart` (text_not_contains, hard turn=0): Prohibition check (forbidden secrets/identifiers, no-invention bans, no-resend/no-URL bans, vocabulary bans); literal form allowed for genuinely forbidden content. Kept.
+- [replace] `payment-reply-excludes-cart` (REMOVED 2026-09-17): cart word blacklist removed per hardening items 3/7; hard semantic no-cart rule kept, thanks accepts suppressed delivery.
 - [retain] `payment-reply-answers-from-payment-evidence` (text_semantic, hard requireJudge=True turn=0): Hard semantic judge kept (requireJudge:true mandatory). Global judge rules now also require: accept grounded inference + useful extra detail; fail missing topics, unsupported certainty, unrelated dumps, and unnecessary clarification when context/tools suffice.
 - [retain] `thanks-closes-without-restart` (text_semantic, hard requireJudge=True turn=1): Hard semantic judge kept (requireJudge:true mandatory). Global judge rules now also require: accept grounded inference + useful extra detail; fail missing topics, unsupported certainty, unrelated dumps, and unnecessary clarification when context/tools suffice.
 

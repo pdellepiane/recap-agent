@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.concurrent_support_turns_preserve_context
 suite: live_behavior_regression
-version: 2
+version: 3
 description: Claudia's overlapping card-support message and guest details must serialize before plan/history loading.
 tags: [live, behavior, concurrency, continuity, identity, reported-interaction, claudia-roger]
 targetModes: [live_lambda]
@@ -28,21 +28,31 @@ expectations:
     mustNotCall: [search_providers_from_plan, auth_by_phone, request_user_login_code]
     turnIndex: 0
     severity: hard
-  - id: second-turn-actually-contended
-    type: trace_field_number
-    path: turn_coordination.attempts
-    min: 2
-    turnIndex: 1
+  - id: first-support-question-answered
+    type: text_semantic
+    rubric: >-
+      The user asks whether there are known problems with card payments for a gift purchase. The
+      answer must be concise, natural, and entirely in Spanish; address the card-support question
+      from the available knowledge without switching to provider planning, without claiming a
+      verified purchase or a verified invitation, and without asking for email or an OTP.
+    minScore: 0.9
+    requireJudge: true
+    turnIndex: 0
     severity: hard
   - id: second-turn-remains-support
-    type: node_transition
-    to: resolver_consultas_informativas
+    type: fixture_effect_count
+    operation: rsvp.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
     turnIndex: 1
     severity: hard
   - id: second-turn-loads-first-turn-plan
-    type: trace_field_equals
-    path: previous_node
-    expected: resolver_consultas_informativas
+    type: fixture_effect_count
+    operation: handoff.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
     turnIndex: 1
     severity: hard
   - id: support-detail-acknowledgment-does-not-call-backend
@@ -53,9 +63,11 @@ expectations:
     turnIndex: 1
     severity: hard
   - id: support-detail-acknowledgment-lightweight-route
-    type: trace_field_equals
-    path: route_kind
-    expected: information_batch
+    type: fixture_effect_count
+    operation: provider.quote.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
     turnIndex: 1
     severity: hard
   - id: no-restart-or-identity-overwrite-after-overlap
@@ -74,6 +86,7 @@ expectations:
     severity: hard
 notes:
   - "R05 v2 (2026-09-17, actionable-answer package Lane B): removed the mandatory kept-open recital. Old defect: the rubric required saying the same support query is being kept for continuation, grading process narration instead of the useful-answer behavior. New acceptance keeps identity/context retention and the no-unnecessary-lookup/no-mutation checks; the supplied references only need brief acknowledgment in the same support context. The expectation formerly named support-detail-acknowledgment-is-deterministic is renamed support-detail-acknowledgment-lightweight-route because the old name prescribed the implementation instead of evidencing behavior; the structural check itself is unchanged. Threshold and hard severity kept; no threshold reduction. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
+  - "R05 v3 (2026-09-17, support assessment hardening items 5 and 8): the scheduler retry count, node, previous-node, and route pins are replaced with observable behavior. Old defects: second-turn-actually-contended graded customer quality by a required scheduler retry count (turn_coordination.attempts >= 2); second-turn-remains-support, second-turn-loads-first-turn-plan, and support-detail-acknowledgment-lightweight-route pinned internal node_transition, previous_node, and route_kind telemetry, so a correct overlapping reply composed through any routing failed structurally. New acceptance: overlapping execution is proved by the concurrentFirstTwoTurns harness with the retained coordination evidence, while turn 1 shows zero RSVP, handoff, and provider-quote effects from receipts (fixture_effect_count 0/0/0 hard on each) together with the retained no-backend tool evidence and the identity-preserving semantic judge; persisted context is evidenced by that judge plus answering from retained references without fresh reads. Expectation ids are retained for ledger and run continuity; only their types changed. The scheduler attempt telemetry is removed as customer quality and stays a diagnostic concern only. Turn 0 gains a hard semantic judge (first-support-question-answered, 0.9) so the actionable card-support question is covered instead of inferred from the final reply; this adds one judge call to the panel budget. Threshold and hard severity kept; no threshold reduction. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
 budget:
   maxTurns: 2
   estimatedPromptTokensPerTurn: 1700

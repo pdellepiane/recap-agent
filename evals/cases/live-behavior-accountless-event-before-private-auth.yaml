@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.accountless_event_answer_precedes_remaining_private_auth
 suite: live_behavior_regression
-version: 4
+version: 5
 description: A mixed event and purchase question reuses the phone-enriched event and its scoped purchases without account authentication.
 tags: [live, behavior, associated-event, accountless-guest, mixed-information, phone-first]
 targetModes: [live_lambda]
@@ -25,7 +25,7 @@ expectations:
   - id: reads-and-reuses-phone-enriched-event
     type: tool_usage
     mustCall: [lookup_guest_events_by_phone, get_guest_event_detail]
-    mustNotCall: [auth_by_phone, lookup_guest_orders_by_phone, lookup_guest_gift_purchases_by_phone, request_user_login_code, verify_user_login_code, update_phone, guest_rsvp]
+    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code, update_phone, guest_rsvp]
     severity: hard
   - id: keeps-email-auth-ready-for-the-private-query
     type: plan_field_equals
@@ -37,15 +37,13 @@ expectations:
     # Disclosure policy derived from prompts/nodes/resolver_consultas_informativas/response_contract.txt:
     # "Para compras, responde solamente los aspectos presentes en cada objeto proyectado." (line 7)
     # "No reveles identificadores de transacción, comprobantes, bancos o cuentas salvo que esos campos estén presentes en el resultado proyectado." (line 33)
-    # Contract is silent on whether amount/product/card-type must be withheld when only status was requested; no policy invented here (needs_input flagged in report).
+    # The contract governs the requested aspects only: this venue/status question need not name any
+    # card method, so omitting card type passes. Only exact transaction identifiers, vouchers, banks
+    # or account numbers absent from the projection fail.
     rubric: >-
-      The trusted WhatsApp number is an invited guest to Julisabeth y Andrés. The phone-enriched event detail contains the verified “Recepción y Fiesta” location at Hacienda Recoveco on Avenida Manuel Valle in Lima and an event-scoped purchase. The answer must be concise, natural, and entirely in Spanish; provide the requested event location and the available purchase status in the same turn. It must not ask for email or an OTP, issue a redundant global purchase lookup, reopen onboarding, or expose sensitive payment data as prohibited by the response contract. Amount/product disclosure beyond status is not governed by the contract and is evaluated as allowed when those fields are present.
+      The trusted WhatsApp number is an invited guest to Julisabeth y Andrés. The phone-enriched event detail contains the verified “Recepción y Fiesta” location at Hacienda Recoveco on Avenida Manuel Valle in Lima and an event-scoped purchase. Phone-scoped reads already authorized for this trusted number (the event detail and its scoped purchases) are permitted; only an unrelated account-wide lookup beyond that evidence fails. The answer must be concise, natural, and entirely in Spanish; provide the requested event location and the available purchase status in the same turn. For this venue/status question the answer need not name any card method: omitting card type passes. It must not ask for email or an OTP, reopen onboarding, or expose sensitive payment data as prohibited by the response contract.
     minScore: 0.9
     requireJudge: true
-    severity: hard
-  - id: summary-excludes-payment-type
-    type: text_not_contains
-    phrases: ["tarjeta de crédito", "tarjeta de debito", "tipo de tarjeta", "con tarjeta"]
     severity: hard
 budget:
   maxTurns: 1
@@ -54,3 +52,4 @@ budget:
 
 notes:
   - "R05 oracle revision v3 to v4, 2026-09-16, customer-support release E2. Old routes-to-information pinned the internal resolver_consultas_informativas node, prescribing implementation instead of evidencing behavior (matrix: a correct venue-plus-scoped-purchase answer through any routing passed the read evidence but failed the node pin). New contract proves the same read-only invariant from receipts: fixture_effect_count rsvp.write 0/0/0 hard plus the retained phone-enriched event read evidence. The mandatory venue facts and no-OTP core are unchanged: an answer missing Hacienda Recoveco or demanding email/OTP still fails. Threshold and hard severity kept; no threshold reduction. Old v3 runs preserved; baseline and candidate must rerun on this v4 contract. Expectation id routes-to-information is retained for ledger and run continuity; only its type changed from node_transition to fixture_effect_count."
+  - "R05 v5 (2026-09-17, support assessment hardening items 4 and 7): phone-scoped order and gift reads are no longer blanket-forbidden. Old defect: mustNotCall banned lookup_guest_orders_by_phone and lookup_guest_gift_purchases_by_phone even though the same trusted number is authorized for its event-scoped purchases (offline twin: the same phone yields events and scoped purchases), so a correct scoped reuse failed structurally. Only the fixture-authorized roots for this trusted identity are permitted; bans on account authentication, OTP, phone update, and RSVP mutation stay, as do the unnecessary-authentication and private-field-disclosure bans. The semantic reference to a forbidden global lookup now consistently means an unrelated account-wide lookup beyond the phone-scoped evidence. The summary-excludes-payment-type word blacklist is removed: it simultaneously forbade card wording while the rubric called that disclosure allowed, and generic phrases such as con tarjeta could reject a valid paraphrase. The scoped disclosure policy is preserved and grounded in the requested aspect instead: this venue/status question need not name any card method, while exact transaction identifiers, vouchers, banks, or account numbers absent from the projection still fail. Thresholds, hard severity, and requireJudge kept; no threshold reduction. Old v4 runs preserved; baseline and candidate must rerun on this v5 contract."

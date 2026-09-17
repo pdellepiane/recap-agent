@@ -58,6 +58,55 @@
    "replacedBy": [
     "explicit-need-asks-missing-context"
    ]
+  },
+  {
+   "case": "live_behavior.accountless_event_answer_precedes_remaining_private_auth",
+   "expectation": "summary-excludes-payment-type",
+   "type": "text_not_contains",
+   "disposition": "replace",
+   "rationale": "2026-09-17 assessment hardening item 4/7 v5: card-word blacklist removed; scoped aspect-grounded disclosure ban kept in the semantic rubric."
+  },
+  {
+   "case": "live_behavior.concurrent_support_turns_preserve_context",
+   "expectation": "second-turn-actually-contended",
+   "type": "trace_field_number",
+   "disposition": "replace",
+   "rationale": "2026-09-17 assessment hardening item 5 v3: scheduler retry-count pin removed as customer quality; replaced by turn-0 semantic judge plus receipt pins."
+  },
+  {
+   "case": "live_behavior.continuity_question_needs_image",
+   "expectation": "needs-image-second-turn-no-resend",
+   "type": "text_not_contains",
+   "disposition": "replace",
+   "rationale": "2026-09-17 assessment hardening item 7 v4: resend blacklist removed; hard semantic no-resend rule kept."
+  },
+  {
+   "case": "live_behavior.continuity_text_image_same_turn",
+   "expectation": "same-turn-no-resend-request",
+   "type": "text_not_contains",
+   "disposition": "replace",
+   "rationale": "2026-09-17 assessment hardening item 7 v4: resend blacklist removed; hard semantic no-resend rule kept."
+  },
+  {
+   "case": "live_behavior.image_expired_reference_resubmit",
+   "expectation": "expired-no-invented-content",
+   "type": "text_not_contains",
+   "disposition": "replace",
+   "rationale": "2026-09-17 assessment hardening item 7 v7: invented-content blacklist removed; hard semantic evidence-or-ask rule kept."
+  },
+  {
+   "case": "live_behavior.image_file_delayed_question",
+   "expectation": "file-image-delayed-no-resend",
+   "type": "text_not_contains",
+   "disposition": "replace",
+   "rationale": "2026-09-17 assessment hardening item 6/7 v4: resend blacklist removed; hard semantic no-resend rule kept."
+  },
+  {
+   "case": "live_behavior.owner_customer_payment_relevance",
+   "expectation": "payment-reply-excludes-cart",
+   "type": "text_not_contains",
+   "disposition": "replace",
+   "rationale": "2026-09-17 assessment hardening item 3/7 v5: cart word blacklist removed; hard semantic no-cart rule kept, thanks accepts suppressed delivery."
   }
  ],
  "added": [
@@ -76,6 +125,30 @@
   {
    "case": "live_behavior.host_withdrawal_diana_policy_and_support",
    "expectation": "one-handoff-effect-in-thread"
+  },
+  {
+   "case": "live_behavior.concurrent_support_turns_preserve_context",
+   "expectation": "first-support-question-answered"
+  },
+  {
+   "case": "live_behavior.host_withdrawal_diana_policy_and_support",
+   "expectation": "no-handoff-effect-before-policy-turn"
+  },
+  {
+   "case": "live_behavior.host_withdrawal_diana_policy_and_support",
+   "expectation": "single-handoff-effect-after-policy-turn"
+  },
+  {
+   "case": "live_behavior.image_file_delayed_question",
+   "expectation": "file-image-first-turn-no-rsvp-effect"
+  },
+  {
+   "case": "live_behavior.image_file_delayed_question",
+   "expectation": "file-image-first-turn-no-handoff-effect"
+  },
+  {
+   "case": "live_behavior.owner_planning_to_faq_single_transfer",
+   "expectation": "planning-turn-continues-interview"
   }
  ],
  "counts": {
@@ -235,18 +308,6 @@
    "turnIndex": null,
    "disposition": "retain",
    "rationale": "Hard semantic judge kept (requireJudge:true mandatory). Global judge rules now also require: accept grounded inference + useful extra detail; fail missing topics, unsupported certainty, unrelated dumps, and unnecessary clarification when context/tools suffice.",
-   "source": "rule"
-  },
-  {
-   "case": "live_behavior.accountless_event_answer_precedes_remaining_private_auth",
-   "file": "live-behavior-accountless-event-before-private-auth.yaml",
-   "expectation": "summary-excludes-payment-type",
-   "type": "text_not_contains",
-   "severity": "hard",
-   "requireJudge": null,
-   "turnIndex": null,
-   "disposition": "retain",
-   "rationale": "Prohibition check (forbidden secrets/identifiers, no-invention bans, no-resend/no-URL bans, vocabulary bans); literal form allowed for genuinely forbidden content. Kept.",
    "source": "rule"
   },
   {
@@ -516,18 +577,6 @@
   {
    "case": "live_behavior.concurrent_support_turns_preserve_context",
    "file": "live-behavior-concurrent-support-turns.yaml",
-   "expectation": "second-turn-actually-contended",
-   "type": "trace_field_number",
-   "severity": "hard",
-   "requireJudge": null,
-   "turnIndex": 1,
-   "disposition": "retain",
-   "rationale": "Numeric trace invariant (not a conversational counter); kept as a documented runtime invariant.",
-   "source": "rule"
-  },
-  {
-   "case": "live_behavior.concurrent_support_turns_preserve_context",
-   "file": "live-behavior-concurrent-support-turns.yaml",
    "expectation": "second-turn-remains-support",
    "type": "node_transition",
    "severity": "hard",
@@ -624,18 +673,6 @@
   {
    "case": "live_behavior.continuity_question_needs_image",
    "file": "live-behavior-continuity-question-needs-image.yaml",
-   "expectation": "needs-image-second-turn-no-resend",
-   "type": "text_not_contains",
-   "severity": "hard",
-   "requireJudge": null,
-   "turnIndex": 1,
-   "disposition": "retain",
-   "rationale": "Prohibition check (forbidden secrets/identifiers, no-invention bans, no-resend/no-URL bans, vocabulary bans); literal form allowed for genuinely forbidden content. Kept.",
-   "source": "rule"
-  },
-  {
-   "case": "live_behavior.continuity_question_needs_image",
-   "file": "live-behavior-continuity-question-needs-image.yaml",
    "expectation": "needs-image-second-turn-answers-pending",
    "type": "text_semantic",
    "severity": "hard",
@@ -655,18 +692,6 @@
    "turnIndex": 0,
    "disposition": "retain",
    "rationale": "Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).",
-   "source": "rule"
-  },
-  {
-   "case": "live_behavior.continuity_text_image_same_turn",
-   "file": "live-behavior-continuity-text-image-same-turn.yaml",
-   "expectation": "same-turn-no-resend-request",
-   "type": "text_not_contains",
-   "severity": "hard",
-   "requireJudge": null,
-   "turnIndex": 0,
-   "disposition": "retain",
-   "rationale": "Prohibition check (forbidden secrets/identifiers, no-invention bans, no-resend/no-URL bans, vocabulary bans); literal form allowed for genuinely forbidden content. Kept.",
    "source": "rule"
   },
   {
@@ -1146,7 +1171,7 @@
    "requireJudge": null,
    "turnIndex": 2,
    "disposition": "retain",
-   "rationale": "2026-09-16 customer-support release E1 v3: repeated takeover is forbidden via authoritative per-turn effect receipts (handoff.write 0/0/0 at turn 2); a reused turn-1 success receipt never counts as a new effect. Read-only policy lookup remains permitted.",
+   "rationale": "2026-09-17 assessment hardening item 1 v5: repeated takeover is forbidden via cumulative per-turn receipt pins (0/0/0, 1/1/0, 1/1/0); a reused success receipt never counts as a new effect, and a second mutation fails. Read-only policy lookup remains permitted.",
    "source": "rule"
   },
   {
@@ -1428,18 +1453,6 @@
   {
    "case": "live_behavior.image_expired_reference_resubmit",
    "file": "live-behavior-image-expired-reference.yaml",
-   "expectation": "expired-no-invented-content",
-   "type": "text_not_contains",
-   "severity": "hard",
-   "requireJudge": null,
-   "turnIndex": null,
-   "disposition": "retain",
-   "rationale": "Prohibition check (forbidden secrets/identifiers, no-invention bans, no-resend/no-URL bans, vocabulary bans); literal form allowed for genuinely forbidden content. Kept.",
-   "source": "rule"
-  },
-  {
-   "case": "live_behavior.image_expired_reference_resubmit",
-   "file": "live-behavior-image-expired-reference.yaml",
    "expectation": "expired-answers-from-evidence-or-asks-fact",
    "type": "text_semantic",
    "severity": "hard",
@@ -1507,18 +1520,6 @@
    "turnIndex": 0,
    "disposition": "retain",
    "rationale": "Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).",
-   "source": "rule"
-  },
-  {
-   "case": "live_behavior.image_file_delayed_question",
-   "file": "live-behavior-image-file-delayed-question.yaml",
-   "expectation": "file-image-delayed-no-resend",
-   "type": "text_not_contains",
-   "severity": "hard",
-   "requireJudge": null,
-   "turnIndex": 1,
-   "disposition": "retain",
-   "rationale": "Prohibition check (forbidden secrets/identifiers, no-invention bans, no-resend/no-URL bans, vocabulary bans); literal form allowed for genuinely forbidden content. Kept.",
    "source": "rule"
   },
   {
@@ -2935,18 +2936,6 @@
    "turnIndex": 0,
    "disposition": "retain",
    "rationale": "Typed state invariant (auth cleared, handoff persisted, rsvp lifecycle, owner, selection safety); kept. Only selection/attempt counters are replaced, handled as overrides.",
-   "source": "rule"
-  },
-  {
-   "case": "live_behavior.owner_customer_payment_relevance",
-   "file": "live-behavior-owner-customer-payment-relevance.yaml",
-   "expectation": "payment-reply-excludes-cart",
-   "type": "text_not_contains",
-   "severity": "hard",
-   "requireJudge": null,
-   "turnIndex": 0,
-   "disposition": "retain",
-   "rationale": "Prohibition check (forbidden secrets/identifiers, no-invention bans, no-resend/no-URL bans, vocabulary bans); literal form allowed for genuinely forbidden content. Kept.",
    "source": "rule"
   },
   {
@@ -6463,6 +6452,78 @@
    "turnIndex": 3,
    "disposition": "retain",
    "rationale": "Hard semantic judge kept (requireJudge:true mandatory). Global judge rules now also require: accept grounded inference + useful extra detail; fail missing topics, unsupported certainty, unrelated dumps, and unnecessary clarification when context/tools suffice.",
+   "source": "rule"
+  },
+  {
+   "case": "live_behavior.concurrent_support_turns_preserve_context",
+   "file": "live-behavior-concurrent-support-turns.yaml",
+   "expectation": "first-support-question-answered",
+   "type": "text_semantic",
+   "severity": "hard",
+   "requireJudge": true,
+   "turnIndex": 0,
+   "disposition": "retain",
+   "rationale": "2026-09-17 assessment hardening item 8 v3: turn-0 actionable card-support question covered by its own hard semantic judge instead of inferred from the final reply.",
+   "source": "rule"
+  },
+  {
+   "case": "live_behavior.host_withdrawal_diana_policy_and_support",
+   "file": "live-behavior-host-withdrawal-diana.yaml",
+   "expectation": "no-handoff-effect-before-policy-turn",
+   "type": "fixture_effect_count",
+   "severity": "hard",
+   "requireJudge": null,
+   "turnIndex": 0,
+   "disposition": "retain",
+   "rationale": "2026-09-17 assessment hardening item 1 v5: cumulative series start (0/0/0 at turn 0); a stray turn-0 write fails.",
+   "source": "rule"
+  },
+  {
+   "case": "live_behavior.host_withdrawal_diana_policy_and_support",
+   "file": "live-behavior-host-withdrawal-diana.yaml",
+   "expectation": "single-handoff-effect-after-policy-turn",
+   "type": "fixture_effect_count",
+   "severity": "hard",
+   "requireJudge": null,
+   "turnIndex": 1,
+   "disposition": "retain",
+   "rationale": "2026-09-17 assessment hardening item 1 v5: cumulative 1/1/0 at turn 1 proves the single confirmed takeover; a second mutation fails.",
+   "source": "rule"
+  },
+  {
+   "case": "live_behavior.image_file_delayed_question",
+   "file": "live-behavior-image-file-delayed-question.yaml",
+   "expectation": "file-image-first-turn-no-rsvp-effect",
+   "type": "fixture_effect_count",
+   "severity": "hard",
+   "requireJudge": null,
+   "turnIndex": 0,
+   "disposition": "retain",
+   "rationale": "2026-09-17 assessment hardening item 6 v4: receipt pin replaces the persist-reason string pin; silence proved by the semantic judge plus zero-effect receipts.",
+   "source": "rule"
+  },
+  {
+   "case": "live_behavior.image_file_delayed_question",
+   "file": "live-behavior-image-file-delayed-question.yaml",
+   "expectation": "file-image-first-turn-no-handoff-effect",
+   "type": "fixture_effect_count",
+   "severity": "hard",
+   "requireJudge": null,
+   "turnIndex": 0,
+   "disposition": "retain",
+   "rationale": "2026-09-17 assessment hardening item 6 v4: receipt pin replaces the persist-reason string pin; silence proved by the semantic judge plus zero-effect receipts.",
+   "source": "rule"
+  },
+  {
+   "case": "live_behavior.owner_planning_to_faq_single_transfer",
+   "file": "live-behavior-owner-planning-to-faq-transfer.yaml",
+   "expectation": "planning-turn-continues-interview",
+   "type": "text_semantic",
+   "severity": "hard",
+   "requireJudge": true,
+   "turnIndex": 1,
+   "disposition": "retain",
+   "rationale": "2026-09-17 assessment hardening item 8 v3: turn-1 actionable interview turn covered by its own hard semantic judge instead of inferred from the final reply.",
    "source": "rule"
   }
  ]

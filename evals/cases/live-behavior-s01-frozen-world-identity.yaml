@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.s01_frozen_kiara_pending_replay
 suite: live_behavior_regression
-version: 2
+version: 3
 description: S01 frozen-world replay. Synthetic identity asks for the Suki Sofia gift status against the frozen Kiara pending world; the recorded 149.9 total is grounded and the pending state is reported.
 tags: [live, behavior, purchase, phone-orders, s01, frozen-world]
 targetModes: [live_lambda]
@@ -17,10 +17,14 @@ inputs:
 notes:
   - S01 frozen incident world purchase-kiara-frozen as of 2026-09-05T01:33:57.291Z. Synthetic identity only.
   - "R05 oracle revision v1 to v2, 2026-09-12, Packet F3. Old s01-frozen-pending-status-is-reported let the judge call the stated 149.9 a hallucinated amount although it is the recorded order total in the stored input (matrix: calling that invented is false). New contract names 149.9 grounded while keeping the pending-not-approved core. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
+  - "R05 v3 (2026-09-17, support assessment hardening item 5): s01-frozen-enters-information no longer pins the internal resolver_consultas_informativas node. Old defect: a correct pending-status reply from phone-scoped order evidence composed through any routing passed the read evidence but failed the node pin, grading implementation instead of behavior. New contract proves the same read-only invariant observably: zero RSVP effects from receipts (fixture_effect_count rsvp.write 0/0/0 hard) together with the retained phone-orders read evidence and the pending-status semantic judge. Expectation id s01-frozen-enters-information is retained for ledger and run continuity; only its type changed from node_transition to fixture_effect_count. Threshold and hard severity kept; no threshold reduction. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
 expectations:
   - id: s01-frozen-enters-information
-    type: node_transition
-    to: resolver_consultas_informativas
+    type: fixture_effect_count
+    operation: rsvp.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
     severity: hard
   - id: s01-frozen-uses-order-summary-only
     type: tool_usage

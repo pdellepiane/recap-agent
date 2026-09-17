@@ -119,7 +119,8 @@ describe('S01 frozen incident regression worlds', () => {
     if (!isRecord(entry)) throw new Error('Missing Martha guest events.');
     expect(entry['events']).toEqual([]);
     const types = kase.expectations.map((e) => `${e.type}:${e.severity}`);
-    expect(types).toContain('node_transition:hard');
+    // 2026-09-17 hardening item 5: node pin replaced by zero-effect receipt pins.
+    expect(types).toContain('fixture_effect_count:hard');
     expect(types).toContain('tool_usage:hard');
     const semantic = kase.expectations.find((e) => e.type === 'text_semantic');
     expect(semantic?.severity).toBe('hard');
