@@ -82,7 +82,7 @@ async function buildEntry(args: {
     model: args.model,
     instructions: args.bundle.instructions,
     input: `Escenario de auditoría estructural: ${args.route}`,
-    reasoning: { effort: 'none' as const },
+    reasoning: { effort: 'low' as const },
     text: { verbosity: 'low' as const },
   };
   const serializedRequestBytes = Buffer.byteLength(

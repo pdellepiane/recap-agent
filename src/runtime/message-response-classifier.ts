@@ -182,8 +182,8 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
       const userInput = JSON.stringify(modelInput);
       const request = {
         model: this.options.model,
-        reasoning: { effort: 'none' as const },
-        max_output_tokens: 128,
+        reasoning: { effort: 'low' as const },
+        max_output_tokens: 2048,
         store: true,
         prompt_cache_key: `classifier:${bundle.id}`,
         prompt_cache_options: DEFAULT_PROMPT_CACHE_OPTIONS,

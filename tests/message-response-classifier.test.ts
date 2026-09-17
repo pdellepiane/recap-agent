@@ -76,7 +76,9 @@ describe('OpenAiMessageResponseClassifier', () => {
     ]>;
     expect(calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal);
     const request = JSON.parse(String(calls[0]?.[1]?.body)) as {
+      model: string;
       store: boolean;
+      max_output_tokens: number;
       prompt_cache_key: string;
       prompt_cache_options: { mode: string; ttl: string };
       reasoning: { effort: string };
@@ -85,7 +87,8 @@ describe('OpenAiMessageResponseClassifier', () => {
     };
     expect(request.text.format.type).toBe('json_schema');
     expect(request.text.verbosity).toBe('low');
-    expect(request.reasoning.effort).toBe('none');
+    expect(request.reasoning.effort).toBe('low');
+    expect(request.max_output_tokens).toBe(2048);
     expect(request.prompt_cache_key).toMatch(/^classifier:/u);
     expect(request.prompt_cache_options).toEqual({ mode: 'implicit', ttl: '30m' });
     expect(request.store).toBe(true);
@@ -884,6 +887,63 @@ describe('OpenAiMessageResponseClassifier', () => {
       fallback_used: true,
       would_suppress: false,
     });
+  });
+
+  it('fails open with an explicit unavailable decision on incomplete output', async () => {
+    // Enabled reasoning shares the output budget with the structured
+    // schema: an incomplete response must stay an explicit failure path
+    // (respond + classifier_unavailable), never a fabricated decision.
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      id: 'resp_incomplete',
+      object: 'response',
+      created_at: 1,
+      status: 'incomplete',
+      model: 'gpt-5.6-luna',
+      output: [],
+      usage: {
+        input_tokens: 12,
+        output_tokens: 5,
+        total_tokens: 17,
+        input_tokens_details: { cached_tokens: 0, cache_write_tokens: 0 },
+        output_tokens_details: { reasoning_tokens: 5 },
+      },
+      incomplete_details: { reason: 'max_output_tokens' },
+      parallel_tool_calls: true,
+      store: true,
+      temperature: 1,
+      top_p: 1,
+      truncation: 'disabled',
+    }), {
+      status: 200,
+      headers: {
+        'content-type': 'application/json',
+        'x-request-id': 'req_incomplete',
+      },
+    })));
+    const classifier = new OpenAiMessageResponseClassifier({
+      apiKey: 'test-key',
+      model: 'gpt-5.6-luna',
+      mode: 'enforce',
+      promptLoader,
+    });
+    const response = await classifier.classify({
+      inboundText: 'Gracias',
+      plan: createEmptyPlan({
+        planId: 'classifier-incomplete',
+        channel: 'terminal_whatsapp',
+        externalUserId: '51991347878',
+      }),
+      messages: [],
+      contextSource: 'agent_api',
+    });
+
+    expect(response.trace).toMatchObject({
+      action: 'respond',
+      reason: 'classifier_unavailable',
+      fallback_used: true,
+      would_suppress: false,
+    });
+    expect(response.tokenUsage).toBeNull();
   });
 
   it('keeps the labelled corpus balanced for automated responses and lookalikes', () => {

@@ -2106,7 +2106,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     promptCacheOptions: typeof DEFAULT_PROMPT_CACHE_OPTIONS;
     providerData: Record<string, unknown>;
     store: true;
-    reasoning?: { effort: 'none' };
+    reasoning?: { effort: 'low' };
     text?: { verbosity: 'low' };
     retry?: {
       maxRetries: number;
@@ -2118,7 +2118,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       promptCacheOptions: typeof DEFAULT_PROMPT_CACHE_OPTIONS;
       providerData: Record<string, unknown>;
       store: true;
-      reasoning?: { effort: 'none' };
+      reasoning?: { effort: 'low' };
       text?: { verbosity: 'low' };
       retry?: {
         maxRetries: number;
@@ -2141,7 +2141,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     if (this.isGpt5Model(args.model)) {
       return {
         ...baseSettings,
-        reasoning: { effort: 'none' },
+        reasoning: { effort: 'low' },
         text: { verbosity: 'low' },
       };
     }

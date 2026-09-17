@@ -4478,6 +4478,19 @@ export class AgentService {
     ) {
       return false;
     }
+    // An unresolved event-detail question plus newly supplied typed context
+    // (role correction or event reference) replays its canonical request in
+    // the information flow instead of receiving a generic clarification
+    // question. Typed evidence only; no keyword matching. A bare role
+    // correction with no pending actionable request still clarifies below.
+    const hasPendingActionableRequest = plan.information_state.pending_requests.some(
+      (request) => request.kind === 'purchase' || request.kind === 'associated_event',
+    );
+    const bringsResolvingContext = extraction.reportedEventRole != null ||
+      extraction.rsvpEventReference != null;
+    if (hasPendingActionableRequest && bringsResolvingContext) {
+      return false;
+    }
     const emptyDelta =
       extraction.actionIntent === null &&
       extraction.informationRequests.length === 0 &&
@@ -7700,12 +7713,55 @@ export class AgentService {
     }
 
     if (supportAcknowledgment && !supportContinuesPurchaseThread) {
-      return this.handleSupportAcknowledgment(args, mergePlan(planForInformation, {
-        information_state: {
-          ...planForInformation.information_state,
-          pending_requests: planWithContact.information_state.pending_requests,
-        },
-      }));
+      // Actionable-answer repair: an unresolved purchase/event-detail
+      // request plus sufficient newly supplied typed context (event or
+      // person reference, role correction, or event reference) must reach
+      // the existing information executor before composition instead of
+      // taking the acknowledgment-only shortcut. Reuses pending_requests
+      // and structured extraction; no keyword matching, no new state
+      // machine, no new intent type. A bare support_query_open flag with no
+      // such context still acknowledges below.
+      const supportEventReference = supportAct?.kind === 'provide_detail'
+        ? supportAct.eventReference?.trim() ?? null
+        : null;
+      const supportPersonReference = supportAct?.kind === 'provide_detail'
+        ? supportAct.personReference?.trim() ?? null
+        : null;
+      const hasNewResolvingContext = (supportEventReference?.length ?? 0) > 0 ||
+        (supportPersonReference?.length ?? 0) > 0 ||
+        args.extraction.reportedEventRole != null ||
+        args.extraction.rsvpEventReference != null;
+      const resumablePendingRequests = planWithContact.information_state.pending_requests.filter(
+        (request) => request.kind === 'purchase' || request.kind === 'associated_event',
+      );
+      if (
+        !hasUniqueWithdrawalAnchor &&
+        resumablePendingRequests.length > 0 &&
+        hasNewResolvingContext
+      ) {
+        // The new event reference only fills pending event-detail questions
+        // that carry no event target yet; it never rewrites an established
+        // target and never invents ownership from a role correction.
+        requests = resumablePendingRequests.map((request) =>
+          (request.eventHint == null || request.eventHint.trim().length === 0) &&
+            (supportEventReference?.length ?? 0) > 0
+            ? { ...request, eventHint: supportEventReference }
+            : request,
+        );
+        planForInformation = mergePlan(planForInformation, {
+          information_state: {
+            ...planForInformation.information_state,
+            pending_requests: requests,
+          },
+        });
+      } else {
+        return this.handleSupportAcknowledgment(args, mergePlan(planForInformation, {
+          information_state: {
+            ...planForInformation.information_state,
+            pending_requests: planWithContact.information_state.pending_requests,
+          },
+        }));
+      }
     }
 
     const hostWithdrawalRequests = requests.filter((request) =>

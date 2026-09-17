@@ -102,7 +102,7 @@ function measureBundle(args: {
     model: args.counterModel,
     instructions: args.bundle.instructions,
     input: args.input,
-    reasoning: { effort: 'none' as const },
+    reasoning: { effort: 'low' as const },
     text: { verbosity: 'low' as const },
   };
   const serializedRequestBytes = Buffer.byteLength(JSON.stringify(candidate), 'utf8');

@@ -226,7 +226,7 @@ async function measure(
     model: counterModel,
     instructions: bundle.instructions,
     input: `Escenario de auditoría estructural: ${route}`,
-    reasoning: { effort: 'none' as const },
+    reasoning: { effort: 'low' as const },
     text: { verbosity: 'low' as const },
   };
   const paragraphs = normalizedParagraphs(bundle.instructions);

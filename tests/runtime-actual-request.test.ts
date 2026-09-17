@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createEmptyPlan, mergePlan } from '../src/core/plan';
 import type { PersistedPlan } from '../src/core/plan';
@@ -1317,5 +1317,209 @@ describe('actual reply request venue parity across two distinct records', () => 
     expect(spec.input).toContain('Casa Andina');
     expect(spec.input).toContain('Arequipa');
     expect(spec.input).toContain('Parroquia San Francisco');
+  });
+});
+
+describe('effective production request settings via actual serialization', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function quotaFetchMock() {
+    return vi.fn<Parameters<typeof fetch>, ReturnType<typeof fetch>>()
+      .mockResolvedValue(new Response(JSON.stringify({
+        error: {
+          message: 'You exceeded your current quota.',
+          type: 'insufficient_quota',
+          code: 'insufficient_quota',
+        },
+      }), {
+        status: 429,
+        headers: { 'content-type': 'application/json' },
+      }));
+  }
+
+  function gpt5Runtime(): OpenAiAgentRuntime {
+    return new OpenAiAgentRuntime({
+      apiKey: 'test-key',
+      replyModel: 'gpt-5.6-luna',
+      extractorModel: 'gpt-5.6-luna',
+      replyProviderLimit: 4,
+      presentationProviderLimit: 5,
+      providerDetailLookupLimit: 3,
+      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
+      providerGateway: {
+        async searchProviders(): Promise<never> {
+          throw new Error('construction must not call the provider gateway');
+        },
+      } as never,
+    });
+  }
+
+  function quotaBody(fetchMock: ReturnType<typeof quotaFetchMock>): Record<string, unknown> {
+    const body = fetchMock.mock.calls[0]?.[1]?.body;
+    expect(typeof body).toBe('string');
+    return JSON.parse(
+      typeof body === 'string' ? body : '{}',
+    ) as Record<string, unknown>;
+  }
+
+  it('sends low reasoning on the serialized extraction request with a stable cache key', async () => {
+    const fetchMock = quotaFetchMock();
+    vi.stubGlobal('fetch', fetchMock);
+    const runtime = gpt5Runtime();
+    const plan = supportPlan();
+    await expect(runtime.extract({
+      userMessage: '¿Dónde es el evento?',
+      plan,
+      messageContext: localTurnMessageContext('not_configured'),
+    })).rejects.toBeDefined();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const body = quotaBody(fetchMock);
+    expect(body.reasoning).toEqual({ effort: 'low' });
+    expect((body.text as { verbosity?: string } | undefined)?.verbosity).toBe('low');
+    // Stable shared prefix: the cache key names only the sent bundle, never
+    // timestamps, customer identifiers or dynamic task text.
+    const spec = await runtime.buildExtractionRequestSpec(
+      extractRequest('¿Dónde es el evento?', plan),
+    );
+    expect(body.prompt_cache_key).toBe(`extractor:${spec.bundleId}`);
+  });
+
+  it('sends low reasoning on the serialized reply request with a stable node-scoped cache key', async () => {
+    const fetchMock = quotaFetchMock();
+    vi.stubGlobal('fetch', fetchMock);
+    const runtime = gpt5Runtime();
+    const plan = supportPlan();
+    const { customerContext, informationResults } = venueRequest(702201);
+    const request = replyRequest(plan, { customerContext, informationResults });
+    await expect(runtime.composeReply(request)).rejects.toBeDefined();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const body = quotaBody(fetchMock);
+    expect(body.reasoning).toEqual({ effort: 'low' });
+    expect((body.text as { verbosity?: string } | undefined)?.verbosity).toBe('low');
+    const spec = await runtime.buildReplyRequestSpec(request);
+    expect(body.prompt_cache_key).toBe(`reply:resolver_consultas_informativas:${spec.bundleId}`);
+  });
+
+  it('keeps the pending venue question visible to the extractor without dynamic identity', async () => {
+    const runtime = testRuntime();
+    const plan = supportPlan({ owner_pending_question: '¿Dónde es el evento?' });
+    const spec = await runtime.buildExtractionRequestSpec(
+      extractRequest('Y el evento es Boda Ana y Luis', plan),
+    );
+    expect(spec.input).toContain('¿Dónde es el evento?');
+    expect(spec.instructions).not.toContain('actual-user');
+  });
+});
+
+describe('action outcomes stay distinct in serialized reply input', () => {
+  function rsvpReplyRequest(verificationJson: unknown): ComposeReplyRequest {
+    return replyRequest(supportPlan(), {
+      rsvpPhoneEvidence: {
+        state: 'resolved_single',
+        coverage: 'complete',
+        resolution: 'authoritative_invitation',
+        event: {
+          event_name: 'Matrimonio de Ana y Luis',
+          event_date: '2026-09-12',
+          invitation_record: 'available',
+          rsvp_state: 'attending',
+        },
+      },
+      rsvpWorkCompleted: true,
+      errorMessage: JSON.stringify(verificationJson),
+    });
+  }
+
+  it('keeps verified success, failure and unknown RSVP outcomes distinct', async () => {
+    const runtime = testRuntime();
+    const success = await runtime.buildReplyRequestSpec(rsvpReplyRequest({
+      outcome: 'responded',
+      verification_status: 'verified',
+      requested_attendance_change_verified: true,
+      effect_applied: true,
+      gateway_status: 'responded',
+    }));
+    expect(success.input).toContain('"verification_status": "verified"');
+    expect(success.input).toContain('"requested_attendance_change_verified": true');
+
+    const failed = await runtime.buildReplyRequestSpec(rsvpReplyRequest({
+      outcome: 'mutation_result',
+      verification: {
+        verification_status: 'failed',
+        gateway_status: 'failed',
+        requested_attendance_change_verified: false,
+        effect_applied: false,
+      },
+    }));
+    expect(failed.input).toContain('"verification_status": "failed"');
+    expect(failed.input).toContain('"requested_attendance_change_verified": false');
+    expect(failed.input).not.toContain('"requested_attendance_change_verified": true');
+
+    const unknown = await runtime.buildReplyRequestSpec(rsvpReplyRequest({
+      outcome: 'mutation_result',
+      verification: {
+        verification_status: 'unknown',
+        gateway_status: 'unknown',
+        requested_attendance_change_verified: false,
+      },
+    }));
+    expect(unknown.input).toContain('"verification_status": "unknown"');
+    expect(unknown.input).not.toContain('"verification_status": "failed"');
+    expect(unknown.input).not.toContain('"requested_attendance_change_verified": true');
+  });
+
+  it('projects no success claim from an unverified attempt alone', async () => {
+    const runtime = testRuntime();
+    const attempt = await runtime.buildReplyRequestSpec(rsvpReplyRequest({
+      outcome: 'attempted',
+      requested_action: 'attending',
+    }));
+    expect(attempt.input).not.toContain('rsvp_completed_effect');
+    expect(attempt.input).not.toContain('"requested_attendance_change_verified": true');
+  });
+
+  it('keeps missing authorization distinct from completed and failed reads', async () => {
+    const runtime = testRuntime();
+    const needsInput = {
+      requestId: 'req-auth',
+      kind: 'purchase',
+      status: 'needs_input',
+      nextInput: 'email',
+      guidance: {
+        reason: 'email_required',
+        email: null,
+        requirements: ['explain_account_information_access'],
+      },
+    } as unknown as InformationTaskResult;
+    const spec = await runtime.buildReplyRequestSpec(
+      replyRequest(supportPlan(), { informationResults: [needsInput] }),
+    );
+    expect(spec.input).toContain('needs_input');
+    expect(spec.input).toContain('email');
+    expect(spec.input).not.toContain('"verification_status": "verified"');
+  });
+
+  it('serializes failed lookups as honest limitations without fabricated venue', async () => {
+    const runtime = testRuntime();
+    const failedLookup = {
+      requestId: 'req-venue',
+      kind: 'associated_event',
+      status: 'failed',
+      failureKind: 'not_found',
+      accessMethod: 'trusted_phone_guest',
+      retryable: false,
+    } as unknown as InformationTaskResult;
+    const spec = await runtime.buildReplyRequestSpec(
+      replyRequest(supportPlan(), { informationResults: [failedLookup] }),
+    );
+    // The failed outcome travels as typed evidence for an honest limitation.
+    expect(spec.input).toContain('not_found');
+    // No venue facts exist, so none may be narrated into the reply input.
+    expect(spec.input).not.toContain('Hacienda Recoveco');
+    expect(spec.input).not.toContain('Avenida Manuel Valle');
   });
 });
