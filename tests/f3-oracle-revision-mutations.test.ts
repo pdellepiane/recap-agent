@@ -18,11 +18,17 @@ interface CaseExpectation {
   mustCall?: string[];
   mustNotCall?: string[];
   to?: string;
+  operation?: string;
+  turnIndex?: number;
+  expectedAttempts?: number;
+  expectedSuccesses?: number;
+  expectedReplays?: number;
 }
 
 interface EvalCaseFile {
   id: string;
   version: number;
+  description?: string;
   expectations: CaseExpectation[];
 }
 
@@ -42,6 +48,14 @@ function rubric(cases: EvalCaseFile, expectationId: string): string {
   const expectation = cases.expectations.find((candidate) => candidate.id === expectationId);
   expect(expectation, `${cases.id} is missing expectation ${expectationId}`).toBeDefined();
   return expectation?.rubric ?? '';
+}
+
+function effectCounts(cases: EvalCaseFile, expectationId: string): [number | undefined, number | undefined, number | undefined] {
+  const expectation = cases.expectations.find((candidate) => candidate.id === expectationId);
+  expect(expectation, `${cases.id} is missing expectation ${expectationId}`).toBeDefined();
+  expect(expectation?.type, `${cases.id}/${expectationId}`).toBe('fixture_effect_count');
+  expect(expectation?.severity, `${cases.id}/${expectationId}`).toBe('hard');
+  return [expectation?.expectedAttempts, expectation?.expectedSuccesses, expectation?.expectedReplays];
 }
 
 describe('F3 oracle revisions keep defect detection (mutants still fail)', () => {
@@ -223,8 +237,80 @@ describe('F3 oracle revisions remove style-only failures (clean paraphrases pass
   });
 });
 
-describe('F3 oracle revisions preserve minScore, hard severity, and requireJudge', () => {
-  it('keeps every revised semantic expectation hard with its original score and judge', async () => {
+describe('Lane B actionable-answer oracle repairs keep defect detection (2026-09-17)', () => {
+  it('continuity ledger is cumulative: 0/0/0, 1/1/0, 1/1/0, 1/1/0', async () => {
+    const continuity = await loadCase('live-behavior-customer-event-task-continuity.yaml');
+    expect(continuity.version).toBe(2);
+    expect(effectCounts(continuity, 'turn0-ana-time-no-write')).toEqual([0, 0, 0]);
+    expect(effectCounts(continuity, 'turn1-only-marta-write')).toEqual([1, 1, 0]);
+    expect(effectCounts(continuity, 'turn2-ana-again-no-new-write')).toEqual([1, 1, 0]);
+    expect(effectCounts(continuity, 'turn3-thanks-no-restart')).toEqual([1, 1, 0]);
+  });
+
+  it('Diana ledger is cumulative and the role correction needs no question', async () => {
+    const diana = await loadCase('live-behavior-host-withdrawal-diana.yaml');
+    expect(diana.version).toBe(4);
+    expect(effectCounts(diana, 'one-handoff-effect-in-thread')).toEqual([1, 1, 0]);
+    const roleText = rubric(diana, 'acknowledges-role-without-generic-reset');
+    expect(roleText).toMatch(/optional/);
+    expect(roleText).toMatch(/provider menu/);
+    expect(roleText).toMatch(/verified ownership/);
+    expect(roleText).toMatch(/unrelated/);
+    const laterText = rubric(diana, 'later-event-message-stays-with-human-team');
+    expect(laterText).toMatch(/external team record/);
+    expect(laterText).toMatch(/without.{0,40}receipt/);
+  });
+
+  it('concurrent support drops the kept-open recital and renames the deterministic pin', async () => {
+    const concurrent = await loadCase('live-behavior-concurrent-support-turns.yaml');
+    expect(concurrent.version).toBe(2);
+    expect(
+      concurrent.expectations.some((candidate) => candidate.id === 'support-detail-acknowledgment-is-deterministic'),
+      'the implementation-prescribing expectation name must be gone',
+    ).toBe(false);
+    const renamed = concurrent.expectations.find(
+      (candidate) => candidate.id === 'support-detail-acknowledgment-lightweight-route',
+    );
+    expect(renamed?.type).toBe('trace_field_equals');
+    const text = rubric(concurrent, 'no-restart-or-identity-overwrite-after-overlap');
+    expect(text).not.toMatch(/kept for continuation/);
+    expect(text).toMatch(/Roger Abanto/);
+    expect(text).toMatch(/Baby Shower Catalina/);
+  });
+
+  it('pending-question completion has hard structural plus hard judged semantics on every turn', async () => {
+    const pending = await loadCase('live-behavior-support-pending-question-completed.yaml');
+    expect(pending.version).toBe(1);
+    for (const turnIndex of [0, 1, 2]) {
+      const effect = pending.expectations.find(
+        (candidate) => candidate.type === 'fixture_effect_count' && candidate.turnIndex === turnIndex,
+      );
+      expect(effect?.severity, `turn ${turnIndex} needs a hard effect pin`).toBe('hard');
+      expect(
+        [effect?.expectedAttempts, effect?.expectedSuccesses, effect?.expectedReplays],
+        `turn ${turnIndex} stays a read-only cumulative zero`,
+      ).toEqual([0, 0, 0]);
+      const semantic = pending.expectations.find(
+        (candidate) => candidate.type === 'text_semantic' && candidate.turnIndex === turnIndex,
+      );
+      expect(semantic?.severity, `turn ${turnIndex} needs a hard judge`).toBe('hard');
+      expect(semantic?.requireJudge, `turn ${turnIndex} needs a real judge`).toBe(true);
+    }
+    expect(pending.expectations.some((candidate) => candidate.type === 'text_contains')).toBe(false);
+    expect(rubric(pending, 'turn0-ambiguous-time-asks-bounded-selection')).toMatch(/bounded question/);
+    const completed = rubric(pending, 'turn1-reference-answered-grounded');
+    expect(completed).toMatch(/same turn/);
+    expect(completed).toMatch(/must not ask another clarifying question/);
+    expect(rubric(pending, 'turn2-thanks-closes-or-silent')).toMatch(/empty assistant response is fully correct/);
+    const suiteRaw = await fs.readFile(
+      path.join(process.cwd(), 'evals/suites/live_behavior_regression.yaml'),
+      'utf8',
+    );
+    expect(suiteRaw).toContain('live_behavior.support_pending_question_completed');
+  });
+});
+
+describe('F3 oracle revisions preserve minScore, hard severity, and requireJudge', () => {  it('keeps every revised semantic expectation hard with its original score and judge', async () => {
     const expected: Array<[string, string, number]> = [
       ['live-behavior-spanish-only.yaml', 'correct-behavior-and-spanish-only', 0.95],
       ['live-behavior-ambiguous-confirmation-adversarial.yaml', 'adversarial-ambiguity-response-is-a-focused-clarification', 0.9],

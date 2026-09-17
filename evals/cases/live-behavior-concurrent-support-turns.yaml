@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.concurrent_support_turns_preserve_context
 suite: live_behavior_regression
-version: 1
+version: 2
 description: Claudia's overlapping card-support message and guest details must serialize before plan/history loading.
 tags: [live, behavior, concurrency, continuity, identity, reported-interaction, claudia-roger]
 targetModes: [live_lambda]
@@ -52,7 +52,7 @@ expectations:
       request_user_login_code, verify_user_login_code, search_providers_from_plan]
     turnIndex: 1
     severity: hard
-  - id: support-detail-acknowledgment-is-deterministic
+  - id: support-detail-acknowledgment-lightweight-route
     type: trace_field_equals
     path: route_kind
     expected: information_batch
@@ -63,8 +63,8 @@ expectations:
     rubric: >-
       The second reply must continue the same card-payment support conversation in Spanish,
       acknowledge Roger Abanto as the affected invited purchaser and Baby Shower Catalina
-      as the user-reported event. Briefly acknowledge both supplied references and say that
-      the same support query is being kept for continuation. It must not address the channel
+      as the user-reported event. Briefly acknowledge both supplied references in that same
+      support context. It must not address the channel
       user as Roger, restart with a generic welcome, switch to provider planning, repeat the
       entire payment explanation, perform a backend lookup, request human help, or claim a
       verified purchase, verified invitation, or email/OTP prerequisite.
@@ -72,6 +72,8 @@ expectations:
     requireJudge: true
     turnIndex: 1
     severity: hard
+notes:
+  - "R05 v2 (2026-09-17, actionable-answer package Lane B): removed the mandatory kept-open recital. Old defect: the rubric required saying the same support query is being kept for continuation, grading process narration instead of the useful-answer behavior. New acceptance keeps identity/context retention and the no-unnecessary-lookup/no-mutation checks; the supplied references only need brief acknowledgment in the same support context. The expectation formerly named support-detail-acknowledgment-is-deterministic is renamed support-detail-acknowledgment-lightweight-route because the old name prescribed the implementation instead of evidencing behavior; the structural check itself is unchanged. Threshold and hard severity kept; no threshold reduction. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
 budget:
   maxTurns: 2
   estimatedPromptTokensPerTurn: 1700

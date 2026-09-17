@@ -426,8 +426,7 @@ describe('customer event task continuity offline twin (E3)', () => {
             (expectation.turnIndex ?? -1) === turnIndex,
         ),
         `turn ${turnIndex} needs a hard per-turn effect assertion`,
-      ).toBe(true);
-      expect(
+      ).toBe(true);      expect(
         live?.expectations.some(
           (expectation) => expectation.type === 'text_semantic' &&
             expectation.severity === 'hard' &&
@@ -440,6 +439,29 @@ describe('customer event task continuity offline twin (E3)', () => {
     const suite = catalog.suites.find((candidate) => candidate.id === 'live_behavior_regression');
     expect(suite?.caseIds).toContain('live_behavior.customer_event_task_continuity');
     expect(() => assertLiveRegressionFixtureCoverage([live!])).not.toThrow();
+
+    // Cumulative-from-case-baseline ledger (Lane B 2026-09-17): each turn
+    // carries every conversational receipt since the case baseline, so the
+    // single turn-1 Marta write stays visible at turns 2 and 3.
+    const cumulative: Array<[number, number, number, number]> = [
+      [0, 0, 0, 0],
+      [1, 1, 1, 0],
+      [2, 1, 1, 0],
+      [3, 1, 1, 0],
+    ];
+    for (const [turnIndex, attempts, successes, replays] of cumulative) {
+      const effect = live?.expectations.find(
+        (expectation) => expectation.type === 'fixture_effect_count' &&
+          (expectation.turnIndex ?? -1) === turnIndex,
+      );
+      expect(effect?.type, `turn ${turnIndex} needs its cumulative effect pin`).toBe(
+        'fixture_effect_count',
+      );
+      if (effect?.type !== 'fixture_effect_count') continue;
+      expect([effect.expectedAttempts, effect.expectedSuccesses, effect.expectedReplays]).toEqual(
+        [attempts, successes, replays],
+      );
+    }
 
     const registry = YAML.parse(
       await fs.readFile(path.join(evalDirectory, 'live-behavior-coverage.yaml'), 'utf8'),

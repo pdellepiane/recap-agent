@@ -486,6 +486,85 @@ describe('§3 integrated execute->snapshot->teardown->judge evidence pipeline', 
   });
 });
 
+describe('Lane B cumulative-from-case-baseline ledger (2026-09-17 actionable-answer)', () => {
+  it('a real second write fails a cumulative 1/1/0 total', async () => {
+    const store = new InMemoryEvalFixtureStateStore();
+    const runId = 'run-laneb-dup';
+    const caseId = 'case-laneb-dup';
+    await store.record({
+      runId, caseId, scenario: 's', operation: 'rsvp.write',
+      args: {}, resultStatus: 'responded',
+    });
+    await store.record({
+      runId, caseId, scenario: 's', operation: 'rsvp.write',
+      args: {}, resultStatus: 'responded',
+    });
+    const turn = makeSpeechTurn(1, 'segundo');
+    attachEvaluationState(turn, {
+      plan: getPrivatePlanForEvidence(turn),
+      input: turn.input,
+      outputText: turn.outputText,
+      fixtureEffects: buildFixtureEffectSummariesFromReceipts(await store.list(runId, caseId)),
+    });
+    expect(evaluateFixtureEffectCountForTesting({
+      turns: [turn], operation: 'rsvp.write', turnIndex: 0,
+      expectedAttempts: 1, expectedSuccesses: 1, expectedReplays: 0,
+    }).passed).toBe(false);
+    expect(evaluateFixtureEffectCountForTesting({
+      turns: [turn], operation: 'rsvp.write', turnIndex: 0,
+      expectedAttempts: 2, expectedSuccesses: 2, expectedReplays: 0,
+    }).passed).toBe(true);
+  });
+
+  it('a single earlier handoff stays visible at a later turn (cumulative 1/1/0, never later-turn 0/0/0)', async () => {
+    const store = new InMemoryEvalFixtureStateStore();
+    const runId = 'run-laneb-diana';
+    const caseId = 'case-laneb-diana';
+    await store.record({
+      runId, caseId, scenario: 's', operation: 'handoff.write',
+      args: {}, resultStatus: 'success',
+    });
+    const turn = makeSpeechTurn(2, 'Evento: Diana y Fernando');
+    attachEvaluationState(turn, {
+      plan: getPrivatePlanForEvidence(turn),
+      input: turn.input,
+      outputText: turn.outputText,
+      fixtureEffects: buildFixtureEffectSummariesFromReceipts(await store.list(runId, caseId)),
+    });
+    expect(evaluateFixtureEffectCountForTesting({
+      turns: [turn], operation: 'handoff.write', turnIndex: 0,
+      expectedAttempts: 0, expectedSuccesses: 0, expectedReplays: 0,
+    }).passed).toBe(false);
+    expect(evaluateFixtureEffectCountForTesting({
+      turns: [turn], operation: 'handoff.write', turnIndex: 0,
+      expectedAttempts: 1, expectedSuccesses: 1, expectedReplays: 0,
+    }).passed).toBe(true);
+  });
+
+  it('missing receipt collection is unknown, never a passing zero', () => {
+    const turn = makeSpeechTurn(0, 'hola');
+    const bare = { ...JSON.parse(JSON.stringify(turn)) } as EvalTurnResult;
+    expect(getEvaluationFixtureEffects(bare)).toBeNull();
+    expect(evaluateFixtureEffectCountForTesting({
+      turns: [bare], operation: 'handoff.write',
+      expectedAttempts: 0, expectedSuccesses: 0, expectedReplays: 0,
+    }).passed).toBe(false);
+  });
+
+  it('judge packet separates an actionable pending question from a bare correction or thanks', () => {
+    const context = buildSemanticJudgeContext([makeSpeechTurn(0, 'hola')], 0, undefined);
+    expect(context).toContain('actionable pending question');
+    expect(context).toContain('bare role correction');
+  });
+
+  it('judge packet treats a confirmed takeover as submission only', () => {
+    const context = buildSemanticJudgeContext([makeSpeechTurn(0, 'hola')], 0, undefined);
+    expect(context).toContain('Handoff honesty');
+    expect(context).toContain('submitted only');
+    expect(context).toContain('An attempted takeover is never a confirmed handoff');
+  });
+});
+
 describe('§4 authoritative effect ledger matrix', () => {
   it('records a single success exactly', async () => {
     const store = new InMemoryEvalFixtureStateStore();

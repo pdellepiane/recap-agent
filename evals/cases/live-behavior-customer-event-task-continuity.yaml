@@ -1,8 +1,8 @@
 template: template.base-live
 id: live_behavior.customer_event_task_continuity
 suite: live_behavior_regression
-version: 1
-description: "One trusted-phone session across two pending events proves task continuity: Boda Ana y Luis time with zero writes, Marta confirmation plus time in one combined write, Ana time again with zero new writes and no cross-event leakage, and a thanks that closes without restarting reads or writes."
+version: 2
+description: "One trusted-phone session across two pending events proves task continuity: Boda Ana y Luis time with zero writes, Marta confirmation plus time in one combined write, Ana time again with zero new writes and no cross-event leakage, and a thanks that closes without restarting reads or writes. Fixture effect pins are cumulative from the case baseline."
 tags: [live, behavior, rsvp, continuity, multi-turn, task-continuity, reported-interaction]
 targetModes: [live_lambda]
 inputs:
@@ -81,8 +81,8 @@ expectations:
     type: fixture_effect_count
     operation: rsvp.write
     turnIndex: 2
-    expectedAttempts: 0
-    expectedSuccesses: 0
+    expectedAttempts: 1
+    expectedSuccesses: 1
     expectedReplays: 0
     severity: hard
   - id: turn2-ana-again-no-mutation
@@ -102,8 +102,8 @@ expectations:
     type: fixture_effect_count
     operation: rsvp.write
     turnIndex: 3
-    expectedAttempts: 0
-    expectedSuccesses: 0
+    expectedAttempts: 1
+    expectedSuccesses: 1
     expectedReplays: 0
     severity: hard
   - id: turn3-thanks-no-restart-tools
@@ -120,6 +120,7 @@ expectations:
     turnIndex: 3
     severity: hard
 notes:
+  - "R05 v2 (2026-09-17, actionable-answer package Lane B): cumulative-from-case-baseline ledger repair. Old defect: turn-2 and turn-3 pins expected rsvp.write 0/0/0, reading turnIndex as a per-turn delta; under the harness cumulative semantics each turn carries every conversational receipt since the case baseline, so the single turn-1 Marta write is still present at turns 2 and 3 and the old pins failed a correct run. New acceptance: cumulative RSVP attempts/successes/replays = 0/0/0, 1/1/0, 1/1/0, 1/1/0 across turns 0-3; a real second write (2/2/0) still fails. Per-turn forbidden-mutation checks and the final total are unchanged. Threshold and hard severity kept; no threshold reduction. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
   - "2026-09-16 customer-support release E3: single-session four-turn integration over fixture rsvp-plus-one-multiple-pending (Boda Ana y Luis event 8001 guest 80001 2026-09-20 18:00; Cumpleaños Marta event 8002 guest 80002 2026-09-21 19:00; trusted phone +51941438999). Exact guest/event IDs are proved by the offline service twin with gateway capture, not by the semantic judge alone. New case; no old runs."
 budget:
   maxTurns: 4
