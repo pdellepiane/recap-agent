@@ -755,6 +755,138 @@ describe('pending credential resume and card topic preservation', () => {
     expect(result.plan.information_state.last_completed_request).toMatchObject({ kind: 'faq' });
   });
 
+  it('answers the card question from a multi-article evidence set without new reads', async () => {
+    // Retrieval returns gift-obligation, payment-method and card-rejection
+    // articles together; every excerpt reaches the reply request in one
+    // execution with no invented operational troubleshooting.
+    const paymentMethods = 'Medios de pago aceptados: Yape, Plin y transferencia bancaria.';
+    const cardRejection = 'Si la tarjeta es rechazada, el banco emisor debe autorizar la compra en linea.';
+    const { execute, composeRequests } = await runSupportTurn({
+      externalUserId: 'u-card-multi-evidence',
+      text: cardQuery,
+      seed: {},
+      extraction: supportExtraction({
+        informationRequests: [{
+          kind: 'faq',
+          query: cardQuery,
+        }],
+      }),
+      orchestratorResults: [{
+        requestId: 'information-1',
+        kind: 'faq',
+        status: 'completed',
+        evidence: [
+          {
+            fileId: 'kb-gift',
+            filename: 'obligacion-regalo.md',
+            score: 0.95,
+            text: 'Obsequio de lista: los novios agradecen cualquier muestra de carino.',
+          },
+          {
+            fileId: 'kb-pay',
+            filename: 'medios-pago.md',
+            score: 0.91,
+            text: paymentMethods,
+          },
+          {
+            fileId: 'kb-card',
+            filename: 'tarjeta-rechazada.md',
+            score: 0.88,
+            text: cardRejection,
+          },
+        ],
+      }],
+      orchestratorSummaries: [{
+        requestId: 'information-1',
+        kind: 'faq',
+        status: 'completed',
+        source: 'knowledge',
+        outcomeCode: 'completed_with_results',
+        retryable: null,
+        queryHash: 'card',
+        evidence: [],
+        resultCount: 3,
+        durationMs: 60,
+      }],
+    });
+
+    expect(execute).toHaveBeenCalledTimes(1);
+    expect(composeRequests).toHaveLength(1);
+    const serialized = JSON.stringify(composeRequests[0]?.informationResults ?? []);
+    expect(serialized).toContain(paymentMethods);
+    expect(serialized).toContain(cardRejection);
+    expect(composeRequests[0]?.errorMessage).toBeNull();
+  });
+
+  it('keeps an unanswered diagnostic question across supplied details without re-asking', async () => {
+    // The open card question rides the existing pending-question
+    // projection while supplied name/event details are incorporated: no
+    // repeated lookup, no repeated question, and the topic survives.
+    const openQuestion = 'Que mensaje muestra la tarjeta rechazada';
+    const first = await runSupportTurn({
+      externalUserId: 'u-card-pending-question',
+      text: 'El nombre del invitado afectado es Roger Abanto.',
+      messageId: 'm-u-card-pending-1',
+      seed: {
+        owner_pending_question: openQuestion,
+        information_state: {
+          resume_node: 'entrevista',
+          pending_requests: [],
+          selection_candidates: [],
+          last_completed_request: { kind: 'faq', query: cardQuery },
+        },
+      },
+      extraction: supportExtraction({
+        supportAct: {
+          kind: 'provide_detail',
+          topic: 'unknown',
+          detail: 'unknown',
+          eventReference: null,
+          personReference: 'Roger Abanto',
+        },
+      }),
+    });
+
+    expect(first.execute).not.toHaveBeenCalled();
+    expect(first.takeover).not.toHaveBeenCalled();
+    expect(first.composeRequests).toHaveLength(1);
+    expect(first.composeRequests[0]?.pendingQuestionRef).toBe(openQuestion);
+    expect(first.composeRequests[0]?.errorMessage).toBeNull();
+    expect(first.composeRequests[0]?.plan.conversation_summary).toContain('tarjeta');
+    expect(first.result.outbound.delivery.action).toBe('send');
+
+    const second = await runSupportTurn({
+      externalUserId: 'u-card-pending-question',
+      text: 'Y el evento es Baby Shower Catalina.',
+      messageId: 'm-u-card-pending-2',
+      seed: {},
+      extraction: supportExtraction({
+        supportAct: {
+          kind: 'provide_detail',
+          topic: 'unknown',
+          detail: 'unknown',
+          eventReference: 'Baby Shower Catalina',
+          personReference: null,
+        },
+      }),
+      store: first.store,
+    });
+
+    // The second detail also stays lightweight: the open question is
+    // still context, never a fresh interrogation without progress.
+    expect(second.execute).not.toHaveBeenCalled();
+    expect(second.takeover).not.toHaveBeenCalled();
+    expect(second.composeRequests).toHaveLength(1);
+    expect(second.composeRequests[0]?.pendingQuestionRef).toBe(openQuestion);
+    expect(second.composeRequests[0]?.errorMessage).toBeNull();
+    expect(second.composeRequests[0]?.extraction.supportAct).toMatchObject({
+      kind: 'provide_detail',
+      eventReference: 'Baby Shower Catalina',
+    });
+    expect(second.composeRequests[0]?.plan.conversation_summary).toContain('tarjeta');
+    expect(second.result.outbound.delivery.action).toBe('send');
+  });
+
   it('keeps a bare role correction on a completed thread free of invented work', async () => {
     const { result, execute, takeover, otp } = await runSupportTurn({
       externalUserId: 'u-bare-role-completed',

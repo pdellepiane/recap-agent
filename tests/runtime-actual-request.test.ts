@@ -142,6 +142,41 @@ function replyRequest(
   } as unknown as ComposeReplyRequest;
 }
 
+function readFaqEvidence(input: string): Array<{ filename: string; text: string }> {
+  const marker = 'Evidencia canónica del turno (JSON): ';
+  const start = input.indexOf('{', input.indexOf(marker));
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let cursor = start; cursor < input.length; cursor += 1) {
+    const ch = input[cursor];
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (ch === '\\') {
+        escaped = true;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+    } else if (ch === '{') {
+      depth += 1;
+    } else if (ch === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        const evidence = JSON.parse(input.slice(start, cursor + 1)) as {
+          information_results: Array<{ evidence?: Array<{ filename: string; text: string }> }>;
+        };
+        return evidence.information_results[0]?.evidence ?? [];
+      }
+    }
+  }
+  throw new Error('turn evidence JSON not closed');
+}
+
 function purchase(orderId: string): PurchaseInformation {
   return {
     orderId,
@@ -569,6 +604,74 @@ describe('actual reply request owns its instructions', () => {
     expect(ids).toContain('reply_faq_policy');
     expect(ids).toContain('reply_support_continuity');
     expect(spec.input).toContain('Devolución disponible dentro de 7 días');
+  });
+
+  it('projects payment and rejection excerpts past an unrelated first article', async () => {
+    // Retrieval can return gift-obligation, payment-method and
+    // card-rejection articles together; the reply projection must carry a
+    // small deduplicated set under a fixed total budget instead of only
+    // the first excerpt, or the model answers from the unrelated article.
+    const runtime = testRuntime();
+    const giftObligation = `Obsequio de lista: ${'detalle '.repeat(150)}cola final distintiva del articulo`;
+    const giftTail = 'cola final distintiva del articulo';
+    const paymentMethods = 'Medios de pago aceptados: Yape, Plin y transferencia bancaria.';
+    const cardRejection = 'Si la tarjeta es rechazada, el banco emisor debe autorizar la compra en linea.';
+    const faqResult = {
+      requestId: 'req-faq',
+      kind: 'faq',
+      status: 'completed',
+      evidence: [
+        { fileId: 'kb-gift', filename: 'obligacion-regalo.md', score: 0.95, text: giftObligation },
+        { fileId: 'kb-pay', filename: 'medios-pago.md', score: 0.91, text: paymentMethods },
+        { fileId: 'kb-card', filename: 'tarjeta-rechazada.md', score: 0.88, text: cardRejection },
+        { fileId: 'kb-pay-dup', filename: 'medios-pago.md', score: 0.87, text: paymentMethods },
+      ],
+    } as unknown as InformationTaskResult;
+    const spec = await runtime.buildReplyRequestSpec(
+      replyRequest(supportPlan(), { informationResults: [faqResult] }),
+    );
+    // The relevant excerpts reach the actual serialized reply input whole.
+    expect(spec.input).toContain(paymentMethods);
+    expect(spec.input).toContain(cardRejection);
+    // Deduplicated: the repeated payment excerpt serializes once.
+    expect(spec.input.split(paymentMethods).length - 1).toBe(1);
+    expect(spec.input.split('"filename": "medios-pago.md').length - 1).toBe(1);
+    // Source labels travel with every excerpt.
+    expect(spec.input).toContain('obligacion-regalo.md');
+    expect(spec.input).toContain('tarjeta-rechazada.md');
+    // Fixed total budget: three excerpts share 1800 chars, so the long
+    // unrelated first article is truncated while the relevant ones survive.
+    expect(spec.input).toContain(giftObligation.slice(0, 100));
+    expect(spec.input).not.toContain(giftTail);
+    const evidence = readFaqEvidence(spec.input);
+    expect(evidence).toHaveLength(3);
+    const totalChars = evidence.reduce((total, entry) => total + entry.text.length, 0);
+    expect(totalChars).toBeLessThanOrEqual(1800);
+  });
+
+  it('keeps an unanswered diagnostic question as context without repeating it', async () => {
+    // A supplied name/event rides the extraction snapshot while the open
+    // diagnostic question rides the existing pending-question projection:
+    // it appears once as context, never as an added operational question.
+    const runtime = testRuntime();
+    const openQuestion = 'Que mensaje muestra la tarjeta rechazada';
+    const spec = await runtime.buildReplyRequestSpec(
+      replyRequest(supportPlan({ owner_pending_question: openQuestion }), {
+        extraction: baseExtraction({
+          supportAct: {
+            kind: 'provide_detail',
+            topic: 'unknown',
+            detail: 'unknown',
+            eventReference: 'Baby Shower Catalina',
+            personReference: 'Roger Abanto',
+          },
+        }),
+      }),
+    );
+    expect(spec.input.split(openQuestion).length - 1).toBe(1);
+    expect(spec.input).toContain('Baby Shower Catalina');
+    expect(spec.input).toContain('Roger Abanto');
+    expect(spec.input).not.toContain('Nota operativa');
   });
 
   it('binds handoff claims to the actual outcome without changing module identity', async () => {
