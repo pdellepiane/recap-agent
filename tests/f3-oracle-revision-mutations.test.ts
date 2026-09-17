@@ -264,8 +264,8 @@ describe('Lane B actionable-answer oracle repairs keep defect detection (2026-09
 
   it('concurrent support proves overlap with observable effects, not telemetry pins', async () => {
     const concurrent = await loadCase('live-behavior-concurrent-support-turns.yaml');
-    // 2026-09-17 failure-only landing v4: topic-keeping substantive, re-ask fails, names optional.
-    expect(concurrent.version).toBe(4);
+    // v5: no compulsory topic recital after an answer; no fabricated review.
+    expect(concurrent.version).toBe(5);
     expect(
       concurrent.expectations.some((candidate) => candidate.id === 'support-detail-acknowledgment-is-deterministic'),
       'the implementation-prescribing expectation name must be gone',
@@ -288,6 +288,8 @@ describe('Lane B actionable-answer oracle repairs keep defect detection (2026-09
     expect(renamed?.type).toBe('fixture_effect_count');
     const text = rubric(concurrent, 'no-restart-or-identity-overwrite-after-overlap');
     expect(text).not.toMatch(/kept for continuation/);
+    expect(text).toContain('repeating the card topic or advice is not required');
+    expect(text).toContain('without a confirmed corresponding action');
     expect(text).toMatch(/already-known|already known/);
     expect(text).not.toMatch(/Briefly acknowledge both supplied references/);
     const firstTurn = rubric(concurrent, 'first-support-question-answered');
