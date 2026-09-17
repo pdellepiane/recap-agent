@@ -1,0 +1,99 @@
+template: template.base-live
+id: live_behavior.wait_followup_no_repeat
+suite: live_behavior_regression
+version: 1
+description: Three rapid reconfirmation texts on already-confirmed attendance produce one full answer followed by short non-repeating replies with zero writes.
+tags: [live, behavior, rsvp, continuity, multi-turn, wait-followup, reported-interaction]
+targetModes: [live_lambda]
+inputs:
+  - text: Hola, soy Cristian, ¿me confirmas mi asistencia a Michelle & Jorge?
+    channel: whatsapp
+    contactPhone: "+51942633292"
+    sessionId: live-wait-followup-no-repeat
+    backendFixture:
+      scenario: rsvp-cristian-michelle-jorge
+  - text: Necesito entrar al enlace y reconfirmar?
+    channel: whatsapp
+    contactPhone: "+51942633292"
+    sessionId: live-wait-followup-no-repeat
+    backendFixture:
+      scenario: rsvp-cristian-michelle-jorge
+  - text: O cuando le di clic aquí es suficiente? Porfa me confirman, gracias!
+    channel: whatsapp
+    contactPhone: "+51942633292"
+    sessionId: live-wait-followup-no-repeat
+    backendFixture:
+      scenario: rsvp-cristian-michelle-jorge
+backendFixture:
+  scenario: rsvp-cristian-michelle-jorge
+expectations:
+  - id: turn0-confirmed-no-write
+    type: fixture_effect_count
+    operation: rsvp.write
+    turnIndex: 0
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: turn0-no-new-mutation
+    type: tool_usage
+    mustCall: [lookup_rsvp_invitations]
+    mustNotCall: [guest_rsvp, auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover]
+    turnIndex: 0
+    severity: hard
+  - id: turn0-existing-confirmation-answered
+    type: text_semantic
+    rubric: >-
+      The trusted phone is already confirmed attending Michelle & Jorge on 10 October 2026 at 20:15. The user asks to confirm attendance. The answer must be concise, natural, and entirely in Spanish; report that attendance is already confirmed with the event name. It must not claim a new mutation was made, must not ask for email or a code, and must not state the opposite polarity. A wrong date or flipped polarity fails.
+    minScore: 0.9
+    requireJudge: true
+    turnIndex: 0
+    severity: hard
+  - id: turn1-still-no-write
+    type: fixture_effect_count
+    operation: rsvp.write
+    turnIndex: 1
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: turn1-no-new-mutation
+    type: tool_usage
+    mustNotCall: [guest_rsvp, auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover]
+    turnIndex: 1
+    severity: hard
+  - id: turn1-short-no-repeat
+    type: text_semantic
+    rubric: >-
+      The previous turn already confirmed attendance for Michelle & Jorge. This turn asks whether entering a link and reconfirming is needed. The answer must be concise, natural, and entirely in Spanish; give a short answer that does not restate the full confirmation details and does not claim any new registration. It must not ask for email or a code, must not perform or claim a new mutation, and must always deliver an answer rather than staying silent.
+    minScore: 0.85
+    requireJudge: true
+    turnIndex: 1
+    severity: hard
+  - id: turn2-still-no-write
+    type: fixture_effect_count
+    operation: rsvp.write
+    turnIndex: 2
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: turn2-no-new-mutation
+    type: tool_usage
+    mustNotCall: [guest_rsvp, auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover]
+    turnIndex: 2
+    severity: hard
+  - id: turn2-short-no-repeat
+    type: text_semantic
+    rubric: >-
+      The attendance was already confirmed twice above in this same thread. This turn asks whether clicking is enough and asks for confirmation again with thanks. The answer must be concise, natural, and entirely in Spanish; give a short closing answer that does not restate the full confirmation details again and does not claim any new registration. It must not ask for email or a code, must not perform or claim a new mutation, and must always deliver an answer rather than staying silent.
+    minScore: 0.85
+    requireJudge: true
+    turnIndex: 2
+    severity: hard
+notes:
+  - "R05 v1 (2026-09-17, wait-aware reply package): exact-incident diagnostic for the prev-prod triple-send (three rapid reconfirmation texts, one confirmed invitation). Cumulative 0/0/0 RSVP writes across all turns; short-by-reference follow-ups judged on outcome (no restated details, no new-mutation claim, delivered answer), never on exact wording. Thresholds hard; requireJudge on all three semantic expectations."
+budget:
+  maxTurns: 3
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 300

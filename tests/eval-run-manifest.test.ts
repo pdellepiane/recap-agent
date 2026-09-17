@@ -86,9 +86,9 @@ describe('run manifest identity (O0)', () => {
 
     expect(manifest.schemaVersion).toBe(RUN_MANIFEST_SCHEMA_VERSION);
     expect(manifest.releaseReadyClaim).toBe(false);
-    expect(manifest.cases.orderedIds).toHaveLength(120); // 2026-09-17 actionable-answer: 119 + live_behavior.support_pending_question_completed
-    expect(new Set(manifest.cases.orderedIds).size).toBe(120); // 2026-09-17: matches 120 suite caseIds
-    expect(manifest.cases.identities).toHaveLength(120); // 2026-09-17: re-pinned for the pending-question case
+    expect(manifest.cases.orderedIds).toHaveLength(121); // 2026-09-17 wait-aware: 120 + live_behavior.wait_followup_no_repeat
+    expect(new Set(manifest.cases.orderedIds).size).toBe(121); // 2026-09-17: matches 121 suite caseIds
+    expect(manifest.cases.identities).toHaveLength(121); // 2026-09-17: re-pinned for the wait-followup case
     expect(() => runManifestSchema.parse(manifest)).not.toThrow();
     expect(() => assertUniqueConfigCasePairs(manifest.cases.identities)).not.toThrow();
   });
@@ -327,7 +327,7 @@ describe('run manifest identity (O0)', () => {
     expect(manifest.cases.orderedIds).toEqual(result.report.results.map((entry) => entry.caseId));
   });
 
-  it('reconciles frozen support-gate counts from the catalog suite (120 total / 112 support)', async () => {
+  it('reconciles frozen support-gate counts from the catalog suite (121 total / 113 support)', async () => {
     const catalog = await new EvalLoader(evalsDir).loadCatalog();
     const suite = catalog.suites.find((entry) => entry.id === 'live_behavior_regression');
     expect(suite).toBeDefined();
@@ -339,13 +339,14 @@ describe('run manifest identity (O0)', () => {
       ),
     ) as { supportDenominator: number; supportIds: string[]; planningDiagnosticOnly: string[] };
     // Computed from the catalog/suite files, never a stale hardcode elsewhere.
-    // 2026-09-17 actionable-answer: 119 + live_behavior.support_pending_question_completed.
-    expect(suiteIds.size).toBe(120);
-    expect(frozen.supportDenominator).toBe(112);
-    expect(frozen.supportIds).toHaveLength(112);
+    // 2026-09-17 wait-aware: 120 + live_behavior.wait_followup_no_repeat.
+    expect(suiteIds.size).toBe(121);
+    expect(frozen.supportDenominator).toBe(113);
+    expect(frozen.supportIds).toHaveLength(113);
     expect(new Set([...frozen.supportIds, ...frozen.planningDiagnosticOnly])).toEqual(suiteIds);
     expect(frozen.supportIds).toContain('live_behavior.customer_event_task_continuity');
     expect(frozen.supportIds).toContain('live_behavior.support_pending_question_completed');
+    expect(frozen.supportIds).toContain('live_behavior.wait_followup_no_repeat');
     const selectedCases = await loadLiveCases();
     expect(selectedCases).toHaveLength(suiteIds.size);
     expect(new Set(selectedCases.map((entry) => entry.id))).toEqual(suiteIds);
