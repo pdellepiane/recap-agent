@@ -466,7 +466,6 @@ type ReplyTurnEvidence = {
      */
     reported_guest_name?: string | null;
     reported_event_name?: string | null;
-    support_query_open?: boolean;
     voucher_image_cannot_confirm_receipt?: boolean;
     backend_validation_pending?: boolean;
     /**
@@ -2788,31 +2787,27 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
   /**
    * W1-04 L1 evidence-only support continuity facts. Projects the verbatim
    * user-reported guest/event names from the extraction raw strings
-   * (supportAct person/eventReference, never the normalized event_type) plus
-   * the same-query-open flag while the support acknowledgment path keeps the
-   * query open. Returns no keys when no support act exists so unrelated turns
+   * (supportAct person/eventReference, never the normalized event_type).
+   * A support act does not establish a review or
+   * an unresolved task. Returns no keys without a support act so unrelated turns
    * stay byte-identical. Facts only, never reply prose (R02).
    */
   private buildSupportContinuityFacts(
     request: ComposeReplyRequest,
   ): Pick<
     ReplyTurnEvidence['turn_state'],
-    'reported_guest_name' | 'reported_event_name' | 'support_query_open'
+    'reported_guest_name' | 'reported_event_name'
   > {
     const act = request.extraction.supportAct ?? null;
     if (act === null) return {};
     const guestName = act.personReference?.trim() ? act.personReference.trim() : null;
     const eventName = act.eventReference?.trim() ? act.eventReference.trim() : null;
-    const queryOpen = act.kind === 'report_issue' ||
-      act.kind === 'provide_detail' ||
-      act.kind === 'defer_submission';
     const facts: Pick<
       ReplyTurnEvidence['turn_state'],
-      'reported_guest_name' | 'reported_event_name' | 'support_query_open'
+      'reported_guest_name' | 'reported_event_name'
     > = {};
     if (guestName !== null) facts.reported_guest_name = guestName;
     if (eventName !== null) facts.reported_event_name = eventName;
-    if (queryOpen) facts.support_query_open = true;
     return facts;
   }
 

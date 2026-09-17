@@ -489,6 +489,9 @@ describe('actual reply request owns its instructions', () => {
     const ids = spec.modules.map((module) => module.id);
     expect(ids).toContain('reply_venue_facts');
     expect(ids).toContain('reply_support_continuity');
+    expect(JSON.stringify(spec.input)).not.toContain('support_query_open');
+    expect(spec.instructions).not.toContain('dentro de una consulta de soporte abierta');
+    expect(spec.instructions).toContain('Un dato adicional no acredita una revisión o gestión en curso.');
     expect(ids).not.toContain('reply_planning_owner');
     const expectedFiles = ids.flatMap((id) => [...instructionModuleRegistry[id].files]);
     expect([...spec.filePaths].sort()).toEqual([...expectedFiles].sort());

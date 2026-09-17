@@ -143,7 +143,7 @@ describe('W1-04 L1 semantic evidence (no templates)', () => {
     expect(evidence.turn_state['reported_event_name']).toBe('Baby Shower Catalina');
   });
 
-  it('marks the same support query open for continuation while the summary stays open', () => {
+  it('does not manufacture an open support task from supplied references', () => {
     const extraction = baseExtraction();
     extraction.supportAct = {
       kind: 'provide_detail',
@@ -153,7 +153,7 @@ describe('W1-04 L1 semantic evidence (no templates)', () => {
       eventReference: 'Baby Shower Catalina',
     };
     const evidence = readEvidence(composeInput(createRequest({ extraction })));
-    expect(evidence.turn_state['support_query_open']).toBe(true);
+    expect(evidence.turn_state).not.toHaveProperty('support_query_open');
   });
 
   it('keeps purchase turns without a support act byte-identical (no new support fields)', () => {

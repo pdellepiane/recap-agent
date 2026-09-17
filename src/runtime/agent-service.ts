@@ -7729,7 +7729,7 @@ export class AgentService {
       // before composition instead of taking the acknowledgment-only
       // shortcut. Reuses pending_requests and structured extraction; no
       // keyword matching, no new state machine, no new intent type. A bare
-      // support_query_open flag with no such context still acknowledges
+      // support acknowledgment with no such context still acknowledges
       // below. Only live pending requests resume here: completed, declined
       // and refused work never re-enters through this branch.
       const supportEventReference = supportAct?.kind === 'provide_detail'
@@ -8820,16 +8820,16 @@ export class AgentService {
     if (act.kind === 'defer_submission') {
       return prior.length > 0
         ? currentSummary
-        : 'La persona indicó que enviará la información después; la consulta de soporte sigue abierta.';
+        : 'La persona indicó que enviará la información después.';
     }
     const noteForAct = ((): string => {
       if (act.topic === 'mailbox_capacity' && act.detail === 'mailbox_full') {
-        return 'La persona informó que el buzón de su correo registrado está lleno; la consulta de soporte sigue abierta.';
+        return 'La persona informó que el buzón de su correo registrado está lleno.';
       }
       if (act.topic === 'payment_proof' && act.detail === 'submission_reported') {
         return 'La persona informó que envió un comprobante; su contenido y el estado del pago no han sido verificados.';
       }
-      return 'La persona aportó información a una consulta de soporte que sigue abierta.';
+      return 'La persona aportó información adicional a la conversación.';
     })();
     if (prior.length === 0) return noteForAct;
     if (prior === noteForAct || prior.endsWith(noteForAct)) return prior;

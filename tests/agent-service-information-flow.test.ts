@@ -100,9 +100,9 @@ describe('AgentService first-class information flow', () => {
       summaries.push(response.plan.conversation_summary);
     }
     expect(summaries).toEqual([
-      'La persona informó que el buzón de su correo registrado está lleno; la consulta de soporte sigue abierta.',
-      'La persona informó que el buzón de su correo registrado está lleno; la consulta de soporte sigue abierta.',
-      'La persona informó que el buzón de su correo registrado está lleno; la consulta de soporte sigue abierta.',
+      'La persona informó que el buzón de su correo registrado está lleno.',
+      'La persona informó que el buzón de su correo registrado está lleno.',
+      'La persona informó que el buzón de su correo registrado está lleno.',
     ]);
     expect(knowledge.calls).toBe(0);
     expect(gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.authByPhoneCalls).toBe(0);
@@ -339,7 +339,7 @@ describe('AgentService first-class information flow', () => {
         externalUserId: 'canonical-support-summary-user',
       }), {
         current_node: 'resolver_consultas_informativas',
-        conversation_summary: 'La persona informó que el buzón de su correo registrado está lleno; la consulta de soporte sigue abierta.',
+        conversation_summary: 'La persona informó que el buzón de su correo registrado está lleno.',
       }),
     });
     const service = createService({
