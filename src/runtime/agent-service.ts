@@ -193,6 +193,7 @@ import {
   selectProvenanceBoundCampaignMessages,
   unavailableTurnMessageContext,
   withConversationContinuity,
+  withTurnWaitContext,
   type TurnMessageContext,
 } from './turn-message-context';
 import {
@@ -785,7 +786,13 @@ export class AgentService {
     // thread, the latest successful rendered response still informs
     // answered-vs-pending state. Never overwrites newer backend history.
     const rawWithFallback = this.applyLastOutboundFallback(rawMessageContext, classifierPlan);
-    const messageContext = withConversationContinuity(rawWithFallback, classifierPlan);
+    // Wait-aware reply carryover: the lease-wait fact observed by the turn
+    // runner rides the reply message context as typed evidence. Extraction
+    // builders never read it, so extraction inputs stay byte-identical.
+    const messageContext = withTurnWaitContext(
+      withConversationContinuity(rawWithFallback, classifierPlan),
+      inbound.turnWait ?? null,
+    );
     timingMs.response_classification += Date.now() - messageContextStartedAt;
     if (inbound.image) {
       return await this.handleImageTurn({

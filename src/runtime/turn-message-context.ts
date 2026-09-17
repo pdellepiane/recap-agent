@@ -1,4 +1,5 @@
 import type { NormalizedInboundMessage } from '../core/messages';
+import type { TurnWaitEvidence } from '../core/messages';
 import type { PersistedPlan } from '../core/plan';
 import { normalizeServerTimestamp } from '../core/server-timestamp';
 import type { AgentConversationMessage } from './agent-conversation-gateway';
@@ -256,7 +257,37 @@ export type TurnMessageContext = {
   recentMessages: AgentConversationMessage[];
   entryMessage: AgentConversationMessage | null;
   continuity?: ConversationContinuity;
+  /**
+   * Wait-aware reply fact. Present only when this turn waited on the
+   * conversation lease behind a preceding holder (acquire attempts beyond
+   * the first). Absent on every other turn so extraction inputs, prompt
+   * prefixes and cache keys stay byte-identical. The reply projector reads
+   * it together with the plan last-outbound record; extraction builders
+   * never read it.
+   */
+  turnWait?: TurnWaitEvidence | null;
 };
+
+/**
+ * Attaches the lease-wait fact to the reply message context. Returns the
+ * same reference untouched when the turn did not wait, so non-waited turns
+ * keep identical serialization. Facts only, never reply prose.
+ */
+export function withTurnWaitContext(
+  context: TurnMessageContext,
+  turnWait: TurnWaitEvidence | null | undefined,
+): TurnMessageContext {
+  if (turnWait === null || turnWait === undefined || turnWait.attempts <= 1) {
+    return context;
+  }
+  return {
+    ...context,
+    turnWait: {
+      waitMs: Math.max(0, Math.round(turnWait.waitMs)),
+      attempts: Math.max(0, Math.round(turnWait.attempts)),
+    },
+  };
+}
 
 export function deriveConversationContinuity(args: {
   plan: PersistedPlan;

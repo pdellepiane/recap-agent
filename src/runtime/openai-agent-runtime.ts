@@ -99,6 +99,7 @@ import {
   orderInputSections,
   replyOmitsCapabilityCatalogue,
   replyOmitsOperationalNote,
+  resolveWaitFollowupEvidence,
   selectExtractionModules,
   selectExtractionTools,
   selectReplyModules,
@@ -109,6 +110,7 @@ import {
   type ManifestToolEntry,
   type ModuleSelectionContext,
   type SelectedModule,
+  type WaitFollowupEvidence,
 } from './model-request-projector';
 import {
   instructionModuleRegistry,
@@ -585,6 +587,13 @@ type ReplyTurnEvidence = {
    * turns stay byte-identical.
    */
   customer_context?: CustomerContextProjection | null;
+  /**
+   * Wait-aware reply evidence. Present only when this turn waited on the
+   * conversation lease behind a fresh prior reply (typed wait fact plus
+   * bounded prior reference). Absent otherwise so unrelated turns stay
+   * byte-identical. Facts only, never reply prose.
+   */
+  wait_followup?: WaitFollowupEvidence | null;
 };
 
 /**
@@ -1009,6 +1018,12 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       promptLoader: PromptLoader;
       providerGateway: ProviderGateway;
       capabilityManifest?: RuntimeCapabilityManifest;
+      /**
+       * Wait-aware reply recency bound. Caps how fresh the preceding reply
+       * record must be for the no-repeat evidence plus directive to apply.
+       * Absent means the typed config default (10 minutes).
+       */
+      priorReplyFreshnessMs?: number;
       knowledgeBase?: {
         enabled: boolean;
         vectorStoreId: string | null;
@@ -2225,7 +2240,28 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
   private deriveReplyCompilerContext(
     request: ComposeReplyRequest,
   ): ModuleSelectionContext {
-    return deriveReplyCompilerContext(request);
+    const base = deriveReplyCompilerContext(request);
+    // The wait-followup directive module loads only with the evidence
+    // present, keeping stable prompt prefixes and cache keys otherwise.
+    if (this.waitFollowupEvidenceFor(request) === null) return base;
+    return { ...base, tasks: [...base.tasks, 'wait_followup'] };
+  }
+
+  /**
+   * Wait-aware reply evidence for this turn, or null when the turn did not
+   * wait behind a fresh prior reply. Single derivation shared by module
+   * selection and evidence projection so the directive never loads without
+   * its evidence. Facts only, never reply prose.
+   */
+  private waitFollowupEvidenceFor(
+    request: ComposeReplyRequest,
+  ): WaitFollowupEvidence | null {
+    return resolveWaitFollowupEvidence({
+      turnWait: request.messageContext.turnWait ?? null,
+      lastOutbound: request.plan.last_outbound_context ?? null,
+      nowMs: Date.now(),
+      freshnessMs: this.options.priorReplyFreshnessMs,
+    });
   }
 
   private composeConversationInput(
@@ -2636,6 +2672,9 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     // invitations stay separate evidence (no IDs, so no identity merge);
     // only reason-only unavailable collapses to a profile reference.
     const rsvpProfile = this.resolveRsvpProfileProjection(args.request);
+    // Wait-aware reply evidence shares the single module-selection
+    // derivation, so the directive never loads without its evidence.
+    const waitFollowup = this.waitFollowupEvidenceFor(args.request);
 
     return {
       nodes: {
@@ -2781,6 +2820,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       ...(rsvpProfile.profile !== null && rsvpProfile.profile !== undefined
         ? { customer_context: rsvpProfile.profile }
         : {}),
+      ...(waitFollowup !== null ? { wait_followup: waitFollowup } : {}),
     };
   }
 

@@ -375,6 +375,7 @@ export const instructionModuleIds = [
   'reply_image_context',
   'reply_approval_boundary',
   'reply_support_continuity',
+  'reply_wait_followup',
 ] as const;
 
 export type InstructionModuleId = (typeof instructionModuleIds)[number];
@@ -391,7 +392,8 @@ export type InstructionModuleTask =
   | 'handoff'
   | 'auth'
   | 'image'
-  | 'planning';
+  | 'planning'
+  | 'wait_followup';
 
 export type InstructionModuleMetadata = {
   /** Exact tracked prompt files; empty means evidence-only (facts, no prose). */
@@ -542,5 +544,12 @@ export const instructionModuleRegistry: Record<InstructionModuleId, InstructionM
     owners: ['customer_assistance', 'unknown'],
     tasks: ['purchase', 'venue', 'rsvp', 'faq_policy', 'handoff', 'auth', 'image'],
     consumer: 'agent-service support continuity (pending task + prior answer only; never auth outcomes)',
+  },
+  reply_wait_followup: {
+    files: ['nodes/resolver_consultas_informativas/wait_followup.txt'],
+    stages: ['reply'],
+    owners: ['planning', 'faq', 'customer_assistance', 'unknown'],
+    tasks: ['wait_followup'],
+    consumer: 'openai-agent-runtime composeReply (waited turn behind a fresh prior reply; extend only with new information, never resend)',
   },
 };

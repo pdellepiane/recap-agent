@@ -74,6 +74,12 @@ export type AppConfig = {
     executionReserveMs: number;
     expirySafetyMs: number;
     pollMs: number;
+    /**
+     * Recency bound for wait-aware replies. The no-repeat behavior applies
+     * only when the preceding reply record is at most this fresh; an
+     * identical question after a longer gap answers normally.
+     */
+    priorReplyFreshnessMs: number;
   };
   performance: {
     tableName: string | null;
@@ -144,6 +150,7 @@ const environmentSchema = z.object({
   CONVERSATION_TURN_EXECUTION_RESERVE_MS: z.coerce.number().int().min(0).max(900_000).default(30_000),
   CONVERSATION_TURN_EXPIRY_SAFETY_MS: z.coerce.number().int().min(0).max(900_000).default(5_000),
   CONVERSATION_TURN_POLL_MS: z.coerce.number().int().min(1).max(60_000).default(400),
+  PRIOR_REPLY_FRESHNESS_MS: z.coerce.number().int().min(0).max(3_600_000).default(600_000),
   DEFAULT_INBOUND_CHANNEL: z.string().min(1).default('terminal_whatsapp'),
   PROVIDER_SEARCH_LIMIT: z.coerce.number().int().positive().default(12),
   SEARCH_SUMMARY_WORD_LIMIT: z.coerce.number().int().positive().default(5),
@@ -249,6 +256,7 @@ export function getConfig(): AppConfig {
       executionReserveMs: environment.CONVERSATION_TURN_EXECUTION_RESERVE_MS,
       expirySafetyMs: environment.CONVERSATION_TURN_EXPIRY_SAFETY_MS,
       pollMs: environment.CONVERSATION_TURN_POLL_MS,
+      priorReplyFreshnessMs: environment.PRIOR_REPLY_FRESHNESS_MS,
     },
     performance: {
       tableName: environment.PERF_TABLE_NAME ?? null,

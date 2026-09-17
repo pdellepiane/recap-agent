@@ -23,6 +23,18 @@ export type ConversationTurnEvent = {
   duration_ms: number;
 };
 
+/**
+ * Observed lease acquisition handed to the turn operation. `waitMs` is the
+ * bounded time spent polling before the acquire succeeded; `attempts` counts
+ * acquire calls (1 means an immediate first-attempt acquire, above 1 means
+ * the turn waited behind a preceding holder). Read-only telemetry surfaced
+ * for typed evidence; it never changes acquire/release semantics.
+ */
+export type ConversationTurnAcquisition = {
+  waitMs: number;
+  attempts: number;
+};
+
 export class ConversationTurnBusyError extends Error {
   constructor() {
     super('Conversation turn is busy');
@@ -48,7 +60,13 @@ export type RunWithConversationTurnLeaseArgs<T> = {
   executionReserveMs: number;
   expirySafetyMs: number;
   pollMs: number;
-  operation: () => Promise<T>;
+  /**
+   * Turn work executed while holding the lease. Receives the observed
+   * acquisition (bounded wait milliseconds plus acquire attempts) so callers
+   * can thread the wait fact downstream as typed evidence. Existing zero-arg
+   * operations stay assignable; acquire/release semantics are unchanged.
+   */
+  operation: (acquisition: ConversationTurnAcquisition) => Promise<T>;
   onEvent?: (event: ConversationTurnEvent) => void;
   now?: () => number;
   sleep?: (ms: number) => Promise<void>;
@@ -176,7 +194,13 @@ export async function runWithConversationTurnLease<T>(
         duration_ms: elapsedMs(now, startMs),
       });
       try {
-        return await args.operation();
+        // No extra clock read: the wait fact reuses the timestamp already
+        // observed for this acquire, so polling bounds and tick-counting
+        // callers see no behavior change.
+        return await args.operation({
+          waitMs: Math.max(0, Math.round(afterAcquireMs - startMs)),
+          attempts,
+        });
       } finally {
         await releaseSafely(args, lease, startMs, attempts, now);
       }

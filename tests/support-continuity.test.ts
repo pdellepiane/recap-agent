@@ -9,6 +9,7 @@ import {
   type ConversationHistoryStatus,
 } from '../src/runtime/turn-message-context';
 import { AgentService } from '../src/runtime/agent-service';
+import { OpenAiAgentRuntime } from '../src/runtime/openai-agent-runtime';
 import type { AgentConversationGateway } from '../src/runtime/agent-conversation-gateway';
 import type { AgentRuntime, ComposeReplyRequest, ExtractionResult } from '../src/runtime/contracts';
 import type { ProviderGateway } from '../src/runtime/provider-gateway';
@@ -230,6 +231,8 @@ async function runSupportTurn(options: {
   /** Shared store for multi-turn threads; when provided the seed save is skipped. */
   store?: InMemoryPlanStore;
   messageId?: string;
+  /** Lease-wait fact for this invocation; threaded as typed reply evidence. */
+  turnWait?: { waitMs: number; attempts: number };
   /** Shared OTP counters; when provided the gateway stub records sends/verifies. */
   otp?: { requested: number; verified: number };
 }) {
@@ -327,6 +330,7 @@ async function runSupportTurn(options: {
     messageId: options.messageId ?? `m-${options.externalUserId}`,
     receivedAt: '2026-09-04T15:01:00.000Z',
     ...(options.contactPhone ? { contactPhone: options.contactPhone } : {}),
+    ...(options.turnWait ? { turnWait: options.turnWait } : {}),
   });
   return { result, execute, composeRequests, takeover, store, otp };
 }
@@ -911,5 +915,179 @@ describe('pending credential resume and card topic preservation', () => {
     expect(result.plan.user_auth.status).toBe('none');
     expect(result.plan.information_state.pending_requests).toEqual([]);
     expect(result.plan.information_state.last_completed_request).toMatchObject({ kind: 'faq' });
+  });
+});
+
+describe('exact-incident twin: rapid reconfirmation texts behind the lease', () => {
+  const CONFIRMED_HEAD = 'Tu asistencia al evento de Michelle y Jorge del 10/10/2026 a las 20:15 quedó confirmada';
+  const CONFIRMED_TAIL = 'GERARDO-1010';
+  const FULL_CONFIRMATION = 'Buenas noches Gerardo. Tu asistencia al evento de Michelle y Jorge del 10/10/2026 a las 20:15 quedó confirmada. Te esperamos en la recepción desde las 19:45 con tu documento de identidad para el registro de ingreso. Si vienes con acompañante avísanos por este medio para anotarlo en la lista. Guarda este código de confirmación GERARDO-1010.';
+
+  function specRuntime(): OpenAiAgentRuntime {
+    return new OpenAiAgentRuntime({
+      apiKey: 'test-key',
+      replyModel: 'gpt-test',
+      extractorModel: 'gpt-test',
+      replyProviderLimit: 4,
+      presentationProviderLimit: 5,
+      providerDetailLookupLimit: 3,
+      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
+      providerGateway: {
+        async searchProviders(): Promise<never> {
+          throw new Error('serialization must not call the provider gateway');
+        },
+      } as never,
+    });
+  }
+
+  function readWaitFollowupBlock(input: string): {
+    waited: boolean;
+    wait_ms: number;
+    acquire_attempts: number;
+    prior_reply: { message_id: string; recorded_at: string; summary: string; summary_truncated: boolean };
+  } {
+    const marker = '"wait_followup": {';
+    const start = input.indexOf(marker);
+    if (start === -1) throw new Error('wait_followup evidence missing from serialized input');
+    const open = input.indexOf('{', start);
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    for (let cursor = open; cursor < input.length; cursor += 1) {
+      const ch = input[cursor];
+      if (inString) {
+        if (escaped) {
+          escaped = false;
+        } else if (ch === '\\') {
+          escaped = true;
+        } else if (ch === '"') {
+          inString = false;
+        }
+        continue;
+      }
+      if (ch === '"') {
+        inString = true;
+      } else if (ch === '{') {
+        depth += 1;
+      } else if (ch === '}') {
+        depth -= 1;
+        if (depth === 0) {
+          return JSON.parse(input.slice(open, cursor + 1)) as {
+            waited: boolean;
+            wait_ms: number;
+            acquire_attempts: number;
+            prior_reply: { message_id: string; recorded_at: string; summary: string; summary_truncated: boolean };
+          };
+        }
+      }
+    }
+    throw new Error('wait_followup block not closed');
+  }
+
+  function detailExtraction(): ExtractionResult {
+    return supportExtraction({
+      supportAct: {
+        kind: 'provide_detail',
+        topic: 'unknown',
+        detail: 'unknown',
+        eventReference: 'Michelle y Jorge',
+        personReference: 'Gerardo Cordova',
+      },
+    });
+  }
+
+  it('answers once fully, then short-by-reference on lock-waited follow-ups without repeating confirmation facts', async () => {
+    const runtime = specRuntime();
+    // Turn 1: fresh turn, no wait. The full confirmation is composed once.
+    const first = await runSupportTurn({
+      externalUserId: 'u-gerardo-cordova',
+      text: 'Hola, soy Gerardo Cordova, ¿me confirmas mi asistencia al evento de Michelle y Jorge del 10/10/2026 a las 20:15?',
+      messageId: 'm-gerardo-1',
+      seed: {
+        information_state: {
+          resume_node: 'entrevista',
+          pending_requests: [],
+          selection_candidates: [],
+          last_completed_request: { kind: 'faq', query: 'Confirmación de asistencia al evento de Michelle y Jorge' },
+        },
+      },
+      extraction: detailExtraction(),
+      composedText: FULL_CONFIRMATION,
+    });
+    expect(first.execute).not.toHaveBeenCalled();
+    expect(first.composeRequests).toHaveLength(1);
+    expect(first.composeRequests[0]?.messageContext.turnWait ?? null).toBeNull();
+    expect(first.result.outbound.delivery.action).toBe('send');
+    expect(first.result.outbound.text).toBe(FULL_CONFIRMATION);
+    const firstSpec = await runtime.buildReplyRequestSpec(first.composeRequests[0]);
+    expect(firstSpec.modules.map((module) => module.id)).not.toContain('reply_wait_followup');
+    expect(firstSpec.input).not.toContain('"wait_followup"');
+    // The full answer exists exactly once: the single delivered outbound text.
+    expect(first.result.outbound.text).toContain(CONFIRMED_TAIL);
+
+    // Turn 2: rapid follow-up that waited on the lease behind turn 1.
+    const second = await runSupportTurn({
+      externalUserId: 'u-gerardo-cordova',
+      text: 'Me reconfirmas y me reenvías el enlace de la invitación',
+      messageId: 'm-gerardo-2',
+      seed: {},
+      extraction: detailExtraction(),
+      composedText: 'Gerardo, tu asistencia ya quedó confirmada para el 10/10/2026 a las 20:15; te reenvío el enlace de la invitación por este medio.',
+      store: first.store,
+      turnWait: { waitMs: 1500, attempts: 2 },
+    });
+    expect(second.execute).not.toHaveBeenCalled();
+    expect(second.composeRequests).toHaveLength(1);
+    expect(second.composeRequests[0]?.messageContext.turnWait).toEqual({ waitMs: 1500, attempts: 2 });
+    // Continuity survives the wait: same lane, no invented work.
+    expect(second.composeRequests[0]?.messageContext.continuity?.lane).toBe(
+      first.composeRequests[0]?.messageContext.continuity?.lane,
+    );
+    // Delivery present: a waited turn is never silent.
+    expect(second.result.outbound.delivery.action).toBe('send');
+    expect(second.result.outbound.text?.length ?? 0).toBeGreaterThan(0);
+    const secondSpec = await runtime.buildReplyRequestSpec(second.composeRequests[0]);
+    expect(secondSpec.modules.map((module) => module.id)).toContain('reply_wait_followup');
+    expect(secondSpec.instructions).toContain('## nodes/resolver_consultas_informativas/wait_followup.txt');
+    expect(secondSpec.input).toContain('"wait_followup"');
+    const secondEvidence = readWaitFollowupBlock(secondSpec.input);
+    expect(secondEvidence.waited).toBe(true);
+    expect(secondEvidence.wait_ms).toBe(1500);
+    expect(secondEvidence.acquire_attempts).toBe(2);
+    expect(secondEvidence.prior_reply.message_id).toBe('m-gerardo-1');
+    // Short by reference: bounded summary only, never the repeated facts.
+    expect(secondEvidence.prior_reply.summary).toContain(CONFIRMED_HEAD.slice(0, 60));
+    expect(secondEvidence.prior_reply.summary).not.toContain(CONFIRMED_TAIL);
+    expect(secondEvidence.prior_reply.summary.length).toBeLessThanOrEqual(280);
+    // The composed evidence set adds no second copy of the confirmation facts.
+    expect(secondSpec.input.split(CONFIRMED_TAIL).length - 1).toBe(1);
+
+    // Turn 3: third rapid text, waited again behind the sent replies.
+    const third = await runSupportTurn({
+      externalUserId: 'u-gerardo-cordova',
+      text: 'Ya le di clic al enlace, ¿quedó registrado mi acceso?',
+      messageId: 'm-gerardo-3',
+      seed: {},
+      extraction: detailExtraction(),
+      composedText: 'Sí Gerardo, tu clic quedó registrado y tu asistencia sigue confirmada.',
+      store: second.store,
+      turnWait: { waitMs: 2200, attempts: 3 },
+    });
+    expect(third.execute).not.toHaveBeenCalled();
+    expect(third.composeRequests).toHaveLength(1);
+    expect(third.composeRequests[0]?.messageContext.turnWait).toEqual({ waitMs: 2200, attempts: 3 });
+    expect(third.result.outbound.delivery.action).toBe('send');
+    expect(third.result.outbound.text?.length ?? 0).toBeGreaterThan(0);
+    const thirdSpec = await runtime.buildReplyRequestSpec(third.composeRequests[0]);
+    expect(thirdSpec.modules.map((module) => module.id)).toContain('reply_wait_followup');
+    const thirdEvidence = readWaitFollowupBlock(thirdSpec.input);
+    expect(thirdEvidence.waited).toBe(true);
+    expect(thirdEvidence.wait_ms).toBe(2200);
+    expect(thirdEvidence.acquire_attempts).toBe(3);
+    expect(thirdEvidence.prior_reply.message_id).toBe('m-gerardo-2');
+    expect(thirdEvidence.prior_reply.summary).toContain('quedó confirmada');
+    expect(thirdEvidence.prior_reply.summary).not.toContain(CONFIRMED_TAIL);    // Turn 1 confirmation facts are fully absent here: history carries only
+    // the latest record and the new evidence adds a bounded reference.
+    expect(thirdSpec.input.split(CONFIRMED_TAIL).length - 1).toBe(0);
   });
 });

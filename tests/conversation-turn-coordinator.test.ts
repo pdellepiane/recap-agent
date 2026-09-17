@@ -427,6 +427,63 @@ describe('conversation turn coordination', () => {
     // The failed holder did not wedge the lock: a later holder acquires.
     expect(await inner.acquire(lease('next'), 1_001)).toBe(true);
   });
+
+  it('exposes an immediate acquisition (attempts 1, no wait) to the operation', async () => {
+    const coordinator = new InMemoryConversationTurnCoordinator();
+    const seen: Array<{ waitMs: number; attempts: number }> = [];
+    await runWithConversationTurnLease({
+      coordinator,
+      identity,
+      hardDeadlineMs: 10_000,
+      waitMs: 100,
+      executionReserveMs: 100,
+      expirySafetyMs: 1_000,
+      pollMs: 10,
+      operation: async (acquisition) => {
+        seen.push(acquisition);
+        return 'ok';
+      },
+      now: () => 1_000,
+      ownerId: 'immediate',
+    });
+    expect(seen).toEqual([{ waitMs: 0, attempts: 1 }]);
+  });
+
+  it('exposes the waited acquisition (attempts beyond 1) without changing polling', async () => {
+    const coordinator = new InMemoryConversationTurnCoordinator();
+    await coordinator.acquire(lease('holder', 20_000), 1_000);
+    let clock = 1_000;
+    let polls = 0;
+    const seen: Array<{ waitMs: number; attempts: number }> = [];
+    const result = await runWithConversationTurnLease({
+      coordinator,
+      identity,
+      hardDeadlineMs: 10_000,
+      waitMs: 100,
+      executionReserveMs: 100,
+      expirySafetyMs: 1_000,
+      pollMs: 10,
+      operation: async (acquisition) => {
+        seen.push(acquisition);
+        return 'waited';
+      },
+      now: () => clock,
+      random: () => 1,
+      sleep: async (ms) => {
+        clock += ms;
+        polls += 1;
+        if (polls === 2) {
+          await coordinator.release(lease('holder', 20_000));
+        }
+      },
+      ownerId: 'waiter',
+    });
+    expect(result).toBe('waited');
+    expect(polls).toBe(2);
+    expect(seen).toHaveLength(1);
+    expect(seen[0]?.attempts).toBe(3);
+    expect(seen[0]?.waitMs).toBeGreaterThan(0);
+  });
 });
 
 describe('Dynamo conversation turn coordinator', () => {

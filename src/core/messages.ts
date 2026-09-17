@@ -23,6 +23,18 @@ export type InboundMedia = {
   fileName: string | null;
 };
 
+/**
+ * Lease-wait fact observed while acquiring the conversation turn. Carried as
+ * internal execution context only (never persisted, never part of the intake
+ * contract): the handler threads it from the turn runner into the service so
+ * reply composition can distinguish a turn that waited behind a preceding
+ * reply from a fresh turn. Typed numbers only, never prose.
+ */
+export type TurnWaitEvidence = {
+  waitMs: number;
+  attempts: number;
+};
+
 export type NormalizedInboundMessage = {
   /** Ephemeral validated content: never persist or log this field. */
   image?: InboundImage;
@@ -56,6 +68,13 @@ export type NormalizedInboundMessage = {
    * boundaries instead of trusting a stale snapshot.
    */
   validateTurnLease?: (() => Promise<boolean>) | null;
+  /**
+   * Internal execution context (wait-aware reply). Lease-wait fact for this
+   * invocation, present only when the turn waited behind a preceding holder
+   * (acquire attempts beyond the first). Absent otherwise so unrelated turns
+   * stay byte-identical. Never changes the external inbound contract.
+   */
+  turnWait?: TurnWaitEvidence | null;
 };
 
 export type NormalizedOutboundMessage = {

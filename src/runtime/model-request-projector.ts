@@ -36,7 +36,8 @@ export type CompilerTask =
   | 'handoff'
   | 'auth'
   | 'image'
-  | 'planning';
+  | 'planning'
+  | 'wait_followup';
 
 export type ModuleSelectionContext = {
   readonly stage: CompilerStage;
@@ -345,6 +346,11 @@ export function selectReplyModules(
       selected('reply_handoff_outcome', 'actual handoff result for the requested task', ['handoffOutcome', 'capabilityDecision']),
     );
   }
+  if (has('wait_followup')) {
+    candidates.push(
+      selected('reply_wait_followup', 'waited turn behind a fresh prior reply; extend only with new information', ['messageContext.turnWait', 'plan.last_outbound_context']),
+    );
+  }
   if (
     has('purchase') || has('venue') || has('rsvp') || has('handoff') ||
     context.owner === 'customer_assistance'
@@ -527,6 +533,7 @@ export {
   projectReply,
   projectSupportHandoffEvidence,
   resolveComposedReply,
+  resolveWaitFollowupEvidence,
   type ReplyContinuitySummary,
   type ReplyDisposition,
   type ReplyNarrativeClaim,
@@ -535,4 +542,9 @@ export {
   type ResolvedComposedReply,
   type SupportHandoffEvidence,
   type SupportHandoffReplyOutcome,
+  type WaitFollowupEvidence,
+} from './reply-evidence-projector';
+export {
+  DEFAULT_WAIT_FOLLOWUP_FRESHNESS_MS,
+  WAIT_FOLLOWUP_PRIOR_SUMMARY_MAX_CHARS,
 } from './reply-evidence-projector';

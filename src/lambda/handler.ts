@@ -41,6 +41,7 @@ import {
   ConversationTurnBusyError,
   ConversationTurnUnavailableError,
   runWithConversationTurnLease,
+  type ConversationTurnAcquisition,
   type ConversationTurnEvent,
 } from '../storage/conversation-turn-coordinator';
 import { DynamoConversationTurnCoordinator } from '../storage/dynamo-conversation-turn-coordinator';
@@ -404,7 +405,7 @@ async function handleRequest(
         channel,
         externalUserId: body.user_id,
       },
-      operation: async (lease) => {
+      operation: async (lease, acquisition) => {
         const hasFixture = Boolean(body.backendFixture?.scenario);
         const runtime = hasFixture
           ? await getFixtureRuntime({
@@ -440,6 +441,10 @@ async function handleRequest(
           // inbound contract is unchanged (message_id stays optional).
           nativeMessageId: body.message_id ? true : false,
           turnLease: { ownerId: lease.ownerId, expiresAtMs: lease.expiresAtMs },
+          // Wait-aware reply: the observed lease acquisition travels as
+          // typed internal context only (null unless the turn waited behind
+          // a preceding holder). The external inbound contract is unchanged.
+          turnWait: toTurnWaitEvidence(acquisition),
           validateTurnLease: () => validateAcquiredLease(
             getConversationTurnCoordinator(),
             channel,
@@ -653,6 +658,7 @@ async function getSharedRuntimeDeps(): Promise<SharedRuntimeDeps> {
         providerGateway,
         features: config.features,
         capabilityManifest,
+        priorReplyFreshnessMs: config.conversationTurn.priorReplyFreshnessMs,
       });
       const responseClassifier = new OpenAiMessageResponseClassifier({
         apiKey,
@@ -901,7 +907,7 @@ async function runConversationTurn<T>(args: {
     channel: string;
     externalUserId: string;
   };
-  operation: (lease: { ownerId: string; expiresAtMs: number }) => Promise<T>;
+  operation: (lease: { ownerId: string; expiresAtMs: number }, acquisition: ConversationTurnAcquisition) => Promise<T>;
   onEvent?: (event: ConversationTurnEvent) => void;
 }): Promise<T> {
   // Packet B: the lease identity is generated here so it can be threaded
@@ -918,7 +924,7 @@ async function runConversationTurn<T>(args: {
     expirySafetyMs: config.conversationTurn.expirySafetyMs,
     pollMs: config.conversationTurn.pollMs,
     ownerId,
-    operation: () => args.operation({ ownerId, expiresAtMs }),
+    operation: (acquisition) => args.operation({ ownerId, expiresAtMs }, acquisition),
     onEvent: (event: ConversationTurnEvent) => {
       logConversationLeaseEvent(args.requestId, event);
       args.onEvent?.(event);
@@ -977,6 +983,25 @@ function readLeaseAcquisitionMetrics(event: ConversationTurnEvent): {
   return {
     waitMs: Math.max(0, Math.round(event.wait_ms)),
     attempts: Math.max(0, Math.round(event.attempts)),
+  };
+}
+
+/**
+ * Wait-aware reply threading. Returns the typed wait fact only when the
+ * turn actually waited behind a preceding holder (more than one acquire
+ * attempt); adapter 503-retries re-enter as fresh requests with a single
+ * attempt and carry no wait signal. Null otherwise so unrelated turns stay
+ * byte-identical.
+ */
+function toTurnWaitEvidence(
+  acquisition: ConversationTurnAcquisition,
+): { waitMs: number; attempts: number } | null {
+  if (!Number.isFinite(acquisition.attempts) || acquisition.attempts <= 1) {
+    return null;
+  }
+  return {
+    waitMs: Math.max(0, Math.round(acquisition.waitMs)),
+    attempts: Math.max(0, Math.round(acquisition.attempts)),
   };
 }
 

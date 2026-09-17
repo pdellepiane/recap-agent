@@ -1,6 +1,8 @@
 import type { AgentGatewayResult } from './agent-conversation-gateway';
 import type { HandoffOutcome } from './human-help-policy';
 import type { TurnCapabilityOutcome } from './turn-capability-policy';
+import type { TurnWaitEvidence } from '../core/messages';
+import type { LastOutboundContext } from '../core/plan';
 
 /**
  * L1 owner of reply evidence projection.
@@ -224,5 +226,88 @@ export function projectSupportHandoffEvidence(args: {
     receiptPresent: false,
     requiresReplyModel: true,
     operationalNote: `Local human escalation soft-pause only: ${args.result.reason}.`,
+  };
+}
+
+/**
+ * Wait-aware reply recency default (10 minutes). Mirrors the typed
+ * conversationTurn.priorReplyFreshnessMs config default so pure helpers and
+ * tests without a loaded config resolve the same bound.
+ */
+export const DEFAULT_WAIT_FOLLOWUP_FRESHNESS_MS = 600_000;
+
+/**
+ * Bound for the prior-reply reference summary. The wait evidence carries a
+ * short reference excerpt only, never the full prior text, so the composed
+ * evidence set holds no repeated prior facts for the model to echo.
+ */
+export const WAIT_FOLLOWUP_PRIOR_SUMMARY_MAX_CHARS = 280;
+
+export type WaitFollowupEvidence = {
+  readonly waited: true;
+  readonly wait_ms: number;
+  readonly acquire_attempts: number;
+  readonly prior_reply: {
+    readonly message_id: string;
+    readonly recorded_at: string;
+    readonly summary: string;
+    readonly summary_truncated: boolean;
+  };
+};
+
+/**
+ * Projects the wait-aware reply evidence for a turn that waited on the
+ * conversation lease behind a preceding reply. Returns null on every other
+ * turn (no wait fact, stale prior reply beyond the recency bound, missing
+ * record) so unrelated turns stay byte-identical. Facts only, never reply
+ * prose: the prior reply travels as identity plus a bounded reference
+ * summary, never its full text. No keyword matching, no phrase blacklist.
+ */
+export function resolveWaitFollowupEvidence(args: {
+  readonly turnWait: TurnWaitEvidence | null | undefined;
+  readonly lastOutbound: LastOutboundContext | null | undefined;
+  readonly nowMs: number;
+  readonly freshnessMs?: number;
+}): WaitFollowupEvidence | null {
+  const turnWait = args.turnWait ?? null;
+  const lastOutbound = args.lastOutbound ?? null;
+  if (turnWait === null || lastOutbound === null) return null;
+  if (!Number.isFinite(turnWait.attempts) || turnWait.attempts <= 1) return null;
+  if (!Number.isFinite(turnWait.waitMs) || turnWait.waitMs < 0) return null;
+  if (!Number.isFinite(args.nowMs)) return null;
+  const freshnessMs = args.freshnessMs ?? DEFAULT_WAIT_FOLLOWUP_FRESHNESS_MS;
+  if (!Number.isFinite(freshnessMs) || freshnessMs < 0) return null;
+  const recordedMs = Date.parse(lastOutbound.recorded_at);
+  if (!Number.isFinite(recordedMs)) return null;
+  // A future-dated record (clock skew) still counts as fresh; only a record
+  // older than the bound answers normally again.
+  if (args.nowMs - recordedMs > freshnessMs) return null;
+  const summary = summarizePriorReplyText(lastOutbound.text);
+  if (summary === null) return null;
+  return {
+    waited: true,
+    wait_ms: Math.max(0, Math.round(turnWait.waitMs)),
+    acquire_attempts: Math.max(0, Math.round(turnWait.attempts)),
+    prior_reply: {
+      message_id: lastOutbound.message_id,
+      recorded_at: lastOutbound.recorded_at,
+      summary: summary.text,
+      summary_truncated: summary.truncated,
+    },
+  };
+}
+
+function summarizePriorReplyText(
+  text: string,
+): { text: string; truncated: boolean } | null {
+  const trimmed = text.trim();
+  if (trimmed.length === 0) return null;
+  const chars = Array.from(trimmed);
+  if (chars.length <= WAIT_FOLLOWUP_PRIOR_SUMMARY_MAX_CHARS) {
+    return { text: trimmed, truncated: false };
+  }
+  return {
+    text: chars.slice(0, WAIT_FOLLOWUP_PRIOR_SUMMARY_MAX_CHARS).join(''),
+    truncated: true,
   };
 }

@@ -23,6 +23,7 @@ import type {
   AgentPhonePurchaseLookupResult,
 } from '../src/runtime/agent-conversation-gateway';
 import { PromptLoader } from '../src/runtime/prompt-loader';
+import { WAIT_FOLLOWUP_PRIOR_SUMMARY_MAX_CHARS } from '../src/runtime/reply-evidence-projector';
 import { localTurnMessageContext } from '../src/runtime/turn-message-context';
 import { instructionModuleRegistry } from '../src/runtime/prompt-manifest';
 import {
@@ -1813,5 +1814,186 @@ describe('action outcomes stay distinct in serialized reply input', () => {
     // No venue facts exist, so none may be narrated into the reply input.
     expect(spec.input).not.toContain('Hacienda Recoveco');
     expect(spec.input).not.toContain('Avenida Manuel Valle');
+  });
+});
+
+function readWaitFollowupBlock(input: string): { summary: string } {
+  const marker = '"wait_followup": {';
+  const start = input.indexOf(marker);
+  if (start === -1) throw new Error('wait_followup evidence missing from serialized input');
+  const open = input.indexOf('{', start);
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let cursor = open; cursor < input.length; cursor += 1) {
+    const ch = input[cursor];
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (ch === '\\') {
+        escaped = true;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+    } else if (ch === '{') {
+      depth += 1;
+    } else if (ch === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        const block = JSON.parse(input.slice(open, cursor + 1)) as {
+          prior_reply: { summary: string };
+        };
+        return { summary: block.prior_reply.summary };
+      }
+    }
+  }
+  throw new Error('wait_followup block not closed');
+}
+
+describe('actual reply request wait-aware follow-up', () => {
+  const PRIOR_HEAD = 'Confirmación enviada: tu consulta quedó registrada con folio único inicial ';
+  const PRIOR_TAIL = ' cierre distintivo final de la respuesta anterior que no debe repetirse';
+
+  function priorText(): string {
+    return `${PRIOR_HEAD}${'contenido intermedio de relleno '.repeat(40)}${PRIOR_TAIL}`;
+  }
+
+  function planWithPriorReply(recordedAt: string): PersistedPlan {
+    return mergePlan(
+      createEmptyPlan({ planId: 'wait-plan', channel: 'whatsapp', externalUserId: 'wait-user' }),
+      {
+        current_node: 'resolver_consultas_informativas',
+        last_outbound_context: {
+          message_id: 'prior-msg-1',
+          text: priorText(),
+          text_truncated: false,
+          recorded_at: recordedAt,
+          delivery_evidence: 'constructed',
+        },
+      },
+    ) as PersistedPlan;
+  }
+
+  function waitedContext() {
+    return {
+      ...localTurnMessageContext('not_configured'),
+      turnWait: { waitMs: 1200, attempts: 3 },
+    };
+  }
+
+  function freshRecordedAt(): string {
+    return new Date().toISOString();
+  }
+
+  function staleRecordedAt(): string {
+    return new Date(Date.now() - 60 * 60 * 1_000).toISOString();
+  }
+
+  it('carries the wait evidence plus the conditional directive on a waited turn', async () => {
+    const runtime = testRuntime();
+    const plan = planWithPriorReply(freshRecordedAt());
+    const waited = await runtime.buildReplyRequestSpec(
+      replyRequest(plan, { messageContext: waitedContext() }),
+    );
+    const ids = waited.modules.map((module) => module.id);
+    expect(ids).toContain('reply_wait_followup');
+    expect(waited.filePaths).toContain('nodes/resolver_consultas_informativas/wait_followup.txt');
+    expect(waited.instructions).toContain('## nodes/resolver_consultas_informativas/wait_followup.txt');
+    expect(waited.input).toContain('"wait_followup"');
+    expect(waited.input).toContain('"wait_ms": 1200');
+    expect(waited.input).toContain('"acquire_attempts": 3');
+    expect(waited.input).toContain('prior-msg-1');
+    // Execution scope is unchanged: the waited turn exposes no new tools.
+    const baseline = await runtime.buildReplyRequestSpec(replyRequest(plan));
+    expect(waited.scopedTools).toEqual(baseline.scopedTools);
+    expect(waited.manifest.promptIdentity).not.toBe(baseline.manifest.promptIdentity);
+  });
+
+  it('keeps no-wait turns byte-identical with no directive loaded', async () => {
+    const runtime = testRuntime();
+    const plan = planWithPriorReply(freshRecordedAt());
+    const first = await runtime.buildReplyRequestSpec(replyRequest(plan));
+    const second = await runtime.buildReplyRequestSpec(replyRequest(plan));
+    expect(first.input).toBe(second.input);
+    expect(first.instructions).toBe(second.instructions);
+    expect(first.filePaths).toEqual(second.filePaths);
+    expect(first.modules.map((module) => module.id)).not.toContain('reply_wait_followup');
+    expect(first.instructions).not.toContain('wait_followup');
+    expect(first.input).not.toContain('"wait_followup"');
+  });
+
+  it('answers normally on a stale prior reply with no suppression signal', async () => {
+    const runtime = testRuntime();
+    const plan = planWithPriorReply(staleRecordedAt());
+    const waited = await runtime.buildReplyRequestSpec(
+      replyRequest(plan, { messageContext: waitedContext() }),
+    );
+    const baseline = await runtime.buildReplyRequestSpec(replyRequest(plan));
+    expect(waited.modules.map((module) => module.id)).not.toContain('reply_wait_followup');
+    // Stale prior: the serialized model input matches the normal answer path.
+    expect(waited.input).toBe(baseline.input);
+    expect(waited.instructions).toBe(baseline.instructions);
+    expect(waited.input).not.toContain('"wait_followup"');
+  });
+
+  it('carries no repeated prior facts beyond the bounded reference summary', async () => {
+    const runtime = testRuntime();
+    const plan = planWithPriorReply(freshRecordedAt());
+    const waited = await runtime.buildReplyRequestSpec(
+      replyRequest(plan, { messageContext: waitedContext() }),
+    );
+    // The bounded reference summary travels; the full prior text never does.
+    expect(waited.input).toContain(PRIOR_HEAD);
+    expect(waited.input).not.toContain(PRIOR_TAIL);
+    const block = readWaitFollowupBlock(waited.input);
+    expect(block.summary.length).toBeLessThanOrEqual(WAIT_FOLLOWUP_PRIOR_SUMMARY_MAX_CHARS);
+    expect(block.summary).toContain(PRIOR_HEAD.slice(0, 20));
+  });
+
+  it('keeps a substantive new question in the model input next to the directive', async () => {
+    const runtime = testRuntime();
+    const plan = planWithPriorReply(freshRecordedAt());
+    const question = '¿Cuál es el horario de atención para recoger mi pedido?';
+    const waited = await runtime.buildReplyRequestSpec(
+      replyRequest(plan, { messageContext: waitedContext(), userMessage: question }),
+    );
+    // The new question is delivered to the model (never dropped) together
+    // with the wait evidence; the short-by-reference form stays model-owned.
+    expect(waited.input).toContain(question);
+    expect(waited.input).toContain('"wait_followup"');
+    expect(waited.modules.map((module) => module.id)).toContain('reply_wait_followup');
+  });
+
+  it('keeps extraction inputs byte-identical on waited turns', async () => {
+    const runtime = testRuntime();
+    const plan = planWithPriorReply(freshRecordedAt());
+    const waited = await runtime.buildExtractionRequestSpec({
+      userMessage: '¿Me confirmas?',
+      plan,
+      messageContext: waitedContext(),
+    });
+    const baseline = await runtime.buildExtractionRequestSpec(
+      extractRequest('¿Me confirmas?', plan),
+    );
+    expect(waited.input).toBe(baseline.input);
+    expect(waited.instructions).toBe(baseline.instructions);
+    expect(waited.filePaths).toEqual(baseline.filePaths);
+  });
+
+  it('loads the directive as guidance only, never as a canned reply', async () => {
+    const fs = await import('node:fs/promises');
+    const directive = await fs.readFile(
+      path.resolve(process.cwd(), 'prompts/nodes/resolver_consultas_informativas/wait_followup.txt'),
+      'utf8',
+    );
+    expect(directive).toContain('No repitas el contenido ya enviado');
+    expect(directive).toContain('wait_followup');
+    expect(directive).toContain('nunca dejes el turno sin respuesta');
+    // No fixed ready-to-send sentence: no fully-quoted reply line anywhere.
+    expect(directive).not.toMatch(/^"[^"]+"$/mu);
   });
 });
