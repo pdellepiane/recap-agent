@@ -4516,6 +4516,8 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       const requestedAspects = purchaseRequests.flatMap(
         (informationRequest) => informationRequest.aspects,
       );
+      // The projector's concrete object shape is intentionally treated as evidence data here.
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
       const full = projectCompletedPurchaseForModel(result, {
         requestedAspects,
         referenceAuthorized: result.accessMethod === 'authenticated_account',
@@ -4664,7 +4666,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
   ): unknown {
     if (result.status === 'failed' && result.failureKind === 'not_found') {
       // Scoped absence is evidence, not an escalation or a prewritten reply.
-      const { message: _message, ...facts } = result;
+      const { message: _message, ...facts } = result; // eslint-disable-line @typescript-eslint/no-unused-vars
       return this.stripRawFields(facts);
     }
     if (result.status === 'completed' && result.kind === 'faq') {

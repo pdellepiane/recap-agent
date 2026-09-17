@@ -137,8 +137,9 @@ describe('packet E1 profile-inference expectation audit', () => {
       const boundInput = live?.inputs[truth.boundInputTurn];
       const image = boundInput?.image;
       const imageData = image !== undefined && image !== null && 'data' in image ? image.data : null;
-      expect(typeof imageData === 'string' && (imageData as string).length > 0).toBe(true);
-      const digest = crypto.createHash('sha256').update(imageData as string, 'utf8').digest('hex');
+      expect(typeof imageData === 'string' && imageData.length > 0).toBe(true);
+      if (typeof imageData !== 'string') throw new Error(`missing image data for ${id}`);
+      const digest = crypto.createHash('sha256').update(imageData, 'utf8').digest('hex');
       expect(digest).toBe(truth.imageDigest);
 
       const section = resolveJudgeOnlyImageGroundTruth(live);

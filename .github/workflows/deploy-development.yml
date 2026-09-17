@@ -1,0 +1,103 @@
+name: Deploy development
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [develop]
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-aws
+  cancel-in-progress: false
+
+jobs:
+  ci-gate:
+    name: CI gate
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  deploy-dev:
+    name: Build, package, and deploy dev stack
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: ci-gate
+    environment: development
+    env:
+      DEPLOYMENT_ENV: development
+      AWS_REGION: us-east-1
+      STACK_NAME: recap-agent-runtime-dev
+    steps:
+      - name: Require the develop branch
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF}" = "refs/heads/develop" || {
+            echo "Development deployment must run from refs/heads/develop, got ${GITHUB_REF}." >&2
+            exit 1
+          }
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6
+        with:
+          role-to-assume: ${{ vars.AWS_OIDC_ROLE_ARN }}
+          role-session-name: recap-dev-${{ github.run_id }}
+          aws-region: us-east-1
+          allowed-account-ids: '684516060775'
+      - name: Bridge repository-required AWS profile
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.aws
+          printf '[profile se-dev]\nregion = us-east-1\n' >> ~/.aws/config
+          echo "AWS_PROFILE=se-dev" >> "$GITHUB_ENV"
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Build once
+        run: npm run build
+      - name: Package exact artifact
+        id: package
+        run: |
+          set -euo pipefail
+          rm -rf .artifacts/deployment
+          mkdir -p .artifacts/deployment
+          (cd dist && zip -qr ../.artifacts/deployment/lambda.zip .)
+          sha="$(sha256sum .artifacts/deployment/lambda.zip | cut -d' ' -f1)"
+          artifact_path=".artifacts/deployment/lambda-${sha}.zip"
+          mv .artifacts/deployment/lambda.zip "${artifact_path}"
+          echo "sha=${sha}" >> "$GITHUB_OUTPUT"
+          echo "path=${artifact_path}" >> "$GITHUB_OUTPUT"
+          echo "Artifact SHA-256: ${sha}"
+      - name: Deploy exact artifact to development
+        env:
+          ARTIFACT_BUCKET: ${{ vars.ARTIFACT_BUCKET }}
+          CLOUDFORMATION_EXECUTION_ROLE_ARN: ${{ vars.CLOUDFORMATION_EXECUTION_ROLE_ARN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          SE_API_KEY: ${{ secrets.SE_API_KEY }}
+          DEV_CHANNEL_API_KEY: ${{ secrets.DEV_CHANNEL_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "${ARTIFACT_BUCKET:?development ARTIFACT_BUCKET variable must be set}"
+          test -n "${CLOUDFORMATION_EXECUTION_ROLE_ARN:?development CLOUDFORMATION_EXECUTION_ROLE_ARN variable must be set}"
+          test -n "${OPENAI_API_KEY:?development OPENAI_API_KEY secret must be set}"
+          test -n "${SE_API_KEY:?development SE_API_KEY secret must be set}"
+          test -n "${DEV_CHANNEL_API_KEY:?development DEV_CHANNEL_API_KEY secret must be set}"
+          DEPLOY_ARTIFACT_PATH="${{ steps.package.outputs.path }}" \
+          DEPLOY_ARTIFACT_SHA256="${{ steps.package.outputs.sha }}" \
+          DEPLOY_ARTIFACT_S3_KEY="lambda/${{ steps.package.outputs.sha }}.zip" \
+            npm run deploy
+      - name: Record deployed artifact
+        run: |
+          {
+            echo "### Development deployment"
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo "- Artifact: \`lambda/${{ steps.package.outputs.sha }}.zip\`"
+            echo "- Stack: \`recap-agent-runtime-dev\`"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -101,12 +101,16 @@ class FakeDocumentClient {
       const key = `${item.pk as string}\n${item.sk as string}`;
       const condition = command.input.ConditionExpression as string | undefined;
       if (condition?.includes('attribute_not_exists') && this.items.has(key)) {
-        throw { name: 'ConditionalCheckFailedException' };
+        throw Object.assign(new Error('conditional check failed'), {
+          name: 'ConditionalCheckFailedException',
+        });
       }
       if (condition?.includes('operationHash')) {
         const values = command.input.ExpressionAttributeValues as Record<string, unknown>;
         if (this.items.get(key)?.['operationHash'] !== values[':operation_hash']) {
-          throw { name: 'ConditionalCheckFailedException' };
+          throw Object.assign(new Error('conditional check failed'), {
+            name: 'ConditionalCheckFailedException',
+          });
         }
       }
       this.items.set(key, item);

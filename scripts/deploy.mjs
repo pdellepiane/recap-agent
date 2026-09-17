@@ -24,6 +24,9 @@ const channelApiKeyName = deploymentEnvironment.channelApiKeyEnvName;
 const isProductionPromotion = deploymentEnvironment.environment === 'production';
 const suppliedArtifactPath = optionalTrimmed(process.env.DEPLOY_ARTIFACT_PATH);
 const expectedArtifactSha256 = optionalTrimmed(process.env.DEPLOY_ARTIFACT_SHA256);
+const cloudFormationExecutionRoleArn = optionalTrimmed(
+  process.env.CLOUDFORMATION_EXECUTION_ROLE_ARN,
+);
 
 if (isProductionPromotion && (!suppliedArtifactPath || !expectedArtifactSha256)) {
   throw new Error(
@@ -88,7 +91,9 @@ if (expectedArtifactSha256 && artifactSha256 !== expectedArtifactSha256.toLowerC
 
 const artifactKey = optionalTrimmed(process.env.DEPLOY_ARTIFACT_S3_KEY) ?? `lambda/${artifactSha256}.zip`;
 console.log(`Artifact SHA-256: ${artifactSha256}`);
-ensureBucketExists(artifactBucket, awsEnv);
+const currentStack = isProductionPromotion
+  ? readCurrentStack(stackName, awsEnv)
+  : (readOptionalCurrentStack(stackName, awsEnv) ?? {});
 let secretArn;
 let seApiSecretArn;
 let channelApiSecretArn;
@@ -96,7 +101,6 @@ let targetFunctionName = functionName;
 if (isProductionPromotion) {
   // Promotion must preserve the live stack's credential bindings. In
   // particular, local .env values are never copied into production.
-  const currentStack = readCurrentStack(stackName, awsEnv);
   const currentEnvironment = optionalTrimmed(currentStack.DeploymentEnvironment);
   if (currentEnvironment && currentEnvironment !== 'production') {
     throw new Error(
@@ -130,6 +134,7 @@ if (isProductionPromotion) {
     );
   }
 } else {
+  ensureBucketExists(artifactBucket, awsEnv);
   syncSecret(secretName, env.OPENAI_API_KEY, awsEnv);
   secretArn = describeSecretArn(secretName, awsEnv);
   syncSecret(seApiSecretName, env.SE_API_KEY, awsEnv);
@@ -137,7 +142,11 @@ if (isProductionPromotion) {
   syncSecret(channelApiSecretName, env[channelApiKeyName], awsEnv);
   channelApiSecretArn = describeSecretArn(channelApiSecretName, awsEnv);
 }
-run('aws', ['s3', 'cp', artifactZip, `s3://${artifactBucket}/${artifactKey}`], { env: awsEnv });
+if (!isProductionPromotion) {
+  run('aws', ['s3', 'cp', artifactZip, `s3://${artifactBucket}/${artifactKey}`], {
+    env: awsEnv,
+  });
+}
 const parameterOverrides = [
   `DeploymentEnvironment=${environment}`,
   `FunctionName=${targetFunctionName}`,
@@ -149,39 +158,37 @@ const parameterOverrides = [
 ];
 if (!isProductionPromotion) {
   parameterOverrides.push(
-    `OpenAIModel=${process.env.OPENAI_MODEL ?? env.OPENAI_MODEL ?? 'gpt-5.6-luna'}`,
-    `OpenAIExtractorModel=${process.env.OPENAI_EXTRACTOR_MODEL ?? env.OPENAI_EXTRACTOR_MODEL ?? 'gpt-5.6-luna'}`,
-    `OpenAIResponseClassifierModel=${process.env.OPENAI_RESPONSE_CLASSIFIER_MODEL ?? env.OPENAI_RESPONSE_CLASSIFIER_MODEL ?? 'gpt-5.6-luna'}`,
-    `ResponseClassifierMode=${process.env.RESPONSE_CLASSIFIER_MODE ?? env.RESPONSE_CLASSIFIER_MODE ?? 'enforce'}`,
-    `PerfRetentionDays=${process.env.PERF_RETENTION_DAYS ?? env.PERF_RETENTION_DAYS ?? '30'}`,
-    `LogRetentionDays=${process.env.LOG_RETENTION_DAYS ?? env.LOG_RETENTION_DAYS ?? '7'}`,
-    `ProviderSearchMode=${process.env.PROVIDER_SEARCH_MODE ?? env.PROVIDER_SEARCH_MODE ?? 'hybrid'}`,
-    `ProviderVectorStoreName=${process.env.PROVIDER_VECTOR_STORE_NAME ?? env.PROVIDER_VECTOR_STORE_NAME ?? 'Sin Envolturas Provider Search'}`,
+    `OpenAIModel=${getDeploymentSetting('OPENAI_MODEL', 'OpenAIModel', 'gpt-5.6-luna')}`,
+    `OpenAIExtractorModel=${getDeploymentSetting('OPENAI_EXTRACTOR_MODEL', 'OpenAIExtractorModel', 'gpt-5.6-luna')}`,
+    `OpenAIResponseClassifierModel=${getDeploymentSetting('OPENAI_RESPONSE_CLASSIFIER_MODEL', 'OpenAIResponseClassifierModel', 'gpt-5.6-luna')}`,
+    `ResponseClassifierMode=${getDeploymentSetting('RESPONSE_CLASSIFIER_MODE', 'ResponseClassifierMode', 'enforce')}`,
+    `PerfRetentionDays=${getDeploymentSetting('PERF_RETENTION_DAYS', 'PerfRetentionDays', '30')}`,
+    `LogRetentionDays=${getDeploymentSetting('LOG_RETENTION_DAYS', 'LogRetentionDays', '7')}`,
+    `ProviderSearchMode=${getDeploymentSetting('PROVIDER_SEARCH_MODE', 'ProviderSearchMode', 'hybrid')}`,
+    `ProviderVectorStoreName=${getDeploymentSetting('PROVIDER_VECTOR_STORE_NAME', 'ProviderVectorStoreName', 'Sin Envolturas Provider Search')}`,
     `ProviderVectorStoreId=${getEnvironmentSetting('PROVIDER_VECTOR_STORE_ID', '')}`,
-    `ProviderVectorMaxResults=${process.env.PROVIDER_VECTOR_MAX_RESULTS ?? env.PROVIDER_VECTOR_MAX_RESULTS ?? '12'}`,
-    `ProviderVectorScoreThreshold=${process.env.PROVIDER_VECTOR_SCORE_THRESHOLD ?? env.PROVIDER_VECTOR_SCORE_THRESHOLD ?? '0.2'}`,
-    `KbEnabled=${process.env.KB_ENABLED ?? env.KB_ENABLED ?? 'true'}`,
+    `ProviderVectorMaxResults=${getDeploymentSetting('PROVIDER_VECTOR_MAX_RESULTS', 'ProviderVectorMaxResults', '12')}`,
+    `ProviderVectorScoreThreshold=${getDeploymentSetting('PROVIDER_VECTOR_SCORE_THRESHOLD', 'ProviderVectorScoreThreshold', '0.2')}`,
+    `KbEnabled=${getDeploymentSetting('KB_ENABLED', 'KbEnabled', 'true')}`,
     `KbVectorStoreId=${getEnvironmentSetting('KB_VECTOR_STORE_ID', '')}`,
-    `KbMaxResults=${process.env.KB_MAX_RESULTS ?? env.KB_MAX_RESULTS ?? '6'}`,
-    `KbScoreThreshold=${process.env.KB_SCORE_THRESHOLD ?? env.KB_SCORE_THRESHOLD ?? '0'}`,
-    `AgentApiBaseUrl=${process.env.AGENT_API_BASE_URL ?? env.AGENT_API_BASE_URL ?? 'https://api.sinenvolturas.com/api/agent'}`,
-    `AgentApiTimeoutMs=${process.env.AGENT_API_TIMEOUT_MS ?? env.AGENT_API_TIMEOUT_MS ?? '5000'}`,
-    `AgentApiMaxRetries=${process.env.AGENT_API_MAX_RETRIES ?? env.AGENT_API_MAX_RETRIES ?? '2'}`,
-    `AgentMessageLoggingEnabled=${process.env.AGENT_MESSAGE_LOGGING_ENABLED ?? env.AGENT_MESSAGE_LOGGING_ENABLED ?? 'false'}`,
-    `SinEnvolturasGuestServiceBaseUrl=${process.env.SINENVOLTURAS_GUEST_SERVICE_BASE_URL ?? env.SINENVOLTURAS_GUEST_SERVICE_BASE_URL ?? 'https://api.sinenvolturas.com/api/guest-service'}`,
-    `SinEnvolturasUserAuthBaseUrl=${process.env.SINENVOLTURAS_USER_AUTH_BASE_URL ?? env.SINENVOLTURAS_USER_AUTH_BASE_URL ?? 'https://api.sinenvolturas.com/api-web/user'}`,
-    `AgentFeatureProviderPlanning=${process.env.AGENT_FEATURE_PROVIDER_PLANNING ?? env.AGENT_FEATURE_PROVIDER_PLANNING ?? 'true'}`,
-    `AgentFeatureProviderSearch=${process.env.AGENT_FEATURE_PROVIDER_SEARCH ?? env.AGENT_FEATURE_PROVIDER_SEARCH ?? 'true'}`,
-    `AgentFeatureProviderQuoteRequests=${process.env.AGENT_FEATURE_PROVIDER_QUOTE_REQUESTS ?? env.AGENT_FEATURE_PROVIDER_QUOTE_REQUESTS ?? 'true'}`,
-    `AgentFeatureFaq=${process.env.AGENT_FEATURE_FAQ ?? env.AGENT_FEATURE_FAQ ?? 'true'}`,
-    `AgentFeatureInvitedEventLookup=${process.env.AGENT_FEATURE_INVITED_EVENT_LOOKUP ?? env.AGENT_FEATURE_INVITED_EVENT_LOOKUP ?? 'true'}`,
-    `AgentFeaturePurchaseInformation=${process.env.AGENT_FEATURE_PURCHASE_INFORMATION ?? env.AGENT_FEATURE_PURCHASE_INFORMATION ?? 'true'}`,
-    `AgentFeatureRsvp=${process.env.AGENT_FEATURE_RSVP ?? env.AGENT_FEATURE_RSVP ?? 'true'}`,
+    `KbMaxResults=${getDeploymentSetting('KB_MAX_RESULTS', 'KbMaxResults', '6')}`,
+    `KbScoreThreshold=${getDeploymentSetting('KB_SCORE_THRESHOLD', 'KbScoreThreshold', '0')}`,
+    `AgentApiBaseUrl=${getDeploymentSetting('AGENT_API_BASE_URL', 'AgentApiBaseUrl', 'https://api.sinenvolturas.com/api/agent')}`,
+    `AgentApiTimeoutMs=${getDeploymentSetting('AGENT_API_TIMEOUT_MS', 'AgentApiTimeoutMs', '5000')}`,
+    `AgentApiMaxRetries=${getDeploymentSetting('AGENT_API_MAX_RETRIES', 'AgentApiMaxRetries', '2')}`,
+    `AgentMessageLoggingEnabled=${getDeploymentSetting('AGENT_MESSAGE_LOGGING_ENABLED', 'AgentMessageLoggingEnabled', 'false')}`,
+    `SinEnvolturasGuestServiceBaseUrl=${getDeploymentSetting('SINENVOLTURAS_GUEST_SERVICE_BASE_URL', 'SinEnvolturasGuestServiceBaseUrl', 'https://api.sinenvolturas.com/api/guest-service')}`,
+    `SinEnvolturasUserAuthBaseUrl=${getDeploymentSetting('SINENVOLTURAS_USER_AUTH_BASE_URL', 'SinEnvolturasUserAuthBaseUrl', 'https://api.sinenvolturas.com/api-web/user')}`,
+    `AgentFeatureProviderPlanning=${getDeploymentSetting('AGENT_FEATURE_PROVIDER_PLANNING', 'AgentFeatureProviderPlanning', 'true')}`,
+    `AgentFeatureProviderSearch=${getDeploymentSetting('AGENT_FEATURE_PROVIDER_SEARCH', 'AgentFeatureProviderSearch', 'true')}`,
+    `AgentFeatureProviderQuoteRequests=${getDeploymentSetting('AGENT_FEATURE_PROVIDER_QUOTE_REQUESTS', 'AgentFeatureProviderQuoteRequests', 'true')}`,
+    `AgentFeatureFaq=${getDeploymentSetting('AGENT_FEATURE_FAQ', 'AgentFeatureFaq', 'true')}`,
+    `AgentFeatureInvitedEventLookup=${getDeploymentSetting('AGENT_FEATURE_INVITED_EVENT_LOOKUP', 'AgentFeatureInvitedEventLookup', 'true')}`,
+    `AgentFeaturePurchaseInformation=${getDeploymentSetting('AGENT_FEATURE_PURCHASE_INFORMATION', 'AgentFeaturePurchaseInformation', 'true')}`,
+    `AgentFeatureRsvp=${getDeploymentSetting('AGENT_FEATURE_RSVP', 'AgentFeatureRsvp', 'true')}`,
   );
 }
-run(
-  'aws',
-  [
+const cloudFormationArgs = [
     'cloudformation',
     'deploy',
     '--stack-name',
@@ -192,9 +199,20 @@ run(
     'CAPABILITY_NAMED_IAM',
     '--parameter-overrides',
     ...parameterOverrides,
-  ],
-  { env: awsEnv },
-);
+];
+if (cloudFormationExecutionRoleArn) {
+  if (
+    !cloudFormationExecutionRoleArn.startsWith(
+      `arn:aws:iam::${getAccountId(awsEnv)}:role/`,
+    )
+  ) {
+    throw new Error(
+      'CLOUDFORMATION_EXECUTION_ROLE_ARN must be a role in the required AWS account.',
+    );
+  }
+  cloudFormationArgs.push('--role-arn', cloudFormationExecutionRoleArn);
+}
+run('aws', cloudFormationArgs, { env: awsEnv });
 
 const functionUrl = execFileSync(
   'aws',
@@ -275,7 +293,27 @@ function getEnvironmentSetting(baseKey, fallback) {
   // A development runtime may use an explicitly configured shared index for
   // read-only retrieval. Provider sync has a separate resolver below and
   // never inherits this generic value in development.
-  return optionalTrimmed(env[baseKey]) ?? fallback;
+  return (
+    optionalTrimmed(env[baseKey]) ??
+    optionalTrimmed(currentStack[cloudFormationParameterName(baseKey)]) ??
+    fallback
+  );
+}
+
+function getDeploymentSetting(environmentKey, parameterKey, fallback) {
+  return (
+    optionalTrimmed(env[environmentKey]) ??
+    optionalTrimmed(currentStack[parameterKey]) ??
+    fallback
+  );
+}
+
+function cloudFormationParameterName(environmentKey) {
+  const names = {
+    PROVIDER_VECTOR_STORE_ID: 'ProviderVectorStoreId',
+    KB_VECTOR_STORE_ID: 'KbVectorStoreId',
+  };
+  return names[environmentKey];
 }
 
 function getProviderSyncVectorStoreId() {
@@ -353,6 +391,14 @@ function describeSecretArn(secretName, env) {
 }
 
 function readCurrentStack(stackName, env) {
+  const stack = readOptionalCurrentStack(stackName, env);
+  if (!stack) {
+    throw new Error(`Deployment requires an existing CloudFormation stack: ${stackName}.`);
+  }
+  return stack;
+}
+
+function readOptionalCurrentStack(stackName, env) {
   let parsed;
   try {
     parsed = JSON.parse(
@@ -370,14 +416,12 @@ function readCurrentStack(stackName, env) {
       ),
     );
   } catch {
-    throw new Error(
-      `Production promotion requires an existing CloudFormation stack: ${stackName}.`,
-    );
+    return null;
   }
 
   const stack = parsed?.Stacks?.[0];
   if (!stack || typeof stack !== 'object') {
-    throw new Error(`CloudFormation stack ${stackName} returned no usable state.`);
+    return null;
   }
   const values = {};
   for (const parameter of stack.Parameters ?? []) {

@@ -185,7 +185,7 @@ function defaultGitRunner(args: string[], cwd: string): Promise<string> {
   return new Promise((resolve, reject) => {
     execFile('git', args, { cwd, encoding: 'utf8' }, (error, stdout) => {
       if (error) {
-        reject(error);
+        reject(error instanceof Error ? error : new Error('git command failed', { cause: error }));
         return;
       }
       resolve(stdout);
@@ -421,20 +421,18 @@ export function digestCaseForManifest(currentCase: EvalCase): {
     ...currentCase.expectations
       .filter((expectation) => expectation.type === 'text_semantic')
       .map((expectation) => {
-        const semantic = expectation as Extract<EvalCase['expectations'][number], { type: 'text_semantic' }>;
         return {
-          rubric: semantic.rubric,
-          minScore: semantic.minScore,
-          requireJudge: semantic.requireJudge,
-          severity: semantic.severity,
-          judgeModel: semantic.judgeModel ?? null,
+          rubric: expectation.rubric,
+          minScore: expectation.minScore,
+          requireJudge: expectation.requireJudge,
+          severity: expectation.severity,
+          judgeModel: expectation.judgeModel ?? null,
         };
       }),
     ...currentCase.scorers
       .filter((scorer) => scorer.type === 'text_semantic')
       .map((scorer) => {
-        const semantic = scorer as Extract<EvalCase['scorers'][number], { type: 'text_semantic' }>;
-        return { rubric: semantic.rubric, judgeModel: semantic.judgeModel ?? null };
+        return { rubric: scorer.rubric, judgeModel: scorer.judgeModel ?? null };
       }),
   ];
   return { caseDigest, fixtureDigest, rubricDigest: digestJson(rubrics) };

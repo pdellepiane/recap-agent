@@ -97,12 +97,16 @@ class FakeDocumentClient {
       const key = `${item.pk as string}\n${item.sk as string}`;
       const condition = command.input.ConditionExpression as string | undefined;
       if (condition?.includes('attribute_not_exists') && this.items.has(key)) {
-        throw { name: 'ConditionalCheckFailedException' };
+        throw Object.assign(new Error('conditional check failed'), {
+          name: 'ConditionalCheckFailedException',
+        });
       }
       if (condition?.includes('operationHash')) {
         const values = command.input.ExpressionAttributeValues as Record<string, unknown>;
         if (this.items.get(key)?.['operationHash'] !== values[':operation_hash']) {
-          throw { name: 'ConditionalCheckFailedException' };
+          throw Object.assign(new Error('conditional check failed'), {
+            name: 'ConditionalCheckFailedException',
+          });
         }
       }
       this.items.set(key, item);
@@ -115,15 +119,19 @@ class FakeDocumentClient {
           const check = entry.ConditionCheck;
           const key = check.Key as { pk: string; sk: string };
           const values = check.ExpressionAttributeValues as Record<string, unknown>;
+          const nowMs = values[':now_ms'];
           const stored = this.items.get(`${key.pk}\n${key.sk}`) as
             | { owner_id?: unknown; lease_until_ms?: unknown }
             | undefined;
           if (
             stored?.owner_id !== values[':owner_id'] ||
             typeof stored?.lease_until_ms !== 'number' ||
-            (stored.lease_until_ms as number) <= (values[':now_ms'] as number)
+            typeof nowMs !== 'number' ||
+            stored.lease_until_ms <= nowMs
           ) {
-            throw { name: 'TransactionCanceledException' };
+            throw Object.assign(new Error('transaction canceled'), {
+              name: 'TransactionCanceledException',
+            });
           }
         }
       }
@@ -134,12 +142,16 @@ class FakeDocumentClient {
           const key = `${item.pk as string}\n${item.sk as string}`;
           const condition = put.ConditionExpression as string | undefined;
           if (condition?.includes('attribute_not_exists') && this.items.has(key)) {
-            throw { name: 'TransactionCanceledException' };
+            throw Object.assign(new Error('transaction canceled'), {
+              name: 'TransactionCanceledException',
+            });
           }
           if (condition?.includes('operationHash')) {
             const values = put.ExpressionAttributeValues as Record<string, unknown>;
             if (this.items.get(key)?.['operationHash'] !== values[':operation_hash']) {
-              throw { name: 'TransactionCanceledException' };
+              throw Object.assign(new Error('transaction canceled'), {
+                name: 'TransactionCanceledException',
+              });
             }
           }
           this.items.set(key, item);

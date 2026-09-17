@@ -64,7 +64,7 @@ function stubBackend(options: { events: Array<{ event_id: number; name: string }
   vi.stubEnv('SE_API_KEY', 'test-key');
   vi.stubGlobal(
     'fetch',
-    vi.fn(async (url: unknown, init?: { method?: string; body?: string }) => {
+    vi.fn(async (url: unknown) => {
       const raw = String(url);
       const route = raw.replace(/^https?:\/\/[^/]+/u, '');
       if (route.includes('/guest/rsvp')) {

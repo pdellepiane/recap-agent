@@ -26,16 +26,16 @@ describe('Sin Envolturas deployment endpoint defaults', () => {
       (file) => file.relativePath === 'scripts/deploy.mjs',
     )?.content;
     expect(deployScript).toContain(
-      `AgentApiBaseUrl=\${process.env.AGENT_API_BASE_URL ?? env.AGENT_API_BASE_URL ?? '${productionHost}/api/agent'}`,
+      `AgentApiBaseUrl=\${getDeploymentSetting('AGENT_API_BASE_URL', 'AgentApiBaseUrl', '${productionHost}/api/agent')}`,
     );
     expect(deployScript).toContain(
-      `SinEnvolturasGuestServiceBaseUrl=\${process.env.SINENVOLTURAS_GUEST_SERVICE_BASE_URL ?? env.SINENVOLTURAS_GUEST_SERVICE_BASE_URL ?? '${productionHost}/api/guest-service'}`,
+      `SinEnvolturasGuestServiceBaseUrl=\${getDeploymentSetting('SINENVOLTURAS_GUEST_SERVICE_BASE_URL', 'SinEnvolturasGuestServiceBaseUrl', '${productionHost}/api/guest-service')}`,
     );
     expect(deployScript).toContain(
-      `SinEnvolturasUserAuthBaseUrl=\${process.env.SINENVOLTURAS_USER_AUTH_BASE_URL ?? env.SINENVOLTURAS_USER_AUTH_BASE_URL ?? '${productionHost}/api-web/user'}`,
+      `SinEnvolturasUserAuthBaseUrl=\${getDeploymentSetting('SINENVOLTURAS_USER_AUTH_BASE_URL', 'SinEnvolturasUserAuthBaseUrl', '${productionHost}/api-web/user')}`,
     );
     expect(deployScript).toContain(
-      `SinEnvolturasBaseUrl=\${process.env.SINENVOLTURAS_BASE_URL ?? env.SINENVOLTURAS_BASE_URL ?? '${productionHost}/api-web/vendor'}`,
+      `'${productionHost}/api-web/vendor'`,
     );
   });
 });

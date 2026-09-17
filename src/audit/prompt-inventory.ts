@@ -179,7 +179,7 @@ function deriveConsumers(filePath: string): PromptInventoryConsumer[] {
 
   if (filePath.startsWith('nodes/')) {
     const registryModules = Object.entries(instructionModuleRegistry).filter(([, meta]) =>
-      (meta.files as readonly string[]).includes(filePath),
+      meta.files.includes(filePath),
     );
     if (registryModules.length > 0) {
       for (const [moduleId, meta] of registryModules) {

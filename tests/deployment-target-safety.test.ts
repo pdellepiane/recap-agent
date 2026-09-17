@@ -153,6 +153,9 @@ describe('deployment target safety', () => {
     expect(deployScript).toContain(
       'Production artifact must exactly match the content-addressed artifact currently deployed in development.',
     );
+    expect(deployScript).toContain('if (!isProductionPromotion) {\n  run(\'aws\', [\'s3\', \'cp\'');
+    expect(deployScript).toContain('CLOUDFORMATION_EXECUTION_ROLE_ARN');
+    expect(deployScript).toContain("currentStack[parameterKey]");
     expect(deployScript).toContain("process.env.DEPLOY_PROVIDER_SYNC === 'true'");
     expect(deployScript).toContain('set DEPLOY_PROVIDER_SYNC=true to opt in');
     expect(template).toContain('DeploymentEnvironment:');

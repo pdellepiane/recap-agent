@@ -352,7 +352,7 @@ export function resolveCaseFixtureScenario(currentCase: EvalCase): string | null
   const turnScenarios = currentCase.inputs.map((input) => input.backendFixture?.scenario ?? null);
   const distinct = [...new Set(turnScenarios.filter((scenario): scenario is string => scenario !== null))];
   return distinct.length === 1 && turnScenarios.every((scenario) => scenario !== null)
-    ? (distinct[0] as string)
+    ? distinct[0]
     : null;
 }
 
@@ -698,7 +698,7 @@ export async function runEvaluation(
   const deploymentBefore = options.deploymentBefore !== undefined
     ? options.deploymentBefore
     : (isLiveRun && !options.dryRun ? await describeDevDeployment() : null);
-  let manifest: RunManifest = await buildRunManifest({
+  const manifest: RunManifest = await buildRunManifest({
     runId,
     label: options.runLabel ?? 'candidate',
     dryRun: options.dryRun ?? false,
@@ -3083,14 +3083,16 @@ function buildEventPlaceProjectionLines(currentCase: EvalCase, selectedIndex: nu
     };
     const lines: string[] = [];
     const seen = new Set<string>();
+    const eventText = (value: unknown): string =>
+      typeof value === 'string' || typeof value === 'number' ? String(value) : '';
     const pushEvent = (name: unknown, datetime: unknown, place: unknown, source: string): void => {
-      const label = `${String(name ?? '')}|${String(datetime ?? '')}|${String(place ?? '')}|${source}`;
+      const label = `${eventText(name)}|${eventText(datetime)}|${eventText(place)}|${source}`;
       if (seen.has(label)) return;
       seen.add(label);
       lines.push(
-        `evento: nombre=${redactArtifactText(String(name ?? '')) || 'sin_etiqueta'} ` +
-        `fecha=${redactArtifactText(String(datetime ?? '')) || 'desconocida'} ` +
-        `lugar=${redactArtifactText(String(place ?? '')) || 'desconocido'} (origen: fixture ${scenario}, visible para el candidato via busqueda; repetirlo es grounded)`,
+        `evento: nombre=${redactArtifactText(eventText(name)) || 'sin_etiqueta'} ` +
+        `fecha=${redactArtifactText(eventText(datetime)) || 'desconocida'} ` +
+        `lugar=${redactArtifactText(eventText(place)) || 'desconocido'} (origen: fixture ${scenario}, visible para el candidato via busqueda; repetirlo es grounded)`,
       );
     };
     for (const [key, container] of Object.entries(parsed.guestEvents ?? {})) {

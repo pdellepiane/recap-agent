@@ -1262,10 +1262,16 @@ describe('Packet C explicit payment time survives extraction-to-reply', () => {
     );
     expect(composedAspects).toContain('payment_details');
     const evidence = projectCompletedPurchaseForModel(taskResult as never, {
-      requestedAspects: composedAspects as PurchaseAspect[],
-    }) as { outcome: { order: { paymentAt: string; eventDate: string } } };
-    expect(evidence.outcome.order.paymentAt).toBe('2026-08-19 05:00:00');
-    expect(evidence.outcome.order.eventDate).toBe('2026-08-19 17:00:00');
+      requestedAspects: composedAspects,
+    });
+    expect(evidence).toMatchObject({
+      outcome: {
+        order: {
+          paymentAt: '2026-08-19 05:00:00',
+          eventDate: '2026-08-19 17:00:00',
+        },
+      },
+    });
   });
 
   it('acknowledges an absent payment time as unknown instead of inferring it', () => {
@@ -1282,7 +1288,7 @@ describe('Packet C explicit payment time survives extraction-to-reply', () => {
     expect(outcome.kind).toBe('order_unique');
     if (outcome.kind !== 'order_unique') return;
     expect(outcome.order.paymentAt).toBeNull();
-    const model = projectPurchaseReplyForModel(outcome) as Record<string, unknown>;
+    const model = projectPurchaseReplyForModel(outcome);
     expect(model.order).not.toHaveProperty('paymentAt');
   });
 
