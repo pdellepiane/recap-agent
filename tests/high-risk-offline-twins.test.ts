@@ -137,16 +137,18 @@ function twinService(
 }
 
 describe('high-risk scenario offline twins (F3)', () => {
-  it('reconciles the mandatory suite count: 119 total, 111 support, 8 planning-only', async () => {
+  it('reconciles the mandatory suite count: 120 total, 112 support, 8 planning-only', async () => {
     const catalog = await new EvalLoader(path.resolve(process.cwd(), 'evals')).loadCatalog();
     const suite = catalog.suites.find((candidate) => candidate.id === 'live_behavior_regression');
     const caseIds = new Set(suite?.caseIds ?? []);
-    expect(caseIds.size).toBe(119);
+    // 2026-09-17 actionable-answer: 119 + live_behavior.support_pending_question_completed.
+    expect(caseIds.size).toBe(120);
     for (const planningId of PLANNING_DIAGNOSTIC_ONLY) {
       expect(caseIds.has(planningId), `${planningId} missing from the mandatory suite`).toBe(true);
     }
-    expect(caseIds.size - PLANNING_DIAGNOSTIC_ONLY.length).toBe(111);
+    expect(caseIds.size - PLANNING_DIAGNOSTIC_ONLY.length).toBe(112);
     expect(caseIds.has('live_behavior.customer_event_task_continuity')).toBe(true);
+    expect(caseIds.has('live_behavior.support_pending_question_completed')).toBe(true);
   });
 
   it('accountless venue: fixture detail carries the reception facts with no OTP path', async () => {
@@ -211,7 +213,7 @@ describe('high-risk scenario offline twins (F3)', () => {
     }
   });
 
-  it('Diana thread: three inputs share one session and the detail turn carries zero-takeover receipts', async () => {
+  it('Diana thread: three inputs share one session and the detail turn reuses the single handoff receipt', async () => {
     const catalog = await new EvalLoader(path.resolve(process.cwd(), 'evals')).loadCatalog();
     const live = catalog.cases.find(
       (candidate) => candidate.id === 'live_behavior.host_withdrawal_diana_policy_and_support',
@@ -222,7 +224,11 @@ describe('high-risk scenario offline twins (F3)', () => {
     expect(effect?.type).toBe('fixture_effect_count');
     if (effect?.type !== 'fixture_effect_count') return;
     expect(effect.operation).toBe('handoff.write');
-    expect([effect.expectedAttempts, effect.expectedSuccesses, effect.expectedReplays]).toEqual([0, 0, 0]);
+    // 2026-09-17 actionable-answer Lane B: cumulative-from-baseline ledger —
+    // turn 2 sees turn 1's single confirmed handoff (1/1/0), never a new
+    // attempt. Zero new dispatches are proven by the mustNotCall pin and the
+    // offline service twin, not by a 0/0/0 cumulative count.
+    expect([effect.expectedAttempts, effect.expectedSuccesses, effect.expectedReplays]).toEqual([1, 1, 0]);
     expect(() => assertLiveRegressionFixtureCoverage([live!])).not.toThrow();
   });
 

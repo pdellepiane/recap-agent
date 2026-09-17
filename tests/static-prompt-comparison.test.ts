@@ -124,9 +124,13 @@ describe('per-branch historical baseline via git show', () => {
     // removed the node-obedience recital and capability-list verbosity.
     // Net +49 on this branch; customer-turn instructions sit below the
     // 1c15bce7 baseline on every measured scenario. Previous pin 9308.
+    // 2026-09-17 actionable-answer directive: +267 bytes for the single
+    // shared resolve-before-replying invariant in base_system.txt (net of
+    // the -19B support_continuity recital removal on other branches).
+    // Previous pin 9357.
     const currentRsvp = current.find((branch) => branch.branchId === 'responder_invitacion:resolved_single');
-    expect(currentRsvp?.instructionBytes).toBe(9357);
-    expect((currentRsvp?.instructionBytes ?? 0) - (anchorRsvp?.instructionBytes ?? 0)).toBe(1124);
+    expect(currentRsvp?.instructionBytes).toBe(9624);
+    expect((currentRsvp?.instructionBytes ?? 0) - (anchorRsvp?.instructionBytes ?? 0)).toBe(1391);
   }, 20_000);
 });
 

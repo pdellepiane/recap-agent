@@ -305,7 +305,7 @@ describe('OpenAiAgentRuntime token usage parsing', () => {
     expect(settings).toMatchObject({
       promptCacheOptions: { mode: 'implicit', ttl: '30m' },
       providerData: { prompt_cache_key: 'extractor:test' },
-      reasoning: { effort: 'none' },
+      reasoning: { effort: 'low' }, // 2026-09-17 actionable-answer: production reasoning none->low
       text: { verbosity: 'low' },
       store: true,
     });

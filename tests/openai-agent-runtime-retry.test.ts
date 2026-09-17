@@ -66,7 +66,7 @@ describe('OpenAiAgentRuntime retry behavior', () => {
     expect(requestBody.prompt_cache_key).toMatch(/^extractor:/u);
     expect(requestBody.prompt_cache_options).toEqual({ mode: 'implicit', ttl: '30m' });
     expect(requestBody).not.toHaveProperty('prompt_cache_retention');
-    expect(requestBody.reasoning).toEqual({ effort: 'none' });
+    expect(requestBody.reasoning).toEqual({ effort: 'low' }); // 2026-09-17 actionable-answer: production reasoning none->low
     expect(requestBody.text?.verbosity).toBe('low');
   });
 });

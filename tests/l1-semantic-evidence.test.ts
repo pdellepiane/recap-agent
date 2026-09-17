@@ -219,13 +219,15 @@ describe('W1-04 L1 semantic evidence (no templates)', () => {
     expect(evidence.turn_state['backend_validation_pending']).toBe(true);
   });
 
-  it('directs verbatim names and same-query continuation in the support bundle without canned prose', () => {
+  it('directs verbatim names without a mandatory open-query recital and without canned prose', () => {
     const bundle = readFileSync(
       join(__dirname, '..', 'prompts', 'nodes', 'resolver_consultas_informativas', 'support_continuity.txt'),
       'utf8',
     );
     expect(bundle).toContain('reported_guest_name');
     expect(bundle).toContain('reported_event_name');
-    expect(bundle).toContain('support_query_open');
+    // 2026-09-17 actionable-answer: the mandatory support_query_open
+    // recital is removed; continuation is evidenced, not narrated.
+    expect(bundle).not.toContain('support_query_open');
   });
 });

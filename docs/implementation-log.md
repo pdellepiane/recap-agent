@@ -12829,3 +12829,14 @@ Failure 1 — continuity turn2/turn3 fixture_effect_count 0/0/0 vs cumulative 1/
 Failure 2a — Diana one-handoff-effect-in-thread: turn 2 tools prove no request_human_takeover (infra + read-only knowledge_base_search); exactly one handoff (turn 1). Same cumulative-ledger defect, contradicting the YAML's own R05 note. C1 dedup works live.
 Failure 2b — Diana turn-0 semantic: reply truthful, no reset/gift talk; fails only for omitting the rubric-mandated "what do you need" question. No identity/effect/truth violation → F5 completeness-preference class, flagged for full-gate adjudication, not silently waived.
 No duplicate effects, unauthorized reads/writes, identity mixing, false approvals, fabricated confirmations, or unexplained delivery blanks in this run. This panel does NOT consume the package's single full-suite gate (still unspent); full-gate F5 adjudication deferred.
+
+## 2026-09-17 — Coordinator: actionable-answer integration, frozen candidate
+
+Integrated Lane A (08bfda01) + Lane B (02e68806) for final-actionable-answer-package-2026-09-17. Offline only; no deploy/live/promotion/paid calls.
+Lane A: shared directive installed verbatim (+267B replacing old pending-vs-done line), support_query_open recital removed (-19B), pending+typed-context resumes the information executor, reasoning none->low (extractor/reply/classifier), classifier cap 128->2048, audit fixtures aligned.
+Lane B: cumulative pins fixed (continuity 0,1,1,1 / Diana 0,1,1), Diana ack-sufficient rubric, concurrent recital removed + expectation renamed, new support_pending_question_completed case, shared judge clauses replaced (pending-vs-bare + handoff-submission-only).
+Coordinator: factual pin updates (prompt-audit 7134->7400 + resolver 20337->20603; rsvp branch 9357->9624/delta 1391; OTP cap 9600->9700 measuring 9647; retry/token-usage none->low; l1 recital assertion inverted), ledger concurrent row renamed, manifest 119/111->120/112, 7 coverage entries on real SHAs 08bfda01/02e68806.
+Independent check: built spec via production buildReplyRequestSpec carries the directive, no recital, venue+address in input (malformed hand fakes without execution summaries gate detail projection; not a product bug).
+Bytes (95bb6698 -> tree, serialized): contacto 7134->7400 (+266); resolver 20337->20603 (+266); responder 9706->9972 (+266); rsvp branch instr 9357->9624 (+267, ser 11040->11306). Growth is the mandated directive replacing obsolete text; factual evidence scope preserved.
+Settings: extractor/reply/classifier reasoning low (gpt-5.6-luna, verbosity low, models unchanged); classifier max_output_tokens 2048; judge untouched.
+Validation: tsc clean; eslint clean on touched files (2 pre-existing openai-agent-runtime errors untouched); full suite 198 files 2078 passed / 5 skipped / 0 failed; coverage registry green. Frozen: runtime frozen, evaluator frozen; deployment + single full live gate UNRUN.
