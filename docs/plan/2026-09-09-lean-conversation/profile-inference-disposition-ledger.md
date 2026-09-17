@@ -311,7 +311,7 @@ Totals: 117 cases, 529 original expectations (528 current: 5 removed-and-replace
 
 ### live_behavior.image_url_unavailable_evidence (`live-behavior-image-url-unavailable.yaml`, v3)
 
-- [retain] `expired-url-uses-native-context` (tool_usage, hard): Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
+- [retain] `expired-url-no-team-handoff` (fixture_effect_count, hard): no invented team action on the unavailable-image turn; replaced the legacy tool-name pin 2026-09-17, delivered-limitation rules kept in the semantic rubric.
 - [replace] `expired-url-stays-informative` (fixture_effect_count, 2026-09-16 E2: implementation pin replaced; hard): Receipt-backed invariant replacing the retired implementation pin; old runs preserved.
 - [retain] `expired-url-no-link-leak` (text_not_contains, hard): Prohibition check (forbidden secrets/identifiers, no-invention bans, no-resend/no-URL bans, vocabulary bans); literal form allowed for genuinely forbidden content. Kept.
 - [retain] `expired-url-unavailable-not-proof` (text_semantic, hard requireJudge=True): Hard semantic judge kept (requireJudge:true mandatory). Global judge rules now also require: accept grounded inference + useful extra detail; fail missing topics, unsupported certainty, unrelated dumps, and unnecessary clarification when context/tools suffice.

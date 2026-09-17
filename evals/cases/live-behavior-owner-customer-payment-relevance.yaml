@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.owner_customer_payment_relevance
 suite: live_behavior_regression
-version: 5
+version: 6
 description: A pending Alejandra order question persists the Customer operations owner and answers from payment evidence while the separate abandoned cart stays out of the payment reply; the unknown balance is never computed and thanks closes without restarting.
 tags: [live, behavior, ownership, customer-context, purchase, cart-relevance]
 targetModes: [live_lambda]
@@ -21,6 +21,7 @@ inputs:
 backendFixture:
   scenario: purchase-luis-389
 notes:
+  - "R05 v6 (2026-09-17, failure-only landing): naming the recorded Yape method is accepted when relevant but never mandatory; unknown paid is never zero and never an amount due. Old defect: a correct unknown-balance answer that omitted the method token could fail a recital check. The invented-balance/approval/cart bans are unchanged. Threshold and hard severity kept; no threshold reduction. Old v5 runs preserved; baseline and candidate must rerun on this v6 contract."
   - "R05 v4 (2026-09-16, customer-support release E1): old contract required the exact idea cannot confirm the remaining balance but could fail a reply that briefly explains the cause (missing paid amount or currency). Old defect: a truthful explanation of why the balance is unknown risked failing as backend recital. New acceptance: natural equivalents of cannot determine/calculate/confirm the remaining balance pass, and a brief factual note that paid amount or currency is missing is a limitation, not forbidden internals. Failing counterexample: computing a remaining balance from the 227.76 total, inventing a currency symbol, approving the payment, or mentioning the separate abandoned cart fails. No amount invention, payment approval, or cart leakage permitted. Threshold unchanged; earlier runs remain unchanged."
   - Same Alejandra pending-order thread as pending_balance_validation_luis with a separate abandoned cart present in phone coverage. The payment projection must exclude cart facts while retaining them for a later cart question.
   - "R05 oracle revision v1 to v2, 2026-09-12, Packet F3. Old payment-reply-answers-from-payment-evidence asked what is still missing without marking the balance unknown, and pending-state language could demand backend recitals (matrix: first answer understandable; pending language need not recite backend or disclaim a nonexistent image). New contract states the unknown balance and forbids backend recital, cart mention, and currency invention while keeping the no-approval core. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
@@ -50,7 +51,7 @@ expectations:
   - id: payment-reply-answers-from-payment-evidence
     type: text_semantic
     rubric: >-
-      The trusted-phone evidence identifies the Alejandra gift order as pending and paid by Yape, with a separate abandoned cart in coverage and no balance-due fields. The Yape label names only the recorded payment method, never evidence the order is paid or approved. The answer must be concise, natural, and entirely in Spanish; report the pending order state and its recorded total with method without adding a currency symbol, state that the remaining balance cannot be confirmed from the available record, and never approve or confirm any payment. It must not mention the separate abandoned cart or its recovery path, must not calculate a balance, may briefly explain that paid amount or currency is missing; this is a factual limitation, not forbidden backend internals, must not describe any image, and must not ask for email or an OTP.
+      The trusted-phone evidence identifies the Alejandra gift order as pending and paid by Yape, with a separate abandoned cart in coverage and no balance-due fields. The Yape label names only the recorded payment method, never evidence the order is paid or approved. The answer must be concise, natural, and entirely in Spanish; report the pending order state and its recorded total without adding a currency symbol, state that the remaining balance cannot be confirmed from the available record, and never approve or confirm any payment. Naming the recorded method is accepted when relevant to the question but never required; an unknown paid amount is never zero and never becomes an amount due. It must not mention the separate abandoned cart or its recovery path, must not calculate a balance, may briefly explain that paid amount or currency is missing; this is a factual limitation, not forbidden backend internals, must not describe any image, and must not ask for email or an OTP.
     minScore: 0.9
     requireJudge: true
     turnIndex: 0

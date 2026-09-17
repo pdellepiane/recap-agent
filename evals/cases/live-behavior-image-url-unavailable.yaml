@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.image_url_unavailable_evidence
 suite: live_behavior_regression
-version: 5
+version: 6
 description: An expired or unreachable image URL degrades to unavailable evidence without approving anything or fabricating content.
 tags: [live, behavior, image, image-url, url-image-context]
 targetModes: [live_lambda]
@@ -17,16 +17,19 @@ inputs:
     backendFixture:
       scenario: image-clean-world
 notes:
+  - "R05 oracle revision v5 to v6, 2026-09-17, failure-only landing: the legacy image_url_context tool-name pin is replaced by a handoff.write 0/0/0 receipt pin (no invented team action), keeping hard structural count. Delivered grounded limitation, no invented pixels/payment approval, and no media/URL request are still required by the semantic rubric; an empty response still fails. Unknown image facts never license fabrication. Threshold 0.8, hard severity, requireJudge kept. Old v5 runs preserved; baseline and candidate must rerun on this v6 contract."
   - "F1 2026-09-12: backendFixture scenario image-clean-world; this phone has empty initial history and empty authorized purchase results; never mutable backend data."
   - Well-formed https URL that cannot return an image, exercising the fetch-failure path.
   - "R05 oracle revision v2 to v3, 2026-09-14, Packet EX1. Old expired-url-unavailable-not-proof allowed a usable image reference without naming the doctrine recovery, so a re-upload demand could still pass (matrix: re-upload demands contradict the 2026-09-14 operator doctrine; recovery is a URL link the assistant can open or an answer from profile evidence). New contract passes asking for a URL link or answering from profile evidence and fails any demand to re-upload or resend the image file. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
   - "R05 oracle revision v3 to v4, 2026-09-16, Packet E1 node-pin removal. Old expired-url-stays-informative pinned the internal resolver_consultas_informativas node, prescribing implementation instead of evidencing behavior (matrix: a correct unavailable-evidence answer through any routing passed the read evidence but failed the node pin). New contract proves the same read-only invariant from receipts: fixture_effect_count rsvp.write 0/0/0 hard plus the retained image_url_context read evidence. The blank-output ban is now explicit in the rubric: delivered silence on an unreadable URL fails. Threshold and hard severity kept; no threshold reduction. Old v3 runs preserved; baseline and candidate must rerun on this v4 contract. Expectation id expired-url-stays-informative is retained for ledger and run continuity; only its type changed from node_transition to fixture_effect_count."
   - "R05 oracle revision v4 to v5, 2026-09-16, final support rescue task 3 (customer URL doctrine alignment). The v4 rubric permitted asking for a shareable URL link, which contradicts the backend-only URL doctrine held by the expired-reference oracle (URLs arrive from the backend only; the customer is never required to supply a URL). New contract permits answering from other evidence or asking what the customer wants to resolve, and fails any request for a URL link. Threshold 0.8, hard severity, requireJudge kept. Old v4 runs preserved; baseline and candidate must rerun on this v5 contract."
 expectations:
-  - id: expired-url-uses-native-context
-    type: tool_usage
-    mustCall: [image_url_context]
-    mustNotCall: [image_inspect]
+  - id: expired-url-no-team-handoff
+    type: fixture_effect_count
+    operation: handoff.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
     severity: hard
   - id: expired-url-stays-informative
     type: fixture_effect_count

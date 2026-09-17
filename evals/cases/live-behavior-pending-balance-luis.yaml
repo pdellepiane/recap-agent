@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.pending_balance_validation_luis
 suite: live_behavior_regression
-version: 3
+version: 4
 description: Luis pending Alejandra order and cart with null currency; the pending total is reported without a currency symbol and the remaining balance stays unknown.
 tags: [live, behavior, purchase, balance, validation, reported-interaction, luis]
 targetModes: [live_lambda]
@@ -38,7 +38,7 @@ expectations:
   - id: balance-unknown-no-currency
     type: text_semantic
     rubric: >-
-      The phone lookup returns a pending Alejandra order for 227.76 via Yape and a same-event active cart; currency is null and no balance-due or amount-received fields exist. The backend method enum is Yape_o_Plin (combined name from the real API); rendering "Yape o Plin" or naming the registered method family is grounded, covered by the indexed validation-window policy. The answer must be concise, natural Latin American Spanish, report the pending total with method without adding a currency symbol, state that the remaining balance cannot be confirmed from the available record, and explain that Yape validation can take up to 72 business hours. It must not calculate a balance, invent PEN or soles, or confirm receipt from the voucher image.
+      The phone lookup returns a pending Alejandra order for 227.76 via Yape and a same-event active cart; currency is null and no balance-due or amount-received fields exist. The backend method enum is Yape_o_Plin (combined name from the real API); rendering "Yape o Plin" or naming the registered method family is grounded, covered by the indexed validation-window policy. The answer must be concise, natural Latin American Spanish, report the pending total with method without adding a currency symbol, and directly address the balance question by stating that the remaining balance cannot be confirmed from the available record; merely reciting pending status without addressing what is owed fails. Mentioning that Yape validation can take up to 72 business hours is accepted but never required. It must not calculate a balance, invent PEN or soles, or confirm receipt from the voucher image.
     minScore: 0.9
     requireJudge: true
     turnIndex: 0
@@ -46,12 +46,13 @@ expectations:
   - id: voucher-does-not-confirm
     type: text_semantic
     rubric: >-
-      This is the same Alejandra thread; the user reports sending the 13.76 shortfall with a voucher image in a text-only turn with no new image attached. The answer must stay on that pending order, acknowledge the report, restate that the order remains pending backend validation without claiming the payment was validated, and repeat the 72 business hour window. It must not restart with a generic welcome, present a currency that the backend did not supply, or calculate a remaining balance. No image disclaimer is required for this text-only turn; silence about a nonexistent image is correct.
+      This is the same Alejandra thread; the user reports sending the 13.76 shortfall with a voucher image in a text-only turn with no new image attached. The answer must stay on that pending order, acknowledge the report, restate that the order remains pending backend validation without claiming the payment was validated, and may but need not repeat the 72 business hour window. It must not restart with a generic welcome, present a currency that the backend did not supply, or calculate a remaining balance. No image disclaimer is required for this text-only turn; silence about a nonexistent image is correct.
     minScore: 0.9
     requireJudge: true
     turnIndex: 1
     severity: hard
 notes:
+  - "R05 oracle revision v3 to v4, 2026-09-17, failure-only landing: the 72 business hour window becomes optional on both turns (mentioning it passes; omitting it passes). Old defect: a reply that correctly left the balance unknown failed solely for omitting the 72h recital, grading recital compliance instead of balance truth. The hard unknown-balance/no-approval/no-currency-invention core is unchanged, and the initial response must still address the balance question rather than merely reciting pending status. Threshold and hard severity kept; no threshold reduction. Old v3 runs preserved; baseline and candidate must rerun on this v4 contract."
   - "R05 oracle revision v1 to v2, 2026-09-12, Packet F3. Old voucher-does-not-confirm demanded an image disclaimer although the turn is text-only with no image attached, failing a reply that acknowledged 13.76, retained pending state, and invented no currency (matrix: judge demands image/backend disclaimer though turn is text-only). New contract keeps pending state plus no invented currency and drops the disclaimer demand for a nonexistent image. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
   - "R05 oracle revision v2 to v3, 2026-09-16, Packet E1 node-pin removal. Old pending-balance-enters-information pinned the internal resolver_consultas_informativas node, prescribing implementation instead of evidencing behavior (matrix: a correct unknown-balance answer through any routing passed the read evidence but failed the node pin). New contract proves the same read-only invariant from receipts: fixture_effect_count rsvp.write 0/0/0 hard plus the retained phone-orders read evidence. The invented-balance and invented-currency bans are unchanged. Threshold and hard severity kept; no threshold reduction. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract. Expectation id pending-balance-enters-information is retained for ledger and run continuity; only its type changed from node_transition to fixture_effect_count."
 budget:

@@ -264,7 +264,8 @@ describe('Lane B actionable-answer oracle repairs keep defect detection (2026-09
 
   it('concurrent support proves overlap with observable effects, not telemetry pins', async () => {
     const concurrent = await loadCase('live-behavior-concurrent-support-turns.yaml');
-    expect(concurrent.version).toBe(3);
+    // 2026-09-17 failure-only landing v4: topic-keeping substantive, re-ask fails, names optional.
+    expect(concurrent.version).toBe(4);
     expect(
       concurrent.expectations.some((candidate) => candidate.id === 'support-detail-acknowledgment-is-deterministic'),
       'the implementation-prescribing expectation name must be gone',
@@ -287,8 +288,8 @@ describe('Lane B actionable-answer oracle repairs keep defect detection (2026-09
     expect(renamed?.type).toBe('fixture_effect_count');
     const text = rubric(concurrent, 'no-restart-or-identity-overwrite-after-overlap');
     expect(text).not.toMatch(/kept for continuation/);
-    expect(text).toMatch(/Roger Abanto/);
-    expect(text).toMatch(/Baby Shower Catalina/);
+    expect(text).toMatch(/already-known|already known/);
+    expect(text).not.toMatch(/Briefly acknowledge both supplied references/);
     const firstTurn = rubric(concurrent, 'first-support-question-answered');
     expect(firstTurn).toMatch(/card/);
   });
@@ -397,7 +398,8 @@ describe('Support assessment oracle hardening keeps defect detection (2026-09-17
 
   it('thanks accepts suppressed delivery or a brief ack; Yape is a recorded method, not proof of payment', async () => {
     const ownerPayment = await loadCase('live-behavior-owner-customer-payment-relevance.yaml');
-    expect(ownerPayment.version).toBe(5);
+    // 2026-09-17 failure-only landing v6: method naming optional, unknown never zero/due.
+    expect(ownerPayment.version).toBe(6);
     const thanks = rubric(ownerPayment, 'thanks-closes-without-restart');
     expect(thanks).toMatch(/empty assistant response is fully correct/);
     expect(thanks).toMatch(/brief natural acknowledgment/);

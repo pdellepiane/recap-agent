@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.support_detail_continuity
 suite: live_behavior_regression
-version: 1
+version: 2
 description: Details supplied after a payment-support answer remain attached to that support thread and do not replace the channel user's identity.
 tags: [live, behavior, faq, support, continuity, identity, reported-interaction, claudia-roger]
 targetModes: [live_lambda]
@@ -48,15 +48,21 @@ expectations:
     rubric: >-
       Baby Shower Catalina is the event supplied for the same card-payment support thread.
       The final answer must be a concise, natural, entirely Spanish acknowledgment that
-      preserves this support context and does not restart the conversation. It must use the
+      preserves this support context and does not restart the conversation. Maintaining the
+      known card problem is substantive: the answer must keep the card-payment topic, not
+      merely the names. It must use the
       event name exactly as supplied, must not greet or address the channel user as Roger,
       switch to provider planning, repeat the full card-payment explanation, perform a lookup,
-      or claim that an account or purchase was verified. The previous Roger Abanto detail need
-      not be repeated when the final turn supplies only the event reference.
+      or claim that an account or purchase was verified. Repeating the Roger Abanto detail is
+      optional when the final turn supplies only the event reference. Asking what the
+      already-known card problem is fails as a usability defect. No technical card-rejection
+      knowledge absent from the fixture is required.
     minScore: 0.9
     requireJudge: true
     turnIndex: 2
     severity: hard
+notes:
+  - "R05 oracle revision v1 to v2, 2026-09-17, failure-only landing: maintaining the known card topic is substantive (names alone do not suffice); asking the already-known problem fails; repeating identifying details is optional; no fixture-absent technical knowledge required. Old defect: a reply that kept the names while re-asking the known problem could pass the acknowledgment wording. Threshold and hard severity kept; no threshold reduction. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
 budget:
   maxTurns: 3
   estimatedPromptTokensPerTurn: 1700
