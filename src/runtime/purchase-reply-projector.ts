@@ -420,6 +420,66 @@ export type PurchaseReplyEvidenceContext = {
   ambiguousInputs?: string[];
 };
 
+/**
+ * Lane A compact balance limitation. Carries the single-order balance
+ * distinction (sourced total, paid value/availability, unverifiable
+ * remaining, currency availability) without duplicating the full purchase
+ * payload next to the canonical profile. Derived from the existing order
+ * view only: no arithmetic, no invented currency, user-reported amounts
+ * stay user-reported and never merge into paid/total.
+ */
+export type PurchaseBalanceLimitation = {
+  orderId: string;
+  total: number | null;
+  totalAvailability: 'available' | 'unknown';
+  /**
+   * Recorded paid amount. Null means unknown, never zero: a missing
+   * payment record must not read as paid=0.
+   */
+  paid: number | null;
+  paidAvailability: 'available' | 'unknown';
+  /**
+   * No verified balance-due field exists in the record, so the remaining
+   * balance is always unverifiable here. `total` is the order total, never
+   * the amount owed.
+   */
+  remaining: null;
+  remainingVerifiable: false;
+  currency: string | null;
+  currencyAvailability: 'available' | 'unknown';
+  userReported: {
+    amount: number | null;
+    currency: string | null;
+    paidAt: string | null;
+  };
+};
+
+export function projectPurchaseBalanceLimitation(
+  outcome: PurchaseReplyOutcome,
+  orderId: string | null,
+): PurchaseBalanceLimitation | null {
+  if (orderId === null || orderId.trim().length === 0) return null;
+  if (outcome.kind !== 'order_unique' && outcome.kind !== 'order_plus_cart') {
+    return null;
+  }
+  const amount = outcome.order.amount;
+  const total = amount?.total ?? null;
+  const paid = amount?.paid ?? null;
+  const currency = amount?.currency ?? outcome.order.currency ?? null;
+  return {
+    orderId,
+    total,
+    totalAvailability: total !== null ? 'available' : 'unknown',
+    paid,
+    paidAvailability: paid !== null ? 'available' : 'unknown',
+    remaining: null,
+    remainingVerifiable: false,
+    currency,
+    currencyAvailability: currency !== null ? 'available' : 'unknown',
+    userReported: { ...outcome.order.userReported },
+  };
+}
+
 function defaultPurchaseNextAction(outcome: PurchaseReplyOutcome): string {
   switch (outcome.kind) {
     case 'selection':

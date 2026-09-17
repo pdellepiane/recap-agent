@@ -10,6 +10,10 @@ import {
   enrichmentVisitKey,
 } from '../core/information';
 import { eventMatches } from './event-matching';
+import {
+  disclosedPurchaseCurrency,
+  disclosedPurchaseTotal,
+} from './purchase-reply-projector';
 
 /**
  * L4 Customer operations context assembly.
@@ -80,6 +84,18 @@ export type PurchaseCartSummary = {
   readonly eventName: string | null;
   readonly paymentStatus: string | null;
   readonly grandTotal: number | null;
+  /**
+   * Lane A explicit balance distinction. The sourced order total never
+   * reads as an amount owed: paid/remaining availability travels with it,
+   * unknown stays unknown, and a missing payment record never reads as
+   * paid=0. Raw grandTotal above stays available for total questions.
+   */
+  readonly totalAvailability?: 'available' | 'unknown';
+  readonly paidAmount?: number | null;
+  readonly paidAvailability?: 'available' | 'unknown';
+  readonly remaining?: null;
+  readonly remainingVerifiable?: false;
+  readonly currencyAvailability?: 'available' | 'unknown';
 };
 
 export type PurchasesCartsSection = CustomerSectionBase & {
@@ -346,6 +362,37 @@ function statusForResult(
 }
 
 /**
+ * Lane A explicit balance markers for the canonical purchase summary.
+ * Sourced through the existing disclosure readers (disclosure-first total
+ * and currency, recorded paid amount): no arithmetic, no invented
+ * currency, and a missing payment record stays unknown, never zero.
+ */
+function purchaseBalanceMarkers(
+  purchase: PurchaseInformation,
+): Pick<
+  PurchaseCartSummary,
+  | 'totalAvailability'
+  | 'paidAmount'
+  | 'paidAvailability'
+  | 'remaining'
+  | 'remainingVerifiable'
+  | 'currencyAvailability'
+> {
+  const total = disclosedPurchaseTotal(purchase);
+  const rawPaid = purchase.payment?.amount ?? null;
+  const paid = typeof rawPaid === 'number' && Number.isFinite(rawPaid) ? rawPaid : null;
+  const currency = disclosedPurchaseCurrency(purchase);
+  return {
+    totalAvailability: total !== null ? 'available' : 'unknown',
+    paidAmount: paid,
+    paidAvailability: paid !== null ? 'available' : 'unknown',
+    remaining: null,
+    remainingVerifiable: false,
+    currencyAvailability: currency !== null ? 'available' : 'unknown',
+  };
+}
+
+/**
  * Shared assembly over the existing orchestrator execution. Preserves
  * parallelism and independent failure: every requested section is derived
  * from its own settled result, so one failed optional lookup cannot poison
@@ -473,6 +520,7 @@ export function assembleCustomerContext(args: {
         eventName: purchase.eventName ?? null,
         paymentStatus: purchase.paymentStatus,
         grandTotal: purchase.grandTotal,
+        ...purchaseBalanceMarkers(purchase),
       })),
       carts: purchaseResults.flatMap((result) =>
         result.status === 'completed' ? (result.carts ?? []) : [],
@@ -853,6 +901,29 @@ export function projectCustomerContext(
       : [],
     enrichment: enrichment ?? null,
   };
+}
+
+/**
+ * Lane A profile-reference gate. The profile_ref optimization (dropping the
+ * purchase outcome next to the canonical profile) is valid only when the
+ * referenced profile record already carries the required balance facts for
+ * every order: sourced-total, paid value/availability, unverifiable
+ * remaining and currency availability. Otherwise the caller must retain a
+ * compact typed limitation instead of duplicating the full payload.
+ */
+export function purchaseProfileCarriesBalanceFacts(
+  profile: CustomerContextProjection | null | undefined,
+  orderIds: readonly string[],
+): boolean {
+  if (!profile || orderIds.length === 0) return false;
+  return orderIds.every((orderId) => {
+    const summary = profile.purchases.find((entry) => entry.orderId === orderId);
+    return summary !== undefined &&
+      summary.totalAvailability !== undefined &&
+      summary.paidAvailability !== undefined &&
+      summary.remainingVerifiable === false &&
+      summary.currencyAvailability !== undefined;
+  });
 }
 
 /**
@@ -1339,6 +1410,9 @@ function mergeTwoPurchases(
     createdAt: current.createdAt ?? incoming.createdAt,
     items: current.items.length > 0 ? current.items : incoming.items,
     payment: current.payment ?? incoming.payment,
+    paymentValidationExpectation:
+      current.paymentValidationExpectation ?? incoming.paymentValidationExpectation,
+    amountDisclosure: current.amountDisclosure ?? incoming.amountDisclosure,
     dedication: current.dedication ?? incoming.dedication,
     thanks: current.thanks ?? incoming.thanks,
     isThanked: current.isThanked ?? incoming.isThanked,

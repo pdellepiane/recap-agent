@@ -68,6 +68,10 @@ import {
 import { providerCategorySchema, categoryBucketNames } from '../core/provider-category';
 import type { ProviderCategory } from '../core/provider-category';
 import { projectCompletedPurchaseForModel } from './purchase-reply-projector';
+import {
+  projectPurchaseBalanceLimitation,
+  selectPurchaseReplyOutcome,
+} from './purchase-reply-projector';
 import { isApprovalBoundaryAnsweredByRecord } from './purchase-reconciliation';
 import {
   createDynamicExtractionSchema,
@@ -137,6 +141,7 @@ import {
 import type { ImageAttachmentRef } from '../core/image-attachments';
 import type { ImageFileAttachment, ImageObservation, ImageUrlAttachment } from './contracts';
 import type { CustomerContextProjection } from './customer-context';
+import { purchaseProfileCarriesBalanceFacts } from './customer-context';
 
 const SUPPORT_EMAIL = 'hola@sinenvolturas.com';
 
@@ -4472,10 +4477,11 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
         (informationRequest) => informationRequest.amount !== null &&
           informationRequest.amount !== undefined,
       );
+      const requestedAspects = purchaseRequests.flatMap(
+        (informationRequest) => informationRequest.aspects,
+      );
       const full = projectCompletedPurchaseForModel(result, {
-        requestedAspects: purchaseRequests.flatMap(
-          (informationRequest) => informationRequest.aspects,
-        ),
+        requestedAspects,
         referenceAuthorized: result.accessMethod === 'authenticated_account',
         userReported: {
           amount: reportedPurchase?.amount ?? null,
@@ -4490,6 +4496,35 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       }) as Record<string, unknown>;
       const { outcome: _droppedCustomerPayload, ...reference } = full;
       void _droppedCustomerPayload;
+      // Lane A: the canonical profile carries raw totals without the
+      // explicit balance distinction, so a bare profile_ref would let the
+      // order total read as an amount owed. Retain a compact typed
+      // limitation (existing projection, no arithmetic) unless the
+      // referenced profile record already carries the required facts.
+      const singleOrderId = result.purchases.length === 1
+        ? result.purchases[0]?.orderId ?? null
+        : null;
+      const balanceLimitation = projectPurchaseBalanceLimitation(
+        selectPurchaseReplyOutcome({
+          purchases: result.purchases.slice(0, 3),
+          carts: result.carts ?? [],
+          needsSelection: result.needsSelection,
+          coverage: result.coverage ?? 'complete',
+          referenceResolution: result.referenceResolution ?? 'not_requested',
+          requestedAspects,
+          referenceAuthorized: result.accessMethod === 'authenticated_account',
+          userReported: {
+            amount: reportedPurchase?.amount ?? null,
+          },
+        }),
+        singleOrderId,
+      );
+      if (
+        balanceLimitation !== null &&
+        !purchaseProfileCarriesBalanceFacts(request.customerContext, [balanceLimitation.orderId])
+      ) {
+        return { ...reference, profile_ref: 'customer_context', purchase_balance: balanceLimitation };
+      }
       return { ...reference, profile_ref: 'customer_context' };
     }
     if (result.status === 'completed' && result.kind === 'associated_event') {

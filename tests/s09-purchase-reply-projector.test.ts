@@ -7,6 +7,7 @@ import type {
 } from '../src/core/information';
 import {
   projectCompletedPurchaseForModel,
+  projectPurchaseBalanceLimitation,
   projectPurchaseReplyForModel,
   selectPurchaseReplyOutcome,
 } from '../src/runtime/purchase-reply-projector';
@@ -349,5 +350,102 @@ describe('S09 time-only answers carry time evidence without amount-driven caveat
     expect(projected.recordType).toBe('order');
     expect(projected.order.currencyAvailability).toBe('unknown');
     expect('currency_unknown' in projected.order).toBe(false);
+  });
+});
+
+describe('S09 compact purchase balance limitation', () => {
+  function singleOutcome(record: PurchaseInformation) {
+    return selectPurchaseReplyOutcome({
+      purchases: [record],
+      carts: [],
+      needsSelection: false,
+      coverage: 'complete',
+      referenceResolution: 'not_requested',
+      requestedAspects: aspects('summary', 'payment_status'),
+      referenceAuthorized: false,
+      userReported: {},
+    });
+  }
+
+  it('marks unknown paid and unverifiable remaining without computing a balance', () => {
+    const limitation = projectPurchaseBalanceLimitation(
+      singleOutcome(order({ orderId: 'order-luis-227', grandTotal: 227.76, currency: null })),
+      'order-luis-227',
+    );
+    expect(limitation).toEqual({
+      orderId: 'order-luis-227',
+      total: 227.76,
+      totalAvailability: 'available',
+      paid: null,
+      paidAvailability: 'unknown',
+      remaining: null,
+      remainingVerifiable: false,
+      currency: null,
+      currencyAvailability: 'unknown',
+      userReported: { amount: null, currency: null, paidAt: null },
+    });
+  });
+
+  it('passes explicit paid amounts through, including zero, without collision', () => {
+    const limitation = projectPurchaseBalanceLimitation(
+      singleOutcome(order({
+        orderId: 'order-zero-paid',
+        grandTotal: 227.76,
+        currency: 'PEN',
+        payment: { method: 'Yape', amount: 0, paidAt: '2026-08-30 21:31:00' },
+      })),
+      'order-zero-paid',
+    );
+    expect(limitation?.paid).toBe(0);
+    expect(limitation?.paidAvailability).toBe('available');
+    expect(limitation?.remaining).toBeNull();
+    expect(limitation?.remainingVerifiable).toBe(false);
+    expect(limitation?.currency).toBe('PEN');
+    expect(limitation?.currencyAvailability).toBe('available');
+  });
+
+  it('keeps user-reported amounts out of recorded paid and total', () => {
+    const outcome = selectPurchaseReplyOutcome({
+      purchases: [order({ orderId: 'order-reported', grandTotal: 227.76 })],
+      carts: [],
+      needsSelection: false,
+      coverage: 'complete',
+      referenceResolution: 'not_requested',
+      requestedAspects: aspects('summary', 'payment_status'),
+      referenceAuthorized: false,
+      userReported: { amount: 227.76 },
+    });
+    const limitation = projectPurchaseBalanceLimitation(outcome, 'order-reported');
+    expect(limitation?.total).toBe(227.76);
+    expect(limitation?.paid).toBeNull();
+    expect(limitation?.paidAvailability).toBe('unknown');
+    expect(limitation?.userReported.amount).toBe(227.76);
+  });
+
+  it('returns null for non-single-order outcomes and missing order ids', () => {
+    const selection = selectPurchaseReplyOutcome({
+      purchases: [order({ orderId: 'a' }), order({ orderId: 'b' })],
+      carts: [],
+      needsSelection: true,
+      coverage: 'complete',
+      referenceResolution: 'not_requested',
+      requestedAspects: aspects('summary', 'payment_status'),
+      referenceAuthorized: false,
+      userReported: {},
+    });
+    expect(projectPurchaseBalanceLimitation(selection, 'a')).toBeNull();
+    const empty = selectPurchaseReplyOutcome({
+      purchases: [],
+      carts: [],
+      needsSelection: false,
+      coverage: 'complete',
+      referenceResolution: 'not_requested',
+      requestedAspects: aspects('summary'),
+      referenceAuthorized: false,
+      userReported: {},
+    });
+    expect(projectPurchaseBalanceLimitation(empty, 'a')).toBeNull();
+    expect(projectPurchaseBalanceLimitation(singleOutcome(order()), null)).toBeNull();
+    expect(projectPurchaseBalanceLimitation(singleOutcome(order()), '  ')).toBeNull();
   });
 });
