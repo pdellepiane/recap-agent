@@ -122,6 +122,18 @@ describe('deployment target safety', () => {
     ).toThrow('SE_API_SECRET_NAME');
   });
 
+  it('grants fenced-write permission in production before code activation, without fixture access', () => {
+    const template = fs.readFileSync(path.resolve(process.cwd(), 'infra/cloudformation/stack.yaml'), 'utf8');
+    const policy = template.split('  PlansTransactAccess:')[1]?.split('  RuntimeFunction:')[0] ?? '';
+    expect(policy).not.toContain('Condition: IsDevelopment');
+    expect(policy).toContain('dynamodb:ConditionCheckItem');
+    expect(policy).toContain('Resource: !GetAtt PlansTable.Arn');
+    expect(policy).not.toContain('EvalFixtureTable');
+    expect(template).toContain('DependsOn: [RuntimeLogGroup, PlansTransactAccess]');
+    const fixtures = template.split('  EvalFixtureTableAccess:')[1]?.split('  PlansTransactAccess:')[0] ?? '';
+    expect(fixtures).toContain('Condition: IsDevelopment');
+  });
+
   it('requires deployment and artifact safeguards in the executable path', () => {
     const deployScript = fs.readFileSync(
       path.resolve(process.cwd(), 'scripts/deploy.mjs'),

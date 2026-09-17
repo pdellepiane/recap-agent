@@ -369,12 +369,10 @@ Resources:
   # TransactWriteItems alone does not cover ConditionCheck. PutItem for the
   # transact Put is already granted by recap-agent-dynamo above. Scoped to the
   # plans table ARN only; item-level TURN_LOCK scoping stays in the runtime
-  # ConditionExpression, not IAM. Development-only (Condition:
-  # IsDevelopment) so production effective permissions are unchanged. No
-  # second table, no TTL change.
+  # ConditionExpression, not IAM. Both environments execute fenced writes.
+  # No fixture-table access, second table, or TTL change.
   PlansTransactAccess:
     Type: AWS::IAM::Policy
-    Condition: IsDevelopment
     Properties:
       PolicyName: recap-agent-plans-transact
       Roles:
@@ -390,7 +388,7 @@ Resources:
 
   RuntimeFunction:
     Type: AWS::Lambda::Function
-    DependsOn: RuntimeLogGroup
+    DependsOn: [RuntimeLogGroup, PlansTransactAccess]
     Properties:
       FunctionName: !Ref FunctionName
       Handler: lambda/index.handler
