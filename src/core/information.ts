@@ -605,6 +605,22 @@ export type InformationTaskResult =
       coverage?: 'complete' | 'partial' | 'inconsistent';
       referenceResolution?: 'matched' | 'unavailable';
       requestedCustomerTransactionNumber?: string | null;
+      /**
+       * Phone-authorized guest-event associations fetched through the same
+       * shared root the event path consumes (summaries plus bounded
+       * hydrated details, mapped through the existing event mapping).
+       * Present only on purchase-only turns with no associated_event
+       * request, so the profile keeps event identity/venue/attendance
+       * without a second request. Facts only, never a new lookup.
+       */
+      linkedEvents?: UserEventLookupResult;
+      /**
+       * Failures from the shared root hydration backing linkedEvents.
+       * Preserved so a bound or failed detail read never claims a
+       * complete profile; ready facts stay usable alongside.
+       */
+      linkedEventFailures?: Array<{ eventId: number; failureKind: string }>;
+      linkedEventsTruncated?: boolean;
       openAiTransport?: OpenAiTransportMetrics;
     }
   | {

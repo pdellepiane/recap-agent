@@ -6924,16 +6924,32 @@ export class AgentService {
       return result.purchases.map((purchase) => purchase.orderId);
     })));
     const knownEventEntries = args.informationResults.flatMap((result) => {
-      if (result.status !== 'completed' || result.kind !== 'associated_event') return [];
-      return result.result.events.flatMap((event) =>
-        event.eventId === null || event.eventId === undefined
-          ? []
-          : [{ id: event.eventId as number | string, name: event.name ?? null } as const],
-      );
+      if (result.status !== 'completed') return [];
+      if (result.kind === 'associated_event') {
+        return result.result.events.flatMap((event) =>
+          event.eventId === null || event.eventId === undefined
+            ? []
+            : [{ id: event.eventId as number | string, name: event.name ?? null } as const],
+        );
+      }
+      if (result.kind === 'purchase' && result.linkedEvents) {
+        return result.linkedEvents.events.flatMap((event) =>
+          event.eventId === null || event.eventId === undefined
+            ? []
+            : [{ id: event.eventId as number | string, name: event.name ?? null } as const],
+        );
+      }
+      return [];
     });
     const knownEventIds = Array.from(new Set(args.informationResults.flatMap((result) => {
-      if (result.status !== 'completed' || result.kind !== 'associated_event') return [];
-      return result.result.events.flatMap((event) => event.eventId === null || event.eventId === undefined ? [] : [event.eventId]);
+      if (result.status !== 'completed') return [];
+      if (result.kind === 'associated_event') {
+        return result.result.events.flatMap((event) => event.eventId === null || event.eventId === undefined ? [] : [event.eventId]);
+      }
+      if (result.kind === 'purchase' && result.linkedEvents) {
+        return result.linkedEvents.events.flatMap((event) => event.eventId === null || event.eventId === undefined ? [] : [event.eventId]);
+      }
+      return [];
     })));
     const target = resolveRelevantTarget({
       orderIds: knownOrderIds,
@@ -6989,12 +7005,22 @@ export class AgentService {
         }),
       ).map((candidate) => candidate.orderId);
       const knownEventsById = new Map(args.informationResults.flatMap((result) => {
-        if (result.status !== 'completed' || result.kind !== 'associated_event') return [];
-        return result.result.events.flatMap((event) =>
-          event.eventId === null || event.eventId === undefined
-            ? []
-            : [[String(event.eventId), event] as const],
-        );
+        if (result.status !== 'completed') return [];
+        if (result.kind === 'associated_event') {
+          return result.result.events.flatMap((event) =>
+            event.eventId === null || event.eventId === undefined
+              ? []
+              : [[String(event.eventId), event] as const],
+          );
+        }
+        if (result.kind === 'purchase' && result.linkedEvents) {
+          return result.linkedEvents.events.flatMap((event) =>
+            event.eventId === null || event.eventId === undefined
+              ? []
+              : [[String(event.eventId), event] as const],
+          );
+        }
+        return [];
       }));
       unresolvedCandidateEventIds = this.orderUnresolvedCandidatesByTemporalProximity(
         target.eventIds.map((eventId) => {
@@ -7025,12 +7051,24 @@ export class AgentService {
       return result.purchases.map((purchase) => purchase.orderId);
     })));
     const detailedEventIds = Array.from(new Set(args.informationResults.flatMap((result) => {
-      if (result.status !== 'completed' || result.kind !== 'associated_event') return [];
-      return result.result.events.flatMap((event) =>
-        event.eventId === null || event.eventId === undefined || event.detail == null
-          ? []
-          : [event.eventId],
-      );
+      if (result.status !== 'completed') return [];
+      if (result.kind === 'associated_event') {
+        return result.result.events.flatMap((event) =>
+          event.eventId === null || event.eventId === undefined || event.detail == null
+            ? []
+            : [event.eventId],
+        );
+      }
+      // Purchase-linked root details hydrate through the same shared root:
+      // already-detailed linked events never re-issue their read here.
+      if (result.kind === 'purchase' && result.linkedEvents) {
+        return result.linkedEvents.events.flatMap((event) =>
+          event.eventId === null || event.eventId === undefined || event.detail == null
+            ? []
+            : [event.eventId],
+        );
+      }
+      return [];
     })));
     const enrichmentTargets = selectEnrichmentTargets({
       knownOrderIds,
@@ -8752,12 +8790,16 @@ export class AgentService {
       turnDecision: handedOff ? this.humanEscalationTurnDecision('host_withdrawal_status_unsupported')
         : this.informationTurnDecision('host_withdrawal_policy_and_support'),
       // Skipped handoff attempts (unavailable capability, missing phone)
-      // project a null typed outcome, so the typed attempt status and
-      // reason travel here through the existing reply evidence instead of
-      // going silent: the model distinguishes unavailable-capability from
-      // missing-phone from evidence. Requested/failed outcomes already ride
-      // the typed handoff outcome and suppress this note as redundant.
-      errorMessage: handoffEvidence?.operationalNote ?? null,
+      // travel as typed handoff outcomes preserving the reason family, so
+      // the model distinguishes unavailable-capability from missing-phone
+      // from evidence. The prose note is dropped: it would be suppressed
+      // as redundant next to the typed outcome and must never be the
+      // evidence carrier. Requested/failed outcomes already ride the typed
+      // handoff outcome and suppress their note as redundant.
+      errorMessage: handoffOutcome === 'handoff_skipped_missing_phone' ||
+        handoffOutcome === 'handoff_skipped_unavailable'
+        ? null
+        : handoffEvidence?.operationalNote ?? null,
       promptBundleId: PENDING_COMPILER_PROMPT_ID,
       promptFilePaths: [],
       toolUsage: args.toolUsage,

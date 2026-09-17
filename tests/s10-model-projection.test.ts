@@ -224,9 +224,15 @@ describe('S10 reply evidence projector', () => {
       phonePresent: false,
       confirmedReceipt: false,
     });
-    expect(skipped.handoffOutcome).toBeNull();
+    expect(skipped.handoffOutcome).toBe('handoff_skipped_missing_phone');
     expect(skipped.identityAvailable).toBe(false);
     expect(skipped.operationalNote).toContain('missing_phone_number');
+    const skippedUnavailable = projectSupportHandoffEvidence({
+      result: { status: 'skipped', reason: 'not_configured', message: 'Disabled.' },
+      phonePresent: true,
+      confirmedReceipt: false,
+    });
+    expect(skippedUnavailable.handoffOutcome).toBe('handoff_skipped_unavailable');
   });
 
   it('never projects a success claim from missing identity or a failed handoff', () => {

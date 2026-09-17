@@ -1577,11 +1577,13 @@ describe('InformationOrchestrator', () => {
 
   it('seeds the full guest root once and reuses it with honest coverage on purchase-only turns', async () => {
     // A purchase-only turn shares the single phone-authorized guest-event
-    // root: one guest-events flight, bounded hydration merged once into the
-    // snapshot (details, failures, truncation plus purchases), and the
-    // purchase request reuses those results instead of a second scoped
-    // discovery. Five candidates exceed the read bound, so the reused
-    // event-scoped purchases report partial — never a complete profile.
+    // root: one guest-events flight, bounded hydration (details plus
+    // event-scoped order A) merged once, and the applicable authorized
+    // purchase root still acquired (orders A+B, never every endpoint).
+    // Both sources merge by stable order ID: A enriches missing fields
+    // from either side, B survives once, source conflicts stay explicit.
+    // Five candidates exceed the read bound, so coverage stays partial —
+    // never a complete profile — while ready facts remain usable.
     const agentGateway = new FakeAgentGateway();
     agentGateway.guestEventsResult = {
       status: 'success',
@@ -1593,6 +1595,12 @@ describe('InformationOrchestrator', () => {
         guestEvent(85, 'Boda Sol y Luna'),
       ],
     };
+    const hydratedA = {
+      ...giftPurchase(),
+      orderId: 'ORD-000880',
+      eventId: 81,
+      eventName: 'Boda Ana y Luis',
+    };
     agentGateway.enrichedEventDetailResult = {
       status: 'success',
       event: {
@@ -1600,23 +1608,52 @@ describe('InformationOrchestrator', () => {
         name: 'Boda Ana y Luis',
         slug: 'event-81',
         url: null,
-        datetime: null,
+        datetime: '2026-09-20T18:00:00',
         type: null,
         typeDetail: null,
         stage: null,
         city: 'Lima',
         country: 'Perú',
         currency: null,
-        withTime: false,
+        withTime: true,
         timezone: null,
         celebrateds: [],
         moments: [],
         dresscode: null,
         commonAsked: [],
         contactInfo: [],
-        attendance: null,
-        purchases: [giftPurchase()],
+        attendance: {
+          guestId: 501,
+          name: 'Ana',
+          hasResponded: true,
+          willAttend: true,
+          responseDate: '2026-09-01',
+        },
+        purchases: [hydratedA],
       },
+    };
+    // Purchase root: sparse A (missing fields enriched from hydration)
+    // plus B. Same stable IDs merge; each survives exactly once.
+    const sparseA = {
+      ...giftPurchase(),
+      orderId: 'ORD-000880',
+      eventId: 81,
+      eventName: null,
+      eventDate: null,
+      grandTotal: null,
+      paymentMethod: null,
+    };
+    const orderB = {
+      ...giftPurchase(),
+      orderId: 'ORD-000881',
+      eventId: 82,
+      eventName: 'Boda María y José',
+      grandTotal: 150,
+    };
+    agentGateway.guestOrdersResult = {
+      status: 'success',
+      resource: 'orders',
+      purchases: [sparseA, orderB],
     };
     const orchestrator = new InformationOrchestrator({
       knowledgeGateway: { async search() { throw new Error('unused'); } },
@@ -1640,15 +1677,39 @@ describe('InformationOrchestrator', () => {
       trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
     });
 
+    // Shared reads once: one guest-events flight, bounded detail reads,
+    // one applicable purchase root (orders). The gift-detail endpoint is
+    // never read for a summary question.
     expect(agentGateway.guestEventCalls).toBe(1);
-    expect(agentGateway.guestOrdersCalls).toBe(0);
+    expect(agentGateway.eventDetailCalls).toBe(4);
+    expect(agentGateway.guestOrdersCalls).toBe(1);
     expect(agentGateway.guestGiftCalls).toBe(0);
-    expect(execution.results[0]).toMatchObject({
+    const result = execution.results[0];
+    expect(result).toMatchObject({
       status: 'completed',
       accessMethod: 'trusted_phone_event_purchase',
       coverage: 'partial',
-      purchases: [{ orderId: 'ORD-000880' }],
     });
+    if (result.status !== 'completed' || result.kind !== 'purchase') {
+      throw new Error('Expected a completed purchase result.');
+    }
+    // A and B survive canonically, one representation each.
+    const orderIds = result.purchases.map((purchase) => purchase.orderId).sort();
+    expect(orderIds).toEqual(['ORD-000880', 'ORD-000881']);
+    // A enriches missing root fields from the hydration side.
+    const mergedA = result.purchases.find((purchase) => purchase.orderId === 'ORD-000880');
+    expect(mergedA?.eventName).toBe('Boda Ana y Luis');
+    // Associations/details travel through the existing purchase result:
+    // event identity, venue and attendance without a second request.
+    expect(result.linkedEvents).toBeDefined();
+    const linked81 = result.linkedEvents?.events.find((event) => event.eventId === 81);
+    expect(linked81?.name).toBe('Boda Ana y Luis');
+    expect(linked81?.place).toBe('Lima');
+    expect(linked81?.detail?.city).toBe('Lima');
+    expect(linked81?.guestStatus?.willAttend).toBe(true);
+    // Partial coverage stays visible: the bound truncated the fifth
+    // candidate, so completeness is never claimed.
+    expect(result.linkedEventsTruncated).toBe(true);
   });
 });
 

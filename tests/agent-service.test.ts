@@ -8473,11 +8473,13 @@ describe('AgentService', () => {
     expect(agentGateway.requestedPhones).toEqual(['51987654321']);
     // Package D contract: non-auth skipped help is model-composed from typed
     // handoff evidence with no OTP/email copy, never a success claim.
+    // The skipped attempt travels as typed evidence preserving the
+    // unavailable-capability reason (no prose-string carrier).
     expect(response.outbound.text).toBe('reply:solicitar_agente_humano');
     expect(response.outbound.text).not.toMatch(/12|horas/iu);
     expect(runtime.composeRequests).toHaveLength(1);
     expect(runtime.composeRequests.at(-1)?.currentNode).toBe('solicitar_agente_humano');
-    expect(runtime.composeRequests.at(-1)?.handoffOutcome).toBeNull();
+    expect(runtime.composeRequests.at(-1)?.handoffOutcome).toBe('handoff_skipped_unavailable');
   });
 
   it('keeps escalated conversations soft-paused without extracting or searching again', async () => {

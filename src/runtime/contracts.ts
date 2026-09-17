@@ -268,7 +268,7 @@ export type ComposeReplyRequest = {
   informationResults?: InformationTaskResult[];
   /** Typed outcome facts for clarification, media, and access branches. */
   capabilityDecision?: CapabilityDecision | null;
-  handoffOutcome?: 'handoff_requested' | 'handoff_failed' | 'handoff_unknown' | 'handoff_duplicate' | null;
+  handoffOutcome?: 'handoff_requested' | 'handoff_failed' | 'handoff_unknown' | 'handoff_duplicate' | 'handoff_skipped_missing_phone' | 'handoff_skipped_unavailable' | null;
   imageEvidence?: {
     status: 'available' | 'unavailable';
     reason: string | null;
@@ -292,7 +292,7 @@ export type ComposeReplyRequest = {
     reason: string;
     protectedRequestsClosed: boolean;
     publicInformationRequestsRemaining: number;
-    handoffOutcome: 'handoff_requested' | 'handoff_failed' | 'handoff_unknown' | 'handoff_duplicate' | null;
+    handoffOutcome: 'handoff_requested' | 'handoff_failed' | 'handoff_unknown' | 'handoff_duplicate' | 'handoff_skipped_missing_phone' | 'handoff_skipped_unavailable' | null;
     noFurtherCredentialRequests?: boolean;
     /**
      * C1 scoped-search framing. True when the terminal outcome follows a

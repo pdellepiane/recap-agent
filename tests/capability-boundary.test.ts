@@ -198,7 +198,7 @@ describe('capability boundary evidence', () => {
       phonePresent: false,
       confirmedReceipt: false,
     });
-    expect(skipped.handoffOutcome).toBeNull();
+    expect(skipped.handoffOutcome).toBe('handoff_skipped_missing_phone');
     expect(skipped.identityAvailable).toBe(false);
     expect(skipped.effectConfirmed).toBe(false);
     for (const evidence of [requested, failed, unknown, skipped]) {

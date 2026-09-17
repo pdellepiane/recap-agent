@@ -157,6 +157,8 @@ export type SupportHandoffReplyOutcome =
   | 'handoff_failed'
   | 'handoff_unknown'
   | 'handoff_duplicate'
+  | 'handoff_skipped_missing_phone'
+  | 'handoff_skipped_unavailable'
   | null;
 
 export type SupportHandoffEvidence = {
@@ -172,8 +174,11 @@ export type SupportHandoffEvidence = {
  * Projects a human-takeover gateway result into typed reply evidence before
  * generation. Success is claimed only from an actual gateway success;
  * failed, unknown and unattempted (skipped) results stay distinct and every
- * branch still requires this turn's model composition. The operational note
- * carries facts (status, reason), never reply prose.
+ * branch still requires this turn's model composition. Skipped attempts
+ * project a typed skipped outcome that preserves the reason family
+ * (missing-phone vs unavailable capability) so the model distinguishes
+ * them from evidence without prose. The operational note carries facts
+ * (status, reason) for traces, never reply prose.
  */
 export function projectSupportHandoffEvidence(args: {
   readonly result: AgentGatewayResult;
@@ -211,7 +216,9 @@ export function projectSupportHandoffEvidence(args: {
     };
   }
   return {
-    handoffOutcome: null,
+    handoffOutcome: args.result.reason === 'missing_phone_number'
+      ? 'handoff_skipped_missing_phone'
+      : 'handoff_skipped_unavailable',
     identityAvailable: args.phonePresent,
     effectConfirmed: false,
     receiptPresent: false,

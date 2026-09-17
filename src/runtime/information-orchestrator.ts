@@ -82,17 +82,21 @@ type PhoneContextSnapshot = {
   purchasePartitionByOrderId: Map<string, PurchasePartition>;
   cartsById: Map<string, CartInformation>;
   inconsistentOrderIds: Set<string>;
-  /**
-   * Entry-root seeding: the full shared phone-authorized guest-event root
-   * (association facts, hydrated event details, failures, truncation) merged
-   * once per turn. Purchase execution reuses these results from the snapshot
-   * instead of re-running scoped discovery.
-   */
-  rootSeeded: boolean;
-  rootGuestEvents: AgentGuestEventSummary[];
-  rootEventDetails: Map<number, HydratedEventDetail>;
-  rootEventFailures: Array<{ eventId: number; failureKind: EventDetailHydrationFailureKind }>;
-  rootTruncatedByBound: boolean;
+};
+
+/**
+ * Phone-authorized guest-event root fetched once per purchase-only turn
+ * through the same shared flight the event path consumes. Associations,
+ * bounded hydrated details, failures and truncation travel here so the
+ * purchase execution below reuses them instead of re-running scoped
+ * discovery. Built with the existing hydration and event mapping only.
+ */
+type SeededGuestRoot = {
+  events: AgentGuestEventSummary[];
+  details: Map<number, HydratedEventDetail>;
+  failures: Array<{ eventId: number; failureKind: EventDetailHydrationFailureKind }>;
+  truncatedByBound: boolean;
+  phoneNumber: string;
 };
 
 /**
@@ -236,11 +240,6 @@ export class InformationOrchestrator {
       purchasePartitionByOrderId: new Map(),
       cartsById: new Map(),
       inconsistentOrderIds: new Set(),
-      rootSeeded: false,
-      rootGuestEvents: [],
-      rootEventDetails: new Map(),
-      rootEventFailures: [],
-      rootTruncatedByBound: false,
     };
     const guestEventsPromise =
       !args.authentication &&
@@ -251,7 +250,10 @@ export class InformationOrchestrator {
         ? this.lookupGuestEvents(args.trustedPhone)
         : null;
     const outcomes = new Map<number, { result: InformationTaskResult; durationMs: number }>();
-    const executeIndexes = async (indexes: number[]): Promise<void> => {
+    const executeIndexes = async (
+      indexes: number[],
+      seededRootPromise: Promise<SeededGuestRoot | null> | null = null,
+    ): Promise<void> => {
       const settled = await Promise.allSettled(
         indexes.map(async (index) => {
           const request = args.requests[index];
@@ -271,6 +273,7 @@ export class InformationOrchestrator {
           phoneContext,
           args.deadlineMs ?? null,
           accountPurchaseLookups,
+          seededRootPromise,
         );
           return { result, durationMs: Date.now() - startedAt };
         }),
@@ -315,10 +318,14 @@ export class InformationOrchestrator {
     // event-scoped purchases are reused within the turn instead of running
     // a second scoped discovery. The seeding runs together with the
     // non-purchase requests over the same single shared flight (bounded
-    // existing hydration, read-only), and the purchase requests below reuse
-    // the merged snapshot results; turns without purchase work or with
-    // their own associated_event request seed nothing here.
-    const rootSeed = this.seedPhoneContextFromGuestRoot({
+    // existing hydration, read-only); purchase requests below reuse the
+    // merged snapshot results plus their own authorized purchase roots.
+    // Turns without purchase work or with their own associated_event
+    // request seed nothing here. Independent root reads (guest events,
+    // bounded detail hydration, purchase roots) start together where
+    // dependencies allow: the purchase path awaits the shared seed while
+    // its own purchase-root gateway call is already in flight.
+    const rootSeedPromise = this.seedPhoneContextFromGuestRoot({
       requests: args.requests,
       guestEventsPromise,
       trustedPhone: args.trustedPhone ?? null,
@@ -326,9 +333,21 @@ export class InformationOrchestrator {
       phoneContext,
       deadlineMs: args.deadlineMs ?? null,
     });
-    await executeIndexes(nonPurchaseIndexes);
-    await rootSeed;
-    await executeIndexes(purchaseIndexes);
+    // Ordering dependency: a purchase alongside its own associated_event
+    // request reuses that request's merged event-scoped purchases, so it
+    // runs after the non-purchase work. Purchase-only turns have no such
+    // dependency (the seed is the only phone-context writer), so their
+    // purchase-root gateway calls start together with the bounded
+    // hydration instead of waiting on it.
+    if (args.requests.some((request) => request.kind === 'associated_event')) {
+      await executeIndexes(nonPurchaseIndexes);
+      await rootSeedPromise;
+      await executeIndexes(purchaseIndexes, rootSeedPromise);
+    } else {
+      const purchaseRun = executeIndexes(purchaseIndexes, rootSeedPromise);
+      await Promise.all([executeIndexes(nonPurchaseIndexes), purchaseRun]);
+      await rootSeedPromise;
+    }
 
     const results = this.reconcilePhoneContextResults(
       args.requests,
@@ -401,6 +420,7 @@ export class InformationOrchestrator {
     phoneContext: PhoneContextSnapshot,
     deadlineMs: number | null,
     accountPurchaseLookups?: Map<string, Promise<AgentPurchaseLookupResult | undefined>>,
+    seededRootPromise?: Promise<SeededGuestRoot | null> | null,
   ): Promise<InformationTaskResult> {
     if (request.kind === 'faq') {
       if (!this.capabilityAvailable('faq.read')) {
@@ -543,6 +563,7 @@ export class InformationOrchestrator {
           phoneGateway,
           phonePurchaseLookups,
           phoneContext,
+          seededRootPromise ?? null,
         );
       }
       return {
@@ -746,14 +767,15 @@ export class InformationOrchestrator {
    * work but no associated_event request, the shared phone-authorized
    * guest-event root (same single flight the event path consumes) seeds the
    * per-turn phone context once through the existing bounded hydration,
-   * keyed by the purchase event hints. The FULL root outcome is merged into
-   * the canonical snapshot — association facts, hydrated event details,
-   * failures and truncation alongside the event-scoped purchases — and the
-   * purchase execution below reuses those snapshot results instead of
-   * re-running scoped discovery. Read-only gateway reads only, shared
-   * per-turn detail cache, invocation deadline honored; failures record
-   * nothing and never throw, so the purchase path falls back to its own
-   * roots unchanged.
+   * keyed by the purchase event hints. Event-scoped purchases merge into
+   * the canonical snapshot through the existing merge; associations,
+   * hydrated details, failures and truncation return as a structured
+   * outcome so the purchase execution below transfers them through the
+   * existing purchase result into profile assembly (no fabricated request
+   * or summary, existing event mapping only). Read-only gateway reads
+   * only, shared per-turn detail cache, invocation deadline honored;
+   * failures record nothing and never throw, so the purchase path falls
+   * back to its own roots unchanged.
    */
   private async seedPhoneContextFromGuestRoot(args: {
     requests: PendingInformationRequest[];
@@ -762,20 +784,17 @@ export class InformationOrchestrator {
     eventDetailLookups: EventDetailCache;
     phoneContext: PhoneContextSnapshot;
     deadlineMs: number | null;
-  }): Promise<void> {
-    if (!args.guestEventsPromise) return;
-    if (args.requests.some((request) => request.kind === 'associated_event')) return;
-    if (!args.requests.some((request) => request.kind === 'purchase')) return;
-    if (args.phoneContext.rootSeeded) return;
+  }): Promise<SeededGuestRoot | null> {
+    if (!args.guestEventsPromise) return null;
+    if (args.requests.some((request) => request.kind === 'associated_event')) return null;
+    if (!args.requests.some((request) => request.kind === 'purchase')) return null;
     let guestEvents: AgentGuestEventsResult;
     try {
       guestEvents = await args.guestEventsPromise;
     } catch {
-      return;
+      return null;
     }
-    if (guestEvents.status !== 'success' || guestEvents.events.length === 0) return;
-    args.phoneContext.rootSeeded = true;
-    args.phoneContext.rootGuestEvents = [...guestEvents.events];
+    if (guestEvents.status !== 'success' || guestEvents.events.length === 0) return null;
     const hints = Array.from(new Set(
       args.requests.flatMap((request) =>
         request.kind === 'purchase' && request.eventHint?.trim()
@@ -784,7 +803,10 @@ export class InformationOrchestrator {
       ),
     ));
     const passes = hints.length > 0 ? hints : [null];
+    const details = new Map<number, HydratedEventDetail>();
+    const failures: Array<{ eventId: number; failureKind: EventDetailHydrationFailureKind }> = [];
     const seenFailures = new Set<string>();
+    let truncatedByBound = false;
     for (const hint of passes) {
       const hydration = await this.hydrateRelevantEventDetails({
         events: guestEvents.events,
@@ -795,24 +817,31 @@ export class InformationOrchestrator {
         deadlineMs: args.deadlineMs,
       });
       if (hydration.truncatedByBound) {
-        args.phoneContext.rootTruncatedByBound = true;
+        truncatedByBound = true;
       }
       for (const [eventId, detail] of hydration.details) {
-        if (!args.phoneContext.rootEventDetails.has(eventId)) {
-          args.phoneContext.rootEventDetails.set(eventId, detail);
+        if (!details.has(eventId)) {
+          details.set(eventId, detail);
         }
       }
       for (const failure of hydration.failures) {
         const key = `${failure.eventId}:${failure.failureKind}`;
         if (!seenFailures.has(key)) {
           seenFailures.add(key);
-          args.phoneContext.rootEventFailures.push(failure);
+          failures.push(failure);
         }
       }
       for (const purchase of hydration.purchases) {
         this.mergePhonePurchase(args.phoneContext, purchase, 'event');
       }
     }
+    return {
+      events: [...guestEvents.events],
+      details,
+      failures,
+      truncatedByBound,
+      phoneNumber: args.trustedPhone?.phone_number ?? '',
+    };
   }
 
   /**
@@ -1483,37 +1512,195 @@ export class InformationOrchestrator {
       Promise<AgentPhonePurchaseLookupResult | undefined>
     >,
     phoneContext: PhoneContextSnapshot,
+    seededRootPromise?: Promise<SeededGuestRoot | null> | null,
   ): Promise<InformationTaskResult> {
-    const eventScopedPurchases = this.eventScopedPurchasesForRequest(
-      request,
-      phoneContext,
-    );
-    if (eventScopedPurchases.length > 0) {
-      // Reuses the entry-root seeding above: the event details, association
-      // facts, failures and truncation merged once into the snapshot decide
-      // coverage here, so a bound or a failed detail read never claims a
-      // complete profile.
-      const seededCoverageIncomplete = phoneContext.rootSeeded &&
-        (phoneContext.rootTruncatedByBound || phoneContext.rootEventFailures.length > 0);
-      return {
-        requestId: request.requestId,
-        kind: 'purchase',
-        status: 'completed',
-        resource: request.resource,
-        purchases: eventScopedPurchases.map((purchase) =>
-          this.projectPurchase(purchase, request),
-        ),
-        needsSelection: !request.orderId && eventScopedPurchases.length > 1,
-        accessMethod: 'trusted_phone_event_purchase',
-        coverage: seededCoverageIncomplete ? 'partial' : 'complete',
-      };
-    }
-    const lookup = await this.lookupPhonePurchase(
+    // Independent root reads run together: the applicable authorized
+    // purchase root starts while the shared guest-event seed (same flight
+    // the event path consumes) is still hydrating. Both settle below
+    // before the stable-order-ID merge, so neither waits idly on the
+    // other where dependencies allow.
+    const lookupPromise = this.lookupPhonePurchase(
       request,
       trustedPhone,
       phoneGateway,
       phonePurchaseLookups,
     );
+    const seeded = seededRootPromise ? await seededRootPromise : null;
+    const eventScopedPurchases = this.eventScopedPurchasesForRequest(
+      request,
+      phoneContext,
+    );
+    const linkedEvents = seeded && seeded.events.length > 0
+      ? this.guestEventsResult(
+        seeded.events,
+        null,
+        seeded.phoneNumber,
+        undefined,
+        seeded.details,
+      )
+      : null;
+    const linkedFailures = seeded
+      ? seeded.failures.map((failure) => ({ ...failure }))
+      : [];
+    const linkedTruncated = seeded?.truncatedByBound ?? false;
+    const seededIncomplete = seeded !== null &&
+      (linkedTruncated || linkedFailures.length > 0);
+    const withLinked = <T extends object>(result: T): T & {
+      linkedEvents?: UserEventLookupResult;
+      linkedEventFailures?: Array<{ eventId: number; failureKind: string }>;
+      linkedEventsTruncated?: boolean;
+    } => linkedEvents
+      ? {
+        ...result,
+        linkedEvents,
+        ...(linkedFailures.length > 0 ? { linkedEventFailures: linkedFailures } : {}),
+        ...(linkedTruncated ? { linkedEventsTruncated: true } : {}),
+      }
+      : result;
+    if (eventScopedPurchases.length > 0 || linkedEvents !== null) {
+      // Still acquire the applicable authorized purchase root when the
+      // hydration found purchases (existing partition selection and
+      // capability checks inside lookupPhonePurchase, never every
+      // endpoint): event-scoped A merges with purchase-root A+B by stable
+      // order ID below. An early return here would bypass that lookup
+      // even when partial, so it never returns before the merge.
+      const lookup = await lookupPromise;
+      if (lookup && lookup.result.status === 'success') {
+        const evidence = this.partitionedPurchaseLookup(lookup.result);
+        for (const orderId of evidence.conflictingOrderIds) {
+          phoneContext.inconsistentOrderIds.add(orderId);
+        }
+        for (const cart of evidence.carts) {
+          phoneContext.cartsById.set(cart.cartId, cart);
+        }
+        const candidates = this.filterPurchaseCandidates(
+          evidence.purchases,
+          request,
+          evidence.partitionByOrderId,
+          lookup.requestedCustomerTransactionNumber,
+        );
+        for (const purchase of candidates.purchases) {
+          this.mergePhonePurchase(
+            phoneContext,
+            purchase,
+            lookup.sourceResource,
+            evidence.partitionByOrderId.get(purchase.orderId),
+          );
+        }
+        // Stable-order-ID union within scope: event-scoped plus
+        // purchase-root candidates read back canonically (enriched
+        // missing fields, preserved source conflicts via the snapshot).
+        const combinedIds = new Set<string>([
+          ...eventScopedPurchases.map((purchase) => purchase.orderId),
+          ...candidates.purchases.map((purchase) => purchase.orderId),
+        ]);
+        if (request.orderId) {
+          const only = phoneContext.purchasesByOrderId.get(request.orderId);
+          const combined = only ? [only] : [];
+          if (combined.length === 0) {
+            return withLinked({
+              requestId: request.requestId,
+              kind: 'purchase' as const,
+              status: 'completed' as const,
+              resource: request.resource,
+              purchases: [],
+              needsSelection: false,
+              accessMethod: 'trusted_phone_event_purchase' as const,
+              coverage: 'partial' as const,
+            });
+          }
+          const canonical = combined[0];
+          if (!canonical) {
+            return withLinked({
+              requestId: request.requestId,
+              kind: 'purchase' as const,
+              status: 'completed' as const,
+              resource: request.resource,
+              purchases: [],
+              needsSelection: false,
+              accessMethod: 'trusted_phone_event_purchase' as const,
+              coverage: 'partial' as const,
+            });
+          }
+          return withLinked({
+            requestId: request.requestId,
+            kind: 'purchase',
+            status: 'completed',
+            resource: request.resource,
+            lookupResource: lookup.sourceResource,
+            purchases: [this.projectPurchase(canonical, request, {
+              requestedCustomerTransactionNumber: lookup.requestedCustomerTransactionNumber ?? null,
+            })],
+            needsSelection: false,
+            accessMethod: 'trusted_phone_event_purchase',
+            coverage: seededIncomplete || lookup.coverage === 'partial' ? 'partial' : 'complete',
+            carts: this.filterCartCandidates(evidence.carts, request).map((cart) => this.projectCart(cart)),
+            ...(lookup.referenceResolution === 'not_requested'
+              ? {}
+              : {
+                referenceResolution: lookup.referenceResolution,
+                requestedCustomerTransactionNumber:
+                  lookup.requestedCustomerTransactionNumber,
+              }),
+          });
+        }
+        const combined = [...combinedIds]
+          .map((orderId) => phoneContext.purchasesByOrderId.get(orderId))
+          .filter((purchase): purchase is NonNullable<typeof purchase> => purchase !== undefined);
+        // A failed optional source never erases ready facts: the merged
+        // set answers with partial coverage below. Detail success never
+        // proves purchase completeness: seeded-only success without the
+        // purchase root still reports partial via seededIncomplete only
+        // when a bound/failure exists; otherwise the merged root decides.
+        return withLinked({
+          requestId: request.requestId,
+          kind: 'purchase',
+          status: 'completed',
+          resource: request.resource,
+          lookupResource: lookup.sourceResource,
+          purchases: combined.map((purchase) =>
+            this.projectPurchase(purchase, request, {
+              requestedCustomerTransactionNumber: lookup.requestedCustomerTransactionNumber ?? null,
+            }),
+          ),
+          needsSelection: !request.orderId && combined.length > 1,
+          accessMethod: 'trusted_phone_event_purchase',
+          coverage: seededIncomplete || lookup.coverage === 'partial' ? 'partial' : 'complete',
+          carts: this.filterCartCandidates(evidence.carts, request).map((cart) => this.projectCart(cart)),
+          ...(lookup.referenceResolution === 'not_requested'
+            ? {}
+            : {
+              referenceResolution: lookup.referenceResolution,
+              requestedCustomerTransactionNumber:
+                lookup.requestedCustomerTransactionNumber,
+            }),
+        });
+      }
+      // The purchase root is unavailable or failed: ready event-scoped
+      // facts stay usable with honest partial coverage instead of failing
+      // the whole read. Unauthorized/misconfigured roots without any
+      // event-scoped purchase fall through to the normal contract below.
+      if (eventScopedPurchases.length > 0) {
+        return withLinked({
+          requestId: request.requestId,
+          kind: 'purchase',
+          status: 'completed',
+          resource: request.resource,
+          purchases: eventScopedPurchases.map((purchase) =>
+            this.projectPurchase(purchase, request),
+          ),
+          needsSelection: !request.orderId && eventScopedPurchases.length > 1,
+          accessMethod: 'trusted_phone_event_purchase',
+          coverage: 'partial',
+        });
+      }
+      if (linkedEvents !== null) {
+        // Associations/details without event-scoped purchases still reach
+        // the profile through linkedEvents; the purchase section reports
+        // the failed root honestly below instead of claiming completeness.
+      }
+    }
+    const lookup = await lookupPromise;
     if (!lookup) {
       // The capability is optional during rollout. Preserve the normal
       // authentication contract when this deployment has not picked it up.

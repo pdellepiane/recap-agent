@@ -149,7 +149,7 @@ describe('capability boundary routing', () => {
     expect(runtime.composeRequests).toHaveLength(1);
     const request = runtime.composeRequests.at(-1);
     expect(request?.currentNode).toBe('solicitar_agente_humano');
-    expect(request?.handoffOutcome).toBeNull();
+    expect(request?.handoffOutcome).toBe('handoff_skipped_missing_phone');
   });
 
   it('never claims requested handoff evidence without a trusted identity', async () => {
@@ -213,15 +213,17 @@ describe('capability boundary routing', () => {
       eventHint: 'Diana y Fernando',
     });
     // A never-attempted handoff (no phone, unconfigured gateway) projects
-    // null with its reason — never handoff_unknown, and never a success
-    // claim. The distinct missing-phone reason stays in plan diagnostics.
-    expect(request?.handoffOutcome).toBeNull();
+    // a typed skipped outcome preserving the reason family — never
+    // handoff_unknown, and never a success claim. The distinct
+    // missing-phone reason stays in plan diagnostics and travels as typed
+    // reply evidence (no prose-string carrier).
+    expect(request?.handoffOutcome).toBe('handoff_skipped_missing_phone');
     expect(request?.handoffOutcome).not.toBe('handoff_requested');
     expect(response.plan.current_node).toBe('resolver_consultas_informativas');
     expect(response.plan.human_escalation.last_error).toMatch(/phone number/iu);
-    // The typed attempt status and reason also travel through the existing
+    // The typed attempt status and reason travel through the existing
     // reply evidence (not just the plan), so the model distinguishes
     // missing-phone from unavailable-capability from evidence.
-    expect(request?.errorMessage).toContain('missing_phone_number');
+    expect(request?.errorMessage).toBeNull();
   });
 });

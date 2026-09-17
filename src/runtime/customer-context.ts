@@ -4,6 +4,7 @@ import type {
   InformationTaskResult,
   PurchaseInformation,
 } from '../core/information';
+import type { UserEventLookupResult } from './provider-gateway';
 import {
   enrichmentBounds,
   enrichmentVisitKey,
@@ -483,48 +484,45 @@ export function assembleCustomerContext(args: {
     statusForResult(result, eventSummaries[index]),
   );
   const eventPagination = paginationFor(eventSummaries);
+  // Purchase-only turns carry their shared guest-event root through the
+  // existing purchase result (linkedEvents, mapped with the same event
+  // mapping below): no fabricated request, no second mapper. Distinct
+  // events/guests never merge by name/date — slots stay keyed by stable
+  // event + guest + scope.
+  const linkedEventEntries = purchaseResults.flatMap((result) =>
+    result.status === 'completed' && result.linkedEvents
+      ? [{
+        lookup: result.linkedEvents,
+        accessMethod: result.accessMethod ?? null,
+        failures: result.linkedEventFailures ?? [],
+        truncated: result.linkedEventsTruncated ?? false,
+      } as const]
+      : [],
+  );
+  const linkedHasPartial = linkedEventEntries.some((entry) =>
+    entry.truncated || entry.failures.length > 0,
+  );
   // P1 slot coalesce: stable (event + guest + scope) slots collapse
   // duplicate reads; same event with different guests keeps distinct slots.
   // Names never form a key, so cross-route name equality is not identity.
-  const coalescedInvitations = coalesceInvitationsBySlot(
-    eventResults.flatMap((result) =>
+  const coalescedInvitations = coalesceInvitationsBySlot([
+    ...eventResults.flatMap((result) =>
       result.status === 'completed'
-        ? result.result.events.flatMap((event) => {
-          if (event.eventId === null || event.eventId === undefined) return [];
-          const invitation: InvitationEventSummary = {
-            eventId: event.eventId,
-            eventName: event.name,
-            role: event.relation === 'guest' || event.relation === 'host' || event.relation === 'owner'
-              ? event.relation
-              : null,
-            rsvpState: event.guestStatus === null || event.guestStatus === undefined
-              ? 'unknown'
-              : !event.guestStatus.hasResponded
-                ? 'pending'
-                : event.guestStatus.willAttend === true
-                  ? 'attending'
-                  : event.guestStatus.willAttend === false
-                    ? 'declining'
-                    : 'unknown',
-            ...(event.datetime ? { eventDatetime: event.datetime } : {}),
-            address: classifyAddress({
-              kind: 'venue',
-              source: 'event_detail',
-              street: resolveVenueStreet(event),
-              city: event.place,
-              country: event.country,
-            }),
-          };
-          return [{
-            invitation,
-            guestId: event.guestId ?? null,
-            accessScope: result.accessMethod ?? args.identity?.scope ?? null,
-          }];
-        })
+        ? invitationEntriesFromEventLookup(
+          result.result,
+          result.accessMethod ?? args.identity?.scope ?? null,
+        )
         : [],
     ),
-  );
-  const invitationsEvents: InvitationsEventsSection = eventResults.length === 0
+    ...linkedEventEntries.flatMap((entry) =>
+      invitationEntriesFromEventLookup(
+        entry.lookup,
+        entry.accessMethod ?? args.identity?.scope ?? null,
+      ),
+    ),
+  ]);
+  const hasLinkedEvents = linkedEventEntries.length > 0;
+  const invitationsEvents: InvitationsEventsSection = eventResults.length === 0 && !hasLinkedEvents
     ? {
       section: 'invitations_events',
       ...emptyBase(),
@@ -532,13 +530,14 @@ export function assembleCustomerContext(args: {
     }
     : {
       section: 'invitations_events',
-      status: eventStatuses.some((entry) => entry.status === 'ready')
+      status: eventStatuses.some((entry) => entry.status === 'ready') || hasLinkedEvents
         ? 'ready'
         : worstStatus(eventStatuses.map((entry) => entry.status)),
       source: 'agent_api',
       fetchedAt: args.nowIso,
       scope: args.identity?.scope ?? null,
       completeness: eventPagination.paginationExhausted === false ||
+        linkedHasPartial ||
         (eventStatuses.some((entry) => entry.status === 'ready') &&
           eventStatuses.some((entry) => entry.status === 'failed' || entry.status === 'unavailable'))
         ? 'partial' : 'complete',
@@ -1375,6 +1374,53 @@ type CoalescableInvitation = {
   readonly guestId: number | string | null;
   readonly accessScope: string | null;
 };
+
+/**
+ * Existing event-to-profile mapping: an event lookup (associated_event
+ * result or purchase-linked root) becomes invitation slots keyed by stable
+ * event + guest + scope. Single mapping for both sources; name/date never
+ * form identity.
+ */
+function invitationEntriesFromEventLookup(
+  lookup: UserEventLookupResult,
+  accessScope: string | null,
+): CoalescableInvitation[] {
+  return lookup.events.flatMap((event) => {
+    if (event.eventId === null || event.eventId === undefined) return [];
+    const guestStatus = event.guestStatus;
+    const hasResponded = guestStatus?.hasResponded ?? null;
+    const willAttend = guestStatus?.willAttend ?? null;
+    const invitation: InvitationEventSummary = {
+      eventId: event.eventId,
+      eventName: event.name,
+      role: event.relation === 'guest' || event.relation === 'host' || event.relation === 'owner'
+        ? event.relation
+        : null,
+      rsvpState: guestStatus === null || guestStatus === undefined
+        ? 'unknown'
+        : !hasResponded
+          ? 'pending'
+          : willAttend === true
+            ? 'attending'
+            : willAttend === false
+              ? 'declining'
+              : 'unknown',
+      ...(event.datetime ? { eventDatetime: event.datetime } : {}),
+      address: classifyAddress({
+        kind: 'venue',
+        source: 'event_detail',
+        street: resolveVenueStreet(event as Parameters<typeof resolveVenueStreet>[0]),
+        city: event.place ?? null,
+        country: event.country ?? null,
+      }),
+    };
+    return [{
+      invitation,
+      guestId: event.guestId ?? null,
+      accessScope,
+    }];
+  });
+}
 
 /**
  * Coalesce invitations by stable slot (event + guest + scope). Same event

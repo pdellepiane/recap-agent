@@ -15,6 +15,13 @@ import type {
   ExtractRequest,
 } from '../src/runtime/contracts';
 import { OpenAiAgentRuntime } from '../src/runtime/openai-agent-runtime';
+import { InformationOrchestrator } from '../src/runtime/information-orchestrator';
+import type {
+  AgentConversationGateway,
+  AgentEventDetailResult,
+  AgentGuestEventsResult,
+  AgentPhonePurchaseLookupResult,
+} from '../src/runtime/agent-conversation-gateway';
 import { PromptLoader } from '../src/runtime/prompt-loader';
 import { localTurnMessageContext } from '../src/runtime/turn-message-context';
 import { instructionModuleRegistry } from '../src/runtime/prompt-manifest';
@@ -739,10 +746,12 @@ describe('actual reply request owns its instructions', () => {
   });
 
   it('forwards skipped host-withdrawal handoff status and reason as reply evidence', async () => {
-    // A never-attempted handoff projects a null typed outcome, so the typed
-    // attempt status and reason travel in the operational note. The
-    // serialized model input must distinguish unavailable-capability from
-    // missing-phone from evidence.
+    // A never-attempted handoff travels as typed skipped evidence
+    // preserving the reason family (missing-phone vs unavailable
+    // capability), never as prose. The serialized model input must
+    // distinguish unavailable-capability from missing-phone from typed
+    // evidence, survive note suppression (errorMessage null) and carry
+    // no operational prose. Success/failed/unknown twins are unchanged.
     const runtime = testRuntime();
     const policyResult = {
       requestId: 'req-host-withdrawal',
@@ -762,18 +771,33 @@ describe('actual reply request owns its instructions', () => {
           eventHint: 'Diana y Fernando',
         }],
       }),
-      handoffOutcome: null,
+      errorMessage: null,
       ...overrides,
     });
     const missingPhone = await runtime.buildReplyRequestSpec(
-      withdrawalRequest({ errorMessage: 'Local human escalation soft-pause only: missing_phone_number.' }),
+      withdrawalRequest({ handoffOutcome: 'handoff_skipped_missing_phone' }),
     );
-    expect(missingPhone.input).toContain('missing_phone_number');
+    expect(missingPhone.input).toContain('handoff_skipped_missing_phone');
+    expect(missingPhone.input).not.toContain('soft-pause');
     const unconfigured = await runtime.buildReplyRequestSpec(
-      withdrawalRequest({ errorMessage: 'Local human escalation soft-pause only: not_configured.' }),
+      withdrawalRequest({ handoffOutcome: 'handoff_skipped_unavailable' }),
     );
-    expect(unconfigured.input).toContain('not_configured');
-    expect(unconfigured.input).not.toContain('missing_phone_number');
+    expect(unconfigured.input).toContain('handoff_skipped_unavailable');
+    expect(unconfigured.input).not.toContain('handoff_skipped_missing_phone');
+    expect(unconfigured.input).not.toContain('soft-pause');
+    // Requested/failed/unknown outcomes keep their existing values.
+    const requested = await runtime.buildReplyRequestSpec(
+      withdrawalRequest({ handoffOutcome: 'handoff_requested' }),
+    );
+    expect(requested.input).toContain('handoff_requested');
+    const failed = await runtime.buildReplyRequestSpec(
+      withdrawalRequest({ handoffOutcome: 'handoff_failed' }),
+    );
+    expect(failed.input).toContain('handoff_failed');
+    const unknown = await runtime.buildReplyRequestSpec(
+      withdrawalRequest({ handoffOutcome: 'handoff_unknown' }),
+    );
+    expect(unknown.input).toContain('handoff_unknown');
   });
 
   it('retains cross-event RSVP facts instead of hiding them behind a bare reference', async () => {
@@ -806,6 +830,164 @@ describe('actual reply request owns its instructions', () => {
     expect(spec.input).toContain('Julisabeth y Andrés');
     expect(spec.input).toContain('Matrimonio de Ana y Luis');
     expect(spec.input).toContain('verification_status');
+  });
+
+  it('projects the purchase-only guest root (events plus orders A+B) into serialized model input', async () => {
+    // Purchase-only turn proof through the production path: mocked
+    // gateways, real orchestrator execution, real profile assembly, real
+    // reply serialization. Guest-event root (event 81 with venue plus
+    // attendance; event 82 detail fails as the optional failure) plus
+    // hydration order A plus purchase-root orders A+B merge by stable
+    // order ID. The serialized model input must carry event
+    // identity/venue/attendance, A and B canonically one each, partial
+    // coverage with ready facts usable despite the failure, shared reads
+    // once, no writes/extra auth, no unauthorized source, and no
+    // name/date merge across distinct events/guests.
+    const calls = { guestEvents: 0, eventDetail: 0, guestOrders: 0, guestGift: 0, takeover: 0 };
+    const hydratedA: PurchaseInformation = {
+      orderId: 'ORD-000880',
+      eventId: 81,
+      paymentStatus: 'approved',
+      shippingStatus: null,
+      grandTotal: 300,
+      paymentMethod: 'Transferencia',
+      eventName: 'Boda Ana y Luis',
+      eventDate: '2026-09-20',
+      eventUrl: null,
+      createdAt: '2026-07-10',
+      items: [],
+    };
+    const sparseA: PurchaseInformation = {
+      orderId: 'ORD-000880',
+      eventId: 81,
+      paymentStatus: 'approved',
+      shippingStatus: null,
+      grandTotal: null,
+      paymentMethod: null,
+      eventName: null,
+      eventDate: null,
+      eventUrl: null,
+      createdAt: null,
+      items: [],
+    };
+    const orderB: PurchaseInformation = {
+      orderId: 'ORD-000881',
+      eventId: 82,
+      paymentStatus: 'pending',
+      shippingStatus: null,
+      grandTotal: 150,
+      paymentMethod: 'Yape',
+      eventName: 'Boda María y José',
+      eventDate: '2026-09-21',
+      eventUrl: null,
+      createdAt: '2026-07-11',
+      items: [],
+    };
+    const gateway = {
+      async getGuestEventsByPhone(): Promise<AgentGuestEventsResult> {
+        calls.guestEvents += 1;
+        return {
+          status: 'success',
+          events: [
+            { eventId: 81, name: 'Boda Ana y Luis', slug: 'event-81', url: null, datetime: '2026-09-20T18:00:00', type: 'wedding', typeDetail: null, stage: 'published', city: 'Lima', country: 'Perú', currency: 'PEN' },
+            { eventId: 82, name: 'Boda María y José', slug: 'event-82', url: null, datetime: '2026-09-21T19:00:00', type: 'wedding', typeDetail: null, stage: 'published', city: 'Arequipa', country: 'Perú', currency: 'PEN' },
+          ],
+        };
+      },
+      async getEventDetail(input: { eventId: number; phone?: unknown }): Promise<AgentEventDetailResult> {
+        calls.eventDetail += 1;
+        if (input.eventId === 81) {
+          return {
+            status: 'success',
+            event: {
+              eventId: 81, name: 'Boda Ana y Luis', slug: 'event-81', url: null,
+              datetime: '2026-09-20T18:00:00', type: 'wedding', typeDetail: null, stage: 'published',
+              city: 'Lima', country: 'Perú', currency: 'PEN', withTime: true, timezone: null,
+              celebrateds: [], moments: [], dresscode: null, commonAsked: [], contactInfo: [],
+              attendance: { guestId: 501, name: 'Ana', hasResponded: true, willAttend: true, responseDate: '2026-09-01' },
+              purchases: [hydratedA],
+            },
+          } as unknown as AgentEventDetailResult;
+        }
+        return { status: 'failed', error: 'detail temporarily unavailable', retryable: true } as AgentEventDetailResult;
+      },
+      async getGuestOrdersByPhone(): Promise<AgentPhonePurchaseLookupResult> {
+        calls.guestOrders += 1;
+        return { status: 'success', resource: 'orders', purchases: [sparseA, orderB] };
+      },
+      async getGuestGiftPurchasesByPhone(): Promise<AgentPhonePurchaseLookupResult> {
+        calls.guestGift += 1;
+        throw new Error('gift-detail endpoint must not be read for a summary question');
+      },
+      async requestHumanTakeover(): Promise<never> {
+        calls.takeover += 1;
+        throw new Error('no writes on a purchase-only read turn');
+      },
+    } as unknown as AgentConversationGateway;
+    const orchestrator = new InformationOrchestrator({
+      knowledgeGateway: { async search() { throw new Error('unused'); } },
+      providerGateway: {} as never,
+      agentGateway: gateway,
+    });
+    const execution = await orchestrator.execute({
+      requests: [{
+        requestId: 'purchase-only-proof',
+        kind: 'purchase',
+        resource: 'orders',
+        query: '¿Cuál es el estado de mi compra?',
+        orderId: null,
+        aspects: ['summary'],
+        sensitiveFields: [],
+        authAction: 'none',
+      }],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
+    });
+    // Shared reads once; unauthorized gift source never called; no writes.
+    expect(calls.guestEvents).toBe(1);
+    expect(calls.eventDetail).toBe(2);
+    expect(calls.guestOrders).toBe(1);
+    expect(calls.guestGift).toBe(0);
+    expect(calls.takeover).toBe(0);
+    const result = execution.results[0];
+    expect(result?.status).toBe('completed');
+
+    const snapshot = assembleCustomerContext({
+      execution: { results: execution.results, summaries: execution.summaries },
+      identity: { customerRef: '+51987654321', scope: 'trusted_phone', source: 'channel_contact_phone', fetchedAt: NOW },
+      currentContext: { relevantEventIds: [], relevantOrderIds: [], pendingQuestion: null, unresolvedCandidateOrderIds: [], unresolvedCandidateEventIds: [] },
+      nowIso: NOW,
+    });
+    // Ready facts usable despite the failed optional detail: both
+    // sections ready, purchases partial (never complete).
+    expect(snapshot.purchasesCarts.status).toBe('ready');
+    expect(snapshot.invitationsEvents.status).toBe('ready');
+    expect(snapshot.purchasesCarts.completeness).toBe('partial');
+    // A and B survive canonically, one representation each.
+    const detailedIds = snapshot.purchasesCarts.detailedPurchases.map((purchase) => purchase.orderId).sort();
+    expect(detailedIds).toEqual(['ORD-000880', 'ORD-000881']);
+    const mergedA = snapshot.purchasesCarts.detailedPurchases.find((purchase) => purchase.orderId === 'ORD-000880');
+    expect(mergedA?.eventName).toBe('Boda Ana y Luis');
+    // Distinct events/guests never merged by name/date: two slots.
+    const slots = snapshot.invitationsEvents.invitations;
+    expect(slots.map((invitation) => invitation.eventId).sort()).toEqual([81, 82]);
+    expect(new Set(slots.map((invitation) => invitation.eventName)).size).toBe(2);
+
+    const runtime = testRuntime();
+    const customerContext = projectCustomerContext(snapshot, { focus: 'general' });
+    const spec = await runtime.buildReplyRequestSpec(
+      replyRequest(supportPlan(), { customerContext, informationResults: execution.results }),
+    );
+    // Model input carries event identity/venue/attendance plus both orders.
+    expect(spec.input).toContain('Boda Ana y Luis');
+    expect(spec.input).toContain('Lima');
+    expect(spec.input).toContain('attending');
+    expect(spec.input).toContain('ORD-000880');
+    expect(spec.input).toContain('ORD-000881');
+    // Partial coverage stays visible; the failed optional source never
+    // erased the ready facts above.
+    expect(spec.input).toContain('partial');
   });
 
   it('builds both specs without model or gateway calls', async () => {
