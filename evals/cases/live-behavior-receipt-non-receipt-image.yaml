@@ -1,0 +1,62 @@
+template: template.base-live
+id: live_behavior.receipt_non_receipt_image_no_reads
+suite: live_behavior_regression
+version: 1
+description: A non-receipt image with no payment request triggers no speculative purchase or gift reads and no invented transfer; silence and visual-request behavior are preserved.
+tags: [live, behavior, image, receipt, non-receipt, silence]
+targetModes: [live_lambda]
+backendFixture:
+  scenario: image-clean-world
+inputs:
+  - text: ''
+    channel: whatsapp
+    contactPhone: "+51987654321"
+    sessionId: live-receipt-non-receipt-session
+    image:
+      url: https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png
+    backendFixture:
+      scenario: image-clean-world
+  - text: Cual es el horario de atencion?
+    channel: whatsapp
+    contactPhone: "+51987654321"
+    sessionId: live-receipt-non-receipt-session
+    backendFixture:
+      scenario: image-clean-world
+notes:
+  - "Receipt-context panel case 8 (2026-09-18, offline prepared, UNRUN): non-receipt image alone, then an unrelated question. The URL points at a controlled non-sensitive public fixture so the model cannot mistake it for a payment document. Synthetic identities only, never customer documents."
+  - "Silence on turn 0 is judged through the existing validated-silence route: an empty response is fully correct for a genuinely unrelated image with no task."
+expectations:
+  - id: non-receipt-no-speculative-reads
+    type: tool_usage
+    mustCall: [image_url_context]
+    mustNotCall: [image_inspect, lookup_guest_orders_by_phone, lookup_guest_gift_purchases_by_phone, auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover]
+    turnIndex: 0
+    severity: hard
+  - id: non-receipt-first-turn-silent
+    type: text_semantic
+    rubric: >-
+      This turn carries only a non-receipt image with no question and no outstanding task. An empty assistant response is fully correct: no purchase or gift lookup exists to run and no transfer may be invented. If a response is sent, it must be entirely in Spanish, must not describe any payment, amount, or transfer, must not claim any payment was approved or is pending, must not ask for an OTP, and must not ask the user to resend the image.
+    minScore: 0.8
+    requireJudge: true
+    turnIndex: 0
+    severity: hard
+  - id: non-receipt-no-payment-effect
+    type: fixture_effect_count
+    operation: rsvp.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    turnIndex: 0
+    severity: hard
+  - id: non-receipt-followup-answered-without-pixels
+    type: text_semantic
+    rubric: >-
+      Pass only if the assistant responds entirely in Spanish to the opening-hours question without describing the image from the previous turn, without inventing any payment content, and without opening any purchase lookup. It must not ask for an OTP.
+    minScore: 0.8
+    requireJudge: true
+    turnIndex: 1
+    severity: hard
+budget:
+  maxTurns: 2
+  estimatedPromptTokensPerTurn: 2500
+  estimatedCompletionTokensPerTurn: 300

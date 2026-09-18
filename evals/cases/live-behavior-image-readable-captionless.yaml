@@ -1,8 +1,8 @@
 template: template.base-live
 id: live_behavior.image_readable_captionless
 suite: live_behavior_regression
-version: 4
-description: Captionless image-only turn persists the file reference silently; a later text question is answered from the reloaded plan without asking for the image again.
+version: 5
+description: Captionless readable receipt initiates bounded reconciliation on the image turn (no blanket silence); a later text question is answered from the same image without resend.
 tags: [live, behavior, image, image-file, base64-persistence, silence]
 targetModes: [live_lambda]
 backendFixture:
@@ -29,17 +29,28 @@ notes:
   - "R05 oracle revision v1 to v2, 2026-09-11, Packet D. Old v1 demanded describe-by-default (image_inspect plus a Spanish description) for a captionless image. That contradicts the frozen lean-image contract - image-only turns with no outstanding task persist silently with typed suppress delivery, and the retired inspection call has zero production callers. Old v1 runs are preserved in evaluation-manifest.md; baseline and candidate must rerun on this v2 contract. Synthetic voucher-style fixture rendered locally, never a customer document. The two inputs run as separate invocations against the same conversation."
   - "Backend image forwarding contract 2026-09-08."
   - "E1 v4 2026-09-15, profile-inference directive (delayed images): judge-only manually verified ground truth bound to the fixture image digest via the judge-context pathway (resolveJudgeOnlyImageGroundTruth); never runtime input, no new OCR/vision. Read-only amount is not backend approval. R05: old v3 runs preserved."
+  - "Receipt-context revision v4 to v5, 2026-09-18: the blanket-silence turn-0 contract is superseded by the native receipt-context package. A readable receipt alone is a possible implicit reconciliation request, so turn 0 must run the bounded authorized reads and answer the visible amount plus the no-compatible-record backend state instead of persisting silently. Silence stays correct only for genuinely unrelated images. Old v4 runs preserved; baseline and candidate must rerun on this v5 contract."
 expectations:
-  - id: image-silent-persist-no-inspect
+  - id: image-receipt-reconciles-no-inspect
     type: tool_usage
-    mustCall: [image_file_context]
-    mustNotCall: [image_inspect]
+    mustCall: [image_file_context, lookup_guest_orders_by_phone]
+    mustNotCall: [image_inspect, auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover]
     turnIndex: 0
     severity: hard
-  - id: image-silent-persist-reason
-    type: trace_field_equals
-    path: plan_persist_reason
-    expected: image_file_silence
+  - id: image-receipt-no-compatible-record
+    type: text_semantic
+    rubric: >-
+      Pass only if the assistant responds entirely in Spanish reading the receipt turn against backend state: it conveys the receipt visible amount S/ 149.90 (judge-only ground truth, read accuracy only, never backend payment approval) and states that no compatible pending purchase was found in the authorized records for this phone. It must not claim any payment was approved, validated, or settled from the image, must not transcribe bank, account, date or operation fields, must not ask the user to resend the image, and must not ask for an OTP or credentials. An empty response fails: blanket silence for a readable receipt is superseded.
+    minScore: 0.8
+    requireJudge: true
+    turnIndex: 0
+    severity: hard
+  - id: image-receipt-no-payment-effect
+    type: fixture_effect_count
+    operation: rsvp.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
     turnIndex: 0
     severity: hard
   - id: image-silent-no-bytes-or-id

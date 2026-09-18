@@ -14,6 +14,8 @@ const READABLE_ASSET = 'evals/fixtures/images/receipt-readable-149-90.png';
 const OBSCURED_ASSET = 'evals/fixtures/images/receipt-amount-obscured.png';
 const READABLE_SHA256 = '15d3842a7e05e4538d15fb095891b5b3a2b4eea23915b49b42c49f62bb71001e';
 const OBSCURED_SHA256 = 'b9070acd5d258ca1e3361ac05638b8de3e3db16f63fdc0b6538a2e335c2f630c';
+const RECEIPT_340_44_ASSET = 'evals/fixtures/images/receipt-readable-340-44.png';
+const RECEIPT_340_44_SHA256 = '672a8bd61eb295dfc0e938ba2d01d48a9d464cfdedaa1f410a5885609227c26f';
 
 /**
  * Minimal independent PNG reader (RGB/RGBA, 8-bit): parses IHDR/IDAT/IEND,
@@ -130,6 +132,21 @@ describe('F1 image fixture integrity', () => {
     expect(normalized.status).toBe('available');
   });
 
+  it('receipt 340.44 asset decodes with recorded dimensions, hash, and visible amount', () => {
+    const raw = readFileSync(path.join(REPO, RECEIPT_340_44_ASSET));
+    expect(raw.length).toBe(45359);
+    expect(raw.length).toBeLessThanOrEqual(MAX_IMAGE_BYTES);
+    expect(createHash('sha256').update(raw).digest('hex')).toBe(RECEIPT_340_44_SHA256);
+    const grid = readGrayscalePixels(raw);
+    expect(grid.width).toBe(800);
+    expect(grid.height).toBe(1000);
+    // Title row and the S/ 340.44 amount value region both carry ink.
+    expect(darkCount(grid, [95, 90, 705, 160])).toBeGreaterThan(200);
+    expect(darkCount(grid, [300, 340, 600, 410])).toBeGreaterThan(200);
+    const normalized = normalizeInboundImage({ data: raw.toString('base64'), mime_type: 'image/png' });
+    expect(normalized.status).toBe('available');
+  });
+
   it('readable asset actually renders text where the amount and date sit', () => {
     const raw = readFileSync(path.join(REPO, READABLE_ASSET));
     const grid = readGrayscalePixels(raw);
@@ -161,10 +178,18 @@ describe('F1 image fixture integrity', () => {
   it('positive case payloads are byte-identical to their recorded assets', () => {
     const readablePayload = readFileSync(path.join(REPO, READABLE_ASSET)).toString('base64');
     const obscuredPayload = readFileSync(path.join(REPO, OBSCURED_ASSET)).toString('base64');
+    const receipt34044Payload = readFileSync(path.join(REPO, RECEIPT_340_44_ASSET)).toString('base64');
     expect(casePayload('evals/cases/live-behavior-image-multiple-pending-orders.yaml')).toBe(readablePayload);
     expect(casePayload('evals/cases/live-behavior-image-readable-captionless.yaml')).toBe(readablePayload);
     expect(casePayload('evals/cases/live-behavior-image-receipt-illegible-amount.yaml')).toBe(obscuredPayload);
     expect(casePayload('evals/cases/live-behavior-image-receipt-ambiguous-digits.yaml')).toBe(obscuredPayload);
+    expect(casePayload('evals/cases/live-behavior-receipt-text-pending-then-alone.yaml')).toBe(receipt34044Payload);
+    expect(casePayload('evals/cases/live-behavior-receipt-with-text-together.yaml')).toBe(receipt34044Payload);
+    expect(casePayload('evals/cases/live-behavior-receipt-alone-then-followup.yaml')).toBe(receipt34044Payload);
+    expect(casePayload('evals/cases/live-behavior-receipt-gift-only-match.yaml')).toBe(receipt34044Payload);
+    expect(casePayload('evals/cases/live-behavior-receipt-dual-same-amount.yaml')).toBe(receipt34044Payload);
+    expect(casePayload('evals/cases/live-behavior-receipt-explicit-older-target.yaml')).toBe(receipt34044Payload);
+    expect(casePayload('evals/cases/live-behavior-receipt-approved-state.yaml')).toBe(receipt34044Payload);
   });
 
   it('corrupt base64 is never padded into a fake pass', () => {
