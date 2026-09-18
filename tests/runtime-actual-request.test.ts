@@ -15,6 +15,7 @@ import type {
   ExtractRequest,
 } from '../src/runtime/contracts';
 import { OpenAiAgentRuntime } from '../src/runtime/openai-agent-runtime';
+import { buildNativeModelInput } from '../src/runtime/openai-agent-runtime';
 import { InformationOrchestrator } from '../src/runtime/information-orchestrator';
 import type {
   AgentConversationGateway,
@@ -1271,7 +1272,7 @@ describe('actual reply request auth, image, approval and faq-empty gating', () =
     );
     expect(plain.modules.map((module) => module.id)).not.toContain('reply_image_context');
     expect(plain.instructions).not.toContain('Nunca pidas reenviar la imagen');
-    expect(plain.instructions).not.toContain('no inicies una descripción no solicitada');
+    expect(plain.instructions).not.toContain('Usa la imagen como posible evidencia de pago');
     expect(plain.instructions).not.toContain('Nunca muestres enlaces de imágenes');
     const withImage = await runtime.buildReplyRequestSpec(
       replyRequest(supportPlan(), {
@@ -1282,7 +1283,7 @@ describe('actual reply request auth, image, approval and faq-empty gating', () =
     );
     expect(withImage.modules.map((module) => module.id)).toContain('reply_image_context');
     expect(withImage.instructions).toContain('Nunca pidas reenviar la imagen');
-    expect(withImage.instructions).toContain('no inicies una descripción no solicitada');
+    expect(withImage.instructions).toContain('Usa la imagen como posible evidencia de pago');
     expect(withImage.instructions).toContain('Nunca muestres enlaces de imágenes');
   });
 
@@ -1995,5 +1996,115 @@ describe('actual reply request wait-aware follow-up', () => {
     expect(directive).toContain('nunca dejes el turno sin respuesta');
     // No fixed ready-to-send sentence: no fully-quoted reply line anywhere.
     expect(directive).not.toMatch(/^"[^"]+"$/mu);
+  });
+});
+
+describe('multimodal extraction decision input', () => {
+  const RECEIPT_FILE_ID = 'file-extract-native-1';
+  const RECEIPT_URL = 'https://example.com/media/receipt-native.png';
+  const RECEIPT_MESSAGE_ID = 'wamid.receiptnative1';
+
+  function fileRefPlan(): PersistedPlan {
+    return supportPlan({
+      image_attachments: [{
+        kind: 'file',
+        fileId: RECEIPT_FILE_ID,
+        expiresAt: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
+        mimeType: 'image/jpeg',
+        byteLength: 1024,
+        contentDigest: 'b'.repeat(64),
+        messageId: RECEIPT_MESSAGE_ID,
+        receivedAt: new Date().toISOString(),
+      }],
+    });
+  }
+
+  it('carries the uploaded file ref on the spec with the existing string context', async () => {
+    const runtime = testRuntime();
+    const spec = await runtime.buildExtractionRequestSpec({
+      userMessage: 'Es mi comprobante',
+      plan: fileRefPlan(),
+      messageContext: localTurnMessageContext('not_configured'),
+      currentMessageId: RECEIPT_MESSAGE_ID,
+      imageFileAttachments: [{ fileId: RECEIPT_FILE_ID, messageId: RECEIPT_MESSAGE_ID }],
+    });
+    // The attachment rides the typed spec, never the prompt text.
+    expect(spec.imageFileAttachments).toEqual([
+      { fileId: RECEIPT_FILE_ID, messageId: RECEIPT_MESSAGE_ID },
+    ]);
+    expect(spec.imageUrlAttachments).toEqual([]);
+    expect(typeof spec.input).toBe('string');
+    expect(spec.input).toContain('Mensaje del usuario: Es mi comprobante');
+    expect(spec.input).not.toContain(RECEIPT_FILE_ID);
+    expect(spec.instructions).not.toContain(RECEIPT_FILE_ID);
+    // Scoped receipt guidance loads only with the stored image ref.
+    expect(spec.filePaths).toContain('extractors/image_reference.txt');
+    expect(spec.instructions).toContain('Comprobante visible');
+  });
+
+  it('carries the backend URL on the spec with the existing string context', async () => {
+    const runtime = testRuntime();
+    const plan = supportPlan({
+      image_attachments: [{
+        kind: 'url',
+        url: RECEIPT_URL,
+        messageId: RECEIPT_MESSAGE_ID,
+        receivedAt: new Date().toISOString(),
+      }],
+    });
+    const spec = await runtime.buildExtractionRequestSpec({
+      userMessage: 'Es mi comprobante',
+      plan,
+      messageContext: localTurnMessageContext('not_configured'),
+      currentMessageId: RECEIPT_MESSAGE_ID,
+      imageUrlAttachments: [{ url: RECEIPT_URL, messageId: RECEIPT_MESSAGE_ID }],
+    });
+    expect(spec.imageUrlAttachments).toEqual([
+      { url: RECEIPT_URL, messageId: RECEIPT_MESSAGE_ID },
+    ]);
+    expect(spec.imageFileAttachments).toEqual([]);
+    expect(spec.input).toContain('Mensaje del usuario: Es mi comprobante');
+    expect(spec.input).not.toContain(RECEIPT_URL);
+    expect(spec.instructions).not.toContain(RECEIPT_URL);
+  });
+
+  it('keeps imageless specs byte-identical with no receipt guidance', async () => {
+    const runtime = testRuntime();
+    const plan = supportPlan();
+    const plain = await runtime.buildExtractionRequestSpec(extractRequest('Hola', plan));
+    const explicitEmpty = await runtime.buildExtractionRequestSpec({
+      ...extractRequest('Hola', plan),
+      imageUrlAttachments: [],
+      imageFileAttachments: [],
+    });
+    expect(explicitEmpty.input).toBe(plain.input);
+    expect(explicitEmpty.instructions).toBe(plain.instructions);
+    expect(explicitEmpty.filePaths).toEqual(plain.filePaths);
+    expect(explicitEmpty.imageUrlAttachments).toEqual([]);
+    expect(explicitEmpty.imageFileAttachments).toEqual([]);
+    expect(plain.instructions).not.toContain('Comprobante visible');
+    expect(plain.filePaths).not.toContain('extractors/image_reference.txt');
+  });
+
+  it('builds one user message with text plus native items only when images travel', () => {
+    // Imageless keeps the existing string input untouched.
+    expect(buildNativeModelInput('hola', [], [])).toBe('hola');
+    const payload = buildNativeModelInput(
+      'Es mi comprobante',
+      [{ url: RECEIPT_URL, messageId: RECEIPT_MESSAGE_ID }],
+      [{ fileId: RECEIPT_FILE_ID, messageId: RECEIPT_MESSAGE_ID }],
+    );
+    expect(Array.isArray(payload)).toBe(true);
+    expect(payload).toHaveLength(1);
+    const content = (payload as Array<{ role: string; content: unknown[] }>)[0]?.content ?? [];
+    expect((payload as Array<{ role: string }>)[0]?.role).toBe('user');
+    expect(content).toHaveLength(3);
+    expect(content[0]).toMatchObject({ type: 'input_text', text: 'Es mi comprobante' });
+    expect(content[1]).toMatchObject({ type: 'input_image', image: RECEIPT_URL, detail: 'auto' });
+    expect(content[2]).toMatchObject({
+      type: 'input_image',
+      image: { id: RECEIPT_FILE_ID },
+      detail: 'auto',
+    });
   });
 });

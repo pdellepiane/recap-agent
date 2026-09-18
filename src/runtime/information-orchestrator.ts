@@ -1843,16 +1843,21 @@ export class InformationOrchestrator {
 
   /**
    * Single-partition purchase selection for phone-scoped reads, derived from
-   * the typed aspects alone: requested gift detail (dedication, thanks, the
-   * requested payment time in payment_details) reads the gift-detail route,
-   * every other question reads orders. One partition only, never both: no
-   * sentence matching, no dual reads. The authenticated read below keeps its
-   * declared resource (already coerced to the aspects upstream), so summary
-   * questions stay on their route on both paths.
+   * the typed aspects alone, unless the bounded receipt-discovery fan-out
+   * pinned an authorized source on the request: a recognizable receipt with
+   * no identified source reads both orders and gift_purchases through two
+   * requests, so the pinned request keeps its declared source even when the
+   * shared aspects alone would select the other partition. Every other
+   * question keeps the aspect-derived route (a gift resource with summary
+   * aspects still reads orders). One read per request; the per-turn scoped
+   * lookup map still collapses repeated scoped reads into a single call.
    */
   private selectPurchasePartition(
     request: PurchaseRequest,
   ): 'orders' | 'gift_purchases' {
+    if (request.pinnedSource === 'orders' || request.pinnedSource === 'gift_purchases') {
+      return request.pinnedSource;
+    }
     return request.aspects.some(
       (aspect) => aspect === 'dedication' || aspect === 'thanks' || aspect === 'payment_details',
     )
@@ -2392,13 +2397,18 @@ export class InformationOrchestrator {
   ): Promise<AgentPurchaseLookupResult | undefined> {
     // Authenticated reads keep the declared resource, which normalization
     // already coerced to the typed aspects (gift detail aspects read the
-    // gift route). One partition only, never both. P1: repeated scoped
-    // lookups run once per turn under a token-hash scope so an auth change
-    // can never reuse broader cached access.
-    const partition = resolvePurchaseResourceForAspects(
-      request.resource,
-      request.aspects,
-    );
+    // gift route). One partition per request; the receipt-discovery fan-out
+    // reads both sources through two pinned requests, never by re-reading
+    // here. A pinned source wins over the aspect derivation so the
+    // complementary discovery read reaches its own route. P1: repeated
+    // scoped lookups run once per turn under a token-hash scope so an auth
+    // change can never reuse broader cached access.
+    const partition = request.pinnedSource === 'orders' || request.pinnedSource === 'gift_purchases'
+      ? request.pinnedSource
+      : resolvePurchaseResourceForAspects(
+        request.resource,
+        request.aspects,
+      );
     if (!this.capabilityAvailable(
       partition === 'orders' ? 'purchase.orders.read' : 'purchase.gift_detail.read',
       true,

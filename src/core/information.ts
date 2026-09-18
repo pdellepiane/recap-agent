@@ -162,6 +162,14 @@ export const pendingInformationRequestSchema = z.discriminatedUnion('kind', [
   }),
   purchaseInformationRequestSchema.extend({
     requestId: z.string().min(1),
+    /**
+     * Receipt-discovery fan-out pins the authorized source this request
+     * must read. Set only by the bounded implicit-receipt expansion in
+     * agent-service after aspect normalization; absent everywhere else, so
+     * the aspect-derived route selection stays untouched. Never populated
+     * from model extraction: the model does not control read routing.
+     */
+    pinnedSource: z.enum(purchaseResourceValues).optional(),
   }),
 ]);
 

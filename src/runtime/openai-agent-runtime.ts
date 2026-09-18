@@ -754,24 +754,25 @@ export function collectCloseDeferredCategories(plan: {
 }
 
 /**
- * Native image content for the owner reply call. URL attachments ride as
+ * Native image content for owner model calls (extraction and reply share
+ * this construction). URL attachments ride as
  * `{type: input_image, image: URL}`; persisted file references ride as
  * `{type: input_image, image: {id: fileId}}` (the installed SDK serializes
  * the latter as `{type: input_image, file_id}` on the Responses wire).
  * Raw URLs and file IDs travel only here, never as prompt text.
  */
-export type ReplyImageContentItem =
+export type NativeImageContentItem =
   | { type: 'input_text'; text: string }
   | { type: 'input_image'; image: string; detail: 'auto' }
   | { type: 'input_image'; image: { id: string }; detail: 'auto' };
 
-export function buildReplyImageContent(
+export function buildNativeImageContent(
   text: string,
   attachments: readonly ImageUrlAttachment[],
-): ReplyImageContentItem[] {
+): NativeImageContentItem[] {
   return [
     { type: 'input_text', text },
-    ...attachments.map((attachment): ReplyImageContentItem => ({
+    ...attachments.map((attachment): NativeImageContentItem => ({
       type: 'input_image',
       image: attachment.url,
       detail: 'auto',
@@ -780,14 +781,39 @@ export function buildReplyImageContent(
 }
 
 /** File-ID image items appended after the text item by the caller. */
-export function buildReplyFileImageItems(
+export function buildNativeFileImageItems(
   attachments: readonly ImageFileAttachment[],
-): ReplyImageContentItem[] {
-  return attachments.map((attachment): ReplyImageContentItem => ({
+): NativeImageContentItem[] {
+  return attachments.map((attachment): NativeImageContentItem => ({
     type: 'input_image',
     image: { id: attachment.fileId },
     detail: 'auto',
   }));
+}
+
+/**
+ * Single model input shared by extraction and reply: the existing textual
+ * context stays a plain string when no native image travels; with an image
+ * it becomes one user message carrying that same text plus native
+ * input_image items. No base64, no description substitution.
+ */
+export type NativeModelInput =
+  | string
+  | Array<{ role: 'user'; content: NativeImageContentItem[] }>;
+
+export function buildNativeModelInput(
+  text: string,
+  urls: readonly ImageUrlAttachment[],
+  files: readonly ImageFileAttachment[],
+): NativeModelInput {
+  if (urls.length === 0 && files.length === 0) return text;
+  return [{
+    role: 'user',
+    content: [
+      ...buildNativeImageContent(text, urls),
+      ...buildNativeFileImageItems(files),
+    ],
+  }];
 }
 
 /**
@@ -797,7 +823,7 @@ export function buildReplyFileImageItems(
  * test (fetch-mocked Responses body), never from this mirror alone.
  */
 export function toResponsesWireImageItem(
-  item: ReplyImageContentItem,
+  item: NativeImageContentItem,
 ): Record<string, unknown> {
   if (item.type === 'input_text') return { type: 'input_text', text: item.text };
   if (typeof item.image === 'string') {
@@ -954,6 +980,16 @@ export type ExtractionRequestSpec = {
   readonly modules: readonly SelectedModule[];
   readonly input: string;
   readonly manifest: CompilerRequestManifest;
+  /**
+   * Native image attachments resolved for this decision call from the
+   * already-uploaded file ref or backend URL on the ExtractRequest. Empty
+   * means the extraction travels as the plain string input above with
+   * unchanged bytes; non-empty rides one user message with that same text
+   * plus native input_image items. Raw URLs/file IDs travel only as SDK
+   * image content, never as prompt text.
+   */
+  readonly imageUrlAttachments: readonly ImageUrlAttachment[];
+  readonly imageFileAttachments: readonly ImageFileAttachment[];
 };
 
 export type ReplyRequestSpec = {
@@ -1003,7 +1039,6 @@ function isEstablishedNonPlanningReplyLane(
 }
 
 export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runner: Runner;
-  private readonly imageRunner: Runner;
 
   constructor(
     private readonly options: {
@@ -1040,39 +1075,6 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     this.runner = new Runner({
       modelProvider: new OpenAIProvider({ openAIClient }),
     });
-    this.imageRunner = new Runner({ modelProvider: new OpenAIProvider({ openAIClient }),
-      tracingDisabled: true, traceIncludeSensitiveData: false });
-  }
-
-  async inspectImage(request: Parameters<NonNullable<AgentRuntime['inspectImage']>>[0]) {
-    if (request.image.source !== 'base64') {
-      throw new Error('inspectImage only handles base64 image input; URL images use the owner reply call.');
-    }
-    const bundle = await this.options.promptLoader.loadImageBundle();
-    const schema = z.object({ outcome: z.enum(['readable', 'unreadable', 'human_help']), answer: z.string() });
-    const agent = new Agent({ name: 'image_inspection', model: this.options.replyModel,
-      instructions: bundle.instructions, outputType: schema,
-      modelSettings: { ...this.buildModelSettings({ model: this.options.replyModel,
-        cacheKey: `image:${bundle.id}` }), store: false },
-    });
-    const input = [{ role: 'user' as const, content: [
-      { type: 'input_text' as const, text: request.caption || 'Describe brevemente esta imagen.' },
-      { type: 'input_image' as const, image: `data:${request.image.mimeType};base64,${request.image.data}`, detail: 'auto' },
-    ] }];
-    const metrics = this.buildRequestMetrics({ instructions: bundle.instructions,
-      input: JSON.stringify(input), toolCount: 0, schemaPropertyCount: 2 });
-    // Do not log provider errors: they can contain portions of the image input.
-    let transportMetrics: OpenAiTransportMetrics | undefined;
-    const captured = await captureOpenAiTransport('image',
-      async () => await this.imageRunner.run(agent, input, {
-        maxTurns: 1, signal: AbortSignal.timeout(this.options.replyTimeoutMs ?? 35_000),
-      }),
-      (metrics) => { transportMetrics = metrics; });
-    const result = captured.value;
-    const output = schema.parse(result.finalOutput);
-    return { ...output, tokenUsage: this.extractTokenUsage(result),
-      openAiCall: this.extractOpenAiCallRef(captured.value, this.options.replyModel,
-        { ...metrics, transport: transportMetrics }), promptBundleId: bundle.id };
   }
 
   /**
@@ -1132,16 +1134,20 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
         }),
       });
 
-      const input = spec.input;
+      // Shared native construction with the reply call: the imageless
+      // extraction keeps its existing string input and bytes; an image
+      // extraction sends one user message with that same text plus native
+      // input_image items from the already-uploaded ref or backend URL.
+      const input = buildNativeModelInput(spec.input, spec.imageUrlAttachments, spec.imageFileAttachments);
       const requestMetrics = this.buildRequestMetrics({
         instructions: bundle.instructions,
-        input,
+        input: typeof input === 'string' ? input : JSON.stringify(input),
         toolCount: 0,
         schemaPropertyCount: Object.keys(outputSchema.shape).length,
       });
 
+      let transportMetrics: OpenAiTransportMetrics | undefined;
       try {
-        let transportMetrics: OpenAiTransportMetrics | undefined;
         const captured = await captureOpenAiTransport('extraction',
           async () => await executeOpenAiStage({
             stage: 'extraction',
@@ -1170,6 +1176,16 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
             openAiCall: null,
           };
         }
+        // Shared access-error classification with the reply boundary: a
+        // narrow image-access failure on a call that transmitted native
+        // image content surfaces typed so callers keep the persisted ref and
+        // reuse the existing bounded recovery. Every other failure rethrows
+        // untouched; no new retry loop here.
+        const imageAccessError = toProviderImageAccessError(error, {
+          hadImageAttachments: spec.imageUrlAttachments.length > 0 || spec.imageFileAttachments.length > 0,
+          failedTransport: transportMetrics ?? null,
+        });
+        if (imageAccessError !== null) throw imageAccessError;
         throw error;
       }
     };
@@ -1372,15 +1388,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     const replyImageUrls = this.resolveReplyImageUrls(request);
     const replyImageFiles = this.resolveReplyImageFiles(request);
     const input = spec.input;
-    const inputPayload = replyImageUrls.length === 0 && replyImageFiles.length === 0
-      ? input
-      : [{
-        role: 'user' as const,
-        content: [
-          ...buildReplyImageContent(input, replyImageUrls),
-          ...buildReplyFileImageItems(replyImageFiles),
-        ],
-      }];
+    const inputPayload = buildNativeModelInput(input, replyImageUrls, replyImageFiles);
     const requestMetrics = this.buildRequestMetrics({
       instructions: bundle.instructions,
       input: typeof inputPayload === 'string' ? inputPayload : JSON.stringify(inputPayload),
@@ -1837,6 +1845,12 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     );
     const sections = this.buildExtractorInputSections(request, resolvedPolicy, resolvedProjection);
     const input = orderInputSections(sections);
+    // Explicit-only native projection: the caller passes the already-uploaded
+    // current file ref or backend URL; undefined projects nothing and keeps
+    // the imageless string input byte-identical. No double upload, no
+    // description substitution, no historical batch.
+    const imageUrlAttachments = (request.imageUrlAttachments ?? []).slice(0, MAX_PROJECTED_IMAGE_URLS);
+    const imageFileAttachments = (request.imageFileAttachments ?? []).slice(0, MAX_PROJECTED_IMAGE_ATTACHMENTS);
     const bytesByFile = new Map(
       bundle.filePaths.map((file, index) => [file, bundle.fileBytes[index] ?? 0] as const),
     );
@@ -1865,6 +1879,8 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       modules,
       input,
       manifest,
+      imageUrlAttachments,
+      imageFileAttachments,
     };
   }
 

@@ -564,3 +564,37 @@ describe('approval boundary: receipt amount alone never proves approval', () => 
     })).toBe(false);
   });
 });
+
+describe('B receipt discovery keeps competing records and settles from either source', () => {
+  it('retains two same-amount cross-source records with selection instead of auto-picking one', () => {
+    const fromOrders = basePurchase({ orderId: 'ORD-DISC-1', paymentStatus: 'pending', grandTotal: 340.44 });
+    const fromGift = basePurchase({ orderId: 'GIFT-DISC-7', paymentStatus: 'approved', grandTotal: 340.44 });
+    const selected = selectPurchaseRecords([fromOrders, fromGift]);
+    // Same amount alone never proves identity and never blocks a record:
+    // both candidates stay with one distinguishing question downstream.
+    expect(selected.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
+      ['GIFT-DISC-7', 'ORD-DISC-1'],
+    );
+    expect(selected.needsSelection).toBe(true);
+  });
+
+  it('settles the approval boundary from a completed gift result as well as from orders', () => {
+    const completedGift: InformationTaskResult = {
+      requestId: 'req-gift',
+      kind: 'purchase',
+      status: 'completed',
+      resource: 'gift_purchases',
+      lookupResource: 'gift_purchases',
+      purchases: [],
+      needsSelection: false,
+    };
+    expect(isApprovalBoundaryAnsweredByRecord({
+      informationResults: [completedGift],
+      receiptContext: true,
+    })).toBe(true);
+    expect(isApprovalBoundaryAnsweredByRecord({
+      informationResults: [completedGift],
+      receiptContext: false,
+    })).toBe(true);
+  });
+});

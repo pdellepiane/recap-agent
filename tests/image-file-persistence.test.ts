@@ -38,7 +38,7 @@ import type {
 } from '../src/runtime/contracts';
 import {
   buildImageAttachmentIndexForExtraction,
-  buildReplyFileImageItems,
+  buildNativeFileImageItems,
   resolveProjectedImageFileAttachments,
   toResponsesWireImageItem,
 } from '../src/runtime/openai-agent-runtime';
@@ -306,7 +306,7 @@ describe('Files adapter', () => {
 
 describe('file-ID reply content', () => {
   it('builds SDK file-ID items and mirrors the Responses file_id wire shape', () => {
-    const items = buildReplyFileImageItems([{ fileId: 'file-abc123', messageId: 'm1' }]);
+    const items = buildNativeFileImageItems([{ fileId: 'file-abc123', messageId: 'm1' }]);
     expect(items).toEqual([{ type: 'input_image', image: { id: 'file-abc123' }, detail: 'auto' }]);
     expect(toResponsesWireImageItem(items[0])).toEqual({ type: 'input_image', file_id: 'file-abc123', detail: 'auto' });
   });

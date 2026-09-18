@@ -5285,16 +5285,16 @@ export class AgentService {
     const plan = args.plan.current_node === 'resolver_consultas_informativas'
       ? args.plan
       : mergePlan(args.plan, { current_node: 'resolver_consultas_informativas' });
-    const canInspect = image?.status === 'available' &&
-      // URL images ride the owner reply call as native image content, and
-      // base64 images ride the persisted file reference the same way; the
-      // describe-by-default inspection call is retired and no turn invokes
-      // runtime.inspectImage. The descriptor below is trace metadata only.
-      image?.mimeType !== null &&
-      typeof this.dependencies.runtime.inspectImage === 'function';
-    const imageInspectDescriptor: RuntimeCapabilityDescriptor = canInspect
-      ? { id: 'media.image.inspect', available: true, reason: 'enabled' }
-      : { id: 'media.image.inspect', available: false, reason: 'media_unavailable' };
+    // URL images ride the owner reply call as native image content, and
+    // base64 images ride the persisted file reference the same way. The
+    // describe-by-default inspection call is retired and removed: no turn
+    // inspects through the runtime. The descriptor below is trace metadata
+    // only and always reports the retired capability as unavailable.
+    const imageInspectDescriptor: RuntimeCapabilityDescriptor = {
+      id: 'media.image.inspect',
+      available: false,
+      reason: 'media_unavailable',
+    };
     const manifest: RuntimeCapabilityManifest = {
       ...this.capabilityManifest,
       'media.image.inspect': imageInspectDescriptor,
@@ -5707,6 +5707,13 @@ export class AgentService {
         plan: args.plan,
         messageContext: args.messageContext,
         currentMessageId: args.inbound.messageId,
+        // Native decision input: the already-uploaded current file ref rides
+        // the extraction call before routing. No double base64 upload, no
+        // description substitution, no historical batch.
+        imageUrlAttachments: [],
+        imageFileAttachments: args.imageTurn.fileId !== undefined
+          ? [{ fileId: args.imageTurn.fileId, messageId: args.imageTurn.messageId }]
+          : [],
       });
       extraction = 'extraction' in rawExtractionResult
         ? rawExtractionResult.extraction
@@ -5830,7 +5837,11 @@ export class AgentService {
    * image availability and decides the semantic relation. An image arriving
    * while a request, curated question, task, RSVP selection or credential
    * challenge is outstanding continues that task instead of persisting
-   * silently.
+   * silently. A receipt-derived purchase request passes this gate through
+   * the structured model request (informationRequests), even when a prior
+   * payment question already completed: a completed thread never suppresses
+   * a new receipt-derived check. An image with no structured task evidence
+   * still persists silently.
    */
   private hasOutstandingImageTask(plan: PlanSnapshot, extraction: ExtractionResult): boolean {
     if (this.hasInformationWork(plan, extraction, { forImageGate: true })) return true;
@@ -6309,6 +6320,11 @@ export class AgentService {
         plan: planWithRef,
         messageContext: args.messageContext,
         currentMessageId: args.inbound.messageId,
+        // Native decision input: the existing backend URL rides the
+        // extraction call before routing. No download, no base64 conversion,
+        // no description substitution, no historical batch.
+        imageUrlAttachments: [{ url: args.image.url, messageId: args.inbound.messageId }],
+        imageFileAttachments: [],
       });
       extraction = 'extraction' in rawExtractionResult
         ? rawExtractionResult.extraction
@@ -7597,6 +7613,7 @@ export class AgentService {
       args.extraction.informationRequests,
     );
     requests = this.normalizePurchaseDetailRoute(requests);
+    requests = this.expandReceiptDiscoveryRequests(requests, args.extraction);
     const lastCompletedRequest =
       planWithContact.information_state.last_completed_request;
     const supportContinuesPurchaseThread = supportAcknowledgment &&
@@ -9145,11 +9162,72 @@ export class AgentService {
    * The read partition is derived from the typed aspects through the shared
    * extraction-contract helper: gift detail aspects (dedication, thanks,
    * payment_details) read gift_purchases, every other question keeps its
-   * declared resource. One partition only, never both; no aspect is ever
-   * removed to force a route. Unknown payment time stays unknown
+   * declared resource. One partition per request, never both from this step;
+   * no aspect is ever
+   * removed to force a route. The bounded implicit-receipt task fans out to
+   * both authorized sources afterwards through expandReceiptDiscoveryRequests
+   * (two pinned requests), which is the only dual-source path. Unknown payment time stays unknown
    * downstream; the reply addresses that uncertainty instead of inferring
    * it from event time or order creation.
    */
+  /**
+   * Implicit receipt discovery for the existing multi-request executor. A
+   * recognizable receipt arrives as the structured implicit task
+   * (supportAct provide_detail/payment_proof/submission_reported) with
+   * purchase information requests but no identified record or source. That
+   * task reads both authorized sources — orders and gift_purchases — through
+   * two requests so a gift-only match is never missed because orders was
+   * the last route. An already identified record (explicit orderId) refreshes
+   * its single applicable source once: no fan-out. Each request keeps its
+   * aspects verbatim; the complementary clone pins its source so the
+   * orchestrator reaches that route even when the shared aspects alone
+   * would select the other partition. Capability and authorization checks
+   * stay per-request in the orchestrator, and the per-turn scoped lookup map
+   * still collapses repeated scoped reads. Typed evidence only: receipt
+   * names, phones and account numbers never establish access, and no
+   * keyword or pixel inspection happens here.
+   */
+  private expandReceiptDiscoveryRequests(
+    requests: PendingInformationRequest[],
+    extraction: ExtractionResult,
+  ): PendingInformationRequest[] {
+    const act = extraction.supportAct;
+    const isReceiptDiscovery = act?.kind === 'provide_detail' &&
+      act.topic === 'payment_proof' &&
+      act.detail === 'submission_reported';
+    if (!isReceiptDiscovery) return requests;
+    const extractedUnidentified = extraction.informationRequests.some((request) =>
+      request.kind === 'purchase' &&
+      (request.orderId === null || request.orderId === undefined || request.orderId.trim().length === 0));
+    if (!extractedUnidentified) return requests;
+    const unidentified = requests.filter((request) =>
+      request.kind === 'purchase' &&
+      (request.orderId === null || request.orderId === undefined || request.orderId.trim().length === 0));
+    if (unidentified.length === 0) return requests;
+    const resources = new Set(unidentified.map((request) =>
+      request.kind === 'purchase' ? request.resource : null));
+    if (resources.has('orders') && resources.has('gift_purchases')) return requests;
+    const missing: 'orders' | 'gift_purchases' = resources.has('gift_purchases')
+      ? 'orders'
+      : 'gift_purchases';
+    const template = unidentified.find((request) =>
+      request.kind === 'purchase' && request.resource !== missing) ??
+      unidentified[0];
+    if (!template || template.kind !== 'purchase') return requests;
+    let requestId = `${template.requestId}:receipt-discovery`;
+    let suffix = 2;
+    while (requests.some((request) => request.requestId === requestId)) {
+      requestId = `${template.requestId}:receipt-discovery-${suffix}`;
+      suffix += 1;
+    }
+    return [...requests, {
+      ...template,
+      resource: missing,
+      pinnedSource: missing,
+      requestId,
+    }];
+  }
+
   private normalizePurchaseDetailRoute(
     requests: PendingInformationRequest[],
   ): PendingInformationRequest[] {

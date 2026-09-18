@@ -2092,3 +2092,239 @@ describe('S2 actual-request payment parity and transaction strip', () => {
     expect(JSON.stringify(result)).not.toContain('701002');
   });
 });
+
+describe('B receipt discovery fan-out across authorized sources', () => {
+  function discoveryOrder(): PurchaseInformation {
+    return {
+      orderId: 'ORD-DISC-1',
+      paymentStatus: 'pending',
+      shippingStatus: null,
+      grandTotal: 340.44,
+      paymentMethod: 'transfer',
+      currency: 'PEN',
+      eventName: 'Evento Sintetico',
+      eventDate: null,
+      eventUrl: null,
+      createdAt: '2026-09-10 10:00:00',
+      items: [],
+    };
+  }
+
+  function discoveryGift(): PurchaseInformation {
+    return {
+      orderId: 'GIFT-DISC-7',
+      paymentStatus: 'approved',
+      shippingStatus: null,
+      grandTotal: 340.44,
+      paymentMethod: 'transfer',
+      currency: 'PEN',
+      eventName: 'Otro Evento Sintetico',
+      eventDate: null,
+      eventUrl: null,
+      createdAt: '2026-09-09 10:00:00',
+      items: [],
+    };
+  }
+
+  function discoveryOrchestrator(agentGateway: FakeAgentGateway): InformationOrchestrator {
+    return new InformationOrchestrator({
+      knowledgeGateway: { async search() { throw new Error('unused'); } },
+      providerGateway: {} as ProviderGateway,
+      agentGateway,
+    });
+  }
+
+  const TRUSTED_PHONE = { phone_extension: '+51', phone_number: '987654321' };
+
+  it('reads the pinned complementary source on its own route with one scoped read per source', async () => {
+    const agentGateway = new FakeAgentGateway();
+    agentGateway.guestOrdersResult = {
+      status: 'success',
+      resource: 'orders',
+      orderPartitions: { pending: [discoveryOrder()], completed: [] },
+      purchases: [discoveryOrder()],
+    };
+    agentGateway.guestGiftResult = {
+      status: 'success',
+      resource: 'gift_purchases',
+      orderPartitions: { pending: [], completed: [discoveryGift()] },
+      purchases: [discoveryGift()],
+    };
+    const execution = await discoveryOrchestrator(agentGateway).execute({
+      requests: [
+        {
+          requestId: 'receipt-orders',
+          kind: 'purchase',
+          resource: 'orders',
+          query: 'Estado del pago del comprobante.',
+          orderId: null,
+          aspects: ['summary', 'payment_status'],
+          sensitiveFields: [],
+          authAction: 'none',
+        },
+        {
+          requestId: 'receipt-gift',
+          kind: 'purchase',
+          resource: 'gift_purchases',
+          pinnedSource: 'gift_purchases',
+          query: 'Estado del pago del comprobante.',
+          orderId: null,
+          aspects: ['summary', 'payment_status'],
+          sensitiveFields: [],
+          authAction: 'none',
+        },
+        {
+          requestId: 'receipt-orders-duplicate',
+          kind: 'purchase',
+          resource: 'orders',
+          query: 'Estado del pago del comprobante.',
+          orderId: null,
+          aspects: ['summary'],
+          sensitiveFields: [],
+          authAction: 'none',
+        },
+      ],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: TRUSTED_PHONE,
+    });
+
+    // Independent authorized roots run through the shared per-turn scoped
+    // map: the pinned gift request reaches the gift route even though the
+    // shared aspects alone would select orders, and the repeated orders
+    // scope reads once.
+    expect(agentGateway.guestOrdersCalls).toBe(1);
+    expect(agentGateway.guestGiftCalls).toBe(1);
+    expect(agentGateway.guestGiftOrderIds).toEqual([null]);
+    expect(execution.results).toHaveLength(3);
+    const byId = new Map(execution.results.map((result) => [result.requestId, result]));
+    expect(byId.get('receipt-orders')).toMatchObject({
+      status: 'completed',
+      lookupResource: 'orders',
+      coverage: 'complete',
+    });
+    expect(byId.get('receipt-gift')).toMatchObject({
+      status: 'completed',
+      lookupResource: 'gift_purchases',
+      coverage: 'complete',
+    });
+    const ordersPurchases = byId.get('receipt-orders');
+    const giftPurchases = byId.get('receipt-gift');
+    if (
+      ordersPurchases?.status === 'completed' && ordersPurchases.kind === 'purchase' &&
+      giftPurchases?.status === 'completed' && giftPurchases.kind === 'purchase'
+    ) {
+      // Stable identities: each source keeps its own canonical record with
+      // visible amount, status, currency and event.
+      expect(ordersPurchases.purchases.map((purchase) => purchase.orderId)).toEqual(['ORD-DISC-1']);
+      expect(giftPurchases.purchases.map((purchase) => purchase.orderId)).toEqual(['GIFT-DISC-7']);
+      for (const purchase of [...ordersPurchases.purchases, ...giftPurchases.purchases]) {
+        expect(purchase.amountDisclosure?.total).toBe(340.44);
+        expect(purchase.amountDisclosure?.currency ?? purchase.currency).toBeTruthy();
+        expect(purchase.eventName).toBeTruthy();
+      }
+    } else {
+      throw new Error('expected both discovery reads to complete');
+    }
+    // No mutations ride a read-only discovery turn.
+    expect(JSON.stringify(execution.results)).not.toContain('human_help_receipt');
+  });
+
+  it('keeps ready orders facts when the optional gift source fails without claiming its coverage', async () => {
+    const agentGateway = new FakeAgentGateway();
+    agentGateway.guestOrdersResult = {
+      status: 'success',
+      resource: 'orders',
+      orderPartitions: { pending: [discoveryOrder()], completed: [] },
+      purchases: [discoveryOrder()],
+    };
+    agentGateway.guestGiftResult = {
+      status: 'failed',
+      resource: 'gift_purchases',
+      retryable: false,
+      failureKind: 'request_failed',
+      error: 'gift route down',
+    };
+    const execution = await discoveryOrchestrator(agentGateway).execute({
+      requests: [
+        {
+          requestId: 'receipt-orders',
+          kind: 'purchase',
+          resource: 'orders',
+          query: 'Estado del pago del comprobante.',
+          orderId: null,
+          aspects: ['summary', 'payment_status'],
+          sensitiveFields: [],
+          authAction: 'none',
+        },
+        {
+          requestId: 'receipt-gift',
+          kind: 'purchase',
+          resource: 'gift_purchases',
+          pinnedSource: 'gift_purchases',
+          query: 'Estado del pago del comprobante.',
+          orderId: null,
+          aspects: ['summary', 'payment_status'],
+          sensitiveFields: [],
+          authAction: 'none',
+        },
+      ],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: TRUSTED_PHONE,
+    });
+
+    expect(agentGateway.guestOrdersCalls).toBe(1);
+    expect(agentGateway.guestGiftCalls).toBe(1);
+    const byId = new Map(execution.results.map((result) => [result.requestId, result]));
+    const ordersResult = byId.get('receipt-orders');
+    const giftResult = byId.get('receipt-gift');
+    // The failed optional source neither discards ready facts nor reports
+    // complete coverage for a scope it could not read.
+    expect(ordersResult).toMatchObject({ status: 'completed', lookupResource: 'orders' });
+    if (ordersResult?.status === 'completed' && ordersResult.kind === 'purchase') {
+      expect(ordersResult.purchases.map((purchase) => purchase.orderId)).toEqual(['ORD-DISC-1']);
+    } else {
+      throw new Error('expected the orders read to stay completed');
+    }
+    expect(giftResult).toMatchObject({ status: 'failed' });
+    const completedGift = execution.results.filter(
+      (result) => result.kind === 'purchase' && result.status === 'completed' &&
+        (result.lookupResource ?? result.resource) === 'gift_purchases',
+    );
+    expect(completedGift).toHaveLength(0);
+  });
+
+  it('keeps the aspect-derived route for unpinned requests with a gift resource and summary aspects', async () => {
+    const agentGateway = new FakeAgentGateway();
+    agentGateway.guestOrdersResult = {
+      status: 'success',
+      resource: 'orders',
+      orderPartitions: { pending: [discoveryOrder()], completed: [] },
+      purchases: [discoveryOrder()],
+    };
+    const execution = await discoveryOrchestrator(agentGateway).execute({
+      requests: [{
+        requestId: 'summary-gift-resource',
+        kind: 'purchase',
+        resource: 'gift_purchases',
+        query: 'Estado del pago.',
+        orderId: null,
+        aspects: ['summary', 'payment_status'],
+        sensitiveFields: [],
+        authAction: 'none',
+      }],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: TRUSTED_PHONE,
+    });
+
+    // No pin: the long-standing aspect derivation still selects orders.
+    expect(agentGateway.guestOrdersCalls).toBe(1);
+    expect(agentGateway.guestGiftCalls).toBe(0);
+    expect(execution.results[0]).toMatchObject({
+      status: 'completed',
+      lookupResource: 'orders',
+    });
+  });
+});

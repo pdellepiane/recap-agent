@@ -32,7 +32,6 @@ import type { RequestedOperation } from './extraction-schemas';
 import type { RuntimeOperationId } from './capability-manifest';
 import type { CapabilityDecision } from './capability-manifest';
 import type { RsvpAction, RsvpDecisionSource, RsvpParty } from '../core/rsvp';
-import type { InboundImage } from '../core/inbound-image';
 import type { PlanOwner } from '../core/plan';
 import type { CustomerContextProjection, CustomerEnrichmentSummary } from './customer-context';
 
@@ -157,6 +156,18 @@ export type ExtractRequest = {
     mimeType: string | null;
     fileName: string | null;
   }[];
+  /**
+   * Native image attachments for this decision call. The caller passes the
+   * already-uploaded current file ref or the existing backend URL; the
+   * runtime projects them as native image content, never as prompt text.
+   * Transport only: no persisted receipt descriptions, no raw base64.
+   */
+  imageUrlAttachments?: readonly ImageUrlAttachment[];
+  /**
+   * Persisted file-ID attachments for this decision call. Same transport
+   * rule as URLs: native image content only, never model-visible text.
+   */
+  imageFileAttachments?: readonly ImageFileAttachment[];
 };
 
 export type RsvpPhoneReplyEvidence =  | {
@@ -439,16 +450,6 @@ export type ExtractResult = {
 };
 
 export interface AgentRuntime {
-  inspectImage?(request: {
-    image: Extract<InboundImage, { status: 'available'; source: 'base64' }>;
-    caption: string;
-  }): Promise<{
-    outcome: 'readable' | 'unreadable' | 'human_help';
-    answer: string;
-    tokenUsage: TokenUsage | null;
-    openAiCall: OpenAiCallRef | null;
-    promptBundleId: string;
-  }>;
   extract(request: ExtractRequest): Promise<ExtractResult | ExtractionResult>;
   composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult>;
 }

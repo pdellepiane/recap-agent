@@ -330,7 +330,7 @@ describe('PromptLoader', () => {
       'una referencia breve como "el horario"',
     );
     expect(extractorBundle.instructions).toContain(
-      'foto es FAQ, pedir persona es',
+      'pedir persona es `solicitar_humano`+`request`',
     );
     expect(extractorBundle.instructions).toContain(
       '`faq`: pregunta general sobre Sin Envolturas',

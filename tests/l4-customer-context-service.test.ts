@@ -562,3 +562,132 @@ describe('l4 P1 canonical profile through public AgentService', () => {
     expect(customerContext?.commonRefs.orderIds).toContain('ORD-A');
   });
 });
+
+describe('l4 B receipt discovery merges both authorized sources canonically', () => {
+  function sourceResult(
+    requestId: string,
+    resource: 'orders' | 'gift_purchases',
+    orderId: string,
+    total: number,
+    paymentStatus: string,
+  ): { result: InformationTaskResult; summary: InformationExecutionSummary } {
+    return {
+      result: {
+        requestId,
+        kind: 'purchase',
+        status: 'completed',
+        resource,
+        lookupResource: resource,
+        purchases: [{
+          orderId,
+          paymentStatus,
+          shippingStatus: null,
+          grandTotal: total,
+          paymentMethod: 'transfer',
+          eventName: 'Evento Sintetico',
+          eventDate: null,
+          eventUrl: null,
+          createdAt: null,
+          items: [],
+        }],
+        needsSelection: false,
+        accessMethod: 'trusted_phone_purchase',
+        coverage: 'complete',
+        carts: [],
+      },
+      summary: {
+        requestId,
+        kind: 'purchase',
+        status: 'completed',
+        source: 'agent_api',
+        outcomeCode: 'completed_with_results',
+        retryable: null,
+        queryHash: 'q',
+        evidence: [],
+        resultCount: 1,
+        durationMs: 40,
+        accessMethod: 'trusted_phone_purchase',
+        coverage: 'complete',
+        resource,
+      },
+    };
+  }
+
+  it('merges orders and gift discovery reads without amount filtering or duplicate blocking', async () => {
+    const runtime = new PaymentQuestionRuntime(null);
+    const orders = sourceResult('information-1', 'orders', 'ORD-DISC-1', 340.44, 'pending');
+    const gift = sourceResult('information-1:receipt-discovery', 'gift_purchases', 'GIFT-DISC-7', 340.44, 'approved');
+    const { service } = serviceWith(
+      runtime,
+      [orders.result, gift.result],
+      [orders.summary, gift.summary],
+    );
+
+    await service.handleTurn(inbound('¿Cuál es el estado de mi pago?', '+51900000001'));
+
+    expect(runtime.composeRequests).toHaveLength(1);
+    const customerContext = runtime.composeRequests[0]?.customerContext;
+    // One canonical profile: both authorized records ride once as their own
+    // entities. Same amount alone proves nothing, so neither record is
+    // filtered by amount, blocked as a duplicate, or hidden by recency.
+    expect(customerContext?.purchases.map((entry) => entry.orderId).sort()).toEqual(
+      ['GIFT-DISC-7', 'ORD-DISC-1'],
+    );
+    expect(customerContext?.detailedPurchases).toHaveLength(2);
+    expect([...customerContext?.commonRefs.orderIds ?? []].sort()).toEqual(['GIFT-DISC-7', 'ORD-DISC-1']);
+    const serialized = JSON.stringify(customerContext);
+    expect(serialized).toContain('340.44');
+    expect(serialized).toContain('pending');
+    expect(serialized).toContain('approved');
+    expect(serialized).toContain('Evento Sintetico');
+    expect(customerContext?.sections.purchasesCarts).toBe('ready');
+  });
+
+  it('marks partial coverage when the gift discovery read fails while keeping ready orders facts', async () => {
+    const runtime = new PaymentQuestionRuntime(null);
+    const orders = sourceResult('information-1', 'orders', 'ORD-DISC-1', 340.44, 'pending');
+    const failedGift: InformationTaskResult = {
+      requestId: 'information-1:receipt-discovery',
+      kind: 'purchase',
+      status: 'failed',
+      retryable: false,
+      accessMethod: 'trusted_phone_purchase',
+      lookupResource: 'gift_purchases',
+      failureKind: 'request_failed',
+      message: 'gift lookup failed',
+    };
+    const failedGiftSummary: InformationExecutionSummary = {
+      requestId: 'information-1:receipt-discovery',
+      kind: 'purchase',
+      status: 'failed',
+      source: 'agent_api',
+      outcomeCode: 'request_failed',
+      retryable: false,
+      queryHash: 'q',
+      evidence: [],
+      resultCount: 0,
+      durationMs: 10,
+      accessMethod: 'trusted_phone_purchase',
+      coverage: null,
+      resource: 'gift_purchases',
+    };
+    const { service } = serviceWith(
+      runtime,
+      [orders.result, failedGift],
+      [orders.summary, failedGiftSummary],
+    );
+
+    await service.handleTurn(inbound('¿Cuál es el estado de mi pago?', '+51900000001'));
+
+    expect(runtime.composeRequests).toHaveLength(1);
+    const customerContext = runtime.composeRequests[0]?.customerContext;
+    // Ready facts survive the failed optional source while the section
+    // stays servable; the failed scope contributes no phantom record and
+    // the per-result coverage behind the reply stays honest (proven at the
+    // executor level).
+    expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-DISC-1']);
+    expect(customerContext?.detailedPurchases).toHaveLength(1);
+    expect(customerContext?.sections.purchasesCarts).toBe('ready');
+    expect(customerContext?.commonRefs.orderIds).toEqual(['ORD-DISC-1']);
+  });
+});

@@ -31,7 +31,7 @@ import type {
   ExtractionResult,
 } from '../src/runtime/contracts';
 import {
-  buildReplyImageContent,
+  buildNativeImageContent,
   ProviderImageAccessError,
   resolveProjectedImageAttachments,
   toResponsesWireImageItem,
@@ -178,13 +178,13 @@ describe('URL image transport', () => {
 
 describe('native wire shape', () => {
   it('builds SDK input_image items with the image field', () => {
-    const content = buildReplyImageContent('cuanto dice aqui?', [{ url: URL_A, messageId: 'm1' }]);
+    const content = buildNativeImageContent('cuanto dice aqui?', [{ url: URL_A, messageId: 'm1' }]);
     expect(content[0]).toEqual({ type: 'input_text', text: 'cuanto dice aqui?' });
     expect(content[1]).toEqual({ type: 'input_image', image: URL_A, detail: 'auto' });
   });
 
   it('serializes to the Responses wire shape with image_url', () => {
-    const content = buildReplyImageContent('hola', [{ url: URL_A, messageId: 'm1' }]);
+    const content = buildNativeImageContent('hola', [{ url: URL_A, messageId: 'm1' }]);
     const wire = content.map(toResponsesWireImageItem);
     expect(wire[1]).toEqual({ type: 'input_image', image_url: URL_A, detail: 'auto' });
     // Installed SDK converter (agents-openai openaiResponsesModel.js):
@@ -345,10 +345,10 @@ describe('instruction and input byte evidence', () => {
   it('keeps URL projection far below a base64 payload', () => {
     const text = 'Es mi comprobante';
     const urlPayload = JSON.stringify([
-      { role: 'user', content: buildReplyImageContent(text, [{ url: FIXTURE_URL, messageId: 'm1' }]) },
+      { role: 'user', content: buildNativeImageContent(text, [{ url: FIXTURE_URL, messageId: 'm1' }]) },
     ]);
     const base64Payload = JSON.stringify([
-      { role: 'user', content: buildReplyImageContent(text, [{ url: `data:image/png;base64,${'A'.repeat(1_000_000)}`, messageId: 'm1' }]) },
+      { role: 'user', content: buildNativeImageContent(text, [{ url: `data:image/png;base64,${'A'.repeat(1_000_000)}`, messageId: 'm1' }]) },
     ]);
     const urlBytes = Buffer.byteLength(urlPayload, 'utf8');
     const base64Bytes = Buffer.byteLength(base64Payload, 'utf8');
