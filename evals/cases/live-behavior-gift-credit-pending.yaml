@@ -1,0 +1,40 @@
+template: template.base-live
+id: live_behavior.gift_credit_pending_payment_stays_pending
+suite: live_behavior_regression
+version: 1
+description: A pending credit gift keeps the host-credit mechanism and the pending payment state side by side without fabricating settlement.
+tags: [live, behavior, purchase, gift, payment, fulfillment, credit]
+targetModes: [live_lambda]
+backendFixture:
+  scenario: purchase-gift-credit-pending
+inputs:
+  - text: Aporté a la luna de miel como regalo. ¿Ya les llegó el dinero a los novios?
+    channel: whatsapp
+    contactPhone: "+51999350214"
+    sessionId: live-gift-credit-pending
+    backendFixture:
+      scenario: purchase-gift-credit-pending
+expectations:
+  - id: pending-uses-gift-read
+    type: tool_usage
+    mustCall: [lookup_guest_gift_purchases_by_phone]
+    mustNotCall: [lookup_guest_orders_by_phone, auth_by_phone, request_user_login_code, verify_user_login_code, guest_rsvp]
+    severity: hard
+  - id: pending-no-unsolicited-effects
+    type: fixture_effect_count
+    operation: handoff.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: pending-policy-and-state-coexist
+    type: text_semantic
+    rubric: >-
+      The phone-scoped gift lookup returns one credit gift whose payment is still pending. The response must be natural and entirely in Spanish, explain the automatic account-credit mechanism chosen by the hosts together with the actual pending payment state, and keep both facts distinct. It must not claim the value already posted, was credited, reached the hosts, or is available; must not invent a balance, ledger entry, withdrawal, bank payout or posting time; and must not state or imply any gift shipment.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 300

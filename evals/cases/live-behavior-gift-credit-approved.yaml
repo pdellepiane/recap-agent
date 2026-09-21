@@ -1,0 +1,44 @@
+template: template.base-live
+id: live_behavior.gift_credit_states_host_choice_no_shipment
+suite: live_behavior_regression
+version: 1
+description: A credit gift states the hosts' choice of account credit with no gift shipment, and makes no payment-posting claim beyond the record.
+tags: [live, behavior, purchase, gift, shipping, fulfillment, credit]
+targetModes: [live_lambda]
+backendFixture:
+  scenario: purchase-gift-credit-approved
+inputs:
+  - text: Aporté a la luna de miel como regalo. ¿Cuándo lo envían?
+    channel: whatsapp
+    contactPhone: "+51999350212"
+    sessionId: live-gift-credit-approved
+    backendFixture:
+      scenario: purchase-gift-credit-approved
+expectations:
+  - id: credit-uses-gift-read
+    type: tool_usage
+    mustCall: [lookup_guest_gift_purchases_by_phone]
+    mustNotCall: [lookup_guest_orders_by_phone, auth_by_phone, request_user_login_code, verify_user_login_code, guest_rsvp]
+    severity: hard
+  - id: credit-no-unsolicited-effects
+    type: fixture_effect_count
+    operation: handoff.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: credit-no-internal-ids
+    type: text_not_contains
+    phrases: ["gift-credit-01", "100000901"]
+    severity: hard
+  - id: credit-host-choice-no-shipment
+    type: text_semantic
+    rubric: >-
+      The phone-scoped gift lookup returns one credit gift (Aporte luna de miel): the hosts chose to receive its value as account credit, so no gift shipment applies. The response must be natural and entirely in Spanish, explain that the hosts chose the credit form so there is no physical shipment to dispatch, and keep the host choice explicit. It must not state or imply a dispatch date, delivery date, courier process or tracking; must not claim the giver chose cash, that a bank paid anyone, or that any amount already posted beyond what the record states; and must not ask for email or a code.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 300

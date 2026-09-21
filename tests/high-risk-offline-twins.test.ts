@@ -145,16 +145,16 @@ function twinService(
 }
 
 describe('high-risk scenario offline twins (F3)', () => {
-  it('reconciles the mandatory suite count: 129 total, 121 support, 8 planning-only', async () => {
+  it('reconciles the mandatory suite count: 138 total, 130 support, 8 planning-only', async () => {
     const catalog = await new EvalLoader(path.resolve(process.cwd(), 'evals')).loadCatalog();
     const suite = catalog.suites.find((candidate) => candidate.id === 'live_behavior_regression');
     const caseIds = new Set(suite?.caseIds ?? []);
-    // 2026-09-18 receipt-context: 121 + 8 native receipt panel cases.
-    expect(caseIds.size).toBe(129);
+    // 2026-09-21 gift/campaign: 129 + 9 gift-fulfillment/B1 panel cases.
+    expect(caseIds.size).toBe(138);
     for (const planningId of PLANNING_DIAGNOSTIC_ONLY) {
       expect(caseIds.has(planningId), `${planningId} missing from the mandatory suite`).toBe(true);
     }
-    expect(caseIds.size - PLANNING_DIAGNOSTIC_ONLY.length).toBe(121);
+    expect(caseIds.size - PLANNING_DIAGNOSTIC_ONLY.length).toBe(130);
     expect(caseIds.has('live_behavior.customer_event_task_continuity')).toBe(true);
     expect(caseIds.has('live_behavior.support_pending_question_completed')).toBe(true);
     expect(caseIds.has('live_behavior.wait_followup_no_repeat')).toBe(true);

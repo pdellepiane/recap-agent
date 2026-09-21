@@ -1,0 +1,40 @@
+template: template.base-live
+id: live_behavior.gift_credit_with_physical_card_distinguishes
+suite: live_behavior_regression
+version: 1
+description: A credit gift with a separate physical dedication card distinguishes the non-shipped product from the card artifact.
+tags: [live, behavior, purchase, gift, shipping, dedication, fulfillment, credit]
+targetModes: [live_lambda]
+backendFixture:
+  scenario: purchase-gift-credit-card
+inputs:
+  - text: Aporté a la luna de miel y dejé una dedicatoria. ¿Qué se envía físicamente?
+    channel: whatsapp
+    contactPhone: "+51999350216"
+    sessionId: live-gift-credit-card
+    backendFixture:
+      scenario: purchase-gift-credit-card
+expectations:
+  - id: card-uses-gift-read
+    type: tool_usage
+    mustCall: [lookup_guest_gift_purchases_by_phone]
+    mustNotCall: [lookup_guest_orders_by_phone, auth_by_phone, request_user_login_code, verify_user_login_code, guest_rsvp]
+    severity: hard
+  - id: card-no-unsolicited-effects
+    type: fixture_effect_count
+    operation: handoff.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: card-distinguishes-product-from-artifact
+    type: text_semantic
+    rubric: >-
+      The phone-scoped gift lookup returns a credit gift (no product shipment; the hosts chose account credit) plus a separate physical dedication card that is being prepared. The response must be natural and entirely in Spanish, keep the two facts separate: the gift itself has no gift shipment, while the dedication card is a separate physical artifact with its own preparing state. It must not turn the credit gift into a physical product, must not claim the card state proves product shipment or delivery, and must not invent dispatch dates or tracking.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 300

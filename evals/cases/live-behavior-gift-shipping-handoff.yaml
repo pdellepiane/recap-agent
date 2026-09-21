@@ -1,0 +1,80 @@
+template: template.base-live
+id: live_behavior.gift_shipping_limitation_accepted_handoff_once
+suite: live_behavior_regression
+version: 1
+description: After a physical-shipping limitation, an accepted human-support offer produces exactly one real handoff; thanks afterwards never re-escalates.
+tags: [live, behavior, purchase, gift, shipping, handoff, fulfillment, sestore]
+targetModes: [live_lambda]
+backendFixture:
+  scenario: purchase-gift-sestore-unknown
+inputs:
+  - text: Compré el juego de sábanas como regalo. ¿Cuándo lo despachan y a quién se lo entregan?
+    channel: whatsapp
+    contactPhone: "+51999350211"
+    sessionId: live-gift-shipping-handoff
+    backendFixture:
+      scenario: purchase-gift-sestore-unknown
+  - text: Sí, por favor comunícame con una persona para averiguarlo.
+    channel: whatsapp
+    contactPhone: "+51999350211"
+    sessionId: live-gift-shipping-handoff
+    backendFixture:
+      scenario: purchase-gift-sestore-unknown
+  - text: Gracias.
+    channel: whatsapp
+    contactPhone: "+51999350211"
+    sessionId: live-gift-shipping-handoff
+    backendFixture:
+      scenario: purchase-gift-sestore-unknown
+expectations:
+  - id: handoff-limitation-reads-gift
+    type: tool_usage
+    mustCall: [lookup_guest_gift_purchases_by_phone]
+    mustNotCall: [request_human_takeover, auth_by_phone, request_user_login_code, verify_user_login_code, guest_rsvp]
+    turnIndex: 0
+    severity: hard
+  - id: handoff-limitation-offers-support
+    type: text_semantic
+    rubric: >-
+      The gift record carries no shipment detail for the physical sheets. The first answer must be natural and entirely in Spanish, say the specific detail is unavailable in the record, and offer human support without submitting it. It must not invent recipient, carrier, date or ETA facts and must not claim help was already requested.
+    minScore: 0.9
+    requireJudge: true
+    turnIndex: 0
+    severity: hard
+  - id: handoff-accepted-requests-once
+    type: tool_usage
+    mustCall: [request_human_takeover]
+    mustNotCall: [guest_rsvp]
+    turnIndex: 1
+    severity: hard
+  - id: handoff-effect-once
+    type: fixture_effect_count
+    operation: handoff.write
+    turnIndex: 1
+    expectedAttempts: 1
+    expectedSuccesses: 1
+    expectedReplays: 0
+    severity: hard
+  - id: handoff-recorded-in-plan
+    type: plan_field_equals
+    path: human_escalation.status
+    expected: requested
+    turnIndex: 1
+    severity: hard
+  - id: handoff-truthful-confirmation
+    type: text_semantic
+    rubric: >-
+      The user explicitly accepted the human-support offer, and the handoff was submitted exactly once. The second answer must be natural and entirely in Spanish and truthfully confirm that human help was requested for the shipping question. It must not claim the team already answered, promise contact timing, invent shipment facts, or claim the gift shipped or was delivered.
+    minScore: 0.9
+    requireJudge: true
+    turnIndex: 1
+    severity: hard
+  - id: handoff-thanks-never-reescalates
+    type: tool_usage
+    mustNotCall: [request_human_takeover, guest_rsvp]
+    turnIndex: 2
+    severity: hard
+budget:
+  maxTurns: 3
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 260

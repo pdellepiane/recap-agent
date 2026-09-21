@@ -1,0 +1,44 @@
+template: template.base-live
+id: live_behavior.gift_sestore_unknown_shipping_offers_support
+suite: live_behavior_regression
+version: 1
+description: A physical se_store gift with no recorded shipment detail keeps its physical nature; the reply offers real human support without inventing recipient, carrier, date or ETA.
+tags: [live, behavior, purchase, gift, shipping, fulfillment, sestore]
+targetModes: [live_lambda]
+backendFixture:
+  scenario: purchase-gift-sestore-unknown
+inputs:
+  - text: Compré el juego de sábanas como regalo. ¿Cuándo lo despachan y a quién se lo entregan?
+    channel: whatsapp
+    contactPhone: "+51999350211"
+    sessionId: live-gift-sestore-unknown
+    backendFixture:
+      scenario: purchase-gift-sestore-unknown
+expectations:
+  - id: sestore-uses-gift-read
+    type: tool_usage
+    mustCall: [lookup_guest_gift_purchases_by_phone]
+    mustNotCall: [lookup_guest_orders_by_phone, auth_by_phone, request_user_login_code, verify_user_login_code, guest_rsvp]
+    severity: hard
+  - id: sestore-no-unsolicited-effects
+    type: fixture_effect_count
+    operation: handoff.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: sestore-no-internal-ids
+    type: text_not_contains
+    phrases: ["gift-sestore-01", "100000901"]
+    severity: hard
+  - id: sestore-physical-without-invented-detail
+    type: text_semantic
+    rubric: >-
+      The phone-scoped gift lookup returns one approved physical gift (Juego de sábanas) with no recorded shipment detail: no recipient, carrier, dispatch date or ETA exists in the record. The response must be natural and entirely in Spanish, acknowledge the physical gift, state plainly that the specific shipment detail is not available in the record, and offer human support as the path for specifics. It must not invent a recipient, address, carrier, dispatch date, ETA, tracking process, or delivery promise; must not claim the gift already shipped or was delivered; and must not claim a handoff was submitted. An offer of support is not an executed escalation.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 300

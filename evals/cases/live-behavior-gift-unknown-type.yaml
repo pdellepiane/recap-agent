@@ -1,0 +1,40 @@
+template: template.base-live
+id: live_behavior.gift_unknown_type_preserves_uncertainty
+suite: live_behavior_regression
+version: 1
+description: An unrecognized item type keeps fulfillment unknown; the physical-sounding gift name never implies a type.
+tags: [live, behavior, purchase, gift, shipping, fulfillment, unknown]
+targetModes: [live_lambda]
+backendFixture:
+  scenario: purchase-gift-unknown-type
+inputs:
+  - text: Compré el juego de ollas premium como regalo. ¿Cuándo lo despachan?
+    channel: whatsapp
+    contactPhone: "+51999350217"
+    sessionId: live-gift-unknown-type
+    backendFixture:
+      scenario: purchase-gift-unknown-type
+expectations:
+  - id: unknown-uses-gift-read
+    type: tool_usage
+    mustCall: [lookup_guest_gift_purchases_by_phone]
+    mustNotCall: [lookup_guest_orders_by_phone, auth_by_phone, request_user_login_code, verify_user_login_code, guest_rsvp]
+    severity: hard
+  - id: unknown-no-unsolicited-effects
+    type: fixture_effect_count
+    operation: handoff.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: unknown-preserves-uncertainty
+    type: text_semantic
+    rubric: >-
+      The phone-scoped gift lookup returns an item whose fulfillment type is not established by the record. The response must be natural and entirely in Spanish, preserve that uncertainty honestly, and offer a next step (human support or a clarifying detail) instead of guessing. It must not infer physical shipment from the product-sounding name, must not declare the gift credit or physical, must not invent dispatch or delivery facts, and must not claim shipment does not apply as if the type were known.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 300

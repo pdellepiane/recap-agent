@@ -1,0 +1,40 @@
+template: template.base-live
+id: live_behavior.gift_sestore_shipped_answers_data
+suite: live_behavior_regression
+version: 1
+description: A physical gift with recorded shipment data is answered from that data with no unnecessary handoff.
+tags: [live, behavior, purchase, gift, shipping, fulfillment, sestore]
+targetModes: [live_lambda]
+backendFixture:
+  scenario: purchase-gift-sestore-shipped
+inputs:
+  - text: Compré el juego de sábanas como regalo. ¿En qué estado está el envío?
+    channel: whatsapp
+    contactPhone: "+51999350215"
+    sessionId: live-gift-sestore-shipped
+    backendFixture:
+      scenario: purchase-gift-sestore-shipped
+expectations:
+  - id: shipped-uses-gift-read
+    type: tool_usage
+    mustCall: [lookup_guest_gift_purchases_by_phone]
+    mustNotCall: [lookup_guest_orders_by_phone, auth_by_phone, request_user_login_code, verify_user_login_code, guest_rsvp]
+    severity: hard
+  - id: shipped-no-handoff-needed
+    type: fixture_effect_count
+    operation: handoff.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: shipped-answers-recorded-data
+    type: text_semantic
+    rubric: >-
+      The phone-scoped gift lookup returns one approved physical gift (Juego de sábanas) with a recorded shipment state of enroute. The response must be natural and entirely in Spanish and report the recorded shipment state for that gift. It must not invent a recipient, carrier, dispatch date, ETA or tracking detail beyond the record; must not claim the gift was delivered; and must not escalate to human support or ask for email or a code when the record already answers the question.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 300
