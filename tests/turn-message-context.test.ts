@@ -7,6 +7,7 @@ import {
   buildTurnMessageContext,
   modelConversationMessageBodyLimit,
   recentConversationMessageLimit,
+  selectProvenanceBoundCampaignMessages,
 } from '../src/runtime/turn-message-context';
 
 function inbound(overrides: Partial<NormalizedInboundMessage> = {}): NormalizedInboundMessage {
@@ -127,5 +128,35 @@ describe('turn message context', () => {
     const visible = buildModelVisibleConversationHistory(context);
     expect(visible[0]?.body.length).toBe(modelConversationMessageBodyLimit);
     expect(visible[0]?.body).toContain('…');
+  });
+
+  it('retains an older campaign reference when a newer ordinary message follows', () => {
+    const context = buildTurnMessageContext({
+      inbound: inbound({ text: '¿A qué hora es?' }),
+      messages: [
+        message(1, {
+          direction: 'outbound',
+          source: 'admin_campaign',
+          body: 'Recordatorio: Boda Lucía y Marco.',
+          status: 'delivered',
+          sentAt: '2026-07-31T09:40:00.000Z',
+        }),
+        message(2, {
+          direction: 'outbound',
+          source: 'agent',
+          body: 'Hola, ¿en qué te ayudo?',
+          status: 'delivered',
+          sentAt: '2026-07-31T09:45:00.000Z',
+        }),
+      ],
+    });
+
+    const campaigns = selectProvenanceBoundCampaignMessages(context.recentMessages);
+    expect(campaigns).toHaveLength(1);
+    expect(campaigns[0]).toMatchObject({
+      sourceMessageId: 1,
+      source: 'admin_campaign',
+      delivery: 'delivered',
+    });
   });
 });

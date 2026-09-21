@@ -4,7 +4,7 @@ Status: implementation ledger; no live acceptance claimed. September 15, 2026.
 Directive: `profile-inference-directive-2026-09-15.md`. Checklist: `profile-inference-test-inventory-2026-09-15.json` (117 cases, review flags are candidates, not defects).
 Machine-readable twin: `profile-inference-disposition-ledger.json` (528 current rows plus the 5 removed-and-replaced originals with replacement pointers, covering all 529). Count is discovered from the loaded catalog, never hardcoded.
 
-Totals: 117 cases, 529 original expectations (528 current: 5 removed-and-replaced, 4 added as replacements). Current dispositions: retain 504, revise 12, replace 12; every original is accounted for below (current rows plus the removed list, each with a replacement pointer).
+Totals: 117 cases, 529 original expectations (528 current: 5 removed-and-replaced, 4 added as replacements). Current dispositions: retain 500, revise 16, replace 12; every original is accounted for below (current rows plus the removed list, each with a replacement pointer).
 
 ## Disposition rules (applied per expectation, overrides win)
 
@@ -26,6 +26,7 @@ Totals: 117 cases, 529 original expectations (528 current: 5 removed-and-replace
 - 2026-09-16 evaluator-owned audit fixes (7 pins revised, no replacements): `live_behavior.image_conversation_continuity` v3->v4 binds the same E1 digest mechanism (turn-0 bytes byte-identical to the delayed-question fixture, e6024548..., verified read-only); `live_feedback.token_seeded_contact_correction` v1->v2 scopes both semantic contact-info clauses so a close-flow event-date request stays admissible (seed carries no event date; selection-defer-close EX1 v2 precedent); `live_behavior.rsvp_missing_action_requires_explicit_decision` v4->v5 and `live_behavior.rsvp_declined_state_offers_one_change` v5->v6 revise the retired awaiting_action/attending staging pins to the P2 read-only contract (none/null). All keep hard severity, requireJudge, and thresholds; seeds keep the retired staged shape as the incoming boundary. Old runs preserved (R05).
 - 2026-09-16 customer-support release E1/E2 ledger repair (12 rows): node_transition pins already replaced in YAML by receipt-backed fixture_effect_count checks (accountless guest event, accountless pre-auth, owner payment, Luis, explicit-time, Martha-adjacent maria-jose current-order, image-url-unavailable, cinthya, jose, host-declining-consistent, missing-action) and one trace_field_equals pin replaced by a semantic judge (Diana later-event-message) now carry disposition replace with the conversion rationale; Diana gains the added turn-2 `one-handoff-effect-in-thread` receipt row (handoff.write 0/0/0, reused success never a new effect). Old runs preserved (R05).
 - Coverage registry: new entries registered separately per behavior change (unique-guest declining, ambiguous-identity declining, continuation-proof ambiguity, judge-only image truth, S07 complete-utterance, counter removals, literal-pin replacements).
+- 2026-09-21 gift/campaign package B1 (4 rows revised, no replacements): `live_behavior.roberto_reminder_invitation_disagreement` v1->v2. The v1 contract pinned an automatic human handoff on RSVP action plus reminder presence; campaign presence is not escalation consent, so the tool/plan/effect expectations now require zero takeover effects with human_escalation none, and the rubric is offer-not-submission. Expectation ids retained. Old runs preserved (R05).
 
 ## Removed expectations (replaced, all 5 originals accounted for)
 
@@ -588,15 +589,15 @@ Totals: 117 cases, 529 original expectations (528 current: 5 removed-and-replace
 - [retain] `reset-does-not-search-or-close` (tool_usage, hard): Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
 - [retain] `reset-response-confirms-completed-state-and-continues` (text_semantic, hard requireJudge=True): Hard semantic judge kept (requireJudge:true mandatory). Global judge rules now also require: accept grounded inference + useful extra detail; fail missing topics, unsupported certainty, unrelated dumps, and unnecessary clarification when context/tools suffice.
 
-### live_behavior.roberto_reminder_invitation_disagreement (`live-behavior-roberto-reminder-disagreement.yaml`, v1)
+### live_behavior.roberto_reminder_invitation_disagreement (`live-behavior-roberto-reminder-disagreement.yaml`, v2)
 
 - [retain] `mismatch-reads-invitations-without-rsvp-write` (tool_usage, hard): Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
-- [retain] `mismatch-escalates-once-to-human` (tool_usage, hard): Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
-- [retain] `mismatch-reply-is-truthful-without-denial` (text_semantic, hard requireJudge=True): Hard semantic judge kept (requireJudge:true mandatory). Global judge rules now also require: accept grounded inference + useful extra detail; fail missing topics, unsupported certainty, unrelated dumps, and unnecessary clarification when context/tools suffice.
+- [revise] `mismatch-escalates-once-to-human` (tool_usage, hard): B1 2026-09-21: campaign presence plus RSVP action is not human-help consent. Revised to require zero takeover effects (mustNotCall request_human_takeover); ids retained. Case v1->v2.
+- [revise] `mismatch-reply-is-truthful-without-denial` (text_semantic, hard requireJudge=True): B1 2026-09-21: rubric revised to offer-not-submission (no support-requested claim without a submitted handoff); no-denial and RSVP-vocabulary cores kept. Case v1->v2.
 - [retain] `mismatch-uses-no-rsvp-vocabulary` (text_not_contains, hard): Prohibition check (forbidden secrets/identifiers, no-invention bans, no-resend/no-URL bans, vocabulary bans); literal form allowed for genuinely forbidden content. Kept.
 - [retain] `mismatch-attendance-unchanged` (plan_field_equals, hard): Typed state invariant (auth cleared, handoff persisted, rsvp lifecycle, owner, selection safety); kept. Only selection/attempt counters are replaced, handled as overrides.
-- [retain] `mismatch-handoff-requested` (plan_field_equals, hard): Typed state invariant (auth cleared, handoff persisted, rsvp lifecycle, owner, selection safety); kept. Only selection/attempt counters are replaced, handled as overrides.
-- [retain] `mismatch-handoff-effect` (fixture_effect_count, hard): Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).
+- [revise] `mismatch-handoff-requested` (plan_field_equals, hard): B1 2026-09-21: human_escalation none on this turn (no explicit human request); id retained. Case v1->v2.
+- [revise] `mismatch-handoff-effect` (fixture_effect_count, hard): B1 2026-09-21: handoff.write 0/0/0 (automatic mismatch escalation removed); id retained. Case v1->v2.
 
 ### live_behavior.roberto_verified_unique_rsvp_writes_once (`live-behavior-roberto-verified-unique.yaml`, v2)
 

@@ -1,8 +1,8 @@
 template: template.base-live
 id: live_behavior.roberto_reminder_invitation_disagreement
 suite: live_behavior_regression
-version: 1
-description: Roberto confirms after three frontend_followup reminders but the trusted phone lookup returns empty/404. The agent acknowledges the reminder and the inability to verify now, escalates once to a human, writes no RSVP and denies nothing.
+version: 2
+description: Roberto confirms after three frontend_followup reminders but the trusted phone lookup returns empty/404. The agent acknowledges the reminder and the inability to verify now, offers human help without submitting it, writes no RSVP and denies nothing.
 tags: [live, behavior, rsvp, reminder, reported-interaction, roberto-screenshot]
 targetModes: [live_lambda]
 inputs:
@@ -22,13 +22,13 @@ expectations:
     severity: hard
   - id: mismatch-escalates-once-to-human
     type: tool_usage
-    mustCall: [request_human_takeover]
-    mustNotCall: [guest_rsvp]
+    mustCall: [lookup_rsvp_invitations]
+    mustNotCall: [request_human_takeover, guest_rsvp]
     severity: hard
   - id: mismatch-reply-is-truthful-without-denial
     type: text_semantic
     rubric: >-
-      In Spanish, acknowledge the supplied Cumple Marcelo reminder and explain that this lookup cannot verify the invitation now. Since the fixture confirms a successful human-help request, the response may say that support was requested. It must not say attendance was registered, deny the invitation exists, or use the literal technical acronym RSVP. Ordinary Spanish words about attendance or confirmation, and quoting the supplied reminder, are allowed. No assistance link is required; any link shown must be present in the trusted fixture. Judge the candidate's claims, not phrases appearing only in context.
+      In Spanish, acknowledge the supplied Cumple Marcelo reminder and explain that this lookup cannot verify the invitation now. Human help was not requested on this turn, so the response may offer human support but must not claim support was requested, submitted, or is on its way. It must not say attendance was registered, deny the invitation exists, or use the literal technical acronym RSVP. Ordinary Spanish words about attendance or confirmation, and quoting the supplied reminder, are allowed. No assistance link is required; any link shown must be present in the trusted fixture. Judge the candidate's claims, not phrases appearing only in context.
     minScore: 0.9
     requireJudge: true
     severity: hard
@@ -44,15 +44,17 @@ expectations:
   - id: mismatch-handoff-requested
     type: plan_field_equals
     path: human_escalation.status
-    expected: requested
+    expected: none
     severity: hard
   - id: mismatch-handoff-effect
     type: fixture_effect_count
     operation: handoff.write
-    expectedAttempts: 1
-    expectedSuccesses: 1
+    expectedAttempts: 0
+    expectedSuccesses: 0
     expectedReplays: 0
     severity: hard
+notes:
+  - "R05 oracle revision v1 to v2, 2026-09-21, gift/campaign package B1. Old defect: the v1 contract pinned an automatic human handoff on RSVP action plus reminder presence, treating campaign presence as escalation consent although the turn carries no explicit human-help request or accepted offer. New contract keeps the truthful no-denial reply and the zero-RSVP-write invariant, but requires zero handoff effects, human_escalation none, and an offer-not-submission rubric. Expectation ids retained for ledger and run continuity; only their content changed. Threshold and hard severity kept; no threshold reduction. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
 budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 1600

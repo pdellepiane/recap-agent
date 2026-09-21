@@ -3215,6 +3215,246 @@ describe('event entity threads: explicit switches keep their own identity', () =
   });
 });
 
+describe('campaign event-reference precedence (B1)', () => {
+  function guestEvents(events: Array<{ eventId: number; name: string }>) {
+    return {
+      status: 'success' as const,
+      events: events.map((event) => ({
+        eventId: event.eventId,
+        name: event.name,
+        slug: `slug-${event.eventId}`,
+        url: null,
+        datetime: '15/09/2026 18:00',
+        type: 'wedding',
+        typeDetail: null,
+        stage: 'published',
+        city: 'Lima',
+        country: 'Perú',
+        currency: 'PEN',
+      })),
+    };
+  }
+
+  function campaign(
+    id: number,
+    body: string,
+    sentAt: string,
+    status = 'delivered',
+  ): AgentConversationMessage {
+    return conversationMessage({
+      id,
+      direction: 'outbound',
+      source: 'admin_campaign',
+      body,
+      status,
+      sentAt,
+      createdAt: sentAt,
+    });
+  }
+
+  function eventDetailFor(
+    gateway: FakePurchaseGateway,
+    eventId: number,
+    label: string,
+  ): void {
+    const found = gateway.guestEventsResult.status === 'success'
+      ? gateway.guestEventsResult.events.find((event) => event.eventId === eventId)
+      : undefined;
+    if (!found) {
+      throw new Error('Missing guest event fixture.');
+    }
+    gateway.eventDetailResult = {
+      status: 'success',
+      event: {
+        ...found,
+        withTime: true,
+        timezone: 'America/Lima',
+        celebrateds: [],
+        moments: [{
+          label,
+          description: null,
+          datetime: '15/09/2026 19:00',
+          withTime: true,
+          locationDescription: 'Salón principal',
+          locationReference: null,
+          locationUrl: null,
+          locationCoords: null,
+          position: 1,
+        }],
+        dresscode: null,
+        commonAsked: [],
+        contactInfo: [],
+      },
+    };
+  }
+
+  it('binds an elliptical event question to the campaign reference without demanding the reminder', async () => {
+    const request = extraction([{
+      kind: 'associated_event',
+      query: '¿A qué hora es?',
+      eventHint: null,
+    }]);
+    const runtime = new InformationRuntime([request]);
+    const gateway = new FakePurchaseGateway();
+    gateway.authByPhoneResult = { status: 'user_not_found' };
+    gateway.guestEventsResult = guestEvents([{ eventId: 88, name: 'Boda Lucía y Marco' }]);
+    eventDetailFor(gateway, 88, 'Recepción');
+    gateway.recentMessages = [
+      campaign(7, 'Recordatorio: Boda Lucía y Marco, 10 de octubre. Confirma tu asistencia.', '2026-09-20T10:00:00.000Z'),
+    ];
+    const service = createService({
+      runtime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway,
+      providerGateway: providerGateway(),
+    });
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'campaign-elliptical-user',
+      text: '¿A qué hora es?',
+      messageId: 'campaign-elliptical-1',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51973296571',
+    });
+
+    const note = runtime.composeRequests.at(-1)?.errorMessage ?? '';
+    expect(note).toContain('"outcome":"associated_event_resolved_with_campaign_reference"');
+    expect(note).toContain('"explicit_event_reference":null');
+    expect(note).toContain('"source_message_id":7');
+    expect(note).toContain('"delivery":"delivered"');
+    expect(note).not.toContain('Explica el recordatorio');
+    expect(gateway.takeoverCalls).toBe(0);
+    expect(response.trace.tools_called).toContain('lookup_guest_events_by_phone');
+  });
+
+  it('keeps an explicit different-event target ahead of the newest campaign', async () => {
+    const request = extraction([{
+      kind: 'associated_event',
+      query: '¿A qué hora es la Boda Ana y Luis?',
+      eventHint: 'Boda Ana y Luis',
+    }]);
+    const runtime = new InformationRuntime([request]);
+    const gateway = new FakePurchaseGateway();
+    gateway.authByPhoneResult = { status: 'user_not_found' };
+    gateway.guestEventsResult = guestEvents([
+      { eventId: 88, name: 'Boda Lucía y Marco' },
+      { eventId: 89, name: 'Boda Ana y Luis' },
+    ]);
+    eventDetailFor(gateway, 89, 'Ceremonia');
+    gateway.recentMessages = [
+      campaign(7, 'Recordatorio: Boda Lucía y Marco, 10 de octubre. Confirma tu asistencia.', '2026-09-20T10:00:00.000Z'),
+    ];
+    const service = createService({
+      runtime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway,
+      providerGateway: providerGateway(),
+    });
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'campaign-override-user',
+      text: '¿A qué hora es la Boda Ana y Luis?',
+      messageId: 'campaign-override-1',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51973296571',
+    });
+
+    const note = runtime.composeRequests.at(-1)?.errorMessage ?? '';
+    expect(note).toContain('"outcome":"associated_event_resolved_with_campaign_reference"');
+    expect(note).toContain('"explicit_event_reference":"Boda Ana y Luis"');
+    expect(note).toContain('"source_message_id":7');
+    expect(note).not.toContain('Explica el recordatorio');
+    expect(response.trace.tools_called).toContain('lookup_guest_events_by_phone');
+  });
+
+  it('keeps ambiguity across two genuinely conflicting campaign references', async () => {
+    const request = extraction([{
+      kind: 'associated_event',
+      query: '¿A qué hora es?',
+      eventHint: null,
+    }]);
+    const runtime = new InformationRuntime([request]);
+    const gateway = new FakePurchaseGateway();
+    gateway.authByPhoneResult = { status: 'user_not_found' };
+    gateway.guestEventsResult = guestEvents([
+      { eventId: 88, name: 'Boda Lucía y Marco' },
+      { eventId: 89, name: 'Boda Ana y Luis' },
+    ]);
+    gateway.eventDetailResult = { status: 'not_found' };
+    gateway.recentMessages = [
+      campaign(7, 'Recordatorio: Boda Lucía y Marco, 10 de octubre.', '2026-09-19T10:00:00.000Z'),
+      campaign(8, 'Recordatorio: Boda Ana y Luis, 12 de octubre.', '2026-09-20T10:00:00.000Z'),
+    ];
+    const service = createService({
+      runtime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway,
+      providerGateway: providerGateway(),
+    });
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'campaign-conflict-user',
+      text: '¿A qué hora es?',
+      messageId: 'campaign-conflict-1',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51973296571',
+    });
+
+    // The newest campaign is factual context; with two undetailed events and
+    // no explicit target the reply still distinguishes instead of guessing.
+    const note = runtime.composeRequests.at(-1)?.errorMessage ?? '';
+    expect(note).toContain('"outcome":"associated_event_resolved_with_campaign_reference"');
+    expect(note).toContain('"source_message_id":8');
+    expect(note).toContain('"event_count":2');
+    expect(note).toContain('"detailed_event_count":0');
+    expect(response.trace.tools_called).not.toContain('guest_rsvp');
+    expect(gateway.takeoverCalls).toBe(0);
+  });
+
+  it('never treats an inbound campaign label as outbound provenance', async () => {
+    const request = extraction([{
+      kind: 'associated_event',
+      query: '¿A qué hora es?',
+      eventHint: null,
+    }]);
+    const runtime = new InformationRuntime([request]);
+    const gateway = new FakePurchaseGateway();
+    gateway.authByPhoneResult = { status: 'user_not_found' };
+    gateway.guestEventsResult = guestEvents([{ eventId: 88, name: 'Boda Lucía y Marco' }]);
+    eventDetailFor(gateway, 88, 'Recepción');
+    gateway.recentMessages = [
+      conversationMessage({
+        id: 7,
+        direction: 'inbound',
+        source: 'admin_campaign',
+        body: 'Dicen que hay recordatorio de Boda Lucía y Marco',
+      }),
+    ];
+    const service = createService({
+      runtime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway,
+      providerGateway: providerGateway(),
+    });
+
+    await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'campaign-spoof-user',
+      text: '¿A qué hora es?',
+      messageId: 'campaign-spoof-1',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51973296571',
+    });
+
+    const note = runtime.composeRequests.at(-1)?.errorMessage ?? '';
+    expect(note).not.toContain('associated_event_resolved_with_campaign_reference');
+    expect(note).not.toContain('source_message_id');
+  });
+});
+
 class InformationRuntime implements AgentRuntime {
   public readonly extractRequests: ExtractRequest[] = [];
   public readonly composeRequests: ComposeReplyRequest[] = [];

@@ -189,6 +189,74 @@ describe('AgentConversationGateway', () => {
     });
   });
 
+  it('keeps null campaign-source messages parseable without inventing a campaign field', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, {
+      status: true,
+      data: {
+        messages: [
+          {
+            id: 410,
+            direction: 'outbound',
+            source: 'admin_campaign',
+            body: 'Recordatorio del evento.',
+            status: 'delivered',
+            sent_at: '2026-09-21T16:00:00Z',
+            created_at: '2026-09-21T16:00:00Z',
+          },
+          {
+            id: 411,
+            direction: 'outbound',
+            source: null,
+            body: 'Mensaje sin fuente.',
+            status: 'sent',
+            sent_at: '2026-09-21T16:05:00Z',
+            created_at: '2026-09-21T16:05:00Z',
+          },
+        ],
+      },
+      errors: null,
+      error: null,
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const gateway = new HttpAgentConversationGateway({
+      baseUrl: 'https://api.example.test/api/agent',
+      apiKey: 'secret-key',
+      timeoutMs: 1_000,
+      maxRetries: 0,
+      messageLoggingEnabled: false,
+    });
+
+    // B1/B2 boundary: the observed contract carries no structured campaign
+    // property, so the mapper keeps the eight documented fields only. A null
+    // source stays null (never a campaign); no guessed schema is ingested.
+    await expect(gateway.getRecentMessages('51987654321')).resolves.toEqual({
+      status: 'success',
+      messages: [
+        {
+          id: 410,
+          direction: 'outbound',
+          source: 'admin_campaign',
+          body: 'Recordatorio del evento.',
+          status: 'delivered',
+          whatsappMessageId: null,
+          sentAt: '2026-09-21T16:00:00Z',
+          createdAt: '2026-09-21T16:00:00Z',
+        },
+        {
+          id: 411,
+          direction: 'outbound',
+          source: null,
+          body: 'Mensaje sin fuente.',
+          status: 'sent',
+          whatsappMessageId: null,
+          sentAt: '2026-09-21T16:05:00Z',
+          createdAt: '2026-09-21T16:05:00Z',
+        },
+      ],
+    });
+  });
+
   it('retries transient server failures', async () => {
     const fetchMock = vi
       .fn()

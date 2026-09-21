@@ -127,6 +127,7 @@ import {
   buildModelVisibleConversationHistory,
   buildPriorAnswerGist,
   deriveConversationContinuity,
+  selectProvenanceBoundCampaignMessages,
 } from './turn-message-context';
 import { openAiRetryPolicy } from './openai-retry';
 import { executeOpenAiStage } from './openai-stage-execution';
@@ -1010,6 +1011,7 @@ function extractionSectionSource(key: string): string {
   const sources: Record<string, string> = {
     history_status: 'messageContext.historyStatus',
     extractor_history: 'messageContext.recentMessages',
+    campaign_reference_context: 'messageContext.recentMessages (provenance-bound campaign projection)',
     prior_answer_gist: 'messageContext.recentMessages',
     pending_question_ref: 'plan.owner_pending_question',
     user_message: 'inbound.text',
@@ -1926,6 +1928,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     return [
       { key: 'history_status', content: `Estado del historial: ${request.messageContext.historyStatus}.` },
       { key: 'extractor_history', content: `Historial reciente para el extractor, cuerpos completos sin truncar orden medio (JSON, maximo 6 turnos x 2000 bytes = 12000 bytes): ${JSON.stringify(buildExtractorConversationHistory(request.messageContext))}` },
+      { key: 'campaign_reference_context', content: this.buildExtractorCampaignReferenceContext(request) },
       { key: 'prior_answer_gist', content: `Respuesta anterior del asistente (gist, JSON): ${JSON.stringify(buildPriorAnswerGist(request.messageContext))}` },
       { key: 'pending_question_ref', content: `Pregunta pendiente previa (ref, JSON): ${JSON.stringify(request.plan.owner_pending_question ?? null)}` },
       { key: 'user_message', content: `Mensaje del usuario: ${request.userMessage}` },
@@ -1949,6 +1952,25 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     // dynamic last); only the boundary moved. Pure thanks still yields an
     // empty delta while gratitude carrying a decision stays processed
     // through the rules above.
+  }
+
+  /**
+   * B1 campaign reference evidence for the decision call. Reuses the
+   * existing provenance-bound projection (outbound reminder-family only,
+   * server-time order, bounded excerpts) exactly once. Null when no
+   * qualifying campaign exists, so unrelated turns stay byte-identical.
+   * Reference context only: never attendance, authorization, or consent.
+   */
+  private buildExtractorCampaignReferenceContext(
+    request: ExtractRequest,
+  ): string | null {
+    const campaigns = selectProvenanceBoundCampaignMessages(
+      request.messageContext.recentMessages,
+    );
+    if (campaigns.length === 0) {
+      return null;
+    }
+    return `Referencia de campana saliente con procedencia verificada, ordenada por hora del servidor (JSON): ${JSON.stringify(campaigns)}. Solo contexto de referencia para interpretar respuestas elipticas: nunca asistencia, autorizacion ni consentimiento.`;
   }
 
   private buildExtractorContinuityEvidence(

@@ -3021,9 +3021,16 @@ export class AgentService {
         ) ?? null)
         : null;
       const hasReminderContext = currentReminder !== null;
+      // B1: campaign presence alone never initiates escalation. A mismatch
+      // handoff requires the existing explicit request/accepted-offer
+      // authorization; explicit human requests normally divert to the
+      // dedicated handoff path before the RSVP flow, so this branch reports
+      // the missing invitation factually and the reply offers human help
+      // without submitting it.
       const needsMismatchHandoff = action !== null
         && (hasReminderContext || groundedCampaignEvent !== null || hasCampaignInvitationContext)
-        && args.workingPlan.human_escalation.status !== 'requested';
+        && args.workingPlan.human_escalation.status !== 'requested'
+        && this.isExplicitHumanRequest(args.workingPlan, args.extraction);
       if (needsMismatchHandoff) {
         const escalationPhone = this.resolveEscalationPhone(args.inbound);
         let escalationStatus: 'requested' | 'unavailable' = 'unavailable';
@@ -8109,9 +8116,12 @@ export class AgentService {
         guestEventResult?.status === 'completed' &&
         guestEventResult.kind === 'associated_event'
       ) {
-        // P2: the vigente reminder is the newest provenance-bound campaign
+        // B1: the campaign reference is the newest provenance-bound campaign
         // message (outbound only, server-time order). Inbound text claiming
-        // to be a campaign never counts as the reminder.
+        // to be a campaign never counts. It travels as factual reference
+        // context bound to the resolved request/result: the explicit current
+        // event reference keeps priority and the model interprets meaning.
+        // Never interpolate a campaign body as an assistant instruction.
         const newestProvenanceCampaign = selectProvenanceBoundCampaignMessages(
           args.messageContext.recentMessages,
         ).at(-1) ?? null;
@@ -8120,12 +8130,29 @@ export class AgentService {
             (message) => message.id === newestProvenanceCampaign.sourceMessageId,
           ) ?? null)
           : null;
+        const explicitEventReference = requests
+          .filter((request) => request.kind === 'associated_event')
+          .map((request) => request.eventHint?.trim() ?? '')
+          .find((hint) => hint.length > 0) ?? null;
         const detailedEventCount = guestEventResult.result.events.filter(
           (event) => event.detail !== undefined,
         ).length;
         operationalNote =
-          currentReminderForEvent !== null
-            ? `Explica el recordatorio vigente desde el mensaje saliente con su título literal (por ejemplo "${currentReminderForEvent.body.slice(0, 120)}"). No uses registros históricos ni el evento del número confiable cuando difiera del recordatorio, no cambies asistencia ni pidas correo o código.`
+          currentReminderForEvent !== null && newestProvenanceCampaign !== null
+            ? JSON.stringify({
+              outcome: 'associated_event_resolved_with_campaign_reference',
+              explicit_event_reference: explicitEventReference,
+              campaign_reference: {
+                source_message_id: newestProvenanceCampaign.sourceMessageId,
+                source: newestProvenanceCampaign.source,
+                delivery: newestProvenanceCampaign.delivery,
+                sent_at: newestProvenanceCampaign.sentAt,
+                body_excerpt: newestProvenanceCampaign.bodyExcerpt,
+              },
+              event_count: guestEventResult.result.events.length,
+              detailed_event_count: detailedEventCount,
+              email_authentication_pending: hasRemainingEmailAuthentication,
+            })
             : guestEventResult.result.events.length > 1 && detailedEventCount === 0
             ? 'El número confiable está invitado a varios eventos y la referencia no identifica uno de forma única. Muestra únicamente sus nombres y fechas y pregunta en una sola frase a cuál se refiere. No pidas correo ni código.'
             : hasRemainingEmailAuthentication

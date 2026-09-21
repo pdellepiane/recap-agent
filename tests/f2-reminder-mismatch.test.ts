@@ -53,8 +53,14 @@ class MismatchGateway implements AgentConversationGateway {
   async guestRsvp(): Promise<{ status: 'failed'; error: string; retryable: false }> { return { status: 'failed', error: 'unused', retryable: false }; }
 }
 
-describe('F2 reminder mismatch escalates once without denial', () => {
-  it('empty lookup with explicit confirm and reminder calls handoff once', async () => {
+describe('F2 reminder mismatch reports without auto-escalation', () => {
+  // R05 2026-09-21 (B1): the old expectation pinned an automatic handoff on
+  // RSVP action + reminder presence. Invalid assumption: campaign presence
+  // (here an uncertain-delivery frontend_followup) plus an RSVP action was
+  // treated as human-help consent. The binding contract requires the
+  // existing explicit request/accepted-offer authorization for any handoff;
+  // the missing invitation is reported factually instead.
+  it('empty lookup with explicit confirm and reminder never escalates without a human request', async () => {
     const store = new InMemoryPlanStore();
     const seeded = mergePlan(createEmptyPlan({ planId: 'p-mis', channel: 'whatsapp', externalUserId: 'u-mis' }), {
       current_node: 'contacto_inicial',
@@ -79,9 +85,11 @@ describe('F2 reminder mismatch escalates once without denial', () => {
       text: 'Si, confirmo que asistire',
       messageId: 'm1', receivedAt: '2026-09-04T15:00:00.000Z', contactPhone: '+51900000421',
     });
-    expect(gateway.handoffCalls).toBe(1);
+    expect(gateway.handoffCalls).toBe(0);
     expect(result.outbound.text).toBe('tissue');
-    expect(result.plan.human_escalation.status).toBe('requested');
+    expect(result.plan.human_escalation.status).toBe('none');
     expect(result.plan.rsvp_state.status).toBe('none');
+    expect(result.trace.tools_called).not.toContain('request_human_takeover');
+    expect(result.trace.tools_called).not.toContain('guest_rsvp');
   });
 });

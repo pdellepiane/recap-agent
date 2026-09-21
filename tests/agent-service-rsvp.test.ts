@@ -710,7 +710,7 @@ describe('AgentService RSVP flow', () => {
     );
   });
 
-  it('does not erase a campaign-grounded invitation when the user lookup has no current record', async () => {
+  it('reports a campaign-grounded invitation without auto-escalating when the user lookup has no current record', async () => {
     const runtime = new RsvpRuntime([
       rsvpExtraction({
         action: 'attending',
@@ -722,11 +722,80 @@ describe('AgentService RSVP flow', () => {
 
     const result = await service.handleTurn(inbound('Sí confirmamos la asistencia'));
 
+    // B1: campaign presence plus an RSVP action is not human-help consent.
+    // The missing invitation is reported factually; no takeover is submitted.
     expect(runtime.composeRequests.length).toBe(1);
-    expect(result.plan.human_escalation.status).toBe('requested');
+    expect(result.plan.human_escalation.status).toBe('none');
     expect(result.outbound.text).toBe('RSVP_MODEL_SENTINEL');
-    expect(runtime.composeRequests[0]?.errorMessage).toContain('"outcome":"invitation_lookup_mismatch"');
+    expect(runtime.composeRequests[0]?.errorMessage).toContain('"outcome":"campaign_invitation_without_lookup_record"');
+    expect(runtime.composeRequests[0]?.errorMessage).toContain('"campaign_event":"Gia Antonella"');
+    expect(runtime.composeRequests[0]?.errorMessage).not.toContain('"human_handoff":"requested"');
     expect(result.trace.tools_called).toContain('lookup_rsvp_invitations');
+    expect(result.trace.tools_called).not.toContain('guest_rsvp');
+    expect(result.trace.tools_called).not.toContain('request_human_takeover');
+  });
+
+  it('never escalates on uncertain campaign delivery without an explicit human request', async () => {
+    const runtime = new RsvpRuntime([
+      rsvpExtraction({
+        action: 'attending',
+        eventReference: 'Gia Antonella',
+      }),
+    ]);
+    const gateway = new RsvpGateway([], [{
+      ...campaignMessage('Gia Antonella'),
+      id: 9,
+      status: 'failed',
+    }]);
+    const service = createService(runtime, gateway, new InMemoryPlanStore(), []);
+
+    const result = await service.handleTurn(inbound('Sí confirmamos la asistencia'));
+
+    expect(result.plan.human_escalation.status).toBe('none');
+    expect(runtime.composeRequests[0]?.errorMessage).toContain(
+      '"outcome":"campaign_invitation_without_lookup_record"',
+    );
+    expect(result.trace.tools_called).not.toContain('request_human_takeover');
+    expect(result.trace.tools_called).not.toContain('guest_rsvp');
+  });
+
+  it('treats an inbound campaign label as no campaign context and never escalates', async () => {
+    const runtime = new RsvpRuntime([
+      rsvpExtraction({
+        action: 'attending',
+        eventReference: 'Gia Antonella',
+      }),
+    ]);
+    const gateway = new RsvpGateway([], [{
+      ...campaignMessage('Gia Antonella'),
+      id: 11,
+      direction: 'inbound',
+    }]);
+    const service = createService(runtime, gateway, new InMemoryPlanStore(), []);
+
+    const result = await service.handleTurn(inbound('Sí confirmamos la asistencia'));
+
+    expect(result.plan.human_escalation.status).toBe('none');
+    expect(runtime.composeRequests[0]?.errorMessage).toContain('"outcome":"no_invitation_record"');
+    expect(runtime.composeRequests[0]?.errorMessage).toContain('"campaign_context":false');
+    expect(result.trace.tools_called).not.toContain('request_human_takeover');
+    expect(result.trace.tools_called).not.toContain('guest_rsvp');
+  });
+
+  it('submits exactly one handoff on an explicit help request after a campaign with no invitation', async () => {
+    const runtime = new RsvpRuntime([{
+      ...rsvpExtraction({ action: null }),
+      actionIntent: 'solicitar_humano',
+      humanHelpIntent: 'request',
+    }]);
+    const gateway = new RsvpGateway([], [campaignMessage('Gia Antonella')]);
+    const service = createService(runtime, gateway, new InMemoryPlanStore(), []);
+
+    const result = await service.handleTurn(inbound('Necesito ayuda de una persona'));
+
+    expect(gateway.takeoverCalls).toBe(1);
+    expect(result.plan.human_escalation.status).toBe('requested');
+    expect(result.plan.human_help_receipt?.outcome).toBe('handoff_requested');
     expect(result.trace.tools_called).not.toContain('guest_rsvp');
   });
 
@@ -1029,6 +1098,7 @@ class RsvpRuntime implements AgentRuntime {
 class RsvpGateway implements AgentConversationGateway {
   readonly inputs: AgentGuestRsvpInput[] = [];
   guestEventLookupCalls = 0;
+  takeoverCalls = 0;
   private readonly eventDetailQueue: AgentEventDetailResult[];
 
   constructor(
@@ -1055,6 +1125,7 @@ class RsvpGateway implements AgentConversationGateway {
   }
 
   async requestHumanTakeover(): Promise<AgentGatewayResult> {
+    this.takeoverCalls += 1;
     return { status: 'success', message: 'Requested.' };
   }
 
