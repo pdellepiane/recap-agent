@@ -1,6 +1,7 @@
 import type {
   PendingPaymentValidationExpectation,
   PurchaseInformation,
+  PurchaseItemFulfillment,
 } from '../core/information';
 
 const physicalItemTypeValues = new Set([
@@ -9,6 +10,8 @@ const physicalItemTypeValues = new Set([
   'product',
   'producto',
   'producto_fisico',
+  // Backend gift-store code: a physical gift that ships.
+  'se_store',
 ]);
 
 export function pendingPaymentValidationExpectation(
@@ -32,6 +35,44 @@ export function pendingPaymentValidationExpectation(
   return { maxBusinessHours: 72, appliesTo: 'indexed_validation_methods' };
 }
 
+function normalizeItemType(rawType: string | null | undefined): string | null {
+  const normalized = rawType
+    ?.trim()
+    .toLocaleLowerCase('es')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/gu, '')
+    .replace(/[\s-]+/gu, '_');
+  return normalized && normalized.length > 0 ? normalized : null;
+}
+
+/**
+ * Single pure per-item fulfillment mapper. Classification is per item from
+ * the explicit backend enum only; gift names never imply a type.
+ *
+ * - se_store and the observed physical aliases map to physical/null/true.
+ * - credit maps to host_credit/host/false: the hosts chose account credit,
+ *   so no gift shipment applies. This is a host choice, not proof that any
+ *   payment posted.
+ * - Unrecognized, missing or blank codes map to unknown/null/null: unknown
+ *   fulfillment, never silently credit or physical.
+ *
+ * No fact named credited=true is derived from type. A physical-sounding
+ * name with credit stays credit; a physical item stays physical even when
+ * shippingStatus is null.
+ */
+export function mapItemFulfillment(
+  rawType: string | null | undefined,
+): PurchaseItemFulfillment {
+  const itemType = normalizeItemType(rawType);
+  if (itemType === 'credit') {
+    return { kind: 'host_credit', chosenBy: 'host', giftShipmentApplicable: false };
+  }
+  if (itemType !== null && physicalItemTypeValues.has(itemType)) {
+    return { kind: 'physical', chosenBy: null, giftShipmentApplicable: true };
+  }
+  return { kind: 'unknown', chosenBy: null, giftShipmentApplicable: null };
+}
+
 export function hasPhysicalFulfillment(
   purchase: PurchaseInformation,
 ): boolean {
@@ -39,13 +80,7 @@ export function hasPhysicalFulfillment(
     return true;
   }
 
-  return purchase.items.some((item) => {
-    const itemType = item.type
-      ?.trim()
-      .toLocaleLowerCase('es')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/gu, '')
-      .replace(/[\s-]+/gu, '_');
-    return itemType ? physicalItemTypeValues.has(itemType) : false;
-  });
+  return purchase.items.some(
+    (item) => mapItemFulfillment(item.type).kind === 'physical',
+  );
 }

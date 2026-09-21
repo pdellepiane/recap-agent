@@ -3,6 +3,7 @@ import type {
   InformationExecutionSummary,
   InformationTaskResult,
   PurchaseInformation,
+  PurchaseItem,
 } from '../core/information';
 import type { UserEventLookupResult } from './provider-gateway';
 import {
@@ -10,6 +11,7 @@ import {
   enrichmentVisitKey,
 } from '../core/information';
 import { eventMatches } from './event-matching';
+import { mapItemFulfillment } from './purchase-disclosure-policy';
 import {
   disclosedPurchaseCurrency,
   disclosedPurchaseTotal,
@@ -1391,6 +1393,69 @@ export function coalescePurchasesByStableId(
   return merged;
 }
 
+function mergeScalarField<T extends string | number>(
+  current: T | null | undefined,
+  incoming: T | null | undefined,
+): T | null {
+  const currentValue = current ?? null;
+  const incomingValue = incoming ?? null;
+  if (currentValue !== null && incomingValue !== null && currentValue !== incomingValue) {
+    return null;
+  }
+  return currentValue ?? incomingValue;
+}
+
+function mergePurchaseItemPair(current: PurchaseItem, incoming: PurchaseItem): PurchaseItem {
+  const type = mergeScalarField(current.type, incoming.type);
+  return {
+    giftName: mergeScalarField(current.giftName, incoming.giftName),
+    quantity: mergeScalarField(current.quantity, incoming.quantity),
+    amount: mergeScalarField(current.amount, incoming.amount),
+    rowTotal: mergeScalarField(current.rowTotal, incoming.rowTotal),
+    type,
+    // Fulfillment is always recomputed from the merged raw type through
+    // the single mapper, so a conflict-nulled type can never keep stale
+    // physical/credit semantics.
+    fulfillment: mapItemFulfillment(type),
+  };
+}
+
+/**
+ * Canonical item merge for repeated snapshots of the same order. Line items
+ * carry no stable identity, so enrichment is positional only: an empty side
+ * yields to the other, identical lists collapse, and same-length lists
+ * merge pairwise by filling null fields where jointly present fields agree.
+ * Jointly present differing fields null (the scalar-conflict precedent),
+ * preserving unresolved conflict as uncertainty instead of picking a side.
+ * Different-length snapshots have no exact unambiguous correspondence, so
+ * the current list is kept without unioning by name/amount and without
+ * duplicating gifts.
+ */
+export function mergePurchaseItems(
+  current: readonly PurchaseItem[],
+  incoming: readonly PurchaseItem[],
+): PurchaseItem[] {
+  if (current.length === 0) {
+    return [...incoming];
+  }
+  if (incoming.length === 0) {
+    return [...current];
+  }
+  if (JSON.stringify(current) === JSON.stringify(incoming)) {
+    return [...current];
+  }
+  if (current.length !== incoming.length) {
+    return [...current];
+  }
+  return current.map((item, index) => {
+    const counterpart = incoming[index];
+    if (!counterpart) {
+      return { ...item };
+    }
+    return mergePurchaseItemPair(item, counterpart);
+  });
+}
+
 function mergeTwoPurchases(
   current: PurchaseInformation,
   incoming: PurchaseInformation,
@@ -1408,7 +1473,8 @@ function mergeTwoPurchases(
     eventDate: current.eventDate ?? incoming.eventDate,
     eventUrl: current.eventUrl ?? incoming.eventUrl,
     createdAt: current.createdAt ?? incoming.createdAt,
-    items: current.items.length > 0 ? current.items : incoming.items,
+    items: mergePurchaseItems(current.items, incoming.items),
+    creditFulfillmentPolicy: current.creditFulfillmentPolicy ?? incoming.creditFulfillmentPolicy,
     payment: current.payment ?? incoming.payment,
     paymentValidationExpectation:
       current.paymentValidationExpectation ?? incoming.paymentValidationExpectation,

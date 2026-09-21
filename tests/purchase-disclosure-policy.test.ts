@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type {
   PendingInformationRequest,
+  PurchaseAspect,
   PurchaseInformation,
 } from '../src/core/information';
 import type {
@@ -13,6 +14,7 @@ import type { KnowledgeRetrievalGateway } from '../src/runtime/knowledge-retriev
 import type { ProviderGateway } from '../src/runtime/provider-gateway';
 import {
   hasPhysicalFulfillment,
+  mapItemFulfillment,
   pendingPaymentValidationExpectation,
 } from '../src/runtime/purchase-disclosure-policy';
 
@@ -80,10 +82,111 @@ describe('purchase disclosure policy', () => {
     expect(result.shippingStatus).toBe('preparing');
     expect(result.payment?.destinationAccount).toBeUndefined();
   });
+
+  it('maps se_store to physical, credit to host credit, and anything else to unknown', () => {
+    expect(mapItemFulfillment('se_store')).toEqual({
+      kind: 'physical',
+      chosenBy: null,
+      giftShipmentApplicable: true,
+    });
+    expect(mapItemFulfillment('credit')).toEqual({
+      kind: 'host_credit',
+      chosenBy: 'host',
+      giftShipmentApplicable: false,
+    });
+    for (const raw of [null, undefined, '', '   ', 'cash', 'digital', 'gift_card', 'se-credit']) {
+      expect(mapItemFulfillment(raw)).toEqual({
+        kind: 'unknown',
+        chosenBy: null,
+        giftShipmentApplicable: null,
+      });
+    }
+  });
+
+  it('normalizes item codes before mapping but never infers type from gift names', () => {
+    expect(mapItemFulfillment(' SE_STORE ').kind).toBe('physical');
+    expect(mapItemFulfillment('Credit').kind).toBe('host_credit');
+    expect(mapItemFulfillment('Producto Físico').kind).toBe('physical');
+    // A physical-sounding name with credit stays credit: mapping reads the
+    // explicit backend enum only.
+    expect(mapItemFulfillment('credit')).not.toEqual(
+      expect.objectContaining({ kind: 'physical' }),
+    );
+  });
+
+  it('treats se_store as physical fulfillment per item, not per order', () => {
+    expect(hasPhysicalFulfillment(purchase({
+      paymentStatus: 'approved',
+      itemType: 'se_store',
+    }))).toBe(true);
+    expect(hasPhysicalFulfillment(mixedPurchase())).toBe(true);
+    expect(hasPhysicalFulfillment(purchase({
+      paymentStatus: 'approved',
+      itemType: 'credit',
+    }))).toBe(false);
+  });
+
+  it('keeps shipping status for se_store gifts on shipping-only requests', async () => {
+    const result = await executePurchase(
+      purchase({ paymentStatus: 'approved', itemType: 'se_store' }),
+      ['shipping'],
+    );
+
+    expect(result.shippingStatus).toBe('preparing');
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toMatchObject({
+      giftName: 'Regalo',
+      type: 'se_store',
+      fulfillment: { kind: 'physical', chosenBy: null, giftShipmentApplicable: true },
+    });
+    expect(result.items[0]?.quantity).toBeNull();
+    expect(result.items[0]?.amount).toBeNull();
+    expect(result.creditFulfillmentPolicy).toBeUndefined();
+  });
+
+  it('exposes host choice without amounts or posting claims for credit gifts on shipping-only requests', async () => {
+    const result = await executePurchase(
+      purchase({ paymentStatus: 'pending', itemType: 'credit' }),
+      ['shipping'],
+    );
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toMatchObject({
+      type: 'credit',
+      fulfillment: { kind: 'host_credit', chosenBy: 'host', giftShipmentApplicable: false },
+    });
+    expect(result.creditFulfillmentPolicy).toEqual({
+      chosenBy: 'host',
+      mechanism: 'host_account_credit',
+    });
+    expect(JSON.stringify(result)).not.toContain('credited');
+  });
+
+  it('keeps mixed se_store and credit items distinct on summary requests', async () => {
+    const result = await executePurchase(mixedPurchase(), ['summary']);
+
+    expect(result.shippingStatus).toBe('preparing');
+    expect(result.items).toHaveLength(2);
+    expect(result.items[0]?.fulfillment?.kind).toBe('physical');
+    expect(result.items[1]?.fulfillment?.kind).toBe('host_credit');
+    expect(result.items[0]?.amount).toBe(120);
+    expect(result.creditFulfillmentPolicy).toEqual({
+      chosenBy: 'host',
+      mechanism: 'host_account_credit',
+    });
+  });
+
+  it('omits item fulfillment on payment-only requests', async () => {
+    const result = await executePurchase(mixedPurchase(), ['payment_status']);
+
+    expect(result.items).toHaveLength(0);
+    expect(result.creditFulfillmentPolicy).toBeUndefined();
+  });
 });
 
 async function executePurchase(
   purchaseResult: PurchaseInformation,
+  aspects: PurchaseAspect[] = ['summary', 'payment_status', 'payment_details', 'shipping'],
 ): Promise<PurchaseInformation> {
   const lookupResult: AgentPurchaseLookupResult = {
     status: 'success',
@@ -106,7 +209,7 @@ async function executePurchase(
     resource: 'gift_purchases',
     query: 'Revisar pago y entrega.',
     orderId: 'ORD-1',
-    aspects: ['summary', 'payment_status', 'payment_details', 'shipping'],
+    aspects,
     sensitiveFields: ['destination_account'],
     authAction: 'none',
   };
@@ -124,6 +227,29 @@ async function executePurchase(
     throw new Error('Expected one projected purchase.');
   }
   return projected;
+}
+
+function mixedPurchase(): PurchaseInformation {
+  const base = purchase({ paymentStatus: 'approved', itemType: 'se_store' });
+  return {
+    ...base,
+    items: [
+      {
+        giftName: 'Juego de sábanas',
+        quantity: 1,
+        amount: 120,
+        rowTotal: 120,
+        type: 'se_store',
+      },
+      {
+        giftName: 'Aporte luna de miel',
+        quantity: 1,
+        amount: 80,
+        rowTotal: 80,
+        type: 'credit',
+      },
+    ],
+  };
 }
 
 function purchase(overrides: {

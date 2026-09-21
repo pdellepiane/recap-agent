@@ -1284,6 +1284,88 @@ describe('l4 packet P1 — canonical profile and lookup reuse', () => {
     expect(merged[0]?.paymentStatus).toBeNull();
   });
 
+  it('enriches item fields across same-order snapshots under exact positional correspondence', async () => {
+    const { mergePurchaseItems } = await import('../src/runtime/customer-context');
+    const merged = mergePurchaseItems(
+      [{
+        giftName: 'Juego de sábanas', quantity: null, amount: null,
+        rowTotal: null, type: 'se_store',
+        fulfillment: { kind: 'physical', chosenBy: null, giftShipmentApplicable: true },
+      }],
+      [{
+        giftName: 'Juego de sábanas', quantity: 1, amount: 120,
+        rowTotal: 120, type: 'se_store',
+        fulfillment: { kind: 'physical', chosenBy: null, giftShipmentApplicable: true },
+      }],
+    );
+    expect(merged).toHaveLength(1);
+    expect(merged[0]).toMatchObject({
+      giftName: 'Juego de sábanas',
+      quantity: 1,
+      amount: 120,
+      type: 'se_store',
+      fulfillment: { kind: 'physical', chosenBy: null, giftShipmentApplicable: true },
+    });
+  });
+
+  it('nulls contested item types instead of silently picking credit or physical', async () => {
+    const { mergePurchaseItems } = await import('../src/runtime/customer-context');
+    const merged = mergePurchaseItems(
+      [{
+        giftName: 'Aporte luna de miel', quantity: 1, amount: 80,
+        rowTotal: 80, type: 'se_store',
+        fulfillment: { kind: 'physical', chosenBy: null, giftShipmentApplicable: true },
+      }],
+      [{
+        giftName: 'Aporte luna de miel', quantity: 1, amount: 80,
+        rowTotal: 80, type: 'credit',
+        fulfillment: { kind: 'host_credit', chosenBy: 'host', giftShipmentApplicable: false },
+      }],
+    );
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.type).toBeNull();
+    expect(merged[0]?.fulfillment).toEqual({
+      kind: 'unknown',
+      chosenBy: null,
+      giftShipmentApplicable: null,
+    });
+    // Agreed fields still merge; only the contested type becomes uncertain.
+    expect(merged[0]?.giftName).toBe('Aporte luna de miel');
+    expect(merged[0]?.amount).toBe(80);
+  });
+
+  it('never unions or duplicates items when snapshots disagree on line count', async () => {
+    const { mergePurchaseItems } = await import('../src/runtime/customer-context');
+    const merged = mergePurchaseItems(
+      [{ giftName: 'Juego de sábanas', quantity: 1, amount: 120, rowTotal: 120, type: 'se_store' }],
+      [
+        { giftName: 'Juego de sábanas', quantity: 1, amount: 120, rowTotal: 120, type: 'se_store' },
+        { giftName: 'Aporte luna de miel', quantity: 1, amount: 80, rowTotal: 80, type: 'credit' },
+      ],
+    );
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.giftName).toBe('Juego de sábanas');
+  });
+
+  it('fills a missing item type from a corresponding snapshot without name-keyed union', async () => {
+    const { mergePurchaseItems } = await import('../src/runtime/customer-context');
+    const merged = mergePurchaseItems(
+      [{ giftName: 'Aporte luna de miel', quantity: 1, amount: 80, rowTotal: 80, type: null }],
+      [{
+        giftName: 'Aporte luna de miel', quantity: 1, amount: 80,
+        rowTotal: 80, type: 'credit',
+        fulfillment: { kind: 'host_credit', chosenBy: 'host', giftShipmentApplicable: false },
+      }],
+    );
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.type).toBe('credit');
+    expect(merged[0]?.fulfillment).toEqual({
+      kind: 'host_credit',
+      chosenBy: 'host',
+      giftShipmentApplicable: false,
+    });
+  });
+
   it('never merges across incompatible access scopes', async () => {
     const { coalescePurchasesByStableId, purchaseScopesCompatible } = await import('../src/runtime/customer-context');
     expect(purchaseScopesCompatible('trusted_phone_purchase', 'trusted_phone_event_purchase')).toBe(true);

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   createInformationAuthGuidance,
   type PendingInformationRequest,
+  type PurchaseAspect,
   type PurchaseInformation,
 } from '../src/core/information';
 import {
@@ -1992,6 +1993,112 @@ function eventLookup(): UserEventLookupResult {
     },
   };
 }
+
+describe('A gift fulfillment projection by aspect', () => {
+  function orchestrator(agentGateway: FakeAgentGateway): InformationOrchestrator {
+    return new InformationOrchestrator({
+      knowledgeGateway: { async search() { throw new Error('unused'); } },
+      providerGateway: {} as ProviderGateway,
+      agentGateway,
+    });
+  }
+
+  function mixedGift(): PurchaseInformation {
+    return {
+      ...giftPurchase(),
+      shippingStatus: null,
+      items: [
+        { giftName: 'Juego de sábanas', quantity: 1, amount: 120, rowTotal: 120, type: 'se_store' },
+        { giftName: 'Aporte luna de miel', quantity: 1, amount: 80, rowTotal: 80, type: 'credit' },
+      ],
+    };
+  }
+
+  async function completedPurchase(
+    agentGateway: FakeAgentGateway,
+    aspects: PurchaseAspect[],
+  ): Promise<PurchaseInformation> {
+    const execution = await orchestrator(agentGateway).execute({
+      requests: [{
+        requestId: 'gift-aspect',
+        kind: 'purchase',
+        resource: 'gift_purchases',
+        query: 'Consulta de regalo',
+        orderId: 'ORD-000880',
+        aspects,
+        sensitiveFields: [],
+        authAction: 'none',
+      }],
+      authentication: { token: 'jwt', email: 'user@example.com' },
+      authBlock: null,
+    });
+    const result = execution.results[0];
+    if (!result || result.status !== 'completed' || result.kind !== 'purchase') {
+      throw new Error('Expected a completed purchase result.');
+    }
+    const projected = result.purchases[0];
+    if (!projected) {
+      throw new Error('Expected one projected purchase.');
+    }
+    return projected;
+  }
+
+  it('projects names, types and fulfillment on shipping-only requests without summary', async () => {
+    const agentGateway = new FakeAgentGateway();
+    agentGateway.giftResult = {
+      status: 'success',
+      resource: 'gift_purchases',
+      purchases: [mixedGift()],
+    };
+    const projected = await completedPurchase(agentGateway, ['shipping']);
+
+    expect(projected.items).toHaveLength(2);
+    expect(projected.items[0]).toMatchObject({
+      giftName: 'Juego de sábanas',
+      type: 'se_store',
+      fulfillment: { kind: 'physical', chosenBy: null, giftShipmentApplicable: true },
+    });
+    expect(projected.items[1]).toMatchObject({
+      giftName: 'Aporte luna de miel',
+      type: 'credit',
+      fulfillment: { kind: 'host_credit', chosenBy: 'host', giftShipmentApplicable: false },
+    });
+    // Shipping-only projections omit amounts; the credit policy rides once.
+    expect(projected.items[0]?.amount).toBeNull();
+    expect(projected.creditFulfillmentPolicy).toEqual({
+      chosenBy: 'host',
+      mechanism: 'host_account_credit',
+    });
+  });
+
+  it('keeps full item amounts with fulfillment on summary requests', async () => {
+    const agentGateway = new FakeAgentGateway();
+    agentGateway.giftResult = {
+      status: 'success',
+      resource: 'gift_purchases',
+      purchases: [mixedGift()],
+    };
+    const projected = await completedPurchase(agentGateway, ['summary']);
+
+    expect(projected.items).toHaveLength(2);
+    expect(projected.items[0]?.amount).toBe(120);
+    expect(projected.items[0]?.fulfillment?.kind).toBe('physical');
+    expect(projected.items[1]?.fulfillment?.kind).toBe('host_credit');
+  });
+
+  it('omits items and credit policy on payment-only requests', async () => {
+    const agentGateway = new FakeAgentGateway();
+    agentGateway.giftResult = {
+      status: 'success',
+      resource: 'gift_purchases',
+      purchases: [mixedGift()],
+    };
+    const projected = await completedPurchase(agentGateway, ['payment_status']);
+
+    expect(projected.items).toHaveLength(0);
+    expect(projected.creditFulfillmentPolicy).toBeUndefined();
+  });
+});
 
 describe('S2 actual-request payment parity and transaction strip', () => {
   function accountOrchestrator(agentGateway: FakeAgentGateway): InformationOrchestrator {

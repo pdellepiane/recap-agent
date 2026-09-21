@@ -361,12 +361,55 @@ export type PurchaseFactEvidence = {
   referencePresent: boolean;
 };
 
+export const purchaseItemFulfillmentKindValues = [
+  'physical',
+  'host_credit',
+  'unknown',
+] as const;
+export type PurchaseItemFulfillmentKind =
+  (typeof purchaseItemFulfillmentKindValues)[number];
+
+/**
+ * Model-facing per-item fulfillment evidence, derived from the current
+ * record's raw item type by the single pure mapper in
+ * purchase-disclosure-policy.ts. Never persisted as lifecycle state.
+ *
+ * - physical: a gift that ships (se_store and observed physical aliases).
+ * - host_credit: the hosts chose to receive the value as account credit, so
+ *   no gift shipment applies. A host choice, never proof of payment posting.
+ * - unknown: unrecognized or missing type; fulfillment is genuinely unknown.
+ */
+export type PurchaseItemFulfillment = {
+  kind: PurchaseItemFulfillmentKind;
+  /** Host choice for credit items; null otherwise. */
+  chosenBy: 'host' | null;
+  /**
+   * Whether a gift shipment applies. True/false/unknown: null preserves
+   * missing data instead of collapsing it into no shipment.
+   */
+  giftShipmentApplicable: boolean | null;
+};
+
 export type PurchaseItem = {
   giftName: string | null;
   quantity: number | null;
   amount: number | null;
   rowTotal: number | null;
   type: string | null;
+  /** Derived per-item fulfillment; present on model-facing projections. */
+  fulfillment?: PurchaseItemFulfillment | null;
+};
+
+/**
+ * One scoped host-credit policy fact, projected only when a fulfillment
+ * question (summary/shipping aspects) meets at least one host_credit item.
+ * Shared once per purchase instead of duplicating prose per item. It states
+ * the fulfillment mechanism, never payment posting: paymentStatus stays
+ * independent and no credited-now fact is derived from item type.
+ */
+export type HostCreditFulfillmentPolicy = {
+  chosenBy: 'host';
+  mechanism: 'host_account_credit';
 };
 
 /** A phone-scoped cart is deliberately not a purchase/order. */
@@ -444,6 +487,11 @@ export type PurchaseInformation = {
   eventUrl: string | null;
   createdAt: string | null;
   items: PurchaseItem[];
+  /**
+   * Scoped host-credit policy, projected only when the requested aspects
+   * need fulfillment facts and at least one projected item is host_credit.
+   */
+  creditFulfillmentPolicy?: HostCreditFulfillmentPolicy | null;
   payment?: PurchasePaymentDetails | null;
   paymentValidationExpectation?: PendingPaymentValidationExpectation | null;
   /** Single reconciled amount representation intended for model disclosure. */

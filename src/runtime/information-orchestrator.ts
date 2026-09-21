@@ -29,6 +29,7 @@ import type { KnowledgeRetrievalGateway } from './knowledge-retrieval-gateway';
 import type { ProviderGateway, UserEventLookupResult } from './provider-gateway';
 import {
   hasPhysicalFulfillment,
+  mapItemFulfillment,
   pendingPaymentValidationExpectation,
 } from './purchase-disclosure-policy';
 import {
@@ -2516,6 +2517,28 @@ export class InformationOrchestrator {
             : 'recorded_method_no_currency' as const,
         }
       : null;
+    // Gift fulfillment evidence. Summary keeps full items with derived
+    // fulfillment; shipping-only requests expose names/types/fulfillment
+    // without amounts (raw type stays for provenance). All other aspects
+    // omit items so unrelated turns carry no fulfillment facts.
+    const projectedItems = aspectSet.has('summary')
+      ? purchase.items.map((item) => ({
+        ...item,
+        fulfillment: mapItemFulfillment(item.type),
+      }))
+      : aspectSet.has('shipping')
+        ? purchase.items.map((item) => ({
+          giftName: item.giftName ?? null,
+          quantity: null,
+          amount: null,
+          rowTotal: null,
+          type: item.type ?? null,
+          fulfillment: mapItemFulfillment(item.type),
+        }))
+        : [];
+    const hasHostCreditItem = projectedItems.some(
+      (item) => item.fulfillment?.kind === 'host_credit',
+    );
 
     return {
       orderId: purchase.orderId,
@@ -2539,7 +2562,15 @@ export class InformationOrchestrator {
       eventDate: purchase.eventDate,
       eventUrl: purchase.eventUrl,
       createdAt: purchase.createdAt,
-      items: aspectSet.has('summary') ? purchase.items : [],
+      items: projectedItems,
+      ...(hasHostCreditItem
+        ? {
+          creditFulfillmentPolicy: {
+            chosenBy: 'host' as const,
+            mechanism: 'host_account_credit' as const,
+          },
+        }
+        : {}),
       ...(includePayment
         ? {
             payment: purchase.payment
