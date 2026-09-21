@@ -97,6 +97,12 @@ function deriveConsumers(filePath: string): PromptInventoryConsumer[] {
       transitions: ['information:approval_boundary'],
       loader: 'PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry reply_approval_boundary via composeModelReply (purchase validation/payment-status aspects only; receipt never proves approval)' });
   }
+  if (filePath === 'nodes/resolver_consultas_informativas/gift_fulfillment.txt') {
+    consumers.push({ callType: 'reply',
+      nodes: ['resolver_consultas_informativas'], profiles: ['gift_fulfillment'],
+      transitions: ['information:gift_fulfillment'],
+      loader: 'PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry reply_gift_fulfillment via composeModelReply (purchase turns with gift fulfillment evidence only; natural business meaning, no internal code citations)' });
+  }
   if (filePath === 'nodes/resolver_consultas_informativas/auth_control.txt') {
     consumers.push({
       callType: 'extraction', nodes: ['resolver_consultas_informativas'],

@@ -376,6 +376,7 @@ export const instructionModuleIds = [
   'reply_approval_boundary',
   'reply_support_continuity',
   'reply_wait_followup',
+  'reply_gift_fulfillment',
 ] as const;
 
 export type InstructionModuleId = (typeof instructionModuleIds)[number];
@@ -551,5 +552,12 @@ export const instructionModuleRegistry: Record<InstructionModuleId, InstructionM
     owners: ['planning', 'faq', 'customer_assistance', 'unknown'],
     tasks: ['wait_followup'],
     consumer: 'openai-agent-runtime composeReply (waited turn behind a fresh prior reply; extend only with new information, never resend)',
+  },
+  reply_gift_fulfillment: {
+    files: ['nodes/resolver_consultas_informativas/gift_fulfillment.txt'],
+    stages: ['reply'],
+    owners: ['customer_assistance', 'unknown'],
+    tasks: ['purchase'],
+    consumer: 'openai-agent-runtime composeReply (purchase turns with gift fulfillment evidence only; natural business meaning, no internal code citations)',
   },
 };

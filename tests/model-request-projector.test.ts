@@ -24,6 +24,7 @@ function extractionContext(
     establishedDomain: null,
     tasks: ['purchase', 'venue', 'rsvp', 'faq_policy', 'planning'],
     approvalBoundary: false,
+    giftFulfillment: false,
     hasPlanningDetail: false,
     ...overrides,
   };
@@ -94,7 +95,7 @@ describe('model request projector extraction applicability', () => {
   it('selects modules from typed state only, never customer identifiers', () => {
     const context = extractionContext();
     expect(Object.keys(context).sort()).toEqual(
-      ['approvalBoundary', 'establishedDomain', 'hasPlanningDetail', 'owner', 'stage', 'tasks'],
+      ['approvalBoundary', 'establishedDomain', 'giftFulfillment', 'hasPlanningDetail', 'owner', 'stage', 'tasks'],
     );
     expect(moduleIds(context)).toEqual(moduleIds(extractionContext()));
   });
@@ -133,6 +134,7 @@ describe('model request projector reply applicability', () => {
       owner: 'customer_assistance',
       establishedDomain: null,
       approvalBoundary: false,
+      giftFulfillment: false,
       hasPlanningDetail: false,
       tasks: ['purchase', 'faq_policy'],
     });
@@ -147,6 +149,7 @@ describe('model request projector reply applicability', () => {
       owner: 'customer_assistance',
       establishedDomain: null,
       approvalBoundary: false,
+      giftFulfillment: false,
       hasPlanningDetail: false,
       tasks: ['purchase', 'handoff'],
     });
@@ -160,6 +163,7 @@ describe('model request projector reply applicability', () => {
       owner: 'faq',
       establishedDomain: null,
       approvalBoundary: false,
+      giftFulfillment: false,
       hasPlanningDetail: false,
       tasks: ['purchase', 'faq_policy'],
     });
@@ -173,6 +177,7 @@ describe('model request projector reply applicability', () => {
       owner: 'customer_assistance',
       establishedDomain: null,
       approvalBoundary: false,
+      giftFulfillment: false,
       hasPlanningDetail: false,
       tasks: ['purchase', 'planning'],
     });
@@ -186,6 +191,7 @@ describe('model request projector reply applicability', () => {
       owner: 'customer_assistance',
       establishedDomain: null,
       approvalBoundary: false,
+      giftFulfillment: false,
       hasPlanningDetail: false,
       tasks: ['venue'],
     });
@@ -194,6 +200,7 @@ describe('model request projector reply applicability', () => {
       owner: 'customer_assistance',
       establishedDomain: null,
       approvalBoundary: false,
+      giftFulfillment: false,
       hasPlanningDetail: false,
       tasks: ['venue', 'auth'],
     });
@@ -209,6 +216,7 @@ describe('model request projector reply applicability', () => {
       owner: 'customer_assistance' as const,
       establishedDomain: null,
       approvalBoundary: false as const,
+      giftFulfillment: false,
       hasPlanningDetail: false as const,
       tasks: ['handoff' as const],
     };
@@ -224,6 +232,7 @@ describe('model request projector relevance manifest', () => {
       owner: 'customer_assistance',
       establishedDomain: null,
       approvalBoundary: false,
+      giftFulfillment: false,
       hasPlanningDetail: false,
       tasks: ['venue'],
     });
@@ -247,6 +256,7 @@ describe('model request projector relevance manifest', () => {
       owner: 'customer_assistance',
       establishedDomain: null,
       approvalBoundary: false,
+      giftFulfillment: false,
       hasPlanningDetail: false,
       tasks: ['venue'],
     });
@@ -331,6 +341,7 @@ describe('model request projector auth and approval gating', () => {
       establishedDomain: null,
       tasks: [],
       approvalBoundary: false,
+      giftFulfillment: false,
       hasPlanningDetail: false,
       ...overrides,
     };
@@ -432,5 +443,87 @@ describe('model request projector auth and approval gating', () => {
       },
     } as unknown as Parameters<typeof deriveReplyCompilerContext>[0]);
     expect(boundary.approvalBoundary).toBe(true);
+  });
+
+  it('loads gift presentation only when fulfillment evidence is present', () => {
+    const plain = replyIds(replyContext({ tasks: ['purchase'], giftFulfillment: false }));
+    expect(plain).not.toContain('reply_gift_fulfillment');
+    const gift = replyIds(replyContext({ tasks: ['purchase'], giftFulfillment: true }));
+    expect(gift).toContain('reply_gift_fulfillment');
+    expect(gift).toContain('reply_purchase_facts');
+    // The module needs a purchase task: the registry authorization drops
+    // it on unrelated lanes even when the flag is set.
+    const dropped = replyIds(replyContext({ tasks: ['venue'], giftFulfillment: true }));
+    expect(dropped).not.toContain('reply_gift_fulfillment');
+    expect(instructionModuleRegistry.reply_gift_fulfillment.files).toEqual([
+      'nodes/resolver_consultas_informativas/gift_fulfillment.txt',
+    ]);
+  });
+
+  it('derives gift fulfillment from purchase results or the canonical profile', () => {
+    const base = {
+      currentNode: 'resolver_consultas_informativas',
+      informationResults: [{
+        kind: 'purchase',
+        status: 'completed',
+        purchases: [{
+          orderId: 'gift-1',
+          items: [{ giftName: 'Regalo', quantity: 1, amount: 100, rowTotal: 100, type: 'se_store' }],
+        }],
+      }],
+      customerContext: null,
+      extraction: {
+        informationRequests: [{ kind: 'purchase', aspects: ['payment_status'] }],
+        supportAct: null,
+      },
+      plan: { information_state: { pending_requests: [] } },
+      capabilityDecision: null,
+      handoffOutcome: null,
+      authenticationOutcome: null,
+      imageEvidence: null,
+      rsvpPhoneEvidence: null,
+    } as unknown as Parameters<typeof deriveReplyCompilerContext>[0];
+    // Items without derived fulfillment (payment-only aspects) select nothing.
+    const paymentOnly = deriveReplyCompilerContext(base);
+    expect(paymentOnly.giftFulfillment).toBe(false);
+    expect(selectReplyModules(paymentOnly).map((module) => module.id))
+      .not.toContain('reply_gift_fulfillment');
+
+    const withFulfillment = deriveReplyCompilerContext({
+      ...base,
+      informationResults: [{
+        kind: 'purchase',
+        status: 'completed',
+        purchases: [{
+          orderId: 'gift-1',
+          items: [{
+            giftName: 'Regalo',
+            quantity: 1,
+            amount: 100,
+            rowTotal: 100,
+            type: 'se_store',
+            fulfillment: { kind: 'physical', chosenBy: null, giftShipmentApplicable: true },
+          }],
+        }],
+      }],
+    } as unknown as Parameters<typeof deriveReplyCompilerContext>[0]);
+    expect(withFulfillment.giftFulfillment).toBe(true);
+    expect(selectReplyModules(withFulfillment).map((module) => module.id))
+      .toContain('reply_gift_fulfillment');
+
+    // A profile-level item conflict selects guidance even when results
+    // carry no fulfillment facts themselves.
+    const conflicted = deriveReplyCompilerContext({
+      ...base,
+      informationResults: [],
+      customerContext: {
+        detailedPurchases: [{
+          orderId: 'gift-1',
+          items: [],
+          itemSourceConflict: { alternatives: [], truncated: false },
+        }],
+      },
+    } as unknown as Parameters<typeof deriveReplyCompilerContext>[0]);
+    expect(conflicted.giftFulfillment).toBe(true);
   });
 });

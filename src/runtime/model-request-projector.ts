@@ -1,5 +1,6 @@
 import type { EstablishedExtractionDomain } from './extraction-projection';
 import type { DecisionNode } from '../core/decision-nodes';
+import type { PurchaseInformation } from '../core/information';
 import type { ComposeReplyRequest } from './contracts';
 import {
   instructionModuleRegistry,
@@ -53,6 +54,13 @@ export type ModuleSelectionContext = {
    * purchase turns never carry it.
    */
   readonly approvalBoundary: boolean;
+  /**
+   * Typed gift-fulfillment flag: a completed purchase result carries
+   * per-item fulfillment, a scoped host-credit policy, or an item-source
+   * conflict. Gates the gift-presentation module so payment-only, FAQ,
+   * RSVP and venue turns never carry gift prose guidance.
+   */
+  readonly giftFulfillment: boolean;
   /**
    * Typed planning-progress flag from plan state (active plan or shortlist).
    * Gates provider-management, close/pause and contact detail on
@@ -193,6 +201,7 @@ export type ReplyCompilerSource = Pick<
   ComposeReplyRequest,
   | 'currentNode'
   | 'informationResults'
+  | 'customerContext'
   | 'extraction'
   | 'plan'
   | 'capabilityDecision'
@@ -277,12 +286,21 @@ export function deriveReplyCompilerContext(
         (aspect) => aspect === 'validation_window' || aspect === 'payment_status',
       ),
   );
+  const purchaseCarriesFulfillment = (purchase: PurchaseInformation): boolean =>
+    purchase.creditFulfillmentPolicy != null ||
+    purchase.itemSourceConflict != null ||
+    purchase.items.some((item) => item.fulfillment != null);
+  const giftFulfillment = (request.informationResults ?? []).some(
+    (result) => result.kind === 'purchase' && result.status === 'completed' &&
+      result.purchases.some(purchaseCarriesFulfillment),
+  ) || (request.customerContext?.detailedPurchases ?? []).some(purchaseCarriesFulfillment);
   return {
     stage: 'reply',
     owner,
     establishedDomain: null,
     tasks: [...tasks],
     approvalBoundary,
+    giftFulfillment,
     hasPlanningDetail: false,
   };
 }
@@ -334,6 +352,11 @@ export function selectReplyModules(
   if (context.approvalBoundary === true) {
     candidates.push(
       selected('reply_approval_boundary', 'receipt-is-not-approval boundary for the requested purchase validation', ['extraction.informationRequests']),
+    );
+  }
+  if (context.giftFulfillment === true) {
+    candidates.push(
+      selected('reply_gift_fulfillment', 'gift fulfillment evidence present; explain business meaning naturally', ['informationResults.purchase']),
     );
   }
   if (has('auth')) {
