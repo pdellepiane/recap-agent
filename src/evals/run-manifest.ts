@@ -665,17 +665,23 @@ export async function runManifestPreflight(input: PreflightInput): Promise<{
 
   if (!isLive) {
     checks.push(check('deployed-identity', 'pass', 'Offline target has no deployed artifact to pin.'));
-  } else if (input.deploymentBefore) {
+  } else if (input.deploymentBefore && input.deploymentBefore.artifactSha256) {
     checks.push(check(
       'deployed-identity',
       'pass',
-      `Pinned ${input.deploymentBefore.functionArn} CodeSha256 ${input.deploymentBefore.codeSha256.slice(0, 12)} version ${input.deploymentBefore.version}.`,
+      `Pinned ${input.deploymentBefore.functionArn} CodeSha256 ${input.deploymentBefore.codeSha256.slice(0, 12)} artifact ${input.deploymentBefore.artifactSha256.slice(0, 12)} version ${input.deploymentBefore.version}.`,
+    ));
+  } else if (input.dryRun) {
+    checks.push(check(
+      'deployed-identity',
+      'warn',
+      'Dry run: no pre-run deployment identity is required because no paid calls execute.',
     ));
   } else {
     checks.push(check(
       'deployed-identity',
-      'warn',
-      'No pre-run deployment identity was supplied; the run cannot prove it stayed on one artifact.',
+      'fail',
+      'Missing pre-run deployment identity or artifact digest; refusing paid calls against an unpinned artifact.',
     ));
   }
 
@@ -836,6 +842,13 @@ export function finalizeRunManifest(
     deploymentAfter: DeploymentIdentity | null;
     completedAt: string;
     providerModelIdentities: string[];
+    /**
+     * Non-dry live runs must prove the artifact they ended on. A null
+     * after-identity cannot prove single-artifact evidence, so it fails
+     * exactly like a before/after mismatch. Dry and offline runs leave
+     * this false.
+     */
+    requireAfterIdentity?: boolean;
   },
 ): RunManifest {
   const finalized = runManifestSchema.parse({
@@ -846,6 +859,11 @@ export function finalizeRunManifest(
   });
   const before = finalized.deploymentBefore;
   const after = finalized.deploymentAfter;
+  if (update.requireAfterIdentity === true && before && !after) {
+    throw new Error(
+      'Mixed-artifact evidence rejected: the run cannot prove the artifact it ended on. The gate is invalid.',
+    );
+  }
   if (before && after && before.codeSha256 !== after.codeSha256) {
     throw new Error(
       `Mixed-artifact evidence rejected: run started on CodeSha256 ${before.codeSha256} but ended on ${after.codeSha256}. The gate is invalid.`,
@@ -858,13 +876,33 @@ export function digestManifest(manifest: RunManifest): string {
   return digestJson(manifest);
 }
 
+/**
+ * Lambda CodeSha256 is the base64 SHA-256 of the deployed ZIP, so the
+ * artifact digest is derived from it (verified byte-for-byte against the
+ * deploy script's recorded ZIP digest), never fabricated. Returns null
+ * when the value is empty; strict base64 validation stays with the AWS
+ * response contract.
+ */
+export function codeShaToArtifactDigest(codeSha256: string): string | null {
+  if (codeSha256.length === 0) return null;
+  const bytes = Buffer.from(codeSha256, 'base64');
+  if (bytes.length === 0) return null;
+  return bytes.toString('hex');
+}
+
 /** Read-only deployment identity for the development function (no deploy). */
 export async function describeDevDeployment(options?: {
   functionName?: string;
   region?: string;
 }): Promise<DeploymentIdentity | null> {
+  // Live identity resolves only through the required execution profile
+  // and region; anything else fails closed before paid calls.
+  const profile = process.env.AWS_PROFILE;
+  if (profile !== undefined && profile !== 'se-dev') return null;
+  if (profile === undefined) process.env.AWS_PROFILE = 'se-dev';
   const functionName = options?.functionName ?? process.env.DEV_FUNCTION_NAME ?? DEV_FUNCTION_NAME;
   const region = options?.region ?? process.env.AWS_REGION ?? 'us-east-1';
+  if (region !== 'us-east-1' || functionName !== DEV_FUNCTION_NAME) return null;
   try {
     const { LambdaClient, GetFunctionConfigurationCommand } = await import('@aws-sdk/client-lambda');
     const client = new LambdaClient({ region });
@@ -872,13 +910,15 @@ export async function describeDevDeployment(options?: {
     if (!response.FunctionArn || !response.CodeSha256) {
       return null;
     }
+    const artifactSha256 = codeShaToArtifactDigest(response.CodeSha256);
+    if (!artifactSha256) return null;
     return deploymentIdentitySchema.parse({
       functionArn: response.FunctionArn,
       codeSha256: response.CodeSha256,
       version: response.Version ?? '$LATEST',
       lastModified: response.LastModified ?? new Date(0).toISOString(),
-      artifactSha256: null,
-      artifactProvenance: 'unverified',
+      artifactSha256,
+      artifactProvenance: 'verified-aws',
       checkedAt: new Date().toISOString(),
     });
   } catch {

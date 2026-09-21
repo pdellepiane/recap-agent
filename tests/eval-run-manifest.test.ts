@@ -12,7 +12,9 @@ import {
   assertUniqueConfigCasePairs,
   buildConfigCaseIdentities,
   buildRunManifest,
+  codeShaToArtifactDigest,
   collectSourceIdentity,
+  describeDevDeployment,
   finalizeRunManifest,
   RUN_MANIFEST_SCHEMA_VERSION,
   runManifestSchema,
@@ -213,6 +215,134 @@ describe('run manifest identity (O0)', () => {
       { configLabel: 'a', caseId: 'x', pairId: '0'.repeat(64) },
       { configLabel: 'a', caseId: 'x', pairId: '1'.repeat(64) },
     ])).toThrow(/duplicate/i);
+  });
+
+  it('derives the artifact digest from CodeSha256 instead of fabricating it', () => {
+    // Recorded 2026-09-21 development deployment: the deploy script's ZIP
+    // digest equals the Lambda CodeSha256 bytes.
+    expect(codeShaToArtifactDigest('UAy/lKn1FvNXSBCV6GZPxLoL3bVEGuD8O6bf4n6tORk=')).toBe(
+      '500cbf94a9f516f357481095e8664fc4ba0bddb5441ae0fc3ba6dfe27ead3919',
+    );
+    expect(codeShaToArtifactDigest('')).toBeNull();
+  });
+
+  it('resolves live identity only through se-dev/us-east-1 on the dev function', async () => {
+    const savedProfile = process.env.AWS_PROFILE;
+    const savedRegion = process.env.AWS_REGION;
+    const savedFunction = process.env.DEV_FUNCTION_NAME;
+    try {
+      process.env.AWS_PROFILE = 'default';
+      expect(await describeDevDeployment()).toBeNull();
+      process.env.AWS_PROFILE = 'se-dev';
+      process.env.AWS_REGION = 'eu-west-1';
+      expect(await describeDevDeployment()).toBeNull();
+      process.env.AWS_REGION = 'us-east-1';
+      process.env.DEV_FUNCTION_NAME = 'recap-agent-runtime';
+      expect(await describeDevDeployment()).toBeNull();
+    } finally {
+      if (savedProfile === undefined) delete process.env.AWS_PROFILE;
+      else process.env.AWS_PROFILE = savedProfile;
+      if (savedRegion === undefined) delete process.env.AWS_REGION;
+      else process.env.AWS_REGION = savedRegion;
+      if (savedFunction === undefined) delete process.env.DEV_FUNCTION_NAME;
+      else process.env.DEV_FUNCTION_NAME = savedFunction;
+    }
+  });
+
+  it('fails live preflight before paid calls without identity or digest', async () => {
+    const selectedCases = (await loadLiveCases()).slice(0, 1);
+    const liveConfig = [{ label: 'live', target: 'live_lambda' as const, notes: [], environmentOverrides: {} }];
+    const missing = await buildRunManifest({
+      runId: 'eval-test-no-identity',
+      label: 'candidate',
+      dryRun: false,
+      repoRoot,
+      outputDir,
+      runConfigs: liveConfig,
+      selectedCases,
+      deploymentBefore: null,
+      requestedConcurrency: { cases: 1, judges: 1 },
+      startedAt: new Date().toISOString(),
+      serviceLimits: null,
+    });
+    expect(missing.preflight.passed).toBe(false);
+    expect(() => assertPreflightPassed(missing.preflight)).toThrow(/deployment identity or artifact digest/i);
+    const digestless = await buildRunManifest({
+      runId: 'eval-test-no-digest',
+      label: 'candidate',
+      dryRun: false,
+      repoRoot,
+      outputDir,
+      runConfigs: liveConfig,
+      selectedCases,
+      deploymentBefore: fakeDeployment({ artifactSha256: null }),
+      requestedConcurrency: { cases: 1, judges: 1 },
+      startedAt: new Date().toISOString(),
+      serviceLimits: null,
+    });
+    expect(digestless.preflight.passed).toBe(false);
+    expect(() => assertPreflightPassed(digestless.preflight)).toThrow(/deployment identity or artifact digest/i);
+  });
+
+  it('keeps dry-run and offline preflight intact without identity', async () => {
+    const selectedCases = (await loadLiveCases()).slice(0, 1);
+    const dry = await buildRunManifest({
+      runId: 'eval-test-dry-no-identity',
+      label: 'candidate',
+      dryRun: true,
+      repoRoot,
+      outputDir,
+      runConfigs: [{ label: 'live', target: 'live_lambda', notes: [], environmentOverrides: {} }],
+      selectedCases,
+      deploymentBefore: null,
+      requestedConcurrency: { cases: 1, judges: 1 },
+      startedAt: new Date().toISOString(),
+      serviceLimits: null,
+    });
+    expect(dry.preflight.passed).toBe(true);
+    const offline = await buildRunManifest({
+      runId: 'eval-test-offline-no-identity',
+      label: 'candidate',
+      dryRun: false,
+      repoRoot,
+      outputDir,
+      runConfigs: [{ label: 'offline', target: 'offline', notes: [], environmentOverrides: {} }],
+      selectedCases,
+      deploymentBefore: null,
+      requestedConcurrency: { cases: 1, judges: 1 },
+      startedAt: new Date().toISOString(),
+      serviceLimits: null,
+    });
+    expect(offline.preflight.passed).toBe(true);
+  });
+
+  it('rejects a null after-identity on live completion like a mismatch', async () => {
+    const selectedCases = (await loadLiveCases()).slice(0, 1);
+    const manifest = await buildRunManifest({
+      runId: 'eval-test-null-after',
+      label: 'candidate',
+      dryRun: false,
+      repoRoot,
+      outputDir,
+      runConfigs: [{ label: 'live', target: 'live_lambda', notes: [], environmentOverrides: {} }],
+      selectedCases,
+      deploymentBefore: fakeDeployment(),
+      requestedConcurrency: { cases: 1, judges: 1 },
+      startedAt: new Date().toISOString(),
+      serviceLimits: null,
+    });
+    expect(() => finalizeRunManifest(manifest, {
+      deploymentAfter: null,
+      completedAt: new Date().toISOString(),
+      providerModelIdentities: [],
+      requireAfterIdentity: true,
+    })).toThrow(/cannot prove the artifact it ended on/i);
+    // Dry and offline completions still accept a null after-identity.
+    expect(() => finalizeRunManifest(manifest, {
+      deploymentAfter: null,
+      completedAt: new Date().toISOString(),
+      providerModelIdentities: [],
+    })).not.toThrow();
   });
 
   it('fails preflight on zero selected cases for a real run', async () => {
