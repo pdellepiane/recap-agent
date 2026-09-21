@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.gift_sestore_unknown_shipping_offers_support
 suite: live_behavior_regression
-version: 1
+version: 2
 description: A physical se_store gift with no recorded shipment detail keeps its physical nature; the reply offers real human support without inventing recipient, carrier, date or ETA.
 tags: [live, behavior, purchase, gift, shipping, fulfillment, sestore]
 targetModes: [live_lambda]
@@ -34,10 +34,12 @@ expectations:
   - id: sestore-physical-without-invented-detail
     type: text_semantic
     rubric: >-
-      The phone-scoped gift lookup returns one approved physical gift (Juego de sábanas) with no recorded shipment detail: no recipient, carrier, dispatch date or ETA exists in the record. The response must be natural and entirely in Spanish, acknowledge the physical gift, state plainly that the specific shipment detail is not available in the record, and offer human support as the path for specifics. It must not invent a recipient, address, carrier, dispatch date, ETA, tracking process, or delivery promise; must not claim the gift already shipped or was delivered; and must not claim a handoff was submitted. An offer of support is not an executed escalation.
+      The phone-scoped gift lookup returns one approved physical gift (Juego de sábanas) with no recorded shipment detail: no recipient, carrier, dispatch date or ETA exists in the record. The response must be natural and entirely in Spanish, identify the physical gift, state plainly that the requested dispatch and recipient details are unavailable in the record, and offer real human support without claiming it happened. It must not invent a recipient, address, carrier, dispatch date, ETA, tracking process, or delivery promise; must not claim the gift already shipped or was delivered; must not print internal type or field codes; and must not claim a handoff was submitted. An offer of support is not an executed escalation, and no particular offer wording or unsolicited amount disclosure is required.
     minScore: 0.9
     requireJudge: true
     severity: hard
+notes:
+  - "R05 oracle revision v1 to v2, 2026-09-21, gift/campaign review correction 3. Rubric now requires natural Spanish with no internal-code citations and explicitly declines forced amount disclosure or mandated offer wording. Threshold and hard severity kept. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
 budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 1800

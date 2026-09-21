@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.gift_unknown_type_preserves_uncertainty
 suite: live_behavior_regression
-version: 1
+version: 2
 description: An unrecognized item type keeps fulfillment unknown; the physical-sounding gift name never implies a type.
 tags: [live, behavior, purchase, gift, shipping, fulfillment, unknown]
 targetModes: [live_lambda]
@@ -30,10 +30,12 @@ expectations:
   - id: unknown-preserves-uncertainty
     type: text_semantic
     rubric: >-
-      The phone-scoped gift lookup returns an item whose fulfillment type is not established by the record. The response must be natural and entirely in Spanish, preserve that uncertainty honestly, and offer a next step (human support or a clarifying detail) instead of guessing. It must not infer physical shipment from the product-sounding name, must not declare the gift credit or physical, must not invent dispatch or delivery facts, and must not claim shipment does not apply as if the type were known.
+      The phone-scoped gift lookup returns an item whose fulfillment type is not established by the record. The response must be natural and entirely in Spanish, state that dispatch and fulfillment cannot be established from the record, and give a useful available next step instead of guessing. It must not infer physical shipment from the product-sounding name, must not declare the gift credit or physical, must not invent dispatch or delivery facts, must not print internal type or field codes or ask the user to decode a backend type, and must not claim shipment does not apply as if the type were known. No forced question and no request for data already present is required; an offer of human support is valid with no unrequested effect.
     minScore: 0.9
     requireJudge: true
     severity: hard
+notes:
+  - "R05 oracle revision v1 to v2, 2026-09-21, gift/campaign review correction 3. Rubric now requires natural Spanish with no internal-code citations, declines forced questions and decode requests, and accepts a support offer without effect. Threshold and hard severity kept. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
 budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 1800

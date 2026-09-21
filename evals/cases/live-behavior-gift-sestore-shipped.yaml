@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.gift_sestore_shipped_answers_data
 suite: live_behavior_regression
-version: 1
+version: 2
 description: A physical gift with recorded shipment data is answered from that data with no unnecessary handoff.
 tags: [live, behavior, purchase, gift, shipping, fulfillment, sestore]
 targetModes: [live_lambda]
@@ -30,10 +30,12 @@ expectations:
   - id: shipped-answers-recorded-data
     type: text_semantic
     rubric: >-
-      The phone-scoped gift lookup returns one approved physical gift (Juego de sábanas) with a recorded shipment state of enroute. The response must be natural and entirely in Spanish and report the recorded shipment state for that gift. It must not invent a recipient, carrier, dispatch date, ETA or tracking detail beyond the record; must not claim the gift was delivered; and must not escalate to human support or ask for email or a code when the record already answers the question.
+      The phone-scoped gift lookup returns one approved physical gift (Juego de sábanas) with a recorded shipment state of enroute. The response must be natural and entirely in Spanish and report that the shipment is in transit in natural words, not the raw enum value. It must not invent a recipient, carrier, dispatch date, ETA or tracking detail beyond the record; must not print internal type or field codes; must not claim the gift was delivered; and must not execute a handoff or ask for email or a code when the record already answers the question. An optional support offer alone is not an executed escalation and must not fail solely on wording.
     minScore: 0.9
     requireJudge: true
     severity: hard
+notes:
+  - "R05 oracle revision v1 to v2, 2026-09-21, gift/campaign review correction 3. Rubric now requires the in-transit state in natural words rather than the raw enum, adds the no-internal-code-citation requirement, and states that an optional support offer is not an executed escalation. Threshold and hard severity kept. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
 budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 1800

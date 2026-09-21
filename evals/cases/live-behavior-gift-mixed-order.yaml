@@ -1,8 +1,8 @@
 template: template.base-live
 id: live_behavior.gift_mixed_order_distinguishes_items
 suite: live_behavior_regression
-version: 1
-description: A mixed order (physical sheets plus credit honeymoon contribution) is answered per item; an order-wide question distinguishes both without a whole-order no-shipping claim.
+version: 2
+description: A mixed order (150 physical sheets plus 80 credit honeymoon contribution) is answered per item across turns; an order-wide question distinguishes both without a whole-order no-shipping claim, and requested known amounts are reported exactly.
 tags: [live, behavior, purchase, gift, shipping, fulfillment, mixed]
 targetModes: [live_lambda]
 backendFixture:
@@ -14,7 +14,13 @@ inputs:
     sessionId: live-gift-mixed
     backendFixture:
       scenario: purchase-gift-mixed
-  - text: ¿Y el aporte para la luna de miel?
+  - text: ¿Y el regalo de 80, cómo llega?
+    channel: whatsapp
+    contactPhone: "+51999350213"
+    sessionId: live-gift-mixed
+    backendFixture:
+      scenario: purchase-gift-mixed
+  - text: ¿Cuánto costaron las sábanas y cuántas compré?
     channel: whatsapp
     contactPhone: "+51999350213"
     sessionId: live-gift-mixed
@@ -27,12 +33,6 @@ expectations:
     mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code, guest_rsvp]
     turnIndex: 0
     severity: hard
-  - id: mixed-followup-uses-gift-read
-    type: tool_usage
-    mustCall: [lookup_guest_gift_purchases_by_phone]
-    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code, guest_rsvp]
-    turnIndex: 1
-    severity: hard
   - id: mixed-no-unsolicited-effects
     type: fixture_effect_count
     operation: handoff.write
@@ -40,10 +40,17 @@ expectations:
     expectedSuccesses: 0
     expectedReplays: 0
     severity: hard
+  - id: mixed-no-rsvp-writes
+    type: fixture_effect_count
+    operation: rsvp.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
   - id: mixed-order-wide-distinguishes
     type: text_semantic
     rubric: >-
-      The phone-scoped gift lookup returns one order with two items: physical sheets (Juego de sábanas) and a credit honeymoon contribution. The order-wide answer must be natural and entirely in Spanish, discuss the two items separately, keep the sheets as a physical gift with no recorded shipment detail, and state that the honeymoon contribution carries no gift shipment because the hosts chose account credit. It must not claim the whole order ships, nor that nothing ships; must not invent dispatch or delivery dates; and must not merge the two items into one fulfillment story.
+      The phone-scoped gift lookup returns one order with two items: physical sheets (Juego de sábanas) and a credit honeymoon contribution. The order-wide answer must be natural and entirely in Spanish, discuss the two items separately, keep the sheets as a physical gift with no recorded shipment detail, and state that the honeymoon contribution carries no gift shipment because the hosts chose account credit. It must not claim the whole order ships, nor that nothing ships; must not invent dispatch or delivery dates; must not print internal type or field codes, tool names, or technical citations; and must not merge the two items into one fulfillment story. Unsolicited amounts are not required on this turn.
     minScore: 0.9
     requireJudge: true
     turnIndex: 0
@@ -51,12 +58,22 @@ expectations:
   - id: mixed-item-followup-answers-that-item
     type: text_semantic
     rubric: >-
-      Asked specifically about the honeymoon contribution, the answer must be natural and entirely in Spanish and address that item: a credit gift with no gift shipment because the hosts chose account credit. It must not answer about the sheets instead, must not state or imply a dispatch or delivery, and must not claim any payment already posted beyond the record.
+      Asked about the 80-value gift, the answer must be natural and entirely in Spanish, resolve the reference to the honeymoon contribution without asking for identifying information the record already carries, and explain that it has no gift shipment because the hosts chose account credit. It must not answer about the sheets instead, must not state or imply a dispatch or delivery, must not print internal type or field codes, and must not claim any payment already posted beyond the record.
     minScore: 0.9
     requireJudge: true
     turnIndex: 1
     severity: hard
+  - id: mixed-requested-amount-and-quantity
+    type: text_semantic
+    rubric: >-
+      Asked directly what the sheets cost and how many were bought, the answer must be natural and entirely in Spanish and report the recorded values: amount 150 and quantity 1 for the sheets. It must not substitute the contribution amount (80) or the whole-order total (230), must not invent a currency, and must not print internal type or field codes. Repeating the other item or a fulfillment lecture is not required.
+    minScore: 0.9
+    requireJudge: true
+    turnIndex: 2
+    severity: hard
+notes:
+  - "R05 oracle revision v1 to v2, 2026-09-21, gift/campaign review corrections 1+3. Fixture v2 carries preserved amounts (sheets 1/150/150, honeymoon 1/80/80, total 230, currency null) instead of the v1 values. T1 replaced with an amount-anchored follow-up and T2 appended to prove requested known amounts across turns; the follow-up gift-read pin was removed because either reuse of established authorized evidence or a fresh authorized read is valid. Rubrics now require natural Spanish with no internal-code citations and forbid substituting related amounts. Threshold and hard severity kept. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
 budget:
-  maxTurns: 2
+  maxTurns: 3
   estimatedPromptTokensPerTurn: 1800
   estimatedCompletionTokensPerTurn: 300
