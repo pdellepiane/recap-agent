@@ -1284,86 +1284,168 @@ describe('l4 packet P1 — canonical profile and lookup reuse', () => {
     expect(merged[0]?.paymentStatus).toBeNull();
   });
 
-  it('enriches item fields across same-order snapshots under exact positional correspondence', async () => {
-    const { mergePurchaseItems } = await import('../src/runtime/customer-context');
-    const merged = mergePurchaseItems(
-      [{
-        giftName: 'Juego de sábanas', quantity: null, amount: null,
-        rowTotal: null, type: 'se_store',
-        fulfillment: { kind: 'physical', chosenBy: null, giftShipmentApplicable: true },
-      }],
-      [{
-        giftName: 'Juego de sábanas', quantity: 1, amount: 120,
-        rowTotal: 120, type: 'se_store',
-        fulfillment: { kind: 'physical', chosenBy: null, giftShipmentApplicable: true },
-      }],
-    );
-    expect(merged).toHaveLength(1);
-    expect(merged[0]).toMatchObject({
-      giftName: 'Juego de sábanas',
-      quantity: 1,
-      amount: 120,
-      type: 'se_store',
-      fulfillment: { kind: 'physical', chosenBy: null, giftShipmentApplicable: true },
-    });
-  });
-
-  it('nulls contested item types instead of silently picking credit or physical', async () => {
-    const { mergePurchaseItems } = await import('../src/runtime/customer-context');
-    const merged = mergePurchaseItems(
-      [{
-        giftName: 'Aporte luna de miel', quantity: 1, amount: 80,
-        rowTotal: 80, type: 'se_store',
-        fulfillment: { kind: 'physical', chosenBy: null, giftShipmentApplicable: true },
-      }],
-      [{
-        giftName: 'Aporte luna de miel', quantity: 1, amount: 80,
-        rowTotal: 80, type: 'credit',
-        fulfillment: { kind: 'host_credit', chosenBy: 'host', giftShipmentApplicable: false },
-      }],
-    );
-    expect(merged).toHaveLength(1);
-    expect(merged[0]?.type).toBeNull();
-    expect(merged[0]?.fulfillment).toEqual({
-      kind: 'unknown',
-      chosenBy: null,
-      giftShipmentApplicable: null,
-    });
-    // Agreed fields still merge; only the contested type becomes uncertain.
-    expect(merged[0]?.giftName).toBe('Aporte luna de miel');
-    expect(merged[0]?.amount).toBe(80);
-  });
-
-  it('never unions or duplicates items when snapshots disagree on line count', async () => {
-    const { mergePurchaseItems } = await import('../src/runtime/customer-context');
-    const merged = mergePurchaseItems(
-      [{ giftName: 'Juego de sábanas', quantity: 1, amount: 120, rowTotal: 120, type: 'se_store' }],
-      [
-        { giftName: 'Juego de sábanas', quantity: 1, amount: 120, rowTotal: 120, type: 'se_store' },
-        { giftName: 'Aporte luna de miel', quantity: 1, amount: 80, rowTotal: 80, type: 'credit' },
+  it.each([
+    {
+      name: 'reordered identical lists collapse to the first display order',
+      lists: [
+        [
+          { giftName: 'Juego de sábanas', quantity: 1, amount: 150, rowTotal: 150, type: 'se_store' },
+          { giftName: 'Aporte luna de miel', quantity: 1, amount: 80, rowTotal: 80, type: 'credit' },
+        ],
+        [
+          { giftName: 'Aporte luna de miel', quantity: 1, amount: 80, rowTotal: 80, type: 'credit' },
+          { giftName: 'Juego de sábanas', quantity: 1, amount: 150, rowTotal: 150, type: 'se_store' },
+        ],
       ],
+      expectConflict: false,
+      expectedNames: ['Juego de sábanas', 'Aporte luna de miel'],
+    },
+    {
+      name: 'duplicated identical gifts preserve multiplicity',
+      lists: [
+        [
+          { giftName: 'Copa', quantity: 1, amount: 40, rowTotal: 40, type: 'se_store' },
+          { giftName: 'Copa', quantity: 1, amount: 40, rowTotal: 40, type: 'se_store' },
+        ],
+        [
+          { giftName: 'Copa', quantity: 1, amount: 40, rowTotal: 40, type: 'se_store' },
+          { giftName: 'Copa', quantity: 1, amount: 40, rowTotal: 40, type: 'se_store' },
+        ],
+      ],
+      expectConflict: false,
+      expectedNames: ['Copa', 'Copa'],
+    },
+    {
+      name: 'equal-valued different gifts conflict without pairing',
+      lists: [
+        [{ giftName: 'Copa', quantity: 1, amount: 80, rowTotal: 80, type: 'se_store' }],
+        [{ giftName: 'Aporte luna de miel', quantity: 1, amount: 80, rowTotal: 80, type: 'credit' }],
+      ],
+      expectConflict: true,
+      expectedAlternatives: 2,
+    },
+    {
+      name: 'different-length snapshots retain both complete lists',
+      lists: [
+        [{ giftName: 'Juego de sábanas', quantity: 1, amount: 150, rowTotal: 150, type: 'se_store' }],
+        [
+          { giftName: 'Juego de sábanas', quantity: 1, amount: 150, rowTotal: 150, type: 'se_store' },
+          { giftName: 'Aporte luna de miel', quantity: 1, amount: 80, rowTotal: 80, type: 'credit' },
+        ],
+      ],
+      expectConflict: true,
+      expectedAlternatives: 2,
+    },
+    {
+      name: 'partially missing fields without line IDs conflict instead of enriching',
+      lists: [
+        [{ giftName: 'Juego de sábanas', quantity: 1, amount: 150, rowTotal: 150, type: 'se_store' }],
+        [{ giftName: 'Juego de sábanas', quantity: null, amount: null, rowTotal: null, type: 'se_store' }],
+      ],
+      expectConflict: true,
+      expectedAlternatives: 2,
+    },
+    {
+      name: 'conflicting types keep both classifications with provenance',
+      lists: [
+        [{ giftName: 'Aporte luna de miel', quantity: 1, amount: 80, rowTotal: 80, type: 'se_store' }],
+        [{ giftName: 'Aporte luna de miel', quantity: 1, amount: 80, rowTotal: 80, type: 'credit' }],
+      ],
+      expectConflict: true,
+      expectedAlternatives: 2,
+    },
+    {
+      name: 'conflicting quantities and totals keep both value sets',
+      lists: [
+        [{ giftName: 'Juego de sábanas', quantity: 2, amount: 150, rowTotal: 300, type: 'se_store' }],
+        [{ giftName: 'Juego de sábanas', quantity: 1, amount: 150, rowTotal: 150, type: 'se_store' }],
+      ],
+      expectConflict: true,
+      expectedAlternatives: 2,
+    },
+  ])('$name', async ({ lists, expectConflict, expectedNames, expectedAlternatives }) => {
+    const { coalescePurchasesByStableId } = await import('../src/runtime/customer-context');
+    const merged = coalescePurchasesByStableId(
+      lists.map((items) => ({
+        purchase: purchase('ord-conflict', { items }),
+        accessMethod: 'trusted_phone_purchase',
+      })),
     );
     expect(merged).toHaveLength(1);
-    expect(merged[0]?.giftName).toBe('Juego de sábanas');
+    const canonical = merged[0];
+    if (!expectConflict) {
+      expect(canonical?.itemSourceConflict ?? null).toBeNull();
+      expect(canonical?.items.map((item) => item.giftName)).toEqual(expectedNames);
+      // Derived fulfillment recomputes from raw type on the canonical list.
+      for (const item of canonical?.items ?? []) {
+        expect(item.fulfillment).toBeDefined();
+      }
+      return;
+    }
+    expect(canonical?.items).toHaveLength(0);
+    expect(canonical?.creditFulfillmentPolicy ?? null).toBeNull();
+    const conflict = canonical?.itemSourceConflict;
+    expect(conflict).toBeDefined();
+    expect(conflict?.truncated).toBe(false);
+    expect(conflict?.alternatives).toHaveLength(expectedAlternatives ?? 0);
+    // Every alternative is complete with its own provenance and
+    // per-alternative fulfillment; nothing is paired across lists.
+    for (const alternative of conflict?.alternatives ?? []) {
+      expect(alternative.items.length).toBeGreaterThan(0);
+      expect(alternative.accessMethod).toBe('trusted_phone_purchase');
+      for (const item of alternative.items) {
+        expect(item.fulfillment).toBeDefined();
+      }
+    }
+    const alternativeKeys = new Set(
+      (conflict?.alternatives ?? []).map((alternative) => JSON.stringify(
+        alternative.items.map((item) => [item.giftName, item.quantity, item.amount, item.rowTotal, item.type]),
+      )),
+    );
+    expect(alternativeKeys.size).toBe(conflict?.alternatives.length);
   });
 
-  it('fills a missing item type from a corresponding snapshot without name-keyed union', async () => {
-    const { mergePurchaseItems } = await import('../src/runtime/customer-context');
-    const merged = mergePurchaseItems(
-      [{ giftName: 'Aporte luna de miel', quantity: 1, amount: 80, rowTotal: 80, type: null }],
-      [{
-        giftName: 'Aporte luna de miel', quantity: 1, amount: 80,
-        rowTotal: 80, type: 'credit',
-        fulfillment: { kind: 'host_credit', chosenBy: 'host', giftShipmentApplicable: false },
-      }],
-    );
+  it('never clears an earlier conflict when a third snapshot agrees with one side', async () => {
+    const { coalescePurchasesByStableId } = await import('../src/runtime/customer-context');
+    const seStore = [{ giftName: 'Aporte luna de miel', quantity: 1, amount: 80, rowTotal: 80, type: 'se_store' }];
+    const credit = [{ giftName: 'Aporte luna de miel', quantity: 1, amount: 80, rowTotal: 80, type: 'credit' }];
+    const merged = coalescePurchasesByStableId([
+      { purchase: purchase('ord-durable', { items: seStore }), accessMethod: 'trusted_phone_purchase' },
+      { purchase: purchase('ord-durable', { items: credit }), accessMethod: 'trusted_phone_purchase' },
+      { purchase: purchase('ord-durable', { items: seStore }), accessMethod: 'trusted_phone_purchase' },
+    ]);
     expect(merged).toHaveLength(1);
-    expect(merged[0]?.type).toBe('credit');
-    expect(merged[0]?.fulfillment).toEqual({
-      kind: 'host_credit',
-      chosenBy: 'host',
-      giftShipmentApplicable: false,
-    });
+    expect(merged[0]?.items).toHaveLength(0);
+    expect(merged[0]?.creditFulfillmentPolicy ?? null).toBeNull();
+    // Duplicate se_store snapshots deduplicate; the conflict itself persists.
+    expect(merged[0]?.itemSourceConflict?.alternatives).toHaveLength(2);
+    expect(merged[0]?.itemSourceConflict?.truncated).toBe(false);
+  });
+
+  it('keeps incompatible authorization scopes and distinct orders unmerged', async () => {
+    const { coalescePurchasesByStableId } = await import('../src/runtime/customer-context');
+    const merged = coalescePurchasesByStableId([
+      {
+        purchase: purchase('ord-scope', {
+          items: [{ giftName: 'Copa', quantity: 1, amount: 40, rowTotal: 40, type: 'se_store' }],
+        }),
+        accessMethod: 'trusted_phone_purchase',
+      },
+      {
+        purchase: purchase('ord-scope', {
+          items: [{ giftName: 'Copa', quantity: 2, amount: 40, rowTotal: 80, type: 'se_store' }],
+        }),
+        accessMethod: 'account',
+      },
+      {
+        purchase: purchase('ord-other', {
+          items: [{ giftName: 'Copa', quantity: 1, amount: 40, rowTotal: 40, type: 'se_store' }],
+        }),
+        accessMethod: 'trusted_phone_purchase',
+      },
+    ]);
+    expect(merged).toHaveLength(3);
+    expect(merged.every((record) => (record.itemSourceConflict ?? null) === null)).toBe(true);
   });
 
   it('never merges across incompatible access scopes', async () => {

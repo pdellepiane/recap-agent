@@ -412,6 +412,38 @@ export type HostCreditFulfillmentPolicy = {
   mechanism: 'host_account_credit';
 };
 
+/**
+ * One complete line-item list from a single source snapshot. Line items
+ * carry no stable identity, so non-equivalent snapshots are retained whole
+ * with their existing source/scope provenance instead of being paired or
+ * enriched line by line. Fulfillment inside each list is recomputed from
+ * raw type, never trusted from another snapshot.
+ */
+export type PurchaseItemSourceAlternative = {
+  items: PurchaseItem[];
+  accessMethod: string | null;
+  scope: string | null;
+};
+
+/**
+ * Typed order-level item-source conflict. Present only when nonempty
+ * snapshots disagree as multisets of raw line tuples; the canonical order
+ * then exposes no authoritative unified item list. Alternatives are
+ * deduplicated by multiset key; beyond the evidence bound the excess is cut
+ * and truncated marks partial evidence instead of claiming completeness.
+ */
+export type PurchaseItemSourceConflict = {
+  alternatives: PurchaseItemSourceAlternative[];
+  truncated: boolean;
+};
+
+/**
+ * Conflict-alternative payload bound. Reuses the established 3-record
+ * reply-evidence cardinality so a conflict can never grow an unbounded
+ * snapshot history.
+ */
+export const purchaseItemConflictAlternativeLimit = 3;
+
 /** A phone-scoped cart is deliberately not a purchase/order. */
 export type CartInformation = {
   cartId: string;
@@ -492,6 +524,12 @@ export type PurchaseInformation = {
    * need fulfillment facts and at least one projected item is host_credit.
    */
   creditFulfillmentPolicy?: HostCreditFulfillmentPolicy | null;
+  /**
+   * Typed item-source conflict. When present, items carries no authoritative
+   * unified list and each alternative classifies fulfillment within its own
+   * provenance. Never silently cleared by a later agreeing snapshot.
+   */
+  itemSourceConflict?: PurchaseItemSourceConflict | null;
   payment?: PurchasePaymentDetails | null;
   paymentValidationExpectation?: PendingPaymentValidationExpectation | null;
   /** Single reconciled amount representation intended for model disclosure. */

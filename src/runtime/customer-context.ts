@@ -4,14 +4,20 @@ import type {
   InformationTaskResult,
   PurchaseInformation,
   PurchaseItem,
+  PurchaseItemSourceAlternative,
+  PurchaseItemSourceConflict,
 } from '../core/information';
 import type { UserEventLookupResult } from './provider-gateway';
 import {
   enrichmentBounds,
   enrichmentVisitKey,
+  purchaseItemConflictAlternativeLimit,
 } from '../core/information';
 import { eventMatches } from './event-matching';
-import { mapItemFulfillment } from './purchase-disclosure-policy';
+import {
+  creditFulfillmentPolicyForItems,
+  mapItemFulfillment,
+} from './purchase-disclosure-policy';
 import {
   disclosedPurchaseCurrency,
   disclosedPurchaseTotal,
@@ -1359,13 +1365,13 @@ function isAuthoritativeValue(value: unknown): boolean {
 export function coalescePurchasesByStableId(
   entries: readonly CoalescablePurchase[],
 ): PurchaseInformation[] {
-  const byOrderId = new Map<string, PurchaseInformation[]>();
+  const byOrderId = new Map<string, CoalescablePurchase[]>();
   const scopeByOrderId = new Map<string, string | null>();
   const deferred: PurchaseInformation[] = [];
   for (const entry of entries) {
     const bucket = byOrderId.get(entry.purchase.orderId);
     if (!bucket) {
-      byOrderId.set(entry.purchase.orderId, [entry.purchase]);
+      byOrderId.set(entry.purchase.orderId, [entry]);
       scopeByOrderId.set(entry.purchase.orderId, entry.accessMethod);
       continue;
     }
@@ -1374,18 +1380,29 @@ export function coalescePurchasesByStableId(
       deferred.push(entry.purchase);
       continue;
     }
-    bucket.push(entry.purchase);
+    bucket.push(entry);
   }
   const merged: PurchaseInformation[] = [];
   for (const group of byOrderId.values()) {
     const base = group[0];
     if (!base || group.length === 1) {
-      if (base) merged.push(base);
+      if (base) merged.push(base.purchase);
       continue;
     }
-    let canonical: PurchaseInformation = { ...base, items: [...base.items] };
+    const scope = scopeByOrderId.get(base.purchase.orderId) ?? null;
+    let canonical: PurchaseInformation = {
+      ...base.purchase,
+      items: [...base.purchase.items],
+    };
+    let canonicalAccessMethod = base.accessMethod;
     for (const incoming of group.slice(1)) {
-      canonical = mergeTwoPurchases(canonical, incoming);
+      canonical = mergeTwoPurchases(
+        canonical,
+        incoming.purchase,
+        { accessMethod: canonicalAccessMethod, scope },
+        { accessMethod: incoming.accessMethod, scope },
+      );
+      canonicalAccessMethod = canonicalAccessMethod ?? incoming.accessMethod;
     }
     merged.push(canonical);
   }
@@ -1393,73 +1410,129 @@ export function coalescePurchasesByStableId(
   return merged;
 }
 
-function mergeScalarField<T extends string | number>(
-  current: T | null | undefined,
-  incoming: T | null | undefined,
-): T | null {
-  const currentValue = current ?? null;
-  const incomingValue = incoming ?? null;
-  if (currentValue !== null && incomingValue !== null && currentValue !== incomingValue) {
-    return null;
-  }
-  return currentValue ?? incomingValue;
+type ItemSnapshotInput = {
+  readonly items: readonly PurchaseItem[];
+  readonly accessMethod: string | null;
+  readonly scope: string | null;
+};
+
+function itemRawTupleKey(item: PurchaseItem): string {
+  return JSON.stringify([
+    item.giftName ?? null,
+    item.quantity ?? null,
+    item.amount ?? null,
+    item.rowTotal ?? null,
+    item.type ?? null,
+  ]);
 }
 
-function mergePurchaseItemPair(current: PurchaseItem, incoming: PurchaseItem): PurchaseItem {
-  const type = mergeScalarField(current.type, incoming.type);
-  return {
-    giftName: mergeScalarField(current.giftName, incoming.giftName),
-    quantity: mergeScalarField(current.quantity, incoming.quantity),
-    amount: mergeScalarField(current.amount, incoming.amount),
-    rowTotal: mergeScalarField(current.rowTotal, incoming.rowTotal),
-    type,
-    // Fulfillment is always recomputed from the merged raw type through
-    // the single mapper, so a conflict-nulled type can never keep stale
-    // physical/credit semantics.
-    fulfillment: mapItemFulfillment(type),
-  };
+function itemListMultisetKey(items: readonly PurchaseItem[]): string {
+  return JSON.stringify(items.map(itemRawTupleKey).sort());
+}
+
+function withRecomputedFulfillment(items: readonly PurchaseItem[]): PurchaseItem[] {
+  return items.map((item) => ({
+    giftName: item.giftName ?? null,
+    quantity: item.quantity ?? null,
+    amount: item.amount ?? null,
+    rowTotal: item.rowTotal ?? null,
+    type: item.type ?? null,
+    fulfillment: mapItemFulfillment(item.type),
+  }));
 }
 
 /**
- * Canonical item merge for repeated snapshots of the same order. Line items
- * carry no stable identity, so enrichment is positional only: an empty side
- * yields to the other, identical lists collapse, and same-length lists
- * merge pairwise by filling null fields where jointly present fields agree.
- * Jointly present differing fields null (the scalar-conflict precedent),
- * preserving unresolved conflict as uncertainty instead of picking a side.
- * Different-length snapshots have no exact unambiguous correspondence, so
- * the current list is kept without unioning by name/amount and without
- * duplicating gifts.
+ * Canonical item resolution for repeated snapshots of the same order.
+ * Array order is not line identity and names/amounts are not keys, so
+ * lists are compared as multisets of raw line tuples (derived fulfillment
+ * ignored): empty snapshots contribute nothing, equivalent lists collapse
+ * to the first display order, and non-equivalent nonempty lists keep every
+ * complete distinct list in a typed conflict with source/scope provenance
+ * instead of pairing or enriching individual lines. Alternatives deduplicate
+ * by multiset key; beyond the evidence bound the excess is cut and
+ * truncated marks partial evidence.
  */
-export function mergePurchaseItems(
-  current: readonly PurchaseItem[],
-  incoming: readonly PurchaseItem[],
-): PurchaseItem[] {
-  if (current.length === 0) {
-    return [...incoming];
+export function resolveOrderItemSnapshots(
+  snapshots: readonly ItemSnapshotInput[],
+): {
+  items: PurchaseItem[];
+  itemSourceConflict: PurchaseItemSourceConflict | null;
+} {
+  const nonempty = snapshots.filter((snapshot) => snapshot.items.length > 0);
+  if (nonempty.length === 0) {
+    return { items: [], itemSourceConflict: null };
   }
-  if (incoming.length === 0) {
-    return [...current];
+  const firstKey = itemListMultisetKey(nonempty[0]?.items ?? []);
+  const equivalent = nonempty.every(
+    (snapshot) => itemListMultisetKey(snapshot.items) === firstKey,
+  );
+  if (equivalent) {
+    return {
+      items: withRecomputedFulfillment(nonempty[0]?.items ?? []),
+      itemSourceConflict: null,
+    };
   }
-  if (JSON.stringify(current) === JSON.stringify(incoming)) {
-    return [...current];
-  }
-  if (current.length !== incoming.length) {
-    return [...current];
-  }
-  return current.map((item, index) => {
-    const counterpart = incoming[index];
-    if (!counterpart) {
-      return { ...item };
+  const seen = new Map<string, PurchaseItemSourceAlternative>();
+  for (const snapshot of nonempty) {
+    const key = itemListMultisetKey(snapshot.items);
+    if (!seen.has(key)) {
+      seen.set(key, {
+        items: withRecomputedFulfillment(snapshot.items),
+        accessMethod: snapshot.accessMethod,
+        scope: snapshot.scope,
+      });
     }
-    return mergePurchaseItemPair(item, counterpart);
-  });
+  }
+  const alternatives = [...seen.values()];
+  return {
+    items: [],
+    itemSourceConflict: {
+      alternatives: alternatives.slice(0, purchaseItemConflictAlternativeLimit),
+      truncated: alternatives.length > purchaseItemConflictAlternativeLimit,
+    },
+  };
+}
+
+function snapshotsOfPurchase(
+  purchase: PurchaseInformation,
+  provenance: { accessMethod: string | null; scope: string | null },
+): ItemSnapshotInput[] {
+  const snapshots: ItemSnapshotInput[] = [];
+  // Carried conflict alternatives re-enter as snapshots so a later agreeing
+  // list can never silently clear an earlier unresolved conflict.
+  for (const alternative of purchase.itemSourceConflict?.alternatives ?? []) {
+    snapshots.push({
+      items: alternative.items,
+      accessMethod: alternative.accessMethod,
+      scope: alternative.scope,
+    });
+  }
+  if (purchase.items.length > 0) {
+    snapshots.push({
+      items: purchase.items,
+      accessMethod: provenance.accessMethod,
+      scope: provenance.scope,
+    });
+  }
+  return snapshots;
 }
 
 function mergeTwoPurchases(
   current: PurchaseInformation,
   incoming: PurchaseInformation,
+  currentProvenance: { accessMethod: string | null; scope: string | null } = {
+    accessMethod: null,
+    scope: null,
+  },
+  incomingProvenance: { accessMethod: string | null; scope: string | null } = {
+    accessMethod: null,
+    scope: null,
+  },
 ): PurchaseInformation {
+  const resolvedItems = resolveOrderItemSnapshots([
+    ...snapshotsOfPurchase(current, currentProvenance),
+    ...snapshotsOfPurchase(incoming, incomingProvenance),
+  ]);
   const merged: PurchaseInformation = {
     ...current,
     eventId: current.eventId ?? incoming.eventId ?? null,
@@ -1473,8 +1546,17 @@ function mergeTwoPurchases(
     eventDate: current.eventDate ?? incoming.eventDate,
     eventUrl: current.eventUrl ?? incoming.eventUrl,
     createdAt: current.createdAt ?? incoming.createdAt,
-    items: mergePurchaseItems(current.items, incoming.items),
-    creditFulfillmentPolicy: current.creditFulfillmentPolicy ?? incoming.creditFulfillmentPolicy,
+    items: resolvedItems.items,
+    // Policy derives from the canonical list only. A conflicted order
+    // carries no order-wide host-credit assertion, and a canonical list
+    // without host_credit clears any stale carried policy. Absent keys stay
+    // absent so conflict-free records serialize unchanged.
+    ...(resolvedItems.itemSourceConflict !== null
+      ? { itemSourceConflict: resolvedItems.itemSourceConflict, creditFulfillmentPolicy: undefined }
+      : {
+        itemSourceConflict: undefined,
+        creditFulfillmentPolicy: creditFulfillmentPolicyForItems(resolvedItems.items),
+      }),
     payment: current.payment ?? incoming.payment,
     paymentValidationExpectation:
       current.paymentValidationExpectation ?? incoming.paymentValidationExpectation,
