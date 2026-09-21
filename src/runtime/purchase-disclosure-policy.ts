@@ -1,6 +1,8 @@
 import type {
+  HostCreditFulfillmentPolicy,
   PendingPaymentValidationExpectation,
   PurchaseInformation,
+  PurchaseItem,
   PurchaseItemFulfillment,
 } from '../core/information';
 
@@ -71,6 +73,23 @@ export function mapItemFulfillment(
     return { kind: 'physical', chosenBy: null, giftShipmentApplicable: true };
   }
   return { kind: 'unknown', chosenBy: null, giftShipmentApplicable: null };
+}
+
+/**
+ * Derives the scoped host-credit policy from nonconflicting item evidence:
+ * present only when at least one item maps to host_credit. A conflicted
+ * order (no authoritative list) must not carry an order-wide assertion, so
+ * callers pass the canonical list or nothing.
+ */
+export function creditFulfillmentPolicyForItems(
+  items: readonly PurchaseItem[],
+): HostCreditFulfillmentPolicy | undefined {
+  const hasHostCredit = items.some(
+    (item) => mapItemFulfillment(item.type).kind === 'host_credit',
+  );
+  return hasHostCredit
+    ? { chosenBy: 'host', mechanism: 'host_account_credit' }
+    : undefined;
 }
 
 export function hasPhysicalFulfillment(

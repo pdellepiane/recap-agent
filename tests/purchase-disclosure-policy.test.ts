@@ -126,7 +126,7 @@ describe('purchase disclosure policy', () => {
     }))).toBe(false);
   });
 
-  it('keeps shipping status for se_store gifts on shipping-only requests', async () => {
+  it('keeps shipping status plus authorized amounts for se_store gifts on shipping-only requests', async () => {
     const result = await executePurchase(
       purchase({ paymentStatus: 'approved', itemType: 'se_store' }),
       ['shipping'],
@@ -136,15 +136,16 @@ describe('purchase disclosure policy', () => {
     expect(result.items).toHaveLength(1);
     expect(result.items[0]).toMatchObject({
       giftName: 'Regalo',
+      quantity: 1,
+      amount: 250,
+      rowTotal: 250,
       type: 'se_store',
       fulfillment: { kind: 'physical', chosenBy: null, giftShipmentApplicable: true },
     });
-    expect(result.items[0]?.quantity).toBeNull();
-    expect(result.items[0]?.amount).toBeNull();
     expect(result.creditFulfillmentPolicy).toBeUndefined();
   });
 
-  it('exposes host choice without amounts or posting claims for credit gifts on shipping-only requests', async () => {
+  it('exposes host choice with preserved amounts and no posting claims for credit gifts on shipping-only requests', async () => {
     const result = await executePurchase(
       purchase({ paymentStatus: 'pending', itemType: 'credit' }),
       ['shipping'],
@@ -152,6 +153,9 @@ describe('purchase disclosure policy', () => {
 
     expect(result.items).toHaveLength(1);
     expect(result.items[0]).toMatchObject({
+      quantity: 1,
+      amount: 250,
+      rowTotal: 250,
       type: 'credit',
       fulfillment: { kind: 'host_credit', chosenBy: 'host', giftShipmentApplicable: false },
     });
@@ -169,11 +173,19 @@ describe('purchase disclosure policy', () => {
     expect(result.items).toHaveLength(2);
     expect(result.items[0]?.fulfillment?.kind).toBe('physical');
     expect(result.items[1]?.fulfillment?.kind).toBe('host_credit');
-    expect(result.items[0]?.amount).toBe(120);
+    expect(result.items[0]?.amount).toBe(150);
+    expect(result.items[1]?.amount).toBe(80);
     expect(result.creditFulfillmentPolicy).toEqual({
       chosenBy: 'host',
       mechanism: 'host_account_credit',
     });
+  });
+
+  it('projects identical items for summary and shipping aspects of the same record', async () => {
+    const summary = await executePurchase(mixedPurchase(), ['summary']);
+    const shipping = await executePurchase(mixedPurchase(), ['shipping']);
+
+    expect(shipping.items).toEqual(summary.items);
   });
 
   it('omits item fulfillment on payment-only requests', async () => {
@@ -233,12 +245,13 @@ function mixedPurchase(): PurchaseInformation {
   const base = purchase({ paymentStatus: 'approved', itemType: 'se_store' });
   return {
     ...base,
+    grandTotal: 230,
     items: [
       {
         giftName: 'Juego de sábanas',
         quantity: 1,
-        amount: 120,
-        rowTotal: 120,
+        amount: 150,
+        rowTotal: 150,
         type: 'se_store',
       },
       {

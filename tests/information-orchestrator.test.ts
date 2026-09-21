@@ -2007,8 +2007,9 @@ describe('A gift fulfillment projection by aspect', () => {
     return {
       ...giftPurchase(),
       shippingStatus: null,
+      grandTotal: 230,
       items: [
-        { giftName: 'Juego de sábanas', quantity: 1, amount: 120, rowTotal: 120, type: 'se_store' },
+        { giftName: 'Juego de sábanas', quantity: 1, amount: 150, rowTotal: 150, type: 'se_store' },
         { giftName: 'Aporte luna de miel', quantity: 1, amount: 80, rowTotal: 80, type: 'credit' },
       ],
     };
@@ -2043,7 +2044,7 @@ describe('A gift fulfillment projection by aspect', () => {
     return projected;
   }
 
-  it('projects names, types and fulfillment on shipping-only requests without summary', async () => {
+  it('projects names, amounts and fulfillment on shipping-only requests without summary', async () => {
     const agentGateway = new FakeAgentGateway();
     agentGateway.giftResult = {
       status: 'success',
@@ -2055,16 +2056,21 @@ describe('A gift fulfillment projection by aspect', () => {
     expect(projected.items).toHaveLength(2);
     expect(projected.items[0]).toMatchObject({
       giftName: 'Juego de sábanas',
+      quantity: 1,
+      amount: 150,
+      rowTotal: 150,
       type: 'se_store',
       fulfillment: { kind: 'physical', chosenBy: null, giftShipmentApplicable: true },
     });
     expect(projected.items[1]).toMatchObject({
       giftName: 'Aporte luna de miel',
+      quantity: 1,
+      amount: 80,
+      rowTotal: 80,
       type: 'credit',
       fulfillment: { kind: 'host_credit', chosenBy: 'host', giftShipmentApplicable: false },
     });
-    // Shipping-only projections omit amounts; the credit policy rides once.
-    expect(projected.items[0]?.amount).toBeNull();
+    // Authorized amounts survive shipping context; the credit policy rides once.
     expect(projected.creditFulfillmentPolicy).toEqual({
       chosenBy: 'host',
       mechanism: 'host_account_credit',
@@ -2081,7 +2087,7 @@ describe('A gift fulfillment projection by aspect', () => {
     const projected = await completedPurchase(agentGateway, ['summary']);
 
     expect(projected.items).toHaveLength(2);
-    expect(projected.items[0]?.amount).toBe(120);
+    expect(projected.items[0]?.amount).toBe(150);
     expect(projected.items[0]?.fulfillment?.kind).toBe('physical');
     expect(projected.items[1]?.fulfillment?.kind).toBe('host_credit');
   });

@@ -28,6 +28,7 @@ import type {
 import type { KnowledgeRetrievalGateway } from './knowledge-retrieval-gateway';
 import type { ProviderGateway, UserEventLookupResult } from './provider-gateway';
 import {
+  creditFulfillmentPolicyForItems,
   hasPhysicalFulfillment,
   mapItemFulfillment,
   pendingPaymentValidationExpectation,
@@ -2517,28 +2518,25 @@ export class InformationOrchestrator {
             : 'recorded_method_no_currency' as const,
         }
       : null;
-    // Gift fulfillment evidence. Summary keeps full items with derived
-    // fulfillment; shipping-only requests expose names/types/fulfillment
-    // without amounts (raw type stays for provenance). All other aspects
-    // omit items so unrelated turns carry no fulfillment facts.
-    const projectedItems = aspectSet.has('summary')
+    // Gift fulfillment evidence. Summary and shipping share one item
+    // projection preserving authorized giftName, quantity, amount, rowTotal
+    // and raw type with derived fulfillment. Amounts support gift
+    // identification, matching and follow-ups; output relevance stays
+    // model-controlled and no amount-due arithmetic is performed here. All
+    // other aspects omit items so unrelated turns carry no fulfillment
+    // facts.
+    const includeItems = aspectSet.has('summary') || aspectSet.has('shipping');
+    const projectedItems = includeItems
       ? purchase.items.map((item) => ({
-        ...item,
+        giftName: item.giftName ?? null,
+        quantity: item.quantity ?? null,
+        amount: item.amount ?? null,
+        rowTotal: item.rowTotal ?? null,
+        type: item.type ?? null,
         fulfillment: mapItemFulfillment(item.type),
       }))
-      : aspectSet.has('shipping')
-        ? purchase.items.map((item) => ({
-          giftName: item.giftName ?? null,
-          quantity: null,
-          amount: null,
-          rowTotal: null,
-          type: item.type ?? null,
-          fulfillment: mapItemFulfillment(item.type),
-        }))
-        : [];
-    const hasHostCreditItem = projectedItems.some(
-      (item) => item.fulfillment?.kind === 'host_credit',
-    );
+      : [];
+    const creditFulfillmentPolicy = creditFulfillmentPolicyForItems(projectedItems);
 
     return {
       orderId: purchase.orderId,
@@ -2563,14 +2561,7 @@ export class InformationOrchestrator {
       eventUrl: purchase.eventUrl,
       createdAt: purchase.createdAt,
       items: projectedItems,
-      ...(hasHostCreditItem
-        ? {
-          creditFulfillmentPolicy: {
-            chosenBy: 'host' as const,
-            mechanism: 'host_account_credit' as const,
-          },
-        }
-        : {}),
+      ...(creditFulfillmentPolicy !== undefined ? { creditFulfillmentPolicy } : {}),
       ...(includePayment
         ? {
             payment: purchase.payment
