@@ -541,6 +541,58 @@ describe('Lane B cumulative-from-case-baseline ledger (2026-09-17 actionable-ans
     }).passed).toBe(true);
   });
 
+  it('a mid-thread handoff stays 1/1/0 at a read-only thanks turn (gift-handoff T0/T1/T2 shape)', async () => {
+    const store = new InMemoryEvalFixtureStateStore();
+    const runId = 'run-gift-handoff';
+    const caseId = 'live_behavior.gift_shipping_limitation_accepted_handoff_once';
+    // T0 boundary: no receipts yet, so the zero expectation passes.
+    const turn0 = makeSpeechTurn(0, '¿Cuándo lo despachan?');
+    attachEvaluationState(turn0, {
+      plan: getPrivatePlanForEvidence(turn0),
+      input: turn0.input,
+      outputText: turn0.outputText,
+      fixtureEffects: buildFixtureEffectSummariesFromReceipts(await store.list(runId, caseId)),
+    });
+    // T1 performs the single handoff write.
+    await store.record({
+      runId, caseId, scenario: 'purchase-gift-sestore-unknown', operation: 'handoff.write',
+      args: {}, resultStatus: 'success',
+    });
+    const turn1 = makeSpeechTurn(1, 'Sí, por favor comunícame con una persona.');
+    attachEvaluationState(turn1, {
+      plan: getPrivatePlanForEvidence(turn1),
+      input: turn1.input,
+      outputText: turn1.outputText,
+      fixtureEffects: buildFixtureEffectSummariesFromReceipts(await store.list(runId, caseId)),
+    });
+    // T2 is read-only thanks: the cumulative ledger still reads 1/1/0.
+    const turn2 = makeSpeechTurn(2, 'Gracias.');
+    attachEvaluationState(turn2, {
+      plan: getPrivatePlanForEvidence(turn2),
+      input: turn2.input,
+      outputText: turn2.outputText,
+      fixtureEffects: buildFixtureEffectSummariesFromReceipts(await store.list(runId, caseId)),
+    });
+    const turns = [turn0, turn1, turn2];
+    expect(evaluateFixtureEffectCountForTesting({
+      turns, operation: 'handoff.write', turnIndex: 0,
+      expectedAttempts: 0, expectedSuccesses: 0, expectedReplays: 0,
+    }).passed).toBe(true);
+    expect(evaluateFixtureEffectCountForTesting({
+      turns, operation: 'handoff.write', turnIndex: 1,
+      expectedAttempts: 1, expectedSuccesses: 1, expectedReplays: 0,
+    }).passed).toBe(true);
+    expect(evaluateFixtureEffectCountForTesting({
+      turns, operation: 'handoff.write', turnIndex: 2,
+      expectedAttempts: 1, expectedSuccesses: 1, expectedReplays: 0,
+    }).passed).toBe(true);
+    // A per-turn-zero reading of the final snapshot is wrong and fails.
+    expect(evaluateFixtureEffectCountForTesting({
+      turns, operation: 'handoff.write', turnIndex: 2,
+      expectedAttempts: 0, expectedSuccesses: 0, expectedReplays: 0,
+    }).passed).toBe(false);
+  });
+
   it('missing receipt collection is unknown, never a passing zero', () => {
     const turn = makeSpeechTurn(0, 'hola');
     const bare = { ...JSON.parse(JSON.stringify(turn)) } as EvalTurnResult;
