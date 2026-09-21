@@ -345,10 +345,11 @@ describe('RSVP verified effect twins', () => {
     expect(result.outbound.text).toBe('TWIN_MODEL_SENTINEL');
   });
 
-  it('(j) completed write survives phone-scoped-miss escalation as typed facts', async () => {
-    // The event question misses on the trusted-phone scope and escalates,
-    // but the verified RSVP write already ran: the terminal reply carries
-    // both the completed-action typed evidence and the terminal auth facts.
+  it('(j) completed write survives a phone-scoped miss without escalation as typed facts', async () => {
+    // The event question misses on the trusted-phone scope; the miss no
+    // longer escalates, but the verified RSVP write already ran: the
+    // normal reply carries both the completed-action typed evidence and
+    // the miss, with no terminal auth outcome.
     const store = new InMemoryRsvpEffectStore();
     const runtime = new TwinRuntime([twinExtraction({
       action: 'attending',
@@ -376,12 +377,8 @@ describe('RSVP verified effect twins', () => {
     expect(request?.rsvpWorkCompleted).toBe(true);
     const note = request?.errorMessage ?? '';
     expect(note).toContain('"verification_status":"verified"');
-    expect(request?.authenticationOutcome).toMatchObject({
-      status: 'terminal',
-      reason: 'phone_information_not_found',
-      handoffOutcome: 'handoff_requested',
-    });
-    expect(request?.handoffOutcome).toBe('handoff_requested');
+    expect(request?.authenticationOutcome ?? null).toBeNull();
+    expect(request?.handoffOutcome ?? null).toBeNull();
     expect(result.outbound.text).toBe('TWIN_MODEL_SENTINEL');
   });
 

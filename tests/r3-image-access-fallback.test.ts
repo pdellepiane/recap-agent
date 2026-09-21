@@ -545,10 +545,13 @@ describe('R3 support-acknowledgment image recovery', () => {
   function supportAckRuntime(): R3StubRuntime {
     const runtime = new R3StubRuntime();
     runtime.scripted = {
+      // Non-receipt acknowledgment tuple: receipt tasks execute discovery
+      // reads instead of acknowledging, so recovery coverage uses a tuple
+      // that stays on the acknowledgment path.
       supportAct: {
         kind: 'provide_detail',
-        topic: 'payment_proof',
-        detail: 'submission_reported',
+        topic: 'mailbox_capacity',
+        detail: 'mailbox_full',
         eventReference: null,
         personReference: null,
       },
@@ -561,7 +564,7 @@ describe('R3 support-acknowledgment image recovery', () => {
     runtime.failures = [typedDownloadFailure()];
     const { service, imageStore } = serviceWith(runtime);
     const image = normalizeInboundImage({ data: JPEG_MINIMAL, mime_type: 'image/jpeg' });
-    const response = await service.handleTurn(inboundWithImage(image, 'Es mi comprobante de pago'));
+    const response = await service.handleTurn(inboundWithImage(image, 'Mi bandeja está llena, te mando captura'));
 
     // A delivered model-authored reply, never the blank failure delivery.
     expect(response.outbound.delivery.action).toBe('send');
@@ -577,8 +580,8 @@ describe('R3 support-acknowledgment image recovery', () => {
     expect(retry?.imageUrlAttachments ?? []).toEqual([]);
     expect(retry?.imageEvidence).toMatchObject({ status: 'unavailable', reason: 'image_unavailable' });
     // The retry carries the original user text and the support facts.
-    expect(retry?.userMessage).toBe('Es mi comprobante de pago');
-    expect(response.plan.conversation_summary).toContain('comprobante');
+    expect(retry?.userMessage).toBe('Mi bandeja está llena, te mando captura');
+    expect(response.plan.conversation_summary).toContain('buzón');
     // This stayed the acknowledgment path, not the information executor.
     expect(response.trace.operational_note).toContain('acknowledged from scoped evidence');
     // Both attempts stay recorded with the failed attempt in totals.
@@ -595,7 +598,7 @@ describe('R3 support-acknowledgment image recovery', () => {
     runtime.failures = [new Error('server error')];
     const { service } = serviceWith(runtime);
     const image = normalizeInboundImage({ data: JPEG_MINIMAL, mime_type: 'image/jpeg' });
-    const response = await service.handleTurn(inboundWithImage(image, 'Es mi comprobante de pago'));
+    const response = await service.handleTurn(inboundWithImage(image, 'Mi bandeja está llena, te mando captura'));
 
     // Explicit delivery failure, never fake silence and never an
     // unavailable-image diagnosis of a generic outage.

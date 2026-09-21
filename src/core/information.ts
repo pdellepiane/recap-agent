@@ -162,14 +162,6 @@ export const pendingInformationRequestSchema = z.discriminatedUnion('kind', [
   }),
   purchaseInformationRequestSchema.extend({
     requestId: z.string().min(1),
-    /**
-     * Receipt-discovery fan-out pins the authorized source this request
-     * must read. Set only by the bounded implicit-receipt expansion in
-     * agent-service after aspect normalization; absent everywhere else, so
-     * the aspect-derived route selection stays untouched. Never populated
-     * from model extraction: the model does not control read routing.
-     */
-    pinnedSource: z.enum(purchaseResourceValues).optional(),
   }),
 ]);
 
@@ -349,6 +341,20 @@ export type KnowledgeEvidence = {
  * label and score carries no amount for purchase entries. Order ids, phones,
  * emails and reference values never travel (reference presence only).
  */
+export type PurchaseFactItemEvidence = {
+  name: string | null;
+  quantity: number | null;
+  amount: number | null;
+  rowTotal: number | null;
+  fulfillment: PurchaseItemFulfillmentKind | null;
+};
+
+export type PurchaseFactDedicationEvidence = {
+  message: string | null;
+  sendPhysical: boolean | null;
+  physicalStatus: string | null;
+};
+
 export type PurchaseFactEvidence = {
   eventLabel: string | null;
   total: number | null;
@@ -356,9 +362,18 @@ export type PurchaseFactEvidence = {
   currencySymbol: string | null;
   paymentMethod: string | null;
   paymentStatus: string | null;
+  shippingStatus: string | null;
   eventDate: string | null;
   createdAt: string | null;
   referencePresent: boolean;
+  /**
+   * Dedication as projected to the responder: present only when the
+   * dedication aspect carried it, so the judge verifies quotes against
+   * responder-visible text instead of flagging them as invented.
+   */
+  dedication: PurchaseFactDedicationEvidence | null;
+  /** Per-item facts as projected: empty when aspects omit items. */
+  items: PurchaseFactItemEvidence[];
 };
 
 export const purchaseItemFulfillmentKindValues = [

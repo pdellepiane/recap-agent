@@ -15,8 +15,6 @@ import {
   humanHelpIntentSchema,
   informationSupportActSchema,
   type InformationSupportAct,
-  type PurchaseAspect,
-  type PurchaseResource,
 } from '../core/information';
 import {
   rsvpActionValues,
@@ -177,28 +175,13 @@ export type OpenAiInformationRequest = z.infer<
 >;
 
 /**
- * Typed purchase-route agreement for the extraction contract. Requested gift
- * detail (dedication, thanks, or the requested payment time in
- * payment_details) reads through the gift-detail route; every other aspect
- * keeps the declared resource. Typed aspects only, never the user sentence.
- * Single partition: this never fans out to both routes.
+ * Typed source agreement for the extraction contract. The structured
+ * resource (orders/gift_purchases) names the backend that owns the record
+ * and travels unchanged from extraction through normalization to execution
+ * on both access paths; aspects name the facts that answer the question,
+ * never the route. No aspect-based override exists: adding one recreates
+ * the conflicting source-selection contract.
  */
-export const giftDetailAspectValues = [
-  'dedication',
-  'thanks',
-  'payment_details',
-] as const satisfies readonly PurchaseAspect[];
-
-export function resolvePurchaseResourceForAspects(
-  resource: PurchaseResource,
-  aspects: readonly PurchaseAspect[],
-): PurchaseResource {
-  const needsGiftDetail = aspects.some((aspect) =>
-    (giftDetailAspectValues as readonly string[]).includes(aspect),
-  );
-  return needsGiftDetail ? 'gift_purchases' : resource;
-}
-
 export const extractionSchema = z.object({
   reportedEventRole: z.enum(['host', 'guest']).nullable().optional(),
   actionIntent: z.enum(actionIntentValues).nullable(),

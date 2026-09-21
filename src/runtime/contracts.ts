@@ -305,13 +305,6 @@ export type ComposeReplyRequest = {
     publicInformationRequestsRemaining: number;
     handoffOutcome: 'handoff_requested' | 'handoff_failed' | 'handoff_unknown' | 'handoff_duplicate' | 'handoff_skipped_missing_phone' | 'handoff_skipped_unavailable' | null;
     noFurtherCredentialRequests?: boolean;
-    /**
-     * C1 scoped-search framing. True when the terminal outcome follows a
-     * phone-scoped lookup miss (no match in scope), not an account or
-     * credential verdict. The reply must describe the scoped limitation,
-     * never an account absence or a global non-existence claim.
-     */
-    scopedPhoneSearchMiss?: boolean;
   } | null;
   rsvpPhoneEvidence?: RsvpPhoneReplyEvidence | null;
   /**

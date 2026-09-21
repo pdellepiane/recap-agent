@@ -155,7 +155,6 @@ import type {
   ProviderQueryIntent,
   ProviderReference,
 } from './extraction-schemas';
-import { resolvePurchaseResourceForAspects } from './extraction-schemas';
 import { parseInternationalPhone, splitInternationalPhone } from './phone';
 import type { PromptLoader } from './prompt-loader';
 import type { ProviderGateway } from './provider-gateway';
@@ -225,6 +224,7 @@ import {
   projectCustomerContext,
   resolveRelevantTarget,
   selectEnrichmentTargets,
+  selectImplicitGiftDetailOrderIds,
   type CustomerContextProjection,
   type CustomerContextSnapshot,
   type CustomerEnrichmentSummary,
@@ -4462,6 +4462,20 @@ export class AgentService {
       act?.kind === 'defer_submission';
   }
 
+  /**
+   * Recognized receipt-assistance task: the extractor confirmed a
+   * payment-proof submission as provided detail. This task reads both
+   * authorized sources through the existing executor; it is never a
+   * bare acknowledgment, even when the extractor emitted no purchase
+   * request alongside it.
+   */
+  private isReceiptDiscoveryTask(
+    act: InformationSupportAct | null | undefined,
+  ): boolean {
+    return act?.kind === 'provide_detail' &&
+      (act.topic === 'payment_proof' || act.detail === 'submission_reported');
+  }
+
   private shouldUseContextualClarification(
     messageContext: TurnMessageContext,
     plan: PlanSnapshot,
@@ -7122,6 +7136,15 @@ export class AgentService {
       }
       return [];
     })));
+    // Same-turn gift-detail follow-up: a discovery-identified single
+    // orders-route record missing requested gift-only facts (dedication,
+    // thanks, payment time) is read through the same-scope gift endpoint
+    // with its returned ID before the reply composes. Explicit targets
+    // keep bound priority; ambiguity enriches nothing.
+    const implicitGiftDetailOrderIds = selectImplicitGiftDetailOrderIds({
+      requests: purchaseRequests,
+      results: args.informationResults,
+    });
     const enrichmentTargets = selectEnrichmentTargets({
       knownOrderIds,
       knownEventIds,
@@ -7129,6 +7152,7 @@ export class AgentService {
       relevantEventIds: resolvedEventIds,
       alreadyDetailedOrderIds: detailedOrderIds,
       alreadyDetailedEventIds: detailedEventIds,
+      implicitOrderIds: implicitGiftDetailOrderIds,
     });
     let enrichedResults = args.informationResults;
     let enrichment: CustomerEnrichmentSummary | null = null;
@@ -7604,6 +7628,10 @@ export class AgentService {
     const currentNode: DecisionNode = 'resolver_consultas_informativas';
     const supportAcknowledgment = this.isSupportAcknowledgment(args.extraction.supportAct) &&
       args.extraction.informationRequests.length === 0 && args.extraction.actionIntent === null;
+    // A recognized receipt task is never a bare acknowledgment: its
+    // synthesized discovery reads survive clearing and the ack shortcut.
+    const receiptDiscoveryTask = this.isReceiptDiscoveryTask(args.extraction.supportAct) &&
+      args.extraction.informationRequests.length === 0 && args.extraction.actionIntent === null;
     const resumeNode =
       args.workingPlan.current_node === currentNode
         ? args.workingPlan.information_state.resume_node
@@ -7619,14 +7647,14 @@ export class AgentService {
       planWithContact.information_state.pending_requests,
       args.extraction.informationRequests,
     );
-    requests = this.normalizePurchaseDetailRoute(requests);
-    requests = this.expandReceiptDiscoveryRequests(requests, args.extraction);
+    requests = this.defaultPurchaseRequestAspects(requests);
+    requests = this.expandReceiptDiscoveryRequests(requests, args.extraction, args.inbound.text);
     const lastCompletedRequest =
       planWithContact.information_state.last_completed_request;
     const supportContinuesPurchaseThread = supportAcknowledgment &&
       (lastCompletedRequest?.kind === 'purchase' ||
         lastCompletedRequest?.kind === 'associated_event');
-    if (supportAcknowledgment && !supportContinuesPurchaseThread) requests = [];
+    if (supportAcknowledgment && !supportContinuesPurchaseThread && !receiptDiscoveryTask) requests = [];
     // A typed purchase-status policy question is a record question, not a
     // KB question: synthesize a purchase status read so the verified record
     // outcome reaches the reply through the existing aspect machinery. Other
@@ -7752,7 +7780,7 @@ export class AgentService {
       }
     }
 
-    if (supportAcknowledgment && !supportContinuesPurchaseThread) {
+    if (supportAcknowledgment && !supportContinuesPurchaseThread && !receiptDiscoveryTask) {
       // Actionable-answer repair: an unresolved purchase/event-detail
       // request plus sufficient newly supplied typed context (event or
       // person reference, role correction, event reference, or a supplied
@@ -8058,31 +8086,11 @@ export class AgentService {
         informationSummaries,
       );
 
-      const scopedRequests = informationResults.filter((result) => result.kind !== 'faq');
-      const onlyPhoneScopedMisses = scopedRequests.length > 0 && scopedRequests.every(
-        (result) => result.status === 'failed' && result.failureKind === 'not_found' &&
-          (result.accessMethod === 'trusted_phone_guest' || result.accessMethod === 'trusted_phone_purchase'),
-      );
-      // Narrowed auto-handoff on phone-scoped miss: never escalate when
-      // retained media can answer the turn, and only escalate when the
-      // authorization genuinely involves user-supplied identity (inbound
-      // phone, active auth, or an explicit human request). Anonymous misses
-      // and media-answerable turns fall through to the normal reply path.
-      const hasRetainedMediaForMiss = Boolean(args.imageTurn) ||
-        (planForInformation.image_attachments?.length ?? 0) > 0 ||
-        (args.extraction.imageReference != null && args.extraction.imageReference.status !== 'none');
-      const missRequiresUserAuthorization = Boolean(args.inbound.contactPhone?.trim()) ||
-        planForInformation.user_auth.status !== 'none' ||
-        this.isExplicitHumanRequest(planForInformation, args.extraction);
-      if (onlyPhoneScopedMisses && !hasRetainedMediaForMiss && missRequiresUserAuthorization) {
-        return await this.escalateInformationAuthentication({
-          ...args,
-          plan: planForInformation,
-          reason: 'phone_information_not_found',
-          informationExecution: informationSummaries,
-        });
-      }
-
+      // Read outcomes never authorize writes: a phone-scoped miss is
+      // scoped absence evidence for the normal shared reply, not consent
+      // to human support. Possession of a phone authorizes the read, never
+      // the escalation. Handoff executes only through explicit
+      // human-help/accepted-offer semantics and the idempotent executor.
       const completedThroughTrustedPhone = informationResults.some(
         (result) =>
           result.status === 'completed' &&
@@ -9187,33 +9195,32 @@ export class AgentService {
   }
 
   /**
-   * Packet C purchase route normalization. Requested answer aspects are
-   * preserved verbatim through normalization, including payment_details:
-   * the explicit payment-time question must survive extraction-to-reply.
-   * The read partition is derived from the typed aspects through the shared
-   * extraction-contract helper: gift detail aspects (dedication, thanks,
-   * payment_details) read gift_purchases, every other question keeps its
-   * declared resource. One partition per request, never both from this step;
-   * no aspect is ever
-   * removed to force a route. The bounded implicit-receipt task fans out to
-   * both authorized sources afterwards through expandReceiptDiscoveryRequests
-   * (two pinned requests), which is the only dual-source path. Unknown payment time stays unknown
-   * downstream; the reply addresses that uncertainty instead of inferring
-   * it from event time or order creation.
+   * Packet C purchase normalization. Requested answer aspects are preserved
+   * verbatim through normalization, including payment_details: the explicit
+   * payment-time question must survive extraction-to-reply. The structured
+   * resource is preserved verbatim as well: it names the owning backend,
+   * and no aspect derivation overrides it here. One partition per request,
+   * never both from this step. The bounded receipt-assistance task fans out
+   * to both authorized sources afterwards through
+   * expandReceiptDiscoveryRequests (two ordinary requests), which is the
+   * only dual-source path. Unknown payment time stays unknown downstream;
+   * the reply addresses that uncertainty instead of inferring it from
+   * event time or order creation.
    */
   /**
-   * Implicit receipt discovery for the existing multi-request executor. A
-   * recognizable receipt arrives as the structured implicit task
-   * (supportAct provide_detail/payment_proof/submission_reported) with
-   * purchase information requests but no identified record or source. That
-   * task reads both authorized sources — orders and gift_purchases — through
-   * two requests so a gift-only match is never missed because orders was
-   * the last route. An already identified record (explicit orderId) refreshes
-   * its single applicable source once: no fan-out. Each request keeps its
-   * aspects verbatim; the complementary clone pins its source so the
-   * orchestrator reaches that route even when the shared aspects alone
-   * would select the other partition. Capability and authorization checks
-   * stay per-request in the orchestrator, and the per-turn scoped lookup map
+   * Receipt discovery for the existing multi-request executor. A recognized
+   * receipt-assistance task (supportAct provide_detail with the
+   * payment_proof topic or the submission_reported detail) and no
+   * established record reads both authorized sources — orders and
+   * gift_purchases — through two ordinary requests, so a gift-only match is
+   * never missed because orders was the only route read. The executor
+   * honors each request's structured resource; no pin or aspect derivation
+   * exists. An already identified record (explicit orderId) refreshes its
+   * single applicable source once: no fan-out. When the extractor
+   * recognized the receipt but emitted no purchase request at all, both
+   * discovery reads are synthesized from the typed task instead of leaving
+   * the receipt undiscovered. Capability and authorization checks stay
+   * per-request in the orchestrator, and the per-turn scoped lookup map
    * still collapses repeated scoped reads. Typed evidence only: receipt
    * names, phones and account numbers never establish access, and no
    * keyword or pixel inspection happens here.
@@ -9221,54 +9228,81 @@ export class AgentService {
   private expandReceiptDiscoveryRequests(
     requests: PendingInformationRequest[],
     extraction: ExtractionResult,
+    inboundText: string,
   ): PendingInformationRequest[] {
-    const act = extraction.supportAct;
-    const isReceiptDiscovery = act?.kind === 'provide_detail' &&
-      act.topic === 'payment_proof' &&
-      act.detail === 'submission_reported';
-    if (!isReceiptDiscovery) return requests;
-    const extractedUnidentified = extraction.informationRequests.some((request) =>
-      request.kind === 'purchase' &&
-      (request.orderId === null || request.orderId === undefined || request.orderId.trim().length === 0));
-    if (!extractedUnidentified) return requests;
-    const unidentified = requests.filter((request) =>
-      request.kind === 'purchase' &&
-      (request.orderId === null || request.orderId === undefined || request.orderId.trim().length === 0));
-    if (unidentified.length === 0) return requests;
-    const resources = new Set(unidentified.map((request) =>
-      request.kind === 'purchase' ? request.resource : null));
+    if (!this.isReceiptDiscoveryTask(extraction.supportAct)) return requests;
+    const hasOrderId = (orderId: string | null | undefined): boolean =>
+      orderId !== null && orderId !== undefined && orderId.trim().length > 0;
+    const identified = requests.some((request) =>
+      request.kind === 'purchase' && hasOrderId(request.orderId));
+    if (identified) return requests;
+    const unidentified = requests.filter((
+      request,
+    ): request is Extract<PendingInformationRequest, { kind: 'purchase' }> =>
+      request.kind === 'purchase');
+    const nextRequestId = (base: string): string => {
+      let requestId = `${base}:receipt-discovery`;
+      let suffix = 2;
+      while ([...requests, ...unidentified].some((request) => request.requestId === requestId)) {
+        requestId = `${base}:receipt-discovery-${suffix}`;
+        suffix += 1;
+      }
+      return requestId;
+    };
+    if (unidentified.length === 0) {
+      // Recognized receipt, no purchase request emitted: synthesize both
+      // authorized discovery reads from the typed task. Summary carries
+      // the item facts used to match the receipt; payment_status carries
+      // the backend state the reply reports. The query is internal
+      // evidence (hashed, never shown); image-only turns carry no text.
+      const query = inboundText.trim().length > 0
+        ? inboundText
+        : 'Comprobante recibido: identificar la compra y su estado.';
+      const baseId = `information-${requests.length + 1}`;
+      return [...requests, {
+        kind: 'purchase' as const,
+        resource: 'orders' as const,
+        query,
+        orderId: null,
+        aspects: ['summary', 'payment_status'],
+        sensitiveFields: [],
+        authAction: 'none' as const,
+        requestId: nextRequestId(baseId),
+      }, {
+        kind: 'purchase' as const,
+        resource: 'gift_purchases' as const,
+        query,
+        orderId: null,
+        aspects: ['summary', 'payment_status'],
+        sensitiveFields: [],
+        authAction: 'none' as const,
+        requestId: nextRequestId(`${baseId}-gift`),
+      }];
+    }
+    const resources = new Set(unidentified.map((request) => request.resource));
     if (resources.has('orders') && resources.has('gift_purchases')) return requests;
     const missing: 'orders' | 'gift_purchases' = resources.has('gift_purchases')
       ? 'orders'
       : 'gift_purchases';
-    const template = unidentified.find((request) =>
-      request.kind === 'purchase' && request.resource !== missing) ??
+    const template = unidentified.find((request) => request.resource !== missing) ??
       unidentified[0];
-    if (!template || template.kind !== 'purchase') return requests;
-    let requestId = `${template.requestId}:receipt-discovery`;
-    let suffix = 2;
-    while (requests.some((request) => request.requestId === requestId)) {
-      requestId = `${template.requestId}:receipt-discovery-${suffix}`;
-      suffix += 1;
-    }
+    if (!template) return requests;
     return [...requests, {
       ...template,
       resource: missing,
-      pinnedSource: missing,
-      requestId,
+      requestId: nextRequestId(template.requestId),
     }];
   }
 
-  private normalizePurchaseDetailRoute(
+  private defaultPurchaseRequestAspects(
     requests: PendingInformationRequest[],
   ): PendingInformationRequest[] {
     return requests.map((request) => {
       if (request.kind !== 'purchase') return request;
-      const aspects = request.aspects.length > 0 ? request.aspects : (['summary'] as const);
+      if (request.aspects.length > 0) return request;
       return {
         ...request,
-        aspects: [...aspects],
-        resource: resolvePurchaseResourceForAspects(request.resource, aspects),
+        aspects: ['summary'],
       };
     });
   }
@@ -9607,16 +9641,11 @@ export class AgentService {
         // C1 terminal-handoff truthfulness: the pending protected requests
         // are retained in state (this path never clears them), so the reply
         // must preserve the pending question instead of claiming closure.
-        // `scopedPhoneSearchMiss` frames phone_information_not_found as a
-        // scoped-lookup limitation, never an account verdict.
         protectedRequestsClosed: false,
         publicInformationRequestsRemaining: args.informationExecution?.filter(
           (summary) => summary.kind === 'faq' && summary.status === 'completed',
         ).length ?? 0,
         handoffOutcome,
-        ...(args.reason === 'phone_information_not_found'
-          ? { scopedPhoneSearchMiss: true }
-          : {}),
       },
       handoffOutcome,
       informationResults: [],

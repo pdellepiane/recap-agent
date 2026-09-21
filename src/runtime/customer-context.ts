@@ -2,6 +2,8 @@ import type {
   CartInformation,
   InformationExecutionSummary,
   InformationTaskResult,
+  PendingInformationRequest,
+  PurchaseAspect,
   PurchaseInformation,
   PurchaseItem,
   PurchaseItemSourceAlternative,
@@ -945,6 +947,60 @@ export function stripTransactionIdForModel(purchase: PurchaseInformation): Purch
 }
 
 /**
+ * Aspects whose facts live only on the gift route (dedication, thanks, or
+ * the requested payment time). Used as a fact-need signal for same-turn
+ * gift-detail enrichment, never as a route override: the request reads its
+ * own declared resource first, and only a uniquely identified orders-route
+ * record missing these facts triggers one follow-up gift read.
+ */
+const giftFactAspectValues: ReadonlySet<PurchaseAspect> = new Set([
+  'dedication',
+  'thanks',
+  'payment_details',
+]);
+
+/**
+ * Same-turn gift-detail follow-up for a discovery-identified record. When
+ * the turn's purchase aspects need gift-only facts, exactly one order ID
+ * is known from completed orders-route reads, and that record lacks the
+ * needed facts, its ID qualifies for one same-scope gift read through the
+ * existing enrichment executor. Multiple candidates qualify nothing: the
+ * reply asks the distinction instead of auto-selecting. Gift-route records
+ * already carry their facts and qualify nothing. Pure selection; the
+ * executor still enforces capability, scope, bounds and deadline.
+ */
+export function selectImplicitGiftDetailOrderIds(args: {
+  readonly requests: readonly PendingInformationRequest[];
+  readonly results: readonly InformationTaskResult[];
+}): readonly string[] {
+  const needsGiftFacts = args.requests.some((request) =>
+    request.kind === 'purchase' &&
+    request.aspects.some((aspect) => giftFactAspectValues.has(aspect)));
+  if (!needsGiftFacts) return [];
+  const ordersPurchases = args.results.flatMap((result) => {
+    if (result.status !== 'completed' || result.kind !== 'purchase') return [];
+    const route = result.lookupResource ?? result.resource;
+    if (route !== 'orders') return [];
+    return result.purchases.map((purchase) => purchase);
+  });
+  const distinctIds = Array.from(new Set(ordersPurchases.map((purchase) => purchase.orderId)));
+  if (distinctIds.length !== 1) return [];
+  const only = ordersPurchases.find((purchase) => purchase.orderId === distinctIds[0]);
+  if (!only) return [];
+  const needsDedication = args.requests.some((request) =>
+    request.kind === 'purchase' && request.aspects.includes('dedication'));
+  const needsThanks = args.requests.some((request) =>
+    request.kind === 'purchase' && request.aspects.includes('thanks'));
+  const needsPaymentTime = args.requests.some((request) =>
+    request.kind === 'purchase' && request.aspects.includes('payment_details'));
+  // Discovery already supplies the required facts: no follow-up read.
+  if (needsDedication && only.dedication == null) return [only.orderId];
+  if (needsThanks && (only.thanks == null && only.isThanked == null)) return [only.orderId];
+  if (needsPaymentTime && only.payment == null) return [only.orderId];
+  return [];
+}
+
+/**
  * S7 bounded target selection for linked-detail enrichment. Only explicitly
  * relevant IDs that are also already known through authorized reads qualify:
  * a name or recency never authorizes a lookup. Ambiguous turns (no explicit
@@ -953,7 +1009,9 @@ export function stripTransactionIdForModel(purchase: PurchaseInformation): Purch
  * beyond four reads the remainder stays discoverable through the same owner
  * later. No date cutoff: an explicit years-old target is retained. IDs whose
  * completed result already carries gift/event detail in this turn are
- * excluded so the same read is never re-issued.
+ * excluded so the same read is never re-issued. Implicit gift-detail IDs
+ * (uniquely identified orders-route records missing requested gift-only
+ * facts) follow the explicit IDs within the same bound.
  */
 export function selectEnrichmentTargets(args: {
   readonly knownOrderIds: readonly string[];
@@ -968,6 +1026,7 @@ export function selectEnrichmentTargets(args: {
    */
   readonly alreadyDetailedOrderIds?: readonly string[];
   readonly alreadyDetailedEventIds?: readonly (number | string)[];
+  readonly implicitOrderIds?: readonly string[];
 }): { readonly orderIds: readonly string[]; readonly eventIds: readonly (number | string)[]; readonly truncatedByBound: boolean } {
   const knownOrders = new Set(args.knownOrderIds);
   const knownEvents = new Set(args.knownEventIds.map((id) => String(id)));
@@ -978,12 +1037,16 @@ export function selectEnrichmentTargets(args: {
   const explicitOrders = Array.from(new Set(args.relevantOrderIds)).filter((id) =>
     knownOrders.has(id) && !alreadyDetailedOrders.has(id),
   );
+  const implicitOrders = Array.from(new Set(args.implicitOrderIds ?? [])).filter((id) =>
+    knownOrders.has(id) && !alreadyDetailedOrders.has(id) && !explicitOrders.includes(id),
+  );
   const explicitEvents = Array.from(new Set(args.relevantEventIds.map((id) => String(id)))).filter(
     (id) => knownEvents.has(id) && !alreadyDetailedEvents.has(id),
   ).map((id) => args.relevantEventIds.find((original) => String(original) === id) ?? id);
   const combined: Array<{ kind: 'order' | 'event'; id: string | number }> = [
     ...explicitOrders.map((id) => ({ kind: 'order' as const, id })),
     ...explicitEvents.map((id) => ({ kind: 'event' as const, id })),
+    ...implicitOrders.map((id) => ({ kind: 'order' as const, id })),
   ];
   const limited = combined.slice(0, enrichmentBounds.maxConcurrentReads);
   return {
@@ -1533,6 +1596,18 @@ function mergeTwoPurchases(
     ...snapshotsOfPurchase(current, currentProvenance),
     ...snapshotsOfPurchase(incoming, incomingProvenance),
   ]);
+  // Truncation is monotonic: a prior merge that dropped alternatives keeps
+  // the partial-coverage marker even when this merge's own window fits,
+  // since no authoritative replacement contract clears it. Only a merge
+  // that resolves to a single canonical list drops the conflict.
+  const mergedConflict = resolvedItems.itemSourceConflict !== null
+    ? {
+      ...resolvedItems.itemSourceConflict,
+      truncated: resolvedItems.itemSourceConflict.truncated ||
+        current.itemSourceConflict?.truncated === true ||
+        incoming.itemSourceConflict?.truncated === true,
+    }
+    : null;
   const merged: PurchaseInformation = {
     ...current,
     eventId: current.eventId ?? incoming.eventId ?? null,
@@ -1551,8 +1626,8 @@ function mergeTwoPurchases(
     // carries no order-wide host-credit assertion, and a canonical list
     // without host_credit clears any stale carried policy. Absent keys stay
     // absent so conflict-free records serialize unchanged.
-    ...(resolvedItems.itemSourceConflict !== null
-      ? { itemSourceConflict: resolvedItems.itemSourceConflict, creditFulfillmentPolicy: undefined }
+    ...(mergedConflict !== null
+      ? { itemSourceConflict: mergedConflict, creditFulfillmentPolicy: undefined }
       : {
         itemSourceConflict: undefined,
         creditFulfillmentPolicy: creditFulfillmentPolicyForItems(resolvedItems.items),

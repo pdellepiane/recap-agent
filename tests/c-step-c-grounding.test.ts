@@ -441,7 +441,7 @@ describe('C1 pending purchases guide window, balance and corrections without pro
     expect(note).toContain('no infieras invitaciones');
   });
 
-  it('frames a scoped phone miss as a lookup limitation with the query preserved', async () => {
+  it('answers a scoped phone miss from the normal reply path with zero writes', async () => {
     const { response, runtime } = await runInformationTurn({
       externalUserId: 'u-c1-missing',
       text: 'Quiero consultar si mi compra esta confirmada. No tengo una cuenta registrada.',
@@ -456,13 +456,16 @@ describe('C1 pending purchases guide window, balance and corrections without pro
         accessMethod: 'trusted_phone_purchase',
       }],
     });
-    const outcome = runtime.composeRequests[0]?.authenticationOutcome;
-    expect(outcome).toMatchObject({
-      status: 'terminal',
-      protectedRequestsClosed: false,
-      scopedPhoneSearchMiss: true,
+    // Read outcomes never authorize writes: no escalation, no terminal
+    // auth outcome; the miss travels as scoped evidence and the pending
+    // question is preserved for the conversation.
+    expect(response.plan.human_escalation.status).toBe('none');
+    expect(runtime.composeRequests[0]?.authenticationOutcome ?? null).toBeNull();
+    expect(runtime.composeRequests[0]?.handoffOutcome ?? null).toBeNull();
+    expect(runtime.composeRequests[0]?.informationResults?.[0]).toMatchObject({
+      status: 'failed',
+      failureKind: 'not_found',
     });
-    expect(response.plan.human_escalation.status).toBe('requested');
     expect(response.plan.information_state.pending_requests.map((request) => request.kind)).toContain('purchase');
   });
 });
@@ -1292,7 +1295,7 @@ describe('Packet C explicit payment time survives extraction-to-reply', () => {
     expect(model.order).not.toHaveProperty('paymentAt');
   });
 
-  it('coerces payment-time aspects to the gift route and keeps status-only on orders', async () => {
+  it('preserves the declared source for payment-time aspects without route coercion', async () => {
     const seen: Array<{ requests?: Array<{ kind?: string; resource?: string; aspects?: string[]; query?: string }> }> = [];
     const store = new InMemoryPlanStore();
     await store.save({
@@ -1344,8 +1347,10 @@ describe('Packet C explicit payment time survives extraction-to-reply', () => {
       contactPhone: '+51938389389',
     });
     const sent = seen[0]?.requests?.find((request) => request.kind === 'purchase');
+    // One source contract: aspects survive verbatim and the structured
+    // resource is preserved; no derivation overrides it.
     expect(sent?.aspects).toContain('payment_details');
-    expect(sent?.resource).toBe('gift_purchases');
+    expect(sent?.resource).toBe('orders');
   });
 
   it('leaves a genuine status-only request on orders without payment details', async () => {

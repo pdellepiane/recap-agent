@@ -361,7 +361,7 @@ export function selectReplyModules(
   }
   if (has('auth')) {
     candidates.push(
-      selected('reply_auth_limitation', 'validated terminal/declined/scoped-miss auth outcome for this turn', ['authenticationOutcome']),
+      selected('reply_auth_limitation', 'validated terminal/declined auth outcome for this turn', ['authenticationOutcome']),
     );
   }
   if (has('handoff')) {

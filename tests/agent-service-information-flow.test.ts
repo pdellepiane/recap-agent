@@ -17,6 +17,7 @@ import {
   type AgentPurchaseLookupResult,
 } from '../src/runtime/agent-conversation-gateway';
 import { AgentService } from '../src/runtime/agent-service';
+import { OpenAiAgentRuntime } from '../src/runtime/openai-agent-runtime';
 import type {
   AgentRuntime,
   ComposeReplyRequest,
@@ -1084,9 +1085,9 @@ describe('AgentService first-class information flow', () => {
   it('reads a protected purchase with the trusted WhatsApp number without authentication', async () => {
     const runtime = new InformationRuntime([extraction([purchaseRequest(null)])]);
     const gateway = new FakePurchaseGateway();
-    gateway.guestOrdersResult = {
+    gateway.guestGiftResult = {
       status: 'success',
-      resource: 'orders',
+      resource: 'gift_purchases',
       purchases: [purchase('ORD-000880')],
     };
     const service = createService({
@@ -1106,15 +1107,15 @@ describe('AgentService first-class information flow', () => {
     });
 
     expect(gateway.authByPhoneCalls).toBe(0);
-    expect(gateway.guestOrdersCalls).toBe(1);
-    expect(gateway.guestGiftCalls).toBe(0);
+    expect(gateway.guestOrdersCalls).toBe(0);
+    expect(gateway.guestGiftCalls).toBe(1);
     expect(response.plan.user_auth).toMatchObject({
       status: 'none',
       token: null,
       auth_method: null,
     });
     expect(response.trace.tools_called).toContain(
-      'lookup_guest_orders_by_phone',
+      'lookup_guest_gift_purchases_by_phone',
     );
     expect(response.trace.tools_called).not.toContain('auth_by_phone');
     expect(runtime.composeRequests.at(-1)?.informationResults?.[0]).toMatchObject({
@@ -1545,9 +1546,9 @@ describe('AgentService first-class information flow', () => {
       extraction([], null, null, 'unclear'),
     ]);
     const gateway = new FakePurchaseGateway();
-    gateway.guestOrdersResult = {
+    gateway.guestGiftResult = {
       status: 'success',
-      resource: 'orders',
+      resource: 'gift_purchases',
       purchases: [purchase('ORD-000880')],
     };
     const planStore = new InMemoryPlanStore();
@@ -1590,8 +1591,8 @@ describe('AgentService first-class information flow', () => {
     });
 
     expect(gateway.authByPhoneCalls).toBe(0);
-    expect(gateway.guestOrdersCalls).toBe(1);
-    expect(gateway.guestGiftCalls).toBe(0);
+    expect(gateway.guestOrdersCalls).toBe(0);
+    expect(gateway.guestGiftCalls).toBe(1);
     expect(response.plan.user_auth).toMatchObject({
       status: 'none',
       auth_method: null,
@@ -1613,13 +1614,13 @@ describe('AgentService first-class information flow', () => {
     );
   });
 
-  it.each(['not_found', 'empty'] as const)('hands off a phone-scoped %s once without OTP or reply-model guessing', async (outcome) => {
+  it.each(['not_found', 'empty'] as const)('answers a phone-scoped %s without handoff, OTP, or reply-model guessing', async (outcome) => {
     const runtime = new InformationRuntime([extraction([purchaseRequest(null)])]);
     const gateway = new FakePurchaseGateway();
     gateway.authByPhoneResult = { status: 'user_not_found' };
     if (outcome === 'empty') {
-      gateway.guestOrdersResult = {
-        status: 'success', resource: 'orders', purchases: [],
+      gateway.guestGiftResult = {
+        status: 'success', resource: 'gift_purchases', purchases: [],
         orderPartitions: { completed: [], pending: [] }, carts: [],
       };
     }
@@ -1640,36 +1641,37 @@ describe('AgentService first-class information flow', () => {
       contactPhone: '+51973296571',
     });
 
+    // Read outcomes never authorize writes: the miss answers normally,
+    // keeps the pending question, and never requests a code, a takeover,
+    // or a terminal auth outcome.
     expect(gateway.authByPhoneCalls).toBe(0);
-    expect(gateway.guestOrdersCalls).toBe(1);
-    expect(gateway.guestGiftCalls).toBe(0);
+    expect(gateway.guestOrdersCalls).toBe(0);
+    expect(gateway.guestGiftCalls).toBe(1);
     expect(provider.requestCodeCalls).toBe(0);
     expect(response.plan.user_auth.status).toBe('none');
     expect(runtime.composeRequests).toHaveLength(1);
-    expect(gateway.takeoverCalls).toBe(1);
-    expect(response.plan.human_escalation.status).toBe('requested');
+    expect(gateway.takeoverCalls).toBe(0);
+    expect(response.plan.human_escalation.status).toBe('none');
     expect(response.plan.information_state.pending_requests[0]?.query).toBe('Estado del regalo comprado.');
-    expect(response.trace.tools_called).toContain('lookup_guest_orders_by_phone');
-    expect(response.trace.tools_called).toContain('request_human_takeover');
+    expect(response.trace.tools_called).toContain('lookup_guest_gift_purchases_by_phone');
+    expect(response.trace.tools_called).not.toContain('request_human_takeover');
     expect(response.trace.information_execution_summary).toEqual([
-      expect.objectContaining({ status: 'failed', accessMethod: 'trusted_phone_purchase', resource: 'orders' }),
+      expect.objectContaining({ status: 'failed', accessMethod: 'trusted_phone_purchase', resource: 'gift_purchases' }),
     ]);
     expect(response.outbound.text).toBe('Respuesta informativa.');
-    expect(runtime.composeRequests.at(-1)?.authenticationOutcome?.handoffOutcome).toBe('handoff_requested');
-    expect(response.plan.human_help_receipt).toMatchObject({
-      outcome: 'handoff_requested',
-      requested: true,
-    });
+    expect(runtime.composeRequests.at(-1)?.authenticationOutcome ?? null).toBeNull();
+    expect(runtime.composeRequests.at(-1)?.handoffOutcome ?? null).toBeNull();
+    expect(response.plan.human_help_receipt).toBeUndefined();
     const repeated = await service.handleTurn({
       channel: 'whatsapp', externalUserId: 'phone-not-found-user',
       contactPhone: '+51973296571', text: 'No tengo cuenta',
       messageId: 'phone-not-found-2', receivedAt: new Date().toISOString(),
     });
-    expect(gateway.takeoverCalls).toBe(1);
-    expect(repeated.plan.human_escalation.status).toBe('requested');
+    expect(gateway.takeoverCalls).toBe(0);
+    expect(repeated.plan.human_escalation.status).toBe('none');
   });
 
-  it.each(['not_found', 'empty'] as const)('hands off a phone guest-event %s with the support details preserved', async (outcome) => {
+  it.each(['not_found', 'empty'] as const)('answers a phone guest-event %s without handoff with the support details preserved', async (outcome) => {
     const query = 'Consulta sobre el invitado Roger Abanto del evento Baby Shower Catalina.';
     const runtime = new InformationRuntime([extraction([{
       kind: 'associated_event', query, eventHint: 'Baby Shower Catalina',
@@ -1692,15 +1694,13 @@ describe('AgentService first-class information flow', () => {
     expect(gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.authByPhoneCalls).toBe(0);
     expect(provider.requestCodeCalls + provider.verifyCodeCalls).toBe(0);
     expect(runtime.composeRequests).toHaveLength(1);
-    expect(gateway.takeoverCalls).toBe(1);
-    expect(response.plan.human_escalation.status).toBe('requested');
+    expect(gateway.takeoverCalls).toBe(0);
+    expect(response.plan.human_escalation.status).toBe('none');
     expect(response.plan.information_state.pending_requests[0]?.query).toBe(query);
     expect(response.outbound.text).toBe('Respuesta informativa.');
-    expect(runtime.composeRequests.at(-1)?.authenticationOutcome?.handoffOutcome).toBe('handoff_requested');
-    expect(response.plan.human_help_receipt).toMatchObject({
-      outcome: 'handoff_requested',
-      requested: true,
-    });
+    expect(runtime.composeRequests.at(-1)?.authenticationOutcome ?? null).toBeNull();
+    expect(runtime.composeRequests.at(-1)?.handoffOutcome ?? null).toBeNull();
+    expect(response.plan.human_help_receipt).toBeUndefined();
     expect(response.trace.tools_called).toContain('lookup_guest_events_by_phone');
     expect(response.trace.information_execution_summary).toEqual([
       expect.objectContaining({ status: 'failed', accessMethod: 'trusted_phone_guest' }),
@@ -1713,7 +1713,7 @@ describe('AgentService first-class information flow', () => {
       { kind: 'associated_event', query: 'Consulta de mi invitación.', eventHint: null },
     ])]);
     const gateway = new FakePurchaseGateway();
-    gateway.guestOrdersResult = { status: 'success', resource: 'orders', purchases: [purchase('ORD-000880')] };
+    gateway.guestGiftResult = { status: 'success', resource: 'gift_purchases', purchases: [purchase('ORD-000880')] };
     const response = await createService({
       runtime, knowledgeGateway: new FakeKnowledgeGateway(),
       purchaseGateway: gateway, providerGateway: providerGateway(),
@@ -2357,9 +2357,9 @@ describe('AgentService first-class information flow', () => {
       extraction([accountlessRequest]),
     ]);
     const gateway = new FakePurchaseGateway();
-    gateway.guestOrdersResult = {
+    gateway.guestGiftResult = {
       status: 'success',
-      resource: 'orders',
+      resource: 'gift_purchases',
       purchases: [purchase('ORD-000880')],
     };
     const provider = providerGateway();
@@ -2390,8 +2390,8 @@ describe('AgentService first-class information flow', () => {
     expect(provider.requestCodeCalls).toBe(0);
     expect(gateway.takeoverCalls).toBe(0);
     expect(gateway.authByPhoneCalls).toBe(0);
-    expect(gateway.guestOrdersCalls).toBe(2);
-    expect(gateway.guestGiftCalls).toBe(0);
+    expect(gateway.guestOrdersCalls).toBe(0);
+    expect(gateway.guestGiftCalls).toBe(2);
     expect(response.plan.human_escalation.status).toBe('none');
     expect(response.plan.information_state.pending_requests).toEqual([]);
     expect(response.outbound.text).not.toContain('correo');
@@ -4005,4 +4005,514 @@ it('R4 keeps ambiguous withdrawal targets ambiguous instead of selecting one', a
   await service.handleTurn({ channel: 'whatsapp', externalUserId: 'r4-ambiguous', contactPhone: '+51999999999',
     text: 'Evento: Diana y Fernando', messageId: 'r4-amb', receivedAt: new Date().toISOString() });
   expect(gateway.takeoverCalls).toBe(0);
+});
+
+describe('gift root-cause review: discovery, detail and honest coverage', () => {
+  const RECEIPT_ACT = {
+    kind: 'provide_detail',
+    topic: 'payment_proof',
+    detail: 'submission_reported',
+  } as const;
+
+  function receiptExtraction(
+    informationRequests: ExtractedInformationRequest[],
+  ): ExtractionResult {
+    return {
+      ...extraction(informationRequests),
+      supportAct: { ...RECEIPT_ACT },
+      requestedOperation: 'payment_proof.verify',
+    };
+  }
+
+  function ordersRequest(aspects: Array<'summary' | 'payment_status' | 'dedication'>): Extract<ExtractedInformationRequest, { kind: 'purchase' }> {
+    return {
+      kind: 'purchase',
+      resource: 'orders',
+      query: 'Estado del pedido.',
+      orderId: null,
+      aspects: [...aspects],
+      sensitiveFields: [],
+      authAction: 'none',
+    };
+  }
+
+  class OrderIdRecordingGateway extends FakePurchaseGateway {
+    public readonly giftOrderIds: Array<string | null | undefined> = [];
+    public readonly ordersOrderIds: Array<string | null | undefined> = [];
+    public giftByOrderId:
+      | ((orderId: string | null | undefined) => AgentPhonePurchaseLookupResult)
+      | null = null;
+
+    override async getGuestGiftPurchasesByPhone(args?: {
+      phone_extension: string;
+      phone_number: string;
+      orderId?: string | null;
+    }): Promise<AgentPhonePurchaseLookupResult> {
+      this.guestGiftCalls += 1;
+      const orderId = args?.orderId;
+      this.giftOrderIds.push(orderId);
+      if (this.giftByOrderId) return this.giftByOrderId(orderId);
+      return this.guestGiftResult;
+    }
+
+    override async getGuestOrdersByPhone(args?: {
+      phone_extension: string;
+      phone_number: string;
+      orderId?: string | null;
+    }): Promise<AgentPhonePurchaseLookupResult> {
+      this.guestOrdersCalls += 1;
+      this.ordersOrderIds.push(args?.orderId);
+      return this.guestOrdersResult;
+    }
+  }
+
+  function purchaseRoute(result: { kind: string }): string | undefined {
+    if (result.kind !== 'purchase') return undefined;
+    const record = result as { lookupResource?: string; resource?: string; status?: string };
+    if (typeof record.lookupResource === 'string') return record.lookupResource;
+    return record.status === 'completed' ? record.resource : undefined;
+  }
+
+  function turnInput(externalUserId: string, text: string, messageId: string) {
+    return {
+      channel: 'whatsapp',
+      externalUserId,
+      contactPhone: '+51973296571',
+      text,
+      messageId,
+      receivedAt: new Date().toISOString(),
+    } as const;
+  }
+
+  it('discovers a recognized receipt with no purchase request through both sources once each', async () => {
+    const runtime = new InformationRuntime([receiptExtraction([])]);
+    const gateway = new OrderIdRecordingGateway();
+    gateway.guestOrdersResult = {
+      status: 'success', resource: 'orders', purchases: [purchase('ORD-000880')],
+    };
+    gateway.guestGiftResult = {
+      status: 'success', resource: 'gift_purchases', purchases: [purchase('GIFT-7')],
+    };
+    const service = createService({
+      runtime, knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway, providerGateway: providerGateway(),
+    });
+    const response = await service.handleTurn(turnInput('receipt-synth', 'Te envío el comprobante.', 'receipt-synth-1'));
+
+    // Dual regression: the typed task synthesizes both authorized reads
+    // instead of leaving the receipt undiscovered.
+    expect(gateway.guestOrdersCalls).toBe(1);
+    expect(gateway.guestGiftCalls).toBe(1);
+    expect(runtime.composeRequests).toHaveLength(1);
+    expect(gateway.takeoverCalls).toBe(0);
+    expect(response.plan.human_escalation.status).toBe('none');
+    const summaries = response.trace.information_execution_summary ?? [];
+    expect(summaries.filter((summary) => summary.status === 'completed')).toHaveLength(2);
+  });
+
+  it('adds the missing source when the extractor emitted one purchase request', async () => {
+    const runtime = new InformationRuntime([receiptExtraction([ordersRequest(['summary', 'payment_status'])])]);
+    const gateway = new OrderIdRecordingGateway();
+    gateway.guestOrdersResult = {
+      status: 'success', resource: 'orders', purchases: [],
+      orderPartitions: { completed: [], pending: [] }, carts: [],
+    };
+    gateway.guestGiftResult = {
+      status: 'success', resource: 'gift_purchases', purchases: [purchase('GIFT-7')],
+    };
+    const service = createService({
+      runtime, knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway, providerGateway: providerGateway(),
+    });
+    await service.handleTurn(turnInput('receipt-clone', 'Te envío el comprobante del pago por Aniversario Lucia.', 'receipt-clone-1'));
+
+    expect(gateway.guestOrdersCalls).toBe(1);
+    expect(gateway.guestGiftCalls).toBe(1);
+    const info = runtime.composeRequests[0]?.informationResults ?? [];
+    expect(info).toHaveLength(2);
+    // The gift-only match answers from the gift record; aspects survive.
+    const gift = info.find((result) => purchaseRoute(result) === 'gift_purchases');
+    expect(gift?.status).toBe('completed');
+  });
+
+  it('refreshes an identified receipt record on its single applicable source', async () => {
+    const identified: Extract<ExtractedInformationRequest, { kind: 'purchase' }> = {
+      kind: 'purchase',
+      resource: 'orders',
+      query: 'Estado del pedido ORD-OLD.',
+      orderId: 'ORD-OLD',
+      aspects: ['summary', 'payment_status'],
+      sensitiveFields: [],
+      authAction: 'none',
+    };
+    const runtime = new InformationRuntime([receiptExtraction([identified])]);
+    const gateway = new OrderIdRecordingGateway();
+    gateway.guestOrdersResult = {
+      status: 'success', resource: 'orders', purchases: [purchase('ORD-OLD')],
+    };
+    const service = createService({
+      runtime, knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway, providerGateway: providerGateway(),
+    });
+    await service.handleTurn(turnInput('receipt-identified', 'Comprobante del pedido ORD-OLD.', 'receipt-identified-1'));
+
+    // Explicit target: one orderId-filtered discovery read on the declared
+    // source (no unfiltered fan-out for the verified record), plus the
+    // existing explicit-ID gift detail read with the same known ID.
+    expect(gateway.guestOrdersCalls).toBe(1);
+    expect(gateway.ordersOrderIds).toEqual(['ORD-OLD']);
+    expect(gateway.guestGiftCalls).toBe(1);
+    expect(gateway.giftOrderIds).toEqual(['ORD-OLD']);
+    expect(gateway.takeoverCalls).toBe(0);
+  });
+
+  it('opens no purchase lookup for a non-receipt image with no task', async () => {
+    const runtime = new InformationRuntime([extraction([])]);
+    const gateway = new OrderIdRecordingGateway();
+    const service = createService({
+      runtime, knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway, providerGateway: providerGateway(),
+    });
+    await service.handleTurn(turnInput('non-receipt', 'Mira esta foto del local.', 'non-receipt-1'));
+
+    expect(gateway.guestOrdersCalls + gateway.guestGiftCalls).toBe(0);
+    expect(gateway.takeoverCalls).toBe(0);
+  });
+
+  it('keeps dual equal-amount candidates ambiguous without auto-fetching detail', async () => {
+    const runtime = new InformationRuntime([receiptExtraction([])]);
+    const gateway = new OrderIdRecordingGateway();
+    const first = { ...purchase('ORD-DUAL-1'), grandTotal: 340.44, paymentStatus: 'pending' as const };
+    const second = { ...purchase('ORD-DUAL-2'), grandTotal: 340.44, paymentStatus: 'pending' as const };
+    gateway.guestOrdersResult = {
+      status: 'success', resource: 'orders', purchases: [first, second],
+    };
+    gateway.guestGiftResult = { status: 'not_found', resource: 'gift_purchases', orderId: null };
+    const service = createService({
+      runtime, knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway, providerGateway: providerGateway(),
+    });
+    await service.handleTurn(turnInput('receipt-dual', 'Te envío el comprobante.', 'receipt-dual-1'));
+
+    // Discovery reads both sources once; ambiguity never triggers a
+    // follow-up detail read — the reply asks the distinction instead.
+    expect(gateway.guestOrdersCalls).toBe(1);
+    expect(gateway.guestGiftCalls).toBe(1);
+    expect(gateway.giftOrderIds).toEqual([null]);
+    const info = runtime.composeRequests[0]?.informationResults ?? [];
+    const orders = info.find((result) => purchaseRoute(result) === 'orders');
+    expect(orders).toMatchObject({ status: 'completed', needsSelection: true });
+    expect(gateway.takeoverCalls).toBe(0);
+  });
+
+  it('answers a gift-only receipt from the gift record while carts stay uninvolved', async () => {
+    const runtime = new InformationRuntime([receiptExtraction([ordersRequest(['summary', 'payment_status'])])]);
+    const gateway = new OrderIdRecordingGateway();
+    gateway.guestOrdersResult = {
+      status: 'success', resource: 'orders', purchases: [],
+      orderPartitions: { completed: [], pending: [] },
+      carts: [{ cartId: 'CART-1', eventName: 'Boda', items: [], subtotal: 120, status: 'active', wasAbandoned: false }],
+    };
+    gateway.guestGiftResult = {
+      status: 'success', resource: 'gift_purchases', purchases: [purchase('GIFT-7')],
+    };
+    const service = createService({
+      runtime, knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway, providerGateway: providerGateway(),
+    });
+    await service.handleTurn(turnInput('receipt-giftonly', 'Te envío el comprobante.', 'receipt-giftonly-1'));
+
+    expect(gateway.guestOrdersCalls).toBe(1);
+    expect(gateway.guestGiftCalls).toBe(1);
+    const info = runtime.composeRequests[0]?.informationResults ?? [];
+    const gift = info.find((result) => purchaseRoute(result) === 'gift_purchases');
+    expect(gift?.status).toBe('completed');
+    if (!gift || gift.status !== 'completed' || gift.kind !== 'purchase') {
+      throw new Error('Expected a completed gift purchase result.');
+    }
+    expect(gift.purchases.map((record) => record.orderId)).toEqual(['GIFT-7']);
+    expect(gateway.takeoverCalls).toBe(0);
+  });
+
+  it('fetches gift-only facts for a discovery-identified record in the same turn', async () => {
+    const runtime = new InformationRuntime([extraction([ordersRequest(['summary', 'dedication'])])]);
+    const gateway = new OrderIdRecordingGateway();
+    gateway.guestOrdersResult = {
+      status: 'success', resource: 'orders', purchases: [purchase('ORD-000880')],
+    };
+    gateway.giftByOrderId = (orderId) => {
+      if (orderId !== 'ORD-000880') {
+        return { status: 'not_found', resource: 'gift_purchases', orderId: orderId ?? null };
+      }
+      return {
+        status: 'success',
+        resource: 'gift_purchases',
+        purchases: [{
+          ...purchase('ORD-000880'),
+          dedication: { message: 'Felicidades', isPrivate: false, sendPhysical: true, physicalStatus: 'preparing' },
+        }],
+      };
+    };
+    const service = createService({
+      runtime, knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway, providerGateway: providerGateway(),
+    });
+    const response = await service.handleTurn(turnInput('gift-detail', '¿Dejaron dedicatoria en mi regalo?', 'gift-detail-1'));
+
+    // Discovery identifies one record; the same turn completes the gift
+    // read with the returned ID and composes one reply afterwards.
+    expect(gateway.guestOrdersCalls).toBe(1);
+    expect(gateway.guestGiftCalls).toBe(1);
+    expect(gateway.giftOrderIds).toEqual(['ORD-000880']);
+    expect(runtime.composeRequests).toHaveLength(1);
+    const customerContext = runtime.composeRequests[0]?.customerContext;
+    expect(customerContext?.detailedPurchases.map((record) => record.orderId)).toEqual(['ORD-000880']);
+    expect(customerContext?.detailedPurchases[0]?.dedication?.message).toBe('Felicidades');
+    expect(customerContext?.enrichment?.readsAttempted).toBe(1);
+    expect(gateway.takeoverCalls).toBe(0);
+    expect(response.plan.human_escalation.status).toBe('none');
+  });
+
+  it('skips the gift follow-up when discovery already supplies the facts', async () => {
+    const runtime = new InformationRuntime([extraction([ordersRequest(['summary'])])]);
+    const gateway = new OrderIdRecordingGateway();
+    gateway.guestOrdersResult = {
+      status: 'success', resource: 'orders', purchases: [purchase('ORD-000880')],
+    };
+    const service = createService({
+      runtime, knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway, providerGateway: providerGateway(),
+    });
+    await service.handleTurn(turnInput('gift-nosupply', '¿Cuál es el estado de mi pedido?', 'gift-nosupply-1'));
+
+    expect(gateway.guestOrdersCalls).toBe(1);
+    expect(gateway.guestGiftCalls).toBe(0);
+  });
+
+  it('preserves ready facts when the same-turn gift follow-up fails', async () => {
+    const runtime = new InformationRuntime([extraction([ordersRequest(['summary', 'dedication'])])]);
+    const gateway = new OrderIdRecordingGateway();
+    gateway.guestOrdersResult = {
+      status: 'success', resource: 'orders', purchases: [purchase('ORD-000880')],
+    };
+    gateway.giftByOrderId = () => ({ status: 'retryable_failure', resource: 'gift_purchases', retryable: true, error: 'HTTP 500' });
+    const service = createService({
+      runtime, knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway, providerGateway: providerGateway(),
+    });
+    const response = await service.handleTurn(turnInput('gift-followfail', '¿Dejaron dedicatoria en mi regalo?', 'gift-followfail-1'));
+
+    expect(gateway.guestOrdersCalls).toBe(1);
+    expect(gateway.guestGiftCalls).toBe(1);
+    // Ready orders facts survive; the failure never becomes a handoff or
+    // a "gift does not exist" verdict.
+    const info = runtime.composeRequests[0]?.informationResults ?? [];
+    const orders = info.find((result) => purchaseRoute(result) === 'orders');
+    expect(orders?.status).toBe('completed');
+    expect(gateway.takeoverCalls).toBe(0);
+    expect(response.plan.human_escalation.status).toBe('none');
+  });
+
+  it('distinguishes an empty source from a failed source with zero writes', async () => {
+    const runtime = new InformationRuntime([receiptExtraction([])]);
+    const gateway = new OrderIdRecordingGateway();
+    gateway.guestOrdersResult = {
+      status: 'success', resource: 'orders', purchases: [],
+      orderPartitions: { completed: [], pending: [] }, carts: [],
+    };
+    gateway.giftByOrderId = () => ({ status: 'retryable_failure', resource: 'gift_purchases', retryable: true, error: 'HTTP 500' });
+    const service = createService({
+      runtime, knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway, providerGateway: providerGateway(),
+    });
+    const response = await service.handleTurn(turnInput('receipt-coverage', 'Te envío el comprobante.', 'receipt-coverage-1'));
+
+    const info = runtime.composeRequests[0]?.informationResults ?? [];
+    const byResource = new Map(info.flatMap((result) => { const route = purchaseRoute(result); return route ? [[route, result] as const] : []; }));
+    // Confirmed-empty (not_found, terminal) stays distinct from a failed
+    // source (request_failed, retryable); neither authorizes a write.
+    expect(byResource.get('orders')).toMatchObject({ status: 'failed', failureKind: 'not_found', retryable: false });
+    expect(byResource.get('gift_purchases')).toMatchObject({ status: 'failed', failureKind: 'request_failed', retryable: true });
+    expect(gateway.takeoverCalls).toBe(0);
+    expect(response.plan.human_escalation.status).toBe('none');
+    expect(response.plan.information_state.pending_requests.length).toBeGreaterThan(0);
+  });
+
+  it('still executes an explicit human request exactly once beside an information miss', async () => {
+    const runtime = new InformationRuntime([
+      { ...extraction([purchaseRequest(null)]), actionIntent: 'solicitar_humano' },
+    ]);
+    const gateway = new OrderIdRecordingGateway();
+    const service = createService({
+      runtime, knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway, providerGateway: providerGateway(),
+    });
+    const response = await service.handleTurn(turnInput('explicit-beside-miss', 'No encuentro mi compra, necesito hablar con una persona.', 'explicit-beside-miss-1'));
+
+    expect(gateway.takeoverCalls).toBe(1);
+    expect(response.plan.human_escalation.status).toBe('requested');
+  });
+
+  it('retains mixed gift amounts and fulfillment from service to projected model input', async () => {
+    const mixed: PurchaseInformation = {
+      ...purchase('GIFT-MIX-9'),
+      grandTotal: 230,
+      currency: null,
+      paymentStatus: 'approved',
+      paymentMethod: 'Transferencia',
+      eventName: 'Boda Lucía y Marco',
+      items: [
+        { giftName: 'Juego de sábanas', quantity: 1, amount: 150, rowTotal: 150, type: 'se_store' },
+        { giftName: 'Aporte luna de miel', quantity: 1, amount: 80, rowTotal: 80, type: 'credit' },
+      ],
+    };
+    const giftRequest: Extract<ExtractedInformationRequest, { kind: 'purchase' }> = {
+      kind: 'purchase',
+      resource: 'gift_purchases',
+      query: '¿Cuándo llegan mis regalos?',
+      orderId: null,
+      aspects: ['summary', 'shipping'],
+      sensitiveFields: [],
+      authAction: 'none',
+    };
+    const runtime = new InformationRuntime([extraction([giftRequest])]);
+    const gateway = new OrderIdRecordingGateway();
+    gateway.guestGiftResult = { status: 'success', resource: 'gift_purchases', purchases: [mixed] };
+    const service = createService({
+      runtime, knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway, providerGateway: providerGateway(),
+    });
+    await service.handleTurn(turnInput('gift-mixed', 'Compré dos regalos para la boda. ¿Cuándo llegan?', 'gift-mixed-1'));
+
+    expect(gateway.guestGiftCalls).toBe(1);
+    expect(gateway.guestOrdersCalls).toBe(0);
+    const info = runtime.composeRequests[0]?.informationResults ?? [];
+    const gift = info.find((result) => purchaseRoute(result) === 'gift_purchases');
+    if (!gift || gift.status !== 'completed' || gift.kind !== 'purchase') {
+      throw new Error('Expected a completed gift purchase result.');
+    }
+    expect(gift.purchases[0]?.items.map((item) => [item.amount, item.quantity, item.rowTotal])).toEqual([
+      [150, 1, 150],
+      [80, 1, 80],
+    ]);
+    expect(gift.purchases[0]?.items.map((item) => item.fulfillment?.kind)).toEqual(['physical', 'host_credit']);
+  });
+
+  it('serializes service-produced mixed gifts into the real reply input with per-item meaning', async () => {
+    const mixed: PurchaseInformation = {
+      ...purchase('GIFT-MIX-9'),
+      grandTotal: 230,
+      currency: null,
+      paymentStatus: 'approved',
+      paymentMethod: 'Transferencia',
+      eventName: 'Boda Lucía y Marco',
+      items: [
+        { giftName: 'Juego de sábanas', quantity: 1, amount: 150, rowTotal: 150, type: 'se_store' },
+        { giftName: 'Aporte luna de miel', quantity: 1, amount: 80, rowTotal: 80, type: 'credit' },
+      ],
+    };
+    const giftRequest: Extract<ExtractedInformationRequest, { kind: 'purchase' }> = {
+      kind: 'purchase',
+      resource: 'gift_purchases',
+      query: '¿Cuándo llegan mis regalos?',
+      orderId: null,
+      aspects: ['summary', 'shipping'],
+      sensitiveFields: [],
+      authAction: 'none',
+    };
+    const runtime = new InformationRuntime([extraction([giftRequest])]);
+    const gateway = new OrderIdRecordingGateway();
+    gateway.guestGiftResult = { status: 'success', resource: 'gift_purchases', purchases: [mixed] };
+    const service = createService({
+      runtime, knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway, providerGateway: providerGateway(),
+    });
+    await service.handleTurn(turnInput('gift-mixed-spec', 'Compré dos regalos para la boda. ¿Cuándo llegan?', 'gift-mixed-spec-1'));
+
+    // The service's own compose request feeds the real reply-input
+    // projector: no fixture substitution anywhere in the chain.
+    const compose = runtime.composeRequests[0];
+    if (!compose) throw new Error('Expected a composed reply request.');
+    const realRuntime = new OpenAiAgentRuntime({
+      apiKey: 'test-key',
+      replyModel: 'gpt-test',
+      extractorModel: 'gpt-test',
+      replyProviderLimit: 4,
+      presentationProviderLimit: 5,
+      providerDetailLookupLimit: 3,
+      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
+      providerGateway: {
+        async searchProviders(): Promise<never> {
+          throw new Error('must not call the provider gateway');
+        },
+      } as never,
+    });
+    const spec = await realRuntime.buildReplyRequestSpec(compose);
+    const input = JSON.stringify(spec.input);
+    expect(input).toContain('Juego de sábanas');
+    expect(input).toContain('150');
+    expect(input).toContain('Aporte luna de miel');
+    expect(input).toContain('80');
+    expect(input).toContain('host_credit');
+    expect(spec.modules.map((module) => module.id)).toContain('reply_gift_fulfillment');
+  });
+
+  it('delivers retrieved schedule text to the reply input without loss', async () => {
+    // Real text of the stable Horarios y canales de atención source
+    // article (fetched 2026-09-21); the stub proves projection delivery,
+    // never invented hours.
+    const articleText = 'Nuestros horarios de atención son: Lunes a sábado. ' +
+      'Turno mañana: de 9:30 a.m. a 1:30 p.m. Turno tarde: de 3:30 p.m. a 7:30 p.m. ' +
+      'Te recomendamos escribirnos dentro de estos horarios para una respuesta más rápida.';
+    class ScheduleKnowledgeGateway extends FakeKnowledgeGateway {
+      override async search(): Promise<KnowledgeRetrievalResult> {
+        this.calls += 1;
+        return {
+          status: 'success',
+          evidence: [{
+            fileId: 'file-horarios',
+            filename: 'horarios-y-canales-de-atención.md',
+            score: 0.98,
+            text: articleText,
+          }],
+        };
+      }
+    }
+    const faqRequest: Extract<ExtractedInformationRequest, { kind: 'faq' }> = {
+      kind: 'faq',
+      query: '¿Cuál es el horario de atención?',
+    };
+    const runtime = new InformationRuntime([extraction([faqRequest])]);
+    const service = createService({
+      runtime,
+      knowledgeGateway: new ScheduleKnowledgeGateway(),
+      purchaseGateway: new OrderIdRecordingGateway(),
+      providerGateway: providerGateway(),
+    });
+    await service.handleTurn(turnInput('faq-hours', '¿Cuál es el horario de atención?', 'faq-hours-1'));
+
+    const compose = runtime.composeRequests[0];
+    if (!compose) throw new Error('Expected a composed reply request.');
+    const realRuntime = new OpenAiAgentRuntime({
+      apiKey: 'test-key',
+      replyModel: 'gpt-test',
+      extractorModel: 'gpt-test',
+      replyProviderLimit: 4,
+      presentationProviderLimit: 5,
+      providerDetailLookupLimit: 3,
+      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
+      providerGateway: {
+        async searchProviders(): Promise<never> {
+          throw new Error('must not call the provider gateway');
+        },
+      } as never,
+    });
+    const spec = await realRuntime.buildReplyRequestSpec(compose);
+    const input = JSON.stringify(spec.input);
+    expect(input).toContain('9:30 a.m.');
+    expect(input).toContain('1:30 p.m.');
+    expect(input).toContain('3:30 p.m.');
+    expect(input).toContain('7:30 p.m.');
+    expect(input).toContain('Lunes a sábado');
+  });
 });

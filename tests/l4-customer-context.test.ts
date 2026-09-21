@@ -4,6 +4,7 @@ import type {
   CartInformation,
   InformationExecutionSummary,
   InformationTaskResult,
+  PendingInformationRequest,
   PurchaseInformation,
 } from '../src/core/information';
 import type { UserEventLookupResult } from '../src/runtime/provider-gateway';
@@ -1097,6 +1098,78 @@ describe('l4 packet S7 — bounded linked-detail enrichment', () => {
     expect(many.truncatedByBound).toBe(true);
   });
 
+  it('selects a discovery-identified orders record missing requested gift facts', async () => {
+    const { selectImplicitGiftDetailOrderIds } = await import('../src/runtime/customer-context');
+    const requests: PendingInformationRequest[] = [{
+      requestId: 'information-1',
+      kind: 'purchase',
+      resource: 'orders',
+      query: '¿Dejaron dedicatoria?',
+      orderId: null,
+      aspects: ['summary', 'dedication'],
+      sensitiveFields: [],
+      authAction: 'none',
+    }];
+    const ordersResult: InformationTaskResult = {
+      requestId: 'information-1',
+      kind: 'purchase',
+      status: 'completed',
+      resource: 'orders',
+      lookupResource: 'orders',
+      purchases: [purchase('ord-single')],
+      needsSelection: false,
+    };
+    // Single orders-route record without dedication: one follow-up read.
+    expect(selectImplicitGiftDetailOrderIds({ requests, results: [ordersResult] })).toEqual(['ord-single']);
+    // Two candidates: ambiguity enriches nothing.
+    const two: InformationTaskResult = {
+      ...ordersResult,
+      kind: 'purchase',
+      status: 'completed',
+      purchases: [purchase('ord-a'), purchase('ord-b')],
+      needsSelection: true,
+    };
+    expect(selectImplicitGiftDetailOrderIds({ requests, results: [two] })).toEqual([]);
+    // Gift-route records already carry their facts.
+    const gift: InformationTaskResult = {
+      ...ordersResult, kind: 'purchase', status: 'completed', resource: 'gift_purchases', lookupResource: 'gift_purchases',
+    };
+    expect(selectImplicitGiftDetailOrderIds({ requests, results: [gift] })).toEqual([]);
+    // Summary-only aspects need no gift facts.
+    const summaryOnly: PendingInformationRequest[] = [{
+      requestId: 'information-1',
+      kind: 'purchase',
+      resource: 'orders',
+      query: '¿Cuál es el estado?',
+      orderId: null,
+      aspects: ['summary'],
+      sensitiveFields: [],
+      authAction: 'none',
+    }];
+    expect(selectImplicitGiftDetailOrderIds({ requests: summaryOnly, results: [ordersResult] })).toEqual([]);
+    // Discovery that already carries dedication needs no follow-up.
+    const detailed: InformationTaskResult = {
+      ...ordersResult,
+      kind: 'purchase',
+      status: 'completed',
+      purchases: [{ ...purchase('ord-single'), dedication: { message: 'Felicidades', isPrivate: false, sendPhysical: true, physicalStatus: 'preparing' } }],
+    };
+    expect(selectImplicitGiftDetailOrderIds({ requests, results: [detailed] })).toEqual([]);
+  });
+
+  it('keeps implicit gift targets behind explicit ones within the same bound', async () => {
+    const { selectEnrichmentTargets } = await import('../src/runtime/customer-context');
+    const targets = selectEnrichmentTargets({
+      knownOrderIds: ['ord-explicit', 'ord-implicit'],
+      knownEventIds: [],
+      relevantOrderIds: ['ord-explicit'],
+      relevantEventIds: [],
+      implicitOrderIds: ['ord-implicit', 'ord-explicit', 'ord-stranger'],
+    });
+    expect(targets.orderIds).toEqual(['ord-explicit', 'ord-implicit']);
+    expect(targets.truncatedByBound).toBe(false);
+  });
+
   it('retains an explicit years-old target with no date cutoff', async () => {
     const { selectEnrichmentTargets } = await import('../src/runtime/customer-context');
     const targets = selectEnrichmentTargets({
@@ -1420,6 +1493,35 @@ describe('l4 packet P1 — canonical profile and lookup reuse', () => {
     // Duplicate se_store snapshots deduplicate; the conflict itself persists.
     expect(merged[0]?.itemSourceConflict?.alternatives).toHaveLength(2);
     expect(merged[0]?.itemSourceConflict?.truncated).toBe(false);
+  });
+
+  it('keeps the truncated marker when a later merge window fits', async () => {
+    const { coalescePurchasesByStableId } = await import('../src/runtime/customer-context');
+    const lists = [
+      [{ giftName: 'Copa A', quantity: 1, amount: 40, rowTotal: 40, type: 'se_store' }],
+      [{ giftName: 'Copa B', quantity: 1, amount: 40, rowTotal: 40, type: 'se_store' }],
+      [{ giftName: 'Copa C', quantity: 1, amount: 40, rowTotal: 40, type: 'se_store' }],
+      [{ giftName: 'Copa D', quantity: 1, amount: 40, rowTotal: 40, type: 'se_store' }],
+    ];
+    const first = coalescePurchasesByStableId(
+      lists.map((items) => ({
+        purchase: purchase('ord-trunc', { items }),
+        accessMethod: 'trusted_phone_purchase',
+      })),
+    );
+    expect(first[0]?.itemSourceConflict?.alternatives).toHaveLength(3);
+    expect(first[0]?.itemSourceConflict?.truncated).toBe(true);
+    // A later merge whose own window fits (duplicate of one side) must
+    // not clear the marker: the dropped fourth alternative is still
+    // missing, and no authoritative replacement arrived.
+    const second = coalescePurchasesByStableId([
+      { purchase: first[0], accessMethod: 'trusted_phone_purchase' },
+      { purchase: purchase('ord-trunc', { items: lists[0] }), accessMethod: 'trusted_phone_purchase' },
+    ]);
+    expect(second).toHaveLength(1);
+    expect(second[0]?.items).toHaveLength(0);
+    expect(second[0]?.itemSourceConflict?.alternatives).toHaveLength(3);
+    expect(second[0]?.itemSourceConflict?.truncated).toBe(true);
   });
 
   it('keeps incompatible authorization scopes and distinct orders unmerged', async () => {

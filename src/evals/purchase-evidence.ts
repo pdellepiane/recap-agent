@@ -1,4 +1,5 @@
 import { redactArtifactText } from '../runtime/artifact-redaction';
+import { mapItemFulfillment } from '../runtime/purchase-disclosure-policy';
 import type { EvalCase, EvalTurnResult } from './case-schema';
 
 /**
@@ -21,6 +22,20 @@ import type { EvalCase, EvalTurnResult } from './case-schema';
 
 export type PurchaseFactProvenance = 'fixture-world' | 'live-lookup';
 
+export type ProjectedPurchaseFactItem = {
+  name: string | null;
+  quantity: number | null;
+  amount: number | null;
+  rowTotal: number | null;
+  fulfillment: string | null;
+};
+
+export type ProjectedPurchaseFactDedication = {
+  message: string | null;
+  sendPhysical: boolean | null;
+  physicalStatus: string | null;
+};
+
 export type ProjectedPurchaseFact = {
   kind: 'pedido_pendiente' | 'pedido_completado' | 'compra_regalo' | 'carrito' | 'consulta_en_vivo';
   eventLabel: string | null;
@@ -31,6 +46,9 @@ export type ProjectedPurchaseFact = {
   currencySymbol: string | null;
   paymentMethod: string | null;
   paymentStatus: string | null;
+  shippingStatus: string | null;
+  dedication: ProjectedPurchaseFactDedication | null;
+  items: ProjectedPurchaseFactItem[];
   referencePresent: boolean;
   provenance: PurchaseFactProvenance;
   /** Verifiable pair for the fact tuple; carried alongside the values. */
@@ -47,6 +65,9 @@ export type SubjectScopedPurchaseRecord = {
   currencySymbol: string | null;
   method: string | null;
   paymentStatus: string | null;
+  shippingStatus: string | null;
+  dedication: ProjectedPurchaseFactDedication | null;
+  items: ProjectedPurchaseFactItem[];
   customerReferencePresent: boolean;
 };
 
@@ -66,10 +87,24 @@ export function formatProjectedPurchaseFact(record: ProjectedPurchaseFact, index
   const currency = record.currencyCode ?? record.currencySymbol
     ? `${record.currencyCode ?? 'codigo_ausente'} (${record.currencySymbol ?? 'simbolo_ausente'})`
     : 'ausente';
+  const num = (value: number | null): string =>
+    value === null || Number.isNaN(value) ? '?' : String(value);
+  const items = record.items.length === 0
+    ? 'ninguno'
+    : record.items.map((item) =>
+      `${redactArtifactText(item.name ?? '') || 'sin_nombre'} x${num(item.quantity)} ` +
+      `monto=${num(item.amount)} total_fila=${num(item.rowTotal)} (${item.fulfillment ?? 'desconocido'})`,
+    ).join(' | ');
+  const dedication = record.dedication === null
+    ? 'ausente'
+    : `mensaje=${redactArtifactText(record.dedication.message ?? '') || 'sin_mensaje'} ` +
+      `envio_fisico=${record.dedication.sendPhysical === null ? 'desconocido' : String(record.dedication.sendPhysical)} ` +
+      `estado_fisico=${record.dedication.physicalStatus ?? 'desconocido'}`;
   return `${record.kind}[#${index + 1}]: evento=${redactArtifactText(record.eventLabel ?? '') || 'sin_etiqueta'} ` +
     `fecha_evento=${record.eventDate || 'desconocida'} fecha_creacion=${record.createdAt || 'desconocida'} ` +
     `monto=${amount} moneda=${currency} metodo=${redactArtifactText(record.paymentMethod ?? '') || 'desconocido'} ` +
-    `estado_pago=${record.paymentStatus ?? 'desconocido'} referencia_cliente=${record.referencePresent ? 'presente' : 'ausente'}`;
+    `estado_pago=${record.paymentStatus ?? 'desconocido'} estado_envio=${record.shippingStatus ?? 'desconocido'} ` +
+    `dedicatoria=[${dedication}] articulos=[${items}] referencia_cliente=${record.referencePresent ? 'presente' : 'ausente'}`;
 }
 
 export function toProjectedFact(record: SubjectScopedPurchaseRecord): ProjectedPurchaseFact {
@@ -83,6 +118,9 @@ export function toProjectedFact(record: SubjectScopedPurchaseRecord): ProjectedP
     currencySymbol: record.currencySymbol,
     paymentMethod: record.method,
     paymentStatus: record.paymentStatus,
+    shippingStatus: record.shippingStatus,
+    dedication: record.dedication,
+    items: record.items,
     referencePresent: record.customerReferencePresent,
     provenance: 'fixture-world',
     contentHash: null,
@@ -160,6 +198,38 @@ export function buildFixturePurchaseRecords(
   };
   const isNonEmptyString = (value: unknown): boolean =>
     typeof value === 'string' && value.length > 0;
+  const nullableBool = (value: unknown): boolean | null =>
+    typeof value === 'boolean' ? value : null;
+  const itemFacts = (value: unknown): ProjectedPurchaseFactItem[] => {
+    if (!Array.isArray(value)) return [];
+    const facts: ProjectedPurchaseFactItem[] = [];
+    for (const entry of value) {
+      const item = asRecord(entry);
+      if (!item) continue;
+      const rawType = typeof item['type'] === 'string' ? item['type'] : null;
+      facts.push({
+        name: typeof item['gift_name'] === 'string' && item['gift_name'].length > 0 ? item['gift_name'] : null,
+        quantity: numField(item, ['quantity']),
+        amount: numField(item, ['amount']),
+        rowTotal: numField(item, ['row_total']),
+        fulfillment: mapItemFulfillment(rawType).kind,
+      });
+    }
+    return facts;
+  };
+  const dedicationFact = (value: unknown): ProjectedPurchaseFactDedication | null => {
+    const dedication = asRecord(value);
+    if (!dedication) return null;
+    return {
+      message: typeof dedication['message'] === 'string' && dedication['message'].length > 0
+        ? dedication['message']
+        : null,
+      sendPhysical: nullableBool(dedication['send_physical']),
+      physicalStatus: typeof dedication['physical_status'] === 'string' && dedication['physical_status'].length > 0
+        ? dedication['physical_status']
+        : null,
+    };
+  };
   const pushOrder = (value: unknown, kind: SubjectScopedPurchaseRecord['kind']): void => {
     const record = asRecord(value);
     if (!record) return;
@@ -177,6 +247,9 @@ export function buildFixturePurchaseRecords(
       currencySymbol: textField(record, ['currency_symbol']) || null,
       method: textField(record, ['payment_method']) || (payment ? textField(payment, ['method']) : '') || null,
       paymentStatus: textField(record, ['payment_status']) || null,
+      shippingStatus: textField(record, ['shipping_status']) || null,
+      dedication: dedicationFact(record['dedication']),
+      items: itemFacts(record['items']),
       // increment_id is the customer-facing reference; its value never
       // travels (minimum disclosure + consistent redaction), presence only.
       customerReferencePresent: isNonEmptyString(record['increment_id']),
@@ -199,6 +272,9 @@ export function buildFixturePurchaseRecords(
         currencySymbol: textField(record, ['currency_symbol']) || null,
         method: null,
         paymentStatus: textField(record, ['status']) || null,
+        shippingStatus: null,
+        dedication: null,
+        items: itemFacts(record['items']),
         customerReferencePresent: false,
       });
     }
@@ -222,9 +298,22 @@ type SummaryEvidenceItem = {
     currencySymbol?: unknown;
     paymentMethod?: unknown;
     paymentStatus?: unknown;
+    shippingStatus?: unknown;
     eventDate?: unknown;
     createdAt?: unknown;
     referencePresent?: unknown;
+    dedication?: {
+      message?: unknown;
+      sendPhysical?: unknown;
+      physicalStatus?: unknown;
+    } | null;
+    items?: Array<{
+      name?: unknown;
+      quantity?: unknown;
+      amount?: unknown;
+      rowTotal?: unknown;
+      fulfillment?: unknown;
+    }>;
   } | null;
 };
 
@@ -254,6 +343,15 @@ export function projectLivePurchaseFacts(turns: EvalTurnResult[]): ProjectedPurc
       for (const item of evidence) {
         const fact = item?.purchaseFact;
         if (!fact || typeof fact !== 'object') continue;
+        const dedication = fact.dedication !== null && typeof fact.dedication === 'object'
+          ? {
+            message: nullableString(fact.dedication.message),
+            sendPhysical: typeof fact.dedication.sendPhysical === 'boolean'
+              ? fact.dedication.sendPhysical
+              : null,
+            physicalStatus: nullableString(fact.dedication.physicalStatus),
+          }
+          : null;
         facts.push({
           kind: 'consulta_en_vivo',
           eventLabel: nullableString(fact.eventLabel),
@@ -264,6 +362,17 @@ export function projectLivePurchaseFacts(turns: EvalTurnResult[]): ProjectedPurc
           currencySymbol: nullableString(fact.currencySymbol),
           paymentMethod: nullableString(fact.paymentMethod),
           paymentStatus: nullableString(fact.paymentStatus),
+          shippingStatus: nullableString(fact.shippingStatus),
+          dedication,
+          items: Array.isArray(fact.items)
+            ? fact.items.map((entry) => ({
+              name: nullableString(entry?.name),
+              quantity: nullableTotal(entry?.quantity),
+              amount: nullableTotal(entry?.amount),
+              rowTotal: nullableTotal(entry?.rowTotal),
+              fulfillment: nullableString(entry?.fulfillment),
+            }))
+            : [],
           referencePresent: fact.referencePresent === true,
           provenance: 'live-lookup',
           contentHash: typeof item.contentHash === 'string' && item.contentHash.length > 0

@@ -120,6 +120,76 @@ describe('InformationOrchestrator', () => {
     expect(execution.summaries[0]?.evidence[0]?.contentHash).toMatch(/^[a-f0-9]{64}$/u);
   });
 
+  it('exposes dedication, shipment and item facts to judge evidence only as projected to the responder', async () => {
+    const agentGateway = new FakeAgentGateway();
+    const record = {
+      ...giftPurchase(),
+      shippingStatus: 'in_transit',
+      items: [
+        { giftName: 'Sábanas', quantity: 1, amount: 150, rowTotal: 150, type: 'se_store' },
+        { giftName: 'Aporte luna de miel', quantity: 1, amount: 80, rowTotal: 80, type: 'credit' },
+      ],
+    };
+    agentGateway.guestGiftResult = {
+      status: 'success',
+      resource: 'gift_purchases',
+      purchases: [record],
+    };
+    const orchestrator = new InformationOrchestrator({
+      knowledgeGateway: { async search() { throw new Error('unused'); } },
+      providerGateway: {} as ProviderGateway,
+      agentGateway,
+    });
+    // Dedication aspects: the responder receives dedication + items +
+    // shipment, so judge evidence carries all three.
+    const full = await orchestrator.execute({
+      requests: [{
+        requestId: 'gift-full',
+        kind: 'purchase',
+        resource: 'gift_purchases',
+        query: '¿Qué se envía físicamente?',
+        orderId: null,
+        aspects: ['summary', 'shipping', 'dedication'],
+        sensitiveFields: [],
+        authAction: 'none',
+      }],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
+    });
+    const fullFact = full.summaries[0]?.evidence[0]?.purchaseFact;
+    expect(fullFact?.dedication).toMatchObject({
+      message: 'Felicidades',
+      sendPhysical: true,
+      physicalStatus: 'enroute',
+    });
+    expect(fullFact?.shippingStatus).toBe('in_transit');
+    expect(fullFact?.items).toEqual([
+      { name: 'Sábanas', quantity: 1, amount: 150, rowTotal: 150, fulfillment: 'physical' },
+      { name: 'Aporte luna de miel', quantity: 1, amount: 80, rowTotal: 80, fulfillment: 'host_credit' },
+    ]);
+    // Summary-only aspects: the responder never receives dedication, so
+    // judge evidence omits it while keeping items and shipment state.
+    const narrow = await orchestrator.execute({
+      requests: [{
+        requestId: 'gift-narrow',
+        kind: 'purchase',
+        resource: 'gift_purchases',
+        query: '¿Cuál es el estado?',
+        orderId: null,
+        aspects: ['summary'],
+        sensitiveFields: [],
+        authAction: 'none',
+      }],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
+    });
+    const narrowFact = narrow.summaries[0]?.evidence[0]?.purchaseFact;
+    expect(narrowFact?.dedication).toBeNull();
+    expect(narrowFact?.items).toHaveLength(2);
+  });
+
   it('keeps successful FAQ evidence when a production purchase route is unavailable', async () => {
     const agentGateway = new FakeAgentGateway();
     agentGateway.giftResult = {
@@ -426,7 +496,7 @@ describe('InformationOrchestrator', () => {
     );
   });
 
-  it('uses the exact-order lookup automatically when recent orders contain one match', async () => {
+  it('answers a single discovery match without an exact-order re-read', async () => {
     const agentGateway = new FakeAgentGateway();
     agentGateway.ordersResult = {
       status: 'success',
@@ -468,8 +538,11 @@ describe('InformationOrchestrator', () => {
       authBlock: null,
     });
 
-    expect(agentGateway.ordersCalls).toBe(2);
-    expect(agentGateway.orderIds).toEqual([null, 'ORD-000880']);
+    // One source contract: the discovery result already carries the
+    // record facts, so no detail read occurs; the single match still
+    // answers without a selection step.
+    expect(agentGateway.ordersCalls).toBe(1);
+    expect(agentGateway.orderIds).toEqual([null]);
     expect(execution.results[0]).toEqual(
       expect.objectContaining({
         kind: 'purchase',
@@ -718,7 +791,7 @@ describe('InformationOrchestrator', () => {
     });
   });
 
-  it('routes gift summary requests directly to phone orders', async () => {
+  it('falls back to phone orders when the gift route fails transiently on a summary request', async () => {
     const agentGateway = new FakeAgentGateway();
     agentGateway.guestGiftResult = {
       status: 'retryable_failure',
@@ -753,12 +826,16 @@ describe('InformationOrchestrator', () => {
       trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
     });
 
-    expect(agentGateway.guestGiftCalls).toBe(0);
+    // One source contract: the gift route is attempted first; only its
+    // transient failure degrades to the orders fallback with honest
+    // partial coverage.
+    expect(agentGateway.guestGiftCalls).toBe(1);
     expect(agentGateway.guestOrdersCalls).toBe(1);
     expect(execution.results[0]).toMatchObject({
       status: 'completed',
       kind: 'purchase',
       lookupResource: 'orders',
+      coverage: 'partial',
       purchases: [{ orderId: 'ORD-000880', paymentStatus: 'approved' }],
     });
   });
@@ -802,7 +879,7 @@ describe('InformationOrchestrator', () => {
     expect(execution.results[0]).not.toMatchObject({ status: 'needs_input' });
   });
 
-  it('reads a requested payment time from gift detail and keeps status-only on orders', async () => {
+  it('keeps a payment-time question on its declared orders source without gift facts', async () => {
     const agentGateway = new FakeAgentGateway();
     const timed = giftPurchase();
     if (timed.payment) {
@@ -840,13 +917,17 @@ describe('InformationOrchestrator', () => {
       authBlock: null,
       trustedPhone: phone,
     });
-    expect(agentGateway.guestGiftCalls).toBe(1);
-    expect(agentGateway.guestOrdersCalls).toBe(0);
+    // One source contract: the declared orders source is read even
+    // though payment_details names gift-owned facts; the orders record
+    // carries no payment detail, so paidAt stays honestly absent instead
+    // of crossing routes inside the executor.
+    expect(agentGateway.guestGiftCalls).toBe(0);
+    expect(agentGateway.guestOrdersCalls).toBe(1);
     const timeResult = timeExecution.results[0];
     if (!timeResult || timeResult.status !== 'completed' || timeResult.kind !== 'purchase') {
       throw new Error('Expected completed purchase for the payment-time read.');
     }
-    expect(timeResult.purchases[0]?.payment?.paidAt).toBe('2026-08-30 21:31:00');
+    expect(timeResult.purchases[0]?.payment ?? null).toBeNull();
 
     const statusExecution = await orchestrator.execute({
       requests: [{
@@ -863,8 +944,8 @@ describe('InformationOrchestrator', () => {
       authBlock: null,
       trustedPhone: phone,
     });
-    expect(agentGateway.guestGiftCalls).toBe(1);
-    expect(agentGateway.guestOrdersCalls).toBe(1);
+    expect(agentGateway.guestGiftCalls).toBe(0);
+    expect(agentGateway.guestOrdersCalls).toBe(2);
     const statusResult = statusExecution.results[0];
     if (!statusResult || statusResult.status !== 'completed' || statusResult.kind !== 'purchase') {
       throw new Error('Expected completed purchase for the status-only read.');
@@ -1329,7 +1410,10 @@ describe('InformationOrchestrator', () => {
     });
 
     expect(agentGateway.eventDetailCalls).toBe(1);
-    expect(agentGateway.guestGiftCalls).toBe(0);
+    // One source contract: the gift resource reads the gift route while
+    // the event-scoped purchase still merges from the shared root.
+    expect(agentGateway.guestGiftCalls).toBe(1);
+    expect(agentGateway.guestOrdersCalls).toBe(0);
     expect(execution.results[0]).toMatchObject({
       status: 'completed',
       result: { events: [{ orders: [] }], counts: { recentOrders: 0 } },
@@ -2249,7 +2333,7 @@ describe('B receipt discovery fan-out across authorized sources', () => {
 
   const TRUSTED_PHONE = { phone_extension: '+51', phone_number: '987654321' };
 
-  it('reads the pinned complementary source on its own route with one scoped read per source', async () => {
+  it('reads each declared source on its own route with one scoped read per source', async () => {
     const agentGateway = new FakeAgentGateway();
     agentGateway.guestOrdersResult = {
       status: 'success',
@@ -2279,7 +2363,6 @@ describe('B receipt discovery fan-out across authorized sources', () => {
           requestId: 'receipt-gift',
           kind: 'purchase',
           resource: 'gift_purchases',
-          pinnedSource: 'gift_purchases',
           query: 'Estado del pago del comprobante.',
           orderId: null,
           aspects: ['summary', 'payment_status'],
@@ -2303,9 +2386,8 @@ describe('B receipt discovery fan-out across authorized sources', () => {
     });
 
     // Independent authorized roots run through the shared per-turn scoped
-    // map: the pinned gift request reaches the gift route even though the
-    // shared aspects alone would select orders, and the repeated orders
-    // scope reads once.
+    // map: each request reads its own declared resource, and the repeated
+    // orders scope reads once.
     expect(agentGateway.guestOrdersCalls).toBe(1);
     expect(agentGateway.guestGiftCalls).toBe(1);
     expect(agentGateway.guestGiftOrderIds).toEqual([null]);
@@ -2374,7 +2456,6 @@ describe('B receipt discovery fan-out across authorized sources', () => {
           requestId: 'receipt-gift',
           kind: 'purchase',
           resource: 'gift_purchases',
-          pinnedSource: 'gift_purchases',
           query: 'Estado del pago del comprobante.',
           orderId: null,
           aspects: ['summary', 'payment_status'],
@@ -2408,13 +2489,113 @@ describe('B receipt discovery fan-out across authorized sources', () => {
     expect(completedGift).toHaveLength(0);
   });
 
-  it('keeps the aspect-derived route for unpinned requests with a gift resource and summary aspects', async () => {
+  it('overlaps independent purchase roots while the shared seed resolves', async () => {
     const agentGateway = new FakeAgentGateway();
-    agentGateway.guestOrdersResult = {
+    let inFlight = 0;
+    let maxInFlight = 0;
+    let releaseOrders!: () => void;
+    let releaseGifts!: () => void;
+    const ordersGate = new Promise<void>((resolve) => { releaseOrders = resolve; });
+    const giftsGate = new Promise<void>((resolve) => { releaseGifts = resolve; });
+    const ordersResult: AgentPhonePurchaseLookupResult = {
       status: 'success',
       resource: 'orders',
-      orderPartitions: { pending: [discoveryOrder()], completed: [] },
-      purchases: [discoveryOrder()],
+      purchases: [{
+        orderId: 'ORD-OVERLAP',
+        paymentStatus: 'pending',
+        shippingStatus: null,
+        grandTotal: 100,
+        paymentMethod: 'Transferencia',
+        eventName: 'Evento Traslape',
+        eventDate: null,
+        eventUrl: null,
+        createdAt: '2026-09-10 10:00:00',
+        items: [],
+      }],
+    };
+    const giftResult: AgentPhonePurchaseLookupResult = {
+      status: 'success',
+      resource: 'gift_purchases',
+      purchases: [{
+        orderId: 'GIFT-OVERLAP',
+        paymentStatus: 'approved',
+        shippingStatus: null,
+        grandTotal: 100,
+        paymentMethod: 'Transferencia',
+        eventName: 'Evento Traslape',
+        eventDate: null,
+        eventUrl: null,
+        createdAt: '2026-09-10 10:00:00',
+        items: [],
+      }],
+    };
+    agentGateway.getGuestOrdersByPhone = (async () => {
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      try {
+        await ordersGate;
+        return ordersResult;
+      } finally {
+        inFlight -= 1;
+      }
+    }) as typeof agentGateway.getGuestOrdersByPhone;
+    agentGateway.getGuestGiftPurchasesByPhone = (async () => {
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      try {
+        await giftsGate;
+        return giftResult;
+      } finally {
+        inFlight -= 1;
+      }
+    }) as typeof agentGateway.getGuestGiftPurchasesByPhone;
+    const executionPromise = discoveryOrchestrator(agentGateway).execute({
+      requests: [
+        {
+          requestId: 'overlap-orders',
+          kind: 'purchase',
+          resource: 'orders',
+          query: 'Estado del pedido.',
+          orderId: null,
+          aspects: ['summary', 'payment_status'],
+          sensitiveFields: [],
+          authAction: 'none',
+        },
+        {
+          requestId: 'overlap-gifts',
+          kind: 'purchase',
+          resource: 'gift_purchases',
+          query: 'Estado del regalo.',
+          orderId: null,
+          aspects: ['summary', 'payment_status'],
+          sensitiveFields: [],
+          authAction: 'none',
+        },
+      ],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: TRUSTED_PHONE,
+    });
+    for (let waited = 0; waited < 100 && inFlight < 2; waited += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+    // Both independent roots are in flight together: one sequential
+    // discovery stage, not two chained reads.
+    expect(inFlight).toBe(2);
+    releaseOrders();
+    releaseGifts();
+    const execution = await executionPromise;
+    expect(maxInFlight).toBe(2);
+    expect(execution.results.map((result) => result.status)).toEqual(['completed', 'completed']);
+  });
+
+  it('honors a gift resource with summary aspects on the gift route', async () => {
+    const agentGateway = new FakeAgentGateway();
+    agentGateway.guestGiftResult = {
+      status: 'success',
+      resource: 'gift_purchases',
+      orderPartitions: { pending: [], completed: [discoveryGift()] },
+      purchases: [discoveryGift()],
     };
     const execution = await discoveryOrchestrator(agentGateway).execute({
       requests: [{
@@ -2432,12 +2613,134 @@ describe('B receipt discovery fan-out across authorized sources', () => {
       trustedPhone: TRUSTED_PHONE,
     });
 
-    // No pin: the long-standing aspect derivation still selects orders.
-    expect(agentGateway.guestOrdersCalls).toBe(1);
-    expect(agentGateway.guestGiftCalls).toBe(0);
+    // One source contract: aspects select answer facts, never the route.
+    expect(agentGateway.guestOrdersCalls).toBe(0);
+    expect(agentGateway.guestGiftCalls).toBe(1);
     expect(execution.results[0]).toMatchObject({
       status: 'completed',
-      lookupResource: 'orders',
+      lookupResource: 'gift_purchases',
     });
   });
+});
+
+describe('A one purchase source contract across access paths', () => {
+  const MATRIX: Array<{
+    resource: 'orders' | 'gift_purchases';
+    aspects: PurchaseAspect[];
+    amount: number | null;
+  }> = [
+    { resource: 'orders', aspects: ['shipping'], amount: null },
+    { resource: 'orders', aspects: ['payment_status'], amount: null },
+    { resource: 'orders', aspects: ['summary'], amount: 150 },
+    { resource: 'orders', aspects: ['payment_details'], amount: null },
+    { resource: 'orders', aspects: ['dedication'], amount: null },
+    { resource: 'orders', aspects: ['thanks'], amount: null },
+    { resource: 'gift_purchases', aspects: ['shipping'], amount: null },
+    { resource: 'gift_purchases', aspects: ['payment_status'], amount: null },
+    { resource: 'gift_purchases', aspects: ['summary'], amount: 80 },
+    { resource: 'gift_purchases', aspects: ['payment_details'], amount: null },
+    { resource: 'gift_purchases', aspects: ['dedication'], amount: null },
+    { resource: 'gift_purchases', aspects: ['thanks'], amount: null },
+  ];
+
+  function matrixOrchestrator(agentGateway: FakeAgentGateway): InformationOrchestrator {
+    return new InformationOrchestrator({
+      knowledgeGateway: { async search() { throw new Error('unused'); } },
+      providerGateway: {} as ProviderGateway,
+      agentGateway,
+    });
+  }
+
+  function matrixRecord(
+    resource: 'orders' | 'gift_purchases',
+    amount: number | null,
+  ): PurchaseInformation {
+    return {
+      orderId: resource === 'orders' ? 'ORD-MX-1' : 'GIFT-MX-1',
+      paymentStatus: 'approved',
+      shippingStatus: null,
+      grandTotal: amount ?? 100,
+      paymentMethod: 'Transferencia',
+      eventName: 'Evento Matriz',
+      eventDate: null,
+      eventUrl: null,
+      createdAt: '2026-09-10 10:00:00',
+      items: [],
+    };
+  }
+
+  it.each(MATRIX.map((entry) => [entry.resource, entry.aspects.join('+'), entry] as const))(
+    'phone path reads %s for %s without aspect overrides',
+    async (_resource, _label, entry) => {
+      const agentGateway = new FakeAgentGateway();
+      agentGateway.guestOrdersResult = {
+        status: 'success', resource: 'orders', purchases: [matrixRecord('orders', entry.amount)],
+      };
+      agentGateway.guestGiftResult = {
+        status: 'success', resource: 'gift_purchases', purchases: [matrixRecord('gift_purchases', entry.amount)],
+      };
+      const execution = await matrixOrchestrator(agentGateway).execute({
+        requests: [{
+          requestId: 'matrix-1',
+          kind: 'purchase',
+          resource: entry.resource,
+          query: 'Consulta de matriz.',
+          orderId: null,
+          ...(entry.amount !== null ? { amount: entry.amount } : {}),
+          aspects: [...entry.aspects],
+          sensitiveFields: [],
+          authAction: 'none',
+        }],
+        authentication: null,
+        authBlock: null,
+        trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
+      });
+      expect(agentGateway.guestOrdersCalls).toBe(entry.resource === 'orders' ? 1 : 0);
+      expect(agentGateway.guestGiftCalls).toBe(entry.resource === 'gift_purchases' ? 1 : 0);
+      expect(execution.results[0]).toMatchObject({
+        status: 'completed',
+        resource: entry.resource,
+        lookupResource: entry.resource,
+      });
+    },
+  );
+
+  it.each(MATRIX.map((entry) => [entry.resource, entry.aspects.join('+'), entry] as const))(
+    'authenticated path reads %s for %s with the same requested source',
+    async (_resource, _label, entry) => {
+      const agentGateway = new FakeAgentGateway();
+      agentGateway.ordersResult = {
+        status: 'success', resource: 'orders', purchases: [matrixRecord('orders', entry.amount)],
+      };
+      agentGateway.giftResult = {
+        status: 'success', resource: 'gift_purchases', purchases: [matrixRecord('gift_purchases', entry.amount)],
+      };
+      const execution = await matrixOrchestrator(agentGateway).execute({
+        requests: [{
+          requestId: 'matrix-1',
+          kind: 'purchase',
+          resource: entry.resource,
+          query: 'Consulta de matriz.',
+          orderId: null,
+          ...(entry.amount !== null ? { amount: entry.amount } : {}),
+          aspects: [...entry.aspects],
+          sensitiveFields: [],
+          authAction: 'none',
+        }],
+        authentication: { token: 'matrix-token', email: 'matrix@example.com' },
+        authBlock: null,
+      });
+      // Same requested source as the phone path; distinct permissioned
+      // endpoints (token reads, never phone reads) enforce the access scope.
+      expect(agentGateway.ordersCalls).toBe(entry.resource === 'orders' ? 1 : 0);
+      expect(agentGateway.giftCalls).toBe(entry.resource === 'gift_purchases' ? 1 : 0);
+      expect(agentGateway.guestOrdersCalls).toBe(0);
+      expect(agentGateway.guestGiftCalls).toBe(0);
+      expect(execution.results[0]).toMatchObject({
+        status: 'completed',
+        resource: entry.resource,
+        lookupResource: entry.resource,
+      });
+    },
+  );
 });

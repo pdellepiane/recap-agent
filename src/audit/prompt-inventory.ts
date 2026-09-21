@@ -83,7 +83,7 @@ function deriveConsumers(filePath: string): PromptInventoryConsumer[] {
     consumers.push({ callType: 'reply',
       nodes: ['resolver_consultas_informativas'], profiles: ['auth'],
       transitions: ['information:auth_terminal_limitation'],
-      loader: 'PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry reply_auth_limitation via composeModelReply (validated terminal/declined/scoped-miss outcomes only)' });
+      loader: 'PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry reply_auth_limitation via composeModelReply (validated terminal/declined outcomes only)' });
   }
   if (filePath === 'nodes/resolver_consultas_informativas/image_limits.txt') {
     consumers.push({ callType: 'reply',

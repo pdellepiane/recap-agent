@@ -1272,7 +1272,7 @@ describe('actual reply request auth, image, approval and faq-empty gating', () =
     );
     expect(plain.modules.map((module) => module.id)).not.toContain('reply_image_context');
     expect(plain.instructions).not.toContain('Nunca pidas reenviar la imagen');
-    expect(plain.instructions).not.toContain('Usa la imagen como posible evidencia de pago');
+    expect(plain.instructions).not.toContain('Usa la imagen solo para identificar la compra relacionada');
     expect(plain.instructions).not.toContain('Nunca muestres enlaces de imágenes');
     const withImage = await runtime.buildReplyRequestSpec(
       replyRequest(supportPlan(), {
@@ -1283,7 +1283,7 @@ describe('actual reply request auth, image, approval and faq-empty gating', () =
     );
     expect(withImage.modules.map((module) => module.id)).toContain('reply_image_context');
     expect(withImage.instructions).toContain('Nunca pidas reenviar la imagen');
-    expect(withImage.instructions).toContain('Usa la imagen como posible evidencia de pago');
+    expect(withImage.instructions).toContain('Usa la imagen solo para identificar la compra relacionada');
     expect(withImage.instructions).toContain('Nunca muestres enlaces de imágenes');
   });
 

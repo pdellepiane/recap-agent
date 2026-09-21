@@ -346,7 +346,7 @@ describe('D2 mailbox and human arbitration', () => {
 });
 
 describe('D3 missing purchase scoped rendering', () => {
-  it('phone_information_not_found success uses bounded scoped copy and preserves question', async () => {
+  it('phone-scoped miss answers from the normal reply path with zero writes and preserves question', async () => {
     const planStore = new InMemoryPlanStore();
     const seed = mergePlan(
       createEmptyPlan({ planId: 'd-missing', channel: 'whatsapp', externalUserId: 'd-user' }),
@@ -363,10 +363,15 @@ describe('D3 missing purchase scoped rendering', () => {
     const gateway = new RecordingAgentGateway('success');
     const service = createService(runtime, gateway, planStore);
     const res = await turn(service, 'Quiero consultar si mi compra esta confirmada. No tengo una cuenta registrada.', 'd3-missing-1', '+51985101461');
-    expect(res.plan.human_escalation.status).toBe('requested');
+    // Read outcomes never authorize writes: the miss answers normally with
+    // no escalation and no terminal persist reason; the pending question
+    // survives for the conversation.
+    expect(res.plan.human_escalation.status).toBe('none');
     expect(res.outbound.text).toBe('Respuesta compuesta.');
-    expect(runtime.composeRequests.at(-1)?.handoffOutcome).toBe('handoff_requested');
-    expect(res.trace.plan_persist_reason).toBe('information_authentication_terminal_handoff');
+    expect(runtime.composeRequests.at(-1)?.handoffOutcome ?? null).toBeNull();
+    expect(runtime.composeRequests.at(-1)?.authenticationOutcome ?? null).toBeNull();
+    expect(res.trace.plan_persist_reason).not.toBe('information_authentication_terminal_handoff');
+    expect(gateway.takeoverCalls).toBe(0);
     const pending = res.plan.information_state.pending_requests;
     expect(pending.length).toBeGreaterThan(0);
   });

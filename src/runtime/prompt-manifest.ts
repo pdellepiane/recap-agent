@@ -523,7 +523,7 @@ export const instructionModuleRegistry: Record<InstructionModuleId, InstructionM
     stages: ['reply'],
     owners: ['faq', 'customer_assistance', 'unknown', 'planning'],
     tasks: ['auth'],
-    consumer: 'agent-service auth terminal paths (validated terminal/declined/scoped-miss outcome only; never venue/purchase reads)',
+    consumer: 'agent-service auth terminal paths (validated terminal/declined outcome only; never venue/purchase reads)',
   },
   reply_image_context: {
     files: ['nodes/resolver_consultas_informativas/image_limits.txt'],

@@ -155,6 +155,9 @@ function fact(overrides: Partial<ProjectedPurchaseFact> = {}): ProjectedPurchase
     currencySymbol: 'S/',
     paymentMethod: 'Yape',
     paymentStatus: 'pending',
+    shippingStatus: null,
+    dedication: null,
+    items: [],
     referencePresent: false,
     provenance: 'live-lookup',
     contentHash: FACT_HASH,
@@ -236,7 +239,50 @@ describe('O5 typed purchase adapter: values come only from typed facts', () => {
     expect(facts[0]?.eventLabel).not.toBe(mutated[0]?.eventLabel);
   });
 
-  it('projects typed fixture-world rows through the same adapter', () => {
+  it('carries responder-visible dedication, shipment and item facts to the judge', () => {
+    const lines = buildLivePurchaseFactLines([makeTurn([
+      {
+        fileId: '',
+        filename: '',
+        score: 0,
+        contentHash: FACT_HASH,
+        purchaseFact: {
+          eventLabel: 'Boda Lucía y Marco',
+          total: 230,
+          currency: null,
+          currencySymbol: null,
+          paymentMethod: 'Transferencia',
+          paymentStatus: 'approved',
+          shippingStatus: null,
+          eventDate: '2026-10-10',
+          createdAt: '2026-09-01 11:00:00',
+          referencePresent: true,
+          dedication: { message: 'Felicidades', sendPhysical: true, physicalStatus: 'preparing' },
+          items: [
+            { name: 'Sábanas', quantity: 1, amount: 150, rowTotal: 150, fulfillment: 'physical' },
+            { name: 'Aporte luna de miel', quantity: 1, amount: 80, rowTotal: 80, fulfillment: 'host_credit' },
+          ],
+        },
+      },
+    ])]);
+    const text = lines.join('\n');
+    // A verbatim dedication quote is grounded, never an invention flag;
+    // per-item amounts/quantities and fulfillment meaning are verifiable.
+    expect(text).toContain('Felicidades');
+    expect(text).toContain('Sábanas x1 monto=150 total_fila=150 (physical)');
+    expect(text).toContain('Aporte luna de miel x1 monto=80 total_fila=80 (host_credit)');
+    expect(text).toContain('estado_envio=desconocido');
+  });
+
+  it('omits dedication and items the responder never received', () => {
+    const lines = buildLivePurchaseFactLines([makeTurn(typedFactEvidence())]);
+    const text = lines.join('\n');
+    expect(text).toContain('dedicatoria=[ausente]');
+    expect(text).toContain('articulos=[ninguno]');
+    expect(text).toContain('estado_envio=desconocido');
+  });
+
+  it('projects fixture-world dedication, shipment and items through the same adapter', () => {
     const world: FixturePurchaseWorld = {
       guestOrders: {
         '+51900001303': {
@@ -257,15 +303,37 @@ describe('O5 typed purchase adapter: values come only from typed facts', () => {
           carts: [],
         },
       },
+      guestGiftPurchases: {
+        '+51900001303': {
+          purchases: [
+            {
+              id: 'gift-1',
+              event_name: 'Boda Lucía y Marco',
+              event_date: '2026-10-10',
+              created_at: '2026-09-01 11:00:00',
+              grand_total: 80,
+              payment_method: 'Transferencia',
+              payment_status: 'approved',
+              shipping_status: null,
+              dedication: { message: 'Felicidades', is_private: false, send_physical: true, physical_status: 'preparing' },
+              items: [
+                { gift_name: 'Aporte luna de miel', quantity: 1, amount: 80, row_total: 80, type: 'credit' },
+              ],
+            },
+          ],
+        },
+      },
     };
     const records = buildFixturePurchaseRecords(world, ['+51900001303']);
-    expect(records).toHaveLength(1);
+    expect(records).toHaveLength(2);
     const lines = buildFixturePurchaseFactLines('s13-test', records);
     const text = lines.join('\n');
     expect(text).toContain('proyeccion_compra visible para el candidato');
     expect(text).toContain('Evento de prueba A');
     expect(text).toContain('120.5');
     expect(text).toContain('referencia_cliente=ausente');
+    expect(text).toContain('Felicidades');
+    expect(text).toContain('Aporte luna de miel x1 monto=80 total_fila=80 (host_credit)');
   });
 });
 

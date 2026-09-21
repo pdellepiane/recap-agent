@@ -77,7 +77,6 @@ import { isApprovalBoundaryAnsweredByRecord } from './purchase-reconciliation';
 import {
   createDynamicExtractionSchema,
   normalizeRequestedOperation,
-  resolvePurchaseResourceForAspects,
   type OpenAiInformationRequest,
   type StructuredExtraction,
 } from './extraction-schemas';
@@ -1332,10 +1331,9 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     return [
       {
         kind: 'purchase',
-        resource: resolvePurchaseResourceForAspects(
-          request.resource,
-          request.aspects.length > 0 ? request.aspects : (['summary'] as const),
-        ),
+        // One source contract: the structured resource names the owning
+        // backend and is preserved verbatim; aspects select answer facts.
+        resource: request.resource,
         query: request.query,
         orderId: normalizeExtractedOrderReference(request.orderId),
         ...(request.eventHint ? { eventHint: request.eventHint.trim() } : {}),
@@ -2802,9 +2800,6 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
             handoff_outcome: args.request.authenticationOutcome.handoffOutcome,
             ...(args.request.authenticationOutcome.noFurtherCredentialRequests === true
               ? { no_further_credential_requests: true }
-              : {}),
-            ...(args.request.authenticationOutcome.scopedPhoneSearchMiss === true
-              ? { scoped_phone_search_miss: true }
               : {}),
           }
         : null,
