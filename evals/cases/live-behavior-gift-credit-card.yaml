@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.gift_credit_with_physical_card_distinguishes
 suite: live_behavior_regression
-version: 2
+version: 3
 description: A credit gift with a separate physical dedication card distinguishes the non-shipped product from the card artifact.
 tags: [live, behavior, purchase, gift, shipping, dedication, fulfillment, credit]
 targetModes: [live_lambda]
@@ -30,12 +30,13 @@ expectations:
   - id: card-distinguishes-product-from-artifact
     type: text_semantic
     rubric: >-
-      The phone-scoped gift lookup returns a credit gift (no product shipment; the hosts chose account credit) plus a separate physical dedication card that is being prepared. The response must be natural and entirely in Spanish and keep the two facts separate: the gift itself has no gift shipment, while the dedication card is a separate physical artifact with its own preparing state. It must not turn the credit gift into a physical product, must not confuse card preparation with shipment or delivery of the gift, must not invent dispatch dates or tracking, must not print internal type or field codes, and must make no unsolicited monetary or posting claims.
+      The phone-scoped gift lookup returns a credit gift (no product shipment; the hosts chose account credit) plus a separate physical dedication card that is being prepared. The response must be natural and entirely in Spanish and keep the two facts separate: the gift itself has no gift shipment, while the dedication card is a separate physical artifact with its own preparing state. It must not turn the credit gift into a physical product, must not confuse card preparation with shipment or delivery of the gift, must not invent dispatch dates or tracking, must not assert what the hosts will use the credit for (no purpose beyond value as account credit by host choice), must not print internal type or field codes, and must make no unsolicited monetary or posting claims.
     minScore: 0.9
     requireJudge: true
     severity: hard
 notes:
   - "R05 oracle revision v1 to v2, 2026-09-21, gift/campaign review correction 3. Rubric now requires natural Spanish with no internal-code citations and no unsolicited monetary or posting claims. Threshold and hard severity kept. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
+  - "Oracle revision v2 to v3, 2026-09-21, gift live root-cause review: prohibits asserting the purpose or later use of the host credit (verified KB semantics: funds are held until the hosts withdraw to their bank; no choosing-gifts purpose). Stricter, never looser. Threshold and hard severity kept."
 budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 1800

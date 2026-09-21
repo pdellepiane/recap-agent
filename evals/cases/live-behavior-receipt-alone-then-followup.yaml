@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.receipt_alone_then_followup_text
 suite: live_behavior_regression
-version: 1
+version: 2
 description: Receipt alone initiates bounded reconciliation with no active task; follow-up text reuses the same image and record without re-description or new auth.
 tags: [live, behavior, image, receipt, reconciliation, continuity]
 targetModes: [live_lambda]
@@ -24,7 +24,8 @@ inputs:
     backendFixture:
       scenario: purchase-receipt-340-44
 notes:
-  - "Receipt-context panel case 3 (2026-09-18, offline prepared, UNRUN): receipt alone with no active task, then follow-up text. Same synthetic S/340.44 receipt and pending order 100000444 as case 1. Synthetic identities only, never customer documents."
+  - "Receipt-context panel case 3 (2026-09-18, offline prepared): receipt alone with no active task, then follow-up text. Same synthetic S/340.44 receipt and pending order 100000444 as case 1. Synthetic identities only, never customer documents."
+  - "R05 oracle revision v1 to v2, 2026-09-21, gift/campaign review: relevance-based amount adequacy replaces required amount recital on turn 0 (a single compatible purchase needs no amount to identify; a stated amount must still match ground truth). Pending state, 72h window, no-approval and anti-transcription requirements unchanged. Threshold and hard severity kept."
   - "Judge-only ground truth is bound to the fixture image digest via the judge-context pathway; never runtime input, no new OCR/vision. Read-only amount is not backend approval."
 expectations:
   - id: receipt-initiates-native-reads
@@ -44,7 +45,7 @@ expectations:
   - id: receipt-initiates-explains-state
     type: text_semantic
     rubric: >-
-      Pass only if the assistant responds entirely in Spanish reading the receipt against current backend state: it conveys the receipt visible amount S/ 340.44 (judge-only ground truth, read accuracy only), identifies the compatible Aniversario Lucia purchase as still pending backend validation, and states the applicable manual-validation window of up to 72 business hours for the Yape method. It must distinguish what the document shows from what the backend confirms, must not claim the business received, approved or validated the payment from the image, must not transcribe bank, account, date or operation fields, must not calculate any amount due, and must not ask for another image, URL, screenshot, transcription or OTP.
+      Pass only if the assistant responds entirely in Spanish reading the receipt against current backend state: it identifies the compatible Aniversario Lucia purchase as still pending backend validation and states the applicable manual-validation window of up to 72 business hours for the Yape method. Stating the receipt visible amount S/ 340.44 (judge-only ground truth, read accuracy only) is allowed but not required, since a single compatible purchase needs no amount to identify; any stated amount must match the ground truth exactly. It must distinguish what the document shows from what the backend confirms, must not claim the business received, approved or validated the payment from the image, must not transcribe bank, account, date or operation fields, must not calculate any amount due, and must not ask for another image, URL, screenshot, transcription or OTP.
     minScore: 0.85
     requireJudge: true
     turnIndex: 0

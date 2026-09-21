@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.receipt_non_receipt_image_no_reads
 suite: live_behavior_regression
-version: 1
+version: 2
 description: A non-receipt image with no payment request triggers no speculative purchase or gift reads and no invented transfer; silence and visual-request behavior are preserved.
 tags: [live, behavior, image, receipt, non-receipt, silence]
 targetModes: [live_lambda]
@@ -23,7 +23,8 @@ inputs:
     backendFixture:
       scenario: image-clean-world
 notes:
-  - "Receipt-context panel case 8 (2026-09-18, offline prepared, UNRUN): non-receipt image alone, then an unrelated question. The URL points at a controlled non-sensitive public fixture so the model cannot mistake it for a payment document. Synthetic identities only, never customer documents."
+  - "Receipt-context panel case 8 (2026-09-18, offline prepared): non-receipt image alone, then an unrelated question. The URL points at a controlled non-sensitive public fixture so the model cannot mistake it for a payment document. Synthetic identities only, never customer documents."
+  - "Oracle revision v1 to v2, 2026-09-21, gift live root-cause review: the turn-1 rubric now requires stating the service days and hours from the retrieved article (explicitly requested fact; the stable source article contains them and offline tests prove the projection delivers them). Stricter, never looser. Judge-verifiability boundary: the judge sees retrieval completion plus the article filename, not the KB text, so it enforces schedule presence, not exact values. Threshold and hard severity kept."
   - "Silence on turn 0 is judged through the existing validated-silence route: an empty response is fully correct for a genuinely unrelated image with no task."
 expectations:
   - id: non-receipt-no-speculative-reads
@@ -51,7 +52,7 @@ expectations:
   - id: non-receipt-followup-answered-without-pixels
     type: text_semantic
     rubric: >-
-      Pass only if the assistant responds entirely in Spanish to the opening-hours question without describing the image from the previous turn, without inventing any payment content, and without opening any purchase lookup. It must not ask for an OTP.
+      Pass only if the assistant responds entirely in Spanish to the opening-hours question by stating the customer-service days and hours from the retrieved knowledge-base article, without describing the image from the previous turn, without inventing any payment content, and without opening any purchase lookup. A redirect that omits the schedule fails: the user explicitly asked for it and the stable article contains it. It must not ask for an OTP.
     minScore: 0.8
     requireJudge: true
     turnIndex: 1
