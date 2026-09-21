@@ -51,6 +51,19 @@ function campaignMessage(overrides: Partial<AgentConversationMessage> & { id: nu
   };
 }
 
+function ordinaryMessage(id: number, sentAt: string): AgentConversationMessage {
+  return {
+    id,
+    direction: 'outbound',
+    source: 'agent',
+    body: `Respuesta ordinaria ${id}.`,
+    status: 'delivered',
+    whatsappMessageId: null,
+    sentAt,
+    createdAt: sentAt,
+  };
+}
+
 function messageContextWith(messages: AgentConversationMessage[]): TurnMessageContext {
   return buildTurnMessageContext({
     messages,
@@ -73,22 +86,72 @@ function extractRequest(messageContext: TurnMessageContext): ExtractRequest {
   };
 }
 
+function countOccurrences(haystack: string, needle: string): number {
+  return haystack.split(needle).length - 1;
+}
+
 describe('campaign reference context in the decision input', () => {
-  it('exposes one provenance-bound campaign block with delivery and excerpt', async () => {
+  it('references an in-window campaign by ID with a null excerpt instead of duplicating prose', async () => {
     const spec = await testRuntime().buildExtractionRequestSpec(
       extractRequest(messageContextWith([campaignMessage({ id: 7 })])),
     );
 
-    expect(spec.input).toContain('campaign');
     expect(spec.input).toContain('"sourceMessageId":7');
     expect(spec.input).toContain('"source":"admin_campaign"');
     expect(spec.input).toContain('"delivery":"delivered"');
+    expect(spec.input).toContain('"bodyExcerpt":null');
+    // The history entry carries the join keys plus the single body copy.
+    expect(spec.input).toContain('"message_id":7');
     expect(spec.input).toContain('Boda Lucía y Marco');
     const campaignGroup = spec.manifest.factGroups.find(
       (group) => group.key === 'campaign_reference_context',
     );
     expect(campaignGroup).toBeDefined();
     expect(campaignGroup?.bytes ?? 0).toBeGreaterThan(0);
+  });
+
+  it('serializes each in-window campaign body exactly once across history and projection', async () => {
+    const spec = await testRuntime().buildExtractionRequestSpec(
+      extractRequest(messageContextWith([
+        campaignMessage({ id: 7, body: 'Recordatorio alfa: Boda Lucía y Marco, 10 de octubre.' }),
+        campaignMessage({ id: 8, source: 'frontend_followup', body: 'Seguimiento beta: Boda Ana y Luis, 5 de noviembre.', sentAt: '2026-09-20T10:05:00.000Z' }),
+        // A newer ordinary message takes the prior-answer gist slot so the
+        // count below isolates history-plus-projection duplication.
+        ordinaryMessage(9, '2026-09-20T10:06:00.000Z'),
+      ])),
+    );
+
+    expect(countOccurrences(spec.input, 'Recordatorio alfa: Boda Lucía y Marco, 10 de octubre.')).toBe(1);
+    expect(countOccurrences(spec.input, 'Seguimiento beta: Boda Ana y Luis, 5 de noviembre.')).toBe(1);
+    expect(countOccurrences(spec.input, '"bodyExcerpt":null')).toBe(2);
+  });
+
+  it('repeats an excerpt only for campaigns outside the selected history window', async () => {
+    const { buildCampaignReferenceProjection } = await import('../src/runtime/turn-message-context');
+    const old = campaignMessage({
+      id: 1,
+      body: 'Recordatorio antiguo fuera de ventana: Boda Petra y Pablo.',
+      sentAt: '2026-09-10T10:00:00.000Z',
+      createdAt: '2026-09-10T10:00:00.000Z',
+    });
+    const recent = [2, 3, 4, 5, 6, 7].map((id) =>
+      ordinaryMessage(id, `2026-09-20T10:0${id - 2}:00.000Z`),
+    );
+    const inWindow = campaignMessage({
+      id: 8,
+      body: 'Recordatorio en ventana: Boda Lucía y Marco.',
+      sentAt: '2026-09-20T10:06:00.000Z',
+      createdAt: '2026-09-20T10:06:00.000Z',
+    });
+    // Direct projection over eight messages: the six-turn history window
+    // covers id 8 but not id 1.
+    const projection = buildCampaignReferenceProjection([old, ...recent, inWindow]);
+    expect(projection).toHaveLength(2);
+    const missed = projection.find((entry) => entry.sourceMessageId === 1);
+    const covered = projection.find((entry) => entry.sourceMessageId === 8);
+    expect(missed?.bodyExcerpt).toBe('Recordatorio antiguo fuera de ventana: Boda Petra y Pablo.');
+    expect(covered?.bodyExcerpt).toBeNull();
+    expect(covered?.delivery).toBe('delivered');
   });
 
   it('marks sent and unknown delivery as uncertain without claiming receipt', async () => {
@@ -118,6 +181,7 @@ describe('campaign reference context in the decision input', () => {
     );
     expect(campaignGroup?.bytes).toBe(0);
     expect(spec.input).not.toContain('sourceMessageId');
+    expect(spec.input).not.toContain('message_id');
   });
 
   it('omits the campaign block entirely when no qualifying campaign exists', async () => {

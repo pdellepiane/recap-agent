@@ -3320,7 +3320,7 @@ describe('campaign event-reference precedence (B1)', () => {
 
     const note = runtime.composeRequests.at(-1)?.errorMessage ?? '';
     expect(note).toContain('"outcome":"associated_event_resolved_with_campaign_reference"');
-    expect(note).toContain('"explicit_event_reference":null');
+    expect(note).toContain('"request_event_reference":null');
     expect(note).toContain('"source_message_id":7');
     expect(note).toContain('"delivery":"delivered"');
     expect(note).not.toContain('Explica el recordatorio');
@@ -3363,7 +3363,7 @@ describe('campaign event-reference precedence (B1)', () => {
 
     const note = runtime.composeRequests.at(-1)?.errorMessage ?? '';
     expect(note).toContain('"outcome":"associated_event_resolved_with_campaign_reference"');
-    expect(note).toContain('"explicit_event_reference":"Boda Ana y Luis"');
+    expect(note).toContain('"request_event_reference":"Boda Ana y Luis"');
     expect(note).toContain('"source_message_id":7');
     expect(note).not.toContain('Explica el recordatorio');
     expect(response.trace.tools_called).toContain('lookup_guest_events_by_phone');

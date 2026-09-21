@@ -8116,12 +8116,14 @@ export class AgentService {
         guestEventResult?.status === 'completed' &&
         guestEventResult.kind === 'associated_event'
       ) {
-        // B1: the campaign reference is the newest provenance-bound campaign
+        // The campaign reference is the newest provenance-bound campaign
         // message (outbound only, server-time order). Inbound text claiming
         // to be a campaign never counts. It travels as factual reference
-        // context bound to the resolved request/result: the explicit current
-        // event reference keeps priority and the model interprets meaning.
-        // Never interpolate a campaign body as an assistant instruction.
+        // context bound to the resolved request/result alongside the
+        // request's event reference; user-message context and the
+        // explicit-target-priority instruction remain the model's basis for
+        // interpretation. Never interpolate a campaign body as an assistant
+        // instruction, and never label an inferred reference explicit.
         const newestProvenanceCampaign = selectProvenanceBoundCampaignMessages(
           args.messageContext.recentMessages,
         ).at(-1) ?? null;
@@ -8130,7 +8132,9 @@ export class AgentService {
             (message) => message.id === newestProvenanceCampaign.sourceMessageId,
           ) ?? null)
           : null;
-        const explicitEventReference = requests
+        // The extractor may infer eventHint from a campaign, so a nonempty
+        // hint is a request reference, never proof of explicit wording.
+        const requestEventReference = requests
           .filter((request) => request.kind === 'associated_event')
           .map((request) => request.eventHint?.trim() ?? '')
           .find((hint) => hint.length > 0) ?? null;
@@ -8141,7 +8145,7 @@ export class AgentService {
           currentReminderForEvent !== null && newestProvenanceCampaign !== null
             ? JSON.stringify({
               outcome: 'associated_event_resolved_with_campaign_reference',
-              explicit_event_reference: explicitEventReference,
+              request_event_reference: requestEventReference,
               campaign_reference: {
                 source_message_id: newestProvenanceCampaign.sourceMessageId,
                 source: newestProvenanceCampaign.source,

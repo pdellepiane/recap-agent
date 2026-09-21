@@ -435,19 +435,34 @@ export function buildTurnMessageContext(args: {
   };
 }
 
-export function buildModelVisibleConversationHistory(
-  context: TurnMessageContext,
-): Array<{
+export type ModelVisibleHistoryEntry = {
   direction: AgentConversationMessage['direction'];
   source: string | null;
   body: string;
   sent_at: string | null;
-}> {
+  /**
+   * Present only on provenance-bound campaign entries so the reply keeps
+   * reference identity and delivery certainty when the operational note is
+   * suppressed by a typed outcome. All other entries keep four keys.
+   */
+  message_id?: number;
+  delivery?: CampaignDeliveryCertainty;
+};
+
+export function buildModelVisibleConversationHistory(
+  context: TurnMessageContext,
+): ModelVisibleHistoryEntry[] {
   return context.recentMessages.map((message) => ({
     direction: message.direction,
     source: message.source,
     body: truncateMessageBody(message.body),
     sent_at: message.sentAt ?? message.createdAt,
+    ...(isProvenanceBoundCampaignMessage(message)
+      ? {
+        message_id: message.id,
+        delivery: campaignDeliveryCertainty(message.status),
+      }
+      : {}),
   }));
 }
 
@@ -484,15 +499,24 @@ function truncateMessageBody(value: string): string {
  * merge) so follow-up topics survive. Total bounded by
  * `extractorHistoryByteBudget` (documented above).
  */
-export function buildExtractorConversationHistory(
-  context: TurnMessageContext,
-): Array<{
+export type ExtractorHistoryEntry = {
   direction: AgentConversationMessage['direction'];
   source: string | null;
   body: string;
   sent_at: string | null;
-}> {
-  const ordered = orderMessagesByServerTime(context.recentMessages).slice(
+  /**
+   * Present only on provenance-bound campaign entries so the separate
+   * campaign projection can reference them by ID instead of repeating
+   * their bodies. All other entries keep the four-key shape.
+   */
+  message_id?: number;
+  delivery?: CampaignDeliveryCertainty;
+};
+
+function extractorHistoryEntries(
+  messages: readonly AgentConversationMessage[],
+): ExtractorHistoryEntry[] {
+  const ordered = orderMessagesByServerTime(messages).slice(
     -extractorHistoryTurnLimit,
   );
   return ordered.map((message) => ({
@@ -500,7 +524,61 @@ export function buildExtractorConversationHistory(
     source: message.source,
     body: message.body.slice(0, extractorHistoryBodyBytes),
     sent_at: message.sentAt ?? message.createdAt,
+    ...(isProvenanceBoundCampaignMessage(message)
+      ? {
+        message_id: message.id,
+        delivery: campaignDeliveryCertainty(message.status),
+      }
+      : {}),
   }));
+}
+
+export function buildExtractorConversationHistory(
+  context: TurnMessageContext,
+): ExtractorHistoryEntry[] {
+  return extractorHistoryEntries(context.recentMessages);
+}
+
+/**
+ * Coverage-aware campaign reference for the decision input. Reuses one
+ * serialized copy of each campaign body: when the message text is present
+ * in the selected extractor history, the projection carries identity and
+ * delivery facts with a null excerpt (the history entry joins by
+ * message_id); only out-of-window messages repeat an excerpt here. History
+ * bounds and source/direction validation are unchanged.
+ */
+export type CampaignReferenceProjection = {
+  readonly sourceMessageId: number;
+  readonly source: string;
+  readonly delivery: CampaignDeliveryCertainty;
+  readonly sentAt: string | null;
+  readonly bodyExcerpt: string | null;
+};
+
+export function buildCampaignReferenceProjection(
+  messages: readonly AgentConversationMessage[],
+): CampaignReferenceProjection[] {
+  const campaigns = selectProvenanceBoundCampaignMessages(messages);
+  if (campaigns.length === 0) {
+    return [];
+  }
+  const historyById = new Map<number, string>();
+  for (const entry of extractorHistoryEntries(messages)) {
+    if (entry.message_id !== undefined) {
+      historyById.set(entry.message_id, entry.body);
+    }
+  }
+  return campaigns.map((campaign) => {
+    const historyBody = historyById.get(campaign.sourceMessageId);
+    const covered = historyBody !== undefined && historyBody.startsWith(campaign.bodyExcerpt);
+    return {
+      sourceMessageId: campaign.sourceMessageId,
+      source: campaign.source,
+      delivery: campaign.delivery,
+      sentAt: campaign.sentAt,
+      bodyExcerpt: covered ? null : campaign.bodyExcerpt,
+    };
+  });
 }
 
 /**

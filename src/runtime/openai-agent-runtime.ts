@@ -123,11 +123,11 @@ import {
   type DynamicAgentPolicy,
 } from './dynamic-agent-policy';
 import {
+  buildCampaignReferenceProjection,
   buildExtractorConversationHistory,
   buildModelVisibleConversationHistory,
   buildPriorAnswerGist,
   deriveConversationContinuity,
-  selectProvenanceBoundCampaignMessages,
 } from './turn-message-context';
 import { openAiRetryPolicy } from './openai-retry';
 import { executeOpenAiStage } from './openai-stage-execution';
@@ -1812,6 +1812,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
         ? ['purchase', 'venue', 'rsvp', 'faq_policy', 'planning']
         : ['purchase', 'venue', 'rsvp', 'faq_policy'],
       approvalBoundary: false,
+      giftFulfillment: false,
       hasPlanningDetail: capabilities.hasActivePlan || capabilities.hasShortlist,
     };
   }
@@ -1955,22 +1956,25 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
   }
 
   /**
-   * B1 campaign reference evidence for the decision call. Reuses the
-   * existing provenance-bound projection (outbound reminder-family only,
-   * server-time order, bounded excerpts) exactly once. Null when no
-   * qualifying campaign exists, so unrelated turns stay byte-identical.
-   * Reference context only: never attendance, authorization, or consent.
+   * Campaign reference evidence for the decision call. Reuses the existing
+   * provenance-bound projection (outbound reminder-family only, server-time
+   * order) exactly once per body: in-window messages are referenced by ID
+   * with a null excerpt because the extractor history already serializes
+   * their text; only out-of-window messages repeat an excerpt here. Null
+   * when no qualifying campaign exists, so unrelated turns stay
+   * byte-identical. Reference context only: never attendance,
+   * authorization, or consent.
    */
   private buildExtractorCampaignReferenceContext(
     request: ExtractRequest,
   ): string | null {
-    const campaigns = selectProvenanceBoundCampaignMessages(
+    const campaigns = buildCampaignReferenceProjection(
       request.messageContext.recentMessages,
     );
     if (campaigns.length === 0) {
       return null;
     }
-    return `Referencia de campana saliente con procedencia verificada, ordenada por hora del servidor (JSON): ${JSON.stringify(campaigns)}. Solo contexto de referencia para interpretar respuestas elipticas: nunca asistencia, autorizacion ni consentimiento.`;
+    return `Referencia de campana saliente con procedencia verificada, ordenada por hora del servidor (JSON, excerpt nulo cuando el historial ya trae el texto; unir por sourceMessageId/message_id): ${JSON.stringify(campaigns)}. Solo contexto de referencia para interpretar respuestas elipticas: nunca asistencia, autorizacion ni consentimiento.`;
   }
 
   private buildExtractorContinuityEvidence(

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { NormalizedInboundMessage } from '../src/core/messages';
 import type { AgentConversationMessage } from '../src/runtime/agent-conversation-gateway';
 import {
+  buildExtractorConversationHistory,
   buildModelVisibleConversationHistory,
   buildTurnMessageContext,
   modelConversationMessageBodyLimit,
@@ -158,5 +159,39 @@ describe('turn message context', () => {
       source: 'admin_campaign',
       delivery: 'delivered',
     });
+  });
+
+  it('attaches identity and delivery only to campaign entries in both history projections', () => {
+    const context = buildTurnMessageContext({
+      inbound: inbound({ text: '¿A qué hora es?' }),
+      messages: [
+        message(1, {
+          direction: 'outbound',
+          source: 'admin_campaign',
+          body: 'Recordatorio: Boda Lucía y Marco.',
+          status: 'delivered',
+          sentAt: '2026-07-31T09:40:00.000Z',
+        }),
+        message(2, {
+          direction: 'outbound',
+          source: 'agent',
+          body: 'Hola, ¿en qué te ayudo?',
+          status: 'delivered',
+          sentAt: '2026-07-31T09:45:00.000Z',
+        }),
+      ],
+    });
+
+    const extractorEntries = buildExtractorConversationHistory(context);
+    expect(extractorEntries).toHaveLength(2);
+    expect(extractorEntries[0]).toMatchObject({ message_id: 1, delivery: 'delivered' });
+    expect('message_id' in (extractorEntries[1] ?? {})).toBe(false);
+    expect('delivery' in (extractorEntries[1] ?? {})).toBe(false);
+
+    const modelEntries = buildModelVisibleConversationHistory(context);
+    expect(modelEntries).toHaveLength(2);
+    expect(modelEntries[0]).toMatchObject({ message_id: 1, delivery: 'delivered' });
+    expect('message_id' in (modelEntries[1] ?? {})).toBe(false);
+    expect('delivery' in (modelEntries[1] ?? {})).toBe(false);
   });
 });
