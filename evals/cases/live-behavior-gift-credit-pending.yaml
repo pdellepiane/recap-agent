@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.gift_credit_pending_payment_stays_pending
 suite: live_behavior_regression
-version: 2
+version: 3
 description: A pending credit gift keeps the host-credit mechanism and the pending payment state side by side without fabricating settlement.
 tags: [live, behavior, purchase, gift, payment, fulfillment, credit]
 targetModes: [live_lambda]
@@ -30,12 +30,13 @@ expectations:
   - id: pending-policy-and-state-coexist
     type: text_semantic
     rubric: >-
-      The phone-scoped gift lookup returns one credit gift whose payment is still pending. The response must be natural and entirely in Spanish, answer the question about receipt of funds from the pending state, explain the hosts' account-credit choice together with the actual pending payment state, and keep both facts distinct. It must not claim the value already posted, was credited, reached the hosts, or is available; must not invent a balance, ledger entry, withdrawal, bank payout or posting time; must not print internal type or field codes; and must not state or imply any gift shipment. No particular word such as automatic, no full policy recital, and no deadline absent from the evidence is required.
+      The phone-scoped gift lookup returns one credit gift whose payment is still pending. The response must be natural and entirely in Spanish, answer the question about receipt of funds from the pending state, explain the hosts' account-credit choice together with the actual pending payment state, and keep both facts distinct. It must not claim the value already posted, was credited, reached the hosts, or is available; must not invent a balance, ledger entry, withdrawal, bank payout or posting time; must not assert what the hosts will use the credit for (no choosing, discretionary-use, or recipient purpose beyond value as account credit by host choice); must not print internal type or field codes; and must not state or imply any gift shipment. No particular word such as automatic, no full policy recital, and no deadline absent from the evidence is required.
     minScore: 0.9
     requireJudge: true
     severity: hard
 notes:
   - "R05 oracle revision v1 to v2, 2026-09-21, gift/campaign review correction 3. The v1 rubric effectively required the word automatic; v2 judges factual adequacy (pending state plus host-credit choice without settlement claims) with no mandated wording, and adds the no-internal-code-citation requirement. Threshold and hard severity kept. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
+  - "R05 oracle revision v2 to v3, 2026-09-22, extractor-context-completion package section C: choosing/discretionary-use/recipient purpose claims now fail without supporting evidence, so a pending-state answer can no longer pass while adding an unevidenced purpose (same ban as the card, campaign, and credit-states contracts). Pending state plus explicit host-credit choice stay required; balance/ledger/withdrawal/payout/posting-time and shipment bans unchanged. Threshold and hard severity kept. Positive/negative calibration examples live in the Lane C review report only; they do not prove live judge consistency."
 budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 1800

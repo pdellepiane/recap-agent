@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.gift_mixed_order_distinguishes_items
 suite: live_behavior_regression
-version: 2
+version: 3
 description: A mixed order (150 physical sheets plus 80 credit honeymoon contribution) is answered per item across turns; an order-wide question distinguishes both without a whole-order no-shipping claim, and requested known amounts are reported exactly.
 tags: [live, behavior, purchase, gift, shipping, fulfillment, mixed]
 targetModes: [live_lambda]
@@ -29,8 +29,35 @@ inputs:
 expectations:
   - id: mixed-uses-gift-reads
     type: tool_usage
-    mustCall: [lookup_guest_gift_purchases_by_phone]
+    mustCall: []
     mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code, guest_rsvp]
+    turnIndex: 0
+    severity: hard
+  - id: mixed-gift-evidence-in-trace
+    type: trace_field_subset
+    path: information_execution_summary
+    expected:
+      - kind: purchase
+        status: completed
+        outcomeCode: completed_with_results
+        evidence:
+          - purchaseFact:
+              eventLabel: Boda Lucía y Marco
+              paymentStatus: approved
+              items:
+                - name: Juego de sábanas
+                  quantity: 1
+                  amount: 150
+                  rowTotal: 150
+                - name: Aporte luna de miel
+                  quantity: 1
+                  amount: 80
+                  rowTotal: 80
+    turnIndex: 0
+    severity: hard
+  - id: mixed-no-order-id-request-t0
+    type: text_not_contains
+    phrases: [número de pedido, numero de pedido, código de pedido, codigo de pedido, número de orden, numero de orden]
     turnIndex: 0
     severity: hard
   - id: mixed-no-unsolicited-effects
@@ -55,6 +82,28 @@ expectations:
     requireJudge: true
     turnIndex: 0
     severity: hard
+  - id: mixed-t1-gift-evidence-in-trace
+    type: trace_field_subset
+    path: information_execution_summary
+    expected:
+      - kind: purchase
+        status: completed
+        outcomeCode: completed_with_results
+        evidence:
+          - purchaseFact:
+              eventLabel: Boda Lucía y Marco
+              items:
+                - name: Aporte luna de miel
+                  quantity: 1
+                  amount: 80
+                  rowTotal: 80
+    turnIndex: 1
+    severity: hard
+  - id: mixed-no-order-id-request-t1
+    type: text_not_contains
+    phrases: [número de pedido, numero de pedido, código de pedido, codigo de pedido, número de orden, numero de orden]
+    turnIndex: 1
+    severity: hard
   - id: mixed-item-followup-answers-that-item
     type: text_semantic
     rubric: >-
@@ -73,6 +122,7 @@ expectations:
     severity: hard
 notes:
   - "R05 oracle revision v1 to v2, 2026-09-21, gift/campaign review corrections 1+3. Fixture v2 carries preserved amounts (sheets 1/150/150, honeymoon 1/80/80, total 230, currency null) instead of the v1 values. T1 replaced with an amount-anchored follow-up and T2 appended to prove requested known amounts across turns; the follow-up gift-read pin was removed because either reuse of established authorized evidence or a fresh authorized read is valid. Rubrics now require natural Spanish with no internal-code citations and forbid substituting related amounts. Threshold and hard severity kept. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
+  - "R05 oracle revision v2 to v3, 2026-09-22, extractor-context-completion package section C: T0/T1 must find the authorized gift records with no user-provided backend ID. Positive proof is now source/resource evidence (hard trace_field_subset on information_execution_summary asserting the completed purchase evidence with the Boda Lucía y Marco purchaseFact and the recorded 150/80 items), never an exclusive tool-name pin: the T0 mustCall list is empty (auth/RSVP safety pins kept) so a generic tool label alone is insufficient to pass, and a wrong-partition read yields no such evidence. Hard text_not_contains pins forbid order-number requests on T0/T1. Subsets deliberately pin no resource value pending the Lane A/B trace-contract fix for purchase_discovery summaries. Threshold and hard severity kept. Positive/negative calibration examples live in the Lane C review report only; they do not prove live judge consistency."
 budget:
   maxTurns: 3
   estimatedPromptTokensPerTurn: 1800

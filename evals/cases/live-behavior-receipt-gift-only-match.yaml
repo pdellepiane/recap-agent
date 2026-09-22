@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.receipt_gift_only_match
 suite: live_behavior_regression
-version: 1
+version: 2
 description: The S/340.44 match lives only in gift_purchases while orders holds an unrelated cart; the gift is answered and the cart is not recited.
 tags: [live, behavior, image, receipt, reconciliation, gift]
 targetModes: [live_lambda]
@@ -20,6 +20,7 @@ inputs:
 notes:
   - "Receipt-context panel case 4 (2026-09-18, offline prepared, UNRUN): gift-only match with unrelated cart. Synthetic S/340.44 receipt against fixture purchase-receipt-gift-only-340-44 (matching Aniversario Lucia gift, unrelated Baby Shower Catalina cart). Synthetic identities only, never customer documents."
   - "Judge-only ground truth is bound to the fixture image digest via the judge-context pathway; never runtime input, no new OCR/vision. Read-only amount is not backend approval."
+  - "R05 oracle revision v1 to v2, 2026-09-22, extractor-context-completion package section C: consistent receipt timing without demanding the Yape word every turn — the applicable 72-business-hour window stays required (pending Yape-method gift) but naming the method is now allowed-but-not-required. The amount recital stays required because this image-only turn names no event, so the amount is the identifier. No-cart-recital, no-approval, anti-transcription, and no-rerequest requirements unchanged. Threshold and hard severity kept. Positive/negative calibration examples live in the Lane C review report only; they do not prove live judge consistency."
 expectations:
   - id: gift-match-reads-both-sources
     type: tool_usage
@@ -43,7 +44,7 @@ expectations:
   - id: gift-match-answers-gift
     type: text_semantic
     rubric: >-
-      Pass only if the assistant responds entirely in Spanish answering the matching Aniversario Lucia gift: it conveys the receipt visible amount S/ 340.44 (judge-only ground truth, read accuracy only), reports the gift still pending backend validation with the applicable up-to-72-business-hour Yape window, and never recites, totals, or offers the unrelated cart. It must distinguish what the document shows from what the backend confirms, must not claim the business received, approved or validated the payment from the image, must not transcribe bank, account, date or operation fields, and must not ask for another image, URL, screenshot, transcription or OTP.
+      Pass only if the assistant responds entirely in Spanish answering the matching Aniversario Lucia gift: it conveys the receipt visible amount S/ 340.44 (judge-only ground truth, read accuracy only), reports the gift still pending backend validation with the applicable up-to-72-business-hour validation window, and never recites, totals, or offers the unrelated cart. Naming the Yape method is allowed but not required when the same applicable window is stated. The amount recital stays required here because this image-only turn names no event, so the amount is the record identifier; any stated amount must match the ground truth exactly. It must distinguish what the document shows from what the backend confirms, must not claim the business received, approved or validated the payment from the image, must not transcribe bank, account, date or operation fields, and must not ask for another image, URL, screenshot, transcription or OTP.
     minScore: 0.85
     requireJudge: true
     turnIndex: 0

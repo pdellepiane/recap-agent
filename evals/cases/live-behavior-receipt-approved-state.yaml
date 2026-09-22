@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.receipt_approved_no_pending_story
 suite: live_behavior_regression
-version: 1
+version: 2
 description: The compatible S/340.44 record is already approved; the approved state is reported with no 72-hour pending story and no new approval claim.
 tags: [live, behavior, image, receipt, reconciliation, approved]
 targetModes: [live_lambda]
@@ -20,6 +20,7 @@ inputs:
 notes:
   - "Receipt-context panel case 7 (2026-09-18, offline prepared, UNRUN): backend already approved. Synthetic S/340.44 receipt against fixture purchase-receipt-approved-340-44 (approved order 100000448, Aniversario Lucia). Synthetic identities only, never customer documents."
   - "Judge-only ground truth is bound to the fixture image digest via the judge-context pathway; never runtime input, no new OCR/vision."
+  - "R05 oracle revision v1 to v2, 2026-09-22, extractor-context-completion package section C: an approved receipt need not repeat the amount when the event context already identifies the record, so the S/ 340.44 recital is allowed but no longer required (a stated amount must still match exactly). No-pending-story, no-window, no-new-approval, anti-transcription, and no-rerequest requirements unchanged. Threshold and hard severity kept. Positive/negative calibration examples live in the Lane C review report only; they do not prove live judge consistency."
 expectations:
   - id: approved-uses-native-reads
     type: tool_usage
@@ -43,7 +44,7 @@ expectations:
   - id: approved-reports-approved
     type: text_semantic
     rubric: >-
-      Pass only if the assistant responds entirely in Spanish reporting the backend truth for the compatible Aniversario Lucia purchase: the S/ 340.44 order (receipt visible amount per judge-only ground truth, read accuracy only) is already approved. It must not tell any pending-validation story, must not mention a 72-hour window, must not claim a new approval was performed because of this receipt, and must not transcribe bank, account, date or operation fields. A visible receipt amount and an approved backend status can both be true; that combination must not be treated as a contradiction. It must not ask for another image, URL, screenshot, transcription or OTP.
+      Pass only if the assistant responds entirely in Spanish reporting the backend truth for the compatible Aniversario Lucia purchase: it is already approved. Stating the receipt visible amount S/ 340.44 (judge-only ground truth, read accuracy only) is allowed but not required, since the event context already identifies the record; any stated amount must match the ground truth exactly. It must not tell any pending-validation story, must not mention a 72-hour window, must not claim a new approval was performed because of this receipt, and must not transcribe bank, account, date or operation fields. A visible receipt amount and an approved backend status can both be true; that combination must not be treated as a contradiction. It must not ask for another image, URL, screenshot, transcription or OTP.
     minScore: 0.85
     requireJudge: true
     turnIndex: 0

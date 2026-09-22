@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.receipt_explicit_older_target_wins
 suite: live_behavior_regression
-version: 1
+version: 2
 description: Explicit context names the older Aniversario Lucia record while a newer same-amount record exists; the explicit target is used with no identity mixing.
 tags: [live, behavior, image, receipt, reconciliation, identity]
 targetModes: [live_lambda]
@@ -26,7 +26,34 @@ inputs:
 notes:
   - "Receipt-context panel case 6 (2026-09-18, offline prepared, UNRUN): explicit older target wins over newer same-amount record. Synthetic S/340.44 receipt against fixture purchase-receipt-dual-340-44. Synthetic identities only, never customer documents."
   - "Judge-only ground truth is bound to the fixture image digest via the judge-context pathway; never runtime input, no new OCR/vision. Read-only amount is not backend approval."
+  - "R05 oracle revision v1 to v2, 2026-09-22, extractor-context-completion package section C: T0 gains hard structural checks (trace_field_subset on information_execution_summary for the completed Aniversario Lucia purchase evidence, text_not_contains for the unrelated newer event) plus a hard text_semantic requireJudge expectation: the user already names the event, so no forced clarification question and no unrelated-target answer. Positive proof uses source/resource evidence plus the semantic rubric, never exclusive tool-name pins; the T0 subset deliberately pins no resource value pending the Lane A/B trace-contract fix for purchase_discovery summaries. T1 keeps the 72-hour window but no longer requires the Yape word or the amount recital (T0 naming already identifies the record; a stated amount must still match exactly). Threshold and hard severity kept. Positive/negative calibration examples live in the Lane C review report only; they do not prove live judge consistency."
 expectations:
+  - id: older-target-t0-reads-named-record
+    type: trace_field_subset
+    path: information_execution_summary
+    expected:
+      - kind: purchase
+        status: completed
+        outcomeCode: completed_with_results
+        evidence:
+          - purchaseFact:
+              eventLabel: Aniversario Lucia
+              paymentStatus: pending
+    turnIndex: 0
+    severity: hard
+  - id: older-target-t0-no-unrelated-target
+    type: text_not_contains
+    phrases: [Baby Shower Catalina]
+    turnIndex: 0
+    severity: hard
+  - id: older-target-t0-answers-named-record
+    type: text_semantic
+    rubric: >-
+      The user explicitly names the Aniversario Lucia purchase and asks whether it is still pending, while a newer same-amount record exists. The first answer must be natural and entirely in Spanish and address the named purchase from the authorized records: it reports the Aniversario Lucia record's pending backend state. It must not ask which event or purchase is meant, must not answer about the newer same-amount record, must not claim any payment was approved, received or validated, and must not demand an image, order number or OTP to answer a status the records already carry. Stating the receipt visible amount or the validation window is allowed but never required on this turn.
+    minScore: 0.85
+    requireJudge: true
+    turnIndex: 0
+    severity: hard
   - id: older-target-uses-native-reads
     type: tool_usage
     mustCall: [image_file_context, lookup_guest_orders_by_phone]
@@ -49,7 +76,7 @@ expectations:
   - id: older-target-uses-explicit-record
     type: text_semantic
     rubric: >-
-      Pass only if the assistant responds entirely in Spanish about the explicitly identified Aniversario Lucia purchase: it conveys the receipt visible amount S/ 340.44 (judge-only ground truth, read accuracy only), reports that purchase still pending backend validation with the applicable up-to-72-business-hour Yape window, and never mixes in the newer same-amount record. It must distinguish what the document shows from what the backend confirms, must not claim the business received, approved or validated the payment from the image, must not reveal opaque backend order ids, and must not ask for another image, URL, screenshot, transcription or OTP.
+      Pass only if the assistant responds entirely in Spanish about the explicitly identified Aniversario Lucia purchase: it reports that purchase still pending backend validation with the applicable up-to-72-business-hour validation window, and never mixes in the newer same-amount record. Naming the Yape method is allowed but not required when the same applicable window is stated. Stating the receipt visible amount S/ 340.44 (judge-only ground truth, read accuracy only) is allowed but not required, since the T0 event naming already identifies the record; any stated amount must match the ground truth exactly. It must distinguish what the document shows from what the backend confirms, must not claim the business received, approved or validated the payment from the image, must not reveal opaque backend order ids, and must not ask for another image, URL, screenshot, transcription or OTP.
     minScore: 0.85
     requireJudge: true
     turnIndex: 1

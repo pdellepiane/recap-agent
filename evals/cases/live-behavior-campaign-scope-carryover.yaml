@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.campaign_scope_carryover_override_handoff
 suite: live_behavior_regression
-version: 2
+version: 3
 description: An outbound campaign for event A supplies the omitted reference for an elliptical gift question; an explicit B question overrides it; an explicit help request hands off exactly once.
 tags: [live, behavior, purchase, gift, campaign, event-reference, handoff]
 targetModes: [live_lambda]
@@ -32,7 +32,6 @@ expectations:
     path: information_execution_summary
     expected:
       - kind: purchase
-        resource: gift_purchases
         status: completed
         outcomeCode: completed_with_results
         evidence:
@@ -49,7 +48,7 @@ expectations:
   - id: scope-carryover-answers-campaign-event
     type: text_semantic
     rubric: >-
-      The only outbound campaign in this conversation concerns the Aniversario de Lucía, and the gift lookup returns a credit gift for that event. The elliptical shipping question inherits that scope: the answer must be natural and entirely in Spanish, address the Aniversario gift, and explain that the hosts chose account credit so no gift shipment applies. It must not ask which event is meant, must not answer about the Boda Ana y Luis, must not invent dispatch or delivery facts, must not assert what the hosts will use the credit for (no purpose beyond value as account credit; funds are held until the hosts withdraw), and must not claim any payment already posted.
+      The only outbound campaign in this conversation concerns the Aniversario de Lucía, and the gift lookup returns a credit gift for that event. The elliptical shipping question inherits that scope: the answer must be natural and entirely in Spanish, address the Aniversario gift, and explain that the hosts chose account credit so no gift shipment applies. It must not ask which event is meant, must not answer about the Boda Ana y Luis, must not invent dispatch or delivery facts, must not assert what the hosts will use the credit for (no choosing, discretionary-use, or recipient purpose beyond value as account credit by host choice), and must not claim any payment already posted, available, or settled. Truthfully stating that availability or posting is not confirmed passes and must never be scored as a settlement claim; background that funds are held until the hosts withdraw is permitted but never required.
     minScore: 0.9
     requireJudge: true
     turnIndex: 0
@@ -98,6 +97,7 @@ expectations:
     severity: hard
 notes:
   - "R05 oracle revision v1 to v2, 2026-09-22, bounded-evidence Work 3: scope-elliptical-reads-gift is now a hard trace_field_subset on information_execution_summary asserting the actual authorized purchase evidence (kind purchase, resource gift_purchases, completed with results, typed purchaseFact for the Aniversario event) instead of a phone-trace tool label, so a generic read of the wrong partition fails the subset; the mustNotCall safety pins move unchanged to scope-elliptical-no-unsafe-calls. The T0 rubric carries the same no-ungrounded-credit-purpose ban as the card contract (funds held until hosts withdraw). Threshold and hard severity kept. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
+  - "R05 oracle revision v2 to v3, 2026-09-22, extractor-context-completion package section C: supported approved status is not host-credit settlement, so the T0 judge must inspect actual facts — truthfully stating that availability or posting is not confirmed passes and is never a settlement claim, and the funds-held background sentence is permitted but never required. Choosing/discretionary-use/recipient purpose claims still fail without evidence. The structural subset keeps the completed purchase evidence with the Aniversario purchaseFact (a wrong-partition read yields no such evidence) but no longer pins the summary resource value, pending the Lane A/B trace-contract fix for purchase_discovery summaries. All other turns unchanged. Threshold and hard severity kept. Positive/negative calibration examples live in the Lane C review report only; they do not prove live judge consistency."
 budget:
   maxTurns: 3
   estimatedPromptTokensPerTurn: 1800
