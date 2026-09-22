@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.gift_shipping_limitation_accepted_handoff_once
 suite: live_behavior_regression
-version: 2
+version: 3
 description: After a physical-shipping limitation, an accepted human-support offer produces exactly one real handoff; thanks afterwards never re-escalates and never invents team action.
 tags: [live, behavior, purchase, gift, shipping, handoff, fulfillment, sestore]
 targetModes: [live_lambda]
@@ -93,13 +93,14 @@ expectations:
   - id: handoff-thanks-safety
     type: text_semantic
     rubric: >-
-      This turn is a bare thanks after a submitted handoff. If the turn was legitimately silent, pass. Otherwise the text must be a short acknowledgement that claims no new team action, no shipment or delivery outcome, no payment outcome, and no second handoff. It must not print internal type or field codes.
+      This turn is a bare thanks after a submitted handoff. If the turn was legitimately silent, pass. Otherwise the text must be a short acknowledgement that claims no new team action, no shipment or delivery outcome, no payment outcome, and no second handoff. A courteous hope alone (for example ojalá or espero que language that asserts no team action and no delivery fact) is not a tool action and passes; only invented delivery facts, commitments, or new-action claims fail. It must not print internal type or field codes.
     minScore: 0.9
     requireJudge: true
     turnIndex: 2
     severity: hard
 notes:
   - "R05 oracle revision v1 to v2, 2026-09-21, gift/campaign review. Added T0 zero-effect pin and T2 final-ledger pin: the runner ledger is cumulative from the case baseline (proven offline in tests/eval-snapshot-fixture-effects.test.ts), so the final snapshot stays 1/1/0 rather than a per-turn 0/0/0. Added a silence-compatible T2 semantic safety check via the validated silence-judge route. T0 rubric gained the no-internal-code-citation requirement. Threshold and hard severity kept. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
+  - "R05 oracle revision v2 to v3, 2026-09-22, bounded-evidence Work 3: T2 thanks safety still rejects invented delivery facts and commitments, but a courteous hope alone that asserts no team action and no delivery fact is not a tool action. Missing-offer completeness stays on the T0 semantic rubric; only an actual unrequested handoff fails the effect pins. Threshold and hard severity kept."
 budget:
   maxTurns: 3
   estimatedPromptTokensPerTurn: 1800

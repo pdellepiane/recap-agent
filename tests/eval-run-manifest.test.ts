@@ -285,35 +285,52 @@ describe('run manifest identity (O0)', () => {
   });
 
   it('keeps dry-run and offline preflight intact without identity', async () => {
-    const selectedCases = (await loadLiveCases()).slice(0, 1);
-    const dry = await buildRunManifest({
-      runId: 'eval-test-dry-no-identity',
-      label: 'candidate',
-      dryRun: true,
-      repoRoot,
-      outputDir,
-      runConfigs: [{ label: 'live', target: 'live_lambda', notes: [], environmentOverrides: {} }],
-      selectedCases,
-      deploymentBefore: null,
-      requestedConcurrency: { cases: 1, judges: 1 },
-      startedAt: new Date().toISOString(),
-      serviceLimits: null,
-    });
-    expect(dry.preflight.passed).toBe(true);
-    const offline = await buildRunManifest({
-      runId: 'eval-test-offline-no-identity',
-      label: 'candidate',
-      dryRun: false,
-      repoRoot,
-      outputDir,
-      runConfigs: [{ label: 'offline', target: 'offline', notes: [], environmentOverrides: {} }],
-      selectedCases,
-      deploymentBefore: null,
-      requestedConcurrency: { cases: 1, judges: 1 },
-      startedAt: new Date().toISOString(),
-      serviceLimits: null,
-    });
-    expect(offline.preflight.passed).toBe(true);
+    // Hermetic: buildRunManifest derives hasJudgeKey from
+    // process.env.OPENAI_API_KEY, which vitest populates from the repo .env
+    // when present. Control it explicitly so this test passes in checkouts
+    // with and without that key.
+    const savedJudgeKey = process.env.OPENAI_API_KEY;
+    try {
+      process.env.OPENAI_API_KEY = 'test-judge-key';
+      const selectedCases = (await loadLiveCases()).slice(0, 1);
+      const dry = await buildRunManifest({
+        runId: 'eval-test-dry-no-identity',
+        label: 'candidate',
+        dryRun: true,
+        repoRoot,
+        outputDir,
+        runConfigs: [{ label: 'live', target: 'live_lambda', notes: [], environmentOverrides: {} }],
+        selectedCases,
+        deploymentBefore: null,
+        requestedConcurrency: { cases: 1, judges: 1 },
+        startedAt: new Date().toISOString(),
+        serviceLimits: null,
+      });
+      expect(dry.preflight.passed).toBe(true);
+      // The identity exemption: a dry run executes no paid calls, so the
+      // missing deployment identity warns instead of failing.
+      expect(dry.preflight.checks.find((entry) => entry.id === 'deployed-identity')?.status).toBe('warn');
+      expect(dry.preflight.checks.find((entry) => entry.id === 'judge-availability')?.status).toBe('pass');
+      const offline = await buildRunManifest({
+        runId: 'eval-test-offline-no-identity',
+        label: 'candidate',
+        dryRun: false,
+        repoRoot,
+        outputDir,
+        runConfigs: [{ label: 'offline', target: 'offline', notes: [], environmentOverrides: {} }],
+        selectedCases,
+        deploymentBefore: null,
+        requestedConcurrency: { cases: 1, judges: 1 },
+        startedAt: new Date().toISOString(),
+        serviceLimits: null,
+      });
+      expect(offline.preflight.passed).toBe(true);
+      expect(offline.preflight.checks.find((entry) => entry.id === 'deployed-identity')?.status).toBe('pass');
+      expect(offline.preflight.checks.find((entry) => entry.id === 'judge-availability')?.status).toBe('pass');
+    } finally {
+      if (savedJudgeKey === undefined) delete process.env.OPENAI_API_KEY;
+      else process.env.OPENAI_API_KEY = savedJudgeKey;
+    }
   });
 
   it('rejects a null after-identity on live completion like a mismatch', async () => {

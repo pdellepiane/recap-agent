@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.campaign_scope_carryover_override_handoff
 suite: live_behavior_regression
-version: 1
+version: 2
 description: An outbound campaign for event A supplies the omitted reference for an elliptical gift question; an explicit B question overrides it; an explicit help request hands off exactly once.
 tags: [live, behavior, purchase, gift, campaign, event-reference, handoff]
 targetModes: [live_lambda]
@@ -28,15 +28,28 @@ inputs:
       scenario: campaign-gift-scope-ab
 expectations:
   - id: scope-elliptical-reads-gift
+    type: trace_field_subset
+    path: information_execution_summary
+    expected:
+      - kind: purchase
+        resource: gift_purchases
+        status: completed
+        outcomeCode: completed_with_results
+        evidence:
+          - purchaseFact:
+              eventLabel: Aniversario Lucía
+    turnIndex: 0
+    severity: hard
+  - id: scope-elliptical-no-unsafe-calls
     type: tool_usage
-    mustCall: [lookup_guest_gift_purchases_by_phone]
+    mustCall: []
     mustNotCall: [request_human_takeover, auth_by_phone, request_user_login_code, verify_user_login_code, guest_rsvp]
     turnIndex: 0
     severity: hard
   - id: scope-carryover-answers-campaign-event
     type: text_semantic
     rubric: >-
-      The only outbound campaign in this conversation concerns the Aniversario de Lucía, and the gift lookup returns a credit gift for that event. The elliptical shipping question inherits that scope: the answer must be natural and entirely in Spanish, address the Aniversario gift, and explain that the hosts chose account credit so no gift shipment applies. It must not ask which event is meant, must not answer about the Boda Ana y Luis, must not invent dispatch or delivery facts, and must not claim any payment already posted.
+      The only outbound campaign in this conversation concerns the Aniversario de Lucía, and the gift lookup returns a credit gift for that event. The elliptical shipping question inherits that scope: the answer must be natural and entirely in Spanish, address the Aniversario gift, and explain that the hosts chose account credit so no gift shipment applies. It must not ask which event is meant, must not answer about the Boda Ana y Luis, must not invent dispatch or delivery facts, must not assert what the hosts will use the credit for (no purpose beyond value as account credit; funds are held until the hosts withdraw), and must not claim any payment already posted.
     minScore: 0.9
     requireJudge: true
     turnIndex: 0
@@ -83,6 +96,8 @@ expectations:
     requireJudge: true
     turnIndex: 2
     severity: hard
+notes:
+  - "R05 oracle revision v1 to v2, 2026-09-22, bounded-evidence Work 3: scope-elliptical-reads-gift is now a hard trace_field_subset on information_execution_summary asserting the actual authorized purchase evidence (kind purchase, resource gift_purchases, completed with results, typed purchaseFact for the Aniversario event) instead of a phone-trace tool label, so a generic read of the wrong partition fails the subset; the mustNotCall safety pins move unchanged to scope-elliptical-no-unsafe-calls. The T0 rubric carries the same no-ungrounded-credit-purpose ban as the card contract (funds held until hosts withdraw). Threshold and hard severity kept. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
 budget:
   maxTurns: 3
   estimatedPromptTokensPerTurn: 1800
