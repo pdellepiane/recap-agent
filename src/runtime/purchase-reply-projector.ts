@@ -137,6 +137,7 @@ export type OrderCandidateView = {
 export type PurchaseReplyOutcome =
   | { kind: 'cart_only'; cart: CartReplyView }
   | { kind: 'order_unique'; order: OrderReplyView }
+  | { kind: 'order_set'; orders: OrderReplyView[] }
   | { kind: 'order_plus_cart'; order: OrderReplyView; cart: CartReplyView }
   | { kind: 'selection'; candidates: OrderCandidateView[] }
   | { kind: 'conflict' }
@@ -348,6 +349,16 @@ export function selectPurchaseReplyOutcome(
       ),
     };
   }
+  if (input.purchases.length > 1) {
+    return {
+      kind: 'order_set',
+      // A reported amount has no verified binding to any one candidate.
+      // Keep it in the turn message, not as a mismatch on every order.
+      orders: input.purchases.map((purchase) =>
+        toOrderView(purchase, input.requestedAspects, input.referenceAuthorized, {})
+      ),
+    };
+  }
   const single = input.purchases[0];
   if (!single) return { kind: 'empty' };
   // A unique trusted record is stated directly. An unavailable
@@ -406,6 +417,8 @@ export function projectPurchaseReplyForModel(
       return { recordType: 'cart', cart: outcome.cart };
     case 'order_unique':
       return { recordType: 'order', order: toModelOrder(outcome.order) };
+    case 'order_set':
+      return { recordType: 'order_set', orders: outcome.orders.map(toModelOrder) };
     case 'order_plus_cart':
       return { recordType: 'order_plus_cart', order: toModelOrder(outcome.order), cart: outcome.cart };
     case 'selection':
@@ -499,6 +512,8 @@ function defaultPurchaseNextAction(outcome: PurchaseReplyOutcome): string {
       return outcome.order.paymentStatus?.trim().toLocaleLowerCase('en') === 'pending'
         ? 'await_validation'
         : 'none';
+    case 'order_set':
+      return 'none';
     case 'empty':
       // No records is a factual answer, not a blocked route: a visible
       // receipt alone never proves backend approval and never implies team
@@ -518,7 +533,7 @@ export function projectCompletedPurchaseForModel(
   result: Extract<InformationTaskResult, { kind: 'purchase'; status: 'completed' }>,
   context: PurchaseReplyEvidenceContext,
 ): Record<string, unknown> {
-  const purchases = result.purchases.slice(0, 3);
+  const purchases = result.purchases;
   const outcome = selectPurchaseReplyOutcome({
     purchases,
     carts: result.carts ?? [],

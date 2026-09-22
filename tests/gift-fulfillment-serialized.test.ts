@@ -1262,8 +1262,8 @@ describe('reply evidence Lane B proofs (selection, parity, availability, continu
     expect(spec.input).toContain('ORD-NEWER');
     expect(spec.input).toContain('Aniversario Lucia');
     // Multiplicity alone never compels a selection question.
-    expect(projected.outcome_kind).not.toBe('selection');
-    expect(projected.permitted_next_action).not.toBe('select_purchase');
+    expect(projected.outcome_kind).toBe('order_set');
+    expect(projected.permitted_next_action).toBe('none');
     expect(projected.missing_inputs ?? []).not.toContain('purchase_selection');
     expect(spec.input).not.toContain('purchase_selection');
   });

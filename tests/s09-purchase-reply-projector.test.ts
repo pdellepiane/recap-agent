@@ -135,6 +135,60 @@ describe('S09 reported amounts never become settlement evidence', () => {
 });
 
 describe('S09 purchase facts reach the reply model', () => {
+  it('keeps every unresolved record factual without calling the first one unique', () => {
+    const purchases = [
+      order({ orderId: 'older', eventName: 'Aniversario Lucia', paymentStatus: 'approved' }),
+      order({ orderId: 'newer', eventName: 'Boda Nueva', paymentStatus: 'pending' }),
+    ];
+    const outcome = selectPurchaseReplyOutcome({
+      purchases,
+      carts: [],
+      needsSelection: false,
+      coverage: 'complete',
+      referenceResolution: 'not_requested',
+      requestedAspects: aspects('summary', 'payment_status'),
+      referenceAuthorized: false,
+      userReported: { amount: 340.44 },
+    });
+    expect(outcome.kind).toBe('order_set');
+    if (outcome.kind !== 'order_set') return;
+    expect(outcome.orders.every((candidate) =>
+      candidate.amountMismatch === null && candidate.userReported.amount === null
+    )).toBe(true);
+    expect(projectPurchaseReplyForModel(outcome)).toMatchObject({
+      recordType: 'order_set',
+      orders: [
+        { eventName: 'Aniversario Lucia', paymentStatus: 'approved' },
+        { eventName: 'Boda Nueva', paymentStatus: 'pending' },
+      ],
+    });
+    const completed = projectCompletedPurchaseForModel({
+      requestId: 'multi-record', kind: 'purchase', status: 'completed', resource: 'gift_purchases',
+      purchases, carts: [], needsSelection: false, coverage: 'complete',
+    }, {
+      requestedAspects: aspects('summary', 'payment_status'),
+    });
+    expect(completed).toMatchObject({
+      outcome_kind: 'order_set',
+      permitted_next_action: 'none',
+      reference_status: { candidate_count: 2 },
+      missing_inputs: [],
+    });
+    const fourth = projectCompletedPurchaseForModel({
+      requestId: 'four-records', kind: 'purchase', status: 'completed', resource: 'gift_purchases',
+      purchases: [
+        ...purchases,
+        order({ orderId: 'third', eventName: 'Boda Tres' }),
+        order({ orderId: 'fourth', eventName: 'Boda Cuatro' }),
+      ],
+      carts: [], needsSelection: false, coverage: 'complete',
+    }, { requestedAspects: aspects('summary') });
+    expect(fourth).toMatchObject({
+      reference_status: { candidate_count: 4 },
+      outcome: { recordType: 'order_set', orders: [{}, {}, {}, { eventName: 'Boda Cuatro' }] },
+    });
+  });
+
   it('selects a unique record without inventing a reference', () => {
     const outcome = selectPurchaseReplyOutcome({
       purchases: [order({ customerTransactionNumber: null })],
