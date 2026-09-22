@@ -920,6 +920,46 @@ describe('actual reply request owns its instructions', () => {
     expect(unknown.input).toContain('handoff_unknown');
   });
 
+  it('keeps completed-RSVP, image, and skipped-handoff evidence distinct in one composition', async () => {
+    // Bounded-evidence preservation proof: one final serialized input
+    // carries the completed-RSVP verification facts, the typed image
+    // evidence, and the skipped handoff outcome together. Both skipped
+    // reasons stay distinguishable with no operational note, and neither
+    // composition attempts the skipped write (no requested outcome).
+    const runtime = testRuntime();
+    const combined = (handoffOutcome: string) => replyRequest(supportPlan(), {
+      rsvpPhoneEvidence: {
+        state: 'resolved_single',
+        coverage: 'complete',
+        resolution: 'authoritative_invitation',
+        event: {
+          event_name: 'Matrimonio de Ana y Luis',
+          event_date: '2026-09-12',
+          invitation_record: 'available',
+          rsvp_state: 'attending',
+        },
+      },
+      rsvpWorkCompleted: true,
+      errorMessage: null,
+      imageEvidence: { status: 'available', reason: null, captionPresent: false },
+      handoffOutcome,
+    });
+    const missingPhone = await runtime.buildReplyRequestSpec(
+      combined('handoff_skipped_missing_phone'),
+    );
+    expect(missingPhone.input).toContain('handoff_skipped_missing_phone');
+    expect(missingPhone.input).toContain('Matrimonio de Ana y Luis');
+    expect(missingPhone.input).toContain('"rsvp_state": "attending"');
+    expect(missingPhone.input).not.toContain('handoff_requested');
+    const unavailable = await runtime.buildReplyRequestSpec(
+      combined('handoff_skipped_unavailable'),
+    );
+    expect(unavailable.input).toContain('handoff_skipped_unavailable');
+    expect(unavailable.input).not.toContain('handoff_skipped_missing_phone');
+    expect(unavailable.input).toContain('Matrimonio de Ana y Luis');
+    expect(unavailable.input).not.toContain('handoff_requested');
+  });
+
   it('retains cross-event RSVP facts instead of hiding them behind a bare reference', async () => {
     // The profile knows only Julisabeth y Andrés while the completed RSVP
     // resolved Matrimonio de Ana y Luis: no slot establishes the merge, so
