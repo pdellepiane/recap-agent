@@ -47,7 +47,7 @@ describe('PromptLoader', () => {
       );
       expect(first.instructions.length).toBeGreaterThan(0);
       expect(first.instructions).toContain('Personalidad del agente');
-      expect(first.instructions).toContain('evita que el mensaje final termine con punto');
+      expect(first.instructions).toContain('Resuelve lo que puedas de la solicitud');
       expect(first.filePaths.some((filePath) => filePath.includes(`nodes/${node}/`))).toBe(true);
     }
   });
@@ -322,7 +322,7 @@ describe('PromptLoader', () => {
       '`yes`/`no` solo con auth activa o pedido protegido',
     );
     expect(welcomeBundle.instructions).toContain('puedes usar un poquito de emojis');
-    expect(welcomeBundle.instructions).toContain('evita que el mensaje final termine con punto');
+    expect(welcomeBundle.instructions).toContain('Resuelve lo que puedas de la solicitud');
     expect(extractorBundle.instructions).toContain(
       'Capacidad no es pedido humano',
     );

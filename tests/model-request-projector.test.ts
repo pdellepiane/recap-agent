@@ -41,7 +41,7 @@ function replyIds(context: ModuleSelectionContext): string[] {
 describe('model request projector extraction applicability', () => {
   it('keeps compact cross-domain recognition on transient owners', () => {
     const ids = moduleIds(extractionContext());
-    expect(ids).toContain('shared_invariants');
+    expect(ids).not.toContain('shared_invariants');
     expect(ids).toContain('extraction_cross_domain');
     expect(ids).toContain('extraction_information');
     expect(ids).toContain('extraction_rsvp');

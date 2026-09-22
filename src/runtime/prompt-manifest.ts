@@ -425,10 +425,10 @@ export const instructionModuleRegistry: Record<InstructionModuleId, InstructionM
       'shared/output_style.txt',
       'shared/common_anti_patterns.txt',
     ],
-    stages: ['extraction', 'reply'],
+    stages: ['reply'],
     owners: ['planning', 'faq', 'customer_assistance', 'unknown'],
     tasks: ['purchase', 'venue', 'rsvp', 'faq_policy', 'handoff', 'auth', 'image', 'planning'],
-    consumer: 'openai-agent-runtime extract/composeReply (every model call)',
+    consumer: 'openai-agent-runtime composeReply (every reply call)',
   },
   extraction_cross_domain: {
     files: ['extractors/base_system.txt', 'extractors/capability_boundary.txt'],

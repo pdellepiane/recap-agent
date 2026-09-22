@@ -282,7 +282,7 @@ describe('reply evidence planning recognition and topic-switch (Lane B)', () => 
     expect(spec.filePaths).not.toContain('shared/agent_personality.txt');
     expect(spec.filePaths).not.toContain('shared/output_style.txt');
     expect(spec.filePaths).not.toContain('shared/common_anti_patterns.txt');
-    expect(spec.filePaths).toContain('shared/base_system.txt');
+    expect(spec.filePaths).not.toContain('shared/base_system.txt');
   });
 
   it('established support extraction keeps cross-domain readability without locking topic switches', async () => {

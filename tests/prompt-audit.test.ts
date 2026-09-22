@@ -25,7 +25,7 @@ describe('prompt audit', () => {
       // 2026-09-17 actionable-answer directive: +266 bytes for the single
       // shared resolve-before-replying invariant (replaces the old
       // pending-vs-done line). Previous pin 7134.
-      serializedRequestBytes: 7400,
+      serializedRequestBytes: 7032,
       maximumToolCount: 0,
     });
     expect(entry(result, 'resolver_consultas_informativas')).toMatchObject({
@@ -158,7 +158,7 @@ describe('prompt audit', () => {
     // capability, in the model's own words, never claiming an executed
     // effect). No exact offer phrase or required question form.
     // Previous pin 20603.
-    expect(entry(result, 'resolver_consultas_informativas').serializedRequestBytes).toBe(20841);
+    expect(entry(result, 'resolver_consultas_informativas').serializedRequestBytes).toBe(20473);
     expect(entry(result, 'responder_invitacion')).toMatchObject({
       maximumToolCount: 0,
     });

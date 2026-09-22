@@ -1959,14 +1959,9 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       { key: 'continuity_evidence', content: continuityEvidence },
       { key: 'image_presence', content: imagePresence },
       { key: 'otp_evidence', content: otpEvidence },
-      { key: 'operation_boundary_rule', content: 'requestedOperation identifica una operación concreta de capability_boundary.txt; no indica disponibilidad. Usa null cuando no se solicita una operación concreta. Decide por el significado completo y el contexto, nunca por palabras aisladas.' },
-      { key: 'ambiguity_history_rule', content: 'Regla de ambiguedad con historial: interpreta el mensaje con el historial reciente solo cuando el mensaje sostiene un tema; un agradecimiento, cierre o mensaje sin peticion no es una solicitud: devuelve un delta vacio. El saludo solo esta permitido en conversacion realmente nueva.' },
-      { key: 'delta_rule', content: 'Extrae solo cambios nuevos del turno. Devuelve un delta vacio cuando el turno no trae cambios ni preguntas nuevas; el runtime conservara el estado persistido.' },
     ];
-    // G2 note: section sequence is unchanged (stable invariants first,
-    // dynamic last); only the boundary moved. Pure thanks still yields an
-    // empty delta while gratitude carrying a decision stays processed
-    // through the rules above.
+    // The stable extractor files carry operation, ambiguity, and empty-delta
+    // rules once; the input contains only turn-specific evidence.
   }
 
   /**

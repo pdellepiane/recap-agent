@@ -410,25 +410,23 @@ describe('actual extraction request owns its instructions', () => {
       extractRequest('Gracias', supportPlan()),
     );
     const ids = spec.modules.map((module) => module.id);
-    expect(ids).toContain('shared_invariants');
+    expect(ids).not.toContain('shared_invariants');
     expect(ids).toContain('extraction_cross_domain');
     expect(ids).toContain('extraction_information');
     expect(ids).not.toContain('extraction_planning');
-    // Selected modules are exactly the files loaded and sent. Contract
-    // revision (Lane B extractor relevance): on the extraction stage the
-    // shared module contributes only shared/base_system.txt; customer
-    // persona, output style and conversational anti-patterns stay on reply
-    // calls, so the registry file list is narrowed here.
-    const expectedFiles = ids.flatMap((id) => id === 'shared_invariants'
-      ? ['shared/base_system.txt']
-      : [...instructionModuleRegistry[id].files]);
+    // Selected extraction modules are exactly the files loaded and sent.
+    // Reply-only shared instructions do not enter this JSON decision call.
+    const expectedFiles = ids.flatMap((id) => [...instructionModuleRegistry[id].files]);
     expect([...spec.filePaths].sort()).toEqual([...expectedFiles].sort());
     for (const file of expectedFiles) {
       expect(spec.instructions).toContain(`## ${file}`);
     }
     expect(spec.instructions).not.toContain('extractors/planning.txt');
-    // Pure thanks still travels with the empty-delta rule, never planning menus.
-    expect(spec.input).toContain('delta vacio');
+    // Pure thanks still travels with the empty-delta instruction once,
+    // not as repeated dynamic input.
+    expect(spec.instructions).toContain('Delta vacío');
+    expect(spec.input).not.toContain('Regla de ambiguedad con historial');
+    expect(spec.input).not.toContain('Devuelve un delta vacio');
     expect(spec.input).not.toContain('Categorías sugeridas');
     expect(spec.manifest.tools).toEqual([]);
     expect(spec.manifest.promptIdentity).toBe(ids.join('+'));
@@ -444,6 +442,9 @@ describe('actual extraction request owns its instructions', () => {
     const ids = spec.modules.map((module) => module.id);
     expect(ids).toContain('extraction_planning');
     expect(spec.instructions).toContain('extractors/planning.txt');
+    // Actual production extraction instructions, not the legacy node bundle.
+    expect(Buffer.byteLength(spec.instructions, 'utf8')).toBeLessThan(15_100);
+    expect(spec.filePaths).not.toContain('shared/base_system.txt');
   });
 
   it('loads image-linkage guidance only while stored refs exist', async () => {
@@ -522,6 +523,12 @@ describe('actual reply request owns its instructions', () => {
     }
     expect(spec.instructions).not.toContain('shared/domain_scope.txt');
     expect(spec.instructions).not.toContain('extractors/planning.txt');
+    expect(spec.instructions).not.toContain('Claro, te ayudo');
+    expect(spec.instructions).not.toContain('Armé');
+    expect(spec.instructions).not.toContain('evita que el mensaje final termine con punto');
+    expect(spec.instructions).toContain('Resuelve lo que puedas de la solicitud');
+    // The old node contract is a static audit artifact, not this model input.
+    expect(spec.filePaths).not.toContain('nodes/resolver_consultas_informativas/response_contract.txt');
     expect(spec.manifest.promptIdentity).toBe(ids.join('+'));
   });
 

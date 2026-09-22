@@ -135,18 +135,8 @@ export function selectExtractionModules(
   context: ModuleSelectionContext,
 ): SelectedModule[] {
   const modules: SelectedModule[] = [
-    // Lane B (A3/B4): extraction emits JSON and never carries
-    // customer-writing style. The shared module keeps its identity, but on
-    // the extraction stage it contributes only shared/base_system.txt; the
-    // personality, output-style and conversational anti-pattern files stay
-    // on reply calls. The extractor base invariants travel through
-    // extraction_cross_domain below.
-    {
-      id: 'shared_invariants',
-      files: ['shared/base_system.txt'],
-      reason: 'stable base invariants on every extraction call; customer-writing style stays on reply only',
-      dependsOn: [],
-    },
+    // Extraction has its own concise invariants; customer-facing shared
+    // instructions belong exclusively to reply calls.
     selected(
       'extraction_cross_domain',
       'typed operation boundary for the current turn',
