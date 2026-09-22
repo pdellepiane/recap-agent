@@ -13123,3 +13123,22 @@ Implemented docs/plan/2026-09-09-lean-conversation/bounded-evidence-simplificati
 **Gates:** tsc clean, eslint clean, full suite 201 files / 2270 passed / 5 skipped (historical skips preserved; baseline 2258 passed), coverage registry green with 3 new entries (e2d80ed1, 2× 9e5f5cd9).
 
 **Remaining limitations:** (1) No live validation — AGENTS.md requires npm run eval:behavior-live after the next dev deploy; the v2 campaign subset oracle and extractor wording are proven offline/post-hoc only. (2) filterCartCandidates keeps hint filtering (deliberate scope limit; carts surface only when purchase evidence is empty). (3) Live-KB health stays a separate integration concern; the panel no longer depends on it for the hours case.
+
+## 2026-09-22 — Targeted gate on bounded-evidence package (run eval-2026-09-22T15-38-33-130Z-8a0dac96): 8/18 pass, no promotion
+
+Deploy (gate procedure): dev liZ4KQmU… → hFlDCL3pGS+nd6l6OdUI1iNs90U3ZUbCdkCSROpwLVc=, artifact 84594308bde9192fa777a97a39d508d6236cf745376546c276409244ea702d57, UPDATE_COMPLETE 15:37:31Z, se-dev/us-east-1, STS 684516060775. Prod unchanged (ZokennG5…). Manifest before/after both hFlD…/84594308… verified-aws. Single 18-case invocation, same IDs, current YAML versions, defaults; 0 errored / 0 skipped.
+
+Pass (8): gift_credit_pending (Work 1 fix verified live: record found, pending explained, 0.991), receipt_alone, receipt_dual, receipt_gift_only, receipt_non_receipt (KB seam verified live: exact schedule stated), receipt_text_pending, receipt_with_text, roberto. Zero transport/harness errors, identity mixing, unapproved effects, or false settlement.
+
+Fail (10), all inspected with traces + CloudWatch + stored extraction:
+- campaign T0 (0.35): new evidence subset PASSED (grounded gift read); semantic fails on persistent "para que ellos elijan cómo usarlo" purpose phrase (v2 bans it consistently) + "compra figura aprobada" posting-adjacent claim. Product composition; the prompt no-purpose bound is not steering the model.
+- gift_credit_states (0.55): retrieval FIXED (completed, no more not-found); reply lacks explicit host choice + "se entrega como crédito en la cuenta" implies posted/available. Product composition.
+- gift_card (0.7): distinction correct; purpose phrase persists + new unsolicited amount 80. Product composition.
+- gift_mixed (0.486): extraction emitted resource=orders for T0/T1 (verified stored resp_039b…, op purchase.orders.read; prompt resource guidance unchanged by this package — known extraction instability, previously seen as "gift_mixed read orders"); empty orders scope → honest not_found → "no compras" + order-number ask. Filter change exonerated (old code fails identically on empty evidence). T2 recovered via the gift read and answered correctly (150, qty 1).
+- sestore_shipped (0.55, was pass): same completed evidence both runs; this reply invented recipient "a los anfitriones" + future shipping. Variance, not a code regression.
+- sestore_unknown (0.55), handoff T0 (0.65): still no human-support offer. Unchanged composition omissions (handoff T1/T2 passed).
+- unknown_type (0.65): improved (states cannot-establish) but no next step.
+- receipt_approved (0.82/0.85, was pass): rubric requires S/340.44 identification; reply omitted the amount. Omission variance, not a code regression.
+- receipt_explicit_older T1 (0.65, was pass): "sigue pendiente" without explicit backend-validation framing + Yape window. Mild. T0 correctly listed both pendings and asked (retain-all working as designed).
+
+Gate verdict: NOT GREEN. Receipt panel 6/8, gift panel 1/8. Remaining work is reply composition (host-choice explicitness, no invented purpose/recipients, required offers/next steps, amount identification) plus extraction resource stability for gift shipping questions — no further architectural proposal made here. No second run, no prod promotion.
