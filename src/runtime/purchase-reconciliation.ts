@@ -221,12 +221,6 @@ export function partitionHasConflict(
   return conflicts;
 }
 
-export function selectPurchaseRecords(
-  purchases: PurchaseInformation[],
-): { purchases: PurchaseInformation[]; needsSelection: boolean } {
-  return { purchases, needsSelection: purchases.length > 1 };
-}
-
 export function selectCartRecords(
   carts: CartInformation[],
 ): { carts: CartInformation[] } {

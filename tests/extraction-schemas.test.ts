@@ -551,3 +551,123 @@ function capabilityProfile(
     ...overrides,
   };
 }
+
+describe('source discovery request contract', () => {
+  it('accepts purchase_discovery as a request-only resource', async () => {
+    const schemas = await import('../src/runtime/extraction-schemas');
+    const core = await import('../src/core/information');
+    const parsed = schemas.openAiInformationRequestSchema.safeParse({
+      kind: 'purchase',
+      query: '¿Cuándo llega mi regalo?',
+      eventHint: null,
+      resource: 'purchase_discovery',
+      orderId: null,
+      amount: null,
+      aspects: ['summary', 'shipping'],
+      sensitiveFields: [],
+      authAction: null,
+      hostWithdrawal: null,
+    });
+    expect(parsed.success).toBe(true);
+
+    const pending = core.pendingInformationRequestSchema.safeParse({
+      requestId: 'information-1',
+      kind: 'purchase',
+      resource: 'purchase_discovery',
+      query: '¿Cuándo llega mi regalo?',
+      orderId: null,
+      aspects: ['summary'],
+      sensitiveFields: [],
+      authAction: 'none',
+    });
+    expect(pending.success).toBe(true);
+
+    // Backend/result PurchaseResource stays the two real sources: discovery
+    // is request-only and never a backend partition.
+    expect(core.purchaseResourceValues).toEqual(['orders', 'gift_purchases']);
+    expect(
+      (core.purchaseResourceValues as readonly string[]).includes('purchase_discovery'),
+    ).toBe(false);
+    expect(core.purchaseRequestResourceValues).toEqual(
+      ['orders', 'gift_purchases', 'purchase_discovery'],
+    );
+  });
+
+  it('registers purchase.read as a generic read that grants no new access', async () => {
+    const manifestModule = await import('../src/runtime/capability-manifest');
+    expect(
+      (manifestModule.runtimeOperationIds as readonly string[]).includes('purchase.read'),
+    ).toBe(true);
+    const manifest = manifestModule.buildRuntimeCapabilityManifest();
+    const read = (manifest as unknown as Record<string, { available: boolean }>)['purchase.read'];
+    expect(read?.available).toBe(true);
+    // purchase.read mirrors the existing purchase-information flag: disabling
+    // purchase reads disables the generic operation identically.
+    const disabled = manifestModule.buildRuntimeCapabilityManifest({
+      featureFlags: { purchaseInformation: false },
+    });
+    const disabledMap = disabled as unknown as Record<string, { available: boolean }>;
+    expect(disabledMap['purchase.read']?.available).toBe(false);
+    expect(disabledMap['purchase.orders.read']?.available).toBe(false);
+    expect(disabledMap['purchase.gift_detail.read']?.available).toBe(false);
+    expect(
+      (manifestModule.runtimeRequestedOperationIds as readonly string[]).includes('purchase.read'),
+    ).toBe(true);
+    expect(manifestModule.isServableInformationRead('purchase.read')).toBe(true);
+  });
+
+  it('keeps requestedOperation and resource in agreement', async () => {
+    const schemas = await import('../src/runtime/extraction-schemas');
+    const purchaseRequest = (
+      resource: 'orders' | 'gift_purchases' | 'purchase_discovery',
+    ) => ({
+      kind: 'purchase' as const,
+      hostWithdrawal: null,
+      resource,
+    });
+    // Agreeing pairs pass through untouched.
+    expect(
+      schemas.normalizeRequestedOperation('purchase.read', [purchaseRequest('purchase_discovery')], null),
+    ).toBe('purchase.read');
+    expect(
+      schemas.normalizeRequestedOperation('purchase.orders.read', [purchaseRequest('orders')], null),
+    ).toBe('purchase.orders.read');
+    expect(
+      schemas.normalizeRequestedOperation('purchase.read', [purchaseRequest('orders')], null),
+    ).toBe('purchase.read');
+    // A specific operation contradicting the subject-based resource is
+    // repaired toward the resource instead of rerouting the read.
+    expect(
+      schemas.normalizeRequestedOperation('purchase.orders.read', [purchaseRequest('gift_purchases')], null),
+    ).toBe('purchase.gift_detail.read');
+    expect(
+      schemas.normalizeRequestedOperation('purchase.gift_detail.read', [purchaseRequest('orders')], null),
+    ).toBe('purchase.orders.read');
+    // Non-purchase operations and turns without purchase requests are untouched.
+    expect(schemas.normalizeRequestedOperation('faq.read', [purchaseRequest('orders')], null)).toBe('faq.read');
+    expect(schemas.normalizeRequestedOperation('purchase.orders.read', [], null)).toBe('purchase.orders.read');
+    expect(schemas.isPurchaseOperationResourceAgreement('purchase.read', 'purchase_discovery')).toBe(true);
+    expect(schemas.isPurchaseOperationResourceAgreement('purchase.orders.read', 'gift_purchases')).toBe(false);
+  });
+
+  it('writes the subject-based source contract into the extractor prompts', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const information = fs.readFileSync(
+      path.resolve(process.cwd(), 'prompts/extractors/information.txt'),
+      'utf8',
+    );
+    expect(information).toContain('purchase_discovery');
+    expect(information).toContain('purchase.read');
+    // Subject-based ownership: established shop orders/carts read orders,
+    // established gift purchases read gift_purchases, unknown ownership
+    // reads purchase_discovery. Aspects never select the backend partition.
+    expect(information).not.toContain('gift_purchases` para pago');
+    expect(information).not.toMatch(/“estado de mi pedido”\s*→\s*`?orders/);
+    const boundary = fs.readFileSync(
+      path.resolve(process.cwd(), 'prompts/extractors/capability_boundary.txt'),
+      'utf8',
+    );
+    expect(boundary).toContain('purchase.read');
+  });
+});

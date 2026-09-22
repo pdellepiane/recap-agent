@@ -7,6 +7,22 @@ import { decisionNodeSchema } from './decision-nodes';
 export const purchaseResourceValues = ['orders', 'gift_purchases'] as const;
 export type PurchaseResource = (typeof purchaseResourceValues)[number];
 
+/**
+ * Request-only purchase resource union. `purchase_discovery` names an
+ * unresolved backend source: the extractor uses it when the turn does not
+ * establish shop-order/cart versus gift-purchase ownership. It never names
+ * a backend partition and never reaches a gateway: the executor expands it
+ * into at most one read per available authorized source. No compatibility
+ * shim exists; backend/result PurchaseResource stays the two real sources.
+ */
+export const purchaseRequestResourceValues = [
+  'orders',
+  'gift_purchases',
+  'purchase_discovery',
+] as const;
+export type PurchaseRequestResource =
+  (typeof purchaseRequestResourceValues)[number];
+
 /** Provenance of an order record in the phone-scoped orders response. */
 export const purchasePartitionValues = [
   'pending_orders',
@@ -132,7 +148,7 @@ export const associatedEventInformationRequestSchema = z.object({
 
 export const purchaseInformationRequestSchema = z.object({
   kind: z.literal('purchase'),
-  resource: z.enum(purchaseResourceValues),
+  resource: z.enum(purchaseRequestResourceValues),
   query: z.string().min(1),
   orderId: z.string().nullable(),
   aspects: z.array(z.enum(purchaseAspectValues)).min(1),
@@ -174,9 +190,42 @@ export type CompletedInformationRequest = z.infer<
   typeof completedInformationRequestSchema
 >;
 
+/**
+ * Per-source coverage for a discovery expansion. One entry per real source:
+ * `completed`/`empty` after an actual read, `unauthorized`/`unavailable`
+ * when the source was never called (access is never bypassed), `failed`
+ * when the read itself errored. `childId` is the deterministic child of the
+ * originating request (`${requestId}:${source}`) used for traceability.
+ */
+export const purchaseSourceCoverageStatusValues = [
+  'completed',
+  'empty',
+  'unauthorized',
+  'unavailable',
+  'failed',
+] as const;
+export type PurchaseSourceCoverageStatus =
+  (typeof purchaseSourceCoverageStatusValues)[number];
+
+export type PurchaseSourceCoverage = {
+  source: PurchaseResource;
+  childId: string;
+  status: PurchaseSourceCoverageStatus;
+  /** Records surfaced from this source; nonzero only when completed. */
+  count: number;
+};
+
+/** Deterministic child ID for one discovery leg of an originating request. */
+export function purchaseDiscoveryChildId(
+  requestId: string,
+  source: PurchaseResource,
+): string {
+  return `${requestId}:${source}`;
+}
+
 export const informationSelectionCandidateSchema = z.object({
   requestId: z.string().min(1),
-  resource: z.enum(purchaseResourceValues),
+  resource: z.enum(purchaseRequestResourceValues),
   orders: z.array(
     z.object({
       orderId: z.string().min(1),
@@ -701,8 +750,15 @@ export type InformationTaskResult =
       requestId: string;
       kind: 'purchase';
       status: 'completed';
-      resource: PurchaseResource;
+      /**
+       * Echo of the requested resource. `purchase_discovery` marks an
+       * expanded discovery read; the actual backends read travel in
+       * `sourceCoverage` (multi-source) or `lookupResource` (single-source).
+       */
+      resource: PurchaseRequestResource;
       lookupResource?: PurchaseResource;
+      /** Per-source coverage; present on discovery expansions. */
+      sourceCoverage?: PurchaseSourceCoverage[];
       purchases: PurchaseInformation[];
       /** Carts remain distinct checkout evidence and are never coerced into orders. */
       carts?: CartInformation[];
@@ -748,6 +804,12 @@ export type InformationTaskResult =
       /** Identifies a scoped lookup even when it returned no records. */
       accessMethod?: 'trusted_phone_guest' | 'trusted_phone_purchase';
       lookupResource?: PurchaseResource;
+      /** Per-source coverage for a failed discovery expansion. */
+      sourceCoverage?: PurchaseSourceCoverage[];
+      /** Purchase-only: exact customer reference that matched nothing. */
+      requestedCustomerTransactionNumber?: string | null;
+      /** Purchase-only: mismatch kept distinct from record multiplicity. */
+      referenceResolution?: 'matched' | 'unavailable';
       failureKind:
         | 'not_configured'
         | 'not_found'
@@ -800,7 +862,16 @@ export type InformationExecutionSummary = {
     | null;
   coverage?: 'complete' | 'partial' | 'inconsistent' | null;
   eventDetailCount?: number;
+  /**
+   * The single real backend source behind this summary, when exactly one
+   * applies. Discovery expansions always omit it; per-source facts travel
+   * in `sourceCoverage` and evidence purchaseFacts. The request-only
+   * `purchase_discovery` value must never appear here: the live-trace
+   * contract rejects it.
+   */
   resource?: PurchaseResource;
+  /** Per-source coverage for a discovery expansion; trace only. */
+  sourceCoverage?: PurchaseSourceCoverage[];
   /**
    * Pagination exhaustion for this read. True when the backend reported the
    * last page, false when results were truncated by a bound or an

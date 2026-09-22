@@ -334,7 +334,13 @@ export function selectPurchaseReplyOutcome(
     if (!cart) return { kind: 'empty' };
     return { kind: 'cart_only', cart: toCartView(cart) };
   }
-  if (input.needsSelection || input.purchases.length > 1) {
+  // Lane B: record count is factual metadata only (reference_status
+  // carries candidate_count). A selection outcome needs an explicit
+  // unresolved-selection fact (needsSelection from a validated-reference
+  // mismatch or an explicit unresolved reference); multiplicity alone never
+  // compels a question. Read answers use the candidate facts plus explicit
+  // text/history through the model without an extra call.
+  if (input.needsSelection) {
     return {
       kind: 'selection',
       candidates: input.purchases.map((purchase, index) =>

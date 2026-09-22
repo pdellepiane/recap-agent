@@ -414,8 +414,14 @@ describe('actual extraction request owns its instructions', () => {
     expect(ids).toContain('extraction_cross_domain');
     expect(ids).toContain('extraction_information');
     expect(ids).not.toContain('extraction_planning');
-    // Selected modules are exactly the files loaded and sent.
-    const expectedFiles = ids.flatMap((id) => [...instructionModuleRegistry[id].files]);
+    // Selected modules are exactly the files loaded and sent. Contract
+    // revision (Lane B extractor relevance): on the extraction stage the
+    // shared module contributes only shared/base_system.txt; customer
+    // persona, output style and conversational anti-patterns stay on reply
+    // calls, so the registry file list is narrowed here.
+    const expectedFiles = ids.flatMap((id) => id === 'shared_invariants'
+      ? ['shared/base_system.txt']
+      : [...instructionModuleRegistry[id].files]);
     expect([...spec.filePaths].sort()).toEqual([...expectedFiles].sort());
     for (const file of expectedFiles) {
       expect(spec.instructions).toContain(`## ${file}`);
@@ -500,10 +506,14 @@ describe('actual reply request owns its instructions', () => {
     );
     const ids = spec.modules.map((module) => module.id);
     expect(ids).toContain('reply_venue_facts');
-    expect(ids).toContain('reply_support_continuity');
+    // Contract revision (Lane B real continuation): a first-turn venue
+    // question with no pending task, prior answer or support act carries
+    // no follow-up directive; the continuity prose assumes a supplied
+    // detail that this turn never provided.
+    expect(ids).not.toContain('reply_support_continuity');
     expect(JSON.stringify(spec.input)).not.toContain('support_query_open');
     expect(spec.instructions).not.toContain('dentro de una consulta de soporte abierta');
-    expect(spec.instructions).toContain('Un dato adicional no acredita una revisión o gestión en curso.');
+    expect(spec.instructions).not.toContain('Un dato adicional no acredita una revisión o gestión en curso.');
     expect(ids).not.toContain('reply_planning_owner');
     const expectedFiles = ids.flatMap((id) => [...instructionModuleRegistry[id].files]);
     expect([...spec.filePaths].sort()).toEqual([...expectedFiles].sort());
@@ -617,7 +627,10 @@ describe('actual reply request owns its instructions', () => {
     const ids = spec.modules.map((module) => module.id);
     expect(ids).toContain('reply_purchase_facts');
     expect(ids).toContain('reply_faq_policy');
-    expect(ids).toContain('reply_support_continuity');
+    // Contract revision (Lane B real continuation): mixed evidence alone
+    // is not a continuation. A first-turn mixed turn answers from both
+    // modules with no follow-up directive.
+    expect(ids).not.toContain('reply_support_continuity');
     expect(spec.input).toContain('Devolución disponible dentro de 7 días');
   });
 

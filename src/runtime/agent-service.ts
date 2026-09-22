@@ -7662,9 +7662,12 @@ export class AgentService {
     const supportAct = args.extraction.supportAct;
     if (supportAct?.kind === 'ask_policy' && supportAct.topic === 'purchase_status' &&
       !requests.some((request) => request.kind === 'purchase')) {
+      // Contract revision (purchase_discovery): a status-policy question
+      // carries no established ownership, so it reads discovery instead of
+      // defaulting the missing source to orders.
       requests = [{
         kind: 'purchase',
-        resource: 'orders',
+        resource: 'purchase_discovery',
         query: args.inbound.text,
         orderId: null,
         aspects: ['payment_status'],
@@ -7696,9 +7699,12 @@ export class AgentService {
         plan: planWithContact,
       })
     ) {
+      // Contract revision (purchase_discovery): the boundary read carries
+      // no established ownership, so it reads discovery instead of
+      // defaulting the missing source to orders.
       requests = [{
         kind: 'purchase',
-        resource: 'orders',
+        resource: 'purchase_discovery',
         query: args.inbound.text,
         orderId: null,
         aspects: ['payment_status'],
@@ -8168,8 +8174,11 @@ export class AgentService {
             : guestEventResult.result.events.length > 1 && detailedEventCount === 0
             ? 'El número confiable está invitado a varios eventos y la referencia no identifica uno de forma única. Muestra únicamente sus nombres y fechas y pregunta en una sola frase a cuál se refiere. No pidas correo ni código.'
             : hasRemainingEmailAuthentication
-              ? 'La consulta del evento se resolvió directamente con la invitación asociada al número confiable. Responde primero solo con los datos solicitados del evento y pide el correo registrado únicamente para las consultas protegidas que siguen pendientes.'
-              : 'La consulta del evento se resolvió directamente con la invitación asociada al número confiable. Responde solo con los datos solicitados del resultado y no pidas correo ni código.';
+              // Lane B: a known lookup success travels as a fact. The
+              // pending-email direction stays because protected requests
+              // genuinely remain; no requested-fields recital is imposed.
+              ? 'La consulta del evento se resolvió directamente con la invitación asociada al número confiable. El correo registrado sigue pendiente únicamente para las consultas protegidas.'
+              : 'La consulta del evento se resolvió directamente con la invitación asociada al número confiable; no pidas correo ni código.';
       }
 
       const phonePurchaseResult = informationResults.find(
@@ -8191,10 +8200,16 @@ export class AgentService {
             ? 'El número confiable permitió recuperar la compra, pero la fuente no expuso el número de transacción visible para vincular el código solicitado. Responde de forma concisa solo el estado para el evento consultado, sin identificadores, montos, fechas ni preguntas de confirmación, y no pidas correo ni código.'
             : 'El número confiable permitió recuperar compras, pero la fuente no expuso el número de transacción visible para vincular el código solicitado. Dilo brevemente, muestra opciones solo por monto, fecha y estado sin atribuir eventos, pide elegir una y no muestres identificadores internos ni pidas correo o código.'
           : phonePurchaseResult.coverage === 'partial'
-          ? 'La consulta se resolvió con información resumida asociada al número confiable porque el detalle no estuvo disponible. Responde solo con los campos presentes, aclara brevemente que la cobertura es parcial y no pidas correo ni código.'
+          // Lane B: the requested-fields recital is deleted, but the
+          // partial-coverage acknowledgment stays: coverage genuinely is
+          // partial (typed), and the cart hedge contract pins this clause.
+          // The auth boundary stays.
+          ? 'La consulta se resolvió con información resumida asociada al número confiable porque el detalle no estuvo disponible; aclara brevemente que la cobertura es parcial. No pidas correo ni código.'
           : phonePurchaseResult.coverage === 'inconsistent'
             ? 'Las fuentes asociadas al número confiable discreparon. Usa únicamente los valores canónicos proyectados, indica que se requiere revisión para cualquier campo no concluyente y no muestres versiones contradictorias ni pidas correo o código.'
-            : 'La consulta de compra se resolvió directamente con el número confiable. Responde solo con los campos solicitados del resultado y no pidas correo ni código.';
+            // Lane B: a known lookup success travels as a fact, not as a
+            // requested-fields instruction. The auth boundary stays.
+            : 'La consulta de compra se resolvió directamente con el número confiable; no pidas correo ni código.';
         const asksExplicitAmount = args.extraction.informationRequests.some(
           (request) => request.kind === 'purchase' && request.amount !== null && request.amount !== undefined,
         );
@@ -8208,27 +8223,10 @@ export class AgentService {
         // already carries the trusted total, recorded method and currency
         // provenance as typed facts (amountDisclosure presentation), and the
         // node response contract owns the presentation policy. Facts only.
-        const hasUnverifiableTransactionTime = phonePurchaseResult.purchases.some(
-          (purchase) =>
-            purchase.paymentValidationExpectation !== undefined &&
-            purchase.paymentValidationExpectation !== null &&
-            !purchase.payment?.paidAt,
-        );
-        // R6: a status-only question carries no method/policy directions.
-        if (hasUnverifiableTransactionTime && !isSingleStatusQuery) {
-          operationalNote += ' La evidencia canónica no verifica una fecha u hora de pago. Si la persona propone una corrección temporal, reconócela solo como dato aportado por ella; no afirmes que el registro o el backend la confirma.';
-        }
-        // C1 grounded-correction framing: when the record carries no
-        // currency (presentation recorded_method_no_currency), a currency
-        // the person asserts is their own correction, never a backend
-        // confirmation. The record timestamp, when present, has no verified
-        // time zone, so an exact local date/time must never be claimed.
-        const hasUnconfirmedRecordCurrency = !isSingleStatusQuery && phonePurchaseResult.purchases.some(
-          (purchase) => purchase.amountDisclosure?.presentation === 'recorded_method_no_currency',
-        );
-        if (!isSingleStatusQuery && (hasUnverifiableTransactionTime || hasUnconfirmedRecordCurrency)) {
-          operationalNote += ' Si la persona corrige la moneda o la fecha y hora, reconoce su corrección como dato aportado por ella y explica que esos dos detalles no pueden confirmarse con el registro disponible; no inventes moneda ni zona horaria.';
-        }
+        // Lane B: the time/currency-correction advisories are deleted. The
+        // typed facts (paymentAt with unknown timezone, currency
+        // availability, user-reported provenance) already carry the same
+        // boundary, so the conditional prose only duplicated them.
         const hasCustomerTransactionNumber = phonePurchaseResult.purchases.some(
           (purchase) => Boolean(purchase.customerTransactionNumber),
         );
@@ -8238,13 +8236,9 @@ export class AgentService {
         // Typed purchase facts (paymentStatus, paymentValidationExpectation)
         // travel on the projected result; the node response contract owns
         // their presentation, so no advisory prose is appended here.
-        // C1 purchase selection framing: candidates are record data only.
-        // Present each with its projected distinguishing fields, ask one
-        // explicit question naming which purchase is meant, and never infer
-        // invitations, attendance, or event associations beyond the record.
-        if (!isSingleStatusQuery && phonePurchaseResult.needsSelection) {
-          operationalNote += ' Hay varias compras registradas y se necesita que la persona elija una: presenta cada candidata solo con evento, fecha, monto y estado proyectados y formula una sola pregunta explícita sobre a cuál se refiere; no infieras invitaciones ni asociaciones más allá del registro.';
-        }
+        // Lane B: no count-driven selection question is imposed. A genuine
+        // validated-reference mismatch still travels as typed selection
+        // evidence (missing purchase_selection), never as prose here.
         // S6: cart and checkout policy travel only on an explicit
         // checkout/cart question. Structured purchase aspects expressing
         // checkout work (`payment_options`) or a cart-only outcome (no
@@ -9122,6 +9116,13 @@ export class AgentService {
             ? {
                 ...request,
                 requestId: existing.requestId,
+                // Contract revision (purchase_discovery): the established
+                // resource wins over discovery in either direction — a new
+                // specific source adopts ownership, a new discovery keeps
+                // the established source. Aspects never change the source.
+                resource: request.resource === 'purchase_discovery'
+                  ? existing.resource
+                  : request.resource,
                 query: authenticationContinuation
                   ? existing.query
                   : request.query || existing.query,
@@ -9198,32 +9199,34 @@ export class AgentService {
    * Packet C purchase normalization. Requested answer aspects are preserved
    * verbatim through normalization, including payment_details: the explicit
    * payment-time question must survive extraction-to-reply. The structured
-   * resource is preserved verbatim as well: it names the owning backend,
-   * and no aspect derivation overrides it here. One partition per request,
-   * never both from this step. The bounded receipt-assistance task fans out
-   * to both authorized sources afterwards through
-   * expandReceiptDiscoveryRequests (two ordinary requests), which is the
-   * only dual-source path. Unknown payment time stays unknown downstream;
-   * the reply addresses that uncertainty instead of inferring it from
-   * event time or order creation.
+   * resource is preserved verbatim as well: it names the owning backend
+   * (orders, gift_purchases, or purchase_discovery when ownership is not
+   * established), and no aspect derivation overrides it here. One request
+   * per question from this step. The bounded receipt-assistance task
+   * resolves to a single purchase_discovery request afterwards through
+   * expandReceiptDiscoveryRequests; the executor expands that request into
+   * at most one read per available authorized source, which is the only
+   * dual-source path. Unknown payment time stays unknown downstream; the
+   * reply addresses that uncertainty instead of inferring it from event
+   * time or order creation. Missing source is never defaulted to orders.
    */
   /**
-   * Receipt discovery for the existing multi-request executor. A recognized
+   * Receipt discovery through the generic discovery expansion. A recognized
    * receipt-assistance task (supportAct provide_detail with the
    * payment_proof topic or the submission_reported detail) and no
-   * established record reads both authorized sources — orders and
-   * gift_purchases — through two ordinary requests, so a gift-only match is
-   * never missed because orders was the only route read. The executor
-   * honors each request's structured resource; no pin or aspect derivation
-   * exists. An already identified record (explicit orderId) refreshes its
-   * single applicable source once: no fan-out. When the extractor
-   * recognized the receipt but emitted no purchase request at all, both
-   * discovery reads are synthesized from the typed task instead of leaving
-   * the receipt undiscovered. Capability and authorization checks stay
-   * per-request in the orchestrator, and the per-turn scoped lookup map
-   * still collapses repeated scoped reads. Typed evidence only: receipt
-   * names, phones and account numbers never establish access, and no
-   * keyword or pixel inspection happens here.
+   * established record resolves to exactly ONE purchase_discovery request,
+   * so a gift-only match is never missed because orders was the only route
+   * read. The executor expands that request into at most one read per
+   * available authorized source with per-source capability checks; no pin
+   * or aspect derivation exists. An already identified record (explicit
+   * orderId) is untouched: no fan-out. When the extractor recognized the
+   * receipt but emitted no purchase request at all, the single discovery
+   * request is synthesized from the typed task instead of leaving the
+   * receipt undiscovered. The per-turn scoped lookup map still collapses
+   * repeated scoped reads. Typed evidence only: receipt names, phones and
+   * account numbers never establish access, and no keyword or pixel
+   * inspection happens here. Thanks and non-receipt turns are not receipt
+   * tasks and synthesize nothing.
    */
   private expandReceiptDiscoveryRequests(
     requests: PendingInformationRequest[],
@@ -9249,11 +9252,22 @@ export class AgentService {
       }
       return requestId;
     };
+    // Contract revision (purchase_discovery): the receipt-only
+    // parallel-source fan-out is removed. One discovery request replaces any
+    // unidentified purchase reads from this step; the executor performs the
+    // per-source expansion with honest per-source coverage.
+    const discoveryAspects = (candidates: PendingInformationRequest[]): PurchaseAspect[] => {
+      const aspects = candidates.flatMap((request) =>
+        request.kind === 'purchase' ? request.aspects : [],
+      );
+      const merged = Array.from(new Set(
+        aspects.length > 0 ? aspects : ['summary', 'payment_status'],
+      ));
+      return merged as PurchaseAspect[];
+    };
     if (unidentified.length === 0) {
-      // Recognized receipt, no purchase request emitted: synthesize both
-      // authorized discovery reads from the typed task. Summary carries
-      // the item facts used to match the receipt; payment_status carries
-      // the backend state the reply reports. The query is internal
+      // Recognized receipt, no purchase request emitted: synthesize the
+      // single discovery request from the typed task. The query is internal
       // evidence (hashed, never shown); image-only turns carry no text.
       const query = inboundText.trim().length > 0
         ? inboundText
@@ -9261,37 +9275,29 @@ export class AgentService {
       const baseId = `information-${requests.length + 1}`;
       return [...requests, {
         kind: 'purchase' as const,
-        resource: 'orders' as const,
+        resource: 'purchase_discovery' as const,
         query,
         orderId: null,
         aspects: ['summary', 'payment_status'],
         sensitiveFields: [],
         authAction: 'none' as const,
         requestId: nextRequestId(baseId),
-      }, {
-        kind: 'purchase' as const,
-        resource: 'gift_purchases' as const,
-        query,
-        orderId: null,
-        aspects: ['summary', 'payment_status'],
-        sensitiveFields: [],
-        authAction: 'none' as const,
-        requestId: nextRequestId(`${baseId}-gift`),
       }];
     }
-    const resources = new Set(unidentified.map((request) => request.resource));
-    if (resources.has('orders') && resources.has('gift_purchases')) return requests;
-    const missing: 'orders' | 'gift_purchases' = resources.has('gift_purchases')
-      ? 'orders'
-      : 'gift_purchases';
-    const template = unidentified.find((request) => request.resource !== missing) ??
-      unidentified[0];
-    if (!template) return requests;
-    return [...requests, {
-      ...template,
-      resource: missing,
-      requestId: nextRequestId(template.requestId),
-    }];
+    const [first, ...rest] = unidentified;
+    if (!first) return requests;
+    const restIds = new Set(rest.map((request) => request.requestId));
+    return requests
+      .filter((request) => !restIds.has(request.requestId))
+      .map((request) =>
+        request.requestId === first.requestId && request.kind === 'purchase'
+          ? {
+            ...request,
+            resource: 'purchase_discovery' as const,
+            aspects: discoveryAspects(unidentified),
+          }
+          : request,
+      );
   }
 
   private defaultPurchaseRequestAspects(
@@ -9698,7 +9704,15 @@ export class AgentService {
       return false;
     }
     if (pending.kind === 'purchase' && extracted.kind === 'purchase') {
-      if (pending.resource !== extracted.resource) {
+      // Contract revision (purchase_discovery): discovery bridges an
+      // unresolved source. A discovery side never breaks the thread on its
+      // own; the order/event checks below still decide continuity, and the
+      // merge adopts the established resource when one side names it.
+      if (
+        pending.resource !== extracted.resource &&
+        pending.resource !== 'purchase_discovery' &&
+        extracted.resource !== 'purchase_discovery'
+      ) {
         return false;
       }
       const pendingOrderId = normalizeExtractedOrderReference(pending.orderId);
@@ -10538,6 +10552,12 @@ export class AgentService {
     if (request.kind === 'associated_event') {
       return 'associated_event_lookup';
     }
+    // Contract revision (purchase_discovery): a discovery request expands
+    // inside the executor, so its deterministic input label is the generic
+    // purchase lookup; per-source reads travel in the execution coverage.
+    if (request.resource === 'purchase_discovery') {
+      return 'agent_api_purchase_lookup';
+    }
     return request.resource === 'orders'
       ? 'agent_api_orders'
       : 'agent_api_gift_purchases';
@@ -10573,7 +10593,33 @@ export class AgentService {
   ): void {
     for (const summary of summaries) {
       if (summary.status !== 'needs_input') {
-        if (
+        // Contract revision (purchase_discovery): a discovery summary
+        // carries per-source coverage, so the trace records each source
+        // actually read instead of a single route label. Unread sources
+        // (unauthorized/unavailable) record no call.
+        if (summary.sourceCoverage && summary.sourceCoverage.length > 0) {
+          for (const entry of summary.sourceCoverage) {
+            if (
+              entry.status !== 'completed' &&
+              entry.status !== 'empty' &&
+              entry.status !== 'failed'
+            ) {
+              continue;
+            }
+            if (
+              summary.accessMethod === 'trusted_phone_purchase' ||
+              summary.accessMethod === 'trusted_phone_event_purchase'
+            ) {
+              toolUsage.called.push(
+                entry.source === 'orders'
+                  ? 'lookup_guest_orders_by_phone'
+                  : 'lookup_guest_gift_purchases_by_phone',
+              );
+            } else {
+              toolUsage.called.push('agent_api_purchase_lookup');
+            }
+          }
+        } else if (
           summary.source === 'associated_event_api' &&
           summary.accessMethod === 'trusted_phone_guest'
         ) {

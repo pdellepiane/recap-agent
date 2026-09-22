@@ -1619,9 +1619,18 @@ describe('B receipt discovery answers a captionless receipt from real state', ()
       (result): result is Extract<NonNullable<typeof result>, { kind: 'purchase'; status: 'completed' }> =>
         result.kind === 'purchase' && result.status === 'completed',
     );
-    const bySource = new Map(purchaseResults.map((result) => [result.lookupResource ?? result.resource, result]));
-    expect(bySource.get('orders')?.purchases.map((purchase) => purchase.orderId)).toContain(RECEIPT_ORDER_ID);
-    expect(bySource.get('gift_purchases')?.purchases.map((purchase) => purchase.orderId)).toContain(RECEIPT_GIFT_ID);
+    // Contract revision (purchase_discovery): receipt assistance expands to
+    // one merged discovery result with per-source coverage instead of one
+    // result per source.
+    expect(purchaseResults).toHaveLength(1);
+    const discovery = purchaseResults[0];
+    expect(discovery?.resource).toBe('purchase_discovery');
+    expect(discovery?.purchases.map((purchase) => purchase.orderId)).toContain(RECEIPT_ORDER_ID);
+    expect(discovery?.purchases.map((purchase) => purchase.orderId)).toContain(RECEIPT_GIFT_ID);
+    expect(discovery?.sourceCoverage?.map((entry) => entry.source).sort()).toEqual([
+      'gift_purchases',
+      'orders',
+    ]);
     for (const result of purchaseResults) {
       expect(['complete', 'partial']).toContain(result.coverage ?? 'complete');
     }

@@ -67,6 +67,15 @@ export type ModuleSelectionContext = {
    * transient/unknown extraction so topic detection stays compact.
    */
   readonly hasPlanningDetail: boolean;
+  /**
+   * Lane B: typed real-continuation flag for the reply stage. True when the
+   * turn continues prior delivered context (owner pending question/task,
+   * persisted outbound record, pending information work) or carries a
+   * support act that references an ongoing matter. Optional so direct unit
+   * callers without turn state keep the previous behavior (undefined means
+   * allowed); deriveReplyCompilerContext always sets it explicitly.
+   */
+  readonly hasSupportContinuity?: boolean;
 };
 
 export type SelectedModule = {
@@ -126,7 +135,18 @@ export function selectExtractionModules(
   context: ModuleSelectionContext,
 ): SelectedModule[] {
   const modules: SelectedModule[] = [
-    selected('shared_invariants', 'stable conversational invariants on every call', []),
+    // Lane B (A3/B4): extraction emits JSON and never carries
+    // customer-writing style. The shared module keeps its identity, but on
+    // the extraction stage it contributes only shared/base_system.txt; the
+    // personality, output-style and conversational anti-pattern files stay
+    // on reply calls. The extractor base invariants travel through
+    // extraction_cross_domain below.
+    {
+      id: 'shared_invariants',
+      files: ['shared/base_system.txt'],
+      reason: 'stable base invariants on every extraction call; customer-writing style stays on reply only',
+      dependsOn: [],
+    },
     selected(
       'extraction_cross_domain',
       'typed operation boundary for the current turn',
@@ -294,6 +314,19 @@ export function deriveReplyCompilerContext(
     (result) => result.kind === 'purchase' && result.status === 'completed' &&
       result.purchases.some(purchaseCarriesFulfillment),
   ) || (request.customerContext?.detailedPurchases ?? []).some(purchaseCarriesFulfillment);
+  // Lane B: real continuation comes from actual prior delivered context
+  // (owner pending question/task, persisted outbound record, pending
+  // information work) or a support act referencing an ongoing matter. A
+  // completed lookup in the current turn never counts; first-turn
+  // questions resolve false so support_continuity prose stays off them.
+  const pendingQuestion = request.plan.owner_pending_question ?? null;
+  const pendingTask = request.plan.owner_pending_task ?? null;
+  const hasSupportContinuity =
+    (pendingQuestion !== null && pendingQuestion.trim().length > 0) ||
+    (pendingTask !== null && pendingTask.trim().length > 0) ||
+    request.plan.last_outbound_context != null ||
+    (request.plan.information_state.pending_requests ?? []).length > 0 ||
+    request.extraction.supportAct != null;
   return {
     stage: 'reply',
     owner,
@@ -302,6 +335,7 @@ export function deriveReplyCompilerContext(
     approvalBoundary,
     giftFulfillment,
     hasPlanningDetail: false,
+    hasSupportContinuity,
   };
 }
 
@@ -374,9 +408,15 @@ export function selectReplyModules(
       selected('reply_wait_followup', 'waited turn behind a fresh prior reply; extend only with new information', ['messageContext.turnWait', 'plan.last_outbound_context']),
     );
   }
+  // Lane B: support_continuity prose assumes the person supplied a
+  // follow-up detail ("La persona aportó un dato..."), so it loads only
+  // for real continuation (typed plan signals or a support act), never on
+  // first-turn questions. Undefined keeps the previous behavior for direct
+  // unit callers; the reply compiler always sets it explicitly.
   if (
-    has('purchase') || has('venue') || has('rsvp') || has('handoff') ||
-    context.owner === 'customer_assistance'
+    context.hasSupportContinuity !== false &&
+    (has('purchase') || has('venue') || has('rsvp') || has('handoff') ||
+    context.owner === 'customer_assistance')
   ) {
     candidates.push(
       selected('reply_support_continuity', 'pending task and prior answer for support continuity', ['plan.owner_pending_question', 'messageContext']),

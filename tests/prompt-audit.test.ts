@@ -151,7 +151,14 @@ describe('prompt audit', () => {
     // 2026-09-17 actionable-answer directive: +266 bytes for the single
     // shared resolve-before-replying invariant (replaces the old line).
     // Previous pin 20337.
-    expect(entry(result, 'resolver_consultas_informativas').serializedRequestBytes).toBe(20603);
+    // Contract revision (Lane B availability offer): +238 bytes for one
+    // scoped availability-help line in
+    // resolver_consultas_informativas/response_contract.txt (help with an
+    // unresolved question when support_availability shows an available
+    // capability, in the model's own words, never claiming an executed
+    // effect). No exact offer phrase or required question form.
+    // Previous pin 20603.
+    expect(entry(result, 'resolver_consultas_informativas').serializedRequestBytes).toBe(20841);
     expect(entry(result, 'responder_invitacion')).toMatchObject({
       maximumToolCount: 0,
     });

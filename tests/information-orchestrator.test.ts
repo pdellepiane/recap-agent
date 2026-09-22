@@ -15,6 +15,7 @@ import {
   type AgentPurchaseLookupResult,
 } from '../src/runtime/agent-conversation-gateway';
 import { InformationOrchestrator } from '../src/runtime/information-orchestrator';
+import { buildRuntimeCapabilityManifest } from '../src/runtime/capability-manifest';
 import type {
   KnowledgeRetrievalGateway,
   KnowledgeRetrievalResult,
@@ -1079,8 +1080,11 @@ describe('InformationOrchestrator', () => {
   it('retains both purchases when descriptive hints name one candidate', async () => {
     // Contract revision (Work 1, 2026-09-22): descriptive event/amount
     // hints never narrow candidates, so the older record stays visible
-    // alongside the current one with needsSelection instead of resolving
-    // to the pending order alone.
+    // alongside the current one instead of resolving to the pending order
+    // alone.
+    // Contract revision (Lane B count-driven selection): multiplicity is
+    // factual metadata, so needsSelection stays false here; the reply
+    // model resolves the reference from the retained records.
     const agentGateway = new FakeAgentGateway();
     agentGateway.guestOrdersResult = {
       status: 'success',
@@ -1139,7 +1143,7 @@ describe('InformationOrchestrator', () => {
     expect(currentResult.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
       ['ORD-current', 'ORD-old'],
     );
-    expect(currentResult.needsSelection).toBe(true);
+    expect(currentResult.needsSelection).toBe(false);
     expect(currentResult.purchases.find(
       (purchase) => purchase.orderId === 'ORD-current',
     )).toMatchObject({
@@ -1198,8 +1202,10 @@ describe('InformationOrchestrator', () => {
 
   it('uses pending and completed partitions instead of a legacy flattened list', async () => {
     // Contract revision (Work 1, 2026-09-22): the hint still must not
-    // narrow, so both partitions stay visible with needsSelection; only
-    // the legacy compatibility list stays excluded.
+    // narrow, so both partitions stay visible; only the legacy
+    // compatibility list stays excluded.
+    // Contract revision (Lane B count-driven selection): multiplicity is
+    // factual metadata, so needsSelection stays false here.
     const agentGateway = new FakeAgentGateway();
     agentGateway.guestOrdersResult = {
       status: 'success',
@@ -1255,7 +1261,7 @@ describe('InformationOrchestrator', () => {
     expect(partitionResult.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
       ['ORD-completed-old', 'ORD-pending-current'],
     );
-    expect(partitionResult.needsSelection).toBe(true);
+    expect(partitionResult.needsSelection).toBe(false);
     expect(partitionResult.purchases.find(
       (purchase) => purchase.orderId === 'ORD-pending-current',
     )).toMatchObject({ eventName: 'Isa y Lu' });
@@ -1380,8 +1386,10 @@ describe('InformationOrchestrator', () => {
   });
 
   it('retains both equal-value candidates under different events instead of narrowing by hint', async () => {
-    // Work 1 (2026-09-22): hints retain scope with needsSelection; the
-    // reply model resolves the reference or asks the distinction.
+    // Work 1 (2026-09-22): hints retain scope; the reply model resolves
+    // the reference or asks the distinction from the retained records.
+    // Contract revision (Lane B count-driven selection): multiplicity is
+    // factual metadata, so needsSelection stays false here.
     const agentGateway = new FakeAgentGateway();
     agentGateway.guestGiftResult = {
       status: 'success',
@@ -1422,7 +1430,7 @@ describe('InformationOrchestrator', () => {
     expect(result.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
       ['GIFT-EQ-1', 'GIFT-EQ-2'],
     );
-    expect(result.needsSelection).toBe(true);
+    expect(result.needsSelection).toBe(false);
   });
 
   it('never resolves an exact nonexistent customer-transaction reference to a record', async () => {
@@ -1473,6 +1481,9 @@ describe('InformationOrchestrator', () => {
   it('keeps an explicitly named older record distinct from a newer pending one', async () => {
     // Work 1 (2026-09-22): no pending auto-selection may erase an explicit
     // older target; both authorized records stay visible for the reply.
+    // Contract revision (Lane B count-driven selection): multiplicity is
+    // factual metadata, so needsSelection stays false here; the explicit
+    // event hint travels for read reasoning without compelling a question.
     const agentGateway = new FakeAgentGateway();
     agentGateway.guestOrdersResult = {
       status: 'success',
@@ -1526,7 +1537,7 @@ describe('InformationOrchestrator', () => {
     expect(result.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
       ['ORD-new', 'ORD-old'],
     );
-    expect(result.needsSelection).toBe(true);
+    expect(result.needsSelection).toBe(false);
   });
 
   it('retains a known guest event when enriched detail returns 500 and public detail succeeds', async () => {
@@ -3026,4 +3037,359 @@ describe('A one purchase source contract across access paths', () => {
       });
     },
   );
+});
+
+describe('source discovery purchase_discovery contract', () => {
+  const DISCOVERY_PHONE = { phone_extension: '+51', phone_number: '987654321' };
+
+  function discoveryOrchestrator(
+    agentGateway: FakeAgentGateway,
+    capabilityManifest?: ConstructorParameters<typeof InformationOrchestrator>[0]['capabilityManifest'],
+  ): InformationOrchestrator {
+    return new InformationOrchestrator({
+      knowledgeGateway: { async search() { throw new Error('unused'); } },
+      providerGateway: {} as ProviderGateway,
+      agentGateway,
+      ...(capabilityManifest ? { capabilityManifest } : {}),
+    });
+  }
+
+  function ordersShippingRecord(): PurchaseInformation {
+    return {
+      orderId: 'ORD-SHIP-1',
+      paymentStatus: 'pending',
+      shippingStatus: null,
+      grandTotal: 150,
+      paymentMethod: 'Transferencia',
+      currency: 'PEN',
+      eventName: 'Matrimonio Lucia',
+      eventDate: null,
+      eventUrl: null,
+      createdAt: '2026-09-10 10:00:00',
+      items: [{ giftName: 'Torta', quantity: 1, amount: 150, rowTotal: 150, type: 'se_store' }],
+    };
+  }
+
+  function giftShippingRecord(): PurchaseInformation {
+    return {
+      orderId: 'GIFT-SHIP-7',
+      paymentStatus: 'approved',
+      shippingStatus: null,
+      grandTotal: 80,
+      paymentMethod: 'Transferencia',
+      currency: 'PEN',
+      eventName: 'Baby Shower Catalina',
+      eventDate: null,
+      eventUrl: null,
+      createdAt: '2026-09-09 10:00:00',
+      items: [{ giftName: 'Aporte', quantity: 1, amount: 80, rowTotal: 80, type: 'credit' }],
+    };
+  }
+
+  function mixedGateways(): FakeAgentGateway {
+    const agentGateway = new FakeAgentGateway();
+    agentGateway.guestOrdersResult = {
+      status: 'success',
+      resource: 'orders',
+      purchases: [ordersShippingRecord()],
+    };
+    agentGateway.guestGiftResult = {
+      status: 'success',
+      resource: 'gift_purchases',
+      purchases: [giftShippingRecord()],
+    };
+    agentGateway.ordersResult = {
+      status: 'success',
+      resource: 'orders',
+      purchases: [ordersShippingRecord()],
+    };
+    agentGateway.giftResult = {
+      status: 'success',
+      resource: 'gift_purchases',
+      purchases: [giftShippingRecord()],
+    };
+    return agentGateway;
+  }
+
+  function discoveryRequest(
+    query: string,
+  ): Extract<PendingInformationRequest, { kind: 'purchase' }> {
+    return {
+      requestId: 'discovery-1',
+      kind: 'purchase',
+      resource: 'purchase_discovery',
+      query,
+      orderId: null,
+      aspects: ['summary', 'shipping'],
+      sensitiveFields: [],
+      authAction: 'none',
+    };
+  }
+
+  // Row 1: mixed gift shipping with unresolved backend source (phone path).
+  it('reads both authorized roots once each and merges 150/80 facts', async () => {
+    const agentGateway = mixedGateways();
+    const execution = await discoveryOrchestrator(agentGateway).execute({
+      requests: [discoveryRequest('¿Cuándo llega mi regalo? ¿Y el otro?')],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: DISCOVERY_PHONE,
+    });
+
+    expect(agentGateway.guestOrdersCalls).toBe(1);
+    expect(agentGateway.guestGiftCalls).toBe(1);
+    expect(execution.results).toHaveLength(1);
+    const result = execution.results[0];
+    if (result?.status !== 'completed' || result.kind !== 'purchase') {
+      throw new Error('expected the discovery read to complete');
+    }
+    expect(result.resource).toBe('purchase_discovery');
+    expect(result.coverage).toBe('complete');
+    expect(result.sourceCoverage).toEqual([
+      { source: 'orders', childId: 'discovery-1:orders', status: 'completed', count: 1 },
+      { source: 'gift_purchases', childId: 'discovery-1:gift_purchases', status: 'completed', count: 1 },
+    ]);
+    const orderIds = result.purchases.map((purchase) => purchase.orderId).sort();
+    expect(orderIds).toEqual(['GIFT-SHIP-7', 'ORD-SHIP-1']);
+    const totals = result.purchases
+      .flatMap((purchase) => purchase.items.map((item) => item.amount ?? null))
+      .sort((left, right) => (left ?? 0) - (right ?? 0));
+    expect(totals).toEqual([80, 150]);
+    // Both facts reach the typed summary evidence: no account-wide absence
+    // claim is possible when both authorized roots were read.
+    const factTotals = execution.summaries[0]?.evidence
+      .map((entry) => entry.purchaseFact?.total ?? null)
+      .sort((left, right) => (left ?? 0) - (right ?? 0));
+    expect(factTotals).toEqual([80, 150]);
+    // Contract revision (Lane C F1): the discovery summary names no
+    // single source; per-source facts travel in sourceCoverage.
+    expect(execution.summaries[0]).toMatchObject({ coverage: 'complete' });
+    expect(execution.summaries[0]).not.toHaveProperty('resource');
+    // Read-only discovery never mutates.
+    expect(JSON.stringify(execution.results)).not.toContain('human_help_receipt');
+  });
+
+  // Row 1 (authenticated path): both token endpoints read once each.
+  it('reads both token endpoints once each on the authenticated path', async () => {
+    const agentGateway = mixedGateways();
+    const execution = await discoveryOrchestrator(agentGateway).execute({
+      requests: [discoveryRequest('¿Cuándo llega mi regalo?')],
+      authentication: { token: 'discovery-token', email: 'discovery@example.com' },
+      authBlock: null,
+    });
+
+    expect(agentGateway.ordersCalls).toBe(1);
+    expect(agentGateway.giftCalls).toBe(1);
+    expect(agentGateway.guestOrdersCalls).toBe(0);
+    expect(agentGateway.guestGiftCalls).toBe(0);
+    const result = execution.results[0];
+    if (result?.status !== 'completed' || result.kind !== 'purchase') {
+      throw new Error('expected the authenticated discovery read to complete');
+    }
+    expect(result.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
+      ['GIFT-SHIP-7', 'ORD-SHIP-1'],
+    );
+  });
+
+  // Row 2: known source reads only its source; aspects cannot change it.
+  it.each([
+    { resource: 'orders' as const, aspects: ['shipping'] as PurchaseAspect[] },
+    { resource: 'orders' as const, aspects: ['payment_status'] as PurchaseAspect[] },
+    { resource: 'gift_purchases' as const, aspects: ['shipping'] as PurchaseAspect[] },
+    { resource: 'gift_purchases' as const, aspects: ['payment_status'] as PurchaseAspect[] },
+  ])('known $resource stays single-source for $aspects', async ({ resource, aspects }) => {
+    const agentGateway = mixedGateways();
+    const execution = await discoveryOrchestrator(agentGateway).execute({
+      requests: [{
+        requestId: 'known-1',
+        kind: 'purchase',
+        resource,
+        query: 'Consulta de fuente conocida.',
+        orderId: null,
+        aspects: [...aspects],
+        sensitiveFields: [],
+        authAction: 'none',
+      }],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: DISCOVERY_PHONE,
+    });
+
+    expect(agentGateway.guestOrdersCalls).toBe(resource === 'orders' ? 1 : 0);
+    expect(agentGateway.guestGiftCalls).toBe(resource === 'gift_purchases' ? 1 : 0);
+    const result = execution.results[0];
+    if (result?.status !== 'completed' || result.kind !== 'purchase') {
+      throw new Error('expected the known-source read to complete');
+    }
+    expect(result.lookupResource).toBe(resource);
+    expect(result.sourceCoverage ?? []).toEqual([]);
+  });
+
+  // Row 3: one discovery source unauthorized stays uncalled with partial coverage.
+  it('keeps accessible facts when one discovery source is unauthorized', async () => {
+    const agentGateway = mixedGateways();
+    const manifest = buildRuntimeCapabilityManifest({
+      disabledOperations: ['purchase.gift_detail.read'],
+    });
+    const execution = await discoveryOrchestrator(agentGateway, manifest).execute({
+      requests: [discoveryRequest('¿Cuándo llega mi regalo?')],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: DISCOVERY_PHONE,
+    });
+
+    expect(agentGateway.guestGiftCalls).toBe(0);
+    expect(agentGateway.guestOrdersCalls).toBe(1);
+    const result = execution.results[0];
+    if (result?.status !== 'completed' || result.kind !== 'purchase') {
+      throw new Error('expected partial discovery to complete');
+    }
+    expect(result.coverage).toBe('partial');
+    expect(result.purchases.map((purchase) => purchase.orderId)).toEqual(['ORD-SHIP-1']);
+    const giftCoverage = result.sourceCoverage?.find((entry) => entry.source === 'gift_purchases');
+    expect(giftCoverage?.childId).toBe('discovery-1:gift_purchases');
+    expect(giftCoverage?.count).toBe(0);
+    expect(['unauthorized', 'unavailable']).toContain(giftCoverage?.status);
+  });
+
+  // Row 4 (orchestrator part): an explicit event hint never filters authorized records.
+  it('retains both records when only an event hint is known', async () => {
+    const agentGateway = mixedGateways();
+    const execution = await discoveryOrchestrator(agentGateway).execute({
+      requests: [{
+        ...discoveryRequest('Consulta por Aniversario Lucia. ¿Sigue pendiente?'),
+        eventHint: 'Aniversario Lucia',
+      }],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: DISCOVERY_PHONE,
+    });
+
+    const result = execution.results[0];
+    if (result?.status !== 'completed' || result.kind !== 'purchase') {
+      throw new Error('expected the hinted discovery read to complete');
+    }
+    expect(result.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
+      ['GIFT-SHIP-7', 'ORD-SHIP-1'],
+    );
+  });
+
+  // Row 5: same amounts across events stay visible alternatives, never amount-filtered.
+  // Contract revision (Lane B count-driven selection): visibility without
+  // amount-only inference carries no selection flag; the alternatives stay
+  // distinguishable from the retained evidence.
+  it('keeps same-amount alternatives visible without amount-only filtering', async () => {
+    const agentGateway = new FakeAgentGateway();
+    const first: PurchaseInformation = {
+      ...ordersShippingRecord(),
+      orderId: 'ORD-AMT-1',
+      eventName: 'Boda Lucia',
+      grandTotal: 150,
+      items: [],
+    };
+    const second: PurchaseInformation = {
+      ...giftShippingRecord(),
+      orderId: 'GIFT-AMT-2',
+      eventName: 'Aniversario Lucia',
+      grandTotal: 150,
+      items: [],
+    };
+    agentGateway.guestOrdersResult = { status: 'success', resource: 'orders', purchases: [first] };
+    agentGateway.guestGiftResult = { status: 'success', resource: 'gift_purchases', purchases: [second] };
+    const execution = await discoveryOrchestrator(agentGateway).execute({
+      requests: [{
+        ...discoveryRequest('¿Cuánto fue?'),
+        amount: 150,
+      }],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: DISCOVERY_PHONE,
+    });
+
+    const result = execution.results[0];
+    if (result?.status !== 'completed' || result.kind !== 'purchase') {
+      throw new Error('expected the amount-hinted discovery read to complete');
+    }
+    expect(result.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
+      ['GIFT-AMT-2', 'ORD-AMT-1'],
+    );
+    expect(result.needsSelection).toBe(false);
+  });
+
+  // Row 6: an exact unmatched reference is preserved, never silently retargeted.
+  it('preserves an unmatched exact reference separately from multiplicity', async () => {
+    const agentGateway = mixedGateways();
+    const execution = await discoveryOrchestrator(agentGateway).execute({
+      requests: [{
+        ...discoveryRequest('Estado del pedido COD999999.'),
+        orderId: 'COD999999',
+      }],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: DISCOVERY_PHONE,
+    });
+
+    expect(agentGateway.guestOrdersCalls).toBe(1);
+    expect(agentGateway.guestGiftCalls).toBe(1);
+    const result = execution.results[0];
+    if (result?.status !== 'completed' || result.kind !== 'purchase') {
+      throw new Error('expected the unmatched reference to retain scope');
+    }
+    // Both authorized records stay visible (no silent narrowing to one
+    // source), while the mismatch itself is preserved as explicit evidence.
+    expect(result.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
+      ['GIFT-SHIP-7', 'ORD-SHIP-1'],
+    );
+    expect(result.referenceResolution).toBe('unavailable');
+    expect(result.requestedCustomerTransactionNumber).toBe('999999');
+    expect(result.needsSelection).toBe(true);
+  });
+
+  // Negative controls: forcing one source must NOT surface the other source facts.
+  it.each([
+    { resource: 'orders' as const, hidden: 'GIFT-SHIP-7' },
+    { resource: 'gift_purchases' as const, hidden: 'ORD-SHIP-1' },
+  ])('forced $resource never surfaces the other source (source-sensitive proof)', async ({ resource, hidden }) => {
+    const agentGateway = mixedGateways();
+    const execution = await discoveryOrchestrator(agentGateway).execute({
+      requests: [{
+        requestId: 'forced-1',
+        kind: 'purchase',
+        resource,
+        query: '¿Cuándo llega mi regalo?',
+        orderId: null,
+        aspects: ['summary', 'shipping'],
+        sensitiveFields: [],
+        authAction: 'none',
+      }],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: DISCOVERY_PHONE,
+    });
+
+    const result = execution.results[0];
+    if (result?.status !== 'completed' || result.kind !== 'purchase') {
+      throw new Error('expected the forced-source read to complete');
+    }
+    expect(result.purchases.map((purchase) => purchase.orderId)).not.toContain(hidden);
+    const totals = execution.summaries[0]?.evidence.map((entry) => entry.purchaseFact?.total ?? null) ?? [];
+    expect(totals).not.toContain(resource === 'orders' ? 80 : 150);
+  });
+
+  // Guard: unrelated turns never trigger a both-source read.
+  it('reads no purchase root for an unrelated FAQ turn', async () => {
+    const agentGateway = mixedGateways();
+    const execution = await discoveryOrchestrator(agentGateway).execute({
+      requests: [{ requestId: 'faq-1', kind: 'faq', query: '¿A qué hora abre?' }],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: DISCOVERY_PHONE,
+    });
+
+    expect(agentGateway.guestOrdersCalls).toBe(0);
+    expect(agentGateway.guestGiftCalls).toBe(0);
+    expect(agentGateway.ordersCalls).toBe(0);
+    expect(agentGateway.giftCalls).toBe(0);
+    expect(execution.results[0]?.status).toBe('failed');
+  });
 });

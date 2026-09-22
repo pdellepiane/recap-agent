@@ -134,13 +134,22 @@ export function promptRuleIdForFile(relativePath: string): string {
     .replaceAll('/', '.')}`;
 }
 
+// Lane B: the legacy capability-bundle surface pins the compact
+// recognition floor. Contact-capture detail (extractors/contact.txt) is
+// selected only through the typed production compiler
+// (selectExtractionModules gates it on planning progress or established
+// support/auth continuation); the coarse legacy `contact` capability flag
+// (`information || canClose`, true on nearly every turn) over-selects
+// detail prose on turns with no typed detail need. No production caller
+// uses this list (production extraction runs through
+// buildExtractionRequestSpec); the set stays equal to the per-profile
+// union below.
 export const extractorPromptFiles = [
   'extractors/base_system.txt',
   'extractors/planning.txt',
   'extractors/information.txt',
   'extractors/rsvp.txt',
   'extractors/provider_management.txt',
-  'extractors/contact.txt',
   'extractors/close_pause.txt',
   'extractors/capability_boundary.txt',
 ] as const;
@@ -165,7 +174,9 @@ export function extractorPromptFilesForCapabilities(
       capabilities.providerInspection
       ? ['extractors/provider_management.txt']
       : []),
-    ...(capabilities.contact ? ['extractors/contact.txt'] : []),
+    // Lane B: see extractorPromptFiles above. The legacy `contact` flag
+    // cannot gate detail relevance, so it selects no file here; contact
+    // capture detail loads only through the typed compiler.
     ...(capabilities.close || capabilities.pause
       ? ['extractors/close_pause.txt']
       : []),

@@ -28,6 +28,14 @@ export const runtimeOperationIds = [
   'auth.phone_update.write',
   'auth.otp.send',
   'auth.otp.verify',
+  /**
+   * Generic purchase read for unresolved backend ownership
+   * (`purchase_discovery` requests). Appended after the S16 effect block so
+   * the v1 prefix order stays pinned. It grants no new access: availability
+   * mirrors the existing purchase-information flag and the executor expands
+   * it into the existing per-source reads with per-source capability checks.
+   */
+  'purchase.read',
 ] as const;
 
 export type RuntimeOperationId = (typeof runtimeOperationIds)[number];
@@ -181,6 +189,7 @@ function featureForOperation(
     case 'event.detail.read': return flags.invitedEventLookup;
     case 'purchase.orders.read': return flags.purchaseInformation;
     case 'purchase.gift_detail.read': return flags.purchaseInformation;
+    case 'purchase.read': return flags.purchaseInformation;
     case 'rsvp.state.read': return flags.rsvp;
     case 'rsvp.response.write': return flags.rsvp;
     case 'provider.plan': return flags.providerPlanning;
@@ -297,6 +306,7 @@ export const runtimeRequestedOperationIds = [
   'payment_proof.verify',
   'purchase.modify',
   'refund_or_withdrawal.execute',
+  'purchase.read',
 ] as const;
 
 export type RuntimeRequestedOperationId = (typeof runtimeRequestedOperationIds)[number];
@@ -333,6 +343,7 @@ const informationServableReadOperations: readonly RuntimeOperationId[] = [
   'event.detail.read',
   'purchase.orders.read',
   'purchase.gift_detail.read',
+  'purchase.read',
   'rsvp.state.read',
 ];
 

@@ -407,6 +407,9 @@ describe('C1 pending purchases guide window, balance and corrections without pro
   });
 
   it('frames user currency/time corrections as unconfirmed record gaps', async () => {
+    // Contract revision (Lane B relevance): the conditional correction
+    // advisory prose is deleted; the typed record facts carry the boundary
+    // and no note direction remains.
     const { runtime } = await runInformationTurn({
       externalUserId: 'u-c1-claudia',
       text: 'Lo hice el 30 de agosto a las 9:31 p. m.; el monto es en dolares.',
@@ -414,7 +417,16 @@ describe('C1 pending purchases guide window, balance and corrections without pro
       results: [pendingYapeResult()],
     });
     const note = runtime.composeRequests[0]?.errorMessage ?? '';
-    expect(note).toContain('no pueden confirmarse con el registro disponible');
+    expect(note).not.toContain('no pueden confirmarse con el registro disponible');
+    expect(note).not.toContain('corrección');
+    const projected = runtime.composeRequests[0]?.informationResults?.[0];
+    expect(projected?.status).toBe('completed');
+    if (projected?.status === 'completed' && projected.kind === 'purchase') {
+      expect(projected.purchases[0]?.amountDisclosure?.presentation).toBe('recorded_method_no_currency');
+      expect(projected.purchases[0]?.paymentValidationExpectation?.maxBusinessHours).toBe(72);
+    } else {
+      expect.unreachable('expected a completed purchase result');
+    }
   });
 
   it('asks selection from record facts without inferring associations', async () => {
@@ -437,8 +449,24 @@ describe('C1 pending purchases guide window, balance and corrections without pro
         coverage: 'complete',
       }],
     });
+    // Contract revision (Lane B count-driven selection): no note imposes
+    // a selection question or an association-inference ban; both record
+    // facts stay available for the model's own interpretation. Genuine
+    // unresolved-selection evidence travels typed (see s09), never as
+    // prose here.
     const note = runtime.composeRequests[0]?.errorMessage ?? '';
-    expect(note).toContain('no infieras invitaciones');
+    expect(note).not.toContain('no infieras invitaciones');
+    expect(note).not.toContain('elija una');
+    const projected = runtime.composeRequests[0]?.informationResults?.[0];
+    expect(projected?.status).toBe('completed');
+    if (projected?.status === 'completed' && projected.kind === 'purchase') {
+      expect(projected.purchases.map((purchase) => purchase.orderId).sort()).toEqual([
+        'order-1',
+        'order-2',
+      ]);
+    } else {
+      expect.unreachable('expected a completed purchase result');
+    }
   });
 
   it('answers a scoped phone miss from the normal reply path with zero writes', async () => {

@@ -284,6 +284,12 @@ export const turnTraceSchema = z.object({
     }).optional(),
     accessMethod: z.enum(['authenticated_account', 'trusted_phone_guest', 'trusted_phone_purchase', 'trusted_phone_event_purchase']).nullable().optional(),
     resource: z.enum(['orders', 'gift_purchases']).optional(),
+    sourceCoverage: z.array(z.object({
+      source: z.enum(['orders', 'gift_purchases']),
+      childId: z.string().min(1),
+      status: z.enum(['completed', 'empty', 'unauthorized', 'unavailable', 'failed']),
+      count: z.number().int().nonnegative(),
+    })).optional(),
     coverage: z.enum(['complete', 'partial', 'inconsistent']).nullable().optional(),
     eventDetailCount: z.number().int().nonnegative().optional(),
   })).default([]),

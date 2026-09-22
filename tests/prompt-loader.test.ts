@@ -335,14 +335,18 @@ describe('PromptLoader', () => {
     expect(extractorBundle.instructions).toContain(
       '`faq`: pregunta general sobre Sin Envolturas',
     );
+    // Contract revision (purchase_discovery): subject-based source contract.
     expect(extractorBundle.instructions).toContain(
-      '`purchase`: estado o detalle de orden/regalo propio o notificado',
+      '`purchase`: estado o detalle de compra propia o notificada',
+    );
+    expect(extractorBundle.instructions).toContain(
+      'Origen por sujeto, no por aspecto',
     );
     expect(extractorBundle.instructions).toContain(
       'Retiro: política/plazo/estado → `faq`',
     );
     expect(extractorBundle.instructions).toContain(
-      'Código de transacción `COD301816`/`301816`',
+      'Código `COD301816`/`301816`',
     );
     expect(extractorBundle.instructions).toContain(
       'Sin número usa',
@@ -350,7 +354,7 @@ describe('PromptLoader', () => {
     expect(extractorBundle.instructions).toContain('orderId=null');
     expect(extractorBundle.instructions).toContain('COD301816');
     expect(extractorBundle.instructions).toContain(
-      'aspects=[summary,payment_status,shipping]',
+      'orden establecida ⇒ `orders` [summary,payment_status,shipping]; si no ⇒ `purchase_discovery`',
     );
     expect(extractorBundle.instructions).toContain('no reemplaces nombres de proveedores desconocidos');
     expect(extractorBundle.instructions).toContain('no quiero quedarme con X');

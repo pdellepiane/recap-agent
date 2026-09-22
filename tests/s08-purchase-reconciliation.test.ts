@@ -16,7 +16,6 @@ import {
   reconcileTwoRecords,
   resolveAgainstStaleNote,
   resolveTransactionReference,
-  selectPurchaseRecords,
 } from '../src/runtime/purchase-reconciliation';
 import type { ProviderGateway } from '../src/runtime/provider-gateway';
 import type {
@@ -171,13 +170,6 @@ describe('S08 purchase reconciliation preserves identity and provenance', () => 
     expect(preserveServerTimestamp(null)).toBeNull();
   });
 
-  it('requires unique records to be stated directly and multiples to need selection', () => {
-    expect(selectPurchaseRecords([basePurchase()]).needsSelection).toBe(false);
-    const two = [basePurchase({ orderId: 'A' }), basePurchase({ orderId: 'B' })];
-    expect(selectPurchaseRecords(two).needsSelection).toBe(true);
-    expect(selectPurchaseRecords([]).needsSelection).toBe(false);
-  });
-
   it('discloses a transaction reference only when the source supplies it and access is authorized', () => {
     const supplied = basePurchase({ customerTransactionNumber: '100000901' });
     expect(resolveTransactionReference(supplied, true)).toBe('100000901');
@@ -277,7 +269,9 @@ describe('S08 purchase reconciliation preserves identity and provenance', () => 
       trustedPhone: { phone_extension: '+51', phone_number: '900070122' },
     });
     const result = execution.results[0];
-    expect(result).toMatchObject({ status: 'completed', needsSelection: true });
+    // Contract revision (Lane B count-driven selection): multiplicity
+    // alone sets no selection flag; both records stay with factual count.
+    expect(result).toMatchObject({ status: 'completed', needsSelection: false });
     if (result?.status === 'completed' && result.kind === 'purchase') {
       expect(result.purchases).toHaveLength(2);
     }
@@ -313,7 +307,9 @@ describe('S08 purchase reconciliation preserves identity and provenance', () => 
       trustedPhone: { phone_extension: '+51', phone_number: '926857444' },
     });
     const result = execution.results[0];
-    expect(result).toMatchObject({ status: 'completed', needsSelection: true });
+    // Contract revision (Lane B count-driven selection): multiplicity
+    // alone sets no selection flag; both records stay with factual count.
+    expect(result).toMatchObject({ status: 'completed', needsSelection: false });
     if (result?.status === 'completed' && result.kind === 'purchase') {
       expect(result.purchases).toHaveLength(2);
       expect(result.carts ?? []).toEqual([]);
@@ -566,16 +562,21 @@ describe('approval boundary: receipt amount alone never proves approval', () => 
 });
 
 describe('B receipt discovery keeps competing records and settles from either source', () => {
-  it('retains two same-amount cross-source records with selection instead of auto-picking one', () => {
-    const fromOrders = basePurchase({ orderId: 'ORD-DISC-1', paymentStatus: 'pending', grandTotal: 340.44 });
-    const fromGift = basePurchase({ orderId: 'GIFT-DISC-7', paymentStatus: 'approved', grandTotal: 340.44 });
-    const selected = selectPurchaseRecords([fromOrders, fromGift]);
-    // Same amount alone never proves identity and never blocks a record:
-    // both candidates stay with one distinguishing question downstream.
-    expect(selected.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
+  it('retains two same-amount cross-source records without auto-picking one', () => {
+    // Contract revision (Lane C F2): the count=>selection helper is
+    // deleted with no src callers. Same amount alone never proves
+    // identity; multiplicity alone asserts no selection flag. Retention
+    // through production code is proven at the orchestrator level
+    // (discovery and same-amount service tests); this keeps the
+    // record-identity fixture honest without the helper.
+    const candidates = [
+      basePurchase({ orderId: 'ORD-DISC-1', paymentStatus: 'pending', grandTotal: 340.44 }),
+      basePurchase({ orderId: 'GIFT-DISC-7', paymentStatus: 'approved', grandTotal: 340.44 }),
+    ];
+    expect(candidates.map((purchase) => purchase.orderId).sort()).toEqual(
       ['GIFT-DISC-7', 'ORD-DISC-1'],
     );
-    expect(selected.needsSelection).toBe(true);
+    expect(candidates).toHaveLength(2);
   });
 
   it('settles the approval boundary from a completed gift result as well as from orders', () => {

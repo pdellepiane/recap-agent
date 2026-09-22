@@ -5,6 +5,7 @@ import {
   createInformationAuthGuidance,
   enrichmentBounds,
   enrichmentVisitKey,
+  purchaseDiscoveryChildId,
   type CartInformation,
   type InformationAuthGuidance,
   type InformationExecutionSummary,
@@ -12,6 +13,8 @@ import {
   type PendingInformationRequest,
   type PurchasePartition,
   type PurchaseInformation,
+  type PurchaseResource,
+  type PurchaseSourceCoverage,
   type SensitivePurchaseField,
 } from '../core/information';
 import { parseOrderReference } from '../core/order-reference';
@@ -211,6 +214,85 @@ export class InformationOrchestrator {
     return typeof Reflect.get(this.dependencies.agentGateway, method) === 'function';
   }
 
+  /**
+   * Requested sources for one purchase read. A discovery request names both
+   * real sources; an established source names only itself. Aspects never
+   * expand this list.
+   */
+  private requestedPurchaseSources(
+    request: PurchaseRequest,
+  ): PurchaseResource[] {
+    return request.resource === 'purchase_discovery'
+      ? ['orders', 'gift_purchases']
+      : [request.resource];
+  }
+
+  private purchaseOperationForSource(source: PurchaseResource): RuntimeOperationId {
+    return source === 'orders' ? 'purchase.orders.read' : 'purchase.gift_detail.read';
+  }
+
+  /**
+   * Phone-authorized sources available for this request. A discovery read
+   * proceeds when at least one source is available; unavailable sources
+   * become coverage below, never a bypass attempt.
+   */
+  private phonePurchaseSources(request: PurchaseRequest): PurchaseResource[] {
+    return this.requestedPurchaseSources(request).filter((source) =>
+      this.capabilityAvailable(
+        this.purchaseOperationForSource(source),
+        this.gatewayMethodConfigured(
+          source === 'orders' ? 'getGuestOrdersByPhone' : 'getGuestGiftPurchasesByPhone',
+        ),
+      ),
+    );
+  }
+
+  /** Authenticated-account sources available for this request. */
+  private accountPurchaseSources(request: PurchaseRequest): PurchaseResource[] {
+    return this.requestedPurchaseSources(request).filter((source) =>
+      this.capabilityAvailable(
+        this.purchaseOperationForSource(source),
+        this.gatewayMethodConfigured(
+          source === 'orders' ? 'getOrders' : 'getGiftPurchases',
+        ),
+      ),
+    );
+  }
+
+  /** Capability reason for an unavailable discovery source (coverage, not a read). */
+  private unavailableSourceStatus(
+    source: PurchaseResource,
+  ): 'unauthorized' | 'unavailable' {
+    const manifest = this.dependencies.capabilityManifest ??
+      this.dependencies.agentGateway.capabilityDescriptor;
+    const reason = manifest?.[this.purchaseOperationForSource(source)]?.reason;
+    if (reason === 'not_authorized') return 'unauthorized';
+    return 'unavailable';
+  }
+
+  /**
+   * Exact customer transaction reference the turn supplied (COD code in
+   * orderId or a bare-code query). Identity evidence only; amounts, names
+   * and event hints never qualify.
+   */
+  private parseRequestedCustomerTransactionNumber(
+    request: PurchaseRequest,
+  ): string | null {
+    const parsedOrderIdReference = parseOrderReference(request.orderId);
+    const parsedQueryReference = parseOrderReference(request.query);
+    // The extractor normally places a bare COD reference in orderId, but a
+    // bare-code query without orderId is still an explicit customer
+    // reference. Only a customer_transaction parse qualifies; anything else
+    // in the query is never treated as a backend id filter.
+    if (parsedOrderIdReference?.kind === 'customer_transaction') {
+      return parsedOrderIdReference.transactionNumber;
+    }
+    if (parsedQueryReference?.kind === 'customer_transaction') {
+      return parsedQueryReference.transactionNumber;
+    }
+    return null;
+  }
+
   async execute(args: {
     requests: PendingInformationRequest[];
     authentication: InformationAuthentication | null;
@@ -368,6 +450,21 @@ export class InformationOrchestrator {
       if (!request) {
         throw new Error('Information result has no matching request.');
       }
+      // Trace contract (Lane C F1): a summary names one real backend
+      // source or none at all. Discovery spans sources, so it always
+      // omits `resource`; per-source facts travel in `sourceCoverage`
+      // and evidence purchaseFacts. Emitting the request-only
+      // `purchase_discovery` value would fail live-trace parsing.
+      const lookupResource =
+        result.kind === 'purchase' && 'lookupResource' in result
+          ? result.lookupResource
+          : undefined;
+      const requestedResource =
+        request.kind === 'purchase' ? request.resource : undefined;
+      const summaryResource =
+        requestedResource === 'purchase_discovery'
+          ? undefined
+          : (lookupResource ?? requestedResource);
       return {
         requestId: request.requestId,
         kind: request.kind,
@@ -380,6 +477,11 @@ export class InformationOrchestrator {
         resultCount: this.resultCount(result),
         durationMs: outcomes.get(index)?.durationMs ?? 0,
         ...(result.openAiTransport ? { openAiTransport: result.openAiTransport } : {}),
+        ...(result.kind === 'purchase' &&
+        (result.status === 'completed' || result.status === 'failed') &&
+        result.sourceCoverage
+          ? { sourceCoverage: result.sourceCoverage }
+          : {}),
         ...(result.status === 'completed' && result.kind === 'associated_event'
           ? {
               accessMethod: result.accessMethod ?? 'authenticated_account',
@@ -391,13 +493,13 @@ export class InformationOrchestrator {
             ? {
                 accessMethod: result.accessMethod ?? 'authenticated_account',
                 coverage: result.coverage ?? 'complete',
-                resource: result.lookupResource ?? result.resource,
+                ...(summaryResource ? { resource: summaryResource } : {}),
               }
             : result.status === 'failed' && result.accessMethod
             ? {
                 accessMethod: result.accessMethod,
                 coverage: null,
-                ...(request.kind === 'purchase' ? { resource: result.lookupResource ?? request.resource } : {}),
+                ...(summaryResource ? { resource: summaryResource } : {}),
               }
             : {}),
       };
@@ -549,14 +651,7 @@ export class InformationOrchestrator {
         request.kind === 'purchase' &&
         trustedPhone &&
         (!authBlock || authBlock.guidance.reason === 'email_required') &&
-        this.capabilityAvailable(
-          request.resource === 'orders' ? 'purchase.orders.read' : 'purchase.gift_detail.read',
-          this.gatewayMethodConfigured(
-            request.resource === 'orders'
-              ? 'getGuestOrdersByPhone'
-              : 'getGuestGiftPurchasesByPhone',
-          ),
-        )
+        this.phonePurchaseSources(request).length > 0
       ) {
         return await this.executePhonePurchaseRequest(
           request,
@@ -580,12 +675,7 @@ export class InformationOrchestrator {
 
     if (
       request.kind === 'purchase' &&
-      !this.capabilityAvailable(
-        request.resource === 'orders' ? 'purchase.orders.read' : 'purchase.gift_detail.read',
-        this.gatewayMethodConfigured(
-          request.resource === 'orders' ? 'getOrders' : 'getGiftPurchases',
-        ),
-      )
+      this.accountPurchaseSources(request).length === 0
     ) {
       return {
         requestId: request.requestId,
@@ -635,6 +725,17 @@ export class InformationOrchestrator {
             : 'No pude consultar tus eventos en este momento. Puedo intentarlo nuevamente.',
         };
       }
+    }
+
+    if (request.kind === 'purchase' && request.resource === 'purchase_discovery') {
+      return await this.executeDiscoveryAccountPurchaseRequest(
+        request,
+        authentication,
+        accountPurchaseLookups,
+      );
+    }
+    if (request.kind !== 'purchase' || request.resource === 'purchase_discovery') {
+      throw new Error('Unreachable: discovery and non-purchase requests return before single-source execution.');
     }
 
     const lookup = await this.lookupPurchase(
@@ -1504,6 +1605,16 @@ export class InformationOrchestrator {
     phoneContext: PhoneContextSnapshot,
     seededRootPromise?: Promise<SeededGuestRoot | null> | null,
   ): Promise<InformationTaskResult> {
+    if (request.resource === 'purchase_discovery') {
+      return await this.executeDiscoveryPhonePurchaseRequest(
+        request,
+        trustedPhone,
+        phoneGateway,
+        phonePurchaseLookups,
+        phoneContext,
+        seededRootPromise,
+      );
+    }
     // Independent root reads run together: the applicable authorized
     // purchase root starts while the shared guest-event seed (same flight
     // the event path consumes) is still hydrating. Both settle below
@@ -1651,7 +1762,9 @@ export class InformationOrchestrator {
               requestedCustomerTransactionNumber: lookup.requestedCustomerTransactionNumber ?? null,
             }),
           ),
-          needsSelection: !request.orderId && combined.length > 1,
+          // Lane B: merged-root multiplicity is factual metadata; only an
+          // explicit validated-reference mismatch asserts selection.
+          needsSelection: false,
           accessMethod: 'trusted_phone_event_purchase',
           coverage: seededIncomplete || lookup.coverage === 'partial' ? 'partial' : 'complete',
           carts: this.filterCartCandidates(evidence.carts, request).map((cart) => this.projectCart(cart)),
@@ -1677,7 +1790,9 @@ export class InformationOrchestrator {
           purchases: eventScopedPurchases.map((purchase) =>
             this.projectPurchase(purchase, request),
           ),
-          needsSelection: !request.orderId && eventScopedPurchases.length > 1,
+          // Lane B: event-scoped multiplicity is factual metadata; only an
+          // explicit validated-reference mismatch asserts selection.
+          needsSelection: false,
           accessMethod: 'trusted_phone_event_purchase',
           coverage: 'partial',
         });
@@ -1815,10 +1930,502 @@ export class InformationOrchestrator {
   }
 
   /**
+   * Generic discovery expansion for the authenticated-account path. Every
+   * available authorized source is read once through the shared per-turn
+   * scoped map and the independent reads run together. Unauthorized and
+   * unavailable sources become coverage entries, never bypass attempts. No
+   * reflexive retries: one bounded read per source, then stop.
+   */
+  private async executeDiscoveryAccountPurchaseRequest(
+    request: PurchaseRequest,
+    authentication: InformationAuthentication,
+    accountPurchaseLookups?: Map<
+      string,
+      Promise<AgentPurchaseLookupResult | undefined>
+    >,
+  ): Promise<InformationTaskResult> {
+    const requested = this.requestedPurchaseSources(request);
+    const available = this.accountPurchaseSources(request);
+    const coverage: PurchaseSourceCoverage[] = requested
+      .filter((source) => !available.includes(source))
+      .map((source) => ({
+        source,
+        childId: purchaseDiscoveryChildId(request.requestId, source),
+        status: this.unavailableSourceStatus(source),
+        count: 0,
+      }));
+    const settled = await Promise.all(
+      available.map(async (source) => ({
+        source,
+        lookup: await this.lookupPurchase(
+          { ...request, resource: source },
+          authentication.token,
+          request.orderId,
+          accountPurchaseLookups,
+        ),
+      })),
+    );
+    const merged = new Map<string, PurchaseInformation>();
+    const carts = new Map<string, CartInformation>();
+    const failures: AgentPurchaseLookupResult[] = [];
+    for (const { source, lookup } of settled) {
+      const childId = purchaseDiscoveryChildId(request.requestId, source);
+      if (!lookup) {
+        coverage.push({ source, childId, status: 'unavailable', count: 0 });
+        continue;
+      }
+      if (lookup.status === 'success') {
+        const evidence = this.partitionedPurchaseLookup(lookup);
+        const candidates = this.filterPurchaseCandidates(evidence.purchases);
+        coverage.push({
+          source,
+          childId,
+          status: candidates.purchases.length > 0 ? 'completed' : 'empty',
+          count: candidates.purchases.length,
+        });
+        for (const purchase of candidates.purchases) {
+          if (!merged.has(purchase.orderId)) merged.set(purchase.orderId, purchase);
+        }
+        for (const cart of this.filterCartCandidates(evidence.carts, request)) {
+          if (!carts.has(cart.cartId)) carts.set(cart.cartId, cart);
+        }
+        continue;
+      }
+      if (lookup.status === 'not_found') {
+        coverage.push({ source, childId, status: 'empty', count: 0 });
+        continue;
+      }
+      if (lookup.status === 'unauthorized') {
+        coverage.push({ source, childId, status: 'unauthorized', count: 0 });
+        failures.push(lookup);
+        continue;
+      }
+      if (lookup.status === 'route_unavailable') {
+        coverage.push({ source, childId, status: 'unavailable', count: 0 });
+        failures.push(lookup);
+        continue;
+      }
+      coverage.push({ source, childId, status: 'failed', count: 0 });
+      failures.push(lookup);
+    }
+    const purchases = [...merged.values()];
+    const cartList = [...carts.values()].map((cart) => this.projectCart(cart));
+    if (purchases.length === 0 && cartList.length === 0) {
+      return {
+        requestId: request.requestId,
+        kind: 'purchase',
+        status: 'failed',
+        ...this.discoveryLookupFailure('account', failures),
+        sourceCoverage: this.orderedCoverage(request.requestId, coverage),
+      };
+    }
+    if (purchases.length === 0) {
+      return {
+        requestId: request.requestId,
+        kind: 'purchase',
+        status: 'completed',
+        resource: 'purchase_discovery',
+        sourceCoverage: this.orderedCoverage(request.requestId, coverage),
+        purchases: [],
+        needsSelection: false,
+        accessMethod: 'authenticated_account',
+        coverage: 'partial',
+        carts: cartList,
+      };
+    }
+    // No exact-order re-read: each root already answered from its own facts.
+    return {
+      requestId: request.requestId,
+      kind: 'purchase',
+      status: 'completed',
+      resource: 'purchase_discovery',
+      sourceCoverage: this.orderedCoverage(request.requestId, coverage),
+      purchases: purchases.map((purchase) =>
+        this.projectPurchase(purchase, request, { transactionReferenceAuthorized: true }),
+      ),
+      // Lane B: discovery multiplicity is factual metadata (per-source
+      // coverage plus every purchase already travel); only an explicit
+      // validated-reference mismatch asserts selection.
+      needsSelection: false,
+      accessMethod: 'authenticated_account',
+      coverage: this.discoveryCoverage(coverage),
+      carts: cartList,
+    };
+  }
+
+  /**
+   * Generic discovery expansion for the phone-authorized path. Per-source
+   * root reads start together with the shared guest-event seed; event-scoped
+   * purchases merge with root candidates by stable order ID. An exact
+   * customer reference matches once across the merged scope: a match narrows
+   * to the matching records, an unmatched reference retains the scope with
+   * the mismatch preserved as explicit evidence (never a silent retarget).
+   */
+  private async executeDiscoveryPhonePurchaseRequest(
+    request: PurchaseRequest,
+    trustedPhone: AgentAuthByPhoneInput,
+    phoneGateway: AgentConversationGateway,
+    phonePurchaseLookups: Map<
+      string,
+      Promise<AgentPhonePurchaseLookupResult | undefined>
+    >,
+    phoneContext: PhoneContextSnapshot,
+    seededRootPromise?: Promise<SeededGuestRoot | null> | null,
+  ): Promise<InformationTaskResult> {
+    const requested = this.requestedPurchaseSources(request);
+    const available = this.phonePurchaseSources(request);
+    if (available.length === 0) {
+      return {
+        requestId: request.requestId,
+        kind: 'purchase',
+        status: 'needs_input',
+        nextInput: 'email',
+        guidance: createInformationAuthGuidance('email_required', null),
+      };
+    }
+    const coverage: PurchaseSourceCoverage[] = requested
+      .filter((source) => !available.includes(source))
+      .map((source) => ({
+        source,
+        childId: purchaseDiscoveryChildId(request.requestId, source),
+        status: this.unavailableSourceStatus(source),
+        count: 0,
+      }));
+    const legPromises = available.map(async (source) => ({
+      source,
+      lookup: await this.lookupPhonePurchase(
+        { ...request, resource: source },
+        trustedPhone,
+        phoneGateway,
+        phonePurchaseLookups,
+        { skipReferenceResolution: true },
+      ),
+    }));
+    const legRun = Promise.all(legPromises);
+    const seeded = seededRootPromise ? await seededRootPromise : null;
+    const eventScopedPurchases = this.eventScopedPurchasesForRequest(
+      request,
+      phoneContext,
+    );
+    const linkedEvents = seeded && seeded.events.length > 0
+      ? this.guestEventsResult(
+        seeded.events,
+        null,
+        seeded.phoneNumber,
+        undefined,
+        seeded.details,
+      )
+      : null;
+    const linkedFailures = seeded
+      ? seeded.failures.map((failure) => ({ ...failure }))
+      : [];
+    const linkedTruncated = seeded?.truncatedByBound ?? false;
+    const seededIncomplete = seeded !== null &&
+      (linkedTruncated || linkedFailures.length > 0);
+    const withLinked = <T extends object>(result: T): T & {
+      linkedEvents?: UserEventLookupResult;
+      linkedEventFailures?: Array<{ eventId: number; failureKind: string }>;
+      linkedEventsTruncated?: boolean;
+    } => linkedEvents
+      ? {
+        ...result,
+        linkedEvents,
+        ...(linkedFailures.length > 0 ? { linkedEventFailures: linkedFailures } : {}),
+        ...(linkedTruncated ? { linkedEventsTruncated: true } : {}),
+      }
+      : result;
+    const legs = await legRun;
+    const candidateIds = new Set<string>();
+    const cartCandidates = new Map<string, CartInformation>();
+    const failures: AgentPhonePurchaseLookupResult[] = [];
+    for (const { source, lookup } of legs) {
+      const childId = purchaseDiscoveryChildId(request.requestId, source);
+      if (!lookup) {
+        coverage.push({ source, childId, status: 'unavailable', count: 0 });
+        continue;
+      }
+      const outcome = lookup.result;
+      if (outcome.status === 'success') {
+        const evidence = this.partitionedPurchaseLookup(outcome);
+        for (const orderId of evidence.conflictingOrderIds) {
+          phoneContext.inconsistentOrderIds.add(orderId);
+        }
+        for (const cart of evidence.carts) {
+          phoneContext.cartsById.set(cart.cartId, cart);
+        }
+        const candidates = this.filterPurchaseCandidates(evidence.purchases);
+        for (const purchase of candidates.purchases) {
+          this.mergePhonePurchase(
+            phoneContext,
+            purchase,
+            lookup.sourceResource,
+            evidence.partitionByOrderId.get(purchase.orderId),
+          );
+          candidateIds.add(purchase.orderId);
+        }
+        coverage.push({
+          source,
+          childId,
+          status: candidates.purchases.length > 0 ? 'completed' : 'empty',
+          count: candidates.purchases.length,
+        });
+        continue;
+      }
+      if (outcome.status === 'not_found') {
+        coverage.push({ source, childId, status: 'empty', count: 0 });
+        continue;
+      }
+      if (outcome.status === 'unauthorized') {
+        coverage.push({ source, childId, status: 'unauthorized', count: 0 });
+        failures.push(outcome);
+        continue;
+      }
+      coverage.push({ source, childId, status: 'failed', count: 0 });
+      failures.push(outcome);
+    }
+    const requestedReference = this.parseRequestedCustomerTransactionNumber(request);
+    const scopedIds = new Set<string>([
+      ...eventScopedPurchases.map((purchase) => purchase.orderId),
+      ...candidateIds,
+    ]);
+    // A backend order ID narrows to that record; a customer transaction
+    // reference (COD code) never narrows by raw string and instead matches
+    // once across the merged scope below.
+    const orderIdReference = parseOrderReference(request.orderId);
+    const backendOrderId = orderIdReference?.kind === 'backend_order_id'
+      ? orderIdReference.orderId
+      : orderIdReference === null
+        ? request.orderId
+        : null;
+    if (backendOrderId) {
+      const only = phoneContext.purchasesByOrderId.get(backendOrderId);
+      if (!only) {
+        return withLinked({
+          requestId: request.requestId,
+          kind: 'purchase' as const,
+          status: 'failed' as const,
+          ...this.discoveryLookupFailure('trusted_phone', failures),
+          accessMethod: 'trusted_phone_purchase' as const,
+          sourceCoverage: this.orderedCoverage(request.requestId, coverage),
+        });
+      }
+      return withLinked({
+        requestId: request.requestId,
+        kind: 'purchase' as const,
+        status: 'completed' as const,
+        resource: 'purchase_discovery' as const,
+        sourceCoverage: this.orderedCoverage(request.requestId, coverage),
+        purchases: [this.projectPurchase(only, request, {
+          requestedCustomerTransactionNumber: requestedReference,
+        })],
+        needsSelection: false,
+        accessMethod: 'trusted_phone_event_purchase' as const,
+        coverage: this.discoveryCoverage(coverage, seededIncomplete),
+        carts: this.filterCartCandidates(
+          [...phoneContext.cartsById.values()],
+          request,
+        ).map((cart) => this.projectCart(cart)),
+      });
+    }
+    let combined = [...scopedIds]
+      .map((orderId) => phoneContext.purchasesByOrderId.get(orderId))
+      .filter((purchase): purchase is NonNullable<typeof purchase> => purchase !== undefined);
+    // A failed optional source never erases ready facts; event-scoped facts
+    // stay usable with honest partial coverage.
+    let referenceResolution: 'matched' | 'unavailable' | 'not_requested' = 'not_requested';
+    if (requestedReference) {
+      const matches = combined.filter(
+        (purchase) => purchase.customerTransactionNumber === requestedReference,
+      );
+      if (matches.length > 0) {
+        combined = matches;
+        referenceResolution = 'matched';
+      } else {
+        referenceResolution = 'unavailable';
+      }
+    }
+    for (const cart of phoneContext.cartsById.values()) {
+      if (!cartCandidates.has(cart.cartId)) cartCandidates.set(cart.cartId, cart);
+    }
+    const carts = this.filterCartCandidates([...cartCandidates.values()], request);
+    if (combined.length === 0 && carts.length === 0) {
+      return withLinked({
+        requestId: request.requestId,
+        kind: 'purchase' as const,
+        status: 'failed' as const,
+        ...this.discoveryLookupFailure('trusted_phone', failures),
+        accessMethod: 'trusted_phone_purchase' as const,
+        sourceCoverage: this.orderedCoverage(request.requestId, coverage),
+        ...(requestedReference
+          ? {
+            requestedCustomerTransactionNumber: requestedReference,
+            referenceResolution: 'unavailable' as const,
+          }
+          : {}),
+      });
+    }
+    if (combined.length === 0) {
+      return withLinked({
+        requestId: request.requestId,
+        kind: 'purchase' as const,
+        status: 'completed' as const,
+        resource: 'purchase_discovery' as const,
+        sourceCoverage: this.orderedCoverage(request.requestId, coverage),
+        purchases: [],
+        needsSelection: false,
+        accessMethod: 'trusted_phone_purchase' as const,
+        coverage: 'partial' as const,
+        carts: carts.map((cart) => this.projectCart(cart)),
+      });
+    }
+    return withLinked({
+      requestId: request.requestId,
+      kind: 'purchase' as const,
+      status: 'completed' as const,
+      resource: 'purchase_discovery' as const,
+      sourceCoverage: this.orderedCoverage(request.requestId, coverage),
+      purchases: combined.map((purchase) =>
+        this.projectPurchase(purchase, request, {
+          requestedCustomerTransactionNumber: requestedReference,
+        }),
+      ),
+      // Lane B: the genuine validated-reference mismatch is preserved as
+      // the selection fact; merged multiplicity alone never asserts it.
+      needsSelection: referenceResolution === 'unavailable',
+      accessMethod: eventScopedPurchases.length > 0 || linkedEvents !== null
+        ? 'trusted_phone_event_purchase'
+        : 'trusted_phone_purchase',
+      coverage: this.discoveryCoverage(coverage, seededIncomplete),
+      carts: carts.map((cart) => this.projectCart(cart)),
+      ...(referenceResolution === 'not_requested'
+        ? {}
+        : {
+          referenceResolution,
+          requestedCustomerTransactionNumber: requestedReference,
+        }),
+    });
+  }
+
+  /** Coverage in stable source order for deterministic traces. */
+  private orderedCoverage(
+    requestId: string,
+    coverage: PurchaseSourceCoverage[],
+  ): PurchaseSourceCoverage[] {
+    const order: readonly PurchaseResource[] = ['orders', 'gift_purchases'];
+    return [...coverage].sort((left, right) => {
+      const indexOf = (entry: PurchaseSourceCoverage): number => {
+        const position = order.indexOf(entry.source);
+        return position < 0 ? order.length : position;
+      };
+      if (indexOf(left) !== indexOf(right)) return indexOf(left) - indexOf(right);
+      return left.childId.localeCompare(right.childId);
+    }).map((entry) => ({
+      ...entry,
+      childId: purchaseDiscoveryChildId(requestId, entry.source),
+    }));
+  }
+
+  /**
+   * Overall discovery coverage. `complete` only when every requested source
+   * produced a definitive read (completed or empty) with no seed truncation;
+   * any unauthorized, unavailable or failed source makes it `partial`.
+   */
+  private discoveryCoverage(
+    coverage: PurchaseSourceCoverage[],
+    seededIncomplete = false,
+  ): 'complete' | 'partial' {
+    if (seededIncomplete) return 'partial';
+    return coverage.every((entry) => entry.status === 'completed' || entry.status === 'empty')
+      ? 'complete'
+      : 'partial';
+  }
+
+  /**
+   * Failure contract for an empty discovery scope. Mirrors the single-source
+   * failure mapping of each access path: transport failures stay retryable,
+   * authorization stays re-authenticatable, unavailable capability stays
+   * terminal, and an all-empty scope is a scoped absence — never an
+   * account-wide claim beyond the sources actually read.
+   */
+  private discoveryLookupFailure(
+    scope: 'account' | 'trusted_phone',
+    failures: ReadonlyArray<AgentPurchaseLookupResult | AgentPhonePurchaseLookupResult>,
+  ): {
+    retryable: boolean;
+    failureKind: 'not_configured' | 'not_found' | 'unauthorized' | 'route_unavailable' | 'invalid_response' | 'request_failed';
+    message: string;
+  } {
+    const first = failures[0];
+    if (!first) {
+      return {
+        retryable: false,
+        failureKind: 'not_found',
+        message: scope === 'account'
+          ? 'No encontré compras coincidentes en las fuentes consultadas de la cuenta autenticada. Revisa los datos de la consulta.'
+          : 'No encontré compras coincidentes asociadas a este número en la consulta realizada. Se necesita apoyo del equipo para revisarlo.',
+      };
+    }
+    if (first.status === 'unauthorized') {
+      return {
+        retryable: scope === 'account',
+        failureKind: 'unauthorized',
+        message: scope === 'account'
+          ? 'La sesión venció o no pudo validarse. Necesito verificar tu correo nuevamente.'
+          : 'No pude consultar la compra asociada a este número en este momento. Puedo comunicarte con una persona del equipo para revisarlo.',
+      };
+    }
+    if (first.status === 'route_unavailable') {
+      return {
+        retryable: false,
+        failureKind: scope === 'account' ? 'route_unavailable' : 'request_failed',
+        message: scope === 'account'
+          ? 'La consulta de compras no está disponible en este momento. Puedo comunicarte con una persona del equipo para revisar tu caso.'
+          : 'No pude consultar la compra asociada a este número en este momento. Puedo comunicarte con una persona del equipo para revisarlo.',
+      };
+    }
+    if (first.status === 'retryable_failure') {
+      return {
+        retryable: true,
+        failureKind: 'request_failed',
+        message: scope === 'account'
+          ? 'No pude consultar la compra en este momento. Puedo intentarlo nuevamente o comunicarte con una persona del equipo.'
+          : 'No pude consultar la compra asociada a este número en este momento. Puedo comunicarte con una persona del equipo para revisarlo.',
+      };
+    }
+    if (first.status === 'failed') {
+      return {
+        retryable: first.retryable,
+        failureKind: first.failureKind,
+        message: scope === 'account'
+          ? 'No pude consultar la compra en este momento. Puedo intentarlo nuevamente o comunicarte con una persona del equipo.'
+          : 'No pude consultar la compra asociada a este número en este momento. Puedo comunicarte con una persona del equipo para revisarlo.',
+      };
+    }
+    if (first.status === 'invalid_response' || first.status === 'invalid_request') {
+      return {
+        retryable: false,
+        failureKind: scope === 'account' ? 'request_failed' : 'invalid_response',
+        message: scope === 'account'
+          ? 'No pude consultar la compra en este momento. Puedo intentarlo nuevamente o comunicarte con una persona del equipo.'
+          : 'No pude consultar la compra asociada a este número en este momento. Puedo comunicarte con una persona del equipo para revisarlo.',
+      };
+    }
+    return {
+      retryable: false,
+      failureKind: 'request_failed',
+      message: scope === 'account'
+        ? 'No pude consultar la compra en este momento. Puedo intentarlo nuevamente o comunicarte con una persona del equipo.'
+        : 'No pude consultar la compra asociada a este número en este momento. Puedo comunicarte con una persona del equipo para revisarlo.',
+    };
+  }
+
+  /**
    * One source contract: a phone-scoped purchase request reads exactly its
    * structured resource. Aspects select answer facts, never the route, and
    * no pin bypass exists. One read per request; the per-turn scoped lookup
-   * map still collapses repeated scoped reads into a single call.
+   * map still collapses repeated scoped reads into a single call. Discovery
+   * legs pass skipReferenceResolution so the exact-reference match runs
+   * once across the merged sources instead of narrowing each source alone.
    */
   private async lookupPhonePurchase(
     request: PurchaseRequest,
@@ -1828,6 +2435,9 @@ export class InformationOrchestrator {
       string,
       Promise<AgentPhonePurchaseLookupResult | undefined>
     >,
+    options?: {
+      skipReferenceResolution?: boolean;
+    },
   ): Promise<{
     result: AgentPhonePurchaseLookupResult;
     coverage: 'complete' | 'partial';
@@ -1835,6 +2445,9 @@ export class InformationOrchestrator {
     referenceResolution: 'not_requested' | 'matched' | 'unavailable';
     requestedCustomerTransactionNumber: string | null;
   } | undefined> {
+    if (request.resource === 'purchase_discovery') {
+      throw new Error('lookupPhonePurchase reads one established source; discovery legs narrow first.');
+    }
     const lookupResource: 'orders' | 'gift_purchases' = request.resource;
     if (
       (lookupResource === 'orders' && !this.gatewayMethodConfigured('getGuestOrdersByPhone')) ||
@@ -1850,17 +2463,8 @@ export class InformationOrchestrator {
       return undefined;
     }
     const parsedOrderIdReference = parseOrderReference(request.orderId);
-    const parsedQueryReference = parseOrderReference(request.query);
-    // The extractor normally places a bare COD reference in orderId, but a
-    // bare-code query without orderId is still an explicit customer
-    // reference. Only a customer_transaction parse qualifies; anything else
-    // in the query is never treated as a backend id filter.
     const requestedCustomerTransactionNumber =
-      parsedOrderIdReference?.kind === 'customer_transaction'
-        ? parsedOrderIdReference.transactionNumber
-        : parsedQueryReference?.kind === 'customer_transaction'
-          ? parsedQueryReference.transactionNumber
-          : null;
+      this.parseRequestedCustomerTransactionNumber(request);
     const lookupOrderId = parsedOrderIdReference?.kind === 'backend_order_id'
       ? parsedOrderIdReference.orderId
       : null;
@@ -1871,17 +2475,37 @@ export class InformationOrchestrator {
       lookupOrderId ?? '*',
     ].join(':');
     const existing = phonePurchaseLookups.get(key);
+    const skipReferenceResolution = options?.skipReferenceResolution === true;
+    const rawLookup = (
+      result: AgentPhonePurchaseLookupResult,
+      sourceResource: 'orders' | 'gift_purchases',
+      coverage: 'complete' | 'partial',
+    ): {
+      result: AgentPhonePurchaseLookupResult;
+      coverage: 'complete' | 'partial';
+      sourceResource: 'orders' | 'gift_purchases';
+      referenceResolution: 'not_requested' | 'matched' | 'unavailable';
+      requestedCustomerTransactionNumber: string | null;
+    } => ({
+      result,
+      coverage,
+      sourceResource,
+      referenceResolution: 'not_requested',
+      requestedCustomerTransactionNumber: null,
+    });
     if (existing) {
       const result = await existing;
       if (!result) {
         return undefined;
       }
-      return this.resolveCustomerTransactionLookup(
-        result,
-        lookupResource,
-        requestedCustomerTransactionNumber,
-        'complete',
-      );
+      return skipReferenceResolution
+        ? rawLookup(result, lookupResource, 'complete')
+        : this.resolveCustomerTransactionLookup(
+          result,
+          lookupResource,
+          requestedCustomerTransactionNumber,
+          'complete',
+        );
     }
     const lookupPromise = lookupResource === 'orders'
       ? phoneGateway.getGuestOrdersByPhone!({
@@ -1901,7 +2525,10 @@ export class InformationOrchestrator {
 
     // Gift purchases is the detailed route. If it is temporarily failing,
     // one summary/status request can still be answered through guest orders.
+    // Discovery legs skip this cross-source fallback: both roots are read
+    // directly by the expansion, so a fallback here would only re-read.
     if (
+      !skipReferenceResolution &&
       lookupResource === 'gift_purchases' &&
       this.isSummaryOrStatusRequest(request) &&
       this.isRetryableLookupFailure(lookup) &&
@@ -1930,12 +2557,14 @@ export class InformationOrchestrator {
         sourceResource = 'orders';
       }
     }
-    return this.resolveCustomerTransactionLookup(
-      lookup,
-      sourceResource,
-      requestedCustomerTransactionNumber,
-      coverage,
-    );
+    return skipReferenceResolution
+      ? rawLookup(lookup, sourceResource, coverage)
+      : this.resolveCustomerTransactionLookup(
+        lookup,
+        sourceResource,
+        requestedCustomerTransactionNumber,
+        coverage,
+      );
   }
 
   private resolveCustomerTransactionLookup(
@@ -2168,9 +2797,13 @@ export class InformationOrchestrator {
     // the reply model resolves natural references from the retained
     // authorized records and asks a meaningful distinction when several
     // remain.
+    // Lane B: candidate count is factual metadata (the result already
+    // carries every purchase), never a semantic unresolved-selection
+    // assertion. Only an explicit validated-reference mismatch above sets
+    // needsSelection here.
     return {
       purchases,
-      needsSelection: purchases.length > 1,
+      needsSelection: false,
     };
   }
 
@@ -2263,10 +2896,13 @@ export class InformationOrchestrator {
   ): Promise<AgentPurchaseLookupResult | undefined> {
     // One source contract: authenticated reads keep the declared
     // resource, the same structured value the phone path reads. One
-    // partition per request; the receipt-discovery fan-out reads both
-    // sources through two ordinary requests, never by re-reading here.
+    // partition per request; discovery legs arrive already narrowed to one
+    // source by the expansion, never by re-reading here.
     // P1: repeated scoped lookups run once per turn under a token-hash
     // scope so an auth change can never reuse broader cached access.
+    if (request.resource === 'purchase_discovery') {
+      throw new Error('lookupPurchase reads one established source; discovery legs narrow first.');
+    }
     const partition = request.resource;
     if (!this.capabilityAvailable(
       partition === 'orders' ? 'purchase.orders.read' : 'purchase.gift_detail.read',

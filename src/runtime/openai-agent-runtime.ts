@@ -387,6 +387,22 @@ type ReplyTurnEvidence = {
     allowed_next: string;
   } | null;
   handoff_outcome?: string | null;
+  /**
+   * Lane B evidence-only support availability. Handoff capability
+   * availability comes from the configured runtime capability manifest
+   * (never claimed when the configuration disallows it, and absent when
+   * no manifest was configured so unknown availability is never stated);
+   * the missing contact-phone prerequisite stays distinguishable from an
+   * unavailable capability. Independent of handoffOutcome (which carries
+   * an actual executed/skipped result): offering available help is not
+   * executing it. Present only on support turns carrying completed
+   * purchase/event work with no handoff or auth outcome yet, so unrelated
+   * turns stay byte-identical. Facts only, never reply prose.
+   */
+  support_availability?: {
+    handoff_available: boolean;
+    missing_prerequisite?: 'contact_phone';
+  } | null;
   image_evidence?: {
     status: 'available' | 'unavailable';
     reason: string | null;
@@ -2773,6 +2789,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       ...(args.request.authenticationOutcome
         ? {}
         : { handoff_outcome: args.request.handoffOutcome ?? null }),
+      ...this.buildSupportAvailabilityFacts(args.request),
       image_evidence: args.request.imageEvidence
         ? {
             status: args.request.imageEvidence.status,
@@ -3065,8 +3082,6 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       plan.open_questions[0] ??
       null;
     const pendingTask = explicit?.pendingTask ?? plan.owner_pending_task ?? null;
-    const hasCompletedInformation = explicit?.hasCompletedInformation ??
-      plan.information_state.last_completed_request != null;
     const continuity = request.messageContext.continuity ?? deriveConversationContinuity({
       plan,
       recentMessages: request.messageContext.recentMessages,
@@ -3083,7 +3098,10 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     if (pendingTask !== null && pendingTask.trim().length > 0) {
       facts.continuity_pending_task = pendingTask.trim().slice(0, 280);
     }
-    if (hasPriorOutbound || hasCompletedInformation) {
+    // Lane B: prior-answer truth derives from actual prior delivered
+    // context (an outbound message in history), never from a lookup that
+    // completed in the current turn. Fresh turns stay false.
+    if (hasPriorOutbound) {
       facts.continuity_has_prior_answer = true;
     }
     return facts;
@@ -3129,6 +3147,43 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     if (needsReview) facts.host_withdrawal_status_unverifiable = true;
     if (needsHandoff) facts.host_withdrawal_handoff_requested = true;
     return facts;
+  }
+
+  /**
+   * Lane B evidence-only handoff availability plus missing prerequisites.
+   * Reuses the configured capability projection (no new service): the
+   * manifest decides availability, the persisted contact phone decides the
+   * missing-prerequisite flag, and an actual handoffOutcome (requested,
+   * failed, skipped) suppresses this block because the result already
+   * travels. A read miss never authorizes handoff; offers need no
+   * mutation. Returns no keys without a configured manifest, off support
+   * nodes, with an auth/handoff outcome present, or without completed
+   * purchase/event work, so unrelated turns stay byte-identical.
+   */
+  private buildSupportAvailabilityFacts(
+    request: ComposeReplyRequest,
+  ): Pick<ReplyTurnEvidence, 'support_availability'> {
+    const supportNode = request.currentNode === 'resolver_consultas_informativas' ||
+      request.currentNode === 'responder_invitacion' ||
+      request.currentNode === 'ofrecer_agente_humano' ||
+      request.currentNode === 'solicitar_agente_humano';
+    if (!supportNode) return {};
+    if (request.handoffOutcome != null || request.authenticationOutcome != null) return {};
+    const manifest = this.options.capabilityManifest;
+    if (!manifest) return {};
+    const hasCompletedWork = (request.informationResults ?? []).some((result) =>
+      (result.kind === 'purchase' || result.kind === 'associated_event') &&
+      result.status === 'completed'
+    );
+    if (!hasCompletedWork) return {};
+    const phone = request.plan.contact_phone;
+    const phonePresent = typeof phone === 'string' && phone.trim().length > 0;
+    return {
+      support_availability: {
+        handoff_available: manifest['human.takeover.write']?.available === true,
+        ...(phonePresent ? {} : { missing_prerequisite: 'contact_phone' as const }),
+      },
+    };
   }
 
   /**

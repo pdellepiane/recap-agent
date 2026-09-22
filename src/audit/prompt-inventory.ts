@@ -158,6 +158,24 @@ function deriveConsumers(filePath: string): PromptInventoryConsumer[] {
     }
     // also extractor base files are used via extractorPromptFilesForCapabilities
     // ensure shared extractor files map even if not in profile? Already covered.
+    // Lane B: production extraction runs through the typed compiler
+    // (loadModuleFilesBundle), so detail files gated out of the coarse
+    // legacy capability mapping (e.g. extractors/contact.txt via
+    // extraction_contact) still map to their live registry consumer here.
+    const registryModules = Object.entries(instructionModuleRegistry).filter(([, meta]) =>
+      meta.files.includes(filePath as never),
+    );
+    for (const [moduleId, meta] of registryModules) {
+      consumers.push({
+        callType: meta.stages.includes('extraction') && !meta.stages.includes('reply')
+          ? 'extraction'
+          : 'reply',
+        nodes: [],
+        profiles: [],
+        transitions: [`compiler:${moduleId} (${meta.consumer})`],
+        loader: `PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:${moduleId}`,
+      });
+    }
   }
 
   if (filePath.startsWith('nodes/deteccion_intencion/response_classifier')) {

@@ -524,12 +524,17 @@ export function assembleCustomerContext(args: {
         : 'complete',
       paginationExhausted: purchasePagination.paginationExhausted,
       historyLimit: purchasePagination.historyLimit,
+      // Lane B canonical parity: the summary total follows the same
+      // disclosure-first reader as totalAvailability, so a known total that
+      // the projection moved into amountDisclosure never reads as a null
+      // grandTotal beside an available total. Known payment status passes
+      // through untouched; item facts live once in detailedPurchases.
       purchases: coalescedDetailed.map((purchase) => ({
         orderId: purchase.orderId,
         eventId: purchase.eventId ?? null,
         eventName: purchase.eventName ?? null,
         paymentStatus: purchase.paymentStatus,
-        grandTotal: purchase.grandTotal,
+        grandTotal: disclosedPurchaseTotal(purchase) ?? purchase.grandTotal,
         ...purchaseBalanceMarkers(purchase),
       })),
       carts: purchaseResults.flatMap((result) =>

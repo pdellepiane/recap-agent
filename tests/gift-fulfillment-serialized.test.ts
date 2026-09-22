@@ -916,3 +916,575 @@ describe('campaign reference survival under note suppression', () => {
     expect(spec.input).toMatch(/"delivery":\s*"delivered"/);
   });
 });
+
+describe('source discovery mixed gift shipping', () => {
+  async function executeDiscoveryTurn(args: {
+    orders: PurchaseInformation[];
+    gifts: PurchaseInformation[];
+  }): Promise<{
+    results: InformationTaskResult[];
+    summaries: InformationExecutionSummary[];
+    ordersCalls: number;
+    giftCalls: number;
+  }> {
+    let ordersCalls = 0;
+    let giftCalls = 0;
+    const agentGateway = {
+      async getOrders(): Promise<AgentPurchaseLookupResult> {
+        ordersCalls += 1;
+        return { status: 'success', resource: 'orders', purchases: args.orders };
+      },
+      async getGiftPurchases(): Promise<AgentPurchaseLookupResult> {
+        giftCalls += 1;
+        return { status: 'success', resource: 'gift_purchases', purchases: args.gifts };
+      },
+    } as unknown as AgentConversationGateway;
+    const orchestrator = new InformationOrchestrator({
+      knowledgeGateway: {} as KnowledgeRetrievalGateway,
+      providerGateway: {} as ProviderGateway,
+      agentGateway,
+    });
+    const execution = await orchestrator.execute({
+      requests: [{
+        requestId: 'discovery-shipping',
+        kind: 'purchase',
+        resource: 'purchase_discovery',
+        query: '¿Cuándo llega mi regalo?',
+        orderId: null,
+        aspects: ['summary', 'shipping'],
+        sensitiveFields: [],
+        authAction: 'none',
+      }],
+      authentication: { token: 'test-token', email: 'test@example.com' },
+      authBlock: null,
+    });
+    return { results: execution.results, summaries: execution.summaries, ordersCalls, giftCalls };
+  }
+
+  function ordersShippingRecord(): PurchaseInformation {
+    return {
+      orderId: 'ORD-DISC-9',
+      paymentStatus: 'pending',
+      shippingStatus: null,
+      grandTotal: 150,
+      paymentMethod: 'Transferencia',
+      currency: 'PEN',
+      eventName: 'Boda Lucía y Marco',
+      eventDate: '2026-10-10',
+      eventUrl: null,
+      createdAt: '2026-09-01 11:00:00',
+      items: [{ giftName: 'Juego de sábanas', quantity: 1, amount: 150, rowTotal: 150, type: 'se_store' }],
+    };
+  }
+
+  async function discoveryShippingSpec(): Promise<{ input: string; ordersCalls: number; giftCalls: number }> {
+    const gifts = await parseThroughGateway([
+      giftWirePurchase({
+        id: 'gift-disc-9',
+        paymentStatus: 'approved',
+        shippingStatus: null,
+        items: [{ gift_name: 'Aporte luna de miel', quantity: 1, amount: 80, row_total: 80, type: 'credit' }],
+        total: 80,
+      }),
+    ]);
+    const { results, summaries, ordersCalls, giftCalls } = await executeDiscoveryTurn({
+      orders: [ordersShippingRecord()],
+      gifts,
+    });
+    const snapshot = assembleCustomerContext({
+      execution: { results, summaries },
+      identity: { customerRef: 'gift-user', scope: 'account', source: 'authenticated_account' },
+      currentContext: null,
+      nowIso: NOW,
+    });
+    const customerContext = projectCustomerContext(snapshot, {
+      focus: 'general',
+      relevantOrderIds: ['ORD-DISC-9', 'gift-disc-9'],
+    });
+    const spec = await testRuntime().buildReplyRequestSpec(
+      replyRequest(supportPlan(), {
+        customerContext,
+        informationResults: results,
+        extraction: baseExtraction({
+          requestedOperation: 'purchase.read',
+          informationRequests: [{
+            kind: 'purchase',
+            resource: 'purchase_discovery',
+            query: '¿Cuándo llega mi regalo?',
+            orderId: null,
+            aspects: ['summary', 'shipping'],
+            sensitiveFields: [],
+            authAction: 'none',
+          }],
+        }),
+      }),
+    );
+    return { input: spec.input, ordersCalls, giftCalls };
+  }
+
+  // Row 1 at the production serialized boundary: unresolved source discovers
+  // both roots once each and both 150/80 facts reach spec.input.
+  it('discovers both roots and binds 150/80 facts in spec.input', async () => {
+    const { input, ordersCalls, giftCalls } = await discoveryShippingSpec();
+    expect(ordersCalls).toBe(1);
+    expect(giftCalls).toBe(1);
+
+    const purchases = detailedPurchasesOf(input);
+    expect(purchases.map((purchase) => purchase.orderId).sort()).toEqual(
+      ['ORD-DISC-9', 'gift-disc-9'],
+    );
+    const ordersRecord = purchases.find((purchase) => purchase.orderId === 'ORD-DISC-9');
+    const giftRecord = purchases.find((purchase) => purchase.orderId === 'gift-disc-9');
+    if (!ordersRecord || !giftRecord) throw new Error('Missing discovered purchases.');
+    expectItemBinding(ordersRecord.items, {
+      giftName: 'Juego de sábanas', quantity: 1, amount: 150, rowTotal: 150,
+      type: 'se_store', kind: 'physical', chosenBy: null, giftShipmentApplicable: true,
+    });
+    expectItemBinding(giftRecord.items, {
+      giftName: 'Aporte luna de miel', quantity: 1, amount: 80, rowTotal: 80,
+      type: 'credit', kind: 'host_credit', chosenBy: 'host', giftShipmentApplicable: false,
+    });
+    // No account-wide absence claim anywhere in the serialized input.
+    expect(input).not.toContain('No encontré compras coincidentes');
+    expect(input).not.toContain('No encontré esa orden');
+  });
+
+  // Negative control: the same mixed setup with the resource forced to orders
+  // must NOT surface gift facts (proves the proof is source-sensitive).
+  it('forced orders never surfaces gift facts in spec.input', async () => {
+    const gifts = await parseThroughGateway([
+      giftWirePurchase({
+        id: 'gift-disc-9',
+        paymentStatus: 'approved',
+        shippingStatus: null,
+        items: [{ gift_name: 'Aporte luna de miel', quantity: 1, amount: 80, row_total: 80, type: 'credit' }],
+        total: 80,
+      }),
+    ]);
+    void gifts;
+    let giftCalls = 0;
+    const agentGateway = {
+      async getOrders(): Promise<AgentPurchaseLookupResult> {
+        return { status: 'success', resource: 'orders', purchases: [ordersShippingRecord()] };
+      },
+      async getGiftPurchases(): Promise<AgentPurchaseLookupResult> {
+        giftCalls += 1;
+        throw new Error('forced orders must not read gifts');
+      },
+    } as unknown as AgentConversationGateway;
+    const orchestrator = new InformationOrchestrator({
+      knowledgeGateway: {} as KnowledgeRetrievalGateway,
+      providerGateway: {} as ProviderGateway,
+      agentGateway,
+    });
+    const execution = await orchestrator.execute({
+      requests: [{
+        requestId: 'forced-orders',
+        kind: 'purchase',
+        resource: 'orders',
+        query: '¿Cuándo llega mi regalo?',
+        orderId: null,
+        aspects: ['summary', 'shipping'],
+        sensitiveFields: [],
+        authAction: 'none',
+      }],
+      authentication: { token: 'test-token', email: 'test@example.com' },
+      authBlock: null,
+    });
+    expect(giftCalls).toBe(0);
+    const snapshot = assembleCustomerContext({
+      execution: { results: execution.results, summaries: execution.summaries },
+      identity: { customerRef: 'gift-user', scope: 'account', source: 'authenticated_account' },
+      currentContext: null,
+      nowIso: NOW,
+    });
+    const customerContext = projectCustomerContext(snapshot, {
+      focus: 'general',
+      relevantOrderIds: ['ORD-DISC-9'],
+    });
+    const spec = await testRuntime().buildReplyRequestSpec(
+      replyRequest(supportPlan(), {
+        customerContext,
+        informationResults: execution.results,
+      }),
+    );
+    const purchases = detailedPurchasesOf(spec.input);
+    expect(purchases.map((purchase) => purchase.orderId)).toEqual(['ORD-DISC-9']);
+    expect(JSON.stringify(purchases)).not.toContain('Aporte luna de miel');
+  });
+});
+
+describe('reply evidence Lane B proofs (selection, parity, availability, continuity)', () => {
+  function olderApproved(): PurchaseInformation {
+    return {
+      orderId: 'ORD-OLDER',
+      paymentStatus: 'approved',
+      shippingStatus: null,
+      // Projected-away shape: the trusted total travels in the disclosure
+      // while the direct field stays null.
+      grandTotal: null,
+      paymentMethod: null,
+      eventName: 'Aniversario Lucia',
+      eventDate: '2025-06-14',
+      eventUrl: null,
+      createdAt: '2025-06-01 10:00:00',
+      items: [{
+        giftName: 'Juego de sábanas',
+        quantity: 1,
+        amount: 150,
+        rowTotal: 150,
+        type: 'se_store',
+        fulfillment: { kind: 'physical', chosenBy: null, giftShipmentApplicable: true },
+      }],
+      amountDisclosure: {
+        total: 88.18,
+        paid: null,
+        currency: null,
+        currencySymbol: null,
+        paymentMethod: null,
+        presentation: 'recorded_method_no_currency',
+      },
+      currency: null,
+    };
+  }
+
+  function newerPending(): PurchaseInformation {
+    return {
+      orderId: 'ORD-NEWER',
+      paymentStatus: 'pending',
+      shippingStatus: null,
+      grandTotal: 80,
+      paymentMethod: 'Yape',
+      eventName: 'Baby Shower Catalina',
+      eventDate: '2026-09-05',
+      eventUrl: null,
+      createdAt: '2026-08-28 10:00:00',
+      items: [{
+        giftName: 'Aporte luna de miel',
+        quantity: 1,
+        amount: 80,
+        rowTotal: 80,
+        type: 'credit',
+        fulfillment: { kind: 'host_credit', chosenBy: 'host', giftShipmentApplicable: false },
+      }],
+      amountDisclosure: {
+        total: 80,
+        paid: null,
+        currency: null,
+        currencySymbol: null,
+        paymentMethod: 'Yape',
+        presentation: 'recorded_method_no_currency',
+      },
+      currency: null,
+    };
+  }
+
+  function twoCandidateResult(overrides: {
+    needsSelection: boolean;
+    referenceResolution?: 'unavailable';
+    requestedCustomerTransactionNumber?: string;
+  }): InformationTaskResult {
+    return {
+      requestId: 'explicit-olderlanes',
+      kind: 'purchase',
+      status: 'completed',
+      resource: 'gift_purchases',
+      purchases: [olderApproved(), newerPending()],
+      carts: [],
+      needsSelection: overrides.needsSelection,
+      coverage: 'complete',
+      ...(overrides.referenceResolution !== undefined
+        ? { referenceResolution: overrides.referenceResolution }
+        : {}),
+      ...(overrides.requestedCustomerTransactionNumber !== undefined
+        ? { requestedCustomerTransactionNumber: overrides.requestedCustomerTransactionNumber }
+        : {}),
+    } as InformationTaskResult;
+  }
+
+  function explicitOlderExtraction(): ExtractionResult {
+    return baseExtraction({
+      informationRequests: [{
+        kind: 'purchase',
+        resource: 'gift_purchases',
+        query: 'Consulta por Aniversario Lucia. Ese pedido sigue pendiente?',
+        orderId: null,
+        eventHint: 'Aniversario Lucia',
+        aspects: ['summary', 'payment_status'],
+        sensitiveFields: [],
+        authAction: 'none',
+      }],
+    });
+  }
+
+  it('retains both named events with no selection compulsion on multiplicity alone', async () => {
+    const result = twoCandidateResult({ needsSelection: false });
+    const snapshot = assembleCustomerContext({
+      execution: {
+        results: [result],
+        summaries: [{
+          requestId: 'explicit-olderlanes',
+          kind: 'purchase',
+          status: 'completed',
+          source: 'agent_api',
+          outcomeCode: 'completed_with_results',
+          retryable: null,
+          queryHash: 'lane-b-selection',
+          evidence: [],
+          resultCount: 2,
+          durationMs: 1,
+        }],
+      },
+      identity: { customerRef: 'gift-user', scope: 'account', source: 'authenticated_account' },
+      currentContext: null,
+      nowIso: NOW,
+    });
+    const customerContext = projectCustomerContext(snapshot, { focus: 'general' });
+    const spec = await testRuntime().buildReplyRequestSpec(
+      replyRequest(supportPlan(), {
+        userMessage: 'Consulta por Aniversario Lucia. Ese pedido sigue pendiente?',
+        extraction: explicitOlderExtraction(),
+        customerContext,
+        informationResults: [result],
+      }),
+    );
+    const evidence = extractTurnEvidence(spec.input);
+    const results = evidence.information_results as Array<Record<string, unknown>>;
+    expect(results).toHaveLength(1);
+    const projected = results[0] as {
+      outcome_kind: string;
+      permitted_next_action: string;
+      missing_inputs: string[];
+      outcome: { recordType: string };
+    };
+    // Both authorized facts stay visible for read reasoning.
+    expect(spec.input).toContain('ORD-OLDER');
+    expect(spec.input).toContain('ORD-NEWER');
+    expect(spec.input).toContain('Aniversario Lucia');
+    // Multiplicity alone never compels a selection question.
+    expect(projected.outcome_kind).not.toBe('selection');
+    expect(projected.permitted_next_action).not.toBe('select_purchase');
+    expect(projected.missing_inputs ?? []).not.toContain('purchase_selection');
+    expect(spec.input).not.toContain('purchase_selection');
+  });
+
+  it('genuine unresolved reference still compels a distinction (negative control)', async () => {
+    const result = twoCandidateResult({
+      needsSelection: true,
+      referenceResolution: 'unavailable',
+      requestedCustomerTransactionNumber: 'COD-missing',
+    });
+    const spec = await testRuntime().buildReplyRequestSpec(
+      replyRequest(supportPlan(), {
+        extraction: explicitOlderExtraction(),
+        informationResults: [result],
+      }),
+    );
+    const evidence = extractTurnEvidence(spec.input);
+    const results = evidence.information_results as Array<Record<string, unknown>>;
+    const projected = results[0] as {
+      outcome_kind: string;
+      permitted_next_action: string;
+      missing_inputs: string[];
+    };
+    // An explicit validated-reference mismatch still requires asking.
+    expect(projected.outcome_kind).toBe('selection');
+    expect(projected.permitted_next_action).toBe('select_purchase');
+    expect(projected.missing_inputs ?? []).toContain('purchase_selection');
+  });
+
+  it('canonical record parity keeps coherent totals, status, single item facts and no settlement relabeling', async () => {
+    const result = twoCandidateResult({ needsSelection: false });
+    const snapshot = assembleCustomerContext({
+      execution: {
+        results: [result],
+        summaries: [{
+          requestId: 'explicit-olderlanes',
+          kind: 'purchase',
+          status: 'completed',
+          source: 'agent_api',
+          outcomeCode: 'completed_with_results',
+          retryable: null,
+          queryHash: 'lane-b-parity',
+          evidence: [],
+          resultCount: 2,
+          durationMs: 1,
+        }],
+      },
+      identity: { customerRef: 'gift-user', scope: 'account', source: 'authenticated_account' },
+      currentContext: null,
+      nowIso: NOW,
+    });
+    const projection = projectCustomerContext(snapshot, { focus: 'general' });
+    const olderSummary = projection.purchases.find((entry) => entry.orderId === 'ORD-OLDER');
+    if (!olderSummary) throw new Error('Missing older summary.');
+    // A known total projected into the disclosure stays coherent: the
+    // summary never pairs an available total with a null grand total.
+    expect(olderSummary.totalAvailability).toBe('available');
+    expect(olderSummary.grandTotal).toBe(88.18);
+    // Known payment status is preserved, never masked to null.
+    expect(olderSummary.paymentStatus).toBe('approved');
+    const candidateStates = new Map(
+      projection.candidates
+        .filter((candidate) => candidate.kind === 'order' && candidate.orderId !== undefined)
+        .map((candidate) => [candidate.orderId as string, candidate.state]),
+    );
+    expect(candidateStates.get('ORD-OLDER')).toBe('approved');
+    expect(candidateStates.get('ORD-NEWER')).toBe('pending');
+    // Item facts live once in the complete record body, never in the
+    // compact summaries or the candidate index.
+    expect(JSON.stringify(projection.purchases)).not.toContain('Juego de sábanas');
+    expect(JSON.stringify(projection.candidates)).not.toContain('Juego de sábanas');
+    const bodies = JSON.stringify(projection.detailedPurchases);
+    expect(bodies.split('Juego de sábanas')).toHaveLength(2);
+    // Host choice and fulfillment meaning stay; an approved payment is
+    // never relabeled as posted funds or an available withdrawal.
+    expect(bodies).toContain('"chosenBy":"host"');
+    const serialized = JSON.stringify(projection);
+    expect(serialized).not.toContain('posted');
+    expect(serialized).not.toContain('publicado');
+    expect(serialized).not.toContain('fondos disponibles');
+  });
+
+  it('exposes handoff availability with missing prerequisites and never claims unavailable help', async () => {
+    const { buildRuntimeCapabilityManifest } = await import('../src/runtime/capability-manifest');
+    const available = buildRuntimeCapabilityManifest({ featureFlags: { humanTakeover: true } });
+    const runtime = testRuntime().withCapabilityManifest(available);
+    const result = twoCandidateResult({ needsSelection: false });
+    const spec = await runtime.buildReplyRequestSpec(
+      replyRequest(supportPlan({ contact_phone: null }), {
+        extraction: explicitOlderExtraction(),
+        informationResults: [result],
+      }),
+    );
+    const evidence = extractTurnEvidence(spec.input);
+    const availability = evidence.support_availability as
+      | { handoff_available?: unknown; missing_prerequisite?: unknown }
+      | undefined;
+    expect(availability?.handoff_available).toBe(true);
+    expect(availability?.missing_prerequisite).toBe('contact_phone');
+    expect(evidence.handoff_outcome ?? null).toBeNull();
+
+    const blocked = buildRuntimeCapabilityManifest({
+      featureFlags: { humanTakeover: false },
+    });
+    const blockedSpec = await testRuntime().withCapabilityManifest(blocked).buildReplyRequestSpec(
+      replyRequest(supportPlan({ contact_phone: '+51900000111' }), {
+        extraction: explicitOlderExtraction(),
+        informationResults: [result],
+      }),
+    );
+    const blockedEvidence = extractTurnEvidence(blockedSpec.input);
+    const blockedAvailability = blockedEvidence.support_availability as
+      | { handoff_available?: unknown }
+      | undefined;
+    expect(blockedAvailability?.handoff_available).toBe(false);
+    expect(blockedSpec.input).not.toContain('"handoff_available": true');
+  });
+
+  it('fresh purchase turn carries no prior-answer fact and no continuity directive', async () => {
+    const result = twoCandidateResult({ needsSelection: false });
+    // The reply-time plan already persists this turn's completed lookup,
+    // while the history stays empty: a fresh question, not a continuation.
+    const freshPlan = mergePlan(supportPlan(), {
+      information_state: {
+        resume_node: 'resolver_consultas_informativas',
+        pending_requests: [],
+        selection_candidates: [],
+        last_completed_request: {
+          kind: 'purchase',
+          resource: 'gift_purchases',
+          query: '¿Cuándo llega mi regalo?',
+          orderId: null,
+          aspects: ['summary', 'payment_status'],
+          sensitiveFields: [],
+          authAction: 'none',
+        },
+      },
+    }) as PersistedPlan;
+    const spec = await testRuntime().buildReplyRequestSpec(
+      replyRequest(freshPlan, {
+        userMessage: '¿Cuándo llega mi regalo?',
+        extraction: explicitOlderExtraction(),
+        informationResults: [result],
+      }),
+    );
+    expect(spec.input).not.toContain('continuity_has_prior_answer');
+    expect(spec.modules.map((module) => module.id)).not.toContain('reply_support_continuity');
+    expect(spec.instructions).not.toContain('La persona aportó un dato o reportó una situación');
+  });
+
+  it('real delivered history retains continuity facts and the continuity module', async () => {
+    const { buildTurnMessageContext } = await import('../src/runtime/turn-message-context');
+    const result = twoCandidateResult({ needsSelection: false });
+    const messageContext = buildTurnMessageContext({
+      messages: [
+        {
+          id: 1,
+          direction: 'inbound',
+          source: 'user',
+          body: '¿Cuándo llega mi regalo?',
+          status: 'delivered',
+          whatsappMessageId: null,
+          sentAt: '2026-09-21T11:00:00.000Z',
+          createdAt: '2026-09-21T11:00:00.000Z',
+        },
+        {
+          id: 2,
+          direction: 'outbound',
+          source: 'agent',
+          body: 'Tu regalo viene en camino.',
+          status: 'delivered',
+          whatsappMessageId: null,
+          sentAt: '2026-09-21T11:01:00.000Z',
+          createdAt: '2026-09-21T11:01:00.000Z',
+        },
+      ],
+      inbound: {
+        channel: 'whatsapp',
+        externalUserId: 'gift-user',
+        text: '¿Y el otro?',
+        messageId: 'gift-continued-1',
+        receivedAt: '2026-09-21T12:00:00.000Z',
+      },
+    });
+    const continuedPlan = mergePlan(supportPlan(), {
+      owner_pending_question: '¿A cuál de los dos regalos te refieres?',
+    }) as PersistedPlan;
+    const spec = await testRuntime().buildReplyRequestSpec(
+      replyRequest(continuedPlan, {
+        userMessage: '¿Y el otro?',
+        messageContext,
+        extraction: explicitOlderExtraction(),
+        informationResults: [result],
+      }),
+    );
+    expect(spec.input).toContain('continuity_has_prior_answer');
+    expect(spec.modules.map((module) => module.id)).toContain('reply_support_continuity');
+  });
+
+  it('faq and support bundles exclude gift and planning guidance', async () => {
+    const faqSpec = await testRuntime().buildReplyRequestSpec(
+      replyRequest(supportPlan(), {
+        userMessage: '¿Cuál es la política de devoluciones?',
+        extraction: baseExtraction({
+          informationRequests: [{ kind: 'faq', query: 'política de devoluciones' }],
+        }),
+        informationResults: [{
+          requestId: 'faq-laneb',
+          kind: 'faq',
+          status: 'completed',
+          query: 'política de devoluciones',
+          evidence: [{ fileId: 'file-1', filename: 'policy.md', score: 0.9, text: 'Devolución disponible dentro de 7 días' }],
+        }],
+      }),
+    );
+    const faqModules = faqSpec.modules.map((module) => module.id);
+    expect(faqModules).not.toContain('reply_gift_fulfillment');
+    expect(faqModules).not.toContain('reply_planning_owner');
+    expect(faqSpec.instructions).not.toContain('cumplimiento de regalos');
+    expect(faqSpec.instructions).not.toContain('Categorías de proveedores disponibles');
+    // A first-turn FAQ carries no continuation directive either.
+    expect(faqModules).not.toContain('reply_support_continuity');
+  });
+});

@@ -113,6 +113,61 @@ describe('handler-to-live-target wire observation', () => {
     expect(observed.deliveredSha256).toBeNull();
   });
 
+  it('parses discovery summaries with per-source coverage and rejects the request-only resource', () => {
+    // Lane C F1: a discovery summary names no single backend source, so
+    // `resource` stays absent; `sourceCoverage` must survive wire parsing.
+    // The request-only `purchase_discovery` value keeps failing the trace
+    // contract, which is what makes this test sensitive.
+    const trace = validTrace();
+    const completed = {
+      requestId: 'information-1',
+      kind: 'purchase',
+      status: 'completed',
+      source: 'agent_api',
+      outcomeCode: 'completed_with_results',
+      retryable: null,
+      queryHash: 'a'.repeat(64),
+      evidence: [],
+      resultCount: 2,
+      durationMs: 3,
+      accessMethod: 'trusted_phone_purchase',
+      coverage: 'complete',
+      sourceCoverage: [
+        { source: 'orders', childId: 'information-1:orders', status: 'completed', count: 1 },
+        { source: 'gift_purchases', childId: 'information-1:gift_purchases', status: 'completed', count: 1 },
+      ],
+    };
+    const failed = {
+      ...completed,
+      requestId: 'information-2',
+      status: 'failed',
+      outcomeCode: 'not_found',
+      retryable: false,
+      coverage: null,
+      resultCount: 0,
+    };
+    const response = {
+      ...sensitiveResponse(),
+      trace: { ...trace, information_execution_summary: [completed, failed] },
+    } as unknown as HandleTurnResponse;
+    const body = buildCliResponseBody({ response, perf: null, includeDiagnostics: true });
+    expect(() => lambdaTurnResponseSchema.parse(body)).not.toThrow();
+    const parsed = lambdaTurnResponseSchema.parse(body);
+    expect(parsed.trace.information_execution_summary).toHaveLength(2);
+    expect(parsed.trace.information_execution_summary[0]).not.toHaveProperty('resource');
+    expect(parsed.trace.information_execution_summary[0]?.sourceCoverage).toHaveLength(2);
+    const bad = {
+      ...sensitiveResponse(),
+      trace: {
+        ...trace,
+        information_execution_summary: [{ ...completed, resource: 'purchase_discovery' }],
+      },
+    } as unknown as HandleTurnResponse;
+    expect(() => lambdaTurnResponseSchema.parse(
+      buildCliResponseBody({ response: bad, perf: null, includeDiagnostics: true }),
+    )).toThrow();
+  });
+
   it('leaves the original text untouched without diagnostics', () => {
     const body = buildCliResponseBody({
       response: sensitiveResponse(),

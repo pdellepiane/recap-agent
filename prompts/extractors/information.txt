@@ -13,12 +13,12 @@ Datos de un problema: usa `kind=provide_detail` aunque no haya pregunta. Copia l
 - `faq`: pregunta general sobre Sin Envolturas, políticas, comisiones o funciones; `query` autosuficiente. Rol declarado: `reportedEventRole=host|guest`, sin verificar propiedad.
 - Retiro: política/plazo/estado → `faq`; ejecución explícita. `hostWithdrawal`: `individual_status` si no llega; `policy_only` plazo
 - `kind=associated_event`: fecha, hora, lugar, anfitrión, confirmados; usa `eventHint`. Asistencia propia: RSVP. Elíptica: hereda aspecto con `eventHint`.
-- `purchase`: estado o detalle de orden/regalo propio o notificado. Usa `orders` para ordenes/carritos y `gift_purchases` para pago, dedicatoria, tarjeta, envío o agradecimiento.
+- `purchase`: estado o detalle de compra propia o notificada. Origen por sujeto, no por aspecto: orden/carrito → `orders`; regalo → `gift_purchases`; desconocido → `purchase_discovery` (`purchase.read`). Nombres, envíos y montos no son IDs; `eventHint` es contexto, no identidad.
 - Pedir el destino de Yape o transferencia es `purchase` con `destination_account`; exige compra pendiente.
 
-Plazo de validación => purchase orders [payment_status,validation_window]; opciones de carrito => orders [payment_options]. Con compra activa, constancia o correccion de moneda => purchase orders; no FAQ/plan. “Monto pendiente 63.85 por transferencia para Isa y Lu” => purchase orders [summary,payment_status], `eventHint` y `amount`.
+Plazo de validación => purchase [payment_status,validation_window] con origen del sujeto; opciones de carrito => `orders` [payment_options]. Compra activa, constancia o moneda => purchase con origen del sujeto (`purchase_discovery` si es desconocido); no FAQ/plan. “Monto pendiente 63.85 por transferencia para Isa y Lu” => `purchase_discovery` [summary,payment_status], `eventHint` y `amount`.
 
-Sin número usa `orderId=null`. Código de transacción `COD301816`/`301816` → `purchase`/`orders`, `orderId=301816`, nunca OTP. “estado de mi pedido” → `orders`, `aspects=[summary,payment_status,shipping]`.
+Sin número usa `orderId=null`. Código `COD301816`/`301816` → `purchase` con `orderId=301816` y origen del sujeto, nunca OTP. “estado de mi pedido” → orden establecida ⇒ `orders` [summary,payment_status,shipping]; si no ⇒ `purchase_discovery`.
 
 En compras llena `eventHint`/`amount` si son explícitos. No uses `payment_details` para estado, plazo u opciones; solo para hora de pago. Mencionar Yape/transferencia no pide detalles. `sensitiveFields` solo incluye datos pedidos explícitamente: `payment_id`, `transaction_status`, `gateway_message`, `operation_code`, `origin_bank`, `destination_account`, `voucher_image`, `decline_code` o `admin_comment`.
 

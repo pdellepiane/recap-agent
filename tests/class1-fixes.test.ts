@@ -57,7 +57,10 @@ describe('class1 fixes twins', () => {
 
   // 2026-09-22 bounded-evidence Work 1 contract revision: a descriptive
   // hint mismatch no longer fails as not_found; authorized candidates are
-  // retained completed with selection. Only a genuine backend miss fails.
+  // retained completed. Only a genuine backend miss fails.
+  // Contract revision (Lane B count-driven selection): retained
+  // multiplicity completes without a selection flag; only a validated
+  // explicit-reference mismatch asserts needsSelection.
   it('a: backend not_found fails while hint-mismatch retains candidates, both phone-scoped', async () => {
     void new InformationOrchestrator({
       knowledgeGateway: { async search() { return { status: 'failed' as const, reason: 'not_configured' as const, retryable: false, error: 'x' }; } } as unknown as KnowledgeRetrievalGateway,
@@ -86,8 +89,8 @@ describe('class1 fixes twins', () => {
     expect(exec404.summaries[0]?.accessMethod).toBe('trusted_phone_purchase');
 
     // Hint-mismatch: success with 2 purchases and a non-matching
-    // eventHint retains both authorized candidates completed with
-    // selection instead of failing as not_found.
+    // eventHint retains both authorized candidates completed instead of
+    // failing as not_found. Multiplicity alone sets no selection flag.
     const gatewayMismatch = new FakeAgentGateway();
     gatewayMismatch.guestOrdersResult = {
       status: 'success',
@@ -109,7 +112,7 @@ describe('class1 fixes twins', () => {
     expect(mismatchResult?.status).toBe('completed');
     if (mismatchResult?.status === 'completed' && mismatchResult.kind === 'purchase') {
       expect(mismatchResult.accessMethod).toBe('trusted_phone_purchase');
-      expect(mismatchResult.needsSelection).toBe(true);
+      expect(mismatchResult.needsSelection).toBe(false);
       expect(mismatchResult.purchases.map((purchase) => purchase.orderId).sort()).toEqual(['ORD-1', 'ORD-2']);
     }
     expect(execMismatch.summaries[0]?.accessMethod).toBe('trusted_phone_purchase');
@@ -355,10 +358,12 @@ describe('class1 fixes twins', () => {
   });
 
   it('extractor prompts contain salience rules', () => {
+    // Contract revision (purchase_discovery): salience now points at the
+    // subject-based source contract instead of aspect-based orders pins.
     const infoExtractor = fs.readFileSync('prompts/extractors/information.txt', 'utf8');
-    expect(infoExtractor).toContain('constancia o correccion de moneda');
-    expect(infoExtractor).toContain('purchase orders; no FAQ/plan');
-    expect(infoExtractor).toContain('`purchase`/`orders`');
+    expect(infoExtractor).toContain('Compra activa, constancia o moneda');
+    expect(infoExtractor).toContain('purchase con origen del sujeto');
+    expect(infoExtractor).toContain('`purchase_discovery` si es desconocido');
     expect(infoExtractor).toContain('payment_status');
     expect(infoExtractor).toContain('validation_window');
     expect(infoExtractor).toContain('Y el evento es Baby Shower Catalina');

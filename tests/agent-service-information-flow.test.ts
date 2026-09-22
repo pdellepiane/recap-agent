@@ -460,12 +460,19 @@ describe('AgentService first-class information flow', () => {
     });
 
     expect(knowledge.calls).toBe(0);
+    // Contract revision (purchase_discovery): the status-policy synthesis
+    // carries no established ownership, so it reads discovery — both
+    // authorized roots once each — instead of defaulting to orders.
     expect(gateway.guestOrdersCalls).toBe(1);
-    expect(gateway.guestGiftCalls).toBe(0);
+    expect(gateway.guestGiftCalls).toBe(1);
     expect(gateway.authByPhoneCalls).toBe(0);
     expect(runtime.composeRequests).toHaveLength(1);
     expect(runtime.composeRequests[0]?.informationResults).toEqual([
-      expect.objectContaining({ kind: 'purchase', status: 'completed' }),
+      expect.objectContaining({
+        kind: 'purchase',
+        status: 'completed',
+        resource: 'purchase_discovery',
+      }),
     ]);
   });
 
@@ -3026,20 +3033,16 @@ describe('AgentService first-class information flow', () => {
       receivedAt: new Date().toISOString(),
     });
 
-    expect(response.plan.information_state.pending_requests).toHaveLength(1);
-    expect(response.plan.information_state.selection_candidates).toEqual([
-      {
-        requestId: 'information-1',
-        resource: 'gift_purchases',
-        orders: [
-          expect.objectContaining({ orderId: 'ORD-1' }),
-          expect.objectContaining({ orderId: 'ORD-2' }),
-        ],
-      },
-    ]);
-    expect(response.plan.information_state.selection_candidates[0]).not.toHaveProperty(
-      'payment',
+    // Contract revision (Lane B count-driven selection): multiplicity
+    // alone completes the read. Both authorized records stay visible in
+    // the composed evidence; nothing stays pending and no selection
+    // candidates persist without a validated-reference mismatch.
+    expect(response.plan.information_state.pending_requests).toEqual([]);
+    expect(response.plan.information_state.selection_candidates).toEqual([]);
+    const composed = (runtime.composeRequests.at(-1)?.informationResults ?? []).flatMap(
+      (result) => result.status === 'completed' && result.kind === 'purchase' ? result.purchases : [],
     );
+    expect(composed.map((purchase) => purchase.orderId).sort()).toEqual(['ORD-1', 'ORD-2']);
   });
 });
 
@@ -4099,15 +4102,34 @@ describe('gift root-cause review: discovery, detail and honest coverage', () => 
     });
     const response = await service.handleTurn(turnInput('receipt-synth', 'Te envío el comprobante.', 'receipt-synth-1'));
 
-    // Dual regression: the typed task synthesizes both authorized reads
-    // instead of leaving the receipt undiscovered.
+    // Contract revision (purchase_discovery): the typed task synthesizes
+    // ONE discovery request instead of two parallel reads; the executor
+    // expands it into both authorized reads with per-source coverage.
     expect(gateway.guestOrdersCalls).toBe(1);
     expect(gateway.guestGiftCalls).toBe(1);
     expect(runtime.composeRequests).toHaveLength(1);
     expect(gateway.takeoverCalls).toBe(0);
     expect(response.plan.human_escalation.status).toBe('none');
     const summaries = response.trace.information_execution_summary ?? [];
-    expect(summaries.filter((summary) => summary.status === 'completed')).toHaveLength(2);
+    expect(summaries.filter((summary) => summary.status === 'completed')).toHaveLength(1);
+    // Contract revision (Lane C F1): a discovery summary names no single
+    // backend source; per-source facts travel in sourceCoverage, and the
+    // request-only value must never reach the trace contract.
+    expect(summaries[0]).toMatchObject({ coverage: 'complete' });
+    expect(summaries[0]).not.toHaveProperty('resource');
+    expect(summaries[0]?.sourceCoverage?.map((entry) => entry.source).sort()).toEqual([
+      'gift_purchases',
+      'orders',
+    ]);
+    const info = runtime.composeRequests[0]?.informationResults ?? [];
+    expect(info).toHaveLength(1);
+    const completed = info[0];
+    if (completed?.status !== 'completed' || completed.kind !== 'purchase') {
+      throw new Error('Expected the receipt discovery read to complete.');
+    }
+    expect(completed.purchases.map((record) => record.orderId).sort()).toEqual(
+      ['GIFT-7', 'ORD-000880'],
+    );
   });
 
   it('adds the missing source when the extractor emitted one purchase request', async () => {
@@ -4129,10 +4151,16 @@ describe('gift root-cause review: discovery, detail and honest coverage', () => 
     expect(gateway.guestOrdersCalls).toBe(1);
     expect(gateway.guestGiftCalls).toBe(1);
     const info = runtime.composeRequests[0]?.informationResults ?? [];
-    expect(info).toHaveLength(2);
-    // The gift-only match answers from the gift record; aspects survive.
-    const gift = info.find((result) => purchaseRoute(result) === 'gift_purchases');
-    expect(gift?.status).toBe('completed');
+    // Contract revision (purchase_discovery): the unidentified orders read
+    // collapses into the single discovery request, so the gift-only match
+    // answers from one merged result instead of two parallel results.
+    expect(info).toHaveLength(1);
+    const discovery = info[0];
+    expect(discovery).toMatchObject({ kind: 'purchase', status: 'completed', resource: 'purchase_discovery' });
+    if (discovery?.status !== 'completed' || discovery.kind !== 'purchase') {
+      throw new Error('Expected the receipt discovery read to complete.');
+    }
+    expect(discovery.purchases.map((record) => record.orderId)).toEqual(['GIFT-7']);
   });
 
   it('refreshes an identified receipt record on its single applicable source', async () => {
@@ -4200,8 +4228,25 @@ describe('gift root-cause review: discovery, detail and honest coverage', () => 
     expect(gateway.guestGiftCalls).toBe(1);
     expect(gateway.giftOrderIds).toEqual([null]);
     const info = runtime.composeRequests[0]?.informationResults ?? [];
-    const orders = info.find((result) => purchaseRoute(result) === 'orders');
-    expect(orders).toMatchObject({ status: 'completed', needsSelection: true });
+    // Contract revision (purchase_discovery): multiplicity arrives in one
+    // merged discovery result instead of a per-source orders result.
+    // Contract revision (Lane B count-driven selection): the merged
+    // multiplicity completes with needsSelection false; both candidates
+    // stay visible and the reply distinguishes them from evidence.
+    expect(info).toHaveLength(1);
+    const discovery = info[0];
+    expect(discovery).toMatchObject({
+      kind: 'purchase',
+      status: 'completed',
+      resource: 'purchase_discovery',
+      needsSelection: false,
+    });
+    if (discovery?.status !== 'completed' || discovery.kind !== 'purchase') {
+      throw new Error('Expected the dual-candidate discovery read to complete.');
+    }
+    expect(discovery.purchases.map((record) => record.orderId).sort()).toEqual(
+      ['ORD-DUAL-1', 'ORD-DUAL-2'],
+    );
     expect(gateway.takeoverCalls).toBe(0);
   });
 
@@ -4225,8 +4270,13 @@ describe('gift root-cause review: discovery, detail and honest coverage', () => 
     expect(gateway.guestOrdersCalls).toBe(1);
     expect(gateway.guestGiftCalls).toBe(1);
     const info = runtime.composeRequests[0]?.informationResults ?? [];
-    const gift = info.find((result) => purchaseRoute(result) === 'gift_purchases');
-    expect(gift?.status).toBe('completed');
+    // Contract revision (purchase_discovery): the gift-only match answers
+    // from the merged discovery result. The authorized cart rides the same
+    // result as before (the unidentified orders read already completed with
+    // it); the gift record still answers the receipt.
+    expect(info).toHaveLength(1);
+    const gift = info[0];
+    expect(gift).toMatchObject({ kind: 'purchase', status: 'completed', resource: 'purchase_discovery' });
     if (!gift || gift.status !== 'completed' || gift.kind !== 'purchase') {
       throw new Error('Expected a completed gift purchase result.');
     }
@@ -4328,11 +4378,20 @@ describe('gift root-cause review: discovery, detail and honest coverage', () => 
     const response = await service.handleTurn(turnInput('receipt-coverage', 'Te envío el comprobante.', 'receipt-coverage-1'));
 
     const info = runtime.composeRequests[0]?.informationResults ?? [];
-    const byResource = new Map(info.flatMap((result) => { const route = purchaseRoute(result); return route ? [[route, result] as const] : []; }));
-    // Confirmed-empty (not_found, terminal) stays distinct from a failed
-    // source (request_failed, retryable); neither authorizes a write.
-    expect(byResource.get('orders')).toMatchObject({ status: 'failed', failureKind: 'not_found', retryable: false });
-    expect(byResource.get('gift_purchases')).toMatchObject({ status: 'failed', failureKind: 'request_failed', retryable: true });
+    // Contract revision (purchase_discovery): the empty-versus-failed
+    // distinction moves into per-source coverage on the single discovery
+    // result. The failed source still fails the scope retryably; the empty
+    // source is coverage, not an account-wide absence.
+    expect(info).toHaveLength(1);
+    const discovery = info[0];
+    expect(discovery).toMatchObject({ kind: 'purchase', status: 'failed', failureKind: 'request_failed', retryable: true });
+    if (discovery?.status !== 'failed' || discovery.kind !== 'purchase') {
+      throw new Error('Expected the partially failed discovery read to fail.');
+    }
+    expect(discovery.sourceCoverage).toEqual([
+      expect.objectContaining({ source: 'orders', status: 'empty', count: 0 }),
+      expect.objectContaining({ source: 'gift_purchases', status: 'failed', count: 0 }),
+    ]);
     expect(gateway.takeoverCalls).toBe(0);
     expect(response.plan.human_escalation.status).toBe('none');
     expect(response.plan.information_state.pending_requests.length).toBeGreaterThan(0);
@@ -4591,5 +4650,401 @@ describe('gift root-cause review: discovery, detail and honest coverage', () => 
     expect(input).toContain('3:30 p.m.');
     expect(input).toContain('7:30 p.m.');
     expect(input).toContain('Lunes a sábado');
+  });
+});
+
+describe('source discovery information flow', () => {
+  function discoveryExtraction(query: string): ExtractionResult {
+    return extraction([{
+      kind: 'purchase',
+      resource: 'purchase_discovery',
+      query,
+      orderId: null,
+      aspects: ['summary', 'payment_status'],
+      sensitiveFields: [],
+      authAction: 'none',
+    }], null, null, null);
+  }
+
+  function discoveryService(
+    runtime: InformationRuntime,
+    gateway: FakePurchaseGateway,
+  ): AgentService {
+    return createService({
+      runtime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway,
+      providerGateway: providerGateway(),
+    });
+  }
+
+  function olderAndNewerGateway(): FakePurchaseGateway {
+    const gateway = new FakePurchaseGateway();
+    gateway.guestOrdersResult = {
+      status: 'success',
+      resource: 'orders',
+      purchases: [{ ...purchase('ORD-NEWER'), eventName: 'Baby Shower Catalina' }],
+    };
+    gateway.guestGiftResult = {
+      status: 'success',
+      resource: 'gift_purchases',
+      purchases: [{ ...purchase('ORD-OLDER'), eventName: 'Aniversario Lucia' }],
+    };
+    return gateway;
+  }
+
+  // Row 4: explicit named old event plus a newer record — both retained,
+  // explicit context intact, mutation IDs never inferred.
+  it('retains the explicit older event alongside the newer record', async () => {
+    const runtime = new InformationRuntime([{
+      ...discoveryExtraction('Consulta por Aniversario Lucia. ¿Ese pedido sigue pendiente?'),
+      informationRequests: [{
+        kind: 'purchase',
+        resource: 'purchase_discovery',
+        query: 'Consulta por Aniversario Lucia. ¿Ese pedido sigue pendiente?',
+        orderId: null,
+        eventHint: 'Aniversario Lucia',
+        aspects: ['summary', 'payment_status'],
+        sensitiveFields: [],
+        authAction: 'none',
+      }],
+    }]);
+    const gateway = olderAndNewerGateway();
+    const service = discoveryService(runtime, gateway);
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'explicit-older-user',
+      text: 'Consulta por Aniversario Lucia. ¿Ese pedido sigue pendiente?',
+      messageId: 'explicit-older-1',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51973296571',
+    });
+
+    expect(gateway.guestOrdersCalls).toBe(1);
+    expect(gateway.guestGiftCalls).toBe(1);
+    const completed = runtime.composeRequests.at(-1)?.informationResults?.[0];
+    expect(completed).toMatchObject({ status: 'completed', kind: 'purchase' });
+    if (completed?.status !== 'completed' || completed.kind !== 'purchase') {
+      throw new Error('expected the discovery read to complete');
+    }
+    // Both facts retained: the explicit older record and the newer one.
+    expect(completed.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
+      ['ORD-NEWER', 'ORD-OLDER'],
+    );
+    // Contract revision (Lane B count-driven selection): multiplicity
+    // alone completes the read, so the explicit context needs no pending
+    // request and no selection candidates. The completed result carries
+    // both records plus the explicit event hint for read reasoning.
+    expect(completed.needsSelection).toBe(false);
+    expect(response.plan.information_state.pending_requests).toEqual([]);
+    expect(response.plan.information_state.selection_candidates).toEqual([]);
+    expect(gateway.takeoverCalls).toBe(0);
+  });
+
+  // Row 5: same amounts across events with an unclear question — alternatives
+  // visible, no amount-only ID inference.
+  it('keeps same-amount alternatives visible without inferring one ID', async () => {
+    const runtime = new InformationRuntime([{
+      ...discoveryExtraction('¿Cuánto fue lo que me regalaron?'),
+      informationRequests: [{
+        kind: 'purchase',
+        resource: 'purchase_discovery',
+        query: '¿Cuánto fue lo que me regalaron?',
+        orderId: null,
+        amount: 250,
+        aspects: ['summary', 'payment_status'],
+        sensitiveFields: [],
+        authAction: 'none',
+      }],
+    }]);
+    const gateway = olderAndNewerGateway();
+    const service = discoveryService(runtime, gateway);
+
+    await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'same-amount-user',
+      text: '¿Cuánto fue lo que me regalaron?',
+      messageId: 'same-amount-1',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51973296571',
+    });
+
+    expect(gateway.guestOrdersCalls).toBe(1);
+    expect(gateway.guestGiftCalls).toBe(1);
+    const completed = runtime.composeRequests.at(-1)?.informationResults?.[0];
+    if (completed?.status !== 'completed' || completed.kind !== 'purchase') {
+      throw new Error('expected the discovery read to complete');
+    }
+    expect(completed.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
+      ['ORD-NEWER', 'ORD-OLDER'],
+    );
+    // Contract revision (Lane B count-driven selection): multiplicity
+    // preserved as multiplicity means both records stay visible with no
+    // single ID inferred and no selection flag. The reply distinguishes
+    // the alternatives from the retained evidence.
+    expect(completed.needsSelection).toBe(false);
+    expect(gateway.takeoverCalls).toBe(0);
+  });
+
+  // Row 6: exact unmatched ID — no silent retarget, mismatch preserved.
+  it('preserves an unmatched exact ID without silently retargeting', async () => {
+    const runtime = new InformationRuntime([{
+      ...discoveryExtraction('Estado del pedido ORD-UNKNOWN.'),
+      informationRequests: [{
+        kind: 'purchase',
+        resource: 'purchase_discovery',
+        query: 'Estado del pedido ORD-UNKNOWN.',
+        orderId: 'ORD-UNKNOWN',
+        aspects: ['summary', 'payment_status'],
+        sensitiveFields: [],
+        authAction: 'none',
+      }],
+    }]);
+    const gateway = olderAndNewerGateway();
+    const service = discoveryService(runtime, gateway);
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'unmatched-id-user',
+      text: 'Estado del pedido ORD-UNKNOWN.',
+      messageId: 'unmatched-id-1',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51973296571',
+    });
+
+    expect(gateway.guestOrdersCalls).toBe(1);
+    expect(gateway.guestGiftCalls).toBe(1);
+    const failed = runtime.composeRequests.at(-1)?.informationResults?.[0];
+    expect(failed).toMatchObject({ status: 'failed', kind: 'purchase' });
+    if (failed?.status !== 'failed' || failed.kind !== 'purchase') {
+      throw new Error('expected the unmatched ID to fail honestly');
+    }
+    // The mismatch is preserved on the pending request: the exact ID the
+    // user named is never replaced by a found record.
+    expect(response.plan.information_state.pending_requests).toEqual([
+      expect.objectContaining({
+        kind: 'purchase',
+        resource: 'purchase_discovery',
+        orderId: 'ORD-UNKNOWN',
+      }),
+    ]);
+    const completedPurchases = (runtime.composeRequests.at(-1)?.informationResults ?? []).flatMap(
+      (result) => result.status === 'completed' && result.kind === 'purchase' ? result.purchases : [],
+    );
+    expect(completedPurchases.map((purchase) => purchase.orderId)).not.toContain('ORD-NEWER');
+    expect(completedPurchases.map((purchase) => purchase.orderId)).not.toContain('ORD-OLDER');
+  });
+
+  // Receipt assistance without a separately emitted purchase question creates
+  // exactly ONE discovery request (generic expansion replaces the dual fan-out).
+  it('synthesizes one discovery request for receipt assistance', async () => {
+    const runtime = new InformationRuntime([{
+      ...extraction([], null, null, null),
+      supportAct: { kind: 'provide_detail', topic: 'payment_proof', detail: 'unknown' },
+    }]);
+    const gateway = olderAndNewerGateway();
+    const service = discoveryService(runtime, gateway);
+
+    await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'receipt-alone-user',
+      text: 'Te envío el comprobante del pago.',
+      messageId: 'receipt-alone-1',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51973296571',
+    });
+
+    expect(gateway.guestOrdersCalls).toBe(1);
+    expect(gateway.guestGiftCalls).toBe(1);
+    const results = runtime.composeRequests.at(-1)?.informationResults ?? [];
+    const purchaseResults = results.filter((result) => result.kind === 'purchase');
+    expect(purchaseResults).toHaveLength(1);
+    const completed = purchaseResults[0];
+    if (completed?.status !== 'completed' || completed.kind !== 'purchase') {
+      throw new Error('expected the receipt discovery read to complete');
+    }
+    expect(completed.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
+      ['ORD-NEWER', 'ORD-OLDER'],
+    );
+  });
+
+  // Guard: gratitude without a new request never triggers a both-source read.
+  it('reads no purchase root for gratitude without a new request', async () => {
+    const runtime = new InformationRuntime([extraction([], null, null, null)]);
+    const gateway = olderAndNewerGateway();
+    const service = discoveryService(runtime, gateway);
+
+    await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'thanks-user',
+      text: 'Muchas gracias por tu ayuda.',
+      messageId: 'thanks-1',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51973296571',
+    });
+
+    expect(
+      gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.ordersCalls + gateway.giftCalls,
+    ).toBe(0);
+  });
+
+  // Lane B: multiplicity alone completes the read. Both authorized records
+  // stay visible, and with no validated-reference mismatch nothing stays
+  // pending and no selection candidates persist.
+  it('completes an explicit older discovery read without pending selection state', async () => {
+    const runtime = new InformationRuntime([
+      discoveryExtraction('Consulta por Aniversario Lucia. ¿Ese pedido sigue pendiente?'),
+    ]);
+    const gateway = olderAndNewerGateway();
+    const service = discoveryService(runtime, gateway);
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'explicit-older-laneb-user',
+      text: 'Consulta por Aniversario Lucia. ¿Ese pedido sigue pendiente?',
+      messageId: 'explicit-older-laneb-1',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51973296571',
+    });
+
+    expect(gateway.guestOrdersCalls).toBe(1);
+    expect(gateway.guestGiftCalls).toBe(1);
+    const completed = runtime.composeRequests.at(-1)?.informationResults?.[0];
+    if (completed?.status !== 'completed' || completed.kind !== 'purchase') {
+      throw new Error('expected the explicit older discovery read to complete');
+    }
+    expect(completed.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
+      ['ORD-NEWER', 'ORD-OLDER'],
+    );
+    expect(completed.needsSelection).toBe(false);
+    expect(response.plan.information_state.pending_requests).toEqual([]);
+    expect(response.plan.information_state.selection_candidates).toEqual([]);
+    expect(gateway.takeoverCalls).toBe(0);
+  });
+
+  // Lane B negative control: an explicit validated-reference mismatch still
+  // holds the asking state (pending request plus selection candidates).
+  it('holds selection state on an explicit validated-reference mismatch', async () => {
+    const runtime = new InformationRuntime([{
+      ...discoveryExtraction('Estado del pedido COD999999.'),
+      informationRequests: [{
+        kind: 'purchase',
+        resource: 'purchase_discovery',
+        query: 'Estado del pedido COD999999.',
+        orderId: 'COD999999',
+        aspects: ['summary', 'payment_status'],
+        sensitiveFields: [],
+        authAction: 'none',
+      }],
+    }]);
+    const gateway = olderAndNewerGateway();
+    const service = discoveryService(runtime, gateway);
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'explicit-mismatch-user',
+      text: 'Estado del pedido COD999999.',
+      messageId: 'explicit-mismatch-1',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51973296571',
+    });
+
+    const completed = runtime.composeRequests.at(-1)?.informationResults?.[0];
+    if (completed?.status !== 'completed' || completed.kind !== 'purchase') {
+      throw new Error('expected the mismatch discovery read to retain scope');
+    }
+    expect(completed.referenceResolution).toBe('unavailable');
+    expect(completed.needsSelection).toBe(true);
+    expect(response.plan.information_state.pending_requests.length).toBeGreaterThan(0);
+    expect(
+      response.plan.information_state.selection_candidates.flatMap((candidate) => candidate.orders),
+    ).not.toHaveLength(0);
+    expect(gateway.takeoverCalls).toBe(0);
+  });
+
+  // Lane B: a physical gift read without shipping details attempts no
+  // handoff on the read turn; the typed outcome travels without an effect.
+  it('reads a shipment-unknown physical gift without a handoff attempt', async () => {
+    const runtime = new InformationRuntime([
+      extraction([purchaseRequest(null)], null, null, null),
+    ]);
+    const gateway = new FakePurchaseGateway();
+    gateway.guestOrdersResult = { status: 'not_found', resource: 'orders', orderId: null };
+    gateway.guestGiftResult = {
+      status: 'success',
+      resource: 'gift_purchases',
+      purchases: [{
+        ...purchase('GIFT-PHYSICAL-1'),
+        paymentStatus: 'approved',
+        shippingStatus: null,
+        eventName: 'Boda Lucía y Marco',
+      }],
+    };
+    const service = discoveryService(runtime, gateway);
+
+    await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'physical-unknown-user',
+      text: '¿Cuándo llega mi regalo físico?',
+      messageId: 'physical-unknown-1',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51973296571',
+    });
+
+    expect(gateway.takeoverCalls).toBe(0);
+    expect(runtime.composeRequests.at(-1)?.handoffOutcome ?? null).toBeNull();
+  });
+
+  // Lane B: an accepted support offer executes the existing
+  // humanHelpIntent path exactly once (mocked extraction, labeled).
+  it('writes an accepted support offer exactly once through humanHelpIntent', async () => {
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      reason: 'seed-offered',
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'laneb-offered',
+          channel: 'whatsapp',
+          externalUserId: 'laneb-offered-user',
+        }),
+        {
+          current_node: 'resolver_consultas_informativas',
+          conversation_health: {
+            status: 'frustrated',
+            reason: 'explicit_frustration',
+            consecutive_non_progress_turns: 1,
+            help_offer_status: 'offered',
+            help_offered_at: '2026-09-21T12:00:00.000Z',
+            last_assessed_at: '2026-09-21T12:00:00.000Z',
+          },
+        },
+      ),
+    });
+    const runtime = new InformationRuntime([{
+      ...extraction([], 'solicitar_humano', null, null),
+      humanHelpIntent: 'accept_offer',
+    }]);
+    const gateway = new FakePurchaseGateway();
+    const service = createService({
+      runtime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway,
+      providerGateway: providerGateway(),
+      planStore,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'laneb-offered-user',
+      text: 'Sí, acepto la ayuda.',
+      messageId: 'laneb-offered-1',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51973296571',
+    });
+
+    expect(gateway.takeoverCalls).toBe(1);
+    expect(response.plan.human_escalation.status).toBe('requested');
+    expect(runtime.composeRequests.at(-1)?.handoffOutcome).toBe('handoff_requested');
   });
 });

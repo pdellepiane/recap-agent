@@ -31,7 +31,9 @@ describe('static prompt comparison', () => {
     expect(route(result, 'classifier:campaign_reply').serializedRequestByteReductionPercent)
       .toBeGreaterThan(50);
     expect(route(result, 'extractor:conversation_only').current.fileCount).toBe(1);
-    expect(route(result, 'extractor:shortlist').current.fileCount).toBe(6);
+    // Contract revision (Lane B extractor relevance): style/personality
+    // modules excluded from the extractor bundle, one fewer file.
+    expect(route(result, 'extractor:shortlist').current.fileCount).toBe(5);
     expect(route(result, 'extractor:rsvp').current.fileCount).toBe(2);
     expect(route(result, 'contacto_inicial').current.fileCount).toBe(7);
     expect(route(result, 'recomendar').current.fileCount).toBe(10);

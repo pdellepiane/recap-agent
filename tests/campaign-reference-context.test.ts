@@ -221,3 +221,81 @@ describe('campaign reference context in the decision input', () => {
     expect(first).toBeLessThan(second);
   });
 });
+
+describe('source discovery explicit event retention', () => {
+  // Row 4 (extractor-input part): a purchase question naming an older event
+  // keeps the explicit name and the campaign reference context in the
+  // extractor input, so the model can resolve the reference.
+  it('keeps the explicit older event name alongside campaign context', async () => {
+    const inboundText = 'Consulta por Aniversario Lucia. ¿Ese pedido sigue pendiente?';
+    const messageContext = buildTurnMessageContext({
+      messages: [
+        {
+          id: 7,
+          direction: 'outbound',
+          source: 'admin_campaign',
+          body: 'Recordatorio: tu evento Boda Lucía y Marco es el 10 de octubre. Confirma tu asistencia.',
+          status: 'delivered',
+          whatsappMessageId: null,
+          sentAt: '2026-09-20T10:00:00.000Z',
+          createdAt: '2026-09-20T10:00:00.000Z',
+        },
+      ],
+      inbound: {
+        channel: 'whatsapp',
+        externalUserId: 'campaign-user',
+        text: inboundText,
+        messageId: 'inbound-discovery-1',
+        receivedAt: '2026-09-20T11:00:00.000Z',
+        contactPhone: '+51900000001',
+      },
+    });
+    const spec = await testRuntime().buildExtractionRequestSpec({
+      userMessage: inboundText,
+      plan: supportPlan(),
+      messageContext,
+    });
+
+    expect(spec.input).toContain('Aniversario Lucia');
+    expect(spec.input).toContain('admin_campaign');
+  });
+});
+
+describe('reply evidence planning recognition and topic-switch (Lane B)', () => {
+  it('keeps compact planning recognition on transient turns without customer-writing style', async () => {
+    const { createEmptyPlan } = await import('../src/core/plan');
+    const plan = createEmptyPlan({ planId: 'campaign-new', channel: 'whatsapp', externalUserId: 'campaign-user' });
+    const spec = await testRuntime().buildExtractionRequestSpec({
+      userMessage: 'Quiero planear mi boda para 100 personas.',
+      plan,
+      messageContext: localTurnMessageContext('not_configured'),
+    });
+    // Genuine planning stays recognized on a new turn.
+    expect(spec.filePaths).toContain('extractors/planning.txt');
+    expect(spec.filePaths).toContain('extractors/base_system.txt');
+    // Detail modules wait for typed planning progress.
+    expect(spec.filePaths).not.toContain('extractors/provider_management.txt');
+    expect(spec.filePaths).not.toContain('extractors/contact.txt');
+    expect(spec.filePaths).not.toContain('extractors/close_pause.txt');
+    // Extraction emits JSON: customer persona, stylistic examples and
+    // conversational anti-patterns never travel on extraction bundles.
+    expect(spec.filePaths).not.toContain('shared/agent_personality.txt');
+    expect(spec.filePaths).not.toContain('shared/output_style.txt');
+    expect(spec.filePaths).not.toContain('shared/common_anti_patterns.txt');
+    expect(spec.filePaths).toContain('shared/base_system.txt');
+  });
+
+  it('established support extraction keeps cross-domain readability without locking topic switches', async () => {
+    const spec = await testRuntime().buildExtractionRequestSpec({
+      userMessage: 'Confirmo mi asistencia y quiero saber el saldo.',
+      plan: supportPlan(),
+      messageContext: localTurnMessageContext('not_configured'),
+    });
+    // A new RSVP or planning request inside a support session still
+    // extracts: the lane never locks against topic changes.
+    expect(spec.filePaths).toContain('extractors/information.txt');
+    expect(spec.filePaths).toContain('extractors/rsvp.txt');
+    expect(spec.filePaths).not.toContain('extractors/planning.txt');
+    expect(spec.filePaths).not.toContain('extractors/provider_management.txt');
+  });
+});
