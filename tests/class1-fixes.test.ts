@@ -105,11 +105,12 @@ describe('class1 fixes twins', () => {
       authBlock: null,
       trustedPhone: { phone_extension: '+51', phone_number: '999999999' },
     });
-    expect(execMismatch.results[0]?.status).toBe('completed');
-    if (execMismatch.results[0]?.status === 'completed') {
-      expect(execMismatch.results[0].accessMethod).toBe('trusted_phone_purchase');
-      expect(execMismatch.results[0].needsSelection).toBe(true);
-      expect(execMismatch.results[0].purchases.map((purchase) => purchase.orderId).sort()).toEqual(['ORD-1', 'ORD-2']);
+    const mismatchResult = execMismatch.results[0];
+    expect(mismatchResult?.status).toBe('completed');
+    if (mismatchResult?.status === 'completed' && mismatchResult.kind === 'purchase') {
+      expect(mismatchResult.accessMethod).toBe('trusted_phone_purchase');
+      expect(mismatchResult.needsSelection).toBe(true);
+      expect(mismatchResult.purchases.map((purchase) => purchase.orderId).sort()).toEqual(['ORD-1', 'ORD-2']);
     }
     expect(execMismatch.summaries[0]?.accessMethod).toBe('trusted_phone_purchase');
   });
@@ -136,9 +137,10 @@ describe('class1 fixes twins', () => {
       authBlock: null,
       trustedPhone: { phone_extension: '+51', phone_number: '999999999' },
     });
-    expect(execMismatch.results[0]?.status).toBe('completed');
-    if (execMismatch.results[0]?.status === 'completed') {
-      expect(execMismatch.results[0].purchases.map((purchase) => purchase.orderId)).toEqual(['ORD-1']);
+    const singleResult = execMismatch.results[0];
+    expect(singleResult?.status).toBe('completed');
+    if (singleResult?.status === 'completed' && singleResult.kind === 'purchase') {
+      expect(singleResult.purchases.map((purchase) => purchase.orderId)).toEqual(['ORD-1']);
     }
 
     const gatewayEmpty = new FakeAgentGateway();

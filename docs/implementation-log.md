@@ -13106,7 +13106,7 @@ Fail adjudication (all evidence inspected in results.jsonl + CloudWatch channel_
 
 Fix direction for next package (not done here): extraction must not file gift descriptions as eventHint; selector filter needs item-level amount matching and a no-fail-closed path for single-candidate fuzzy-hint misses; evidence projection must not truncate retrieved schedule facts; reply composition must carry required offers/method qualifiers and avoid thanks-turn team-action claims. Campaign mustCall should accept the unified purchase read. No second paid run, no runtime patch after freeze, no production promotion under this authorization.
 
-## 2026-09-22 — Bounded-evidence simplification package (offline): Works 1–3 implemented, 5 commits, no deploy/live/promotion
+## 2026-09-22 — Bounded-evidence simplification package (offline): Works 1–3 implemented, 6 commits, no deploy/live/promotion
 
 Implemented docs/plan/2026-09-09-lean-conversation/bounded-evidence-simplification-2026-09-22.md offline via three subagents (one writer at a time) plus in-parent integration, verification, measurements, and commits. Baseline dbe6c4ea. No deployment, paid calls, live rerun, or production promotion under this prompt.
 
