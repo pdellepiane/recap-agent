@@ -32,6 +32,7 @@ import type { HandleTurnResponse } from '../runtime/agent-service';
 import { AgentParticipationService } from '../runtime/agent-participation-service';
 import { OpenAiMessageResponseClassifier } from '../runtime/message-response-classifier';
 import {
+  FixtureKnowledgeRetrievalGateway,
   NoopKnowledgeRetrievalGateway,
   OpenAiKnowledgeRetrievalGateway,
 } from '../runtime/knowledge-retrieval-gateway';
@@ -856,8 +857,12 @@ async function getFixtureRuntime(args: {
     fixtureGateway.capabilityDescriptor,
     fixtureProviderGateway,
   );
+  const fixtureKnowledgePassages = ((rawFixture as FixtureData | null) ?? null)?.knowledgeBase?.passages;
+  const knowledgeGateway = fixtureKnowledgePassages !== undefined && fixtureKnowledgePassages.length > 0
+    ? new FixtureKnowledgeRetrievalGateway(fixtureKnowledgePassages)
+    : shared.knowledgeGateway;
   const informationOrchestrator = new InformationOrchestrator({
-    knowledgeGateway: shared.knowledgeGateway,
+    knowledgeGateway,
     providerGateway: fixtureProviderGateway,
     agentGateway: fixtureGateway,
     capabilityManifest: fixtureGateway.capabilityDescriptor,

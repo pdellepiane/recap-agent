@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -16,6 +17,8 @@ import type {
 } from '../src/runtime/contracts';
 import { OpenAiAgentRuntime } from '../src/runtime/openai-agent-runtime';
 import { buildNativeModelInput } from '../src/runtime/openai-agent-runtime';
+import { FixtureKnowledgeRetrievalGateway } from '../src/runtime/knowledge-retrieval-gateway';
+import type { FixtureData } from '../src/runtime/eval-fixture-gateway';
 import { InformationOrchestrator } from '../src/runtime/information-orchestrator';
 import type {
   AgentConversationGateway,
@@ -144,7 +147,10 @@ function replyRequest(
   } as unknown as ComposeReplyRequest;
 }
 
-function readFaqEvidence(input: string): Array<{ filename: string; text: string }> {
+function readFaqProjection(input: string): {
+  evidence: Array<{ filename: string; text: string }>;
+  coverage: unknown;
+} {
   const marker = 'Evidencia canónica del turno (JSON): ';
   const start = input.indexOf('{', input.indexOf(marker));
   let depth = 0;
@@ -170,9 +176,13 @@ function readFaqEvidence(input: string): Array<{ filename: string; text: string 
       depth -= 1;
       if (depth === 0) {
         const evidence = JSON.parse(input.slice(start, cursor + 1)) as {
-          information_results: Array<{ evidence?: Array<{ filename: string; text: string }> }>;
+          information_results: Array<{
+            evidence?: Array<{ filename: string; text: string }>;
+            coverage?: unknown;
+          }>;
         };
-        return evidence.information_results[0]?.evidence ?? [];
+        const first = evidence.information_results[0];
+        return { evidence: first?.evidence ?? [], coverage: first?.coverage };
       }
     }
   }
@@ -613,9 +623,10 @@ describe('actual reply request owns its instructions', () => {
 
   it('projects payment and rejection excerpts past an unrelated first article', async () => {
     // Retrieval can return gift-obligation, payment-method and
-    // card-rejection articles together; the reply projection must carry a
-    // small deduplicated set under a fixed total budget instead of only
-    // the first excerpt, or the model answers from the unrelated article.
+    // card-rejection articles together; the reply projection must carry the
+    // ranked deduplicated passages COMPLETE under the total budget instead
+    // of only the first excerpt, or the model answers from the unrelated
+    // article.
     const runtime = testRuntime();
     const giftObligation = `Obsequio de lista: ${'detalle '.repeat(150)}cola final distintiva del articulo`;
     const giftTail = 'cola final distintiva del articulo';
@@ -644,14 +655,15 @@ describe('actual reply request owns its instructions', () => {
     // Source labels travel with every excerpt.
     expect(spec.input).toContain('obligacion-regalo.md');
     expect(spec.input).toContain('tarjeta-rechazada.md');
-    // Fixed total budget: three excerpts share 1800 chars, so the long
-    // unrelated first article is truncated while the relevant ones survive.
-    expect(spec.input).toContain(giftObligation.slice(0, 100));
-    expect(spec.input).not.toContain(giftTail);
-    const evidence = readFaqEvidence(spec.input);
-    expect(evidence).toHaveLength(3);
-    const totalChars = evidence.reduce((total, entry) => total + entry.text.length, 0);
-    expect(totalChars).toBeLessThanOrEqual(1800);
+    // Complete passages under the total budget: even the long unrelated
+    // first article travels whole, with its tail intact.
+    expect(spec.input).toContain(giftTail);
+    const projection = readFaqProjection(spec.input);
+    expect(projection.evidence).toHaveLength(3);
+    expect(projection.evidence[0]?.text).toBe(giftObligation);
+    expect(projection.coverage).toBe('complete');
+    const totalChars = projection.evidence.reduce((total, entry) => total + entry.text.length, 0);
+    expect(totalChars).toBeLessThanOrEqual(6000);
   });
 
   it('keeps an unanswered diagnostic question as context without repeating it', async () => {
@@ -2106,5 +2118,138 @@ describe('multimodal extraction decision input', () => {
       image: { id: RECEIPT_FILE_ID },
       detail: 'auto',
     });
+  });
+});
+
+describe('faq evidence budgeting preserves answer-bearing passages', () => {
+  // Stable Horarios y canales de atención article text, copied from the
+  // 'delivers retrieved schedule text' case in
+  // tests/agent-service-information-flow.test.ts; never invented.
+  const SCHEDULE_TEXT = 'Nuestros horarios de atención son: Lunes a sábado. ' +
+    'Turno mañana: de 9:30 a.m. a 1:30 p.m. Turno tarde: de 3:30 p.m. a 7:30 p.m. ' +
+    'Te recomendamos escribirnos dentro de estos horarios para una respuesta más rápida.';
+  const SCHEDULE_FILENAME = 'horarios-y-canales-de-atención.md';
+
+  function faqResult(evidence: Array<Record<string, unknown>>): InformationTaskResult {
+    return {
+      requestId: 'req-faq',
+      kind: 'faq',
+      status: 'completed',
+      evidence,
+    } as unknown as InformationTaskResult;
+  }
+
+  it('keeps schedule facts located after character 600 of the top-ranked passage', async () => {
+    const runtime = testRuntime();
+    const filler = 'Información general de la tienda. '.repeat(25);
+    expect(filler.length).toBeGreaterThan(600);
+    const topText = `${filler}${SCHEDULE_TEXT}`;
+    const spec = await runtime.buildReplyRequestSpec(
+      replyRequest(supportPlan(), {
+        informationResults: [faqResult([
+          { fileId: 'kb-horarios', filename: SCHEDULE_FILENAME, score: 0.98, text: topText },
+          { fileId: 'kb-devol', filename: 'politica-devoluciones.md', score: 0.71, text: 'Devolución disponible dentro de 7 días.' },
+          { fileId: 'kb-pago', filename: 'medios-pago.md', score: 0.66, text: 'Medios de pago aceptados: Yape, Plin y transferencia bancaria.' },
+        ])],
+      }),
+    );
+    expect(spec.input).toContain('Lunes a sábado');
+    expect(spec.input).toContain('9:30 a.m.');
+    expect(spec.input).toContain('1:30 p.m.');
+    expect(spec.input).toContain('3:30 p.m.');
+    expect(spec.input).toContain('7:30 p.m.');
+    expect(spec.input).toContain(SCHEDULE_FILENAME);
+    const projection = readFaqProjection(spec.input);
+    expect(projection.evidence[0]?.text).toBe(topText);
+  });
+
+  it('dedupes repeated passages so the answer serializes once', async () => {
+    const runtime = testRuntime();
+    const spec = await runtime.buildReplyRequestSpec(
+      replyRequest(supportPlan(), {
+        informationResults: [faqResult([
+          { fileId: 'kb-horarios', filename: SCHEDULE_FILENAME, score: 0.98, text: SCHEDULE_TEXT },
+          { fileId: 'kb-horarios-dup', filename: SCHEDULE_FILENAME, score: 0.9, text: SCHEDULE_TEXT },
+          { fileId: 'kb-pago', filename: 'medios-pago.md', score: 0.66, text: 'Medios de pago aceptados: Yape, Plin y transferencia bancaria.' },
+        ])],
+      }),
+    );
+    expect(spec.input).toContain('Lunes a sábado');
+    expect(spec.input.split('Lunes a sábado').length - 1).toBe(1);
+    expect(spec.input.split(`"filename": "${SCHEDULE_FILENAME}`).length - 1).toBe(1);
+  });
+
+  it('marks coverage partial instead of silently clipping an over-budget passage', async () => {
+    const runtime = testRuntime();
+    const bigOne = `Primer artículo completo. ${'contenido '.repeat(260)}fin del primer artículo.`;
+    const bigTwo = `Segundo artículo completo. ${'detalle '.repeat(260)}fin del segundo artículo.`;
+    const bigThree = `Tercer artículo completo. ${'relleno '.repeat(260)}fin del tercer artículo.`;
+    expect(bigOne.length + bigTwo.length + bigThree.length).toBeGreaterThan(6000);
+    const spec = await runtime.buildReplyRequestSpec(
+      replyRequest(supportPlan(), {
+        informationResults: [faqResult([
+          { fileId: 'kb-1', filename: 'articulo-uno.md', score: 0.95, text: bigOne },
+          { fileId: 'kb-2', filename: 'articulo-dos.md', score: 0.9, text: bigTwo },
+          { fileId: 'kb-3', filename: 'articulo-tres.md', score: 0.85, text: bigThree },
+        ])],
+      }),
+    );
+    const projection = readFaqProjection(spec.input);
+    // Ranked complete passages that fit travel whole, never clipped mid-text.
+    expect(projection.evidence[0]?.text).toBe(bigOne);
+    expect(projection.evidence[1]?.text).toBe(bigTwo);
+    // The excluded passage is declared explicitly, not silently cut.
+    expect(projection.coverage).toBe('partial');
+    expect(spec.input).not.toContain('fin del tercer artículo.');
+  });
+});
+
+describe('fixture knowledge retrieval seam', () => {
+  it('serves canned passages ranked with stable fixture file ids', async () => {
+    const gateway = new FixtureKnowledgeRetrievalGateway([
+      { filename: 'nota-baja.md', text: 'Texto de menor relevancia.', score: 0.5 },
+      { filename: 'nota-alta.md', text: 'Texto de mayor relevancia.', score: 0.9 },
+    ]);
+    const result = await gateway.search('¿Cuál es el horario de atención?', { rewriteQuery: false });
+    expect(result.status).toBe('success');
+    if (result.status !== 'success') throw new Error('Expected fixture KB success.');
+    expect(result.evidence.map((entry) => entry.filename)).toEqual(['nota-alta.md', 'nota-baja.md']);
+    expect(result.evidence.map((entry) => entry.fileId)).toEqual(['fixture-kb-0', 'fixture-kb-1']);
+    // The rewriteQuery option is accepted and ignored: same ranking either way.
+    const rewritten = await gateway.search('¿Cuál es el horario de atención?', { rewriteQuery: true });
+    expect(rewritten).toEqual(result);
+  });
+
+  it('serves the frozen hours passage from the image-clean-world fixture into the reply input', async () => {
+    const content = await readFile(
+      path.resolve(process.cwd(), 'evals/fixtures/image-clean-world.json'),
+      'utf8',
+    );
+    const fixture = JSON.parse(content) as FixtureData;
+    const passages = fixture.knowledgeBase?.passages ?? [];
+    expect(passages.length).toBeGreaterThan(0);
+    const gateway = new FixtureKnowledgeRetrievalGateway(passages);
+    const retrieved = await gateway.search('¿Cuál es el horario de atención?');
+    expect(retrieved.status).toBe('success');
+    if (retrieved.status !== 'success') throw new Error('Expected fixture KB success.');
+    // The controlled passage carries the answer; projection cannot repair
+    // absent retrieval, so the canned text must hold the schedule facts.
+    expect(retrieved.evidence[0]?.filename).toBe('horarios-y-canales-de-atención.md');
+    expect(retrieved.evidence[0]?.text).toContain('Lunes a sábado');
+    expect(retrieved.evidence[0]?.text).toContain('9:30 a.m.');
+    const runtime = testRuntime();
+    const spec = await runtime.buildReplyRequestSpec(
+      replyRequest(supportPlan(), {
+        informationResults: [{
+          requestId: 'req-faq',
+          kind: 'faq',
+          status: 'completed',
+          evidence: retrieved.evidence,
+        } as unknown as InformationTaskResult],
+      }),
+    );
+    expect(spec.input).toContain('Lunes a sábado');
+    expect(spec.input).toContain('7:30 p.m.');
+    expect(spec.input).toContain('horarios-y-canales-de-atención.md');
   });
 });

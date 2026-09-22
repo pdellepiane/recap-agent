@@ -4666,35 +4666,34 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
    * FAQ evidence projection for the reply model. Retrieval can return
    * several relevant articles (gift terms, payment methods, card-rejection
    * guidance); projecting only the first let the model answer from an
-   * unrelated article. Up to three deduplicated excerpts travel under a
-   * fixed total text budget with their source filenames, through this
-   * existing projection path. A single excerpt keeps its previous
-   * truncation, so unaffected turns stay byte-identical. No new lookup,
-   * no new state, no reply prose.
+   * unrelated article. Ranked deduplicated passages travel COMPLETE in rank
+   * order under a bounded total text budget with their source filenames,
+   * through this existing projection path. A passage that does not fit the
+   * remaining budget is excluded whole and the projection is marked
+   * partial, never clipped mid-meaning. No new lookup, no new state,
+   * no reply prose.
    */
   private projectFaqEvidenceForReply(
     evidence: KnowledgeEvidence[],
-  ): Array<{ filename: string; text: string }> {
-    const MAX_EXCERPTS = 3;
-    const SINGLE_EXCERPT_CHARS = 1_200;
-    const MAX_TOTAL_CHARS = 1_800;
+  ): { evidence: Array<{ filename: string; text: string }>; coverage: 'complete' | 'partial' } {
+    const MAX_TOTAL_CHARS = 6_000;
     const seen = new Set<string>();
-    const unique: KnowledgeEvidence[] = [];
+    const projected: Array<{ filename: string; text: string }> = [];
+    let usedChars = 0;
+    let coverage: 'complete' | 'partial' = 'complete';
     for (const entry of evidence) {
       if (entry.text.length === 0) continue;
       const key = `${entry.filename}::${entry.text}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      unique.push(entry);
+      if (usedChars + entry.text.length > MAX_TOTAL_CHARS) {
+        coverage = 'partial';
+        continue;
+      }
+      usedChars += entry.text.length;
+      projected.push({ filename: entry.filename, text: entry.text });
     }
-    const selected = unique.slice(0, MAX_EXCERPTS);
-    const perExcerptChars = selected.length <= 1
-      ? SINGLE_EXCERPT_CHARS
-      : Math.floor(MAX_TOTAL_CHARS / selected.length);
-    return selected.map((entry) => ({
-      filename: entry.filename,
-      text: this.truncateText(entry.text, Math.min(SINGLE_EXCERPT_CHARS, perExcerptChars)),
-    }));
+    return { evidence: projected, coverage };
   }
 
   private projectInformationResultForReply(
@@ -4738,11 +4737,13 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
           },
         };
       }
+      const faqProjection = this.projectFaqEvidenceForReply(result.evidence);
       return {
         requestId: result.requestId,
         kind: result.kind,
         status: result.status,
-        evidence: this.projectFaqEvidenceForReply(result.evidence),
+        evidence: faqProjection.evidence,
+        coverage: faqProjection.coverage,
       };
     }
     if (result.status === 'completed' && result.kind === 'associated_event') {

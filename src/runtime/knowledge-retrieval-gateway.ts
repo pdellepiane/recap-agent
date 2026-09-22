@@ -38,6 +38,37 @@ export class NoopKnowledgeRetrievalGateway implements KnowledgeRetrievalGateway 
   }
 }
 
+export type FixtureKnowledgePassage = {
+  filename: string;
+  text: string;
+  score?: number;
+};
+
+/**
+ * Offline fixture KB gateway. Serves canned passages ranked by score
+ * (declared order wins ties) as success evidence with stable fixture file
+ * IDs. Used only when fixture data provides canned passages; all other
+ * cases keep the shared live gateway. Never indexes or fetches articles.
+ */
+export class FixtureKnowledgeRetrievalGateway implements KnowledgeRetrievalGateway {
+  constructor(private readonly passages: readonly FixtureKnowledgePassage[]) {}
+
+  async search(query: string, options?: { rewriteQuery: boolean }): Promise<KnowledgeRetrievalResult> {
+    void query;
+    void options;
+    const ranked = [...this.passages].sort((a, b) => (b.score ?? 1) - (a.score ?? 1));
+    return {
+      status: 'success',
+      evidence: ranked.map((passage, index) => ({
+        fileId: `fixture-kb-${index}`,
+        filename: passage.filename,
+        score: passage.score ?? 1,
+        text: passage.text,
+      })),
+    };
+  }
+}
+
 export class OpenAiKnowledgeRetrievalGateway implements KnowledgeRetrievalGateway {
   private readonly client: OpenAI;
 

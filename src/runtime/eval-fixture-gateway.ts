@@ -134,6 +134,10 @@ export type FixtureData = {
   disabledOperations?: unknown;
   /** Explicit handoff world outcome: success | failed | unknown. */
   handoff?: unknown;
+  /** Canned KB passages served by the fixture knowledge gateway when present. */
+  knowledgeBase?: {
+    passages: Array<{ filename: string; text: string; score?: number }>;
+  };
   /** Declared initial conversation history, keyed by phone lookup form. Validated as typed data on read. */
   recentMessages?: unknown;
 };
