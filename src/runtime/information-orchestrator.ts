@@ -662,11 +662,7 @@ export class InformationOrchestrator {
     // would spend a backend call to relearn nothing.
     if (lookup.status === 'success') {
       const evidence = this.partitionedPurchaseLookup(lookup);
-      const candidates = this.filterPurchaseCandidates(
-        evidence.purchases,
-        request,
-        evidence.partitionByOrderId,
-      );
+      const candidates = this.filterPurchaseCandidates(evidence.purchases);
       const carts = this.filterCartCandidates(evidence.carts, request);
       return {
         requestId: request.requestId,
@@ -1569,8 +1565,6 @@ export class InformationOrchestrator {
         }
         const candidates = this.filterPurchaseCandidates(
           evidence.purchases,
-          request,
-          evidence.partitionByOrderId,
           lookup.requestedCustomerTransactionNumber,
         );
         for (const purchase of candidates.purchases) {
@@ -1718,8 +1712,6 @@ export class InformationOrchestrator {
       const carts = this.filterCartCandidates(evidence.carts, request);
       const candidates = this.filterPurchaseCandidates(
         evidence.purchases,
-        request,
-        evidence.partitionByOrderId,
         lookup.requestedCustomerTransactionNumber,
       );
       const purchases = candidates.purchases;
@@ -1740,24 +1732,9 @@ export class InformationOrchestrator {
         };
         return result;
       }
+      // The filter retains every authorized record, so an empty result
+      // means the backend scope itself is empty — never a hint mismatch.
       if (purchases.length === 0) {
-        const hasExplicitSelector =
-          Boolean(request.eventHint?.trim()) ||
-          (request.amount !== null && request.amount !== undefined) ||
-          Boolean(this.requestDateSelector(request));
-        if (hasExplicitSelector && evidence.purchases.length > 0) {
-          return {
-            requestId: request.requestId,
-            kind: 'purchase',
-            status: 'failed',
-            retryable: false,
-            failureKind: 'not_found',
-            message:
-              'No encontré una compra que coincida con la referencia indicada entre las asociadas a este número. Se necesita apoyo del equipo para revisar esa referencia.',
-            accessMethod: 'trusted_phone_purchase',
-            lookupResource: lookup.sourceResource,
-          };
-        }
         return {
           requestId: request.requestId,
           kind: 'purchase',
@@ -2169,112 +2146,28 @@ export class InformationOrchestrator {
 
   private filterPurchaseCandidates(
     purchases: PurchaseInformation[],
-    request: PurchaseRequest,
-    partitionByOrderId: ReadonlyMap<string, PurchasePartition> = new Map(),
     requestedCustomerTransactionNumber: string | null = null,
   ): { purchases: PurchaseInformation[]; needsSelection: boolean } {
-    const hasEventSelector = Boolean(request.eventHint?.trim());
-    const hasAmountSelector = request.amount !== null && request.amount !== undefined;
-    const requestedDate = this.requestDateSelector(request);
-    const hasDateSelector = Boolean(requestedDate);
-    const hasSelector = hasEventSelector || hasAmountSelector || hasDateSelector;
-
     // An explicit customer reference is authoritative identity evidence. A
-    // unique match narrows structurally; an unmatched reference over several
-    // records keeps every candidate with selection so the reply asks instead
-    // of implying a link through the pending partition.
+    // match narrows to the matching records; an unmatched reference retains
+    // the authorized scope with selection so the reply asks instead of
+    // implying a link or silently selecting a non-matching record.
     if (requestedCustomerTransactionNumber) {
       const referenceMatches = purchases.filter(
         (purchase) => purchase.customerTransactionNumber === requestedCustomerTransactionNumber,
       );
-      if (referenceMatches.length === 1) {
-        return { purchases: referenceMatches, needsSelection: false };
+      if (referenceMatches.length > 0) {
+        return {
+          purchases: referenceMatches,
+          needsSelection: referenceMatches.length > 1,
+        };
       }
-      if (referenceMatches.length === 0 && purchases.length > 1) {
-        return { purchases, needsSelection: true };
-      }
+      return { purchases, needsSelection: true };
     }
-
-    // Typed guard: a reported payment amount in an active thread is payment evidence, not purchase identity.
-    // When the pending partition has exactly one order and the question is a current-payment question,
-    // ignore a lone amount selector without eventHint/orderId. Residual edge: an explicit historical-amount
-    // question with a single pending order will still resolve to that pending order.
-    // Partition semantics: backend ships pending_orders as pending+declined+error+null, so terminal
-    // payment_status=declined must be excluded from the guard count - otherwise any declined order in the
-    // partition permanently disables the guard for that phone.
-    const pendingForGuard = purchases.filter(
-      (purchase) =>
-        partitionByOrderId.get(purchase.orderId) === 'pending_orders' &&
-        purchase.paymentStatus?.toLocaleLowerCase('es') !== 'declined',
-    );
-    if (
-      !request.orderId &&
-      !hasEventSelector &&
-      pendingForGuard.length === 1 &&
-      this.isCurrentPaymentQuestion(request)
-    ) {
-      return { purchases: pendingForGuard, needsSelection: false };
-    }
-
-    if (hasEventSelector && hasAmountSelector) {
-      const eventMatched = purchases.filter((purchase) =>
-        this.eventMatches(purchase.eventName, request.eventHint ?? ''),
-      );
-      if (eventMatched.length === 1) {
-        const amountMatchesAny = purchases.some((purchase) => {
-          const knownAmounts = [purchase.grandTotal, purchase.payment?.amount].filter(
-            (amount): amount is number => amount !== null && amount !== undefined,
-          );
-          return knownAmounts.some((amount) => Math.abs(amount - (request.amount ?? 0)) < 0.005);
-        });
-        if (!amountMatchesAny) {
-          return { purchases: eventMatched, needsSelection: false };
-        }
-      }
-    }
-
-    const matches = hasSelector
-      ? purchases.filter((purchase) => {
-          if (
-            hasEventSelector &&
-            !this.eventMatches(purchase.eventName, request.eventHint ?? '')
-          ) {
-            return false;
-          }
-          if (hasAmountSelector) {
-            const knownAmounts = [purchase.grandTotal, purchase.payment?.amount]
-              .filter((amount): amount is number => amount !== null && amount !== undefined);
-            if (
-              knownAmounts.length === 0 ||
-              !knownAmounts.some((amount) => Math.abs(amount - (request.amount ?? 0)) < 0.005)
-            ) {
-              return false;
-            }
-          }
-          if (requestedDate && !this.dateMatches(purchase.eventDate, requestedDate)) {
-            return false;
-          }
-          return true;
-        })
-      : purchases;
-
-    // Explicit typed evidence is authoritative. Never widen a failed match
-    // back to the complete phone history, since that can expose an unrelated
-    // historical purchase. An unresolved explicit reference is represented as
-    // an empty, non-definitive result by the caller.
-    if (hasSelector) {
-      return {
-        purchases: matches,
-        needsSelection: matches.length > 1,
-      };
-    }
-
-    // A unique pending partition is safe to use for a current status/payment
-    // question. This is partition semantics, not a recency heuristic.
-    const pending = pendingForGuard;
-    if (pending.length === 1 && this.isCurrentPaymentQuestion(request)) {
-      return { purchases: pending, needsSelection: false };
-    }
+    // Descriptive hints (eventHint/amount/date) never filter candidates:
+    // the reply model resolves natural references from the retained
+    // authorized records and asks a meaningful distinction when several
+    // remain.
     return {
       purchases,
       needsSelection: purchases.length > 1,
@@ -2294,10 +2187,6 @@ export class InformationOrchestrator {
     };
     const value = candidate.eventDate ?? candidate.date;
     return typeof value === 'string' && value.trim() ? this.dateReference(value) : null;
-  }
-
-  private dateMatches(eventDate: string | null, requestedDate: string): boolean {
-    return eventDate ? this.dateReference(eventDate) === requestedDate : false;
   }
 
   private dateReference(value: string): string {

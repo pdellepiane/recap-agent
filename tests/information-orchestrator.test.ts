@@ -1076,7 +1076,11 @@ describe('InformationOrchestrator', () => {
     });
   });
 
-  it('selects the current pending purchase from explicit typed evidence without dropping older records', async () => {
+  it('retains both purchases when descriptive hints name one candidate', async () => {
+    // Contract revision (Work 1, 2026-09-22): descriptive event/amount
+    // hints never narrow candidates, so the older record stays visible
+    // alongside the current one with needsSelection instead of resolving
+    // to the pending order alone.
     const agentGateway = new FakeAgentGateway();
     agentGateway.guestOrdersResult = {
       status: 'success',
@@ -1128,15 +1132,20 @@ describe('InformationOrchestrator', () => {
       trustedPhone: { phone_extension: '+51', phone_number: '981056171' },
     });
 
-    expect(execution.results[0]).toMatchObject({
-      status: 'completed',
-      needsSelection: false,
-      purchases: [{
-        orderId: 'ORD-current',
-        eventName: 'Samuel Josué',
-        grandTotal: null,
-        paymentStatus: 'pending',
-      }],
+    const currentResult = execution.results[0];
+    if (!currentResult || currentResult.status !== 'completed' || currentResult.kind !== 'purchase') {
+      throw new Error('Expected a completed purchase result.');
+    }
+    expect(currentResult.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
+      ['ORD-current', 'ORD-old'],
+    );
+    expect(currentResult.needsSelection).toBe(true);
+    expect(currentResult.purchases.find(
+      (purchase) => purchase.orderId === 'ORD-current',
+    )).toMatchObject({
+      eventName: 'Samuel Josué',
+      grandTotal: null,
+      paymentStatus: 'pending',
     });
   });
 
@@ -1188,6 +1197,9 @@ describe('InformationOrchestrator', () => {
   });
 
   it('uses pending and completed partitions instead of a legacy flattened list', async () => {
+    // Contract revision (Work 1, 2026-09-22): the hint still must not
+    // narrow, so both partitions stay visible with needsSelection; only
+    // the legacy compatibility list stays excluded.
     const agentGateway = new FakeAgentGateway();
     agentGateway.guestOrdersResult = {
       status: 'success',
@@ -1236,14 +1248,285 @@ describe('InformationOrchestrator', () => {
       trustedPhone: { phone_extension: '+51', phone_number: '999999999' },
     });
 
-    expect(execution.results[0]).toMatchObject({
-      status: 'completed',
-      purchases: [{ orderId: 'ORD-pending-current', eventName: 'Isa y Lu' }],
-      needsSelection: false,
-    });
+    const partitionResult = execution.results[0];
+    if (!partitionResult || partitionResult.status !== 'completed' || partitionResult.kind !== 'purchase') {
+      throw new Error('Expected a completed purchase result.');
+    }
+    expect(partitionResult.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
+      ['ORD-completed-old', 'ORD-pending-current'],
+    );
+    expect(partitionResult.needsSelection).toBe(true);
+    expect(partitionResult.purchases.find(
+      (purchase) => purchase.orderId === 'ORD-pending-current',
+    )).toMatchObject({ eventName: 'Isa y Lu' });
     expect(execution.results[0]).not.toMatchObject({ purchases: [
       expect.objectContaining({ orderId: 'ORD-legacy-old' }),
     ] });
+  });
+
+  it('retains the authorized honeymoon record when the descriptive event hint names the gift, not the event', async () => {
+    // Work 1 (2026-09-22): descriptive hints never filter candidates. The
+    // hint below describes the gift ("luna de miel"), not the event name
+    // ("Boda Lucía y Marco"); erasing the authorized record as not_found
+    // is the baseline defect this test pins.
+    const agentGateway = new FakeAgentGateway();
+    agentGateway.guestGiftResult = {
+      status: 'success',
+      resource: 'gift_purchases',
+      purchases: [{
+        ...giftPurchase(),
+        orderId: 'GIFT-HONEY-1',
+        eventName: 'Boda Lucía y Marco',
+        grandTotal: 230,
+        paymentStatus: 'pending',
+        payment: null,
+        items: [
+          { giftName: 'Juego de sábanas', quantity: 1, amount: 150, rowTotal: 150, type: 'se_store' },
+          { giftName: 'Aporte luna de miel', quantity: 1, amount: 80, rowTotal: 80, type: 'credit' },
+        ],
+      }],
+    };
+    const orchestrator = new InformationOrchestrator({
+      knowledgeGateway: { async search() { throw new Error('unused'); } },
+      providerGateway: {} as ProviderGateway,
+      agentGateway,
+    });
+
+    const execution = await orchestrator.execute({
+      requests: [{
+        requestId: 'honeymoon-hint',
+        kind: 'purchase',
+        resource: 'gift_purchases',
+        query: '¿Dónde está mi aporte de luna de miel?',
+        orderId: null,
+        eventHint: 'luna de miel',
+        aspects: ['summary', 'payment_status'],
+        sensitiveFields: [],
+        authAction: 'none',
+      }],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
+    });
+
+    expect(execution.results[0]).toMatchObject({ status: 'completed' });
+    const result = execution.results[0];
+    if (!result || result.status !== 'completed' || result.kind !== 'purchase') {
+      throw new Error('Expected a completed purchase result.');
+    }
+    expect(result.purchases).toHaveLength(1);
+    expect(result.purchases[0]).toMatchObject({
+      orderId: 'GIFT-HONEY-1',
+      eventName: 'Boda Lucía y Marco',
+      paymentStatus: 'pending',
+    });
+    expect(result.purchases[0]?.items.map((item) => item.giftName)).toEqual([
+      'Juego de sábanas',
+      'Aporte luna de miel',
+    ]);
+  });
+
+  it('retains the mixed 150+80 record when the requested amount names one item, not the order total', async () => {
+    // Work 1 (2026-09-22): an item amount is evidence for the reply model,
+    // not backend identity. Amount 80 matches one item of the 230 order;
+    // failing the whole read as not_found is the baseline defect.
+    const agentGateway = new FakeAgentGateway();
+    agentGateway.guestGiftResult = {
+      status: 'success',
+      resource: 'gift_purchases',
+      purchases: [{
+        ...giftPurchase(),
+        orderId: 'GIFT-MIX-9',
+        eventName: 'Boda Lucía y Marco',
+        grandTotal: 230,
+        paymentStatus: 'approved',
+        payment: null,
+        items: [
+          { giftName: 'Juego de sábanas', quantity: 1, amount: 150, rowTotal: 150, type: 'se_store' },
+          { giftName: 'Aporte luna de miel', quantity: 1, amount: 80, rowTotal: 80, type: 'credit' },
+        ],
+      }],
+    };
+    const orchestrator = new InformationOrchestrator({
+      knowledgeGateway: { async search() { throw new Error('unused'); } },
+      providerGateway: {} as ProviderGateway,
+      agentGateway,
+    });
+
+    const execution = await orchestrator.execute({
+      requests: [{
+        requestId: 'mixed-amount',
+        kind: 'purchase',
+        resource: 'gift_purchases',
+        query: '¿Qué pasó con mi aporte de 80?',
+        orderId: null,
+        amount: 80,
+        aspects: ['summary', 'payment_status'],
+        sensitiveFields: [],
+        authAction: 'none',
+      }],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
+    });
+
+    expect(execution.results[0]).toMatchObject({ status: 'completed' });
+    const result = execution.results[0];
+    if (!result || result.status !== 'completed' || result.kind !== 'purchase') {
+      throw new Error('Expected a completed purchase result.');
+    }
+    expect(result.purchases).toHaveLength(1);
+    expect(result.purchases[0]?.items.map((item) => item.amount)).toEqual([150, 80]);
+  });
+
+  it('retains both equal-value candidates under different events instead of narrowing by hint', async () => {
+    // Work 1 (2026-09-22): hints retain scope with needsSelection; the
+    // reply model resolves the reference or asks the distinction.
+    const agentGateway = new FakeAgentGateway();
+    agentGateway.guestGiftResult = {
+      status: 'success',
+      resource: 'gift_purchases',
+      purchases: [
+        { ...giftPurchase(), orderId: 'GIFT-EQ-1', eventName: 'Boda Lucía y Marco', grandTotal: 80, payment: null },
+        { ...giftPurchase(), orderId: 'GIFT-EQ-2', eventName: 'Fiesta Ana', grandTotal: 80, payment: null },
+      ],
+    };
+    const orchestrator = new InformationOrchestrator({
+      knowledgeGateway: { async search() { throw new Error('unused'); } },
+      providerGateway: {} as ProviderGateway,
+      agentGateway,
+    });
+
+    const execution = await orchestrator.execute({
+      requests: [{
+        requestId: 'equal-value-hint',
+        kind: 'purchase',
+        resource: 'gift_purchases',
+        query: 'Estado del regalo de 80 para Boda Lucía y Marco.',
+        orderId: null,
+        eventHint: 'Boda Lucía y Marco',
+        amount: 80,
+        aspects: ['summary', 'payment_status'],
+        sensitiveFields: [],
+        authAction: 'none',
+      }],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
+    });
+
+    const result = execution.results[0];
+    if (!result || result.status !== 'completed' || result.kind !== 'purchase') {
+      throw new Error('Expected a completed purchase result.');
+    }
+    expect(result.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
+      ['GIFT-EQ-1', 'GIFT-EQ-2'],
+    );
+    expect(result.needsSelection).toBe(true);
+  });
+
+  it('never resolves an exact nonexistent customer-transaction reference to a record', async () => {
+    // Work 1 (2026-09-22): an unmatched exact reference stays failed with
+    // no selected record; it must never silently retarget another order.
+    const agentGateway = new FakeAgentGateway();
+    agentGateway.guestOrdersResult = {
+      status: 'success',
+      resource: 'orders',
+      purchases: [
+        { ...giftPurchase(), orderId: 'ORD_internal_1', customerTransactionNumber: '111111' },
+        { ...giftPurchase(), orderId: 'ORD_internal_2', customerTransactionNumber: '222222' },
+      ],
+    };
+    const orchestrator = new InformationOrchestrator({
+      knowledgeGateway: { async search() { throw new Error('unused'); } },
+      providerGateway: {} as ProviderGateway,
+      agentGateway,
+    });
+
+    const execution = await orchestrator.execute({
+      requests: [{
+        requestId: 'unknown-exact-ref',
+        kind: 'purchase',
+        resource: 'orders',
+        query: 'COD999999',
+        orderId: 'COD999999',
+        aspects: ['summary', 'payment_status'],
+        sensitiveFields: [],
+        authAction: 'none',
+      }],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
+    });
+
+    expect(execution.results[0]).toMatchObject({
+      status: 'failed',
+      failureKind: 'not_found',
+    });
+    const result = execution.results[0];
+    if (!result || result.status !== 'failed') {
+      throw new Error('Expected a failed purchase result.');
+    }
+    expect(result).not.toHaveProperty('purchases');
+  });
+
+  it('keeps an explicitly named older record distinct from a newer pending one', async () => {
+    // Work 1 (2026-09-22): no pending auto-selection may erase an explicit
+    // older target; both authorized records stay visible for the reply.
+    const agentGateway = new FakeAgentGateway();
+    agentGateway.guestOrdersResult = {
+      status: 'success',
+      resource: 'orders',
+      purchases: [
+        {
+          ...giftPurchase(),
+          orderId: 'ORD-new',
+          eventName: 'Samuel Josué',
+          grandTotal: 80,
+          paymentStatus: 'pending',
+          payment: null,
+        },
+        {
+          ...giftPurchase(),
+          orderId: 'ORD-old',
+          eventName: 'Josué y Paola',
+          grandTotal: 88.18,
+          paymentStatus: 'approved',
+          payment: null,
+        },
+      ],
+    };
+    const orchestrator = new InformationOrchestrator({
+      knowledgeGateway: { async search() { throw new Error('unused'); } },
+      providerGateway: {} as ProviderGateway,
+      agentGateway,
+    });
+
+    const execution = await orchestrator.execute({
+      requests: [{
+        requestId: 'explicit-older-target',
+        kind: 'purchase',
+        resource: 'orders',
+        query: 'Estado del regalo para Josué y Paola.',
+        orderId: null,
+        eventHint: 'Josué y Paola',
+        aspects: ['payment_status'],
+        sensitiveFields: [],
+        authAction: 'none',
+      }],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: { phone_extension: '+51', phone_number: '981056171' },
+    });
+
+    const result = execution.results[0];
+    if (!result || result.status !== 'completed' || result.kind !== 'purchase') {
+      throw new Error('Expected a completed purchase result.');
+    }
+    expect(result.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
+      ['ORD-new', 'ORD-old'],
+    );
+    expect(result.needsSelection).toBe(true);
   });
 
   it('retains a known guest event when enriched detail returns 500 and public detail succeeds', async () => {

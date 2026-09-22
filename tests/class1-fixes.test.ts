@@ -55,7 +55,10 @@ describe('class1 fixes twins', () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
 
-  it('a: not_found and selector-mismatch carry phone-scoped accessMethod', async () => {
+  // 2026-09-22 bounded-evidence Work 1 contract revision: a descriptive
+  // hint mismatch no longer fails as not_found; authorized candidates are
+  // retained completed with selection. Only a genuine backend miss fails.
+  it('a: backend not_found fails while hint-mismatch retains candidates, both phone-scoped', async () => {
     void new InformationOrchestrator({
       knowledgeGateway: { async search() { return { status: 'failed' as const, reason: 'not_configured' as const, retryable: false, error: 'x' }; } } as unknown as KnowledgeRetrievalGateway,
       providerGateway: {} as ProviderGateway,
@@ -82,7 +85,9 @@ describe('class1 fixes twins', () => {
     }
     expect(exec404.summaries[0]?.accessMethod).toBe('trusted_phone_purchase');
 
-    // Selector-mismatch: success with 2 purchases but eventHint mismatch => not_found distinct
+    // Hint-mismatch: success with 2 purchases and a non-matching
+    // eventHint retains both authorized candidates completed with
+    // selection instead of failing as not_found.
     const gatewayMismatch = new FakeAgentGateway();
     gatewayMismatch.guestOrdersResult = {
       status: 'success',
@@ -100,15 +105,20 @@ describe('class1 fixes twins', () => {
       authBlock: null,
       trustedPhone: { phone_extension: '+51', phone_number: '999999999' },
     });
-    expect(execMismatch.results[0]?.status).toBe('failed');
-    if (execMismatch.results[0]?.status === 'failed') {
+    expect(execMismatch.results[0]?.status).toBe('completed');
+    if (execMismatch.results[0]?.status === 'completed') {
       expect(execMismatch.results[0].accessMethod).toBe('trusted_phone_purchase');
-      expect(execMismatch.results[0].message).toContain('coincida con la referencia indicada');
+      expect(execMismatch.results[0].needsSelection).toBe(true);
+      expect(execMismatch.results[0].purchases.map((purchase) => purchase.orderId).sort()).toEqual(['ORD-1', 'ORD-2']);
     }
     expect(execMismatch.summaries[0]?.accessMethod).toBe('trusted_phone_purchase');
   });
 
-  it('b: selector-mismatch wording distinct from phone-wide not_found', async () => {
+  // 2026-09-22 bounded-evidence Work 1 contract revision: the distinct
+  // selector-mismatch failure wording is deleted with the erasure branch.
+  // A hint mismatch now completes with the record retained, while a
+  // genuinely empty scope still fails with the phone-wide message.
+  it('b: hint-mismatch completes retained while empty scope keeps phone-wide not_found', async () => {
     const gateway = new FakeAgentGateway();
     gateway.guestOrdersResult = {
       status: 'success',
@@ -126,8 +136,10 @@ describe('class1 fixes twins', () => {
       authBlock: null,
       trustedPhone: { phone_extension: '+51', phone_number: '999999999' },
     });
-    const mismatchMessage = execMismatch.results[0]?.status === 'failed' ? (execMismatch.results[0] as { message: string }).message : '';
-    expect(mismatchMessage).toContain('coincida con la referencia indicada');
+    expect(execMismatch.results[0]?.status).toBe('completed');
+    if (execMismatch.results[0]?.status === 'completed') {
+      expect(execMismatch.results[0].purchases.map((purchase) => purchase.orderId)).toEqual(['ORD-1']);
+    }
 
     const gatewayEmpty = new FakeAgentGateway();
     gatewayEmpty.guestOrdersResult = {
@@ -148,7 +160,7 @@ describe('class1 fixes twins', () => {
       trustedPhone: { phone_extension: '+51', phone_number: '999999999' },
     });
     const phoneWideMessage = execEmpty.results[0]?.status === 'failed' ? (execEmpty.results[0] as { message: string }).message : '';
-    expect(mismatchMessage).not.toBe(phoneWideMessage);
+    expect(execEmpty.results[0]?.status).toBe('failed');
     expect(phoneWideMessage).toContain('No encontré compras coincidentes asociadas a este número');
   });
 

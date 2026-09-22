@@ -4457,6 +4457,83 @@ describe('gift root-cause review: discovery, detail and honest coverage', () => 
     expect(spec.modules.map((module) => module.id)).toContain('reply_gift_fulfillment');
   });
 
+  it('delivers hinted honeymoon facts to the real reply input without erasing the record', async () => {
+    // Work 1 (2026-09-22): the extractor emits a descriptive eventHint
+    // ("luna de miel", a gift description) plus an item amount (80) against
+    // one authorized pending 230 order. The backend must retain the record
+    // so pending/type/item facts reach the production reply input.
+    const mixed: PurchaseInformation = {
+      ...purchase('GIFT-HONEY-9'),
+      grandTotal: 230,
+      currency: null,
+      paymentStatus: 'pending',
+      paymentMethod: 'Transferencia',
+      eventName: 'Boda Lucía y Marco',
+      items: [
+        { giftName: 'Juego de sábanas', quantity: 1, amount: 150, rowTotal: 150, type: 'se_store' },
+        { giftName: 'Aporte luna de miel', quantity: 1, amount: 80, rowTotal: 80, type: 'credit' },
+      ],
+    };
+    const giftRequest: Extract<ExtractedInformationRequest, { kind: 'purchase' }> = {
+      kind: 'purchase',
+      resource: 'gift_purchases',
+      query: '¿Dónde está mi aporte de luna de miel de 80?',
+      orderId: null,
+      eventHint: 'luna de miel',
+      amount: 80,
+      aspects: ['summary', 'payment_status'],
+      sensitiveFields: [],
+      authAction: 'none',
+    };
+    const runtime = new InformationRuntime([extraction([giftRequest])]);
+    const gateway = new OrderIdRecordingGateway();
+    gateway.guestGiftResult = { status: 'success', resource: 'gift_purchases', purchases: [mixed] };
+    const service = createService({
+      runtime, knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway, providerGateway: providerGateway(),
+    });
+    const response = await service.handleTurn(turnInput('gift-honeymoon-spec', '¿Dónde está mi aporte de luna de miel de 80?', 'gift-honeymoon-spec-1'));
+
+    expect(gateway.guestGiftCalls).toBe(1);
+    expect(gateway.guestOrdersCalls).toBe(0);
+    expect(gateway.authByPhoneCalls).toBe(0);
+    expect(gateway.takeoverCalls).toBe(0);
+    expect(response.plan.human_escalation.status).toBe('none');
+    expect(runtime.composeRequests).toHaveLength(1);
+    const info = runtime.composeRequests[0]?.informationResults ?? [];
+    const gift = info.find((result) => purchaseRoute(result) === 'gift_purchases');
+    if (!gift || gift.status !== 'completed' || gift.kind !== 'purchase') {
+      throw new Error('Expected a completed gift purchase result.');
+    }
+    expect(gift.purchases).toHaveLength(1);
+    expect(gift.purchases[0]?.paymentStatus).toBe('pending');
+
+    const compose = runtime.composeRequests[0];
+    if (!compose) throw new Error('Expected a composed reply request.');
+    const realRuntime = new OpenAiAgentRuntime({
+      apiKey: 'test-key',
+      replyModel: 'gpt-test',
+      extractorModel: 'gpt-test',
+      replyProviderLimit: 4,
+      presentationProviderLimit: 5,
+      providerDetailLookupLimit: 3,
+      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
+      providerGateway: {
+        async searchProviders(): Promise<never> {
+          throw new Error('must not call the provider gateway');
+        },
+      } as never,
+    });
+    const spec = await realRuntime.buildReplyRequestSpec(compose);
+    const input = JSON.stringify(spec.input);
+    expect(input).toContain('Boda Lucía y Marco');
+    expect(input).toContain('pending');
+    expect(input).toContain('Juego de sábanas');
+    expect(input).toContain('150');
+    expect(input).toContain('Aporte luna de miel');
+    expect(input).toContain('80');
+  });
+
   it('delivers retrieved schedule text to the reply input without loss', async () => {
     // Real text of the stable Horarios y canales de atención source
     // article (fetched 2026-09-21); the stub proves projection delivery,

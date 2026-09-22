@@ -153,12 +153,13 @@ export const openAiInformationRequestSchema = z.object({
   kind: z.enum(['faq', 'associated_event', 'purchase']),
   query: z.string().min(1),
   /**
-   * P2 validated inferred target. Carries the explicit current reference or
-   * the model-grounded inference (active question entity, relevant outbound
-   * campaign, compatible record state and temporal proximity). The runtime
-   * grounds it against authorized profile evidence before any lookup or
-   * hydration; an unmatched hint selects nothing and recency alone never
-   * authorizes. No second selector field exists; reuse this one.
+   * Event-only reference hint. Carries the explicit current event name or
+   * identifying reference, or the model-grounded inference from context
+   * (prior referent, relevant outbound campaign, compatible record state
+   * and temporal proximity) — never a product or gift description, which
+   * stays in the query. The runtime retains authorized records when the
+   * hint does not resolve; recency alone never authorizes. No second
+   * selector field exists; reuse this one.
    */
   eventHint: z.string().nullable(),
   resource: z.enum(purchaseResourceValues).nullable(),
