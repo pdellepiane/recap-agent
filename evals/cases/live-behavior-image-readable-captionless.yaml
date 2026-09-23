@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.image_readable_captionless
 suite: live_behavior_regression
-version: 6
+version: 7
 description: Captionless readable receipt initiates bounded reconciliation on the image turn (no blanket silence); a later text question is answered from the same image without resend.
 tags: [live, behavior, image, image-file, base64-persistence, silence]
 targetModes: [live_lambda]
@@ -31,6 +31,7 @@ notes:
   - "E1 v4 2026-09-15, profile-inference directive (delayed images): judge-only manually verified ground truth bound to the fixture image digest via the judge-context pathway (resolveJudgeOnlyImageGroundTruth); never runtime input, no new OCR/vision. Read-only amount is not backend approval. R05: old v3 runs preserved."
   - "Receipt-context revision v4 to v5, 2026-09-18: the blanket-silence turn-0 contract is superseded by the native receipt-context package. A readable receipt alone is a possible implicit reconciliation request, so turn 0 must run the bounded authorized reads and answer the visible amount plus the no-compatible-record backend state instead of persisting silently. Silence stays correct only for genuinely unrelated images. Old v4 runs preserved; baseline and candidate must rerun on this v5 contract."
   - "C1 oracle revision v5 to v6, 2026-09-22, final work package. Old image-delayed-question-answered let the judge fail a correct amount answer for omitting the operation number and card digits although the T1 user text asks only how much the image says; the frozen run-54da3f5a T1 reply gave the verified S/ 149.90 with commerce and date, claimed no approval, and asked no resend or OTP, so the pin graded full transcription instead of the asked amount. New contract requires the visible amount plus identifying commerce/date context and stops requiring operation/card transcription for this amount question. T0 amount-plus-state contract, minScore 0.8, hard severity, and requireJudge are kept. Old v5 runs preserved; baseline and candidate must rerun on this v6 contract."
+  - "R05 oracle revision v6 to v7, 2026-09-22. T1 asks only for the amount. Requiring merchant and date still graded unrelated receipt transcription instead of the requested fact. Keep the exact visible amount, Spanish, no resend/OTP, and no approval or settlement claims as hard judge requirements; merchant/date may be included when useful but are not required. T0 and all structural assertions remain unchanged. Old v6 runs remain historical; candidate and reference must run on v7 for comparison."
 expectations:
   - id: image-receipt-reconciles-no-inspect
     type: tool_usage
@@ -62,7 +63,7 @@ expectations:
   - id: image-delayed-question-answered
     type: text_semantic
     rubric: >-
-      The user asks how much the previously sent image says. The judge-only ground truth for this fixture image is COMPROBANTE DE PAGO, Comercio: Tienda Demo, Monto: S/ 149.90, Fecha: 05/09/2026, Operacion: 884211, Tarjeta: **** 4521 (verified amount S/ 149.90; read accuracy only, never backend payment approval). Pass only if the assistant responds entirely in Spanish answering with the visible amount S/ 149.90 plus identifying context from the image (commerce and date). Full transcription of the operation number or card digits is not required for this amount question. It must not ask the user to resend any image, must not claim it saved, stored or re-read the image, must not confirm or approve any payment, must not claim the image proves a settled payment, and must not ask for an OTP.
+      The user asks only how much the previously sent image says. The judge-only ground truth for this fixture image is COMPROBANTE DE PAGO, Comercio: Tienda Demo, Monto: S/ 149.90, Fecha: 05/09/2026, Operacion: 884211, Tarjeta: **** 4521 (verified amount S/ 149.90; read accuracy only, never backend payment approval). Pass if the assistant answers in Spanish with the visible amount S/ 149.90. Merchant, date, operation number, and card digits are optional context, not required for this question. It must not ask the user to resend any image, claim it saved, stored or re-read the image, confirm or approve any payment, claim the image proves a settled payment, or ask for an OTP.
     minScore: 0.8
     requireJudge: true
     turnIndex: 1

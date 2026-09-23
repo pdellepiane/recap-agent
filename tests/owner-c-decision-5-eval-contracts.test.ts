@@ -77,6 +77,11 @@ const REVISED_VERSIONS: Record<string, number> = {
   'live_behavior.image_distractor_history_preserves_current_question': 3,
   'live_behavior.image_readable_captionless': 6,
 };
+// The frozen ledger retains the contract revision it originally reviewed.
+// A later, separately versioned oracle correction must not rewrite history.
+const CURRENT_VERSION_OVERRIDES: Record<string, number> = {
+  'live_behavior.image_readable_captionless': 7,
+};
 
 function readJson(filePath: string): unknown {
   return JSON.parse(fs.readFileSync(filePath, 'utf8')) as unknown;
@@ -169,7 +174,7 @@ describe('Owner C decision 5 eval contracts', () => {
     }
   });
 
-  it('links every revised ledger contract to the matching YAML version', async () => {
+  it('keeps frozen ledger revisions linked while allowing a later versioned correction', async () => {
     const catalog = await new EvalLoader(path.resolve(process.cwd(), 'evals')).loadCatalog();
     const casesById = new Map(catalog.cases.map((evalCase) => [evalCase.id, evalCase]));
     const ledger = ledgerSchema.parse(
@@ -193,8 +198,10 @@ describe('Owner C decision 5 eval contracts', () => {
     for (const [caseId, contract] of revisedByCase) {
       const evalCase = casesById.get(caseId);
       expect(evalCase, `${caseId} still exists (no case deletion)`).toBeDefined();
-      expect(`revised-to-v${evalCase?.version}`).toBe(contract);
-      expect(evalCase?.version).toBe(REVISED_VERSIONS[caseId]);
+      expect(contract).toBe(`revised-to-v${REVISED_VERSIONS[caseId]}`);
+      expect(evalCase?.version).toBe(
+        CURRENT_VERSION_OVERRIDES[caseId] ?? REVISED_VERSIONS[caseId],
+      );
     }
     const suite = catalog.suites.find((candidate) => candidate.id === 'live_behavior_regression');
     expect(suite?.caseIds.length).toBe(138);
@@ -331,6 +338,8 @@ describe('Owner C decision 5 eval contracts', () => {
       expect(delayed.minScore).toBe(0.8);
       expect(delayed.rubric).toContain('S/ 149.90');
       expect(delayed.rubric).toContain('not required');
+      expect(delayed.rubric).toContain('Merchant, date, operation number, and card digits are optional');
+      expect(delayed.rubric).not.toContain('plus identifying context');
     }
   });
 
