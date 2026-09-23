@@ -1221,3 +1221,36 @@ behaviorChanges:
   - id: reply-removes-unverified-action-phrase-examples
     implementedBy: "3b810609"
     liveCaseIds: [live_behavior.gift_mixed_order_distinguishes_items, live_behavior.gift_shipping_limitation_accepted_handoff_once]
+# 2026-09-22 final work package integration (coordinator, offline only):
+# one entry per behavior change. Owner A canonical profile (47a624ca),
+# Owner B prompt economy and support continuity (a26a1eb0), Owner C
+# gpt-6-luna application migration (6a3e8a18). The C-model live gate is
+# UNRUN (offline-only instruction); these entries bind the behavior to
+# mandatory live cases for the future dev gate. No cache-hit claim.
+  - id: canonical-purchase-profile-provenance-source-coverage
+    implementedBy: "47a624ca"
+    liveCaseIds: [live_behavior.gift_mixed_order_distinguishes_items, live_behavior.receipt_explicit_older_target_wins, live_behavior.purchase_current_pending_over_old_approved]
+  - id: classifier-prompt-economy-general-campaign
+    implementedBy: "a26a1eb0"
+    liveCaseIds: [live_behavior.rsvp_missing_action_requires_explicit_decision, live_behavior.spanish_only_mixed_language_request]
+  - id: extractor-prompt-economy-established-support
+    implementedBy: "a26a1eb0"
+    liveCaseIds: [live_behavior.gift_mixed_order_distinguishes_items, live_behavior.support_detail_continuity]
+  - id: extractor-single-continuity-object
+    implementedBy: "a26a1eb0"
+    liveCaseIds: [live_behavior.support_detail_continuity, live_behavior.concurrent_support_turns_preserve_context]
+  - id: support-continuity-first-report-vs-followup
+    implementedBy: "a26a1eb0"
+    liveCaseIds: [live_behavior.support_detail_continuity, live_behavior.support_pending_question_completed]
+  - id: support-continuity-unresolved-issue-handoff-prose
+    implementedBy: "a26a1eb0"
+    liveCaseIds: [live_behavior.support_detail_continuity, live_behavior.concurrent_support_turns_preserve_context]
+  - id: reply-core-single-file
+    implementedBy: "a26a1eb0"
+    liveCaseIds: [live_behavior.support_detail_continuity, live_behavior.customer_event_task_continuity]
+  - id: reply-tool-narration-omitted-without-tools
+    implementedBy: "a26a1eb0"
+    liveCaseIds: [live_behavior.support_detail_continuity, live_behavior.phone_purchase_missing_hands_off_once]
+  - id: application-model-gpt-6-luna-migration
+    implementedBy: "6a3e8a18"
+    liveCaseIds: [live_behavior.gift_mixed_order_distinguishes_items, live_behavior.support_detail_continuity]
