@@ -466,12 +466,15 @@ describe('Packet B model input and continuity', () => {
     // Mixed regression: a reported purchase without an identifying anchor
     // has unestablished source and must use bounded discovery.
     expect(info).toContain('Compra reportada sin número ni registro identificado ⇒ no establecido');
+    // Targeted-2 revert: explicit balance/mechanism recitation requirements
+    // caused T1 confabulation (invented S/, fabricated paid) without fixing
+    // T0 underanswer, so they stay out. The remaining receipt/credit
+    // boundaries (never prove approval/posting, no posterior use) are the
+    // safe invariant.
     const approval = fs.readFileSync('prompts/nodes/resolver_consultas_informativas/approval_limits.txt', 'utf8');
-    // Luis/owner underanswer: balance questions must carry available facts.
-    expect(approval).toContain('nunca presentes el total como adeudado ni calcules un saldo');
+    expect(approval).not.toContain('nunca presentes el total como adeudado ni calcules un saldo');
     const gift = fs.readFileSync('prompts/nodes/resolver_consultas_informativas/gift_fulfillment.txt', 'utf8');
-    // Credit underanswer: receipt questions must state the mechanism.
-    expect(gift).toContain('eso no confirma publicación del pago');
+    expect(gift).not.toContain('eso no confirma publicación del pago');
   });
 
   it('four candidates survive the reply projection without slicing', async () => {
