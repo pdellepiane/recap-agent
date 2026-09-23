@@ -6326,6 +6326,15 @@ export class AgentService {
       caption_present: captionPresent,
       ref_stored: refStored,
     });
+    // The URL context is genuinely established here (native projection
+    // follows in extraction/reply): record the output so tools_called
+    // reflects the bound image path, mirroring image_file_context.
+    this.recordDeterministicToolOutput(args.toolUsage, 'image_url_context', {
+      url_fingerprint: imageUrlFingerprint(args.image.url),
+      url_bytes: Buffer.byteLength(args.image.url, 'utf8'),
+      caption_present: captionPresent,
+      ref_stored: refStored,
+    });
     const imageTurn: ImageTurnContext = {
       kind: 'url',
       url: args.image.url,

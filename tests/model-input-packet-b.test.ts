@@ -384,7 +384,7 @@ describe('Packet B model input and continuity', () => {
       renderers: { whatsapp: new WhatsAppMessageRenderer() },
       informationOrchestrator: orchestratorStub,
     });
-    await service.handleTurn({
+    const response = await service.handleTurn({
       channel: 'whatsapp',
       externalUserId: 'whatsapp:+51938389389',
       text: 'Ya envie lo que faltaba, aqui esta el comprobante.',
@@ -399,6 +399,10 @@ describe('Packet B model input and continuity', () => {
     expect(request?.imageUrlAttachments).toEqual([{ url: receiptUrl, messageId: 'wamid.url-luis-1' }]);
     expect(request?.imageEvidence).toMatchObject({ status: 'available', source: 'url' });
     expect(request?.informationResults).toHaveLength(1);
+    // The genuinely established URL context is recorded as a called tool,
+    // mirroring image_file_context (live T1 proved the input-only record
+    // never reaches tools_called).
+    expect(response.trace.tools_called).toContain('image_url_context');
   });
 
   it('delayed amount question reuses the stored file natively without resend', async () => {
@@ -454,6 +458,20 @@ describe('Packet B model input and continuity', () => {
       { fileId: 'file-receipt-149', messageId: 'wamid.file-t0' },
     ]);
     expect(composeRequests[0]?.imageEvidence).toMatchObject({ status: 'available', source: 'file' });
+  });
+
+  it('pins the targeted-panel follow-up prompt requirements', async () => {
+    const { default: fs } = await import('node:fs');
+    const info = fs.readFileSync('prompts/extractors/information.txt', 'utf8');
+    // Mixed regression: a reported purchase without an identifying anchor
+    // has unestablished source and must use bounded discovery.
+    expect(info).toContain('Compra reportada sin número ni registro identificado ⇒ no establecido');
+    const approval = fs.readFileSync('prompts/nodes/resolver_consultas_informativas/approval_limits.txt', 'utf8');
+    // Luis/owner underanswer: balance questions must carry available facts.
+    expect(approval).toContain('nunca presentes el total como adeudado ni calcules un saldo');
+    const gift = fs.readFileSync('prompts/nodes/resolver_consultas_informativas/gift_fulfillment.txt', 'utf8');
+    // Credit underanswer: receipt questions must state the mechanism.
+    expect(gift).toContain('eso no confirma publicación del pago');
   });
 
   it('four candidates survive the reply projection without slicing', async () => {
