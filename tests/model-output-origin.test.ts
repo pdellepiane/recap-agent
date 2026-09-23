@@ -229,8 +229,10 @@ describe('model output origin (R01)', () => {
     const response = await runSupportTurn(paragraphs);
     expect(response.outbound.delivery.action).toBe('send');
     expect(response.outbound.text).toBe(paragraphs.join('\n\n'));
-    expect(response.trace.prompt_bundle_id).toMatch(/^stub-compiler:shared_invariants\+reply_faq_policy\+reply_support_continuity$/u);
-    expect(response.trace.prompt_file_paths).toContain(
+    // B11 contract revision: this first-turn deferral report carries no
+    // prior context, so the follow-up directive stays off the bundle.
+    expect(response.trace.prompt_bundle_id).toMatch(/^stub-compiler:shared_invariants\+reply_faq_policy$/u);
+    expect(response.trace.prompt_file_paths).not.toContain(
       'nodes/resolver_consultas_informativas/support_continuity.txt',
     );
     expect(response.trace.prompt_file_paths).not.toContain(

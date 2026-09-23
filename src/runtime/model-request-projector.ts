@@ -1,6 +1,7 @@
 import type { EstablishedExtractionDomain } from './extraction-projection';
 import type { DecisionNode } from '../core/decision-nodes';
 import type { PurchaseInformation } from '../core/information';
+import { operationDomain } from './turn-capability-policy';
 import type { ComposeReplyRequest } from './contracts';
 import {
   instructionModuleRegistry,
@@ -68,12 +69,12 @@ export type ModuleSelectionContext = {
    */
   readonly hasPlanningDetail: boolean;
   /**
-   * Lane B: typed real-continuation flag for the reply stage. True when the
-   * turn continues prior delivered context (owner pending question/task,
-   * persisted outbound record, pending information work) or carries a
-   * support act that references an ongoing matter. Optional so direct unit
-   * callers without turn state keep the previous behavior (undefined means
-   * allowed); deriveReplyCompilerContext always sets it explicitly.
+   * Typed real-continuation flag for the reply stage. True when the turn
+   * continues prior delivered context (owner pending question/task,
+   * persisted outbound record, pending information work). A support act
+   * alone never sets it. Optional so direct unit callers without turn
+   * state keep the previous behavior (undefined means allowed);
+   * deriveReplyCompilerContext always sets it explicitly.
    */
   readonly hasSupportContinuity?: boolean;
 };
@@ -263,16 +264,22 @@ export function deriveReplyCompilerContext(
     : null;
   if (operation !== null) {
     if (typeof operation === 'string') {
-      if (operation.startsWith('purchase') || operation.startsWith('payment_proof') || operation.startsWith('refund_or_withdrawal') || operation.startsWith('confirmation_document')) {
+      // B11: task derivation reuses the single operation/domain mapping in
+      // turn-capability-policy.ts instead of a second prefix family.
+      const domain = operationDomain(operation);
+      if (
+        domain === 'purchase' || domain === 'refund' ||
+        (domain === 'document' && !operation.startsWith('media.'))
+      ) {
         tasks.add('purchase');
       }
-      if (operation.startsWith('event.')) tasks.add('venue');
-      if (operation.startsWith('rsvp')) tasks.add('rsvp');
-      if (operation.startsWith('faq')) tasks.add('faq_policy');
-      if (operation.startsWith('human.')) tasks.add('handoff');
-      if (operation.startsWith('auth')) tasks.add('auth');
+      if (domain === 'event') tasks.add('venue');
+      if (domain === 'rsvp') tasks.add('rsvp');
+      if (operation === 'faq.read' || operation.startsWith('faq.')) tasks.add('faq_policy');
+      if (domain === 'human') tasks.add('handoff');
+      if (domain === 'auth') tasks.add('auth');
       if (operation.startsWith('media.')) tasks.add('image');
-      if (operation.startsWith('provider')) tasks.add('planning');
+      if (domain === 'provider') tasks.add('planning');
     }
   }
   if (
@@ -304,19 +311,20 @@ export function deriveReplyCompilerContext(
     (result) => result.kind === 'purchase' && result.status === 'completed' &&
       result.purchases.some(purchaseCarriesFulfillment),
   ) || (request.customerContext?.detailedPurchases ?? []).some(purchaseCarriesFulfillment);
-  // Lane B: real continuation comes from actual prior delivered context
-  // (owner pending question/task, persisted outbound record, pending
-  // information work) or a support act referencing an ongoing matter. A
-  // completed lookup in the current turn never counts; first-turn
-  // questions resolve false so support_continuity prose stays off them.
+  // B11: real continuation requires actual prior delivered context (an
+  // owner pending question/task, a persisted outbound record, or pending
+  // information work). A support act alone never counts: on an
+  // empty-history first turn it is the report itself, not a follow-up
+  // detail, so the continuity prose (which assumes a supplied follow-up)
+  // stays off. A completed lookup in the current turn never counts.
+  // Issue facts for a first report still travel as typed input evidence.
   const pendingQuestion = request.plan.owner_pending_question ?? null;
   const pendingTask = request.plan.owner_pending_task ?? null;
   const hasSupportContinuity =
     (pendingQuestion !== null && pendingQuestion.trim().length > 0) ||
     (pendingTask !== null && pendingTask.trim().length > 0) ||
     request.plan.last_outbound_context != null ||
-    (request.plan.information_state.pending_requests ?? []).length > 0 ||
-    request.extraction.supportAct != null;
+    (request.plan.information_state.pending_requests ?? []).length > 0;
   return {
     stage: 'reply',
     owner,
@@ -398,11 +406,11 @@ export function selectReplyModules(
       selected('reply_wait_followup', 'waited turn behind a fresh prior reply; extend only with new information', ['messageContext.turnWait', 'plan.last_outbound_context']),
     );
   }
-  // Lane B: support_continuity prose assumes the person supplied a
-  // follow-up detail ("La persona aportó un dato..."), so it loads only
-  // for real continuation (typed plan signals or a support act), never on
-  // first-turn questions. Undefined keeps the previous behavior for direct
-  // unit callers; the reply compiler always sets it explicitly.
+  // support_continuity prose assumes the person supplied a follow-up
+  // detail ("La persona aportó un dato..."), so it loads only for real
+  // continuation (typed plan signals), never on first-turn questions.
+  // Undefined keeps the previous behavior for direct unit callers; the
+  // reply compiler always sets it explicitly.
   if (
     context.hasSupportContinuity !== false &&
     (has('purchase') || has('venue') || has('rsvp') || has('handoff') ||

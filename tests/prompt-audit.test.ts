@@ -209,9 +209,9 @@ describe('prompt inventory', () => {
     const inventory = await buildPromptInventory({
       promptsDir: path.resolve(process.cwd(), 'prompts'),
     });
-    expect(inventory.totalFiles).toBe(114); // 2026-09-21 gift/campaign correction 3: +gift_fulfillment.txt
+    expect(inventory.totalFiles).toBe(115); // 2026-09-22 Owner B B9: +shared/reply_core.txt (production reply core)
     expect(inventory.unmappedFiles).toEqual([]);
-    expect(inventory.entries).toHaveLength(114);
+    expect(inventory.entries).toHaveLength(115);
     for (const entry of inventory.entries) {
       expect(entry.consumers.length).toBeGreaterThan(0);
       expect(entry.filePath).toBeTruthy();

@@ -312,15 +312,20 @@ describe('PromptLoader', () => {
     expect(extractorBundle.instructions).toContain(
       '`accept_offer` solo con oferta pendiente',
     );
-    expect(extractorBundle.instructions).toContain(
-      '`phoneConfirmation=no` si rechaza la identidad asociada',
+    // B2 contract revision: access-decision guidance (identity refusal,
+    // decline/accountless outputs) consolidated into auth_control.txt, which
+    // the production compiler co-loads with information.txt through the
+    // extraction_information module. The legacy capability bundle never
+    // included auth_control, so the moved guidance is asserted at source.
+    const authControl = await fs.readFile(
+      path.join(promptsDir, 'nodes/resolver_consultas_informativas/auth_control.txt'),
+      'utf8',
     );
-    expect(extractorBundle.instructions).toContain(
-      '`unclear`=ausente',
-    );
-    expect(extractorBundle.instructions).toContain(
-      '`yes`/`no` solo con auth activa o pedido protegido',
-    );
+    expect(authControl).toContain('phoneConfirmation=no');
+    expect(authControl).toContain('decline_authentication');
+    expect(authControl).toContain('accountless_user');
+    expect(extractorBundle.instructions).toContain('`phoneConfirmation=yes`');
+    expect(extractorBundle.instructions).toContain('`unclear`');
     expect(welcomeBundle.instructions).toContain('puedes usar un poquito de emojis');
     expect(welcomeBundle.instructions).toContain('Resuelve lo que puedas de la solicitud');
     expect(extractorBundle.instructions).toContain(

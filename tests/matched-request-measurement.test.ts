@@ -410,8 +410,13 @@ describe('matched request measurement after SDK serialization', () => {
     // 2026-09-17 actionable-answer directive: +47 bytes on this turn
     // (measured 9647); the shared invariant replaces older text rather
     // than duplicating rules, so the cap moves minimally. Previous cap 9600.
-    expect(turn.instructionBytes).toBeGreaterThan(8_000);
-    expect(turn.instructionBytes).toBeLessThan(9_700);
+    // 2026-09-22 Owner B B9/B11: measured 5595. The four-file shared core
+    // (4,897 bytes) is replaced by the single reply-core file while the
+    // same six task modules still load (purchase facts, approval boundary,
+    // auth limitation, handoff outcome, real continuation behind the
+    // pending purchase). Previous floor 8000, previous cap 9700.
+    expect(turn.instructionBytes).toBeGreaterThan(5_000);
+    expect(turn.instructionBytes).toBeLessThan(6_100);
     expect(turn.inputBytes).toBeGreaterThan(2_000);
     expect(turn.inputBytes).toBeLessThan(6_000);
     expect(turn.toolBytes).toBeLessThanOrEqual(4);

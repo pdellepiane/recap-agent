@@ -217,6 +217,18 @@ const domainOperationPrefixes: Record<string, readonly string[]> = {
   refund: ['refund_or_withdrawal.', 'purchase.modify'],
 };
 
+/**
+ * Single operation-to-domain mapping shared by extraction projection and
+ * the reply module compiler. One prefix table owns the families so callers
+ * never grow a second set of string-prefix checks.
+ */
+export function operationDomain(operation: string): string | null {
+  for (const [domain, prefixes] of Object.entries(domainOperationPrefixes)) {
+    if (prefixes.some((prefix) => operation.startsWith(prefix))) return domain;
+  }
+  return null;
+}
+
 export function projectExtractionOperations(args: {
   readonly requestedDomain: string | null;
   readonly candidateOperations: readonly RuntimeOperationId[];

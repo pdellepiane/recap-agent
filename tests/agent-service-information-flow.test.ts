@@ -89,10 +89,20 @@ describe('AgentService first-class information flow', () => {
       // one reply-model call per turn through the minimal support bundle.
       expect(runtime.composeRequests).toHaveLength(index + 1);
       expect(response.trace.prompt_bundle_id).not.toBe('deterministic:support_continuity_acknowledgment');
-      expect(response.trace.prompt_bundle_id).toMatch(/^stub-compiler:shared_invariants\+reply_faq_policy\+reply_support_continuity$/u);
-      expect(response.trace.prompt_file_paths).toContain(
-        'nodes/resolver_consultas_informativas/support_continuity.txt',
-      );
+      // B11 contract revision: the first report carries no prior context
+      // so its bundle omits the follow-up directive; later turns in the
+      // same thread continue behind the recorded prior reply.
+      if (index === 0) {
+        expect(response.trace.prompt_bundle_id).toMatch(/^stub-compiler:shared_invariants\+reply_faq_policy$/u);
+        expect(response.trace.prompt_file_paths).not.toContain(
+          'nodes/resolver_consultas_informativas/support_continuity.txt',
+        );
+      } else {
+        expect(response.trace.prompt_bundle_id).toMatch(/^stub-compiler:shared_invariants\+reply_faq_policy\+reply_support_continuity$/u);
+        expect(response.trace.prompt_file_paths).toContain(
+          'nodes/resolver_consultas_informativas/support_continuity.txt',
+        );
+      }
       expect(response.trace.prompt_file_paths).not.toContain(
         'nodes/resolver_consultas_informativas/system.txt',
       );

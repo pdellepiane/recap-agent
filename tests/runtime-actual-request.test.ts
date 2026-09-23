@@ -1243,24 +1243,31 @@ describe('actual support continuity and extraction detail', () => {
     ) as PersistedPlan;
   }
 
-  it('composes continuity on ack turns from the pending support request', async () => {
+  it('composes continuity on ack turns only with real prior context', async () => {
+    // B11 contract revision: a support act alone is the report itself, not
+    // a follow-up detail, so it never loads the continuity prose. A real
+    // pending question behind the same act keeps the module.
     const runtime = testRuntimeLocal();
-    const spec = await runtime.buildReplyRequestSpec(
-      replyRequest(supportPlanLocal(), {
-        extraction: baseExtraction({
-          supportAct: {
-            kind: 'provide_detail',
-            topic: 'unknown',
-            detail: 'unknown',
-            personReference: null,
-            eventReference: null,
-          },
-        }),
+    const act = {
+      kind: 'provide_detail',
+      topic: 'unknown',
+      detail: 'unknown',
+      personReference: null,
+      eventReference: null,
+    };
+    const alone = await runtime.buildReplyRequestSpec(
+      replyRequest(supportPlanLocal(), { extraction: baseExtraction({ supportAct: act }) }),
+    );
+    expect(alone.modules.map((module) => module.id)).not.toContain('reply_support_continuity');
+    expect(alone.instructions).not.toContain('## nodes/resolver_consultas_informativas/support_continuity.txt');
+    const continued = await runtime.buildReplyRequestSpec(
+      replyRequest(supportPlanLocal({ owner_pending_question: '¿Para qué evento es la compra?' }), {
+        extraction: baseExtraction({ supportAct: act }),
       }),
     );
-    const ids = spec.modules.map((module) => module.id);
+    const ids = continued.modules.map((module) => module.id);
     expect(ids).toContain('reply_support_continuity');
-    expect(spec.instructions).toContain('## nodes/resolver_consultas_informativas/support_continuity.txt');
+    expect(continued.instructions).toContain('## nodes/resolver_consultas_informativas/support_continuity.txt');
   });
 
   it('keeps contact capture on established support extraction', async () => {
@@ -1433,7 +1440,9 @@ describe('actual reply request auth, image, approval and faq-empty gating', () =
       }),
     );
     expect(handoff.scopedTools).toEqual([]);
-    expect(handoff.input).toContain('Herramientas autorizadas en este nodo: ninguna');
+    // B10 contract revision: a tool-less call carries no authorized-tools
+    // prose line; the "ninguna" narration is dropped.
+    expect(handoff.input).not.toContain('Herramientas autorizadas en este nodo');
   });
 });
 

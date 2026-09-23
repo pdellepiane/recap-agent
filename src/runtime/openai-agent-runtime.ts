@@ -1035,6 +1035,7 @@ function extractionSectionSource(key: string): string {
     allowed_actions: 'extractionProjection.allowedActionIntents',
     category_context: 'plan.event_type (transient owners only)',
     continuity_evidence: 'messageContext.continuity',
+    conversation_continuity: 'messageContext.continuity + plan.owner_pending_question/task + plan.information_state',
     image_presence: 'plan.image_attachments',
     otp_evidence: 'plan.user_auth + plan.information_state.pending_requests',
     operation_boundary_rule: 'compiler invariant',
@@ -1940,12 +1941,13 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
         (pending) => pending.kind === 'purchase' || pending.kind === 'associated_event',
       ),
     });
+    // B8: history state, prior-answer gist and the pending question used
+    // to travel as three standalone sections duplicating the continuity
+    // block. They now live exactly once inside conversation_continuity;
+    // the bounded actual messages keep their own single section below.
     return [
-      { key: 'history_status', content: `Estado del historial: ${request.messageContext.historyStatus}.` },
       { key: 'extractor_history', content: `Historial reciente para el extractor, cuerpos completos sin truncar orden medio (JSON, maximo 6 turnos x 2000 bytes = 12000 bytes): ${JSON.stringify(buildExtractorConversationHistory(request.messageContext))}` },
       { key: 'campaign_reference_context', content: this.buildExtractorCampaignReferenceContext(request) },
-      { key: 'prior_answer_gist', content: `Respuesta anterior del asistente (gist, JSON): ${JSON.stringify(buildPriorAnswerGist(request.messageContext))}` },
-      { key: 'pending_question_ref', content: `Pregunta pendiente previa (ref, JSON): ${JSON.stringify(request.plan.owner_pending_question ?? null)}` },
       { key: 'user_message', content: `Mensaje del usuario: ${request.userMessage}` },
       {
         key: 'media_metadata',
@@ -1956,7 +1958,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       { key: 'plan_snapshot', content: `Plan base (JSON compacto): ${JSON.stringify(planSnapshot)}` },
       { key: 'allowed_actions', content: allowedActionsLine },
       { key: 'category_context', content: suggestedCategories },
-      { key: 'continuity_evidence', content: continuityEvidence },
+      { key: 'conversation_continuity', content: continuityEvidence },
       { key: 'image_presence', content: imagePresence },
       { key: 'otp_evidence', content: otpEvidence },
     ];
@@ -1989,36 +1991,85 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
   private buildExtractorContinuityEvidence(
     request: ExtractRequest,
   ): string | null {
+    if (
+      request.plan.current_node !== 'resolver_consultas_informativas' ||
+      request.plan.user_auth.status !== 'none'
+    ) {
+      return null;
+    }
     const continuity = request.messageContext.continuity ?? deriveConversationContinuity({
       plan: request.plan,
       recentMessages: request.messageContext.recentMessages,
       historyStatus: request.messageContext.historyStatus,
     });
 
-    // This projection is intentionally limited to the established,
-    // anchorless information-support lane. Authentication and pending
-    // lookups have their own typed continuation rules and must not inherit
-    // this clarification guidance.
-    if (
-      request.plan.current_node !== 'resolver_consultas_informativas' ||
-      request.plan.user_auth.status !== 'none' ||
-      request.plan.information_state.pending_requests.length > 0 ||
-      request.plan.information_state.last_completed_request != null ||
-      (continuity.lane !== 'public_faq' && continuity.lane !== 'unresolved') ||
-      !continuity.hasPriorContext
-    ) {
+    // B8: one typed conversation-continuity object replaces the former
+    // history_status / prior_answer_gist / pending_question_ref sections
+    // plus the narrow continuity block. It carries history state, the
+    // prior-answer gist, the pending question/task, the unresolved task
+    // pointer and the last completed topic exactly once; null/empty
+    // members are omitted instead of narrated, and a true first turn
+    // (empty history, no pending work, no prior answer) emits nothing.
+    // The last-completed topic is a named recovered fact (decision 2): it
+    // never traveled in the extractor plan snapshot, so detail-only turns
+    // keep the issue their names refer to.
+    const gist = buildPriorAnswerGist(request.messageContext);
+    const pendingQuestion = request.plan.owner_pending_question?.trim()
+      ? request.plan.owner_pending_question.trim()
+      : null;
+    const pendingTask = request.plan.owner_pending_task?.trim()
+      ? request.plan.owner_pending_task.trim()
+      : null;
+    const pending = request.plan.information_state.pending_requests;
+    const lastCompleted = request.plan.information_state.last_completed_request ?? null;
+    const hasSignal = continuity.hasPriorContext ||
+      gist !== null ||
+      pendingQuestion !== null ||
+      pendingTask !== null ||
+      pending.length > 0 ||
+      lastCompleted !== null ||
+      request.messageContext.historyStatus !== 'empty';
+    if (!hasSignal) {
       return null;
     }
 
-    return `Evidencia condicional de continuidad (JSON): ${JSON.stringify({
+    const evidence: Record<string, unknown> = {
+      history_status: continuity.historyStatus,
       state: continuity.state,
       lane: continuity.lane,
       has_prior_context: continuity.hasPriorContext,
       welcome_allowed: continuity.welcomeAllowed,
-      history_status: continuity.historyStatus,
-      prior_answer_gist: buildPriorAnswerGist(request.messageContext),
-      pending_question: request.plan.owner_pending_question ?? null,
-    })}. El mensaje actual es un seguimiento de esta ruta: extrae el tema que el historial reciente permita sostener como solicitud concreta (incluida la pregunta pendiente que siga sin respuesta) en lugar de marcar ambiguedad; solo cuando el historial no permita sostener ningun tema devuelve ambiguedad con una sola pregunta util. Si el turno es solo agradecimiento o cierre sin peticion, devuelve un delta vacio. No saludes, no reinicies y no inventes una nueva intencion o consulta. El saludo solo esta permitido cuando welcome_allowed es true.`;
+    };
+    if (gist !== null) evidence.prior_answer_gist = gist;
+    if (pendingQuestion !== null) evidence.pending_question = pendingQuestion;
+    if (pendingTask !== null) evidence.pending_task = pendingTask;
+    const oldest = pending[0];
+    if (oldest !== undefined) {
+      evidence.unresolved = {
+        request_id: oldest.requestId,
+        kind: oldest.kind,
+        query: oldest.query,
+      };
+    }
+    if (lastCompleted !== null) {
+      evidence.last_completed = {
+        kind: lastCompleted.kind,
+        query: lastCompleted.query,
+      };
+    }
+
+    // The follow-up decision sentence stays limited to the established,
+    // anchorless lane it was written for (no pending work, no completed
+    // topic, FAQ-style lane with prior context). Pending-carrying turns
+    // travel as facts only; the plan snapshot already scopes the task.
+    const followupLane = pending.length === 0 &&
+      lastCompleted === null &&
+      (continuity.lane === 'public_faq' || continuity.lane === 'unresolved') &&
+      continuity.hasPriorContext;
+    if (!followupLane) {
+      return `Evidencia condicional de continuidad (JSON): ${JSON.stringify(evidence)}`;
+    }
+    return `Evidencia condicional de continuidad (JSON): ${JSON.stringify(evidence)}. El mensaje actual es un seguimiento de esta ruta: extrae el tema que el historial reciente permita sostener como solicitud concreta (incluida la pregunta pendiente que siga sin respuesta) en lugar de marcar ambiguedad; solo cuando el historial no permita sostener ningun tema devuelve ambiguedad con una sola pregunta util. Si el turno es solo agradecimiento o cierre sin peticion, devuelve un delta vacio. No saludes, no reinicies y no inventes una nueva intencion o consulta. El saludo solo esta permitido cuando welcome_allowed es true.`;
   }
 
   private buildExtractorImagePresence(
@@ -2510,6 +2561,11 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
         (result.evidence?.length ?? 0) === 0 &&
         result.hostWithdrawalPolicy === undefined,
     );
+    // B10 justification: the canonical turn evidence keeps its indented
+    // human-readable shape. It is the model's primary multi-kilobyte
+    // factual source, and captured-spec readability tests pin the spaced
+    // format; byte reduction comes from module/instruction subtraction and
+    // evidence dedup instead of whitespace removal.
     const parts: Array<{ key: string; source: string; content: string | null }> = [
       { key: 'turn_evidence', source: 'buildReplyTurnEvidence', content: `Evidencia canónica del turno (JSON): ${JSON.stringify(evidence, null, 2)}` },
       {
@@ -2559,7 +2615,10 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       });
     }
 
-    if (!authenticationOnlyReply && !resolvedInformationReply) {
+    // B10: the authorized-tools prose travels only when tools are actually
+    // exposed. A "ninguna" line on a tool-less call narrates nothing the
+    // model can act on.
+    if (!authenticationOnlyReply && !resolvedInformationReply && authorizedToolNames.length > 0) {
       parts.push({
         key: 'authorized_tools',
         source: 'resolved reply tools',

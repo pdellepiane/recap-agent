@@ -419,12 +419,11 @@ export type InstructionModuleMetadata = {
 
 export const instructionModuleRegistry: Record<InstructionModuleId, InstructionModuleMetadata> = {
   shared_invariants: {
-    files: [
-      'shared/base_system.txt',
-      'shared/agent_personality.txt',
-      'shared/output_style.txt',
-      'shared/common_anti_patterns.txt',
-    ],
+    // B9: the four legacy shared files stay on disk for the static audit
+    // inventory only. Production reply loads exactly this one reply-core
+    // file (identity, Spanish, model-written response, factual grounding,
+    // no claimed action before a verified receipt, no internal names).
+    files: ['shared/reply_core.txt'],
     stages: ['reply'],
     owners: ['planning', 'faq', 'customer_assistance', 'unknown'],
     tasks: ['purchase', 'venue', 'rsvp', 'faq_policy', 'handoff', 'auth', 'image', 'planning'],

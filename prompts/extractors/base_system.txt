@@ -12,15 +12,11 @@ Reglas invariantes
 - Conserva el valor vigente si el mensaje no lo cambia. Una corrección explícita lo reemplaza; una frase ambigua no lo sobrescribe.
 - No inventes datos, categorías, proveedores, intenciones ni preguntas. Para campos sin evidencia usa null, [] o el valor neutral indicado por el esquema.
 - `intentConfidence` refleja cuán directa es la evidencia, pero no sustituye la decisión de ambigüedad.
-- `assumptions` contiene solo inferencias útiles que deberían transparentarse; no lo uses para rellenar faltantes.
+- `assumptions` contiene solo inferencias útiles que deberían transparentarse.
 - `conversationSummary` resume objetivo vigente y avance útil.
 - Cuando el mensaje trae varios temas, extráelos todos; ningún tema pedido se pierde por la ambigüedad de otro.
-- Un agradecimiento, confirmación de recibido o cierre sin petición nueva es un delta vacío: no reinicia trabajo ni rearma selecciones.
+- Un agradecimiento, confirmación de recibido o cierre sin petición nueva es un delta vacío: no reinicia trabajo.
 
 Ambigüedad
 
-`ambiguity.status=clear` cuando mensaje y contexto sostienen una interpretación. Usa `ambiguous` si hay dos o más interpretaciones y elegir cambia respuesta o estado.
-
-Con `ambiguous`, escribe una sola `clarificationQuestion` breve, dos o tres `interpretations`, sus `candidateOperations` y `questionKey` (`status_or_document`, `status_or_proof_review` o `type_missing`). Con `clear`, deja esos campos vacíos o null.
-
-En particular, una referencia breve como "el horario" sin referente disponible es ambigua. Una confirmación breve sí puede ser clara cuando el historial o el plan deja una sola acción pendiente; respuestas negativas como "ninguna" deben interpretarse en el campo que la pregunta previa estaba solicitando, sin reiniciar el flujo.
+`ambiguity.status=clear` cuando mensaje y contexto sostienen una interpretación. Usa `ambiguous` si hay dos o más interpretaciones y elegir cambia respuesta o estado. Con `ambiguous`, escribe una sola `clarificationQuestion` breve, dos o tres `interpretations`, sus `candidateOperations` y `questionKey` (`status_or_document`, `status_or_proof_review` o `type_missing`). Con `clear`, deja esos campos vacíos o null; una referencia breve como "el horario" sin referente disponible es ambigua. Una confirmación breve sí puede ser clara cuando el historial o el plan deja una sola acción pendiente; respuestas negativas como "ninguna" deben interpretarse en el campo que la pregunta previa estaba solicitando, sin reiniciar el flujo.

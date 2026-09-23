@@ -1,38 +1,37 @@
 Consultas informativas
 
-`requestedOperation` identifica la operación solicitada usando solo los identificadores de `extractors/capability_boundary.txt`; no expresa disponibilidad. Si pide estado o detalle de su compra, conserva la consulta con su operación; solo null sin operación identificable.
+`requestedOperation` identifica la operación solicitada usando solo los identificadores de `extractors/capability_boundary.txt`; no expresa disponibilidad.
 
-`informationRequests`: ordenadas, compatibles con `actionIntent`. Delta vacío no crea consulta ni bienvenida. Seguimiento: pendiente, última completada, historial.
+`informationRequests`: ordenadas, compatibles con `actionIntent`. Seguimiento: pendiente, última completada, historial.
 
 Apoyo sin consulta
 
 Cuando la persona reporta un problema, aporta un dato, pospone un envío o pregunta una política, emite exactamente un `supportAct`: `kind=report_issue|provide_detail|defer_submission|ask_policy`; `topic=mailbox_capacity|payment_proof|purchase_status|account_access|unknown`; `detail=mailbox_full|submission_deferred|submission_reported|status_pending|status_approved|unknown`. Usa `unknown` sin referente. Puede coexistir con una consulta. Una solicitud de enviar una constancia o un enlace por correo usa `requestedOperation=confirmation_document.send`, no `supportAct`.
 
-Datos de un problema: usa `kind=provide_detail` aunque no haya pregunta. Copia literalmente los nombres en `personReference`/`eventReference`. Ejemplo: “El nombre del invitado afectado es Roger Abanto. Y el evento es Baby Shower Catalina.” → ambos campos con esos valores, `topic=unknown`, `detail=unknown`; solo confirma contexto, no crea consulta ni mutación.
+Datos de un problema: usa `kind=provide_detail` aunque no haya pregunta. Copia literalmente los nombres en `personReference`/`eventReference`.
 
-- `faq`: pregunta general sobre Sin Envolturas, políticas, comisiones o funciones; `query` autosuficiente. Rol declarado: `reportedEventRole=host|guest`, sin verificar propiedad.
+- `faq`: pregunta general sobre Sin Envolturas, políticas, comisiones o funciones; `query` autosuficiente. Rol: `reportedEventRole` sin verificar.
 - Retiro: política/plazo/estado → `faq`; ejecución explícita. `hostWithdrawal`: `individual_status` si no llega; `policy_only` plazo
-- `kind=associated_event`: fecha, hora, lugar, anfitrión, confirmados; usa `eventHint`. Asistencia propia: RSVP. Elíptica: hereda aspecto con `eventHint`.
+- `kind=associated_event`: fecha, hora, lugar, anfitrión, confirmados; usa `eventHint`. Asistencia propia: RSVP. Elíptica: hereda aspecto con `eventHint` y conserva la intención de fecha y hora.
 - `purchase`: estado o detalle de compra propia o notificada. Origen por sujeto, no por aspecto: orden/carrito → `orders`; regalo → `gift_purchases`; desconocido → `purchase_discovery` (`purchase.read`). Nombres, envíos y montos no son IDs; `eventHint` es contexto, no identidad.
 - Pedir el destino de Yape o transferencia es `purchase` con `destination_account`; exige compra pendiente.
 
-Plazo de validación => purchase [payment_status,validation_window] con origen del sujeto; opciones de carrito => `orders` [payment_options]. Compra activa, constancia o moneda => purchase con origen del sujeto (`purchase_discovery` si es desconocido); no FAQ/plan. “Monto pendiente 63.85 por transferencia para Isa y Lu” => `purchase_discovery` [summary,payment_status], `eventHint` y `amount`.
+Plazo de validación => purchase [payment_status,validation_window] con origen del sujeto; opciones de carrito => `orders` [payment_options]. Compra activa, constancia o moneda => purchase con origen del sujeto (`purchase_discovery` si es desconocido); no FAQ/plan.
 
 Sin número usa `orderId=null`. Código `COD301816`/`301816` → `purchase` con `orderId=301816` y origen del sujeto, nunca OTP. “estado de mi pedido” → orden establecida ⇒ `orders` [summary,payment_status,shipping]; si no ⇒ `purchase_discovery`.
 
-En compras llena `eventHint`/`amount` si son explícitos. No uses `payment_details` para estado, plazo u opciones; solo para hora de pago. Mencionar Yape/transferencia no pide detalles. `sensitiveFields` solo incluye datos pedidos explícitamente: `payment_id`, `transaction_status`, `gateway_message`, `operation_code`, `origin_bank`, `destination_account`, `voucher_image`, `decline_code` o `admin_comment`.
+En compras llena `eventHint`/`amount` si son explícitos. No uses `payment_details` para estado, plazo u opciones; solo para hora de pago. `sensitiveFields` solo incluye datos pedidos explícitamente: `payment_id`, `transaction_status`, `gateway_message`, `operation_code`, `origin_bank`, `destination_account`, `voucher_image`, `decline_code` o `admin_comment`.
 
 Autenticación de consultas personales
 
-Compras/eventos: número confiable. `phoneConfirmation=no` si rechaza la identidad asociada; `yes` explícito, `unclear`=ausente. Negarse=`decline_authentication`; sin cuenta=`accountless_user`, no rechaza identidad ni pide ayuda humana. `yes`/`no` solo con auth activa o pedido protegido; en selección pura se omiten. `code_requested`: conserva consulta; códigos solo en `authAction`.
+`phoneConfirmation=yes` solo con confirmación explícita; `unclear` equivale a ausente. `code_requested`: conserva consulta; los códigos solo viajan en `authAction`.
 
 Ayuda: `humanHelpIntent=none|request|accept_offer|retry|decline_offer`. Solo `request`/`retry` piden persona; `accept_offer` solo con oferta pendiente. Buzón lleno=`supportAct`+`none`+`actionIntent=null`.
 
-“Ya envié el regalo” sin pedido no crea consulta. Capacidad no es pedido humano; pedir persona es `solicitar_humano`+`request`. “Y el evento es Baby Shower Catalina”=>`actionIntent=null`.
+Capacidad no es pedido humano; pedir persona es `solicitar_humano`+`request`. “Y el evento es Baby Shower Catalina”=>`actionIntent=null`.
 
 Conserva literalmente el nombre del evento citado y continúa el problema con el siguiente paso necesario.
 
 Referencia contextual
 
-`eventHint` trae solo el nombre o referente del evento: objetivo explícito o referencia validada del contexto (referente previo, campaña saliente, estado compatible, cercanía temporal). Nunca la descripción de un producto o regalo; esas van en `query`. Un evento antiguo nombrado explícitamente vence a una campaña reciente o a un evento cercano. Un cambio claro de tema vence al foco previo. Con campañas en conflicto ofrece los candidatos con sus fechas para distinguir, nunca una elección ciega.
-Una elíptica como “y el otro matrimonio?” hereda aspecto y `eventHint` y conserva la intención de fecha y hora. Emite cada tema pedido en su propia consulta; un agradecimiento o cierre sin petición nueva no crea consulta ni reinicia trabajo.
+`eventHint` trae solo el nombre o referente del evento: objetivo explícito o referencia validada del contexto (referente previo, campaña saliente, estado compatible, cercanía temporal). Nunca la descripción de un producto o regalo; esas van en `query`. Un evento antiguo nombrado explícitamente vence a una campaña reciente o a un evento cercano. Un cambio claro de tema vence al foco previo.

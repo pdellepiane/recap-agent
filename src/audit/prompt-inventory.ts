@@ -123,6 +123,21 @@ function deriveConsumers(filePath: string): PromptInventoryConsumer[] {
         loader: 'PromptLoader.loadNodeBundle -> conversationPromptFilesForNode',
       });
     }
+    // B9: production reply loads the reply-core file through the typed
+    // compiler, not the legacy node bundle; map registry consumers here so
+    // compiler-only shared files are never reported as unmapped.
+    const registryModules = Object.entries(instructionModuleRegistry).filter(([, meta]) =>
+      meta.files.includes(filePath as never),
+    );
+    for (const [moduleId, meta] of registryModules) {
+      consumers.push({
+        callType: 'reply',
+        nodes: [],
+        profiles: [],
+        transitions: [`compiler:${moduleId} (${meta.consumer})`],
+        loader: `PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:${moduleId}`,
+      });
+    }
   }
 
   if (filePath.startsWith('extractors/')) {

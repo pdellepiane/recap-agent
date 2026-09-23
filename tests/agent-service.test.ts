@@ -9054,7 +9054,8 @@ describe('AgentService', () => {
     expect(response.trace.route_kind).toBe('human_help_offer');
     expect(response.outbound.text).toBe('reply:ofrecer_agente_humano');
     expect(response.trace.prompt_bundle_id).toMatch(/^stub-compiler:shared_invariants$/u);
-    expect(response.trace.prompt_file_paths).toContain('shared/base_system.txt');
+    // B9: production shared invariants are the single reply-core file.
+    expect(response.trace.prompt_file_paths).toContain('shared/reply_core.txt');
     expect(response.trace.prompt_file_paths).not.toContain(
       'nodes/ofrecer_agente_humano/response_contract.txt',
     );
