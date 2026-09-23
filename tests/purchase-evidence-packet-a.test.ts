@@ -493,6 +493,7 @@ describe('Packet A purchase/profile evidence', () => {
     expect(summary?.method).toBe('Yape_o_Plin');
     expect(summary?.methodAvailability).toBe('available');
     const detail = projection.detailedPurchases[0];
-    expect(disclosedPurchaseTotal(detail as PurchaseInformation)).toBe(227.76);
+    if (!detail) throw new Error('missing detailed purchase');
+    expect(disclosedPurchaseTotal(detail)).toBe(227.76);
   });
 });
