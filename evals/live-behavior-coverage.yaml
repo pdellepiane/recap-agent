@@ -1257,3 +1257,25 @@ behaviorChanges:
   - id: extractor-continuity-facts-survive-non-support-turns
     implementedBy: "746b04a5"
     liveCaseIds: [live_behavior.customer_event_task_continuity, live_behavior.rsvp_ambiguous_event_requires_grounded_selection, live_behavior.authentication_refusal_closes_protected_query]
+# 2026-09-22 evidence-preserving handoff Packets A/B/C (coordinator commits
+# 57d01f79, ff57151b, plus this Packet C integration): one entry per
+# behavior change. Each binds to mandatory live Lambda cases with hard
+# structural assertions plus a hard requireJudge semantic.
+  - id: purchase-answer-facet-closure-balance-credit-shipping
+    implementedBy: "57d01f79"
+    liveCaseIds: [live_behavior.pending_balance_validation_luis, live_behavior.gift_credit_pending_payment_stays_pending, live_behavior.gift_mixed_order_distinguishes_items]
+  - id: extractor-subject-ownership-facet-independence
+    implementedBy: "ff57151b"
+    liveCaseIds: [live_behavior.pending_balance_validation_luis, live_behavior.gift_mixed_order_distinguishes_items]
+  - id: support-continuity-names-current-turn-no-obligatory-reask
+    implementedBy: "ff57151b"
+    liveCaseIds: [live_behavior.support_detail_continuity, live_behavior.concurrent_support_turns_preserve_context]
+  - id: gift-fulfillment-applicability-vs-recorded-dispatch
+    implementedBy: "ff57151b"
+    liveCaseIds: [live_behavior.gift_mixed_order_distinguishes_items, live_behavior.gift_credit_pending_payment_stays_pending]
+  - id: image-receipt-identifying-amount-exact-currency
+    implementedBy: "ff57151b"
+    liveCaseIds: [live_behavior.image_readable_captionless, live_behavior.image_url_receipt_payment_thread]
+  - id: rsvp-selection-node-pin-to-observable-zero-write
+    implementedBy: "12a65617"
+    liveCaseIds: [live_behavior.rsvp_ambiguous_event_requires_grounded_selection, live_behavior.s11_rsvp_durability_confirms_once]
