@@ -574,7 +574,7 @@ export class DynamoEvalFixtureStateStore implements EvalFixtureStateStore {
       body: item['body'] as string,
       whatsappMessageId: typeof item['whatsappMessageId'] === 'string' ? item['whatsappMessageId'] : null,
       sentAt: typeof item['sentAt'] === 'string' ? item['sentAt'] : null,
-      delivery: delivery === 'sent' || delivery === 'suppressed' || delivery === 'failed' || delivery === 'unverified'
+      delivery: delivery === 'received' || delivery === 'sent' || delivery === 'suppressed' || delivery === 'failed' || delivery === 'unverified'
         ? delivery
         : 'unverified',
       seq: item['seq'] as number,
