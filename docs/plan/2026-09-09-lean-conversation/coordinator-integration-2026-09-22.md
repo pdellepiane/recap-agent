@@ -14,10 +14,15 @@ procedure at the end of this document was NOT executed.
 | `a26a1eb0` | Trim production prompts and unify extractor continuity | Owner B decision 2 + B6–B12, 23 files |
 | `6a3e8a18` | Target gpt-6-luna with fail-closed production model promotion | Owner C decision 4, 9 files |
 | `25345946` | Revise ten eval oracles and freeze the 138-row adjudication ledger | Owner C decision 5, 20 files |
-| `<coordinator>` | Register final work package behavior coverage and log the integration | 9 coverage entries, implementation log, this report |
+| `9e99374f` | Register final work package behavior coverage and log the integration | 9 coverage entries, implementation log, this report |
+| HEAD (doc-only) | Record coordinator freeze SHA in integration report | replaces the `<coordinator>` placeholder with `9e99374f`; no code/config/prompt/eval change |
 
-The coordinator SHA is the freeze SHA; it is recorded in the implementation log
-entry of the same date. `git diff 0da5c55f <coordinator>` touches 58 files
+Freeze definition: the frozen candidate is the tree at `9e99374f` plus the
+section-4 artifact digest. The HEAD doc-only commit changes only this section
+of this report (placeholder → `9e99374f`), so every functional byte — code,
+prompts, config, evals, registry, log, measurements — is identical between
+`9e99374f` and HEAD, and the artifact digest applies to both.
+`git diff 0da5c55f HEAD` touches 58 files
 (55 owner + coverage registry + implementation log + this report).
 
 ## 2. Changed files by commit
