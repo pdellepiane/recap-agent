@@ -727,8 +727,11 @@ describe('gift instruction scoping and mutation controls', () => {
       items: mixedWireItems(),
       aspects: ['payment_status'],
     });
-    expect(paymentOnly.moduleIds).not.toContain('reply_gift_fulfillment');
-    expect(paymentOnly.instructions).not.toContain(GIFT_INSTRUCTION_MARKER);
+    // Packet A/B facet closure: a payment_status question over gift items
+    // carries fulfillment, so the gift module loads to keep credit mechanism
+    // distinct from payment posting.
+    expect(paymentOnly.moduleIds).toContain('reply_gift_fulfillment');
+    expect(paymentOnly.instructions).toContain(GIFT_INSTRUCTION_MARKER);
   });
 
   it('carries credit meaning together with payment state when the question needs both', async () => {

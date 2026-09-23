@@ -556,7 +556,11 @@ describe('Owner B decision 2 support continuity', () => {
     // Reported identity stays verbatim when needed, never forced.
     expect(continuity).toContain('reported_guest_name');
     expect(continuity).toContain('reported_event_name');
-    expect(continuity).toContain('no repitas nombres que la respuesta no necesite');
+    // Packet B: current-turn names are required in the acknowledgment; only
+    // prior-turn names stay unrepeated, and an optional prior question never
+    // becomes a mandatory re-ask.
+    expect(continuity).toContain('no repitas nombres de turnos anteriores que este mensaje no trae');
+    expect(continuity).toContain('no obliga a repetirla');
     expect(continuity).not.toContain('support_query_open');
   });
 

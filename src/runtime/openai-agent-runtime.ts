@@ -4712,7 +4712,11 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
         : null;
       const balanceLimitation = projectPurchaseBalanceLimitation(
         selectPurchaseReplyOutcome({
-          purchases: result.purchases.slice(0, 3),
+          // Coordinator integration (Packet A/B): no first-N cutoff. The
+          // single-order gate above already bounds this path; slicing here
+          // would drop the 4th candidate on multi-record turns that share
+          // this projection.
+          purchases: result.purchases,
           carts: result.carts ?? [],
           needsSelection: result.needsSelection,
           coverage: result.coverage ?? 'complete',

@@ -1640,6 +1640,8 @@ describe('purchase profile-present balance preservation', () => {
         remainingVerifiable: false,
         currency: null,
         currencyAvailability: 'unknown',
+        method: 'transfer',
+        methodAvailability: 'available',
         userReported: { amount: null, currency: null, paidAt: null },
       },
     }));
