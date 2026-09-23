@@ -184,7 +184,9 @@ describe('AgentService first-class information flow', () => {
     expect(runtime.composeRequests).toHaveLength(1);
     expect(runtime.composeRequests[0]?.extraction.ambiguity?.status).toBe('ambiguous');
     expect(knowledge.calls).toBe(0);
-    expect(gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.authByPhoneCalls).toBe(0);
+    // All-root preparation reads the authorized phone profile before
+    // extraction; ambiguity still withholds task reads (no FAQ lookup above).
+    expect(gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.authByPhoneCalls).toBe(2);
   });
 
   it('runs lookups for a prior_single-linked ambiguous question instead of skipping', async () => {
@@ -334,7 +336,9 @@ describe('AgentService first-class information flow', () => {
     expect(response.outbound.text).not.toMatch(/^(?:Hola|¡Hola)/u);
     expect(runtime.composeRequests).toHaveLength(1);
     expect(knowledge.calls).toBe(0);
-    expect(gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.authByPhoneCalls).toBe(0);
+    // All-root preparation reads the authorized phone profile; the
+    // clarification task itself performs no FAQ lookup (see knowledge.calls).
+    expect(gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.authByPhoneCalls).toBe(2);
   });
 
   it('composes an empty-history continuation from the compact canonical support summary', async () => {
@@ -373,7 +377,9 @@ describe('AgentService first-class information flow', () => {
     expect(runtime.composeRequests[0]?.plan.conversation_summary).toContain('buzón');
     expect(runtime.composeRequests[0]?.errorMessage).toBeNull();
     expect(response.trace.route_kind).toBe('contextual_clarification');
-    expect(gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.authByPhoneCalls).toBe(0);
+    // All-root preparation reads the authorized phone profile before the
+    // clarification task, which itself performs no backend lookup.
+    expect(gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.authByPhoneCalls).toBe(2);
   });
 
   it('acknowledges a deferral without executing or deleting an unresolved purchase selection', async () => {
@@ -391,7 +397,9 @@ describe('AgentService first-class information flow', () => {
     const response = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'deferred', contactPhone: '+51900000302',
       text: 'Lo envío luego', messageId: 'defer', receivedAt: new Date().toISOString() });
     expect(response.plan.information_state.pending_requests).toEqual([request]);
-    expect(gateway.guestOrdersCalls + gateway.authByPhoneCalls).toBe(0);
+    // All-root preparation reads the phone orders profile; the deferred
+    // selection itself is preserved without task execution (see above).
+    expect(gateway.guestOrdersCalls + gateway.authByPhoneCalls).toBe(1);
   });
 
   it('clarifies a rejected purchase extraction without welcoming, looking up data, or starting OTP', async () => {

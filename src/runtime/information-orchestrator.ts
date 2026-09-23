@@ -472,7 +472,7 @@ export class InformationOrchestrator {
       return {
         ...expired,
         purchasesCarts: { ...expired.purchasesCarts, status: 'failed', source: 'deadline' },
-        invitationsEvents: { ...expired.invitationsEvents, status: args.authentication ? 'failed' : 'unavailable', source: 'deadline' },
+        invitationsEvents: { ...expired.invitationsEvents, status: 'failed', source: 'deadline' },
         readMetrics: noReads,
       };
     }

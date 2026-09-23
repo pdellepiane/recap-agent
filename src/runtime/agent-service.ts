@@ -436,6 +436,13 @@ const MAX_STARTER_NEEDS = 5;
 const MAX_DETAILED_ELICITATION_NEEDS = 5;
 const MAX_PROVIDER_QUERIES_PER_NEED = 3;
 
+/**
+ * Bounded customer-profile read budget. The deadline is created centrally at
+ * the start of profile preparation, never computed from turn start, so
+ * classifier time cannot consume the entire budget.
+ */
+export const CUSTOMER_CONTEXT_READ_BUDGET_MS = 7_000;
+
 const isoDateTimePattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/u;
 
 export function isFutureIsoTimestamp(value: string | null): boolean {
@@ -974,7 +981,6 @@ export class AgentService {
         const earlyCustomerContext = await this.prepareCustomerContextForTurn({
           plan: planToSave,
           contactPhone: inbound.contactPhone,
-          deadlineMs: handleTurnStartedAt + 7000,
         });
         const composeReplyStartedAt = Date.now();
         let reply: ComposeReplyResult;
@@ -1096,7 +1102,6 @@ export class AgentService {
         const earlyCustomerContext = await this.prepareCustomerContextForTurn({
           plan: planToSave,
           contactPhone: inbound.contactPhone,
-          deadlineMs: handleTurnStartedAt + 7000,
         });
         const composeReplyStartedAt = Date.now();
         let reply: ComposeReplyResult;
@@ -1251,7 +1256,6 @@ export class AgentService {
       const preparedCustomerContext = await this.prepareCustomerContextForTurn({
         plan: existingPlan,
         contactPhone: inbound.contactPhone,
-        deadlineMs: handleTurnStartedAt + 7000,
       });
       const extractionStartedAt = Date.now();
       const rawExtractionResult = await this.dependencies.runtime.extract({
@@ -1450,7 +1454,6 @@ export class AgentService {
     const preparedCustomerContext = await this.prepareCustomerContextForTurn({
       plan: workingPlan,
       contactPhone: inbound.contactPhone,
-      deadlineMs: handleTurnStartedAt + 7000,
     });
     const extractionStartedAt = Date.now();
     const rawExtractionResult = await this.dependencies.runtime.extract({
@@ -5084,7 +5087,7 @@ export class AgentService {
   }): Promise<HandleTurnResponse> {
     const plan = mergePlan(args.plan, { current_node: 'resolver_consultas_informativas' });
     const preparedCustomerContext = await this.prepareCustomerContextForTurn({
-      plan: args.plan, contactPhone: args.inbound.contactPhone, deadlineMs: args.handleTurnStartedAt + 7000,
+      plan: args.plan, contactPhone: args.inbound.contactPhone,
     });
     const extraction = this.buildNeutralMediaExtraction('Media-only message; content access is unavailable.');
     const decision = resolveCapabilityDecision({
@@ -5169,7 +5172,7 @@ export class AgentService {
       ? args.plan
       : mergePlan(args.plan, { current_node: 'resolver_consultas_informativas' });
     const preparedCustomerContext = await this.prepareCustomerContextForTurn({
-      plan: args.plan, contactPhone: args.inbound.contactPhone, deadlineMs: args.handleTurnStartedAt + 7000,
+      plan: args.plan, contactPhone: args.inbound.contactPhone,
     });
     // URL images ride the owner reply call as native image content, and
     // base64 images ride the persisted file reference the same way. The
@@ -5594,7 +5597,7 @@ export class AgentService {
     preparedCustomerContext?: PreparedCustomerContext;
   }): Promise<HandleTurnResponse> {
     const preparedCustomerContext = args.preparedCustomerContext ?? await this.prepareCustomerContextForTurn({
-      plan: args.plan, contactPhone: args.inbound.contactPhone, deadlineMs: args.handleTurnStartedAt + 7000,
+      plan: args.plan, contactPhone: args.inbound.contactPhone,
     });
     const extractionStartedAt = Date.now();
     let extraction: ExtractionResult;
@@ -5855,7 +5858,7 @@ export class AgentService {
     preparedCustomerContext?: PreparedCustomerContext;
   }): Promise<HandleTurnResponse> {
     const preparedCustomerContext = args.preparedCustomerContext ?? await this.prepareCustomerContextForTurn({
-      plan: args.plan, contactPhone: args.inbound.contactPhone, deadlineMs: args.handleTurnStartedAt + 7000,
+      plan: args.plan, contactPhone: args.inbound.contactPhone,
     });
     const captionPresent = args.caption.trim().length > 0;
     const unavailablePlan = args.plan.current_node === 'resolver_consultas_informativas'
@@ -6231,7 +6234,7 @@ export class AgentService {
       captionPresent,
     };
     const preparedCustomerContext = args.preparedCustomerContext ?? await this.prepareCustomerContextForTurn({
-      plan: planWithRef, contactPhone: args.inbound.contactPhone, deadlineMs: args.handleTurnStartedAt + 7000,
+      plan: planWithRef, contactPhone: args.inbound.contactPhone,
     });
     const extractionStartedAt = Date.now();
     let extraction: ExtractionResult;
@@ -6839,8 +6842,8 @@ export class AgentService {
   private async prepareCustomerContextForTurn(args: {
     plan: PlanSnapshot;
     contactPhone: string | null | undefined;
-    deadlineMs: number | null;
   }): Promise<PreparedCustomerContext> {
+    const deadlineMs = Date.now() + CUSTOMER_CONTEXT_READ_BUDGET_MS;
     const persistedInformationRefusal = args.plan.information_state.pending_requests.some(
       (request) => (request.kind === 'purchase' || request.kind === 'associated_event') &&
         request.authAction === 'decline_authentication',
@@ -6886,7 +6889,7 @@ export class AgentService {
       trustedPhone,
       identity,
       currentContext,
-      deadlineMs: args.deadlineMs,
+      deadlineMs,
     };
     const snapshot = await this.informationOrchestrator().prepareCustomerContext(preparation);
     return {
@@ -6909,16 +6912,18 @@ export class AgentService {
       authorizedScopes: ['account'],
       fetchedAt: new Date().toISOString(),
     };
+    const freshDeadlineMs = Date.now() + CUSTOMER_CONTEXT_READ_BUDGET_MS;
     const additionalSnapshot = await this.informationOrchestrator().prepareCustomerContext({
       authentication: args.authentication,
       trustedPhone: null,
       identity: accountIdentity,
       currentContext: args.prepared.currentContext,
-      deadlineMs: args.prepared.deadlineMs,
+      deadlineMs: freshDeadlineMs,
     });
     const snapshot = mergeCustomerContextSnapshots(args.prepared.snapshot, additionalSnapshot);
     return {
       ...args.prepared,
+      deadlineMs: freshDeadlineMs,
       authentication: args.authentication,
       identity: {
         ...accountIdentity,
@@ -7380,7 +7385,7 @@ export class AgentService {
                 : splitInternationalPhone(args.inbound.contactPhone) ??
                   splitInternationalPhone(planForInformation.contact_phone ?? null),
             preparedCustomerContext: preparedCustomerContext?.snapshot,
-            deadlineMs: preparedCustomerContext?.deadlineMs ?? args.handleTurnStartedAt + 7000,
+            deadlineMs: preparedCustomerContext?.deadlineMs ?? Date.now() + CUSTOMER_CONTEXT_READ_BUDGET_MS,
           });
           logAuthObservabilityEvent('info', 'information_auth_execution_completed', {
             auth_flow_operation_id: authResolution.authFlowId,
@@ -8364,7 +8369,6 @@ export class AgentService {
     const preparedCustomerContext = await this.prepareCustomerContextForTurn({
       plan: args.existingPlan,
       contactPhone: args.inbound.contactPhone,
-      deadlineMs: args.handleTurnStartedAt + 7000,
     });
     const retainedReceiptOutcome = args.existingPlan.human_help_receipt?.outcome ?? null;
     const retainedTerminalReason = this.effectiveAuthRecovery(args.existingPlan).terminalReason ??
