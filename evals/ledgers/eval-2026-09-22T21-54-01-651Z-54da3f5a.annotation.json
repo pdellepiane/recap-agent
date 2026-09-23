@@ -1,0 +1,782 @@
+{
+  "schemaVersion": 1,
+  "annotatesRunId": "eval-2026-09-22T21-54-01-651Z-54da3f5a",
+  "annotatesLedger": "evals/ledgers/eval-2026-09-22T21-54-01-651Z-54da3f5a.json",
+  "generatedAt": "2026-09-23T00:00:00.000Z",
+  "sourceCommits": [
+    "57d01f79",
+    "ff57151b"
+  ],
+  "note": "Packet C annotation of the 61 failed historical rows. The original ledger is untouched; no retrospective rescoring. Labels: still applicable (needs future work), covered by current fix (Packets A/B/C target the root cause; live proof pending in the new gate), historical oracle issue (ledger oracle-fixture carried forward), planning accepted (ledger waiver carried forward).",
+  "counts": {
+    "still applicable": 46,
+    "planning accepted": 2,
+    "covered by current fix": 6,
+    "historical oracle issue": 7
+  },
+  "rows": [
+    {
+      "caseId": "live_behavior.active_cart_checkout_continuity_alex",
+      "annotation": "still applicable",
+      "causalGroup": "group-3-support-continuation",
+      "evidence": "Confirmed cart context but did not advance the pending checkout need. Packet B continuity prompt preserves names and blocks re-ask, but advancing the checkout need with payment guidance is unaddressed generation. Current source evidence: support_continuity.txt names current-turn refs; no checkout-guidance change.",
+      "failedExpectationIds": [
+        "active-cart-not-flattened"
+      ],
+      "ledgerClassifications": [
+        "product-helpfulness"
+      ]
+    },
+    {
+      "caseId": "live_behavior.ambiguous_confirmation_adversarial_selection",
+      "annotation": "still applicable",
+      "causalGroup": "group-6-grounding",
+      "evidence": "Planning routing/entity failure: stayed in recomendar, called provider tools, misidentified shortlist providers. BLOCKER-adjacent (wrong entity). Untouched by Packets A/B/C. Evidence: 4 failed expectations on provider routing/selection, no related source change.",
+      "failedExpectationIds": [
+        "adversarial-clarifies-without-choosing",
+        "adversarial-no-selection-persisted",
+        "adversarial-no-provider-effects-or-close",
+        "adversarial-ambiguity-response-is-a-focused-clarification"
+      ],
+      "ledgerClassifications": [
+        "product-fact-effect"
+      ]
+    },
+    {
+      "caseId": "live_behavior.ambiguous_confirmation_clarifies",
+      "annotation": "planning accepted",
+      "causalGroup": "group-6-grounding",
+      "evidence": "Ledger planning-accepted: asked for WhatsApp number instead of clarifying provider/action, zero mutations and no invented facts. Carried forward unchanged; release may waive explicitly.",
+      "failedExpectationIds": [
+        "ambiguity-response-is-a-focused-clarification"
+      ],
+      "ledgerClassifications": [
+        "planning-accepted"
+      ]
+    },
+    {
+      "caseId": "live_behavior.campaign_scope_carryover_override_handoff",
+      "annotation": "still applicable",
+      "causalGroup": "group-6-grounding",
+      "evidence": "'Se entrega como credito' implies posted/available credit. Prompt already bans posting claims; model violates. No new deterministic enforcement permitted by handoff. Generation grounding still applicable.",
+      "failedExpectationIds": [
+        "scope-carryover-answers-campaign-event"
+      ],
+      "ledgerClassifications": [
+        "product-fact-effect"
+      ]
+    },
+    {
+      "caseId": "live_behavior.continuity_question_needs_image",
+      "annotation": "still applicable",
+      "causalGroup": "group-4-image",
+      "evidence": "Asked WhatsApp verification instead of receipt image/amount. Extractor/routing behavior untouched by Packets A/B/C.",
+      "failedExpectationIds": [
+        "needs-image-first-turn-clarifies"
+      ],
+      "ledgerClassifications": [
+        "product-helpfulness"
+      ]
+    },
+    {
+      "caseId": "live_behavior.continuity_voucher_then_thanks",
+      "annotation": "still applicable",
+      "causalGroup": "group-4-image",
+      "evidence": "Denied approval but added unrequested clarification and did not state image-cannot-confirm explicitly. Voucher continuity facts already projected; verbalization is generation. Still applicable.",
+      "failedExpectationIds": [
+        "voucher-receipt-brief-and-honest"
+      ],
+      "ledgerClassifications": [
+        "product-helpfulness"
+      ]
+    },
+    {
+      "caseId": "live_behavior.customer_transaction_reference_unavailable_multiple",
+      "annotation": "still applicable",
+      "causalGroup": "group-1-source-scope",
+      "evidence": "Showed creation date instead of event date and omitted event labels. Candidate view already carries eventDate/eventName; model chose wrong date. Packet A preserves candidates/dates; grounding still applicable.",
+      "failedExpectationIds": [
+        "multiple-asks-grounded-selection"
+      ],
+      "ledgerClassifications": [
+        "product-fact-effect"
+      ]
+    },
+    {
+      "caseId": "live_behavior.gift_credit_pending_payment_stays_pending",
+      "annotation": "covered by current fix",
+      "causalGroup": "group-2-fact-loss",
+      "evidence": "Packet A facet closure: payment_status now carries item fulfillment plus credit policy, so the reply can keep mechanism distinct from pending posting. Packet B loads gift module on this evidence. Live proof pending in the new gate; targeted run d9b6e8e8 failed on stale bytes for this reason.",
+      "failedExpectationIds": [
+        "pending-policy-and-state-coexist"
+      ],
+      "ledgerClassifications": [
+        "product-helpfulness"
+      ]
+    },
+    {
+      "caseId": "live_behavior.gift_credit_states_host_choice_no_shipment",
+      "annotation": "still applicable",
+      "causalGroup": "group-6-grounding",
+      "evidence": "Discretionary-use implication ('lo eligen y gestionan') without record support. Prompt already bans posterior-use claims; model violates. No new enforcement permitted. Still applicable.",
+      "failedExpectationIds": [
+        "credit-host-choice-no-shipment"
+      ],
+      "ledgerClassifications": [
+        "product-fact-effect"
+      ]
+    },
+    {
+      "caseId": "live_behavior.gift_mixed_order_distinguishes_items",
+      "annotation": "covered by current fix",
+      "causalGroup": "group-2-fact-loss",
+      "evidence": "Trace pin was historical oracle (revised to v4). Dispatch implication ('se envian fisicamente') targeted by Packet B gift reword separating physical applicability from recorded dispatch plus Packet A approved-status preservation. Live proof pending in the new gate.",
+      "failedExpectationIds": [
+        "mixed-gift-evidence-in-trace",
+        "mixed-order-wide-distinguishes"
+      ],
+      "ledgerClassifications": [
+        "oracle-fixture",
+        "product-fact-effect"
+      ]
+    },
+    {
+      "caseId": "live_behavior.gift_sestore_unknown_shipping_offers_support",
+      "annotation": "still applicable",
+      "causalGroup": "group-3-support-continuation",
+      "evidence": "Missing required human-support offer. Availability facts already projected; offer must come from the model. Handoff forbids executing handoff to satisfy the rubric. Still applicable generation.",
+      "failedExpectationIds": [
+        "sestore-physical-without-invented-detail"
+      ],
+      "ledgerClassifications": [
+        "product-helpfulness"
+      ]
+    },
+    {
+      "caseId": "live_behavior.gift_shipping_limitation_accepted_handoff_once",
+      "annotation": "still applicable",
+      "causalGroup": "group-3-support-continuation",
+      "evidence": "Missing offer remains (generation). Unconfirmed 'se enviara' dispatch claim is covered by the Packet B applicability/dispatch separation. Row stays applicable until the offer behavior is proven live.",
+      "failedExpectationIds": [
+        "handoff-limitation-offers-support"
+      ],
+      "ledgerClassifications": [
+        "product-fact-effect"
+      ]
+    },
+    {
+      "caseId": "live_behavior.gift_unknown_type_preserves_uncertainty",
+      "annotation": "still applicable",
+      "causalGroup": "group-3-support-continuation",
+      "evidence": "Uncertainty preserved but no useful next step offered. Availability facts exist; model must propose. Still applicable.",
+      "failedExpectationIds": [
+        "unknown-preserves-uncertainty"
+      ],
+      "ledgerClassifications": [
+        "product-helpfulness"
+      ]
+    },
+    {
+      "caseId": "live_behavior.host_withdrawal_diana_policy_and_support",
+      "annotation": "still applicable",
+      "causalGroup": "group-3-support-continuation",
+      "evidence": "Dropped event name is covered by the Packet B naming requirement; prohibited provider menu restart remains (planning leakage/invention on a support turn). Row stays applicable.",
+      "failedExpectationIds": [
+        "acknowledges-role-without-generic-reset",
+        "later-event-message-stays-with-human-team"
+      ],
+      "ledgerClassifications": [
+        "product-helpfulness"
+      ]
+    },
+    {
+      "caseId": "live_behavior.image_distractor_history_preserves_current_question",
+      "annotation": "historical oracle issue",
+      "causalGroup": "group-4-image",
+      "evidence": "Ledger oracle-fixture revised to v3: silence pin contradicted receipt-context doctrine. Carried forward; no rescoring.",
+      "failedExpectationIds": [
+        "distractor-image-silent-persist-reason"
+      ],
+      "ledgerClassifications": [
+        "oracle-fixture"
+      ]
+    },
+    {
+      "caseId": "live_behavior.image_multiple_pending_orders_no_select",
+      "annotation": "still applicable",
+      "causalGroup": "group-4-image",
+      "evidence": "No selection question and no explicit pending-validation statement. Model must ask the discriminator; no deterministic question permitted. Still applicable.",
+      "failedExpectationIds": [
+        "multi-order-image-no-auto-select"
+      ],
+      "ledgerClassifications": [
+        "product-helpfulness"
+      ]
+    },
+    {
+      "caseId": "live_behavior.image_non_receipt_payment_claim",
+      "annotation": "still applicable",
+      "causalGroup": "group-4-image",
+      "evidence": "Treated a non-receipt as showing a deposit. Real receipt/approval confusion; ungrounded claim. Still applicable.",
+      "failedExpectationIds": [
+        "non-receipt-not-treated-as-proof"
+      ],
+      "ledgerClassifications": [
+        "product-fact-effect"
+      ]
+    },
+    {
+      "caseId": "live_behavior.image_readable_captionless",
+      "annotation": "covered by current fix",
+      "causalGroup": "group-4-image",
+      "evidence": "T0 amount omission targeted by Packet B image_limits (visible identifying amount required when no compatible record, no order-ID ask without real ambiguity). T1 old waiver is historical oracle (v6) and must NOT be imported: the new run really says $ for S/, targeted by the exact-currency rule. Live proof pending.",
+      "failedExpectationIds": [
+        "image-receipt-no-compatible-record",
+        "image-delayed-question-answered"
+      ],
+      "ledgerClassifications": [
+        "oracle-fixture",
+        "product-helpfulness"
+      ]
+    },
+    {
+      "caseId": "live_behavior.image_too_large_fallback",
+      "annotation": "still applicable",
+      "causalGroup": "group-4-image",
+      "evidence": "Never explained size limitation. Evidence carries reason image_too_large; model must state it. Still applicable generation.",
+      "failedExpectationIds": [
+        "too-large-guidance-in-spanish"
+      ],
+      "ledgerClassifications": [
+        "product-helpfulness"
+      ]
+    },
+    {
+      "caseId": "live_behavior.image_url_describe_dice",
+      "annotation": "still applicable",
+      "causalGroup": "group-4-image",
+      "evidence": "Minor perceptual wording (color). Pixels unavailable to adjudicate against the oracle. Still applicable.",
+      "failedExpectationIds": [
+        "url-image-dice-described"
+      ],
+      "ledgerClassifications": [
+        "product-helpfulness"
+      ]
+    },
+    {
+      "caseId": "live_behavior.image_url_receipt_payment_thread",
+      "annotation": "covered by current fix",
+      "causalGroup": "group-4-image",
+      "evidence": "Missing image_url_context on stale bytes; current-source routing/normalization verified correct and proven offline by Packet B native-attachment tests (URL rides the reply call with purchase evidence). Fix lands via redeploy plus stored-response audit. T1 semantic already passes on current bytes.",
+      "failedExpectationIds": [
+        "receipt-url-uses-native-context",
+        "receipt-url-supports-without-proof"
+      ],
+      "ledgerClassifications": [
+        "product-fact-effect"
+      ]
+    },
+    {
+      "caseId": "live_behavior.mailbox_issue_deferral_and_clarification_preserve_support",
+      "annotation": "still applicable",
+      "causalGroup": "group-3-support-continuation",
+      "evidence": "Prohibited plan offer in greeting plus unacknowledged deferral with assumed fix. Support handling untouched beyond naming/continuity prompt. Still applicable.",
+      "failedExpectationIds": [
+        "greeting-allows-brief-context-without-plan",
+        "acknowledge-deferral-without-inventing-referent"
+      ],
+      "ledgerClassifications": [
+        "product-helpfulness"
+      ]
+    },
+    {
+      "caseId": "live_behavior.otp_sent_explains_image_limitation",
+      "annotation": "still applicable",
+      "causalGroup": "group-4-image",
+      "evidence": "False global inability-to-read-images claim. No source change addresses this invention. Still applicable.",
+      "failedExpectationIds": [
+        "post-send-image-guidance"
+      ],
+      "ledgerClassifications": [
+        "product-fact-effect"
+      ]
+    },
+    {
+      "caseId": "live_behavior.otp_terminal_handoff_unknown",
+      "annotation": "still applicable",
+      "causalGroup": "group-5-rsvp-effect",
+      "evidence": "Three turns omit the explicit attempted-handoff statement. Handoff outcome unknown is projected; wording is generation. Still applicable.",
+      "failedExpectationIds": [
+        "unknown-handoff-truthful-turn0",
+        "unknown-handoff-truthful-turn1",
+        "unknown-handoff-truthful-turn2"
+      ],
+      "ledgerClassifications": [
+        "product-helpfulness"
+      ]
+    },
+    {
+      "caseId": "live_behavior.owner_planning_to_faq_single_transfer",
+      "annotation": "still applicable",
+      "causalGroup": "group-6-grounding",
+      "evidence": "Invented prices including USD$49. BLOCKER (invented financial facts). FAQ/planning grounding untouched. Still applicable.",
+      "failedExpectationIds": [
+        "faq-reply-answers-general-question"
+      ],
+      "ledgerClassifications": [
+        "product-fact-effect"
+      ]
+    },
+    {
+      "caseId": "live_behavior.phone_confirmation_unclear_requires_yes_or_no",
+      "annotation": "still applicable",
+      "causalGroup": "group-5-rsvp-effect",
+      "evidence": "Prohibited text/image request plus unevidenced names and dress claim. Untouched. Still applicable.",
+      "failedExpectationIds": [
+        "does-not-repeat-retired-confirmation"
+      ],
+      "ledgerClassifications": [
+        "product-fact-effect"
+      ]
+    },
+    {
+      "caseId": "live_behavior.phone_purchase_missing_hands_off_once",
+      "annotation": "still applicable",
+      "causalGroup": "group-1-source-scope",
+      "evidence": "Four expectations are historical oracle (revised to v2, correct no-unrequested-write behavior). The fifth (scoped-lookup-not-found-outcome, contract kept) is a live fixture/executor gap: failed gift source yields invalid_response instead of clean not_found. Packet A preserves per-source failed coverage; the executor/fixture fix itself is still applicable. Row stays applicable for that gap.",
+      "failedExpectationIds": [
+        "scoped-lookup-and-handoff",
+        "manual-help-requested",
+        "scoped-missing-data-handoff-not-account-login",
+        "scoped-lookup-not-found-outcome",
+        "missing-purchase-handoff-effect"
+      ],
+      "ledgerClassifications": [
+        "oracle-fixture"
+      ]
+    },
+    {
+      "caseId": "live_behavior.provider_reference_cheaper_option",
+      "annotation": "still applicable",
+      "causalGroup": "group-6-grounding",
+      "evidence": "Invented S/3,500 and S/4,000 plus unnecessary phone ask. BLOCKER (invented amounts). Untouched. Still applicable.",
+      "failedExpectationIds": [
+        "cheaper-reference-response"
+      ],
+      "ledgerClassifications": [
+        "product-fact-effect"
+      ]
+    },
+    {
+      "caseId": "live_behavior.provider_reference_miraflores_option",
+      "annotation": "still applicable",
+      "causalGroup": "group-6-grounding",
+      "evidence": "Ungrounded card inconsistency plus unconfirmed selection. Untouched. Still applicable.",
+      "failedExpectationIds": [
+        "miraflores-reference-response"
+      ],
+      "ledgerClassifications": [
+        "product-fact-effect"
+      ]
+    },
+    {
+      "caseId": "live_behavior.purchase_confirmation_carina_request_survives_normalization",
+      "annotation": "still applicable",
+      "causalGroup": "group-5-rsvp-effect",
+      "evidence": "Six failures on operation ambiguity (unsupported vs clarify, premature operation choice, lookup on ambiguous turn, wrong clarification, missing lookup when clarified). Capability/ambiguity routing untouched by Packets A/B/C. Still applicable.",
+      "failedExpectationIds": [
+        "ambiguous-request-clarifies-before-lookup",
+        "ambiguous-request-does-not-choose-an-operation",
+        "ambiguous-request-no-external-call",
+        "asks-one-status-or-document-question",
+        "clarified-request-looks-up-current-order",
+        "repeated-request-retains-operation-ambiguity"
+      ],
+      "ledgerClassifications": [
+        "product-fact-effect"
+      ]
+    },
+    {
+      "caseId": "live_behavior.purchase_current_pending_over_old_approved",
+      "annotation": "historical oracle issue",
+      "causalGroup": "group-1-source-scope",
+      "evidence": "Ledger oracle-fixture revised to v3: demanded orders-lookup label while the gift lookup read the same record grounded. Carried forward; no rescoring.",
+      "failedExpectationIds": [
+        "current-purchase-uses-phone-orders"
+      ],
+      "ledgerClassifications": [
+        "oracle-fixture"
+      ]
+    },
+    {
+      "caseId": "live_behavior.purchase_delia_status_by_phone",
+      "annotation": "historical oracle issue",
+      "causalGroup": "group-1-source-scope",
+      "evidence": "Ledger oracle-fixture revised to v5: demanded orders label and banned gift lookup while the gift read answered grounded. Carried forward; no rescoring.",
+      "failedExpectationIds": [
+        "delia-uses-order-summary-only"
+      ],
+      "ledgerClassifications": [
+        "oracle-fixture"
+      ]
+    },
+    {
+      "caseId": "live_behavior.purchase_explicit_time_alternatives",
+      "annotation": "still applicable",
+      "causalGroup": "group-2-fact-loss",
+      "evidence": "Correct hour but omitted unknown-timezone and added unsolicited date/status. Timezone provenance already projected; model omitted it. Still applicable.",
+      "failedExpectationIds": [
+        "explicit-time-keeps-recorded-hour"
+      ],
+      "ledgerClassifications": [
+        "product-helpfulness"
+      ]
+    },
+    {
+      "caseId": "live_behavior.purchase_joaquin_dedication_selection",
+      "annotation": "still applicable",
+      "causalGroup": "group-1-source-scope",
+      "evidence": "Two purchases distinguished but no clear selection question plus unconfirmed handoff promise. Model must ask; no deterministic question permitted. Still applicable.",
+      "failedExpectationIds": [
+        "joaquin-is-asked-to-select-one-purchase"
+      ],
+      "ledgerClassifications": [
+        "product-helpfulness"
+      ]
+    },
+    {
+      "caseId": "live_behavior.purchase_kiara_pending_by_phone",
+      "annotation": "historical oracle issue",
+      "causalGroup": "group-1-source-scope",
+      "evidence": "Ledger oracle-fixture revised to v3: banned gift lookup while both sources read with complete coverage grounded. Carried forward; no rescoring.",
+      "failedExpectationIds": [
+        "kiara-uses-order-summary-only"
+      ],
+      "ledgerClassifications": [
+        "oracle-fixture"
+      ]
+    },
+    {
+      "caseId": "live_behavior.purchase_martha_accountless_selection",
+      "annotation": "historical oracle issue",
+      "causalGroup": "group-1-source-scope",
+      "evidence": "Ledger oracle-fixture revised to v5: demanded orders label and banned gift lookup while gift reads answered grounded. Carried forward; no rescoring.",
+      "failedExpectationIds": [
+        "martha-uses-phone-orders-without-auth"
+      ],
+      "ledgerClassifications": [
+        "oracle-fixture"
+      ]
+    },
+    {
+      "caseId": "live_behavior.purchase_pending_transfer_continuity",
+      "annotation": "still applicable",
+      "causalGroup": "group-2-fact-loss",
+      "evidence": "Presented user-supplied time as a record fact. Source-vs-user time provenance already projected; model merged them. Still applicable.",
+      "failedExpectationIds": [
+        "currency-time-claims-remain-grounded"
+      ],
+      "ledgerClassifications": [
+        "product-fact-effect"
+      ]
+    },
+    {
+      "caseId": "live_behavior.receipt_dual_same_amount_asks",
+      "annotation": "still applicable",
+      "causalGroup": "group-1-source-scope",
+      "evidence": "Both S/340.44 records preserved without selection but no discriminator question asked. Packet A preserves candidates; the model must ask. Still applicable.",
+      "failedExpectationIds": [
+        "dual-amount-asks-one-discriminator"
+      ],
+      "ledgerClassifications": [
+        "product-helpfulness"
+      ]
+    },
+    {
+      "caseId": "live_behavior.receipt_explicit_older_target_wins",
+      "annotation": "still applicable",
+      "causalGroup": "group-1-source-scope",
+      "evidence": "Explicit older record used correctly but required 72h window omitted. Window expectation still projected for pending; model omitted it. Still applicable completeness.",
+      "failedExpectationIds": [
+        "older-target-uses-explicit-record"
+      ],
+      "ledgerClassifications": [
+        "product-helpfulness"
+      ]
+    },
+    {
+      "caseId": "live_behavior.receipt_text_pending_then_receipt_alone",
+      "annotation": "still applicable",
+      "causalGroup": "group-2-fact-loss",
+      "evidence": "Pending state and receipt/approval distinction correct but required 72h window omitted. Still applicable completeness.",
+      "failedExpectationIds": [
+        "receipt-alone-explains-state"
+      ],
+      "ledgerClassifications": [
+        "product-helpfulness"
+      ]
+    },
+    {
+      "caseId": "live_behavior.repeated_otp_failure_preserves_gift_query",
+      "annotation": "still applicable",
+      "causalGroup": "group-5-rsvp-effect",
+      "evidence": "Effect fired but reply only implies handoff via 'revision del equipo'. Explicit statement is generation. Still applicable.",
+      "failedExpectationIds": [
+        "turn0-auth-episode-ended-handoff-confirmed"
+      ],
+      "ledgerClassifications": [
+        "product-helpfulness"
+      ]
+    },
+    {
+      "caseId": "live_behavior.rsvp_ambiguous_event_requires_grounded_selection",
+      "annotation": "covered by current fix",
+      "causalGroup": "group-5-rsvp-effect",
+      "evidence": "Packet C v5 replaces the internal node pin with observable zero-write receipt (rsvp.write 0/0/0 T0) plus retained state, zero-guest_rsvp tool evidence and the two-candidate dated semantic. Current targeted T0 already names both events with dates. T1 not-found audited as truthful nonverification (fixture permits no verified post-write here).",
+      "failedExpectationIds": [
+        "remains-in-rsvp-node",
+        "asks-which-persisted-event"
+      ],
+      "ledgerClassifications": [
+        "product-helpfulness"
+      ]
+    },
+    {
+      "caseId": "live_behavior.rsvp_cristian_phone_enriched_confirmation",
+      "annotation": "still applicable",
+      "causalGroup": "group-5-rsvp-effect",
+      "evidence": "Never entered RSVP node and missed all three evidence reads. Routing/reads untouched. Still applicable.",
+      "failedExpectationIds": [
+        "cristian-enters-rsvp",
+        "cristian-reconciles-both-phone-reads"
+      ],
+      "ledgerClassifications": [
+        "product-fact-effect",
+        "product-helpfulness"
+      ]
+    },
+    {
+      "caseId": "live_behavior.rsvp_explicit_mutation_targets_requested_event",
+      "annotation": "still applicable",
+      "causalGroup": "group-2-fact-loss",
+      "evidence": "Wrong hour (1pm vs recorded 18:00) plus unbacked Peru claim. RSVP time facts projected; model erred. Still applicable fact defect.",
+      "failedExpectationIds": [
+        "turn0-answers-ana-facts"
+      ],
+      "ledgerClassifications": [
+        "product-fact-effect"
+      ]
+    },
+    {
+      "caseId": "live_behavior.rsvp_guest_and_plus_one_combined_saved",
+      "annotation": "still applicable",
+      "causalGroup": "group-5-rsvp-effect",
+      "evidence": "Self-contradictory saved-then-unverified wording against a saved receipt. BLOCKER-adjacent (false effect language). Plus-one effect projection untouched. Still applicable.",
+      "failedExpectationIds": [
+        "combined-saved"
+      ],
+      "ledgerClassifications": [
+        "product-fact-effect"
+      ]
+    },
+    {
+      "caseId": "live_behavior.rsvp_host_set_declining_consistent",
+      "annotation": "still applicable",
+      "causalGroup": "group-5-rsvp-effect",
+      "evidence": "Bounded clarification asked but per-event invitation states omitted. Still applicable.",
+      "failedExpectationIds": [
+        "declining-reported-for-named-event"
+      ],
+      "ledgerClassifications": [
+        "product-helpfulness"
+      ]
+    },
+    {
+      "caseId": "live_behavior.rsvp_missing_action_requires_explicit_decision",
+      "annotation": "still applicable",
+      "causalGroup": "group-5-rsvp-effect",
+      "evidence": "Invited explicit decision without mutating but did not state current not-attending state. Still applicable.",
+      "failedExpectationIds": [
+        "asks-for-explicit-rsvp-decision"
+      ],
+      "ledgerClassifications": [
+        "product-helpfulness"
+      ]
+    },
+    {
+      "caseId": "live_behavior.rsvp_missing_event_identity_is_unavailable",
+      "annotation": "still applicable",
+      "causalGroup": "group-5-rsvp-effect",
+      "evidence": "'No pude localizar' suggests absence for an unidentifiable event; no retry or human offer. Still applicable.",
+      "failedExpectationIds": [
+        "incomplete-evidence-is-not-no-invitation"
+      ],
+      "ledgerClassifications": [
+        "product-helpfulness"
+      ]
+    },
+    {
+      "caseId": "live_behavior.rsvp_plus_one_not_eligible_no_false_success",
+      "annotation": "still applicable",
+      "causalGroup": "group-5-rsvp-effect",
+      "evidence": "No-false-success held but never stated the companion response was not saved nor offered human help. Still applicable.",
+      "failedExpectationIds": [
+        "not-eligible-reported-honestly"
+      ],
+      "ledgerClassifications": [
+        "product-helpfulness"
+      ]
+    },
+    {
+      "caseId": "live_behavior.rsvp_plus_one_uses_phone_scoped_mutation",
+      "annotation": "still applicable",
+      "causalGroup": "group-5-rsvp-effect",
+      "evidence": "Affirms saved then contradicts with unverified. BLOCKER-adjacent (false effect language). Untouched. Still applicable.",
+      "failedExpectationIds": [
+        "saved-outcome-only"
+      ],
+      "ledgerClassifications": [
+        "product-fact-effect"
+      ]
+    },
+    {
+      "caseId": "live_behavior.rsvp_tia_niur_ambiguous_clarifies",
+      "annotation": "still applicable",
+      "causalGroup": "group-5-rsvp-effect",
+      "evidence": "Never entered RSVP node and named neither candidate event nor dates. Routing/grounding untouched. Still applicable.",
+      "failedExpectationIds": [
+        "ambiguous-enters-rsvp-node",
+        "ambiguous-asks-bounded-selection"
+      ],
+      "ledgerClassifications": [
+        "product-helpfulness"
+      ]
+    },
+    {
+      "caseId": "live_behavior.rsvp_trusted_phone_reports_no_pending",
+      "annotation": "still applicable",
+      "causalGroup": "group-5-rsvp-effect",
+      "evidence": "Never entered RSVP node, missed invitation read, wrong route, unnecessary clarification. Reads/routing untouched. Still applicable.",
+      "failedExpectationIds": [
+        "enters-rsvp-node",
+        "reads-user-level-invitations-without-auth",
+        "records-rsvp-route",
+        "reports-no-associated-invitation-outcome"
+      ],
+      "ledgerClassifications": [
+        "product-fact-effect",
+        "product-helpfulness"
+      ]
+    },
+    {
+      "caseId": "live_behavior.s01_frozen_kiara_pending_replay",
+      "annotation": "historical oracle issue",
+      "causalGroup": "group-1-source-scope",
+      "evidence": "Ledger oracle-fixture revised to v4: demanded orders label and banned gift lookup while gift read answered grounded. Frozen world unchanged. Carried forward; no rescoring.",
+      "failedExpectationIds": [
+        "s01-frozen-uses-order-summary-only"
+      ],
+      "ledgerClassifications": [
+        "oracle-fixture"
+      ]
+    },
+    {
+      "caseId": "live_behavior.s08_kiara_approved_replay",
+      "annotation": "historical oracle issue",
+      "causalGroup": "group-1-source-scope",
+      "evidence": "Ledger oracle-fixture revised to v6: banned gift lookup while both sources read grounded. Frozen world unchanged. Carried forward; no rescoring.",
+      "failedExpectationIds": [
+        "s08-approved-uses-order-summary-only"
+      ],
+      "ledgerClassifications": [
+        "oracle-fixture"
+      ]
+    },
+    {
+      "caseId": "live_behavior.s4-injected-renderer-prose-fails",
+      "annotation": "still applicable",
+      "causalGroup": "group-6-grounding",
+      "evidence": "Attributed selection to another provider against Opcion Esencial evidence. BLOCKER (wrong entity). Untouched. Still applicable.",
+      "failedExpectationIds": [
+        "s4-genuine-card-correct"
+      ],
+      "ledgerClassifications": [
+        "product-fact-effect"
+      ]
+    },
+    {
+      "caseId": "live_behavior.spanish_only_mixed_language_request",
+      "annotation": "planning accepted",
+      "causalGroup": "group-6-grounding",
+      "evidence": "Ledger planning-accepted: facts grounded and Spanish-only held; only a concrete next step missing. Zero effects. Carried forward; release may waive explicitly.",
+      "failedExpectationIds": [
+        "correct-behavior-and-spanish-only"
+      ],
+      "ledgerClassifications": [
+        "planning-accepted"
+      ]
+    },
+    {
+      "caseId": "live_behavior.support_detail_continuity",
+      "annotation": "covered by current fix",
+      "causalGroup": "group-3-support-continuation",
+      "evidence": "Packet B continuity prompt requires naming current-turn refs, blocks needless re-ask, and keeps optional prior questions non-obligatory; history plus continuity facts preserve the card issue. Old failure mode (names without issue) and new mode (lost event plus country re-ask) both targeted. Live proof pending in the new gate.",
+      "failedExpectationIds": [
+        "support-details-do-not-reset-or-rename"
+      ],
+      "ledgerClassifications": [
+        "product-helpfulness"
+      ]
+    },
+    {
+      "caseId": "live_behavior.tito_numbered_name_and_post_rsvp_closure",
+      "annotation": "still applicable",
+      "causalGroup": "group-5-rsvp-effect",
+      "evidence": "Multiple thanks instead of one brief mention plus unbacked 'bonita' claim. Style/grounding untouched. Still applicable.",
+      "failedExpectationIds": [
+        "post-rsvp-comment-preserves-attendance-with-one-acknowledgement"
+      ],
+      "ledgerClassifications": [
+        "product-helpfulness"
+      ]
+    },
+    {
+      "caseId": "live_behavior.wait_followup_no_repeat",
+      "annotation": "still applicable",
+      "causalGroup": "group-5-rsvp-effect",
+      "evidence": "T1 restated date/time against no-repeat; T2 'quedo registrada' claims new registration for an already-registered confirmation. T2 is BLOCKER-adjacent (false new effect). Untouched. Still applicable.",
+      "failedExpectationIds": [
+        "turn1-short-no-repeat",
+        "turn2-short-no-repeat"
+      ],
+      "ledgerClassifications": [
+        "product-fact-effect",
+        "product-helpfulness"
+      ]
+    },
+    {
+      "caseId": "live_behavior.wedding_planner_location_completes_search",
+      "annotation": "still applicable",
+      "causalGroup": "group-6-grounding",
+      "evidence": "Real options presented with invented prices, descriptions and promo terms. BLOCKER (invented facts). Untouched. Still applicable.",
+      "failedExpectationIds": [
+        "final-response-advances-without-an-empty-extra-step"
+      ],
+      "ledgerClassifications": [
+        "product-fact-effect"
+      ]
+    },
+    {
+      "caseId": "live_feedback.token_fresh_multifront_stays_multi_need",
+      "annotation": "still applicable",
+      "causalGroup": "group-6-grounding",
+      "evidence": "Five needs kept correctly with invented ratings, prices and venue details. BLOCKER (invented facts). Untouched. Still applicable.",
+      "failedExpectationIds": [
+        "correct-multifront-behavior"
+      ],
+      "ledgerClassifications": [
+        "product-fact-effect"
+      ]
+    }
+  ]
+}
