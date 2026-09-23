@@ -379,8 +379,10 @@ failed hard expectation is a failed gate per AGENTS.md.
 
 Step E — adjudicate from stored artifacts (no rescoring):
 compare the new report against the frozen ledger
-(`evals/ledgers/eval-2026-09-22T21-54-01-651Z-54da3f5a.json`) and the 10 revised
-contracts (section 5). Product blockers requiring repair before production
+(`evals/ledgers/eval-2026-09-22T21-54-01-651Z-54da3f5a.json`) and the 10 historical
+revisions in section 5 plus the subsequent `image_readable_captionless` v7
+amount-only correction. The frozen ledger still points to historical v6; do
+not rewrite it or rescore the frozen run. Product blockers requiring repair before production
 (wrong-entity disclosure or mutation, duplicate effect, fabricated successful
 write/approval, blank or undelivered support reply, the 227.76 full-due
 balance) fail the release even if the aggregate moves. Wording/completeness/
@@ -389,16 +391,22 @@ carried explicitly, never silently; the 2 `planning-accepted` rows still need
 their explicit waiver decision. Record the run id and artifact in the
 implementation log.
 
-Step F — production promotion (only after the gate passes and a human
-authorizes the release): promote the EXACT dev artifact bytes plus the three
-dev-parity model params. The C5 path enforces this; run from a shell whose
+Step F — production promotion (only after the full gate is executed and
+adjudicated): a failed hard expectation keeps the gate RED. The owner's
+previously accepted red-release rule permits promotion only when every
+remaining failure is explicitly classified as accepted wording, completeness,
+planning quality, or oracle drift, and no product blocker or unresolved
+transport/error remains. Record that waiver and never label a red gate green.
+Promote the EXACT dev artifact bytes plus the three dev-parity model params. The C5 path enforces this; run from a shell whose
 `OPENAI_MODEL`, `OPENAI_EXTRACTOR_MODEL`, and
 `OPENAI_RESPONSE_CLASSIFIER_MODEL` each exactly equal the corresponding
 `recap-agent-runtime-dev` stack parameter (currently `gpt-6-luna` ×3):
 `AWS_PROFILE=se-dev AWS_REGION=us-east-1 DEPLOYMENT_ENV=production DEPLOY_ARTIFACT_PATH=<dev-zip> DEPLOY_ARTIFACT_SHA256=<dev-sha> npm run deploy`.
-The script aborts on any missing model value, any dev/prod model mismatch, or
-any post-deploy mismatch of CloudFormation params, live Lambda env, CodeS3Key,
-or CodeSha256. Record the printed rollback identities (previous prod models +
+The script aborts before deployment if the development Lambda CodeSha256
+differs from the tested ZIP digest. After deployment it compares production
+CodeSha256 with that same digest and verifies CloudFormation params, live
+Lambda env, and CodeS3Key. A post-deploy mismatch is detected after mutation
+and requires immediate rollback; an exception cannot undo the deployment. Record the printed rollback identities (previous prod models +
 S3 key), the new CodeSha256, and the verified models. Keep the previous prod
 artifact available for rollback.
 
@@ -406,3 +414,22 @@ Rollback: redeploy production with the recorded previous S3 key and previous
 model values through the same Step F command shape; verify the same four
 post-deploy checks.
 
+
+## 13. Post-freeze review amendment (2026-09-22; offline only)
+
+The section-4 ZIP and source freeze document the **historical** 71e85613 candidate.
+They are not the release artifact after commits 746b04a5 (cross-lane typed
+continuity), c5b4c9af (amount-only oracle v7), 4e86183e (unused effect-helper
+removal), and 8260301a (development/production CodeSha256 parity). The
+frozen 138-row ledger remains unchanged and refers to the historical v6
+captionless contract. The live candidate must be built and deployed from the
+new HEAD; record its own ZIP digest, development CodeSha256, model parameters,
+and run manifest. None of those steps has been executed here.
+
+The release decision is the owner's existing adjudicated-red policy recorded
+in `final-promotion-prompt-pass-2026-09-22.md`: every hard failure makes the
+gate red; only explicitly accepted quality, planning, or oracle failures may
+be carried. Wrong-entity or unauthorized effects, duplicate effects, false
+success, blank delivery, factual balance errors, and unresolved transport
+errors stop promotion. A post-deploy verification failure requires immediate
+rollback to the captured production artifact and parameters.
