@@ -4644,6 +4644,10 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
         }),
         singleOrderId,
       );
+      // The profile_ref collapse keeps the per-source discovery coverage
+      // the projector retained on the reference: the canonical profile
+      // carries the records, this reference keeps which sources were read,
+      // so a partial source set never reads as exhaustive.
       if (
         balanceLimitation !== null &&
         !purchaseProfileCarriesBalanceFacts(request.customerContext, [balanceLimitation.orderId])

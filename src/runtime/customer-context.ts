@@ -8,6 +8,8 @@ import type {
   PurchaseItem,
   PurchaseItemSourceAlternative,
   PurchaseItemSourceConflict,
+  PurchasePartition,
+  PurchaseSourceCoverage,
 } from '../core/information';
 import type { UserEventLookupResult } from './provider-gateway';
 import {
@@ -95,6 +97,12 @@ export type PurchaseCartSummary = {
   readonly paymentStatus: string | null;
   readonly grandTotal: number | null;
   /**
+   * Per-record provenance. Phone-scoped order candidates carry their backend
+   * partition; account reads omit it. Sparse: absent when unknown, never
+   * invented. Source-level coverage travels once per section, not per record.
+   */
+  readonly partition?: PurchasePartition;
+  /**
    * Lane A explicit balance distinction. The sourced order total never
    * reads as an amount owed: paid/remaining availability travels with it,
    * unknown stays unknown, and a missing payment record never reads as
@@ -114,6 +122,12 @@ export type PurchasesCartsSection = CustomerSectionBase & {
   readonly carts: readonly CartInformation[];
   /** Full records stay runtime-only; only matched records project detail. */
   readonly detailedPurchases: readonly PurchaseInformation[];
+  /**
+   * Per-source coverage for discovery expansions behind this section, in
+   * stable source order. Absent when no leg reported coverage. Partial or
+   * failed legs stay explicit here so ready facts never read as exhaustive.
+   */
+  readonly sourceCoverage?: readonly PurchaseSourceCoverage[];
 };
 
 export type InvitationEventSummary = {
@@ -529,18 +543,22 @@ export function assembleCustomerContext(args: {
       // the projection moved into amountDisclosure never reads as a null
       // grandTotal beside an available total. Known payment status passes
       // through untouched; item facts live once in detailedPurchases.
+      // Per-record partition provenance rides the summary sparsely when the
+      // projected record carries it; source coverage rides once per section.
       purchases: coalescedDetailed.map((purchase) => ({
         orderId: purchase.orderId,
         eventId: purchase.eventId ?? null,
         eventName: purchase.eventName ?? null,
         paymentStatus: purchase.paymentStatus,
         grandTotal: disclosedPurchaseTotal(purchase) ?? purchase.grandTotal,
+        ...(purchase.partition ? { partition: purchase.partition } : {}),
         ...purchaseBalanceMarkers(purchase),
       })),
       carts: purchaseResults.flatMap((result) =>
         result.status === 'completed' ? (result.carts ?? []) : [],
       ),
       detailedPurchases: coalescedDetailed,
+      ...collectedPurchaseSourceCoverage(purchaseResults),
     };
 
   const eventStatuses = eventResults.map((result, index) =>
@@ -665,6 +683,40 @@ function paginationFor(
   return { paginationExhausted: seen ? exhausted : null, historyLimit };
 }
 
+/**
+ * Per-source coverage behind the purchases section. Collects every leg the
+ * orchestrator reported (completed and failed alike), deduplicated by
+ * source + childId in stable source order. Absent when no leg reported
+ * coverage, so single-source turns serialize unchanged. Partial or failed
+ * legs stay explicit so ready facts never read as exhaustive.
+ */
+function collectedPurchaseSourceCoverage(
+  results: readonly InformationTaskResult[],
+): { sourceCoverage?: readonly PurchaseSourceCoverage[] } {
+  const seen = new Map<string, PurchaseSourceCoverage>();
+  for (const result of results) {
+    if (result.kind !== 'purchase') continue;
+    const coverage = (result.status === 'completed' || result.status === 'failed')
+      ? result.sourceCoverage ?? []
+      : [];
+    for (const entry of coverage) {
+      const key = `${entry.source}:${entry.childId}`;
+      if (!seen.has(key)) seen.set(key, entry);
+    }
+  }
+  if (seen.size === 0) return {};
+  const order: readonly string[] = ['orders', 'gift_purchases'];
+  const sorted = [...seen.values()].sort((left, right) => {
+    const leftIndex = order.indexOf(left.source);
+    const rightIndex = order.indexOf(right.source);
+    const leftRank = leftIndex < 0 ? order.length : leftIndex;
+    const rightRank = rightIndex < 0 ? order.length : rightIndex;
+    if (leftRank !== rightRank) return leftRank - rightRank;
+    return left.childId.localeCompare(right.childId);
+  });
+  return { sourceCoverage: sorted };
+}
+
 function worstStatus(statuses: readonly CustomerSectionStatus[]): CustomerSectionStatus {
   if (statuses.length === 0) {
     return 'not_requested';
@@ -764,6 +816,32 @@ export type CustomerContextProjection = {
   readonly actionOutcomes: readonly ActionOutcome[];
   /** Null/absent when no linked-detail enrichment ran on this turn. */
   readonly enrichment?: CustomerEnrichmentSummary | null;
+  /**
+   * Section provenance behind the projected records. Sparse: a section entry
+   * appears only when that section was requested, and only set fields are
+   * emitted. Carries the backend route, access scope, completeness,
+   * pagination/history bounds and per-source discovery coverage so "no other
+   * records" is never inferred from a partial or failed source. Per-record
+   * provenance (partition) rides each purchase summary and detail record.
+   */
+  readonly provenance?: CustomerContextProvenance;
+};
+
+/** Sparse per-section provenance for one projected customer profile. */
+export type CustomerSectionProvenance = {
+  readonly source?: string;
+  readonly scope?: string;
+  readonly completeness?: 'complete' | 'partial' | 'country_only';
+  readonly paginationExhausted?: boolean;
+  readonly historyLimit?: string;
+  readonly fetchedAt?: string;
+  readonly sourceCoverage?: readonly PurchaseSourceCoverage[];
+};
+
+/** Sparse provenance block for the projected customer profile. */
+export type CustomerContextProvenance = {
+  readonly purchasesCarts?: CustomerSectionProvenance;
+  readonly invitationsEvents?: CustomerSectionProvenance;
 };
 
 /**
@@ -809,7 +887,14 @@ export function buildCompactCandidateSummaries(
     for (const purchase of snapshot.purchasesCarts.purchases) {
       const detail = detailByOrderId.get(purchase.orderId);
       const eventDate = detail?.eventDate ?? null;
-      const total = detail?.amountDisclosure?.total ?? detail?.grandTotal ?? purchase.grandTotal;
+      // Candidate amounts mirror the resolved record detail through the same
+      // disclosure-first readers the summary uses: the orchestrator nulls the
+      // direct total/currency into amountDisclosure, so reading the direct
+      // fields here would contradict the detail (currency always missing).
+      const total = detail !== undefined
+        ? disclosedPurchaseTotal(detail) ?? purchase.grandTotal
+        : purchase.grandTotal;
+      const currency = detail !== undefined ? disclosedPurchaseCurrency(detail) : null;
       candidates.push({
         kind: 'order',
         ...(purchase.orderId.trim().length > 0 ? { orderId: purchase.orderId } : {}),
@@ -819,7 +904,7 @@ export function buildCompactCandidateSummaries(
         ...(eventDate ? { eventDate } : {}),
         ...(detail?.createdAt ? { createdAt: detail.createdAt } : {}),
         ...(total != null ? { total } : {}),
-        ...(detail?.currency ? { currency: detail.currency } : {}),
+        ...(currency ? { currency } : {}),
         ...(purchase.paymentStatus !== null && purchase.paymentStatus.trim().length > 0
           ? { state: purchase.paymentStatus }
           : {}),
@@ -915,7 +1000,59 @@ export function projectCustomerContext(
       ? [...snapshot.actionOutcomes.outcomes]
       : [],
     enrichment: enrichment ?? null,
+    ...buildProfileProvenanceField(snapshot),
   };
+}
+
+/**
+ * Sparse section provenance for the model-visible profile. A section entry
+ * appears only when that section was requested; only set fields serialize.
+ * Keeps the backend route, access scope, completeness, pagination/history
+ * bounds and discovery source coverage next to the records they describe,
+ * so partial or failed sources never read as exhaustive. Pure projection.
+ */
+function buildProfileProvenanceField(
+  snapshot: CustomerContextSnapshot,
+): { provenance?: CustomerContextProvenance } {
+  const provenance: CustomerContextProvenance = {};
+  if (snapshot.purchasesCarts.status !== 'not_requested') {
+    const section: CustomerSectionProvenance = {
+      ...(snapshot.purchasesCarts.source ? { source: snapshot.purchasesCarts.source } : {}),
+      ...(snapshot.purchasesCarts.scope ? { scope: snapshot.purchasesCarts.scope } : {}),
+      ...(snapshot.purchasesCarts.completeness ? { completeness: snapshot.purchasesCarts.completeness } : {}),
+      ...(snapshot.purchasesCarts.paginationExhausted !== null
+        ? { paginationExhausted: snapshot.purchasesCarts.paginationExhausted }
+        : {}),
+      ...(snapshot.purchasesCarts.historyLimit ? { historyLimit: snapshot.purchasesCarts.historyLimit } : {}),
+      ...(snapshot.purchasesCarts.fetchedAt ? { fetchedAt: snapshot.purchasesCarts.fetchedAt } : {}),
+      ...(snapshot.purchasesCarts.sourceCoverage && snapshot.purchasesCarts.sourceCoverage.length > 0
+        ? { sourceCoverage: snapshot.purchasesCarts.sourceCoverage }
+        : {}),
+    };
+    if (Object.keys(section).length > 0) {
+      (provenance as { purchasesCarts?: CustomerSectionProvenance }).purchasesCarts = section;
+    }
+  }
+  if (snapshot.invitationsEvents.status !== 'not_requested') {
+    const section: CustomerSectionProvenance = {
+      ...(snapshot.invitationsEvents.source ? { source: snapshot.invitationsEvents.source } : {}),
+      ...(snapshot.invitationsEvents.scope ? { scope: snapshot.invitationsEvents.scope } : {}),
+      ...(snapshot.invitationsEvents.completeness
+        ? { completeness: snapshot.invitationsEvents.completeness }
+        : {}),
+      ...(snapshot.invitationsEvents.paginationExhausted !== null
+        ? { paginationExhausted: snapshot.invitationsEvents.paginationExhausted }
+        : {}),
+      ...(snapshot.invitationsEvents.historyLimit
+        ? { historyLimit: snapshot.invitationsEvents.historyLimit }
+        : {}),
+      ...(snapshot.invitationsEvents.fetchedAt ? { fetchedAt: snapshot.invitationsEvents.fetchedAt } : {}),
+    };
+    if (Object.keys(section).length > 0) {
+      (provenance as { invitationsEvents?: CustomerSectionProvenance }).invitationsEvents = section;
+    }
+  }
+  return Object.keys(provenance).length > 0 ? { provenance } : {};
 }
 
 /**
@@ -1277,6 +1414,7 @@ export function invalidateSectionAfterWrite(
         purchases: [],
         carts: [],
         detailedPurchases: [],
+        sourceCoverage: undefined,
       },
     };
   }
@@ -1309,6 +1447,51 @@ export function recordActionOutcome(
       outcomes: [...snapshot.actionOutcomes.outcomes, outcome],
     },
   };
+}
+
+/**
+ * Mutation target ID validation. A write target is valid only when every
+ * identity it names is present and well-formed: non-empty trimmed strings
+ * for order/operation/target references, positive integer IDs for stable
+ * numeric identities. Display names never validate a target.
+ */
+export function isValidMutationTargetId(
+  id: string | number | null | undefined,
+): boolean {
+  if (typeof id === 'number') {
+    return Number.isInteger(id) && id > 0;
+  }
+  return typeof id === 'string' && id.trim().length > 0;
+}
+
+/**
+ * Validated effect ledger write. The outcome is recorded only when its
+ * operation, target and observation timestamp are present and its dedupe
+ * key is set: the key is what enforces at most one write per effect, and a
+ * missing key would let repeats append silently. Invalid outcomes throw
+ * instead of recording, so callers fix the target rather than persisting a
+ * receipt that can never deduplicate. Duplicates return the snapshot
+ * unchanged (no second write). Fresh authorized reads restore invalidated
+ * sections through mergeExecutionIntoSnapshot; failed re-reads preserve the
+ * last known section instead of erasing it.
+ */
+export function recordValidatedActionOutcome(
+  snapshot: CustomerContextSnapshot,
+  outcome: ActionOutcome,
+): CustomerContextSnapshot {
+  if (!isValidMutationTargetId(outcome.operation)) {
+    throw new Error('Cannot record an action outcome without a validated operation.');
+  }
+  if (!isValidMutationTargetId(outcome.target)) {
+    throw new Error('Cannot record an action outcome without a validated target.');
+  }
+  if (!isValidMutationTargetId(outcome.observedAt)) {
+    throw new Error('Cannot record an action outcome without a validated observation timestamp.');
+  }
+  if (outcome.dedupeKey === null || outcome.dedupeKey.trim().length === 0) {
+    throw new Error('Cannot record an action outcome without a dedupe key: at most one write per effect.');
+  }
+  return recordActionOutcome(snapshot, outcome);
 }
 
 export function hasConfirmedOutcome(

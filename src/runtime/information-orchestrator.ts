@@ -3033,6 +3033,12 @@ export class InformationOrchestrator {
 
     return {
       orderId: purchase.orderId,
+      // Per-record provenance survives projection sparsely: the phone
+      // partition and any carried conflict/currency markers ride the record
+      // so merged sources never masquerade as one provenance.
+      ...(purchase.partition ? { partition: purchase.partition } : {}),
+      ...(purchase.currencyConflict === true ? { currencyConflict: true as const } : {}),
+      ...(purchase.itemSourceConflict ? { itemSourceConflict: purchase.itemSourceConflict } : {}),
       eventId: purchase.eventId ?? null,
       currency: null,
       customerTransactionNumber: transactionReferenceVisible(purchase, options) ? purchase.customerTransactionNumber ?? null : null,
@@ -3040,6 +3046,12 @@ export class InformationOrchestrator {
         aspectSet.has('summary') || aspectSet.has('payment_status') || aspectSet.has('decline')
           ? purchase.paymentStatus
           : null,
+      // Dispatch state applies only with affirmative physical evidence: a
+      // physical gift never implies dispatch on its own (null stays null, no
+      // recipient is derived here), and a non-physical record withholds the
+      // order-level state since no gift shipment applies. Item fulfillment
+      // carries shipment applicability per item; this field carries the
+      // recorded state only when a shipment can exist.
       shippingStatus:
         physicalFulfillment &&
         (aspectSet.has('summary') || aspectSet.has('shipping'))

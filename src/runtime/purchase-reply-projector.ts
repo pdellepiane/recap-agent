@@ -576,6 +576,12 @@ export function projectCompletedPurchaseForModel(
     resource: result.resource,
     access_method: result.accessMethod ?? null,
     coverage: result.coverage ?? 'complete',
+    // Per-source discovery coverage survives alongside the outcome so a
+    // partial source set never reads as exhaustive. Sparse: absent on
+    // single-source reads. The profile_ref collapse keeps this reference.
+    ...(result.sourceCoverage && result.sourceCoverage.length > 0
+      ? { source_coverage: result.sourceCoverage }
+      : {}),
     outcome_kind: outcome.kind,
     outcome: projectPurchaseReplyForModel(outcome),
     reference_status: {
