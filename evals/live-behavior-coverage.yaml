@@ -1303,3 +1303,15 @@ behaviorChanges:
   - id: revert-recitation-requirements-after-t1-confabulation
     implementedBy: "2505876b"
     liveCaseIds: [live_behavior.pending_balance_validation_luis, live_behavior.gift_credit_pending_payment_stays_pending, live_behavior.image_url_receipt_payment_thread]
+# 2026-09-23 confirmed-context root causes (offline corrections, no live run
+# in this package). One entry per conversational behavior change; CLI and
+# quota-harness changes are offline-only and carry no live case.
+  - id: fixture-received-history-preservation
+    implementedBy: "0bf5812e"
+    liveCaseIds: [live_behavior.support_detail_continuity, live_behavior.concurrent_support_turns_preserve_context]
+  - id: customer-profile-deadline-origin-and-expiry-mapping
+    implementedBy: "7475f7c4"
+    liveCaseIds: [live_behavior.rsvp_plus_one_multiple_events_requires_selection, live_behavior.gift_mixed_order_distinguishes_items]
+  - id: gift-card-oracle-orders-prohibition-removal
+    implementedBy: "520de33d"
+    liveCaseIds: [live_behavior.gift_credit_with_physical_card_distinguishes]
