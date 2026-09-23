@@ -91,7 +91,9 @@ describe('support continuity prompt invariants', () => {
     // verifications that do not exist).
     expect(continuity).toContain('reported_guest_name');
     expect(continuity).toContain('reported_event_name');
-    expect(continuity).toContain('no repitas nombres que la respuesta no necesite');
+    // Packet B: current-turn names are required in the acknowledgment; only
+    // prior-turn names stay unrepeated.
+    expect(continuity).toContain('no repitas nombres de turnos anteriores que este mensaje no trae');
     expect(continuity).toContain('sin afirmar verificaciones que no existen');
   });
 

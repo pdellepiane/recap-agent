@@ -155,11 +155,16 @@ describe('packet E1 profile-inference expectation audit', () => {
     const ambiguous = catalog.cases.find(
       (c) => c.id === 'live_behavior.rsvp_ambiguous_event_requires_grounded_selection',
     );
-    expect(ambiguous?.version).toBe(4);
+    // Packet C v5: the internal node pin is replaced by an observable
+    // zero-write receipt; the id is retained for ledger continuity.
+    expect(ambiguous?.version).toBe(5);
     const ids = (ambiguous?.expectations ?? []).map((e) => e.id);
     expect(ids).not.toContain('records-one-ambiguous-attempt');
     expect(ids).not.toContain('projection-carries-candidate-dates');
     expect((ambiguous?.expectations ?? []).some((e) => e.type === 'text_contains')).toBe(false);
+    expect((ambiguous?.expectations ?? []).some((e) => e.type === 'node_transition')).toBe(false);
+    const stayInSelection = ambiguous?.expectations.find((e) => e.id === 'remains-in-rsvp-node');
+    expect(stayInSelection?.type).toBe('fixture_effect_count');
     const continuation = ambiguous?.expectations.find((e) => e.id === 'continuation-answers-on-chosen-candidate');
     expect(continuation?.type).toBe('text_semantic');
     if (continuation?.type !== 'text_semantic') throw new Error('continuation shape changed');

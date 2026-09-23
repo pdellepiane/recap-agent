@@ -345,7 +345,10 @@ describe('PromptLoader', () => {
       '`purchase`: estado o detalle de compra propia o notificada',
     );
     expect(extractorBundle.instructions).toContain(
-      'Origen por sujeto, no por aspecto',
+      'Origen por sujeto:',
+    );
+    expect(extractorBundle.instructions).toContain(
+      'Facetas (monto, pago, entrega, envío) nunca deciden origen',
     );
     expect(extractorBundle.instructions).toContain(
       'Retiro: política/plazo/estado → `faq`',
@@ -358,7 +361,12 @@ describe('PromptLoader', () => {
     );
     expect(extractorBundle.instructions).toContain('orderId=null');
     expect(extractorBundle.instructions).toContain('COD301816');
+    // Packet B: aspect→source examples removed; facets guide aspects while
+    // subject ownership alone decides the source.
     expect(extractorBundle.instructions).toContain(
+      'runtime aporta total/pagado/verificabilidad, nunca calcula saldo',
+    );
+    expect(extractorBundle.instructions).not.toContain(
       'orden establecida ⇒ `orders` [summary,payment_status,shipping]; si no ⇒ `purchase_discovery`',
     );
     expect(extractorBundle.instructions).toContain('no reemplaces nombres de proveedores desconocidos');

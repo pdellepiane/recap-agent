@@ -1023,7 +1023,7 @@ describe('R6 purchase disclosure reads the authorized method and labeled time', 
     expect(approvedSummary.order.amount?.method).toBeNull();
   });
 
-  it('omits method and validation policy on a status-only question', () => {
+  it('keeps method but omits validation policy on a status-only question', () => {
     const outcome = selectPurchaseReplyOutcome({
       purchases: [order()],
       carts: [],
@@ -1037,12 +1037,15 @@ describe('R6 purchase disclosure reads the authorized method and labeled time', 
     expect(outcome.kind).toBe('order_unique');
     if (outcome.kind !== 'order_unique') return;
     expect(outcome.order.paymentStatus).toBe('pending');
-    expect(outcome.order.amount?.method).toBeNull();
+    // Packet A facet closure: a pending balance keeps the recorded method
+    // so the answer can name it; the validation window stays omitted until
+    // its own facet is requested.
+    expect(outcome.order.amount?.method).toBe('Yape_o_Plin');
     expect(outcome.order.validationWindow).toBeNull();
     const model = projectPurchaseReplyForModel(outcome) as {
       order: { amount: Record<string, unknown> } & Record<string, unknown>;
     };
-    expect(model.order.amount).not.toHaveProperty('method');
+    expect(model.order.amount).toHaveProperty('method', 'Yape_o_Plin');
     expect(model.order).not.toHaveProperty('validationWindow');
   });
 
