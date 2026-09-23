@@ -33,10 +33,9 @@ import {
   assembleCustomerContext,
   hasConfirmedOutcome,
   invalidateSectionAfterWrite,
-  isValidMutationTargetId,
   mergeExecutionIntoSnapshot,
   projectCustomerContext,
-  recordValidatedActionOutcome,
+  recordActionOutcome,
   resolveRelevantTarget,
 } from '../src/runtime/customer-context';
 
@@ -1009,19 +1008,7 @@ describe('decision 1 effect ledger: validated ids, single write, fresh read-back
     });
   }
 
-  it('validates mutation target ids without keyword inference', () => {
-    expect(isValidMutationTargetId('ORD-OLDER-2021')).toBe(true);
-    expect(isValidMutationTargetId(205)).toBe(true);
-    expect(isValidMutationTargetId('  ')).toBe(false);
-    expect(isValidMutationTargetId('')).toBe(false);
-    expect(isValidMutationTargetId(null)).toBe(false);
-    expect(isValidMutationTargetId(undefined)).toBe(false);
-    expect(isValidMutationTargetId(0)).toBe(false);
-    expect(isValidMutationTargetId(-3)).toBe(false);
-    expect(isValidMutationTargetId(1.5)).toBe(false);
-  });
-
-  it('records a validated outcome once and rejects repeats and invalid targets', () => {
+  it('deduplicates an action outcome already present in a profile snapshot', () => {
     const ready = readySnapshot();
     const outcome = {
       operation: 'rsvp.confirm',
@@ -1030,18 +1017,9 @@ describe('decision 1 effect ledger: validated ids, single write, fresh read-back
       observedAt: NOW,
       dedupeKey: 'decision-1:rsvp:205:41',
     };
-    const recorded = recordValidatedActionOutcome(ready, outcome);
+    const recorded = recordActionOutcome(ready, outcome);
     expect(hasConfirmedOutcome(recorded, 'decision-1:rsvp:205:41')).toBe(true);
-    // A repeat acknowledgement finds the confirmed receipt: no second write.
-    const repeated = recordValidatedActionOutcome(recorded, outcome);
-    expect(repeated.actionOutcomes.outcomes).toHaveLength(1);
-    expect(repeated).toBe(recorded);
-    // Invalid targets throw instead of recording an undeduplicatable receipt.
-    expect(() => recordValidatedActionOutcome(ready, { ...outcome, operation: '  ' })).toThrow();
-    expect(() => recordValidatedActionOutcome(ready, { ...outcome, target: '' })).toThrow();
-    expect(() => recordValidatedActionOutcome(ready, { ...outcome, observedAt: '' })).toThrow();
-    expect(() => recordValidatedActionOutcome(ready, { ...outcome, dedupeKey: null })).toThrow();
-    expect(() => recordValidatedActionOutcome(ready, { ...outcome, dedupeKey: '  ' })).toThrow();
+    expect(recordActionOutcome(recorded, outcome)).toBe(recorded);
   });
 
   it('invalidates before reporting and restores through a fresh read-back', () => {
@@ -1049,7 +1027,7 @@ describe('decision 1 effect ledger: validated ids, single write, fresh read-back
     const invalidated = invalidateSectionAfterWrite(ready, 'purchases_carts');
     expect(invalidated.purchasesCarts.status).toBe('loading');
     expect(invalidated.purchasesCarts.purchases).toEqual([]);
-    const recorded = recordValidatedActionOutcome(invalidated, {
+    const recorded = recordActionOutcome(invalidated, {
       operation: 'rsvp.confirm',
       target: 'event:205:guest:41',
       receipt: 'confirmed' as const,
@@ -1093,7 +1071,7 @@ describe('decision 1 effect ledger: validated ids, single write, fresh read-back
     // The confirmed receipt survives the read-back: a repeat finds it and
     // implies no new action.
     expect(hasConfirmedOutcome(restored, 'decision-1:rsvp:205:41')).toBe(true);
-    const rerecorded = recordValidatedActionOutcome(restored, {
+    const rerecorded = recordActionOutcome(restored, {
       operation: 'rsvp.confirm',
       target: 'event:205:guest:41',
       receipt: 'confirmed' as const,

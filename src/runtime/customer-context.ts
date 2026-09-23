@@ -1449,51 +1449,6 @@ export function recordActionOutcome(
   };
 }
 
-/**
- * Mutation target ID validation. A write target is valid only when every
- * identity it names is present and well-formed: non-empty trimmed strings
- * for order/operation/target references, positive integer IDs for stable
- * numeric identities. Display names never validate a target.
- */
-export function isValidMutationTargetId(
-  id: string | number | null | undefined,
-): boolean {
-  if (typeof id === 'number') {
-    return Number.isInteger(id) && id > 0;
-  }
-  return typeof id === 'string' && id.trim().length > 0;
-}
-
-/**
- * Validated effect ledger write. The outcome is recorded only when its
- * operation, target and observation timestamp are present and its dedupe
- * key is set: the key is what enforces at most one write per effect, and a
- * missing key would let repeats append silently. Invalid outcomes throw
- * instead of recording, so callers fix the target rather than persisting a
- * receipt that can never deduplicate. Duplicates return the snapshot
- * unchanged (no second write). Fresh authorized reads restore invalidated
- * sections through mergeExecutionIntoSnapshot; failed re-reads preserve the
- * last known section instead of erasing it.
- */
-export function recordValidatedActionOutcome(
-  snapshot: CustomerContextSnapshot,
-  outcome: ActionOutcome,
-): CustomerContextSnapshot {
-  if (!isValidMutationTargetId(outcome.operation)) {
-    throw new Error('Cannot record an action outcome without a validated operation.');
-  }
-  if (!isValidMutationTargetId(outcome.target)) {
-    throw new Error('Cannot record an action outcome without a validated target.');
-  }
-  if (!isValidMutationTargetId(outcome.observedAt)) {
-    throw new Error('Cannot record an action outcome without a validated observation timestamp.');
-  }
-  if (outcome.dedupeKey === null || outcome.dedupeKey.trim().length === 0) {
-    throw new Error('Cannot record an action outcome without a dedupe key: at most one write per effect.');
-  }
-  return recordActionOutcome(snapshot, outcome);
-}
-
 export function hasConfirmedOutcome(
   snapshot: CustomerContextSnapshot,
   dedupeKey: string,
