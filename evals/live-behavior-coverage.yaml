@@ -198,6 +198,24 @@ behaviorChanges:
   - id: omit-cash-gift-shipping-fields-from-reply-model
     implementedBy: dee1d45
     liveCaseIds: [live_behavior.nonphysical_purchase_omits_shipping]
+  - id: complete-authorized-customer-profile-before-extraction
+    implementedBy: "49000e34"
+    liveCaseIds:
+      - live_behavior.abandoned_cart_only_sonia
+      - live_behavior.gift_credit_with_physical_card_distinguishes
+      - live_behavior.pending_balance_validation_luis
+      - live_behavior.gift_credit_pending_payment_stays_pending
+      - live_behavior.current_campaign_order_over_historical_declined_maria_jose
+      - live_behavior.support_detail_continuity
+      - live_behavior.concurrent_support_turns_preserve_context
+      - live_behavior.rsvp_tia_niur_old_target_wins
+      - live_behavior.support_pending_question_completed
+      - live_behavior.receipt_alone_then_followup_text
+      - live_behavior.authentication_refusal_closes_protected_query
+      - live_behavior.s11_rsvp_durability_confirms_once
+  - id: persisted-authentication-refusal-blocks-profile-preparation
+    implementedBy: "49000e34"
+    liveCaseIds: [live_behavior.authentication_refusal_closes_protected_query]
   - id: withhold-blocked-information-intent-from-authentication-replies
     implementedBy: "0280883"
     liveCaseIds: [live_behavior.nonphysical_purchase_omits_shipping]
