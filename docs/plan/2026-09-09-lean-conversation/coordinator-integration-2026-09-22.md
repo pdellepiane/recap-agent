@@ -22,8 +22,9 @@ section-4 artifact digest. The HEAD doc-only commit changes only this section
 of this report (placeholder → `9e99374f`), so every functional byte — code,
 prompts, config, evals, registry, log, measurements — is identical between
 `9e99374f` and HEAD, and the artifact digest applies to both.
-`git diff 0da5c55f HEAD` touches 58 files
-(55 owner + coverage registry + implementation log + this report).
+`git diff 0da5c55f HEAD` touches 57 files
+(55 owner + coverage registry + this report; the implementation log entry is
+part of the 55).
 
 ## 2. Changed files by commit
 
