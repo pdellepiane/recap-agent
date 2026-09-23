@@ -4,6 +4,10 @@ import path from 'node:path';
 
 import dotenv from 'dotenv';
 
+import type { EvalCase } from './case-schema';
+import { EvalLoader, type LoadedEvalCatalog } from './loader';
+import type { FixtureLoadResult } from '../runtime/eval-fixture-gateway';
+import { loadFixtureData } from '../runtime/eval-fixture-gateway';
 import type { EvalRunnerOptions } from './runner';
 import {
   isCleanGate,
@@ -38,7 +42,7 @@ type EvaluationRunnerLoader = () => Promise<EvaluationRunner>;
 const USAGE = `Usage: npm run eval:behavior-live [options]
 
 Options:
-  --case <id>   Run a specific regression case (repeatable).
+  --case <id>   Run a specific regression case (repeatable, required; at least one).
   --label <name>  Reference/candidate label recorded in the run manifest (default: candidate).
   --case-concurrency <1..4>  Bounded case workers (default: 4).
   --judge-concurrency <1..2>  Judge API requests in flight (default: 2).
@@ -184,14 +188,113 @@ export function parseResumeMode(argv: readonly string[]): 'full' | 'diagnostic' 
   return parseRunnerResumeMode(raw);
 }
 
+/**
+ * Fail-closed explicit selection. The behavior CLI never defaults to the full
+ * suite: at least one --case selector is required before any network work.
+ */
+export function requireExplicitCaseIds(caseIds: string[] | undefined): string[] {
+  if (!caseIds || caseIds.length === 0) {
+    throw new Error(
+      'Missing explicit case selection: pass at least one --case <id>. The unfiltered full suite is never selected by default.',
+    );
+  }
+  return [...caseIds];
+}
+
+/**
+ * Resolve one selection for validation and dispatch. Unknown IDs fail before
+ * any runner load or network work so invalid selectors dispatch zero cases.
+ */
+export function resolveSelectedLiveBehaviorCases(
+  catalog: Pick<LoadedEvalCatalog, 'cases'>,
+  caseIds: readonly string[],
+): EvalCase[] {
+  const byId = new Map(catalog.cases.map((entry) => [entry.id, entry]));
+  const unknown = caseIds.filter((id) => !byId.has(id));
+  if (unknown.length > 0) {
+    throw new Error(
+      `Unknown live behavior case ID(s): ${unknown.join(', ')}. No cases were dispatched.`,
+    );
+  }
+  return caseIds.map((id) => byId.get(id) as EvalCase);
+}
+
+export type LiveBehaviorFixtureLoader = (scenario: string) => Promise<FixtureLoadResult>;
+
+/**
+ * Validate ALL selected fixture/configuration prerequisites before dispatch,
+ * including required phone placeholders ($VAR contactPhone). Local file and
+ * env checks only; no network work.
+ */
+export async function assertLiveBehaviorPrerequisites(
+  selectedCases: readonly EvalCase[],
+  loadFixture: LiveBehaviorFixtureLoader = loadFixtureData,
+): Promise<void> {
+  for (const currentCase of selectedCases) {
+    const scenarios: string[] = [];
+    if (currentCase.backendFixture?.scenario) {
+      scenarios.push(currentCase.backendFixture.scenario);
+    }
+    for (const input of currentCase.inputs) {
+      if (input.backendFixture?.scenario) {
+        scenarios.push(input.backendFixture.scenario);
+      }
+    }
+    const rsvpScenario = currentCase.rsvpIsolation?.setup?.fixtureScenario;
+    if (rsvpScenario) {
+      scenarios.push(rsvpScenario);
+    }
+    for (const scenario of [...new Set(scenarios)]) {
+      const loaded = await loadFixture(scenario);
+      if (loaded.status !== 'loaded') {
+        throw new Error(
+          `live_behavior_regression prerequisite missing: case "${currentCase.id}" requires fixture scenario "${scenario}" (${loaded.status}: ${loaded.error}); refusing to run before any remote call.`,
+        );
+      }
+    }
+    for (let index = 0; index < currentCase.inputs.length; index += 1) {
+      const contactPhone = currentCase.inputs[index]?.contactPhone ?? null;
+      if (typeof contactPhone === 'string' && contactPhone.startsWith('$')) {
+        const variableName = contactPhone.slice(1);
+        if (!process.env[variableName]) {
+          throw new Error(
+            `${variableName} is required for case "${currentCase.id}" turn ${index} before any remote call.`,
+          );
+        }
+      }
+    }
+  }
+}
+
+export type LiveBehaviorMainDeps = {
+  evalsDir?: string;
+  loadCatalog?: () => Promise<LoadedEvalCatalog>;
+  loadFixture?: LiveBehaviorFixtureLoader;
+};
+
 export async function main(
   argv: readonly string[] = process.argv.slice(2),
   loadRunner: EvaluationRunnerLoader = loadEvaluationRunner,
+  deps: LiveBehaviorMainDeps = {},
 ): Promise<void> {
   if (isHelpRequested(argv)) {
     process.stdout.write(USAGE);
     return;
   }
+
+  assertKnownFlags(argv);
+  const runLabel = parseRunLabel(argv);
+  const caseConcurrency = parseCaseConcurrencyFlag(argv);
+  const judgeConcurrency = parseJudgeConcurrencyFlag(argv);
+  const resumeMode = parseResumeMode(argv);
+  const caseIds = requireExplicitCaseIds(parseCaseIds(argv));
+
+  const evalsDir = deps.evalsDir ?? path.resolve(process.cwd(), 'evals');
+  const catalog = deps.loadCatalog
+    ? await deps.loadCatalog()
+    : await new EvalLoader(evalsDir).loadCatalog();
+  const selectedCases = resolveSelectedLiveBehaviorCases(catalog, caseIds);
+  await assertLiveBehaviorPrerequisites(selectedCases, deps.loadFixture ?? loadFixtureData);
 
   if (!process.env.OPENAI_API_KEY) {
     throw new Error(
@@ -200,21 +303,12 @@ export async function main(
   }
 
   const runEvaluation = await loadRunner();
-  const caseIds = parseCaseIds(argv);
-  assertKnownFlags(argv);
-  const runLabel = parseRunLabel(argv);
-  const caseConcurrency = parseCaseConcurrencyFlag(argv);
-  const judgeConcurrency = parseJudgeConcurrencyFlag(argv);
-  const resumeMode = parseResumeMode(argv);
-
-  // The unfiltered command selects the complete current manifest suite
-  // (live_behavior_regression); the count is never hardcoded.
   const result = await runEvaluation({
-    evalsDir: path.resolve(process.cwd(), 'evals'),
+    evalsDir,
     outputDir: path.resolve(process.cwd(), '.eval-runs'),
     suite: 'live_behavior_regression',
     target: 'live_lambda',
-    caseIds: caseIds ?? undefined,
+    caseIds,
     runLabel,
     requestedCaseConcurrency: caseConcurrency,
     requestedJudgeConcurrency: judgeConcurrency,
@@ -240,7 +334,15 @@ export async function main(
   }
 }
 
-if (!process.env.VITEST) {
+function isDirectExecution(): boolean {
+  const entrypoint = process.argv[1];
+  if (!entrypoint) {
+    return false;
+  }
+  return /(?:^|[/\\])live-behavior-cli\.(?:ts|js)$/.test(entrypoint);
+}
+
+if (isDirectExecution()) {
   void main().catch((error: unknown) => {
     process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
     process.exitCode = 1;

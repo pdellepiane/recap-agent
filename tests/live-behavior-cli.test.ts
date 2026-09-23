@@ -2,12 +2,17 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   assertKnownFlags,
+  assertLiveBehaviorPrerequisites,
   main,
   parseCaseConcurrencyFlag,
   parseCaseIds,
   parseJudgeConcurrencyFlag,
   parseResumeMode,
+  requireExplicitCaseIds,
+  resolveSelectedLiveBehaviorCases,
 } from '../src/evals/live-behavior-cli';
+import type { EvalCase } from '../src/evals/case-schema';
+import type { FixtureLoadResult } from '../src/runtime/eval-fixture-gateway';
 
 describe('live-behavior-cli parseCaseIds', () => {
   it('returns undefined when no --case flag is present', () => {
@@ -116,7 +121,7 @@ describe('live-behavior-cli concurrency flags (O2)', () => {
     expect(() => parseResumeMode(['--resume-mode', 'partial'])).toThrow(/full or diagnostic/);
   });
 
-  it('passes bounded concurrency into runEvaluation with full-manifest default', async () => {
+  it('passes bounded concurrency into runEvaluation with explicit selection', async () => {
     const previousKey = process.env.OPENAI_API_KEY;
     process.env.OPENAI_API_KEY = 'test-key';
     const seen: Array<Record<string, unknown>> = [];
@@ -130,8 +135,16 @@ describe('live-behavior-cli concurrency flags (O2)', () => {
     });
     const loadRunner = vi.fn(async () => runEvaluation);
     const write = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    const fakeCase = {
+      id: 'a',
+      backendFixture: undefined,
+      inputs: [{ text: 'hola' }],
+    } as unknown as EvalCase;
     try {
-      await main(['--case', 'a', '--case-concurrency', '3', '--judge-concurrency=1'], loadRunner);
+      await main(['--case', 'a', '--case-concurrency', '3', '--judge-concurrency=1'], loadRunner, {
+        loadCatalog: async () => ({ cases: [fakeCase], suites: [], templates: new Map() }),
+        loadFixture: async () => ({ status: 'loaded', data: {} }) as unknown as FixtureLoadResult,
+      });
     } finally {
       write.mockRestore();
       if (previousKey === undefined) {
@@ -150,7 +163,89 @@ describe('live-behavior-cli concurrency flags (O2)', () => {
     });
   });
 
-  it('runs the unfiltered suite when no --case flag is present', async () => {
+  it('rejects missing selectors before loading the runner or dispatching', async () => {
+    const runEvaluation = vi.fn();
+    const loadRunner = vi.fn(async () => runEvaluation);
+    await expect(main([], loadRunner)).rejects.toThrow(/explicit case selection/i);
+    expect(loadRunner).not.toHaveBeenCalled();
+    expect(runEvaluation).not.toHaveBeenCalled();
+    expect(() => requireExplicitCaseIds(undefined)).toThrow(/explicit case selection/i);
+    expect(() => requireExplicitCaseIds([])).toThrow(/explicit case selection/i);
+  });
+});
+
+describe('live-behavior-cli import-safe selection (Finding 3)', () => {
+  it('does not execute on import without VITEST', async () => {
+    const previousArgv1 = process.argv[1];
+    const previousVitest = process.env.VITEST;
+    const previousExitCode = process.exitCode;
+    const stderrWrite = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    const stdoutWrite = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    try {
+      process.argv[1] = '/some/other/script.js';
+      delete process.env.VITEST;
+      process.exitCode = undefined;
+      vi.resetModules();
+      await import('../src/evals/live-behavior-cli');
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(process.exitCode).toBeUndefined();
+      expect(stderrWrite).not.toHaveBeenCalled();
+    } finally {
+      stderrWrite.mockRestore();
+      stdoutWrite.mockRestore();
+      process.argv[1] = previousArgv1;
+      if (previousVitest === undefined) {
+        delete process.env.VITEST;
+      } else {
+        process.env.VITEST = previousVitest;
+      }
+      process.exitCode = previousExitCode;
+      vi.resetModules();
+    }
+  });
+
+  it('rejects unknown IDs and missing prerequisites with zero dispatch', async () => {
+    const known = { id: 'known.case', backendFixture: undefined, inputs: [{ text: 'hola' }] } as unknown as EvalCase;
+    expect(() => resolveSelectedLiveBehaviorCases({ cases: [known] }, ['missing.case'])).toThrow(/unknown.*missing\.case/i);
+
+    const withFixture = {
+      id: 'fixture.case',
+      backendFixture: { scenario: 'missing-scenario' },
+      inputs: [{ text: 'hola', backendFixture: { scenario: 'missing-scenario' } }],
+    } as unknown as EvalCase;
+    await expect(assertLiveBehaviorPrerequisites([withFixture], async (scenario) => ({
+      status: 'unknown_scenario',
+      scenario,
+      error: 'Unknown fixture scenario.',
+    }))).rejects.toThrow(/prerequisite missing.*missing-scenario/i);
+
+    const withPhonePlaceholder = {
+      id: 'phone.case',
+      inputs: [{ text: 'hola', contactPhone: '$MISSING_TEST_PHONE_VAR_XYZ' }],
+    } as unknown as EvalCase;
+    delete process.env.MISSING_TEST_PHONE_VAR_XYZ;
+    await expect(assertLiveBehaviorPrerequisites(
+      [withPhonePlaceholder],
+      async () => ({ status: 'loaded', data: {} }) as unknown as FixtureLoadResult,
+    )).rejects.toThrow(/MISSING_TEST_PHONE_VAR_XYZ is required/i);
+
+    const runEvaluation = vi.fn();
+    const loadRunner = vi.fn(async () => runEvaluation);
+    await expect(main(['--case', 'missing.case'], loadRunner, {
+      loadCatalog: async () => ({ cases: [known], suites: [], templates: new Map() }),
+      loadFixture: async () => ({ status: 'loaded', data: {} }) as unknown as FixtureLoadResult,
+    })).rejects.toThrow(/unknown.*missing\.case/i);
+    expect(loadRunner).not.toHaveBeenCalled();
+    expect(runEvaluation).not.toHaveBeenCalled();
+
+    await expect(main(['--case', 'fixture.case'], loadRunner, {
+      loadCatalog: async () => ({ cases: [withFixture], suites: [], templates: new Map() }),
+      loadFixture: async (scenario) => ({ status: 'unknown_scenario', scenario, error: 'Unknown.' }),
+    })).rejects.toThrow(/prerequisite missing/i);
+    expect(loadRunner).not.toHaveBeenCalled();
+  });
+
+  it('dispatches exactly the valid explicit selection', async () => {
     const previousKey = process.env.OPENAI_API_KEY;
     process.env.OPENAI_API_KEY = 'test-key';
     const seen: Array<Record<string, unknown>> = [];
@@ -159,13 +254,18 @@ describe('live-behavior-cli concurrency flags (O2)', () => {
       return {
         runId: 'run-1',
         runDir: 'dir-1',
-        report: { totalCases: 117, passedCases: 117, failedCases: 0, erroredCases: 0, skippedCases: 0 },
+        report: { totalCases: 2, passedCases: 2, failedCases: 0, erroredCases: 0, skippedCases: 0 },
       };
     });
     const loadRunner = vi.fn(async () => runEvaluation);
     const write = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    const caseA = { id: 'a', backendFixture: undefined, inputs: [{ text: 'hola' }] } as unknown as EvalCase;
+    const caseB = { id: 'b', backendFixture: undefined, inputs: [{ text: 'hola' }] } as unknown as EvalCase;
     try {
-      await main([], loadRunner);
+      await main(['--case', 'a', '--case', 'b'], loadRunner, {
+        loadCatalog: async () => ({ cases: [caseA, caseB], suites: [], templates: new Map() }),
+        loadFixture: async () => ({ status: 'loaded', data: {} }) as unknown as FixtureLoadResult,
+      });
     } finally {
       write.mockRestore();
       if (previousKey === undefined) {
@@ -174,8 +274,8 @@ describe('live-behavior-cli concurrency flags (O2)', () => {
         process.env.OPENAI_API_KEY = previousKey;
       }
     }
-    // No case filter means the complete current manifest, never a count pin.
-    expect(seen[0]).toMatchObject({ caseIds: undefined });
-    expect('caseIds' in (seen[0] ?? {}) && seen[0]?.['caseIds']).toBeUndefined();
+    expect(loadRunner).toHaveBeenCalledTimes(1);
+    expect(runEvaluation).toHaveBeenCalledTimes(1);
+    expect(seen[0]).toMatchObject({ caseIds: ['a', 'b'] });
   });
 });
