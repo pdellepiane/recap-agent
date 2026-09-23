@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import OpenAI from 'openai';
 
 import { redactArtifactText } from '../../runtime/artifact-redaction';
+import { isPermanentQuotaExhaustion } from '../../runtime/openai-retry';
 
 /**
  * Packet O3 — judge throughput and honest measurements.
@@ -262,6 +263,9 @@ type JudgeErrorShape = {
 /** Only transient transport/429/5xx failures may use the single retry. */
 export function isTransientJudgeError(error: unknown): boolean {
   if (typeof error !== 'object' || error === null) {
+    return false;
+  }
+  if (isPermanentQuotaExhaustion(error)) {
     return false;
   }
   const shaped = error as JudgeErrorShape;

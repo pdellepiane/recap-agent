@@ -76,6 +76,7 @@ import {
 } from './scheduler';
 import { runLiveLambdaCase } from './targets/live-lambda';
 import { runOfflineCase } from './targets/offline';
+import { isPermanentQuotaExhaustion } from '../runtime/openai-retry';
 import { DEFAULT_EVAL_JUDGE_MODEL } from '../runtime/openai-model-defaults';
 import { redactArtifactText } from '../runtime/artifact-redaction';
 import {
@@ -873,6 +874,7 @@ export async function runEvaluation(
               sdkLabel: manifest.env.openaiSdk,
             },
             deduplicateJudges: options.deduplicateJudges ?? false,
+            stopSignal: stopState,
           }),
         };
       },
@@ -921,7 +923,9 @@ export async function runEvaluation(
         ? 'suite coordinator deadline stopped admissions; report is incomplete'
         : pipeline.stopReason === 'sigint'
           ? 'SIGINT stopped admissions; bounded in-flight work drained with teardown attempted'
-          : `admissions stopped (${pipeline.stopReason}); report is incomplete`;
+          : pipeline.stopReason === 'quota_exhausted'
+            ? 'permanent quota exhaustion stopped admissions; completed artifacts are preserved and unfinished cases are recorded without semantic verdicts'
+            : `admissions stopped (${pipeline.stopReason}); report is incomplete`;
     }
     if (laneState.contaminated !== null && incompleteReason === null) {
       incompleteReason =
@@ -1389,6 +1393,25 @@ async function executeOneCase(args: {
 }
 
 /**
+ * Permanent quota stop: the first quota exhaustion stops scheduling new paid
+ * work. Completed artifacts are preserved; unfinished cases are recorded as
+ * explicit infrastructure errors without semantic verdicts.
+ */
+export function markQuotaExhausted(
+  stopSignal: { stopped: boolean; reason: SchedulerStopReason } | undefined,
+  error: unknown,
+): boolean {
+  if (!isPermanentQuotaExhaustion(error)) {
+    return false;
+  }
+  if (stopSignal && !stopSignal.stopped) {
+    stopSignal.stopped = true;
+    stopSignal.reason = 'quota_exhausted';
+  }
+  return true;
+}
+
+/**
  * Packet O2/O3 judge stage (case slot already released). Semantic judging
  * runs through the shared per-request limiter; the redacted final artifact
  * is written atomically by the coordinator-owned finalization.
@@ -1403,6 +1426,7 @@ async function finalizeOneCase(args: {
   caseJudgeStats: JudgeRunStats;
   judge: JudgeCallEnv;
   deduplicateJudges: boolean;
+  stopSignal?: { stopped: boolean; reason: SchedulerStopReason };
 }): Promise<EvalResult> {
   const judgeStart = Date.now();
   const judgeWaitMs = Math.max(0, judgeStart - args.snapshot.snapshotReadyAt);
@@ -1431,13 +1455,19 @@ async function finalizeOneCase(args: {
       },
     });
   } catch (error) {
+    markQuotaExhausted(args.stopSignal, error);
+    const quotaNote = isPermanentQuotaExhaustion(error)
+      ? 'permanent quota exhaustion; no retry was scheduled and no further paid work will be admitted'
+      : null;
     return buildPipelineErrorResult({
       runId: args.runId,
       currentCase: args.currentCase,
       config: args.config,
       lane: args.lane,
       turns: args.snapshot.turns,
-      errorMessage: `Case finalization failed: ${error instanceof Error ? error.message : String(error)}`,
+      errorMessage: quotaNote
+        ? `Case finalization failed with ${quotaNote}: ${error instanceof Error ? error.message : String(error)}`
+        : `Case finalization failed: ${error instanceof Error ? error.message : String(error)}`,
     });
   }
 }

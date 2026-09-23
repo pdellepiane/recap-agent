@@ -13,6 +13,17 @@ const permanentErrorCodes = new Set([
   'billing_hard_limit_reached',
 ]);
 
+const permanentQuotaCodes = new Set([
+  'insufficient_quota',
+  'billing_hard_limit_reached',
+]);
+
+/**
+ * Observed no-credits diagnostic when structured code fields are absent.
+ * Infrastructure error normalization only, never conversational routing.
+ */
+const quotaExhaustionMessagePattern = /exceeded your current quota|insufficient[_\s-]?quota|no credits?|out of credits?|billing hard limit|billing_hard_limit_reached/i;
+
 export type OpenAiRetryClassification = {
   retryable: boolean;
   delayMs?: number;
@@ -23,9 +34,12 @@ export function classifyOpenAiRetry(
   error: unknown,
   normalized?: Partial<ModelRetryNormalizedError>,
 ): OpenAiRetryClassification {
-  const code = findStringField(error, ['code', 'errorCode', 'type']);
-  if (code && permanentErrorCodes.has(code.toLowerCase())) {
-    return { retryable: false, reason: `permanent_code:${code.toLowerCase()}` };
+  const permanentCode = findPermanentCode(error);
+  if (permanentCode) {
+    return { retryable: false, reason: `permanent_code:${permanentCode}` };
+  }
+  if (hasQuotaExhaustionMessage(error)) {
+    return { retryable: false, reason: 'permanent_code:insufficient_quota' };
   }
 
   const statusCode =
@@ -99,28 +113,66 @@ export async function executeWithOpenAiRetry<T>(
   throw new Error('OpenAI retry loop exhausted unexpectedly.');
 }
 
-function findStringField(
+/**
+ * Shared permanent-quota check for classifier, judge and runner boundaries.
+ * True for quota/billing exhaustion via structured codes or the observed
+ * no-credits message diagnostic. Other permanent codes are not quota.
+ */
+export function isPermanentQuotaExhaustion(error: unknown): boolean {
+  const codes = collectStringFields(error, ['code', 'errorCode', 'type']);
+  if (codes.some((code) => permanentQuotaCodes.has(code.toLowerCase()))) {
+    return true;
+  }
+  return hasQuotaExhaustionMessage(error);
+}
+
+function findPermanentCode(error: unknown): string | undefined {
+  const codes = collectStringFields(error, ['code', 'errorCode', 'type']);
+  for (const code of codes) {
+    const normalized = code.toLowerCase();
+    if (permanentErrorCodes.has(normalized)) {
+      return normalized;
+    }
+  }
+  return undefined;
+}
+
+function hasQuotaExhaustionMessage(error: unknown): boolean {
+  if (error instanceof Error && quotaExhaustionMessagePattern.test(error.message)) {
+    return true;
+  }
+  const messages = collectStringFields(error, ['message']);
+  return messages.some((message) => quotaExhaustionMessagePattern.test(message));
+}
+
+function collectStringFields(
   value: unknown,
   keys: readonly string[],
   seen = new Set<object>(),
-): string | undefined {
+  out: string[] = [],
+): string[] {
   if (!isRecord(value) || seen.has(value)) {
-    return undefined;
+    return out;
   }
   seen.add(value);
   for (const key of keys) {
     const candidate = value[key];
     if (typeof candidate === 'string') {
-      return candidate;
+      out.push(candidate);
     }
   }
   for (const nested of Object.values(value)) {
-    const candidate = findStringField(nested, keys, seen);
-    if (candidate) {
-      return candidate;
-    }
+    collectStringFields(nested, keys, seen, out);
   }
-  return undefined;
+  return out;
+}
+
+function findStringField(
+  value: unknown,
+  keys: readonly string[],
+  seen = new Set<object>(),
+): string | undefined {
+  return collectStringFields(value, keys, seen)[0];
 }
 
 function findNumberField(
@@ -205,15 +257,16 @@ function isNetworkOrTimeoutError(error: unknown): boolean {
   ) {
     return true;
   }
-  const code = findStringField(error, ['code']);
-  return Boolean(code && [
+  const codes = collectStringFields(error, ['code']);
+  const networkCodes = new Set([
     'ECONNABORTED',
     'ECONNREFUSED',
     'ECONNRESET',
     'EHOSTUNREACH',
     'ENETUNREACH',
     'ETIMEDOUT',
-  ].includes(code.toUpperCase()));
+  ]);
+  return codes.some((code) => networkCodes.has(code.toUpperCase()));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

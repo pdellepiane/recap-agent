@@ -330,6 +330,35 @@ describe('semantic judge transport policy (O3)', () => {
     expect(getJudgeRetryAfterMs(Object.assign(new Error('x'), { headers: {} }))).toBeNull();
   });
 
+  it('never retries permanent quota exhaustion', async () => {
+    expect(isTransientJudgeError(Object.assign(new Error('You exceeded your current quota.'), {
+      status: 429,
+      code: 'insufficient_quota',
+    }))).toBe(false);
+    expect(isTransientJudgeError({
+      status: 429,
+      error: { message: 'No credits remaining.', code: 'insufficient_quota' },
+    })).toBe(false);
+
+    const quota = vi.fn().mockRejectedValue(Object.assign(
+      new Error('You exceeded your current quota.'),
+      { status: 429, code: 'insufficient_quota', headers: {} },
+    ));
+    const delays: number[] = [];
+    await expect(runSemanticJudge({
+      apiKey: 'test-key',
+      model: 'gpt-5.6-luna',
+      rubric: 'rubric',
+      candidateText: 'candidate',
+      client: { chat: { completions: { create: quota } } } as unknown as OpenAI,
+      delayFn: async (ms) => {
+        delays.push(ms);
+      },
+    })).rejects.toThrow('You exceeded your current quota.');
+    expect(quota).toHaveBeenCalledTimes(1);
+    expect(delays).toEqual([]);
+  });
+
   it('keeps judge hashes stable for identical evidence and distinct otherwise', async () => {
     const create = vi.fn().mockResolvedValue({
       choices: [{ message: { content: '{"score":1,"reason":"Cumple."}' } }],

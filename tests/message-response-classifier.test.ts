@@ -131,7 +131,7 @@ describe('OpenAiMessageResponseClassifier', () => {
     expect(response.tokenUsage).toBeNull();
   });
 
-  it('makes one HTTP request when OpenAI reports insufficient quota', async () => {
+  it('propagates permanent quota exhaustion with one HTTP request and no fallback', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
       error: {
         message: 'You exceeded your current quota.',
@@ -150,7 +150,7 @@ describe('OpenAiMessageResponseClassifier', () => {
       promptLoader,
     });
 
-    const response = await classifier.classify({
+    await expect(classifier.classify({
       inboundText: 'Necesito ayuda.',
       plan: createEmptyPlan({
         planId: 'classifier-quota',
@@ -159,14 +159,11 @@ describe('OpenAiMessageResponseClassifier', () => {
       }),
       messages: [],
       contextSource: 'local_plan',
+    })).rejects.toMatchObject({
+      status: 429,
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(response.trace.reason).toBe('classifier_unavailable');
-    expect(response.openAiCall).toMatchObject({
-      responseId: null,
-      requestMetrics: { transport: { observedRequestCount: 1 } },
-    });
   });
 
   it('retries a transient rate limit and respects a zero retry delay', async () => {

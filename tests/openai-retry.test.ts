@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   classifyOpenAiRetry,
   executeWithOpenAiRetry,
+  isPermanentQuotaExhaustion,
 } from '../src/runtime/openai-retry';
 
 describe('OpenAI retry policy', () => {
@@ -61,5 +62,50 @@ describe('OpenAI retry policy', () => {
       status: 429,
     });
     expect(operation).toHaveBeenCalledTimes(1);
+  });
+
+  it('detects nested permanent codes despite unrelated wrapper fields', () => {
+    const masked = {
+      status: 429,
+      type: 'outer_wrapper',
+      error: {
+        type: 'rate_limit_error',
+        nested: { code: 'insufficient_quota' },
+      },
+    };
+    expect(classifyOpenAiRetry(masked)).toEqual({
+      retryable: false,
+      reason: 'permanent_code:insufficient_quota',
+    });
+    expect(isPermanentQuotaExhaustion(masked)).toBe(true);
+
+    const billingMasked = {
+      status: 429,
+      code: 'outer_ok',
+      cause: { errorCode: 'billing_hard_limit_reached' },
+    };
+    expect(classifyOpenAiRetry(billingMasked)).toEqual({
+      retryable: false,
+      reason: 'permanent_code:billing_hard_limit_reached',
+    });
+    expect(isPermanentQuotaExhaustion(billingMasked)).toBe(true);
+  });
+
+  it('recognizes the no-credits diagnostic when structured fields are absent', () => {
+    const messageOnly = {
+      status: 429,
+      error: { message: 'You exceeded your current quota, please check your plan and billing details.' },
+    };
+    expect(classifyOpenAiRetry(messageOnly)).toEqual({
+      retryable: false,
+      reason: 'permanent_code:insufficient_quota',
+    });
+    expect(isPermanentQuotaExhaustion(messageOnly)).toBe(true);
+    expect(isPermanentQuotaExhaustion(new Error('No credits remaining for this API key'))).toBe(true);
+
+    const transient = { status: 429, error: { message: 'Rate limit reached, retry shortly.' } };
+    expect(classifyOpenAiRetry(transient)).toMatchObject({ retryable: true });
+    expect(isPermanentQuotaExhaustion(transient)).toBe(false);
+    expect(isPermanentQuotaExhaustion({ status: 401, error: { code: 'invalid_api_key' } })).toBe(false);
   });
 });

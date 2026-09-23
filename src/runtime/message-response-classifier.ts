@@ -15,7 +15,7 @@ import type {
   ResponseClassifierPromptProfile,
 } from './prompt-loader';
 import { DEFAULT_PROMPT_CACHE_OPTIONS } from './openai-model-defaults';
-import { executeWithOpenAiRetry } from './openai-retry';
+import { executeWithOpenAiRetry, isPermanentQuotaExhaustion } from './openai-retry';
 import { executeOpenAiStage } from './openai-stage-execution';
 import {
   captureOpenAiTransport,
@@ -314,7 +314,10 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
            requestMetrics: { ...requestMetrics, transport: transportMetrics },
         },
       };
-    } catch {
+    } catch (error) {
+      if (isPermanentQuotaExhaustion(error)) {
+        throw error;
+      }
       return this.fallback({
         contextSource: args.contextSource,
         hasPriorOutboundMessage,

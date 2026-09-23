@@ -40,7 +40,7 @@ export type LifecyclePhase =
   | 'awaiting_judge'
   | 'finalized';
 
-export type SchedulerStopReason = 'sigint' | 'deadline' | 'contamination' | null;
+export type SchedulerStopReason = 'sigint' | 'deadline' | 'contamination' | 'quota_exhausted' | null;
 
 function parseConcurrency(value: unknown, min: number, max: number, name: string): number {
   const numeric = typeof value === 'string' && value.trim().length > 0
@@ -371,17 +371,26 @@ export async function runBoundedPipeline<Snapshot, Result>(args: {
   const aborted = (): boolean =>
     stopState.stopped || (args.signal?.aborted ?? false);
 
+  const unadmittedError = (): string => {
+    if (stopState.reason === 'deadline') {
+      return 'incomplete: suite deadline stopped admissions before this case started';
+    }
+    if (stopState.reason === 'sigint') {
+      return 'incomplete: SIGINT stopped admissions before this case started';
+    }
+    if (stopState.reason === 'quota_exhausted') {
+      return 'incomplete: permanent quota exhaustion stopped admissions before this case started; no paid work was scheduled';
+    }
+    return 'incomplete: admissions stopped before this case started';
+  };
+
   const markRemainingUnadmitted = (fromCursor: number): void => {
     let unadmitted = 0;
     for (const job of jobs) {
       if (job.index >= fromCursor && !outcomes.has(job.index)) {
         outcomes.set(job.index, {
           status: 'error',
-          error: stopState.reason === 'deadline'
-            ? 'incomplete: suite deadline stopped admissions before this case started'
-            : stopState.reason === 'sigint'
-              ? 'incomplete: SIGINT stopped admissions before this case started'
-              : 'incomplete: admissions stopped before this case started',
+          error: unadmittedError(),
         });
         unadmitted += 1;
       }
@@ -397,11 +406,7 @@ export async function runBoundedPipeline<Snapshot, Result>(args: {
     }
     outcomes.set(job.index, {
       status: 'error',
-      error: stopState.reason === 'deadline'
-        ? 'incomplete: suite deadline stopped admissions before this case started'
-        : stopState.reason === 'sigint'
-          ? 'incomplete: SIGINT stopped admissions before this case started'
-          : 'incomplete: admissions stopped before this case started',
+      error: unadmittedError(),
     });
     tracker.markUnadmitted(1);
   };
