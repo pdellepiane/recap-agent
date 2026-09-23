@@ -8,6 +8,10 @@ import {
   optionalTrimmed,
   resolveDeploymentTarget,
 } from './deployment-config.mjs';
+import {
+  resolveProductionModelParams,
+  verifyProductionModelDeployment,
+} from './prod-model-promotion.mjs';
 
 const root = process.cwd();
 const envPath = path.join(root, '.env');
@@ -98,6 +102,7 @@ let secretArn;
 let seApiSecretArn;
 let channelApiSecretArn;
 let targetFunctionName = functionName;
+let productionModelPromotion = null;
 if (isProductionPromotion) {
   // Promotion must preserve the live stack's credential bindings. In
   // particular, local .env values are never copied into production.
@@ -133,6 +138,18 @@ if (isProductionPromotion) {
       'Production artifact must exactly match the content-addressed artifact currently deployed in development.',
     );
   }
+  // C5: production promotion must also carry exactly the three model
+  // parameters with parity to development. Artifact-only promotion is
+  // insufficient and there is no silent fallback to an older model.
+  productionModelPromotion = resolveProductionModelParams({
+    env,
+    developmentStack,
+    productionStack: currentStack,
+    developmentStackName,
+  });
+  console.log(
+    `Production model rollback identities: ${JSON.stringify(productionModelPromotion.rollback)}`,
+  );
 } else {
   ensureBucketExists(artifactBucket, awsEnv);
   syncSecret(secretName, env.OPENAI_API_KEY, awsEnv);
@@ -156,11 +173,14 @@ const parameterOverrides = [
   `SeApiSecretArn=${seApiSecretArn}`,
   `ChannelApiSecretArn=${channelApiSecretArn}`,
 ];
+if (isProductionPromotion) {
+  parameterOverrides.push(...productionModelPromotion.overrides);
+}
 if (!isProductionPromotion) {
   parameterOverrides.push(
-    `OpenAIModel=${getDeploymentSetting('OPENAI_MODEL', 'OpenAIModel', 'gpt-5.6-luna')}`,
-    `OpenAIExtractorModel=${getDeploymentSetting('OPENAI_EXTRACTOR_MODEL', 'OpenAIExtractorModel', 'gpt-5.6-luna')}`,
-    `OpenAIResponseClassifierModel=${getDeploymentSetting('OPENAI_RESPONSE_CLASSIFIER_MODEL', 'OpenAIResponseClassifierModel', 'gpt-5.6-luna')}`,
+    `OpenAIModel=${getDeploymentSetting('OPENAI_MODEL', 'OpenAIModel', 'gpt-6-luna')}`,
+    `OpenAIExtractorModel=${getDeploymentSetting('OPENAI_EXTRACTOR_MODEL', 'OpenAIExtractorModel', 'gpt-6-luna')}`,
+    `OpenAIResponseClassifierModel=${getDeploymentSetting('OPENAI_RESPONSE_CLASSIFIER_MODEL', 'OpenAIResponseClassifierModel', 'gpt-6-luna')}`,
     `ResponseClassifierMode=${getDeploymentSetting('RESPONSE_CLASSIFIER_MODE', 'ResponseClassifierMode', 'enforce')}`,
     `PerfRetentionDays=${getDeploymentSetting('PERF_RETENTION_DAYS', 'PerfRetentionDays', '30')}`,
     `LogRetentionDays=${getDeploymentSetting('LOG_RETENTION_DAYS', 'LogRetentionDays', '7')}`,
@@ -231,6 +251,26 @@ const functionUrl = execFileSync(
 
 console.log(`Deployed stack: ${stackName}`);
 console.log(`Function URL: ${functionUrl}`);
+
+if (isProductionPromotion) {
+  // C5: artifact-only parity is insufficient. Verify the deployed
+  // CloudFormation parameters and the live Lambda environment carry the
+  // promoted models, plus the content-addressed S3 key and CodeSha256.
+  const deployedStack = readCurrentStack(stackName, awsEnv);
+  const lambdaConfiguration = getLambdaConfiguration(targetFunctionName, awsEnv);
+  verifyProductionModelDeployment({
+    stackParams: deployedStack,
+    lambdaEnv: lambdaConfiguration.environment,
+    deployedCodeS3Key: deployedStack.CodeS3Key,
+    expectedModels: productionModelPromotion.models,
+    artifactKey,
+    codeSha256: lambdaConfiguration.codeSha256,
+  });
+  console.log(`Production CodeSha256: ${lambdaConfiguration.codeSha256}`);
+  console.log(
+    `Production models verified: ${JSON.stringify(productionModelPromotion.models)}`,
+  );
+}
 
 if (process.env.DEPLOY_PROVIDER_SYNC === 'true') {
   run(
@@ -446,6 +486,29 @@ function readOptionalCurrentStack(stackName, env) {
     }
   }
   return values;
+}
+
+function getLambdaConfiguration(functionName, env) {
+  const parsed = JSON.parse(
+    execFileSync(
+      'aws',
+      [
+        'lambda',
+        'get-function-configuration',
+        '--function-name',
+        functionName,
+        '--output',
+        'json',
+      ],
+      { env, encoding: 'utf8' },
+    ),
+  );
+  const variables = parsed?.Environment?.Variables;
+  return {
+    codeSha256: typeof parsed?.CodeSha256 === 'string' ? parsed.CodeSha256 : '',
+    environment:
+      variables && typeof variables === 'object' ? variables : {},
+  };
 }
 
 function requireCurrentStackValue(stack, key) {

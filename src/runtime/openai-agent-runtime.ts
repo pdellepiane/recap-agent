@@ -2260,7 +2260,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       },
     };
 
-    if (this.isGpt5Model(args.model)) {
+    if (OpenAiAgentRuntime.supportsLowReasoningEffort(args.model)) {
       return {
         ...baseSettings,
         reasoning: { effort: 'low' },
@@ -2271,8 +2271,16 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     return baseSettings;
   }
 
-  private isGpt5Model(model: string): boolean {
-    return model.toLowerCase().startsWith('gpt-5');
+  /**
+   * Explicit supported-model family check for low reasoning effort. The
+   * gpt-5 prefix check predates GPT-6; both families (including Luna
+   * variants such as gpt-5.6-luna and gpt-6-luna) retain low effort and
+   * low verbosity for extractor and reply. Unknown families keep base
+   * settings instead of silently inheriting low effort.
+   */
+  private static supportsLowReasoningEffort(model: string): boolean {
+    const normalized = model.toLowerCase();
+    return normalized.startsWith('gpt-5') || normalized.startsWith('gpt-6');
   }
 
   /**

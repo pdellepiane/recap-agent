@@ -14,7 +14,7 @@ describe('OpenAI model defaults', () => {
     vi.unstubAllEnvs();
   });
 
-  it('uses Luna for every active GPT role', () => {
+  it('uses gpt-6-luna for every active GPT role', () => {
     vi.stubEnv('OPENAI_MODEL', '');
     vi.stubEnv('OPENAI_EXTRACTOR_MODEL', '');
     vi.stubEnv('OPENAI_RESPONSE_CLASSIFIER_MODEL', '');
@@ -27,7 +27,7 @@ describe('OpenAI model defaults', () => {
       extractor: DEFAULT_GPT_TEXT_MODEL,
       responseClassifier: DEFAULT_GPT_TEXT_MODEL,
     });
-    expect(DEFAULT_GPT_TEXT_MODEL).toBe('gpt-5.6-luna');
+    expect(DEFAULT_GPT_TEXT_MODEL).toBe('gpt-6-luna');
   });
 
   it('locks implicit GPT-5.6 caching and removes the legacy deployment parameter', () => {
