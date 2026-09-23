@@ -17,13 +17,10 @@ import { z } from 'zod';
 import type { ActionIntent, PersistedPlan } from '../core/plan';
 import { getActiveNeed } from '../core/plan';
 import { normalizeExtractedOrderReference } from '../core/order-reference';
+import { extractOtpCode } from './otp-normalization';
 import {
-  informationPaymentOptionsPolicyRequestId,
-  informationValidationPolicyRequestId,
-  type InformationNormalizationIssue,
   type InformationTaskResult,
   type KnowledgeEvidence,
-  type PurchaseAspect,
 } from '../core/information';
 import {
   prioritizedProviderCategoriesForEvent,
@@ -68,12 +65,6 @@ import {
 } from './structured-message';
 import { providerCategorySchema, categoryBucketNames } from '../core/provider-category';
 import type { ProviderCategory } from '../core/provider-category';
-import { projectCompletedPurchaseForModel } from './purchase-reply-projector';
-import {
-  projectPurchaseBalanceLimitation,
-  selectPurchaseReplyOutcome,
-} from './purchase-reply-projector';
-import { isApprovalBoundaryAnsweredByRecord } from './purchase-reconciliation';
 import {
   createDynamicExtractionSchema,
   normalizeRequestedOperation,
@@ -144,7 +135,6 @@ import {
 import type { ImageAttachmentRef } from '../core/image-attachments';
 import type { ImageFileAttachment, ImageObservation, ImageUrlAttachment } from './contracts';
 import type { CustomerContextProjection } from './customer-context';
-import { purchaseProfileCarriesBalanceFacts } from './customer-context';
 
 const SUPPORT_EMAIL = 'hola@sinenvolturas.com';
 
@@ -484,8 +474,6 @@ type ReplyTurnEvidence = {
      */
     reported_guest_name?: string | null;
     reported_event_name?: string | null;
-    voucher_image_cannot_confirm_receipt?: boolean;
-    backend_validation_pending?: boolean;
     /**
      * W1-07 L1 evidence-only facts. Typed host-withdrawal request state:
      * indexed policy hours from the completed faq result, the unsupported
@@ -1032,6 +1020,7 @@ function extractionSectionSource(key: string): string {
     user_message: 'inbound.text',
     media_metadata: 'inbound.media',
     plan_snapshot: 'plan lane facts',
+    customer_context: 'InformationOrchestrator.prepareCustomerContext (authorized roots and linked records)',
     allowed_actions: 'extractionProjection.allowedActionIntents',
     category_context: 'plan.event_type (transient owners only)',
     continuity_evidence: 'messageContext.continuity',
@@ -1257,10 +1246,9 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
   private normalizeExtraction(
     extraction: Partial<StructuredExtraction>,
   ): ExtractResult['extraction'] {
-    const normalizationIssues: InformationNormalizationIssue[] = [];
     const extractedInformationRequests = extraction.informationRequests ?? [];
     const informationRequests = extractedInformationRequests.flatMap((request) =>
-      this.normalizeInformationRequest(request, normalizationIssues),
+      this.normalizeInformationRequest(request),
     );
     return {
       actionIntent: extraction.actionIntent ?? null,
@@ -1273,7 +1261,6 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       informationRequests,
       supportAct: extraction.supportAct ?? null,
       humanHelpIntent: extraction.humanHelpIntent ?? null,
-      normalizationIssues,
       phoneConfirmation: extraction.phoneConfirmation ?? null,
       rsvpAction: extraction.rsvpAction ?? null,
       rsvpDecisionSource: (extraction.rsvpDecisionSource === 'current_message' ? 'current_message' : 'plan_state'),
@@ -1317,7 +1304,6 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
 
   private normalizeInformationRequest(
     request: OpenAiInformationRequest,
-    normalizationIssues: InformationNormalizationIssue[] = [],
   ): ExtractResult['extraction']['informationRequests'] {
     if (request.kind === 'faq') {
       return [{ kind: 'faq', query: request.query,
@@ -1337,29 +1323,17 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
         },
       ];
     }
-    if (!request.resource) {
-      normalizationIssues.push({
-        requestKind: 'purchase',
-        field: 'resource',
-        reason: 'missing_resource',
-      });
-      return [];
-    }
     return [
       {
         kind: 'purchase',
-        // One source contract: the structured resource names the owning
-        // backend and is preserved verbatim; aspects select answer facts.
-        resource: request.resource,
+        // Fixed internal task scope; the extractor cannot select a backend source.
+        resource: 'purchase_discovery',
         query: request.query,
         orderId: normalizeExtractedOrderReference(request.orderId),
         ...(request.eventHint ? { eventHint: request.eventHint.trim() } : {}),
         ...(request.amount !== null && request.amount !== undefined
           ? { amount: request.amount }
           : {}),
-        aspects:
-          request.aspects.length > 0 ? request.aspects : ['summary'],
-        sensitiveFields: request.sensitiveFields,
         authAction: request.authAction ?? 'none',
       },
     ];
@@ -1826,8 +1800,6 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       tasks: established === null
         ? ['purchase', 'venue', 'rsvp', 'faq_policy', 'planning']
         : ['purchase', 'venue', 'rsvp', 'faq_policy'],
-      approvalBoundary: false,
-      giftFulfillment: false,
       hasPlanningDetail: capabilities.hasActivePlan || capabilities.hasShortlist,
     };
   }
@@ -1956,6 +1928,12 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
           : null,
       },
       { key: 'plan_snapshot', content: `Plan base (JSON compacto): ${JSON.stringify(planSnapshot)}` },
+      {
+        key: 'customer_context',
+        content: request.customerContext == null
+          ? null
+          : `Contexto autorizado del cliente (JSON; registros y cobertura): ${JSON.stringify(request.customerContext)}`,
+      },
       { key: 'allowed_actions', content: allowedActionsLine },
       { key: 'category_context', content: suggestedCategories },
       { key: 'conversation_continuity', content: continuityEvidence },
@@ -2298,64 +2276,6 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
   }
 
   /**
-   * Binding-clarification skip for the reply input. The extractor ambiguity
-   * note binds the model to ask instead of answering; typed evidence already
-   * resolving the question lifts that bind so the model answers from
-   * evidence. Two typed shapes only, mirroring response_contract.txt:29: a
-   * resolved single image reference with available pixels, or candidate
-   * operations whose targets already carry completed projected evidence
-   * (answered information, a resolved RSVP record, or reply providers).
-   * Genuine multi-candidate ambiguity without such evidence keeps the note.
-   * Facts only, never reply prose.
-   */
-  private ambiguityAnsweredByProjectedEvidence(request: ComposeReplyRequest): boolean {
-    if (
-      request.imageEvidence?.status === 'available' &&
-      request.extraction.imageReference?.status === 'prior_single'
-    ) {
-      return true;
-    }
-    if (this.approvalBoundaryAnsweredByRecord(request)) {
-      return true;
-    }
-    const candidates = request.extraction.ambiguity?.candidateOperations ?? [];
-    if (candidates.length === 0) {
-      return false;
-    }
-    if ((request.informationResults ?? []).some((result) => result.status === 'completed')) {
-      return true;
-    }
-    if (request.rsvpPhoneEvidence?.state === 'resolved_single') {
-      return true;
-    }
-    return request.providerResults.length > 0;
-  }
-
-  /**
-   * Approval-boundary resolution for the reply input. Delegates to the
-   * single-owner predicate in purchase-reconciliation (receipt amount alone
-   * never proves approval; the record or the established receipt boundary
-   * settles it). Anything else keeps the ambiguity note. Typed evidence
-   * only; no phrase detection. Facts only, never reply prose.
-   */
-  private approvalBoundaryAnsweredByRecord(
-    request: ComposeReplyRequest,
-  ): boolean {
-    if (request.extraction.ambiguity?.questionKey !== 'status_or_proof_review') {
-      return false;
-    }
-    const receiptContext =
-      request.imageEvidence != null ||
-      (request.plan.image_attachments?.length ?? 0) > 0 ||
-      (request.extraction.imageReference != null &&
-        request.extraction.imageReference.status !== 'none');
-    return isApprovalBoundaryAnsweredByRecord({
-      informationResults: request.informationResults ?? [],
-      receiptContext,
-    });
-  }
-
-  /**
    * G3: typed reply-compiler context from node and structured evidence.
    * Single derivation lives in model-request-projector.ts so instruction
    * loading, input gating and stub doubles share it; this wrapper keeps the
@@ -2574,15 +2494,6 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       request.authenticationOutcome != null || request.imageEvidence != null;
     const omitOperationalNote = replyOmitsOperationalNote({ hasTypedOutcome }) &&
       request.rsvpWorkCompleted !== true;
-    // FAQ empty-evidence boundary: only when knowledge returned a completed
-    // FAQ result with no evidence (policy results carry their own facts).
-    // Reuses the retired contract wording verbatim; non-empty FAQ turns and
-    // unrelated lanes stay byte-identical.
-    const hasEmptyFaqEvidence = (request.informationResults ?? []).some(
-      (result) => result.kind === 'faq' && result.status === 'completed' &&
-        (result.evidence?.length ?? 0) === 0 &&
-        result.hostWithdrawalPolicy === undefined,
-    );
     // B10 justification: the canonical turn evidence keeps its indented
     // human-readable shape. It is the model's primary multi-kilobyte
     // factual source, and captured-spec readability tests pin the spaced
@@ -2593,16 +2504,8 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       {
         key: 'ambiguity_note',
         source: 'extraction.ambiguity',
-        content: request.extraction.ambiguity?.status === 'ambiguous' &&
-        !this.ambiguityAnsweredByProjectedEvidence(request)
+        content: request.extraction.ambiguity?.status === 'ambiguous'
           ? 'Contrasta las interpretaciones con los hechos e imágenes disponibles. Responde si la evidencia resuelve la referencia; pregunta solo si persisten alternativas que cambian la respuesta o la acción.'
-          : null,
-      },
-      {
-        key: 'faq_empty_note',
-        source: 'informationResults.faq',
-        content: hasEmptyFaqEvidence
-          ? 'Para FAQ, responde únicamente con la evidencia recuperada. Si evidence está vacío, di que no tienes esa información específica y ofrece apoyo humano.'
           : null,
       },
       // R5: the close prompt carries the actual close outcome/next field
@@ -2738,12 +2641,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
           stop_reason: args.request.turnDecision.stopReason,
         }
       : null;
-    const hasRsvpPhoneEvidence =
-      args.request.currentNode === 'responder_invitacion' &&
-      args.request.rsvpPhoneEvidence !== null &&
-      args.request.rsvpPhoneEvidence !== undefined;
     const supportContinuity = this.buildSupportContinuityFacts(args.request);
-    const voucherContinuity = this.buildVoucherContinuityFacts(args.request);
     const recordCheckFacts = this.buildRecordCheckFacts(args.request);
     const hostWithdrawalContinuity = this.buildHostWithdrawalFacts(args.request);
     const leanContinuity = this.buildLeanConversationFacts(args.request);
@@ -2808,6 +2706,18 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     // derivation, so the directive never loads without its evidence.
     const waitFollowup = this.waitFollowupEvidenceFor(args.request);
 
+    const redactAuthSecret = (value: string): string => {
+      const otp = extractOtpCode(value);
+      const redactedOtp = otp === null
+        ? value
+        : value.replace(/(?<![\p{L}\p{N}])(?:[0-9][\p{White_Space}-]?){5}[0-9](?![\p{L}\p{N}])/gu, (match) =>
+          match.replace(/[^0-9]/gu, '') === otp ? '[credencial omitida]' : match,
+        );
+      return redactedOtp
+        .replace(/\bBearer\s+[^\s,;]+/giu, 'Bearer [credencial omitida]')
+        .replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/gu, '[credencial omitida]');
+    };
+    const recentMessages = buildModelVisibleConversationHistory(args.request.messageContext);
     return {
       nodes: {
         previous: this.modelVisibleNodeName(args.request.previousNode),
@@ -2815,32 +2725,26 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       },
       history: {
         status: args.request.messageContext.historyStatus,
-        recent_messages: args.authenticationOnlyReply || hasRsvpPhoneEvidence
-          ? []
-          : buildModelVisibleConversationHistory(args.request.messageContext),
+        recent_messages: args.authenticationOnlyReply
+          ? recentMessages.map((message) => ({ ...message, body: redactAuthSecret(message.body) }))
+          : recentMessages,
       },
-      user_message: args.authenticationOnlyReply ? null : args.request.userMessage,
+      user_message: args.authenticationOnlyReply
+        ? redactAuthSecret(args.request.userMessage)
+        : args.request.userMessage,
       decision,
-      extraction: args.authenticationOnlyReply
-        ? {}
-        : hasRsvpPhoneEvidence
-          ? this.buildMinimalRsvpExtractionSnapshot(args.request.extraction)
-        : this.buildReplyExtractionSnapshot(
-            args.request.extraction,
-            args.request.currentNode,
-          ),
-      plan: args.authenticationOnlyReply
-        ? { current_node: args.request.plan.current_node }
-        : hasRsvpPhoneEvidence
-          ? this.buildMinimalRsvpPlanSnapshot(args.request.plan)
-        : this.buildPromptPlanSnapshot(
-            args.request.plan,
-            args.focusNeedCategory,
-            args.request.currentNode,
-            args.request.extraction.ambiguity?.status === 'ambiguous',
-          ),
+      extraction: this.buildReplyExtractionSnapshot(
+        args.request.extraction,
+        args.request.currentNode,
+      ),
+      plan: this.buildPromptPlanSnapshot(
+        args.request.plan,
+        args.focusNeedCategory,
+        args.request.currentNode,
+        args.request.extraction.ambiguity?.status === 'ambiguous',
+      ),
       information_results: (args.request.informationResults ?? []).map((result) =>
-        this.projectInformationResultForReplyWithProfile(result, args.request),
+        this.projectInformationResultForReply(result),
       ),
       capability_outcome: args.request.capabilityDecision
         ? {
@@ -2924,7 +2828,6 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
         ),
         search_ready: args.request.searchReady,
         ...supportContinuity,
-        ...voucherContinuity,
         ...recordCheckFacts,
         ...hostWithdrawalContinuity,
         ...leanContinuity,
@@ -2979,45 +2882,6 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     if (guestName !== null) facts.reported_guest_name = guestName;
     if (eventName !== null) facts.reported_event_name = eventName;
     return facts;
-  }
-
-  /**
-   * W1-04 L1 evidence-only voucher continuity facts. When typed evidence shows
-   * a voucher/submission report (payment_proof topic or submission_reported
-   * detail, or a reported purchase amount on a continued support thread) over
-   * a completed pending purchase, projects the image-cannot-confirm and
-   * backend-validation-pending facts so the model verbalizes them. Returns no
-   * keys otherwise. No keyword matching, no fixture identifiers (R09).
-   */
-  private buildVoucherContinuityFacts(
-    request: ComposeReplyRequest,
-  ): Pick<
-    ReplyTurnEvidence['turn_state'],
-    'voucher_image_cannot_confirm_receipt' | 'backend_validation_pending'
-  > {
-    const act = request.extraction.supportAct ?? null;
-    if (act === null) return {};
-    const voucherReport = act.topic === 'payment_proof' ||
-      act.detail === 'submission_reported';
-    const reportedPurchaseAmount = request.extraction.informationRequests.some((item) =>
-      item.kind === 'purchase' && item.amount !== null && item.amount !== undefined
-    );
-    const continuedSupportThread = act.kind === 'report_issue' ||
-      act.kind === 'provide_detail' ||
-      act.kind === 'defer_submission';
-    if (!voucherReport && !(continuedSupportThread && reportedPurchaseAmount)) return {};
-    const hasPendingPurchase = (request.informationResults ?? []).some((result) =>
-      result.kind === 'purchase' &&
-      result.status === 'completed' &&
-      result.purchases.some((purchase) =>
-        (purchase.paymentStatus ?? '').trim().toLocaleLowerCase('en') === 'pending'
-      )
-    );
-    if (!hasPendingPurchase) return {};
-    return {
-      voucher_image_cannot_confirm_receipt: true,
-      backend_validation_pending: true,
-    };
   }
 
   /**
@@ -4653,116 +4517,6 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
   }
 
   /**
-   * P3 single-serialization projection. When the canonical customer_context
-   * profile is present, overlapping customer facts in completed purchase /
-   * associated_event results are replaced with a reference to the profile:
-   * independent effect/outcome facts (status, coverage, outcome kind,
-   * reference counts, access provenance, disclosures, next action,
-   * missing/ambiguous inputs) are preserved, the duplicated customer-data
-   * payload travels only in customer_context. FAQ evidence, needs_input
-   * guidance and failed messages carry no customer facts and travel
-   * unchanged. When no profile is present the full projection travels, so
-   * owners without a profile keep their evidence. No compatibility shim:
-   * consumers read customer_context for facts on profile turns. No extra
-   * model pass, no new histories or tools.
-   */
-  private projectInformationResultForReplyWithProfile(
-    result: InformationTaskResult,
-    request: ComposeReplyRequest,
-  ): unknown {
-    if (request.customerContext == null) {
-      return this.projectInformationResultForReply(result, request);
-    }
-    if (result.status === 'completed' && result.kind === 'purchase') {
-      const purchaseRequests = request.extraction.informationRequests.filter(
-        (informationRequest) => informationRequest.kind === 'purchase',
-      );
-      const reportedPurchase = purchaseRequests.find(
-        (informationRequest) => informationRequest.amount !== null &&
-          informationRequest.amount !== undefined,
-      );
-      const requestedAspects = purchaseRequests.flatMap(
-        (informationRequest) => informationRequest.aspects,
-      );
-      // The projector's concrete object shape is intentionally treated as evidence data here.
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-      const full = projectCompletedPurchaseForModel(result, {
-        requestedAspects,
-        referenceAuthorized: result.accessMethod === 'authenticated_account',
-        userReported: {
-          amount: reportedPurchase?.amount ?? null,
-        },
-        permittedNextAction: request.extraction.requestedOperation === 'purchase.modify'
-          ? 'human_support'
-          : null,
-        missingInputs: result.needsSelection ? ['purchase_selection'] : [],
-        ambiguousInputs: request.extraction.ambiguity?.status === 'ambiguous'
-          ? ['purchase_interpretation']
-          : [],
-      }) as Record<string, unknown>;
-      const { outcome: _droppedCustomerPayload, ...reference } = full;
-      void _droppedCustomerPayload;
-      // Lane A: the canonical profile carries raw totals without the
-      // explicit balance distinction, so a bare profile_ref would let the
-      // order total read as an amount owed. Retain a compact typed
-      // limitation (existing projection, no arithmetic) unless the
-      // referenced profile record already carries the required facts.
-      const singleOrderId = result.purchases.length === 1
-        ? result.purchases[0]?.orderId ?? null
-        : null;
-      const balanceLimitation = projectPurchaseBalanceLimitation(
-        selectPurchaseReplyOutcome({
-          // Coordinator integration (Packet A/B): no first-N cutoff. The
-          // single-order gate above already bounds this path; slicing here
-          // would drop the 4th candidate on multi-record turns that share
-          // this projection.
-          purchases: result.purchases,
-          carts: result.carts ?? [],
-          needsSelection: result.needsSelection,
-          coverage: result.coverage ?? 'complete',
-          referenceResolution: result.referenceResolution ?? 'not_requested',
-          requestedAspects,
-          referenceAuthorized: result.accessMethod === 'authenticated_account',
-          userReported: {
-            amount: reportedPurchase?.amount ?? null,
-          },
-        }),
-        singleOrderId,
-      );
-      // The profile_ref collapse keeps the per-source discovery coverage
-      // the projector retained on the reference: the canonical profile
-      // carries the records, this reference keeps which sources were read,
-      // so a partial source set never reads as exhaustive.
-      if (
-        balanceLimitation !== null &&
-        !purchaseProfileCarriesBalanceFacts(request.customerContext, [balanceLimitation.orderId])
-      ) {
-        return { ...reference, profile_ref: 'customer_context', purchase_balance: balanceLimitation };
-      }
-      return { ...reference, profile_ref: 'customer_context' };
-    }
-    if (result.status === 'completed' && result.kind === 'associated_event') {
-      const stripped = this.stripRawFields(result) as Record<string, unknown>;
-      const nested = (stripped.result ?? {}) as Record<string, unknown>;
-      const events = Array.isArray(nested.events) ? nested.events : [];
-      const eventIds = events.flatMap((event) => {
-        const id = (event as Record<string, unknown>).eventId;
-        return typeof id === 'number' || typeof id === 'string' ? [id] : [];
-      });
-      return {
-        requestId: stripped.requestId,
-        kind: stripped.kind,
-        status: stripped.status,
-        profile_ref: 'customer_context',
-        event_count: events.length,
-        event_ids: eventIds,
-        ...('accessMethod' in stripped ? { access_method: stripped.accessMethod } : {}),
-      };
-    }
-    return this.projectInformationResultForReply(result, request);
-  }
-
-  /**
    * P3 RSVP single-serialization projection without identity heuristics.
    * RSVP evidence carries no event/guest IDs — only names and dates — so a
    * name/date match cannot establish that an RSVP fact and a profile
@@ -4835,13 +4589,10 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     return { evidence: projected, coverage };
   }
 
-  private projectInformationResultForReply(
-    result: InformationTaskResult,
-    request: ComposeReplyRequest,
-  ): unknown {
+  private projectInformationResultForReply(result: InformationTaskResult): unknown {
     if (result.status === 'failed' && result.failureKind === 'not_found') {
-      // Scoped absence is evidence, not an escalation or a prewritten reply.
-      const { message: _message, ...facts } = result; // eslint-disable-line @typescript-eslint/no-unused-vars
+      const { message: _message, ...facts } = result;
+      void _message;
       return this.stripRawFields(facts);
     }
     if (result.status === 'completed' && result.kind === 'faq') {
@@ -4853,29 +4604,6 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
           individualStatus: 'not_available',
         };
       }
-      if (result.requestId === informationValidationPolicyRequestId) {
-        return {
-          requestId: result.requestId,
-          kind: result.kind,
-          status: result.status,
-          policy: {
-            maxBusinessHours: 72,
-            source: 'indexed_knowledge_base',
-          },
-        };
-      }
-      if (result.requestId === informationPaymentOptionsPolicyRequestId) {
-        return {
-          requestId: result.requestId,
-          kind: result.kind,
-          status: result.status,
-          policy: {
-            bankTransferAvailable: true,
-            scope: 'general_gift_checkout',
-            source: 'indexed_knowledge_base',
-          },
-        };
-      }
       const faqProjection = this.projectFaqEvidenceForReply(result.evidence);
       return {
         requestId: result.requestId,
@@ -4885,49 +4613,33 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
         coverage: faqProjection.coverage,
       };
     }
+    if (result.status === 'completed' && result.kind === 'purchase') {
+      return {
+        requestId: result.requestId,
+        kind: result.kind,
+        status: result.status,
+        accessMethod: result.accessMethod,
+        recordReferences: result.purchases.map((purchase) => ({
+          orderId: purchase.orderId,
+          source: purchase.recordSource ?? null,
+        })),
+        cartReferences: (result.carts ?? []).map((cart) => ({ id: cart.cartId })),
+        needsSelection: result.needsSelection,
+        referenceResolution: result.referenceResolution,
+      };
+    }
     if (result.status === 'completed' && result.kind === 'associated_event') {
-      // Event-fact answers (date/place) never volunteer RSVP attendance:
-      // the RSVP lane owns attendance evidence through its own lookup.
-      // Names, dates and places ride the reply; guestStatus stays out so a
-      // read-only question cannot manufacture an unrequested attendance
-      // claim. Both event fact sets stay preserved; the reply answers from
-      // the requested one.
-      return this.stripRawFields({
-        ...result,
-        result: {
-          ...result.result,
-          events: result.result.events.map((event) => ({ ...event, guestStatus: null })),
-        },
-      });
+      return {
+        requestId: result.requestId,
+        kind: result.kind,
+        status: result.status,
+        accessMethod: result.accessMethod,
+        eventReferences: result.result.events.map((event) => ({
+          eventId: event.eventId,
+        })),
+      };
     }
-    if (result.status !== 'completed' || result.kind !== 'purchase') {
-      return this.stripRawFields(result);
-    }
-
-    const purchaseRequests = request.extraction.informationRequests.filter(
-      (informationRequest) => informationRequest.kind === 'purchase',
-    );
-    const requestedAspects: PurchaseAspect[] = purchaseRequests.flatMap(
-      (informationRequest) => informationRequest.aspects,
-    );
-    const reportedPurchase = purchaseRequests.find(
-      (informationRequest) => informationRequest.amount !== null &&
-        informationRequest.amount !== undefined,
-    );
-    return this.stripRawFields(projectCompletedPurchaseForModel(result, {
-      requestedAspects,
-      referenceAuthorized: result.accessMethod === 'authenticated_account',
-      userReported: {
-        amount: reportedPurchase?.amount ?? null,
-      },
-      permittedNextAction: request.extraction.requestedOperation === 'purchase.modify'
-        ? 'human_support'
-        : null,
-      missingInputs: result.needsSelection ? ['purchase_selection'] : [],
-      ambiguousInputs: request.extraction.ambiguity?.status === 'ambiguous'
-        ? ['purchase_interpretation']
-        : [],
-    }));
+    return this.stripRawFields(result);
   }
 
   private truncateText(value: string, maxLength: number): string {

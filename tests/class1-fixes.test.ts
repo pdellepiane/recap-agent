@@ -77,7 +77,7 @@ describe('class1 fixes twins', () => {
       agentGateway: gateway404,
     });
     const exec404 = await orch404.execute({
-      requests: [{ requestId: 'information-1', kind: 'purchase', resource: 'orders', query: 'estado compra', orderId: null, aspects: ['payment_status'], sensitiveFields: [], authAction: 'none' }],
+      requests: [{ requestId: 'information-1', kind: 'purchase', resource: 'orders', query: 'estado compra', orderId: null, authAction: 'none' }],
       authentication: null,
       authBlock: null,
       trustedPhone: { phone_extension: '+51', phone_number: '999999999' },
@@ -103,7 +103,7 @@ describe('class1 fixes twins', () => {
       agentGateway: gatewayMismatch,
     });
     const execMismatch = await orchMismatch.execute({
-      requests: [{ requestId: 'information-1', kind: 'purchase', resource: 'orders', query: 'Evento X', orderId: null, eventHint: 'Evento X Mismatch', amount: null, aspects: ['payment_status'], sensitiveFields: [], authAction: 'none' }],
+      requests: [{ requestId: 'information-1', kind: 'purchase', resource: 'orders', query: 'Evento X', orderId: null, eventHint: 'Evento X Mismatch', amount: null, authAction: 'none' }],
       authentication: null,
       authBlock: null,
       trustedPhone: { phone_extension: '+51', phone_number: '999999999' },
@@ -135,7 +135,7 @@ describe('class1 fixes twins', () => {
       agentGateway: gateway,
     });
     const execMismatch = await orchestrator.execute({
-      requests: [{ requestId: 'information-1', kind: 'purchase', resource: 'orders', query: 'Evento Z', orderId: null, eventHint: 'Evento Z', amount: null, aspects: ['payment_status'], sensitiveFields: [], authAction: 'none' }],
+      requests: [{ requestId: 'information-1', kind: 'purchase', resource: 'orders', query: 'Evento Z', orderId: null, eventHint: 'Evento Z', amount: null, authAction: 'none' }],
       authentication: null,
       authBlock: null,
       trustedPhone: { phone_extension: '+51', phone_number: '999999999' },
@@ -159,7 +159,7 @@ describe('class1 fixes twins', () => {
       agentGateway: gatewayEmpty,
     });
     const execEmpty = await orchEmpty.execute({
-      requests: [{ requestId: 'information-1', kind: 'purchase', resource: 'orders', query: 'estado', orderId: null, aspects: ['payment_status'], sensitiveFields: [], authAction: 'none' }],
+      requests: [{ requestId: 'information-1', kind: 'purchase', resource: 'orders', query: 'estado', orderId: null, authAction: 'none' }],
       authentication: null,
       authBlock: null,
       trustedPhone: { phone_extension: '+51', phone_number: '999999999' },
@@ -235,7 +235,7 @@ describe('class1 fixes twins', () => {
       providerGateway: {} as ProviderGateway,
       agentGateway: fakeWithPaidAt,
     }).execute({
-      requests: [{ requestId: 'information-1', kind: 'purchase', resource: 'gift_purchases', query: 'pago', orderId: null, aspects: ['payment_details'], sensitiveFields: [], authAction: 'none' }],
+      requests: [{ requestId: 'information-1', kind: 'purchase', resource: 'gift_purchases', query: 'pago', orderId: null, authAction: 'none' }],
       authentication: null,
       authBlock: null,
       trustedPhone: { phone_extension: '+51', phone_number: '999999999' },
@@ -330,7 +330,7 @@ describe('class1 fixes twins', () => {
         resume_node: 'entrevista',
         pending_requests: [],
         selection_candidates: [],
-        last_completed_request: { kind: 'purchase', resource: 'orders', query: 'estado', orderId: null, aspects: ['payment_status'], sensitiveFields: [], authAction: 'none' } as unknown as Record<string, unknown> as never,
+        last_completed_request: { kind: 'purchase', resource: 'orders', query: 'estado', orderId: null, authAction: 'none' } as unknown as Record<string, unknown> as never,
       },
     });
     await planStore.save({ plan: seedPurchase, reason: 'seed2' });

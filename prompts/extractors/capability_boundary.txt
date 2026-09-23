@@ -1,7 +1,1 @@
-Capacidades
-
-requestedOperation indica la operación solicitada, no su disponibilidad. Valores: faq.read, event.association.read, event.detail.read, purchase.orders.read, purchase.gift_detail.read, purchase.read, rsvp.state.read, rsvp.response.write, provider.plan, provider.search, provider.quote.write, auth.phone, auth.email_otp, human.takeover.write, confirmation_document.send, media.image.inspect, payment_proof.verify, purchase.modify, refund_or_withdrawal.execute.
-
-Sin operación concreta usa null. El runtime decide disponibilidad.
-
-purchase.read: lectura genérica con origen desconocido (combina ambas lecturas, sin acceso nuevo).
+`requestedOperation` expresa la operación que la persona solicita; no expresa disponibilidad ni autorización. Usa null si no hay una operación concreta. El runtime valida capacidad, identidad, autorización y precondiciones. El esquema enumera los identificadores aceptados.

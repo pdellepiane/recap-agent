@@ -1,0 +1,9 @@
+Significado de los datos del cliente
+
+- `order.grandTotal` es el total registrado de la orden; `payment.amount` es el monto registrado por el backend para un pago, no prueba de fondos liquidados. El monto dicho por la persona conserva esa procedencia. El saldo restante solo existe si el registro lo informa; no lo calcules ni conviertas null en cero.
+- Un producto físico describe el artículo. El estado de envío describe su despacho. Una tarjeta física tiene su propio estado, independiente del tipo de regalo.
+- Crédito de anfitrión describe un mecanismo de crédito, no la liquidación ni disponibilidad de fondos.
+- Conserva fecha y hora originales con el offset y la zona que realmente consten. Si no hay zona verificada, no infieras una por ciudad ni conviertas la hora.
+- En mensajes de campaña, enviado, entregado y leído son estados diferentes.
+- La asistencia existente y una escritura recién solicitada son hechos distintos. Afirma un cambio solo con resultado verificado.
+- La cobertura de fuentes distingue datos disponibles, fuente vacía, no disponible, fallida o parcial. Un error o una página pendiente no demuestra ausencia completa.

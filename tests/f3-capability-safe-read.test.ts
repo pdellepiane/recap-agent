@@ -8,30 +8,21 @@ import type { PendingInformationRequest } from '../src/core/information';
 import { PromptLoader } from '../src/runtime/prompt-loader';
 import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
+import type { CustomerExecution } from '../src/runtime/customer-context';
+import { fixtureCustomerContextOrchestrator } from './customer-context-test-utils';
 import { createEmptyPlan } from '../src/core/plan';
 
-function modifyExtraction(
-  aspects: string[],
-  amount: number | null,
-): ExtractionResult {
+function modifyExtraction(): ExtractionResult {
   return {
     actionIntent: null,
     requestedOperation: 'purchase.modify',
-    informationRequests:
-      aspects.length > 0
-        ? [
-            {
-              kind: 'purchase',
-              resource: 'orders',
-              query: 'cambiar la dedicatoria',
-              orderId: null,
-              aspects,
-              sensitiveFields: [],
-              authAction: 'none',
-              amount,
-            },
-          ]
-        : [],
+    informationRequests: [{
+      kind: 'purchase',
+      resource: 'purchase_discovery',
+      query: 'cambiar la dedicatoria',
+      orderId: null,
+      authAction: 'none',
+    }],
     supportAct: null,
     phoneConfirmation: null,
     rsvpAction: null,
@@ -95,10 +86,11 @@ async function runModifyTurn(options: {
       : seedPlan,
     reason: 'seed',
   });
-  const execute = vi.fn(async () => ({
-    results: [options.purchaseResult],
-    summaries: [options.summary],
-  }));
+  const profileOrchestrator = fixtureCustomerContextOrchestrator({
+    results: [options.purchaseResult] as unknown as CustomerExecution['results'],
+    summaries: [options.summary] as unknown as CustomerExecution['summaries'],
+  });
+  const execute = vi.fn(async () => profileOrchestrator.execute());
   const composedText = options.composedText ?? 'respuesta generada para evidencia de compra';
   const composeRequests: ComposeReplyRequest[] = [];
   const gateway = {
@@ -148,7 +140,10 @@ async function runModifyTurn(options: {
       },
     } as unknown as ProviderGateway,
     agentConversationGateway: gateway,
-    informationOrchestrator: { execute } as never,
+    informationOrchestrator: {
+      prepareCustomerContext: profileOrchestrator.prepareCustomerContext,
+      execute,
+    } as never,
     promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
     renderers: { whatsapp: new WhatsAppMessageRenderer() },
   });
@@ -208,7 +203,7 @@ describe('F3c safe read precedes the unsupported mutation handoff', () => {
       externalUserId: 'u-f3c-joaquin',
       text: 'Quisiera cambiar la dedicatoria de un regalo para Chiara Vittoria.',
       contactPhone: '+51926857444',
-      extraction: modifyExtraction(['summary', 'dedication'], null),
+      extraction: modifyExtraction(),
       purchaseResult: giftResult,
       summary: {
         requestId: 'capability-status-read',
@@ -232,9 +227,12 @@ describe('F3c safe read precedes the unsupported mutation handoff', () => {
     expect(text).toBe('Evidencia de dos regalos para Chiara Vittoria lista para elegir.');
     expect(composeRequests).toHaveLength(1);
     expect(composeRequests[0]?.currentNode).toBe('resolver_consultas_informativas');
-    expect(composeRequests[0]?.turnDecision?.persistReason).toBe('purchase_evidence_after_capability_read');
+    expect(composeRequests[0]?.turnDecision?.persistReason).toBe('information_batch');
     expect(composeRequests[0]?.informationResults).toEqual([
       expect.objectContaining({ kind: 'purchase', status: 'completed', resource: 'gift_purchases' }),
+    ]);
+    expect(composeRequests[0]?.customerContext?.purchases.map((purchase) => purchase.orderId)).toEqual([
+      'order-joaquin-frozen-01', 'order-joaquin-frozen-02',
     ]);
   });
 
@@ -268,7 +266,7 @@ describe('F3c safe read precedes the unsupported mutation handoff', () => {
       externalUserId: 'u-f3c-luis',
       text: 'Ya envie los 13.76 que faltaban, tengo el voucher.',
       contactPhone: '+51938389389',
-      extraction: modifyExtraction(['summary', 'payment_status'], 13.76),
+      extraction: modifyExtraction(),
       purchaseResult: orderResult,
       summary: {
         requestId: 'capability-status-read',
@@ -291,13 +289,13 @@ describe('F3c safe read precedes the unsupported mutation handoff', () => {
     const text = result.outbound.text ?? '';
     expect(text).toBe('El pedido pendiente sigue en validacion sin derivacion.');
     expect(composeRequests).toHaveLength(1);
-    expect(composeRequests[0]?.turnDecision?.persistReason).toBe('purchase_evidence_after_capability_read');
+    expect(composeRequests[0]?.turnDecision?.persistReason).toBe('information_batch');
     expect(composeRequests[0]?.informationResults).toEqual([
       expect.objectContaining({ kind: 'purchase', status: 'completed', resource: 'orders' }),
     ]);
   });
 
-  it('reads gift purchases for purchase.modify even with a persisted orders request', async () => {
+  it('keeps a persisted discovery request and gift records together during an unsupported edit', async () => {
     const giftResult = {
       requestId: 'capability-status-read',
       kind: 'purchase',
@@ -341,7 +339,7 @@ describe('F3c safe read precedes the unsupported mutation handoff', () => {
       externalUserId: 'u-f3c-joaquin-persisted',
       text: 'Quisiera cambiar la dedicatoria de un regalo para Chiara Vittoria.',
       contactPhone: '+51926857444',
-      extraction: modifyExtraction(['summary', 'dedication'], null),
+      extraction: modifyExtraction(),
       purchaseResult: giftResult,
       summary: {
         requestId: 'capability-status-read',
@@ -360,23 +358,24 @@ describe('F3c safe read precedes the unsupported mutation handoff', () => {
       pendingPurchaseRequest: {
         requestId: 'information-1',
         kind: 'purchase',
-        resource: 'orders',
+        resource: 'purchase_discovery',
         query: 'cambiar la dedicatoria',
         orderId: null,
-        aspects: ['summary', 'payment_status'],
-        sensitiveFields: [],
         authAction: 'none',
       },
     });
     expect(execute).toHaveBeenCalled();
     const sentRequest = (execute.mock.calls[0] as Array<{ requests?: Array<{ resource?: unknown }> }>)[0]?.requests?.[0];
-    expect(sentRequest?.resource).toBe('gift_purchases');
+    expect(sentRequest?.resource).toBe('purchase_discovery');
     expect(result.plan.current_node).toBe('resolver_consultas_informativas');
     const text = result.outbound.text ?? '';
     expect(text).toBe('respuesta generada para evidencia de compra');
     expect(composeRequests).toHaveLength(1);
     expect(composeRequests[0]?.informationResults).toEqual([
       expect.objectContaining({ kind: 'purchase', status: 'completed', resource: 'gift_purchases' }),
+    ]);
+    expect(composeRequests[0]?.customerContext?.purchases.map((purchase) => purchase.orderId)).toEqual([
+      'order-joaquin-frozen-01', 'order-joaquin-frozen-02',
     ]);
   });
 });

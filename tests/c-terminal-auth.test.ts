@@ -195,8 +195,6 @@ function codeRequest(authAction: 'provide_otp' | 'report_otp_not_received' | 're
     resource: 'gift_purchases' as const,
     query: GIFT_QUERY,
     orderId: null,
-    aspects: ['payment_status' as const, 'payment_details' as const],
-    sensitiveFields: [],
     authAction,
   };
 }
@@ -234,8 +232,7 @@ async function seedOtpPlan(
         pending_requests: [
           {
             requestId: 'information-1', kind: 'purchase', resource: 'gift_purchases',
-            query: pendingQuery, orderId: null,
-            aspects: ['summary', 'payment_status'], sensitiveFields: [], authAction: 'none',
+            query: pendingQuery, orderId: null, authAction: 'none',
           },
         ],
         selection_candidates: [],
@@ -386,7 +383,7 @@ describe('C terminal auth: rejection precedence and legacy seed', () => {
       twinExtraction([codeRequest('none')], {
         phoneConfirmation: 'no',
         supportAct: {
-          kind: 'report_issue', topic: 'mailbox_capacity', detail: 'mailbox_full',
+          kind: 'report_issue',
         },
       }),
     ]);
@@ -508,8 +505,7 @@ describe('C terminal auth: reset, FAQ, and help retry', () => {
     const runtime = new ScriptedRuntime([
       twinExtraction([
         {
-          kind: 'purchase', resource: 'gift_purchases', query: GIFT_QUERY, orderId: null,
-          aspects: ['payment_status'], sensitiveFields: [], authAction: 'decline_authentication',
+          kind: 'purchase', resource: 'gift_purchases', query: GIFT_QUERY, orderId: null, authAction: 'decline_authentication',
         },
       ]),
       twinExtraction([codeRequest()]),

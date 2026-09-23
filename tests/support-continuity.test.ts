@@ -13,6 +13,8 @@ import { OpenAiAgentRuntime } from '../src/runtime/openai-agent-runtime';
 import type { AgentConversationGateway } from '../src/runtime/agent-conversation-gateway';
 import type { AgentRuntime, ComposeReplyRequest, ExtractionResult } from '../src/runtime/contracts';
 import type { ProviderGateway } from '../src/runtime/provider-gateway';
+import type { CustomerExecution } from '../src/runtime/customer-context';
+import { fixtureCustomerContextOrchestrator } from './customer-context-test-utils';
 import { PromptLoader } from '../src/runtime/prompt-loader';
 import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
@@ -27,8 +29,7 @@ describe('derived conversation continuity', () => {
         resume_node: 'entrevista',
         pending_requests: [{
           requestId: 'purchase-1', kind: 'purchase', query: 'estado de mi compra',
-          resource: 'orders', orderId: null, aspects: ['payment_status'],
-          sensitiveFields: [], authAction: 'none',
+          resource: 'orders', orderId: null, authAction: 'none',
         }],
         selection_candidates: [],
       },
@@ -71,9 +72,8 @@ describe('support continuity prompt invariants', () => {
 
   it('carries the single shared actionable-answer directive without a duplicate rule', () => {
     const shared = fs.readFileSync(path.join(promptsDir, 'shared/base_system.txt'), 'utf8');
-    const directive = 'Resuelve lo que puedas de la solicitud con los datos y las herramientas autorizadas antes de responder; entrega la información o el resultado, no solo la intención de ayudar. Si falta algo imprescindible o la acción no está disponible, explica el límite y pide solo el dato necesario. Atribuye cambios o gestiones únicamente a resultados confirmados.';
+    const directive = 'Resuelve lo que puedas de la solicitud con los datos y las herramientas autorizadas antes de responder; entrega la información o el resultado, no solo la intención de ayudar.';
     expect(shared).toContain(directive);
-    expect(shared).not.toContain('Lo pendiente no es realizado');
     // One invariant, not an appended duplicate: the directive text occurs once.
     expect(shared.split(directive).length - 1).toBe(1);
   });
@@ -85,28 +85,17 @@ describe('support continuity prompt invariants', () => {
     );
     expect(continuity).not.toContain('support_query_open');
     expect(continuity).not.toMatch(/misma consulta se mantiene/u);
-    // Reported names stay verbatim when needed, without forced repetition,
-    // and reported identity stays distinct from verified identity (the
-    // module already limits acknowledgment to evidence without asserting
-    // verifications that do not exist).
-    expect(continuity).toContain('reported_guest_name');
-    expect(continuity).toContain('reported_event_name');
-    // Packet B: current-turn names are required in the acknowledgment; only
-    // prior-turn names stay unrepeated.
-    expect(continuity).toContain('no repitas nombres de turnos anteriores que este mensaje no trae');
-    expect(continuity).toContain('sin afirmar verificaciones que no existen');
+    expect(continuity).toContain('información reportada, no como verificación ni gestión');
+    expect(continuity).not.toContain('nombres de turnos anteriores');
   });
 
   it('keeps pending-question reference guidance in the information extractor', () => {
-    // No extractor edit was needed: literal person/event reference capture
-    // plus event-name continuation already guide pending-question follow-ups.
     const extractor = fs.readFileSync(
       path.join(promptsDir, 'extractors/information.txt'),
       'utf8',
     );
-    expect(extractor).toContain('personReference');
-    expect(extractor).toContain('eventReference');
-    expect(extractor).toContain('Conserva literalmente el nombre del evento citado');
+    expect(extractor).toContain('supportAct');
+    expect(extractor).toContain('los nombres y eventos aportados no verifican identidad');
   });
 });
 
@@ -118,7 +107,6 @@ function supportExtraction(overrides: Record<string, unknown> = {}): ExtractionR
     informationRequests: [],
     supportAct: null,
     humanHelpIntent: null,
-    normalizationIssues: [],
     phoneConfirmation: null,
     rsvpAction: null,
     rsvpDecisionSource: 'plan_state',
@@ -175,8 +163,9 @@ function venueResult(requestId: string): Record<string, unknown> {
         eventId: 702201,
         slug: 'boda-ana-luis',
         url: null,
-        name: 'Boda Ana y Luis',
-        place: 'Lima',
+          name: 'Boda Ana y Luis',
+          orders: [],
+          place: 'Lima',
         datetime: '2026-09-20T18:00:00',
         detail: {
           withTime: true,
@@ -254,9 +243,12 @@ async function runSupportTurn(options: {
     });
   }
   const otp = options.otp ?? { requested: 0, verified: 0 };
+  const fixtureOrchestrator = fixtureCustomerContextOrchestrator({
+    results: (options.orchestratorResults ?? []) as unknown as CustomerExecution['results'],
+    summaries: (options.orchestratorSummaries ?? []) as unknown as CustomerExecution['summaries'],
+  });
   const execute = vi.fn(async (input: { requests: unknown[] }) => ({
-    results: options.orchestratorResults ?? [],
-    summaries: options.orchestratorSummaries ?? [],
+    ...await fixtureOrchestrator.execute(),
     echoedRequests: input.requests,
   }));
   const composeRequests: ComposeReplyRequest[] = [];
@@ -321,7 +313,10 @@ async function runSupportTurn(options: {
       },
     } as unknown as ProviderGateway,
     agentConversationGateway: gateway,
-    informationOrchestrator: { execute } as never,
+    informationOrchestrator: {
+      prepareCustomerContext: fixtureOrchestrator.prepareCustomerContext,
+      execute,
+    } as never,
     promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
     renderers: { whatsapp: new WhatsAppMessageRenderer() },
   });
@@ -359,8 +354,6 @@ describe('pending support questions reach the information executor', () => {
       extraction: supportExtraction({
         supportAct: {
           kind: 'provide_detail',
-          topic: 'unknown',
-          detail: 'unknown',
           eventReference: 'Boda Ana y Luis',
           personReference: null,
         },
@@ -437,7 +430,10 @@ describe('pending support questions reach the information executor', () => {
     expect(composeRequests).toHaveLength(1);
     // No event-information dump rides a turn with no pending task.
     expect(composeRequests[0]?.informationResults ?? []).toEqual([]);
-    expect(composeRequests[0]?.customerContext ?? null).toBeNull();
+    expect(composeRequests[0]?.customerContext?.coverage.purchasesCarts).toMatchObject({
+      status: 'unavailable',
+      source: 'authorization',
+    });
   });
 
   it('preserves context on an answered policy plus names without new lookup or recital', async () => {
@@ -458,8 +454,6 @@ describe('pending support questions reach the information executor', () => {
       extraction: supportExtraction({
         supportAct: {
           kind: 'provide_detail',
-          topic: 'unknown',
-          detail: 'unknown',
           eventReference: 'Baby Shower Catalina',
           personReference: 'Roger Abanto',
         },
@@ -527,8 +521,6 @@ describe('pending credential resume and card topic preservation', () => {
         contactEmail: 'otp-resume@example.invalid',
         supportAct: {
           kind: 'provide_detail',
-          topic: 'unknown',
-          detail: 'unknown',
           eventReference: null,
           personReference: null,
         },
@@ -576,8 +568,6 @@ describe('pending credential resume and card topic preservation', () => {
       extraction: supportExtraction({
         supportAct: {
           kind: 'provide_detail',
-          topic: 'unknown',
-          detail: 'unknown',
           eventReference: null,
           personReference: null,
         },
@@ -636,8 +626,6 @@ describe('pending credential resume and card topic preservation', () => {
         contactEmail: 'late@example.invalid',
         supportAct: {
           kind: 'provide_detail',
-          topic: 'unknown',
-          detail: 'unknown',
           eventReference: null,
           personReference: null,
         },
@@ -667,8 +655,6 @@ describe('pending credential resume and card topic preservation', () => {
       extraction: supportExtraction({
         supportAct: {
           kind: 'provide_detail',
-          topic: 'unknown',
-          detail: 'unknown',
           eventReference: null,
           personReference: 'Roger Abanto',
         },
@@ -681,7 +667,7 @@ describe('pending credential resume and card topic preservation', () => {
     expect(first.execute).not.toHaveBeenCalled();
     expect(first.takeover).not.toHaveBeenCalled();
     expect(first.composeRequests).toHaveLength(1);
-    expect(first.composeRequests[0]?.plan.conversation_summary).toContain('tarjeta');
+    expect(first.composeRequests[0]?.plan.information_state.last_completed_request?.query).toBe(cardQuery);
     expect(first.result.plan.user_auth.status).toBe('none');
     expect(first.result.outbound.delivery.action).toBe('send');
 
@@ -693,8 +679,6 @@ describe('pending credential resume and card topic preservation', () => {
       extraction: supportExtraction({
         supportAct: {
           kind: 'provide_detail',
-          topic: 'unknown',
-          detail: 'unknown',
           eventReference: 'Baby Shower Catalina',
           personReference: null,
         },
@@ -711,7 +695,7 @@ describe('pending credential resume and card topic preservation', () => {
       kind: 'provide_detail',
       eventReference: 'Baby Shower Catalina',
     });
-    expect(second.composeRequests[0]?.plan.conversation_summary).toContain('tarjeta');
+    expect(second.composeRequests[0]?.plan.information_state.last_completed_request?.query).toBe(cardQuery);
     expect(second.result.plan.user_auth.status).toBe('none');
     expect(second.result.outbound.delivery.action).toBe('send');
   });
@@ -845,8 +829,6 @@ describe('pending credential resume and card topic preservation', () => {
       extraction: supportExtraction({
         supportAct: {
           kind: 'provide_detail',
-          topic: 'unknown',
-          detail: 'unknown',
           eventReference: null,
           personReference: 'Roger Abanto',
         },
@@ -858,7 +840,7 @@ describe('pending credential resume and card topic preservation', () => {
     expect(first.composeRequests).toHaveLength(1);
     expect(first.composeRequests[0]?.pendingQuestionRef).toBe(openQuestion);
     expect(first.composeRequests[0]?.errorMessage).toBeNull();
-    expect(first.composeRequests[0]?.plan.conversation_summary).toContain('tarjeta');
+    expect(first.composeRequests[0]?.plan.information_state.last_completed_request?.query).toBe(cardQuery);
     expect(first.result.outbound.delivery.action).toBe('send');
 
     const second = await runSupportTurn({
@@ -869,8 +851,6 @@ describe('pending credential resume and card topic preservation', () => {
       extraction: supportExtraction({
         supportAct: {
           kind: 'provide_detail',
-          topic: 'unknown',
-          detail: 'unknown',
           eventReference: 'Baby Shower Catalina',
           personReference: null,
         },
@@ -889,7 +869,7 @@ describe('pending credential resume and card topic preservation', () => {
       kind: 'provide_detail',
       eventReference: 'Baby Shower Catalina',
     });
-    expect(second.composeRequests[0]?.plan.conversation_summary).toContain('tarjeta');
+    expect(second.composeRequests[0]?.plan.information_state.last_completed_request?.query).toBe(cardQuery);
     expect(second.result.outbound.delivery.action).toBe('send');
   });
 
@@ -990,8 +970,6 @@ describe('exact-incident twin: rapid reconfirmation texts behind the lease', () 
     return supportExtraction({
       supportAct: {
         kind: 'provide_detail',
-        topic: 'unknown',
-        detail: 'unknown',
         eventReference: 'Michelle y Jorge',
         personReference: 'Gerardo Cordova',
       },

@@ -13,13 +13,13 @@ import type {
   InformationExecutionSummary,
   InformationTaskResult,
 } from '../src/core/information';
-import type { InformationOrchestrator, CustomerLinkedEnrichment, HydratedEventDetail } from '../src/runtime/information-orchestrator';
-import type { AgentConversationGateway } from '../src/runtime/agent-conversation-gateway';
+import type { InformationOrchestrator } from '../src/runtime/information-orchestrator';
 import { AgentService } from '../src/runtime/agent-service';
 import { PromptLoader } from '../src/runtime/prompt-loader';
 import type { ProviderGateway } from '../src/runtime/provider-gateway';
 import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
+import { fixtureCustomerContextOrchestrator } from './customer-context-test-utils';
 
 const RELEVANT_TOTAL = 150.5;
 const UNRELATED_TOTAL = 999.75;
@@ -93,8 +93,6 @@ class PaymentQuestionRuntime implements AgentRuntime {
         resource: 'orders',
         query: '¿Cuál es el estado de mi pago?',
         orderId: this.orderId,
-        aspects: ['payment_status'],
-        sensitiveFields: [],
         authAction: 'none',
       }],
       phoneConfirmation: null,
@@ -137,15 +135,14 @@ function serviceWith(
   results: InformationTaskResult[],
   summaries: InformationExecutionSummary[],
 ): { service: AgentService; runtime: PaymentQuestionRuntime } {
+  const informationOrchestrator = fixtureCustomerContextOrchestrator({ results, summaries });
   const service = new AgentService({
     planStore: new InMemoryPlanStore(),
     runtime,
     providerGateway: {} as unknown as ProviderGateway,
     promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
     renderers: { whatsapp: new WhatsAppMessageRenderer() },
-    informationOrchestrator: {
-      execute: async () => ({ results, summaries }),
-    } as unknown as InformationOrchestrator,
+    informationOrchestrator: informationOrchestrator as unknown as InformationOrchestrator,
   });
   return { service, runtime };
 }
@@ -188,7 +185,7 @@ describe('l4 customer context production wiring', () => {
     // entity; the requested order leads by reference instead of hiding the
     // rest. Carts stay distinct records for later cart questions.
     expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-A', 'ORD-B']);
-    expect(customerContext?.detailedPurchases.map((entry) => entry.orderId)).toEqual(['ORD-A', 'ORD-B']);
+    expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-A', 'ORD-B']);
     expect(customerContext?.carts.map((entry) => entry.cartId)).toEqual(['cart-relevant-1', UNRELATED_CART]);
     const serialized = JSON.stringify(customerContext);
     expect(serialized).toContain(String(RELEVANT_TOTAL));
@@ -197,7 +194,7 @@ describe('l4 customer context production wiring', () => {
     expect(request?.owner).toBe('customer_assistance');
   });
 
-  it('projects nothing without an authorized identity', async () => {
+  it('projects explicit unavailable coverage without an authorized identity', async () => {
     const runtime = new PaymentQuestionRuntime();
     const relevant = purchaseResult('information-1', 'ORD-A', RELEVANT_TOTAL, 'cart-relevant-1');
     const { service } = serviceWith(
@@ -209,7 +206,13 @@ describe('l4 customer context production wiring', () => {
     await service.handleTurn(inbound('¿Cuál es el estado de mi pago?'));
 
     expect(runtime.composeRequests).toHaveLength(1);
-    expect(runtime.composeRequests[0]?.customerContext).toBeNull();
+    expect(runtime.composeRequests[0]?.customerContext).toMatchObject({
+      purchases: [],
+      coverage: {
+        purchasesCarts: { status: 'unavailable', source: 'authorization' },
+        invitationsEvents: { status: 'unavailable', source: 'authorization' },
+      },
+    });
   });
 
   it('leads with an explicit years-old order instead of the newest record', async () => {
@@ -226,9 +229,9 @@ describe('l4 customer context production wiring', () => {
 
     expect(runtime.composeRequests).toHaveLength(1);
     const customerContext = runtime.composeRequests[0]?.customerContext;
-    // No age cutoff and no newest-first hiding: the explicit old target
-    // leads by reference while the newer record stays visible.
-    expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-OLD', 'ORD-NEW']);
+    // Canonical order is stable backend order; the older target remains
+    // present without reference-driven reordering or age-based filtering.
+    expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-NEW', 'ORD-OLD']);
     const serialized = JSON.stringify(customerContext);
     expect(serialized).toContain('75.25');
     expect(serialized).toContain(String(UNRELATED_TOTAL));
@@ -252,240 +255,9 @@ describe('l4 customer context production wiring', () => {
     // target reference (candidates, never an inferred mutation), not from
     // hiding records.
     expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-A', 'ORD-B']);
-    expect(customerContext?.detailedPurchases).toHaveLength(2);
+    expect(customerContext?.purchases).toHaveLength(2);
     expect(customerContext?.carts).toHaveLength(2);
-    expect(customerContext?.commonRefs.orderIds).toEqual(['ORD-A', 'ORD-B']);
-  });
-});
-
-describe('l4 S7 bounded enrichment through public AgentService', () => {
-  function summaryOnlyResult(
-    requestId: string,
-    orderId: string,
-    total: number,
-  ): { result: InformationTaskResult; summary: InformationExecutionSummary } {
-    const full = purchaseResult(requestId, orderId, total, `cart-${orderId}`);
-    if (full.result.status !== 'completed' || full.result.kind !== 'purchase') {
-      throw new Error('Expected a completed purchase fixture.');
-    }
-    return {
-      result: {
-        ...full.result,
-        purchases: full.result.purchases.map((purchase) => ({
-          ...purchase,
-          items: [],
-          payment: null,
-          dedication: null,
-        })),
-      },
-      summary: full.summary,
-    };
-  }
-
-  function serviceWithEnrichment(
-    runtime: PaymentQuestionRuntime,
-    results: InformationTaskResult[],
-    summaries: InformationExecutionSummary[],
-    enrich: (args: {
-      orderIds: readonly string[];
-      eventIds: readonly (number | string)[];
-    }) => Promise<CustomerLinkedEnrichment>,
-    enrichCalls: { orderIds: readonly string[]; eventIds: readonly (number | string)[] }[],
-  ): { service: AgentService; runtime: PaymentQuestionRuntime } {
-    const service = new AgentService({
-      planStore: new InMemoryPlanStore(),
-      runtime,
-      providerGateway: {} as unknown as ProviderGateway,
-      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
-      renderers: { whatsapp: new WhatsAppMessageRenderer() },
-      informationOrchestrator: {
-        execute: async () => ({ results, summaries }),
-        enrichCustomerLinkedDetail: async (args: {
-          orderIds: readonly string[];
-          eventIds: readonly (number | string)[];
-        }) => {
-          enrichCalls.push({ orderIds: args.orderIds, eventIds: args.eventIds });
-          return enrich(args);
-        },
-      } as unknown as InformationOrchestrator,
-    });
-    return { service, runtime };
-  }
-
-  it('fetches authorized gift detail before the answer and merges inline items', async () => {
-    const runtime = new PaymentQuestionRuntime('ORD-A');
-    const summaryOnly = summaryOnlyResult('information-1', 'ORD-A', RELEVANT_TOTAL);
-    const enrichCalls: { orderIds: readonly string[]; eventIds: readonly (number | string)[] }[] = [];
-    const { service } = serviceWithEnrichment(
-      runtime,
-      [summaryOnly.result],
-      [summaryOnly.summary],
-      async () => ({
-        giftPurchases: [{
-          orderId: 'ORD-A',
-          paymentStatus: 'pending',
-          shippingStatus: null,
-          grandTotal: RELEVANT_TOTAL,
-          paymentMethod: 'transfer',
-          eventName: 'Evento Prueba',
-          eventDate: null,
-          eventUrl: null,
-          createdAt: null,
-          items: [{ giftName: 'Regalo Enriquecido', quantity: 1, amount: RELEVANT_TOTAL, rowTotal: RELEVANT_TOTAL, type: 'gift' }],
-        }],
-        eventDetails: new Map<number, HydratedEventDetail>(),
-        readsAttempted: 1,
-        truncatedByBound: false,
-        unavailable: [],
-        failures: [],
-      }),
-      enrichCalls,
-    );
-
-    await service.handleTurn(inbound('¿Cuál es el estado de mi pago?', '+51900000001'));
-
-    expect(enrichCalls).toHaveLength(1);
-    expect(enrichCalls[0]?.orderIds).toEqual(['ORD-A']);
-    expect(runtime.composeRequests).toHaveLength(1);
-    const customerContext = runtime.composeRequests[0]?.customerContext;
-    expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-A']);
-    expect(customerContext?.detailedPurchases).toHaveLength(1);
-    expect(customerContext?.detailedPurchases[0]?.items).toHaveLength(1);
-    expect(customerContext?.enrichment?.readsAttempted).toBe(1);
-    expect(customerContext?.enrichment?.truncatedByBound).toBe(false);
-  });
-
-  it('fetches duplicate explicit IDs once and keeps the explicit old target', async () => {
-    const runtime = new PaymentQuestionRuntime('ORD-OLD');
-    const newest = summaryOnlyResult('information-1', 'ORD-NEW', UNRELATED_TOTAL);
-    const oldest = summaryOnlyResult('information-2', 'ORD-OLD', 75.25);
-    const enrichCalls: { orderIds: readonly string[]; eventIds: readonly (number | string)[] }[] = [];
-    const { service } = serviceWithEnrichment(
-      runtime,
-      [newest.result, oldest.result],
-      [newest.summary, oldest.summary],
-      async () => ({
-        giftPurchases: [],
-        eventDetails: new Map<number, HydratedEventDetail>(),
-        readsAttempted: 1,
-        truncatedByBound: false,
-        unavailable: [],
-        failures: [],
-      }),
-      enrichCalls,
-    );
-
-    await service.handleTurn(inbound('¿Cuál es el estado de mi pago?', '+51900000001'));
-
-    expect(enrichCalls).toHaveLength(1);
-    expect(enrichCalls[0]?.orderIds).toEqual(['ORD-OLD']);
-    const customerContext = runtime.composeRequests[0]?.customerContext;
-    expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-OLD', 'ORD-NEW']);
-    const serialized = JSON.stringify(customerContext);
-    expect(serialized).toContain('75.25');
-    expect(serialized).toContain(String(UNRELATED_TOTAL));
-  });
-
-  it('never auto-selects the pending newest order: ambiguous enriches nothing', async () => {
-    const runtime = new PaymentQuestionRuntime(null);
-    const newest = summaryOnlyResult('information-1', 'ORD-NEW', UNRELATED_TOTAL);
-    const oldest = summaryOnlyResult('information-2', 'ORD-OLD', 75.25);
-    const enrichCalls: { orderIds: readonly string[]; eventIds: readonly (number | string)[] }[] = [];
-    const { service } = serviceWithEnrichment(
-      runtime,
-      [newest.result, oldest.result],
-      [newest.summary, oldest.summary],
-      async () => ({
-        giftPurchases: [],
-        eventDetails: new Map<number, HydratedEventDetail>(),
-        readsAttempted: 0,
-        truncatedByBound: false,
-        unavailable: [],
-        failures: [],
-      }),
-      enrichCalls,
-    );
-
-    await service.handleTurn(inbound('¿Cuál es el estado de mi pago?', '+51900000001'));
-
-    expect(enrichCalls).toHaveLength(0);
-    const customerContext = runtime.composeRequests[0]?.customerContext;
-    // Linked-detail enrichment stays explicit-only, but the profile itself
-    // hides nothing: both candidates ride the canonical context.
-    expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-NEW', 'ORD-OLD']);
-    expect(customerContext?.detailedPurchases).toHaveLength(2);
-    expect(customerContext?.commonRefs.orderIds).toEqual(['ORD-NEW', 'ORD-OLD']);
-  });
-
-  it('keeps required unavailable detail explicit while answering ready facts', async () => {
-    const runtime = new PaymentQuestionRuntime('ORD-A');
-    const summaryOnly = summaryOnlyResult('information-1', 'ORD-A', RELEVANT_TOTAL);
-    const enrichCalls: { orderIds: readonly string[]; eventIds: readonly (number | string)[] }[] = [];
-    const { service } = serviceWithEnrichment(
-      runtime,
-      [summaryOnly.result],
-      [summaryOnly.summary],
-      async () => ({
-        giftPurchases: [],
-        eventDetails: new Map<number, HydratedEventDetail>(),
-        readsAttempted: 1,
-        truncatedByBound: false,
-        unavailable: ['order:ORD-A'],
-        failures: [],
-      }),
-      enrichCalls,
-    );
-
-    await service.handleTurn(inbound('¿Cuál es el estado de mi pago?', '+51900000001'));
-
-    expect(runtime.composeRequests).toHaveLength(1);
-    const customerContext = runtime.composeRequests[0]?.customerContext;
-    expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-A']);
-    expect(customerContext?.enrichment?.unavailable).toContain('order:ORD-A');
-  });
-
-  it('performs no writes during enrichment', async () => {
-    const runtime = new PaymentQuestionRuntime('ORD-A');
-    const summaryOnly = summaryOnlyResult('information-1', 'ORD-A', RELEVANT_TOTAL);
-    const enrichCalls: { orderIds: readonly string[]; eventIds: readonly (number | string)[] }[] = [];
-    let writeCalls = 0;
-    const service = new AgentService({
-      planStore: new InMemoryPlanStore(),
-      runtime,
-      providerGateway: {} as unknown as ProviderGateway,
-      agentConversationGateway: {
-        logMessage: async () => ({ status: 'skipped', reason: 'not_configured', message: 'skip' }),
-        getRecentMessages: async () => ({ status: 'skipped', reason: 'not_configured', message: 'skip' }),
-        requestHumanTakeover: async () => ({ status: 'skipped', reason: 'not_configured', message: 'skip' }),
-        authByPhone: async () => ({ status: 'failed', error: 'unused', retryable: false }),
-        updatePhone: async () => { writeCalls += 1; return { status: 'failed', error: 'unused', retryable: false }; },
-        guestRsvp: async () => { writeCalls += 1; return { status: 'failed', error: 'unused', retryable: false }; },
-      } as unknown as AgentConversationGateway,
-      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
-      renderers: { whatsapp: new WhatsAppMessageRenderer() },
-      informationOrchestrator: {
-        execute: async () => ({ results: [summaryOnly.result], summaries: [summaryOnly.summary] }),
-        enrichCustomerLinkedDetail: async (args: {
-          orderIds: readonly string[];
-          eventIds: readonly (number | string)[];
-        }) => {
-          enrichCalls.push({ orderIds: args.orderIds, eventIds: args.eventIds });
-          return {
-            giftPurchases: [],
-            eventDetails: new Map<number, HydratedEventDetail>(),
-            readsAttempted: 0,
-            truncatedByBound: false,
-            unavailable: [],
-            failures: [],
-          };
-        },
-      } as unknown as InformationOrchestrator,
-    });
-
-    await service.handleTurn(inbound('¿Cuál es el estado de mi pago?', '+51900000001'));
-
-    expect(runtime.composeRequests).toHaveLength(1);
-    expect(writeCalls).toBe(0);
+    expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-A', 'ORD-B']);
   });
 });
 
@@ -521,8 +293,8 @@ describe('l4 P1 canonical profile through public AgentService', () => {
     expect(runtime.composeRequests).toHaveLength(1);
     const customerContext = runtime.composeRequests[0]?.customerContext;
     expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-A']);
-    expect(customerContext?.detailedPurchases).toHaveLength(1);
-    expect(customerContext?.detailedPurchases[0]?.items).toHaveLength(1);
+    expect(customerContext?.purchases).toHaveLength(1);
+    expect(customerContext?.purchases[0]?.items).toHaveLength(1);
   });
 
   it('preserves ready facts when a duplicate scoped read fails', async () => {
@@ -559,7 +331,7 @@ describe('l4 P1 canonical profile through public AgentService', () => {
     expect(runtime.composeRequests).toHaveLength(1);
     const customerContext = runtime.composeRequests[0]?.customerContext;
     expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-A']);
-    expect(customerContext?.commonRefs.orderIds).toContain('ORD-A');
+    expect(customerContext?.purchases.map((entry) => entry.orderId)).toContain('ORD-A');
   });
 });
 
@@ -633,14 +405,14 @@ describe('l4 B receipt discovery merges both authorized sources canonically', ()
     expect(customerContext?.purchases.map((entry) => entry.orderId).sort()).toEqual(
       ['GIFT-DISC-7', 'ORD-DISC-1'],
     );
-    expect(customerContext?.detailedPurchases).toHaveLength(2);
-    expect([...customerContext?.commonRefs.orderIds ?? []].sort()).toEqual(['GIFT-DISC-7', 'ORD-DISC-1']);
+    expect(customerContext?.purchases).toHaveLength(2);
+    expect([...customerContext?.purchases.map((entry) => entry.orderId) ?? []].sort()).toEqual(['GIFT-DISC-7', 'ORD-DISC-1']);
     const serialized = JSON.stringify(customerContext);
     expect(serialized).toContain('340.44');
     expect(serialized).toContain('pending');
     expect(serialized).toContain('approved');
     expect(serialized).toContain('Evento Sintetico');
-    expect(customerContext?.sections.purchasesCarts).toBe('ready');
+    expect(customerContext?.coverage.purchasesCarts.status).toBe('ready');
   });
 
   it('marks partial coverage when the gift discovery read fails while keeping ready orders facts', async () => {
@@ -686,8 +458,8 @@ describe('l4 B receipt discovery merges both authorized sources canonically', ()
     // the per-result coverage behind the reply stays honest (proven at the
     // executor level).
     expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-DISC-1']);
-    expect(customerContext?.detailedPurchases).toHaveLength(1);
-    expect(customerContext?.sections.purchasesCarts).toBe('ready');
-    expect(customerContext?.commonRefs.orderIds).toEqual(['ORD-DISC-1']);
+    expect(customerContext?.purchases).toHaveLength(1);
+    expect(customerContext?.coverage.purchasesCarts.status).toBe('ready');
+    expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-DISC-1']);
   });
 });

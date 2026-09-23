@@ -9,7 +9,6 @@ import type { TurnDecision } from '../core/turn-decision';
 import type {
   ExtractedInformationRequest,
   HumanHelpIntent,
-  InformationNormalizationIssue,
   InformationSupportAct,
   InformationTaskResult,
   PhoneConfirmation,
@@ -33,10 +32,7 @@ import type { RuntimeOperationId } from './capability-manifest';
 import type { CapabilityDecision } from './capability-manifest';
 import type { RsvpAction, RsvpDecisionSource, RsvpParty } from '../core/rsvp';
 import type { PlanOwner } from '../core/plan';
-import type { CustomerContextProjection, CustomerEnrichmentSummary } from './customer-context';
-
-/** S7 bounded-enrichment provenance re-export for typed reply evidence. */
-export type { CustomerEnrichmentSummary };
+import type { CustomerContextProjection } from './customer-context';
 
 export type OpenAiRequestMetrics = {
   instructionBytes: number;
@@ -88,7 +84,6 @@ export type ExtractionResult = {
   informationRequests: ExtractedInformationRequest[];
   supportAct?: InformationSupportAct | null;
   humanHelpIntent?: HumanHelpIntent | null;
-  normalizationIssues?: InformationNormalizationIssue[];
   phoneConfirmation?: PhoneConfirmation | null;
   rsvpAction?: RsvpAction | null;
   rsvpDecisionSource?: RsvpDecisionSource | null;
@@ -144,6 +139,8 @@ export type ExtractRequest = {
   userMessage: string;
   plan: PersistedPlan;
   messageContext: TurnMessageContext;
+  /** Complete authorized customer context, prepared before extraction. */
+  customerContext?: CustomerContextProjection | null;
   /**
    * Inbound linkage for the current-vs-prior image relation only. Lets the
    * extractor projection mark which stored attachment (if any) arrived with
@@ -315,12 +312,7 @@ export type ComposeReplyRequest = {
    * stay byte-identical. Facts only, never reply prose.
    */
   rsvpWorkCompleted?: boolean;
-  /**
-   * L4 Customer operations projection: common references plus the
-   * question-relevant snapshot detail. Absent (null/undefined) means the
-   * turn is not a Customer operations turn and nothing is projected, so
-   * unrelated turns stay byte-identical.
-   */
+  /** Complete authorized customer profile, prepared before extraction. */
   customerContext?: CustomerContextProjection | null;
   /** L4 persisted owner serving this turn. Absent means transient selection. */
   owner?: PlanOwner | null;

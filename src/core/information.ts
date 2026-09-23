@@ -23,6 +23,14 @@ export const purchaseRequestResourceValues = [
 export type PurchaseRequestResource =
   (typeof purchaseRequestResourceValues)[number];
 
+export const purchaseRecordSourceValues = [
+  'orders',
+  'gift_purchases',
+  'user_lookup',
+  'event_detail',
+] as const;
+export type PurchaseRecordSource = (typeof purchaseRecordSourceValues)[number];
+
 /** Provenance of an order record in the phone-scoped orders response. */
 export const purchasePartitionValues = [
   'pending_orders',
@@ -30,35 +38,6 @@ export const purchasePartitionValues = [
   'legacy_orders',
 ] as const;
 export type PurchasePartition = (typeof purchasePartitionValues)[number];
-
-export const purchaseAspectValues = [
-  'summary',
-  'payment_status',
-  'payment_details',
-  'payment_options',
-  'validation_window',
-  'shipping',
-  'dedication',
-  'thanks',
-  'decline',
-] as const;
-export type PurchaseAspect = (typeof purchaseAspectValues)[number];
-
-export const informationValidationPolicyRequestId = 'information-validation-policy';
-export const informationPaymentOptionsPolicyRequestId = 'information-payment-options-policy';
-
-export const sensitivePurchaseFieldValues = [
-  'payment_id',
-  'transaction_status',
-  'gateway_message',
-  'operation_code',
-  'origin_bank',
-  'destination_account',
-  'voucher_image',
-  'decline_code',
-  'admin_comment',
-] as const;
-export type SensitivePurchaseField = (typeof sensitivePurchaseFieldValues)[number];
 
 export const purchaseAuthActionValues = [
   'none',
@@ -86,34 +65,9 @@ export const informationSupportActKindValues = [
 export type InformationSupportActKind =
   (typeof informationSupportActKindValues)[number];
 
-export const informationSupportTopicValues = [
-  'mailbox_capacity',
-  'payment_proof',
-  'purchase_status',
-  'account_access',
-  'unknown',
-] as const;
-export type InformationSupportTopic =
-  (typeof informationSupportTopicValues)[number];
-
-export const informationSupportDetailValues = [
-  'mailbox_full',
-  'submission_deferred',
-  'submission_reported',
-  'status_pending',
-  'status_approved',
-  'unknown',
-] as const;
-export type InformationSupportDetail =
-  (typeof informationSupportDetailValues)[number];
-
 export const informationSupportActSchema = z.object({
   kind: z.enum(informationSupportActKindValues),
-  topic: z.enum(informationSupportTopicValues),
-  detail: z.enum(informationSupportDetailValues),
-  // User-supplied context for a support continuation. These are evidence
-  // fields, not a second persisted memory store; they are retained only for
-  // the current turn's deterministic acknowledgement.
+  // References carry evidence without classifying customer facts.
   eventReference: z.string().trim().min(1).nullable().optional(),
   personReference: z.string().trim().min(1).nullable().optional(),
 });
@@ -151,8 +105,6 @@ export const purchaseInformationRequestSchema = z.object({
   resource: z.enum(purchaseRequestResourceValues),
   query: z.string().min(1),
   orderId: z.string().nullable(),
-  aspects: z.array(z.enum(purchaseAspectValues)).min(1),
-  sensitiveFields: z.array(z.enum(sensitivePurchaseFieldValues)),
   authAction: z.enum(purchaseAuthActionValues),
   // Typed selectors are populated only when the user states them explicitly.
   eventHint: z.string().nullable().optional(),
@@ -383,48 +335,6 @@ export type KnowledgeEvidence = {
   text: string;
 };
 
-/**
- * Packet O5 typed purchase fact. Candidate-visible purchase values travel
- * under these exact field names on the summary evidence, never smuggled
- * through the retrieval filename/score bridge: filename carries no event
- * label and score carries no amount for purchase entries. Order ids, phones,
- * emails and reference values never travel (reference presence only).
- */
-export type PurchaseFactItemEvidence = {
-  name: string | null;
-  quantity: number | null;
-  amount: number | null;
-  rowTotal: number | null;
-  fulfillment: PurchaseItemFulfillmentKind | null;
-};
-
-export type PurchaseFactDedicationEvidence = {
-  message: string | null;
-  sendPhysical: boolean | null;
-  physicalStatus: string | null;
-};
-
-export type PurchaseFactEvidence = {
-  eventLabel: string | null;
-  total: number | null;
-  currency: string | null;
-  currencySymbol: string | null;
-  paymentMethod: string | null;
-  paymentStatus: string | null;
-  shippingStatus: string | null;
-  eventDate: string | null;
-  createdAt: string | null;
-  referencePresent: boolean;
-  /**
-   * Dedication as projected to the responder: present only when the
-   * dedication aspect carried it, so the judge verifies quotes against
-   * responder-visible text instead of flagging them as invented.
-   */
-  dedication: PurchaseFactDedicationEvidence | null;
-  /** Per-item facts as projected: empty when aspects omit items. */
-  items: PurchaseFactItemEvidence[];
-};
-
 export const purchaseItemFulfillmentKindValues = [
   'physical',
   'host_credit',
@@ -466,7 +376,7 @@ export type PurchaseItem = {
 
 /**
  * One scoped host-credit policy fact, projected only when a fulfillment
- * question (summary/shipping aspects) meets at least one host_credit item.
+ * question when at least one host_credit item is present.
  * Shared once per purchase instead of duplicating prose per item. It states
  * the fulfillment mechanism, never payment posting: paymentStatus stays
  * independent and no credited-now fact is derived from item type.
@@ -485,6 +395,7 @@ export type HostCreditFulfillmentPolicy = {
  */
 export type PurchaseItemSourceAlternative = {
   items: PurchaseItem[];
+  source?: PurchaseRecordSource | null;
   accessMethod: string | null;
   scope: string | null;
 };
@@ -493,24 +404,19 @@ export type PurchaseItemSourceAlternative = {
  * Typed order-level item-source conflict. Present only when nonempty
  * snapshots disagree as multisets of raw line tuples; the canonical order
  * then exposes no authoritative unified item list. Alternatives are
- * deduplicated by multiset key; beyond the evidence bound the excess is cut
- * and truncated marks partial evidence instead of claiming completeness.
+ * deduplicated by complete source/scope/item identity. Every returned
+ * alternative is retained; read concurrency is bounded separately.
  */
 export type PurchaseItemSourceConflict = {
   alternatives: PurchaseItemSourceAlternative[];
   truncated: boolean;
 };
 
-/**
- * Conflict-alternative payload bound. Reuses the established 3-record
- * reply-evidence cardinality so a conflict can never grow an unbounded
- * snapshot history.
- */
-export const purchaseItemConflictAlternativeLimit = 3;
-
 /** A phone-scoped cart is deliberately not a purchase/order. */
 export type CartInformation = {
   cartId: string;
+  recordSource?: 'orders';
+  accessScope?: string | null;
   status: string;
   wasAbandoned: boolean;
   eventId?: number | string | null;
@@ -522,7 +428,6 @@ export type CartInformation = {
   currency?: string | null;
   /** Display metadata for the cart currency; never a code substitute. */
   currencySymbol?: string | null;
-  amountDisclosure?: PurchaseAmountDisclosure | null;
   giftsQuantity?: number | null;
   createdAt?: string | null;
   items: PurchaseItem[];
@@ -536,6 +441,8 @@ export type PurchasePaymentDetails = {
   transactionStatus?: string | null;
   gatewayMessage?: string | null;
   operationCode?: string | null;
+  /** Whether the API record carries a voucher upload; raw URLs are credentials. */
+  voucherProvided?: boolean | null;
   originBank?: string | null;
   destinationAccount?: {
     holder: string | null;
@@ -552,18 +459,12 @@ export type PendingPaymentValidationExpectation = {
   appliesTo: 'indexed_validation_methods';
 };
 
-export type PurchaseAmountDisclosure = {
-  total: number | null;
-  paid: number | null;
-  currency: string | null;
-  /** Display metadata for the disclosed currency; never a code substitute. */
-  currencySymbol: string | null;
-  paymentMethod: string | null;
-  presentation: 'explicit_currency' | 'recorded_method_no_currency';
-};
-
 export type PurchaseInformation = {
   orderId: string;
+  /** Endpoint that supplied these facts; conflicts stay as separate records. */
+  recordSource?: PurchaseRecordSource;
+  /** Authorization scope that produced these facts. */
+  accessScope?: string | null;
   /** Partition provenance is present for phone-scoped order candidates. */
   partition?: PurchasePartition;
   eventId?: number | string | null;
@@ -584,8 +485,7 @@ export type PurchaseInformation = {
   createdAt: string | null;
   items: PurchaseItem[];
   /**
-   * Scoped host-credit policy, projected only when the requested aspects
-   * need fulfillment facts and at least one projected item is host_credit.
+   * Scoped host-credit mechanism fact when at least one item is host_credit.
    */
   creditFulfillmentPolicy?: HostCreditFulfillmentPolicy | null;
   /**
@@ -596,8 +496,6 @@ export type PurchaseInformation = {
   itemSourceConflict?: PurchaseItemSourceConflict | null;
   payment?: PurchasePaymentDetails | null;
   paymentValidationExpectation?: PendingPaymentValidationExpectation | null;
-  /** Single reconciled amount representation intended for model disclosure. */
-  amountDisclosure?: PurchaseAmountDisclosure | null;
   declineCode?: string | null;
   adminComment?: string | null;
   dedication?: {
@@ -802,7 +700,7 @@ export type InformationTaskResult =
       status: 'failed';
       retryable: boolean;
       /** Identifies a scoped lookup even when it returned no records. */
-      accessMethod?: 'trusted_phone_guest' | 'trusted_phone_purchase';
+      accessMethod?: 'authenticated_account' | 'trusted_phone_guest' | 'trusted_phone_purchase';
       lookupResource?: PurchaseResource;
       /** Per-source coverage for a failed discovery expansion. */
       sourceCoverage?: PurchaseSourceCoverage[];
@@ -843,13 +741,6 @@ export type InformationExecutionSummary = {
     filename: string;
     score: number;
     contentHash: string;
-    /**
-     * Packet O5 typed purchase fact. Present only on completed purchase
-     * lookups; the single typed source for evaluator purchase projections.
-     * Absent when the backend was not read or yielded no such datum, which
-     * is unknown rather than a demand for a named value.
-     */
-    purchaseFact?: PurchaseFactEvidence;
   }>;
   resultCount: number;
   durationMs: number;
@@ -865,7 +756,7 @@ export type InformationExecutionSummary = {
   /**
    * The single real backend source behind this summary, when exactly one
    * applies. Discovery expansions always omit it; per-source facts travel
-   * in `sourceCoverage` and evidence purchaseFacts. The request-only
+   * in `sourceCoverage`. The request-only
    * `purchase_discovery` value must never appear here: the live-trace
    * contract rejects it.
    */
@@ -887,15 +778,8 @@ export type InformationExecutionSummary = {
   historyLimit?: string | null;
 };
 
-/**
- * Bounded enrichment contract (Packet C). Relationship traversal from root
- * summaries is capped at two edges per pass with at most four concurrent
- * reads. These are runtime bounds, not domain filters: hitting a bound
- * keeps the section partial and the remaining candidates discoverable, it
- * never claims completeness and never drops history.
- */
+/** Bound simultaneous backend reads; every queued authorized record is retained. */
 export const enrichmentBounds = {
-  maxRelationshipEdges: 2,
   maxConcurrentReads: 4,
 } as const;
 

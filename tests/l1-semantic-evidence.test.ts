@@ -133,8 +133,6 @@ describe('W1-04 L1 semantic evidence (no templates)', () => {
     const extraction = baseExtraction();
     extraction.supportAct = {
       kind: 'provide_detail',
-      topic: 'unknown',
-      detail: 'unknown',
       personReference: 'Roger Abanto',
       eventReference: 'Baby Shower Catalina',
     };
@@ -147,8 +145,6 @@ describe('W1-04 L1 semantic evidence (no templates)', () => {
     const extraction = baseExtraction();
     extraction.supportAct = {
       kind: 'provide_detail',
-      topic: 'unknown',
-      detail: 'unknown',
       personReference: 'Roger Abanto',
       eventReference: 'Baby Shower Catalina',
     };
@@ -169,8 +165,6 @@ describe('W1-04 L1 semantic evidence (no templates)', () => {
     const extraction = baseExtraction();
     extraction.supportAct = {
       kind: 'provide_detail',
-      topic: 'payment_proof',
-      detail: 'submission_reported',
       personReference: null,
       eventReference: null,
     };
@@ -180,8 +174,6 @@ describe('W1-04 L1 semantic evidence (no templates)', () => {
       resource: 'orders',
       orderId: null,
       amount: 13.76,
-      aspects: ['summary', 'payment_status'],
-      sensitiveFields: [],
       authAction: 'none',
     }];
     const evidence = readEvidence(composeInput(createRequest({
@@ -196,8 +188,6 @@ describe('W1-04 L1 semantic evidence (no templates)', () => {
     const extraction = baseExtraction();
     extraction.supportAct = {
       kind: 'provide_detail',
-      topic: 'unknown',
-      detail: 'unknown',
       personReference: null,
       eventReference: null,
     };
@@ -207,8 +197,6 @@ describe('W1-04 L1 semantic evidence (no templates)', () => {
       resource: 'orders',
       orderId: null,
       amount: 13.76,
-      aspects: ['summary', 'payment_status'],
-      sensitiveFields: [],
       authAction: 'none',
     }];
     const evidence = readEvidence(composeInput(createRequest({

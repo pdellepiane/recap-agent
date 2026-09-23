@@ -26,7 +26,7 @@ import type {
   UserLoginCodeRequestResult,
   UserLoginCodeVerificationResult,
 } from './provider-gateway';
-import type { CartInformation, PurchaseInformation, PurchasePartition, PurchaseResource } from '../core/information';
+import type { CartInformation, PurchaseInformation, PurchasePartition, PurchasePaymentDetails, PurchaseResource } from '../core/information';
 import {
   buildRuntimeCapabilityManifest,
   isRuntimeOperationId,
@@ -36,6 +36,17 @@ import {
 import { normalizeServerTimestamp } from '../core/server-timestamp';
 import type { EvalFixtureStateStore, FixtureEffectReceipt, FixtureLoggedMessage } from './eval-fixture-state';
 import { InMemoryEvalFixtureStateStore, LOCAL_FIXTURE_CONVERSATION_KEY, assertFixtureAllowed } from './eval-fixture-state';
+import {
+  agentEventDetailWireShape,
+  agentGiftPurchasesWireShape,
+  agentGuestEventsWireShape,
+  agentOrderWireShape,
+  agentPartitionedOrdersWireShape,
+  agentRecentMessagesWireShape,
+  reportUnmappedWireKeys,
+  type UnmappedWireKeySink,
+  type WireObjectShape,
+} from './wire-key-diagnostics';
 
 export { normalizeServerTimestamp as normalizePurchaseTimestamp } from '../core/server-timestamp';
 
@@ -100,6 +111,7 @@ export function resolveFixtureHandoffStatus(data: FixtureData | null): 'success'
 
 export type FixtureGatewayEffectOptions = {
   allowCustomerWrites?: boolean;
+  onUnmappedWireKey?: UnmappedWireKeySink;
   runId?: string;
   caseId?: string;
   /**
@@ -327,6 +339,7 @@ const orderSchema = z.object({
   shipping_status: nullableStringSchema,
   grand_total: nullableNumberSchema,
   payment_method: nullableStringSchema,
+  payment: paymentSchema.nullable().optional(),
   event_id: z.union([z.number(), z.string()]).nullable().optional(),
   currency: nullableStringSchema.optional(),
   currency_code: nullableStringSchema.optional(),
@@ -595,6 +608,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
   private readonly stateStore: EvalFixtureStateStore;
   private readonly effectReceipts: FixtureEffectReceipt[] = [];
   private readonly rsvpAttendanceByGuest = new Map<number, boolean | null>();
+  private readonly onUnmappedWireKey: UnmappedWireKeySink | undefined;
 
   constructor(
     private readonly scenario: string,
@@ -603,6 +617,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
   ) {
     this.loadResult = loadResult;
     this.data = loadResult.status === 'loaded' ? loadResult.data : null;
+    this.onUnmappedWireKey = options.onUnmappedWireKey;
     this.fixtureScenario = scenario;
     this.runId = options.runId?.trim() || 'local-run';
     this.caseId = options.caseId?.trim() || 'local-case';
@@ -958,6 +973,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
         }
       }
       if (raw !== undefined) {
+        this.diagnoseWireKeys('/conversations/messages', raw, agentRecentMessagesWireShape);
         const parsed = messagesDataSchema.safeParse(raw);
         if (!parsed.success) {
           return { status: 'failed', error: 'Fixture recentMessages had an unexpected shape.', retryable: false };
@@ -1191,6 +1207,9 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
     // The fixture stores the raw data object as it appears in HTTP envelope data
     // It may be either { pending_orders: [...], completed_orders: [...], carts: [...] } or legacy { orders: [...] }
     const guestOrders = resource === 'orders' ? this.parseGuestOrders(effectiveRaw) : null;
+    if (resource === 'gift_purchases') {
+      this.diagnoseWireKeys('/guest/gift-purchases', effectiveRaw, agentGiftPurchasesWireShape);
+    }
     const purchases = resource === 'orders'
       ? guestOrders?.purchases ?? null
       : this.parseGiftPurchases(effectiveRaw);
@@ -1245,6 +1264,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
       return { status: 'not_found' };
     }
     const parsed = guestEventsDataSchema.safeParse(raw);
+    this.diagnoseWireKeys('/guest/events', raw, agentGuestEventsWireShape);
     if (!parsed.success) {
       return { status: 'failed', error: 'Fixture guest events response had an unexpected shape.', retryable: false };
     }
@@ -1316,6 +1336,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
         return { status: 'not_found' };
       }
       const foundRaw = allDetails[foundKey];
+      this.diagnoseWireKeys('/event', foundRaw, agentEventDetailWireShape);
       const parsed = eventDetailDataSchema.safeParse(foundRaw);
       if (!parsed.success) {
         return { status: 'failed', error: 'Fixture event detail response had an unexpected shape.', retryable: false };
@@ -1323,6 +1344,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
       return this.mapEventDetail(parsed.data, phone);
     }
 
+    this.diagnoseWireKeys('/event', raw, agentEventDetailWireShape);
     const parsed = eventDetailDataSchema.safeParse(raw);
     if (!parsed.success) {
       return { status: 'failed', error: 'Fixture event detail response had an unexpected shape.', retryable: false };
@@ -1413,7 +1435,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
               responseDate: normalizeServerTimestamp(parsed.attendance.response_date),
             })
           : null,
-        purchases: parsed.purchases.map((purchase) => this.mapGiftPurchase(purchase)),
+        purchases: parsed.purchases.map((purchase) => this.mapGiftPurchase(purchase, 'event_detail')),
       },
     };
   }
@@ -1654,7 +1676,16 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
     }));
   }
 
+  private diagnoseWireKeys(
+    endpoint: string,
+    value: unknown,
+    shape: WireObjectShape,
+  ): void {
+    reportUnmappedWireKeys(endpoint, value, shape, this.onUnmappedWireKey);
+  }
+
   private parseOrders(data: unknown): PurchaseInformation[] | null {
+    this.diagnoseWireKeys('/orders', data, agentOrderWireShape);
     const parsed = ordersDataSchema.safeParse(data);
     if (!parsed.success) {
       return null;
@@ -1668,6 +1699,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
     carts: CartInformation[];
     partitioned: boolean;
   } | null {
+    this.diagnoseWireKeys('/guest/orders', data, agentPartitionedOrdersWireShape);
     const parsed = partitionedOrdersDataSchema.safeParse(data);
     if (!parsed.success || !data || typeof data !== 'object' || Array.isArray(data)) {
       return null;
@@ -1718,6 +1750,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
     const money = normalizePurchaseCurrency(order);
     return {
       orderId: order.id,
+      recordSource: 'orders',
       partition,
       eventId: order.event_id ?? null,
       currency: money.currency,
@@ -1739,6 +1772,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
         rowTotal: item.row_total ?? null,
         type: item.type ?? null,
       })),
+      ...(order.payment ? { payment: this.mapPayment(order.payment) } : {}),
     };
   }
 
@@ -1775,10 +1809,14 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
     return parsed.data.purchases.map((purchase) => this.mapGiftPurchase(purchase));
   }
 
-  private mapGiftPurchase(purchase: GiftPurchaseWire): PurchaseInformation {
+  private mapGiftPurchase(
+    purchase: GiftPurchaseWire,
+    recordSource: 'gift_purchases' | 'event_detail' = 'gift_purchases',
+  ): PurchaseInformation {
     const money = normalizePurchaseCurrency(purchase);
     return {
       orderId: purchase.id,
+      recordSource,
       eventId: purchase.event_id ?? null,
       currency: money.currency,
       currencySymbol: money.currencySymbol,
@@ -1799,28 +1837,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
         rowTotal: item.row_total ?? null,
         type: item.type ?? null,
       })),
-      payment: purchase.payment
-        ? {
-            method: purchase.payment.method ?? null,
-            amount: purchase.payment.amount ?? null,
-            paidAt: normalizeServerTimestamp(purchase.payment.paid_at),
-            paymentId: purchase.payment.payment_id ?? null,
-            transactionStatus: purchase.payment.transaction_status ?? null,
-            gatewayMessage: purchase.payment.gateway_message ?? null,
-            operationCode: purchase.payment.op_code ?? null,
-            originBank: purchase.payment.origin_bank ?? null,
-            destinationAccount: purchase.payment.destination_account
-              ? {
-                  holder: purchase.payment.destination_account.holder ?? null,
-                  bank: purchase.payment.destination_account.bank ?? null,
-                  number: purchase.payment.destination_account.number ?? null,
-                  cci: purchase.payment.destination_account.cci ?? null,
-                  type: purchase.payment.destination_account.type ?? null,
-                }
-              : null,
-            voucherImage: purchase.payment.voucher ?? null,
-          }
-        : null,
+      payment: purchase.payment ? this.mapPayment(purchase.payment) : null,
       declineCode: purchase.decline_code ?? null,
       adminComment: purchase.admin_comment ?? null,
       dedication: purchase.dedication
@@ -1840,4 +1857,31 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
       isThanked: purchase.is_thanked ?? null,
     };
   }
+
+  private mapPayment(payment: z.infer<typeof paymentSchema>): PurchasePaymentDetails {
+    const voucher = payment.voucher;
+    return {
+      method: payment.method ?? null,
+      amount: payment.amount ?? null,
+      paidAt: normalizeServerTimestamp(payment.paid_at),
+      paymentId: payment.payment_id ?? null,
+      transactionStatus: payment.transaction_status ?? null,
+      gatewayMessage: payment.gateway_message ?? null,
+      operationCode: payment.op_code ?? null,
+      originBank: payment.origin_bank ?? null,
+      voucherProvided: voucher === undefined ? null : voucher === null
+        ? null
+        : Array.isArray(voucher) ? voucher.length > 0 : voucher.length > 0,
+      destinationAccount: payment.destination_account
+        ? {
+            holder: payment.destination_account.holder ?? null,
+            bank: payment.destination_account.bank ?? null,
+            number: payment.destination_account.number ?? null,
+            cci: payment.destination_account.cci ?? null,
+            type: payment.destination_account.type ?? null,
+          }
+        : null,
+    };
+  }
+
 }

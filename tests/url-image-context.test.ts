@@ -45,6 +45,7 @@ import { PromptLoader } from '../src/runtime/prompt-loader';
 import type { ProviderGateway } from '../src/runtime/provider-gateway';
 import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
+import { fixtureCustomerContextOrchestrator } from './customer-context-test-utils';
 
 const URL_A = 'https://example.com/media/receipt-a.png';
 const URL_SIGNED = 'https://files.example.net/voucher/b.png?sig=sekret&exp=999';
@@ -458,9 +459,7 @@ function orchestratorWith(
   results: InformationTaskResult[],
   summaries: InformationExecutionSummary[],
 ): InformationOrchestrator {
-  return {
-    execute: async () => ({ results, summaries }),
-  } as unknown as InformationOrchestrator;
+  return fixtureCustomerContextOrchestrator({ results, summaries }) as unknown as InformationOrchestrator;
 }
 
 describe('established owner URL path', () => {
@@ -489,8 +488,6 @@ describe('established owner URL path', () => {
         resource: 'orders',
         query: '¿Ya se aprobó mi regalo?',
         orderId: 'ORD-A',
-        aspects: ['payment_status'],
-        sensitiveFields: [],
         authAction: 'none',
       }],
     });
@@ -521,7 +518,7 @@ describe('established owner URL path', () => {
     // requested order leading by reference instead of hiding the rest.
     expect(serialized).toContain('150.5');
     expect(serialized).toContain('999.75');
-    expect(customerContext?.commonRefs.orderIds).toEqual(expect.arrayContaining(['ORD-A', 'ORD-B']));
+    expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(expect.arrayContaining(['ORD-A', 'ORD-B']));
     expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-A', 'ORD-B']);
     expect(customerContext?.carts.map((entry) => entry.cartId)).toEqual(['cart-sentinel-9', 'cart-other-1']);
     expect(request?.imageUrlAttachments).toEqual([{ url: URL_A, messageId: 'wamid.owner2' }]);
@@ -535,8 +532,6 @@ describe('established owner URL path', () => {
         resource: 'orders' as const,
         query: '¿Ya se aprobó mi regalo?',
         orderId: 'ORD-A',
-        aspects: ['payment_status' as const],
-        sensitiveFields: [],
         authAction: 'none' as const,
       }],
     };
@@ -547,6 +542,10 @@ describe('established owner URL path', () => {
     const seen: string[] = [];
     const runtime = new ScriptedImageRuntime(scripted);
     const planStore = new InMemoryPlanStore();
+    let fixtureOrchestrator = fixtureCustomerContextOrchestrator({
+      results: liveResults,
+      summaries: liveSummaries,
+    });
     const service = new AgentService({
       planStore,
       runtime,
@@ -554,7 +553,16 @@ describe('established owner URL path', () => {
       promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
       renderers: { whatsapp: new WhatsAppMessageRenderer() },
       informationOrchestrator: {
-        execute: async () => ({ results: liveResults, summaries: liveSummaries }),
+        async prepareCustomerContext(args: Parameters<InformationOrchestrator['prepareCustomerContext']>[0]) {
+          fixtureOrchestrator = fixtureCustomerContextOrchestrator({
+            results: liveResults,
+            summaries: liveSummaries,
+          });
+          return fixtureOrchestrator.prepareCustomerContext(args);
+        },
+        async execute() {
+          return fixtureOrchestrator.execute();
+        },
       } as unknown as InformationOrchestrator,
     });
     const turn = async (messageId: string): Promise<void> => {
@@ -573,14 +581,8 @@ describe('established owner URL path', () => {
     const entityEvidence = (serialized: string | undefined, orderId: string): string => {
       const projection = JSON.parse(serialized ?? '{}') as {
         purchases: Array<{ orderId: string }>;
-        detailedPurchases: Array<{ orderId: string }>;
-        candidates: Array<{ orderId?: string }>;
       };
-      return JSON.stringify({
-        purchases: projection.purchases.filter((entry) => entry.orderId === orderId),
-        detailed: projection.detailedPurchases.filter((entry) => entry.orderId === orderId),
-        candidates: projection.candidates.filter((entry) => entry.orderId === orderId),
-      });
+      return JSON.stringify(projection.purchases.filter((entry) => entry.orderId === orderId));
     };
     expect(entityEvidence(seen[1], 'ORD-A')).toBe(entityEvidence(base, 'ORD-A'));
     expect(entityEvidence(seen[1], 'ORD-B')).not.toBe(entityEvidence(base, 'ORD-B'));

@@ -21,6 +21,7 @@ import type { InformationOrchestrator } from '../src/runtime/information-orchest
 import type { ProviderGateway } from '../src/runtime/provider-gateway';
 import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
+import { fixtureCustomerContextOrchestrator } from './customer-context-test-utils';
 import { PromptLoader } from '../src/runtime/prompt-loader';
 import { localTurnMessageContext } from '../src/runtime/turn-message-context';
 import {
@@ -60,7 +61,6 @@ function baseExtraction(overrides: Record<string, unknown> = {}): ExtractionResu
     informationRequests: [],
     supportAct: null,
     humanHelpIntent: null,
-    normalizationIssues: [],
     phoneConfirmation: null,
     rsvpAction: null,
     rsvpDecisionSource: 'plan_state',
@@ -108,21 +108,20 @@ function luisPurchase(): PurchaseInformation {
     orderId: 'ORD-LUIS-389',
     paymentStatus: 'pending',
     shippingStatus: null,
-    grandTotal: null,
-    paymentMethod: null,
-    currency: null,
+    grandTotal: 227.76,
+    paymentMethod: 'Yape o Plin',
+    currency: 'PEN',
     eventName: 'Alejandra',
     eventDate: '2026-09-20',
     eventUrl: null,
     createdAt: '2026-08-27 15:00:00',
     items: [],
-    amountDisclosure: {
-      total: 227.76,
-      paid: null,
-      currency: null,
-      currencySymbol: null,
-      paymentMethod: 'Yape_o_Plin',
-      presentation: 'recorded_method_no_currency',
+    payment: {
+      method: 'Yape o Plin',
+      amount: 13.76,
+      paidAt: null,
+      transactionStatus: 'PENDING',
+      operationCode: 'OP-LUIS-389',
     },
   };
 }
@@ -163,13 +162,11 @@ function creditPurchase(): PurchaseInformation {
       fulfillment: { kind: 'host_credit', chosenBy: 'host', giftShipmentApplicable: false },
     }],
     creditFulfillmentPolicy: { chosenBy: 'host', mechanism: 'host_account_credit' },
-    amountDisclosure: {
-      total: 120,
-      paid: null,
-      currency: 'PEN',
-      currencySymbol: null,
-      paymentMethod: 'Transferencia',
-      presentation: 'explicit_currency',
+    dedication: {
+      message: 'Tarjeta para la celebración',
+      isPrivate: false,
+      sendPhysical: true,
+      physicalStatus: 'preparing',
     },
   };
 }
@@ -189,16 +186,14 @@ function creditResult(): InformationTaskResult {
   };
 }
 
-function purchaseExtraction(aspects: Array<'summary' | 'payment_status' | 'shipping' | 'validation_window'>): ExtractionResult {
+function purchaseExtraction(): ExtractionResult {
   return baseExtraction({
-    requestedOperation: 'purchase.orders.read',
+    requestedOperation: 'purchase.read',
     informationRequests: [{
       kind: 'purchase',
-      resource: 'orders',
+      resource: 'purchase_discovery',
       query: 'Cuanto me falta?',
       orderId: null,
-      aspects,
-      sensitiveFields: [],
       authAction: 'none',
       eventHint: 'Alejandra',
     }],
@@ -218,9 +213,7 @@ function replyRequest(args: {
         identity: { customerRef: 'packet-b', source: 'test', scope: 'test', fetchedAt: '2026-09-22T00:00:00.000Z' },
         currentContext: null,
         nowIso: '2026-09-22T00:00:00.000Z',
-      }),
-      { focus: 'payment' },
-    )
+      }))
     : null;
   return {
     currentNode: 'resolver_consultas_informativas',
@@ -243,7 +236,7 @@ describe('Packet B model input and continuity', () => {
   it('fresh purchase reply omits support continuity and planning modules', async () => {
     const spec = await testRuntime().buildReplyRequestSpec(replyRequest({
       plan: supportPlan(),
-      extraction: purchaseExtraction(['payment_status']),
+      extraction: purchaseExtraction(),
       informationResults: [luisResult()],
       withProfile: true,
     }));
@@ -272,8 +265,6 @@ describe('Packet B model input and continuity', () => {
       extraction: baseExtraction({
         supportAct: {
           kind: 'provide_detail',
-          topic: 'unknown',
-          detail: 'unknown',
           personReference: 'Roger Abanto',
           eventReference: 'Baby Shower Catalina',
         },
@@ -287,7 +278,7 @@ describe('Packet B model input and continuity', () => {
     expect(spec.input).toContain('Baby Shower Catalina');
   });
 
-  it('credit pending reply loads gift fulfillment from Packet A item evidence', async () => {
+  it('credit and physical-card facts survive without a fulfillment prompt branch', async () => {
     const spec = await testRuntime().buildReplyRequestSpec(replyRequest({
       plan: supportPlan(),
       extraction: baseExtraction({
@@ -297,8 +288,6 @@ describe('Packet B model input and continuity', () => {
           resource: 'gift_purchases',
           query: '¿Ya les llegó el dinero?',
           orderId: null,
-          aspects: ['payment_status'],
-          sensitiveFields: [],
           authAction: 'none',
         }],
       }),
@@ -306,25 +295,29 @@ describe('Packet B model input and continuity', () => {
       withProfile: true,
     }));
     const ids = spec.modules.map((module) => module.id);
-    // Packet A facet closure carries items on payment_status, so the gift
-    // module loads and the reply can keep mechanism distinct from posting.
-    expect(ids).toContain('reply_gift_fulfillment');
+    expect(ids).not.toContain('reply_gift_fulfillment');
     expect(ids).not.toContain('reply_support_continuity');
+    expect(spec.instructions).toContain('Una tarjeta física tiene su propio estado');
+    expect(spec.input).toContain('host_account_credit');
+    expect(spec.input).toContain('physicalStatus');
+    expect(spec.input).toContain('preparing');
   });
 
   it('profile turn passes the canonical record once with coverage, never duplicated', async () => {
     const spec = await testRuntime().buildReplyRequestSpec(replyRequest({
       plan: supportPlan(),
-      extraction: purchaseExtraction(['payment_status']),
+      extraction: purchaseExtraction(),
       informationResults: [luisResult()],
       withProfile: true,
     }));
-    // The purchase outcome collapses to a profile reference plus a compact
-    // balance limitation; the full record travels once in customer_context.
+    // The operation points at one canonical profile record; no facet
+    // projector deletes payment facts or invents a remaining balance.
     expect(spec.input).toContain('customer_context');
-    expect(spec.input).toContain('purchase_balance');
     expect(spec.input).toContain('227.76');
-    expect(spec.input).toContain('Yape_o_Plin');
+    expect(spec.input).toContain('13.76');
+    expect(spec.input).toContain('Yape o Plin');
+    expect(spec.input).toContain('OP-LUIS-389');
+    expect(spec.instructions).toContain('payment.amount');
     // No computed remaining balance anywhere in the serialized input.
     expect(spec.input).not.toMatch(/remaining":\s*[0-9]/);
   });
@@ -332,7 +325,7 @@ describe('Packet B model input and continuity', () => {
   it('topic change does not impose old support names on a fresh purchase turn', async () => {
     const spec = await testRuntime().buildReplyRequestSpec(replyRequest({
       plan: supportPlan(),
-      extraction: purchaseExtraction(['summary']),
+      extraction: purchaseExtraction(),
       informationResults: [luisResult()],
       withProfile: true,
     }));
@@ -358,12 +351,10 @@ describe('Packet B model input and continuity', () => {
             resource: 'orders',
             query: 'El pedido figura pendiente por Yape. Cuanto me falta?',
             orderId: null,
-            aspects: ['payment_status'],
-            sensitiveFields: [],
             authAction: 'none',
             eventHint: 'Alejandra',
           }],
-          supportAct: { kind: 'provide_detail', topic: 'payment_proof', detail: 'submission_reported' },
+          supportAct: { kind: 'provide_detail',},
         });
       },
       async composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult> {
@@ -371,11 +362,10 @@ describe('Packet B model input and continuity', () => {
         return { text: 'Respuesta del propietario.' };
       },
     };
-    const orchestratorStub = {
-      async execute(): Promise<{ results: InformationTaskResult[]; summaries: [] }> {
-        return { results: [luisResult()], summaries: [] };
-      },
-    } as unknown as InformationOrchestrator;
+    const orchestratorStub = fixtureCustomerContextOrchestrator({
+      results: [luisResult()],
+      summaries: [],
+    }) as unknown as InformationOrchestrator;
     const service = new AgentService({
       planStore: new InMemoryPlanStore(),
       runtime: scripted,
@@ -463,18 +453,12 @@ describe('Packet B model input and continuity', () => {
   it('pins the targeted-panel follow-up prompt requirements', async () => {
     const { default: fs } = await import('node:fs');
     const info = fs.readFileSync('prompts/extractors/information.txt', 'utf8');
-    // Mixed regression: a reported purchase without an identifying anchor
-    // has unestablished source and must use bounded discovery.
-    expect(info).toContain('Compra reportada sin número ni registro identificado ⇒ no establecido');
-    // Targeted-2 revert: explicit balance/mechanism recitation requirements
-    // caused T1 confabulation (invented S/, fabricated paid) without fixing
-    // T0 underanswer, so they stay out. The remaining receipt/credit
-    // boundaries (never prove approval/posting, no posterior use) are the
-    // safe invariant.
-    const approval = fs.readFileSync('prompts/nodes/resolver_consultas_informativas/approval_limits.txt', 'utf8');
-    expect(approval).not.toContain('nunca presentes el total como adeudado ni calcules un saldo');
-    const gift = fs.readFileSync('prompts/nodes/resolver_consultas_informativas/gift_fulfillment.txt', 'utf8');
-    expect(gift).not.toContain('eso no confirma publicación del pago');
+    const fields = fs.readFileSync('prompts/shared/customer_context_fields.txt', 'utf8');
+    expect(info).not.toContain('resource');
+    expect(info).not.toContain('aspects');
+    expect(info).toContain('monto reportado explícitamente');
+    expect(fields).toContain('no lo calcules ni conviertas null en cero');
+    expect(fields).toContain('Una tarjeta física tiene su propio estado');
   });
 
   it('four candidates survive the reply projection without slicing', async () => {
@@ -490,14 +474,6 @@ describe('Packet B model input and continuity', () => {
       eventUrl: null,
       createdAt: '2026-09-01 10:00:00',
       items: [],
-      amountDisclosure: {
-        total: 100 + index,
-        paid: null,
-        currency: 'PEN',
-        currencySymbol: null,
-        paymentMethod: 'Transferencia',
-        presentation: 'explicit_currency',
-      },
     }));
     const result: InformationTaskResult = {
       requestId: 'information-1',
@@ -513,7 +489,7 @@ describe('Packet B model input and continuity', () => {
     };
     const spec = await testRuntime().buildReplyRequestSpec(replyRequest({
       plan: supportPlan(),
-      extraction: purchaseExtraction(['summary']),
+      extraction: purchaseExtraction(),
       informationResults: [result],
       withProfile: true,
     }));

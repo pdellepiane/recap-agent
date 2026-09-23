@@ -1,6 +1,5 @@
 import type { EstablishedExtractionDomain } from './extraction-projection';
 import type { DecisionNode } from '../core/decision-nodes';
-import type { PurchaseInformation } from '../core/information';
 import { operationDomain } from './turn-capability-policy';
 import type { ComposeReplyRequest } from './contracts';
 import {
@@ -48,20 +47,6 @@ export type ModuleSelectionContext = {
   readonly establishedDomain: EstablishedExtractionDomain;
   /** Typed tasks for this turn (extracted tasks, completed facts, outcomes). */
   readonly tasks: readonly CompilerTask[];
-  /**
-   * Typed purchase approval-boundary flag: a purchase information request
-   * asks for validation_window or payment_status. Gates the
-   * receipt-is-not-approval module so venue reads and non-approval
-   * purchase turns never carry it.
-   */
-  readonly approvalBoundary: boolean;
-  /**
-   * Typed gift-fulfillment flag: a completed purchase result carries
-   * per-item fulfillment, a scoped host-credit policy, or an item-source
-   * conflict. Gates the gift-presentation module so payment-only, FAQ,
-   * RSVP and venue turns never carry gift prose guidance.
-   */
-  readonly giftFulfillment: boolean;
   /**
    * Typed planning-progress flag from plan state (active plan or shortlist).
    * Gates provider-management, close/pause and contact detail on
@@ -203,8 +188,7 @@ export function selectExtractionModules(
  * Reply compiler context from typed turn state only. Single derivation
  * shared by instruction loading, input gating and test doubles: owner comes
  * from the serving node, tasks come from validated results/requests/
- * outcomes (never raw text), and the approval boundary comes from the
- * requested purchase aspects. An authenticationOutcome only exists for
+ * outcomes (never raw text). An authenticationOutcome only exists for
  * validated terminal/declined outcomes, so the auth task (and its module)
  * loads exclusively on those turns.
  */
@@ -297,20 +281,6 @@ export function deriveReplyCompilerContext(
   if (request.authenticationOutcome != null) tasks.add('auth');
   if (request.imageEvidence != null) tasks.add('image');
   if (owner === 'planning') tasks.add('planning');
-  const approvalBoundary = (request.extraction.informationRequests ?? []).some(
-    (item) => item.kind === 'purchase' &&
-      (item.aspects ?? []).some(
-        (aspect) => aspect === 'validation_window' || aspect === 'payment_status',
-      ),
-  );
-  const purchaseCarriesFulfillment = (purchase: PurchaseInformation): boolean =>
-    purchase.creditFulfillmentPolicy != null ||
-    purchase.itemSourceConflict != null ||
-    purchase.items.some((item) => item.fulfillment != null);
-  const giftFulfillment = (request.informationResults ?? []).some(
-    (result) => result.kind === 'purchase' && result.status === 'completed' &&
-      result.purchases.some(purchaseCarriesFulfillment),
-  ) || (request.customerContext?.detailedPurchases ?? []).some(purchaseCarriesFulfillment);
   // B11: real continuation requires actual prior delivered context (an
   // owner pending question/task, a persisted outbound record, or pending
   // information work). A support act alone never counts: on an
@@ -330,8 +300,6 @@ export function deriveReplyCompilerContext(
     owner,
     establishedDomain: null,
     tasks: [...tasks],
-    approvalBoundary,
-    giftFulfillment,
     hasPlanningDetail: false,
     hasSupportContinuity,
   };
@@ -358,12 +326,12 @@ export function selectReplyModules(
   }
   if (has('purchase')) {
     candidates.push(
-      selected('reply_purchase_facts', 'requested purchase record semantics and payment facts', ['informationResults.purchase', 'customerContext.detailedPurchases']),
+      selected('reply_purchase_facts', 'canonical purchase records and typed outcomes', ['customerContext.purchases', 'customerContext.actionOutcomes', 'informationResults.purchase.references']),
     );
   }
   if (has('venue')) {
     candidates.push(
-      selected('reply_venue_facts', 'requested event moment venue and address', ['informationResults.associated_event', 'customerContext.invitations']),
+      selected('reply_venue_facts', 'canonical invitation and event records', ['customerContext.invitations', 'informationResults.associated_event.references']),
     );
   }
   if (has('rsvp')) {
@@ -379,16 +347,6 @@ export function selectReplyModules(
   if (has('image')) {
     candidates.push(
       selected('reply_image_context', 'native image context and earlier question', ['imageEvidence', 'extraction.imageReference']),
-    );
-  }
-  if (context.approvalBoundary === true) {
-    candidates.push(
-      selected('reply_approval_boundary', 'receipt-is-not-approval boundary for the requested purchase validation', ['extraction.informationRequests']),
-    );
-  }
-  if (context.giftFulfillment === true) {
-    candidates.push(
-      selected('reply_gift_fulfillment', 'gift fulfillment evidence present; explain business meaning naturally', ['informationResults.purchase']),
     );
   }
   if (has('auth')) {

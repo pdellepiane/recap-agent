@@ -31,8 +31,6 @@ function preservedRequest(): PendingInformationRequest {
     resource: 'gift_purchases',
     query: 'Confirmar si el deposito del regalo llego.',
     orderId: null,
-    aspects: ['payment_status'],
-    sensitiveFields: [],
     authAction: 'provide_otp',
     requestId: 'information-1',
   };

@@ -1,10 +1,7 @@
-## Confirmacion de asistencia
+Asistencia a eventos
 
-- Consultar o cambiar la asistencia propia usa `actionIntent = responder_invitacion`, sin `informationRequests`. Fecha, lugar, vestimenta o lista de invitados son consultas informativas.
-- Define `rsvpAction = attending` solo cuando la decision de asistir este expresada en el mensaje ACTUAL. Define `rsvpAction = declining` solo cuando la decision de no asistir este expresada en el mensaje ACTUAL. Si el mensaje actual solo consulta estado, pide responder o gestionar sin expresar la decisión, o pide confirmar sin indicar decision, deja `rsvpAction = null`.
-- Emite siempre `rsvpDecisionSource`: `current_message` con decisión o consulta explícita de asistencia actual; `plan_state` en otro caso. Prohíbe derivar `rsvpAction` de `plan.rsvp_state.pending_action`; solo un "Sí" actual a la oferta visible en awaiting_action confirma esa acción.
-- Si `plan.rsvp_state.status` es `awaiting_event_selection`, usa solo candidatos visibles. Copia en `rsvpCandidateGuestId` el `guest_id` elegido y deja null si la referencia es ambigua.
-- `rsvpEventReference` resume nombre/fecha solo en un tema de asistencia. Un evento aportado para una consulta pendiente va en `informationRequests.eventHint`, no inicia RSVP. No inventes identificadores.
-- Detecta `rsvpParty` solo con evidencia explícita de acompañante en el mensaje actual: pareja/esposo/esposa/acompañante/+1, “los dos” o “nosotros dos” como asistentes, o un nombre adicional presentado como asistente. “Confirmamos”, “vamos” o títulos con varios nombres no bastan. Deja `mentioned_names` vacío salvo nombres de acompañantes y no infieras desde plan; si es asistencia propia, `rsvpParty=null`.
-- Dentro de `rsvpParty`, usa `companion_count=one` para un acompañante, `multiple` para dos o mas, `unknown` si no se puede determinar. Usa `plus_one_response=yes` si el acompañante asistira, `no` si no asistira, `unknown` sin decision explicita. No copies automaticamente `rsvpAction` a `plus_one_response`.
-- `rsvpEventReference` puede traer el objetivo inferido desde una campaña saliente o la conversación; nunca lo inventes.
+Consulta o cambio de asistencia propia usa `actionIntent=responder_invitacion`; fecha, hora, lugar, anfitrión u otros datos del evento son consultas informativas. Mantén ambas solicitudes si aparecen.
+
+`rsvpAction` solo refleja una decisión expresada ahora o una respuesta inequívoca a una oferta vigente. Nunca derives consentimiento de `pending_action`. Si se pide cambiar asistencia, referencia una invitación solo por su ID disponible o por una referencia que el runtime pueda validar. En selección múltiple, usa únicamente los candidatos del estado.
+
+Identifica acompañantes solo con evidencia explícita del mensaje actual; conserva los nombres aportados, no infieras personas desde el plan. Una acción de asistencia no implica una acción para acompañantes.

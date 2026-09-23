@@ -38,9 +38,6 @@ import type { ImageObservation } from './contracts';
 import type { ImageFileAttachment } from './contracts';
 import {
   createInformationAuthGuidance,
-  enrichmentVisitKey,
-  informationPaymentOptionsPolicyRequestId,
-  informationValidationPolicyRequestId,
   type ExtractedInformationRequest,
   type InformationAuthReason,
   type InformationExecutionSummary,
@@ -49,8 +46,6 @@ import {
   type InformationTaskResult,
   type CompletedInformationRequest,
   type PendingInformationRequest,
-  type PurchaseAspect,
-  type PurchaseInformation,
 } from '../core/information';
 import {
   buildLastOutboundContext,
@@ -133,6 +128,7 @@ import {
   type AgentMessageLogInput,
   type AgentConversationMessage,
   type AgentGuestRsvpResult,
+  type AgentAuthByPhoneInput,
 } from './agent-conversation-gateway';
 import type {
   MessageResponseClassifier,
@@ -140,7 +136,6 @@ import type {
 } from './message-response-classifier';
 import type { MessageRenderer } from './message-renderer';
 import { readPendingTaskOutcome } from './openai-agent-runtime';
-import { isApprovalBoundaryAnsweredByRecord } from './purchase-reconciliation';
 import {
   inferCurrencyFromBudget,
   isProviderEligibleForCriteria,
@@ -169,7 +164,6 @@ import {
 } from './rsvp-effect-executor';
 import {
   InformationOrchestrator,
-  type HydratedEventDetail,
   type InformationAuthBlock,
   type InformationAuthentication,
 } from './information-orchestrator';
@@ -215,20 +209,14 @@ import {
   ReferenceRenderError,
 } from '../audit/expected-render';
 import {
-  assembleCustomerContext,
-  createEntryCustomerSnapshot,
-  enrichmentScopeKey,
-  expandInlinePurchaseDetail,
-  isPurePublicFaqTurn,
-  mergeExecutionIntoSnapshot,
+  mergeCustomerContextSnapshots,
   projectCustomerContext,
-  resolveRelevantTarget,
-  selectEnrichmentTargets,
-  selectImplicitGiftDetailOrderIds,
+  recordActionOutcome,
+  type ActionOutcome,
+  type CurrentContextEvidence,
   type CustomerContextProjection,
   type CustomerContextSnapshot,
-  type CustomerEnrichmentSummary,
-  type RankableCandidate,
+  type IdentityEvidence,
 } from './customer-context';
 import {
   applyOwnerForTurn,
@@ -413,9 +401,14 @@ type TurnTokenUsage = {
   };
 };
 
-type CapabilitySafeReadOutcome = {
-  results: InformationTaskResult[];
-  summaries: InformationExecutionSummary[];
+type PreparedCustomerContext = {
+  authentication: InformationAuthentication | null;
+  trustedPhone: AgentAuthByPhoneInput | null;
+  identity: IdentityEvidence | null;
+  currentContext: CurrentContextEvidence;
+  deadlineMs: number | null;
+  snapshot: CustomerContextSnapshot;
+  projection: CustomerContextProjection;
 };
 
 /**
@@ -978,6 +971,11 @@ export class AgentService {
           phonePresent: phoneNumber !== null,
           confirmedReceipt: gatewayResult.status === 'success',
         });
+        const earlyCustomerContext = await this.prepareCustomerContextForTurn({
+          plan: planToSave,
+          contactPhone: inbound.contactPhone,
+          deadlineMs: handleTurnStartedAt + 7000,
+        });
         const composeReplyStartedAt = Date.now();
         let reply: ComposeReplyResult;
         try {
@@ -997,6 +995,7 @@ export class AgentService {
             promptFilePaths: [],
             toolUsage,
             handoffOutcome: handoffEvidence.handoffOutcome,
+            customerContext: earlyCustomerContext.projection,
           });
         } catch (error) {
           timingMs.compose_reply += Date.now() - composeReplyStartedAt;
@@ -1094,6 +1093,11 @@ export class AgentService {
         timingMs.save_plan += Date.now() - savePlanStartedAt;
         timingMs.total = Date.now() - handleTurnStartedAt;
         const extraction = this.buildSyntheticConversationHealthExtraction();
+        const earlyCustomerContext = await this.prepareCustomerContextForTurn({
+          plan: planToSave,
+          contactPhone: inbound.contactPhone,
+          deadlineMs: handleTurnStartedAt + 7000,
+        });
         const composeReplyStartedAt = Date.now();
         let reply: ComposeReplyResult;
         try {
@@ -1112,6 +1116,7 @@ export class AgentService {
             promptBundleId: PENDING_COMPILER_PROMPT_ID,
             promptFilePaths: [],
             toolUsage,
+            customerContext: earlyCustomerContext.projection,
           });
         } catch (error) {
           timingMs.compose_reply += Date.now() - composeReplyStartedAt;
@@ -1243,11 +1248,17 @@ export class AgentService {
     }
 
     if (existingPlan && isPlanFinished(existingPlan)) {
+      const preparedCustomerContext = await this.prepareCustomerContextForTurn({
+        plan: existingPlan,
+        contactPhone: inbound.contactPhone,
+        deadlineMs: handleTurnStartedAt + 7000,
+      });
       const extractionStartedAt = Date.now();
       const rawExtractionResult = await this.dependencies.runtime.extract({
         userMessage: inbound.text,
         plan: existingPlan,
         messageContext,
+        customerContext: preparedCustomerContext.projection,
         currentMessageId: inbound.messageId,
         media: inbound.media?.map((item) => ({
           kind: item.kind,
@@ -1282,6 +1293,7 @@ export class AgentService {
         responseClassifierTrace,
         messageContext,
         handleTurnStartedAt,
+        preparedCustomerContext,
       });
       if (finishedCapabilityBoundaryResponse) {
         return finishedCapabilityBoundaryResponse;
@@ -1300,6 +1312,7 @@ export class AgentService {
           messageContext,
           handleTurnStartedAt,
           gateway: agentConversationGateway,
+          preparedCustomerContext,
         });
       }
 
@@ -1315,6 +1328,7 @@ export class AgentService {
           responseClassifierTrace,
           messageContext,
           handleTurnStartedAt,
+          preparedCustomerContext,
         });
       }
 
@@ -1363,6 +1377,7 @@ export class AgentService {
           promptBundleId: PENDING_COMPILER_PROMPT_ID,
           promptFilePaths: [],
           toolUsage,
+          customerContext: preparedCustomerContext.projection,
         });
         const reply = composedReply;
         tokenUsage.reply = reply.tokenUsage ?? null;
@@ -1432,11 +1447,17 @@ export class AgentService {
     });
     timingMs.prepare_working_plan += Date.now() - prepareWorkingPlanStartedAt;
 
+    const preparedCustomerContext = await this.prepareCustomerContextForTurn({
+      plan: workingPlan,
+      contactPhone: inbound.contactPhone,
+      deadlineMs: handleTurnStartedAt + 7000,
+    });
     const extractionStartedAt = Date.now();
     const rawExtractionResult = await this.dependencies.runtime.extract({
       userMessage: inbound.text,
       plan: workingPlan,
       messageContext,
+      customerContext: preparedCustomerContext.projection,
       currentMessageId: inbound.messageId,
       media: inbound.media?.map((item) => ({
         kind: item.kind,
@@ -1535,6 +1556,7 @@ export class AgentService {
         messageContext,
         timingMs,
         handleTurnStartedAt,
+        preparedCustomerContext,
       });
     }
     const capabilityBoundaryResponse = await this.handleCapabilityBoundaryIfNeeded({      inbound,
@@ -1547,6 +1569,7 @@ export class AgentService {
       responseClassifierTrace,
       messageContext,
       handleTurnStartedAt,
+      preparedCustomerContext,
     });
     if (capabilityBoundaryResponse) {
       return capabilityBoundaryResponse;
@@ -1563,6 +1586,7 @@ export class AgentService {
         messageContext,
         timingMs,
         handleTurnStartedAt,
+        preparedCustomerContext,
       });
     }
     if (extraction.actionIntent === 'reset_plan') {
@@ -1611,6 +1635,7 @@ export class AgentService {
         messageContext,
         handleTurnStartedAt,
         gateway: agentConversationGateway,
+        preparedCustomerContext,
       });
     }
     if (
@@ -1631,6 +1656,7 @@ export class AgentService {
         responseClassifierTrace,
         messageContext,
         handleTurnStartedAt,
+        preparedCustomerContext,
       });
     }
     const extractionNode = this.resolveExtractionNode(workingPlan, extraction);
@@ -1812,6 +1838,7 @@ export class AgentService {
           promptFilePaths: [],
           toolUsage,
           handoffOutcome: handoffEvidence.handoffOutcome,
+          customerContext: preparedCustomerContext.projection,
         });
       } catch (error) {
         timingMs.compose_reply += Date.now() - composeReplyStartedAt;
@@ -1968,6 +1995,7 @@ export class AgentService {
           promptBundleId: PENDING_COMPILER_PROMPT_ID,
           promptFilePaths: [],
           toolUsage,
+          customerContext: preparedCustomerContext.projection,
         });
         tokenUsage.reply = reply.tokenUsage ?? null;
         tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
@@ -2055,6 +2083,7 @@ export class AgentService {
         promptBundleId: PENDING_COMPILER_PROMPT_ID,
         promptFilePaths: [],
         toolUsage,
+        customerContext: preparedCustomerContext.projection,
       });
       tokenUsage.reply = reply.tokenUsage ?? null;
       tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
@@ -2456,6 +2485,7 @@ export class AgentService {
       toolUsage,
       turnDecision,
       capabilityDecision: planningCapabilityEvidence,
+      customerContext: preparedCustomerContext.projection,
     });
     const reply = composedReply;
     tokenUsage.reply = reply.tokenUsage ?? null;
@@ -2733,7 +2763,9 @@ export class AgentService {
     messageContext: TurnMessageContext;
     handleTurnStartedAt: number;
     gateway: AgentConversationGateway;
+    preparedCustomerContext?: PreparedCustomerContext;
   }): Promise<HandleTurnResponse> {
+    let replyCustomerContext = args.preparedCustomerContext ?? null;
     const currentNode: DecisionNode = 'responder_invitacion';
     const pendingState = args.workingPlan.rsvp_state;
     const rawRsvpAction = args.extraction.rsvpAction ?? null;
@@ -2891,6 +2923,7 @@ export class AgentService {
         promptBundleId: PENDING_COMPILER_PROMPT_ID,
         promptFilePaths: [],
         toolUsage: args.toolUsage,
+        customerContext: args.preparedCustomerContext?.projection ?? null,
         rsvpPhoneEvidence: null,
         rsvpWorkCompleted: true,
         handoffOutcome: handoffEvidence.handoffOutcome,
@@ -3270,6 +3303,24 @@ export class AgentService {
           null,
           verification,
         );
+        if (replyCustomerContext && rsvpMutationAttempted) {
+          const receipt: ActionOutcome = {
+            operation: 'rsvp.response.write',
+            target: `guest:${selectedInvitation.guestId}:event:${selectedInvitation.eventId ?? 'unknown'}`,
+            receipt: verification.successClaimAllowed
+              ? 'confirmed'
+              : verification.failureReason === 'write_failed' || verification.readStatus === 'mismatch'
+                ? 'failed'
+                : 'unknown',
+            observedAt: new Date().toISOString(),
+            dedupeKey: verification.operationHash,
+          };
+          // The effect executor already performed the authoritative fresh
+          // read for this event. Keep the turn-scoped profile roots and all
+          // unrelated records intact, and attach the verified outcome rather
+          // than re-reading every customer root/detail after the write.
+          replyCustomerContext = this.recordCustomerActionOutcome(replyCustomerContext, receipt);
+        }
         nextRsvpState = result?.status === 'multiple_pending'
           ? {
               status: 'awaiting_event_selection',
@@ -3316,6 +3367,7 @@ export class AgentService {
     if (replyExtraction.informationRequests.length > 0) {
       return this.handleInformationFlow({
         ...args, workingPlan: planToSave, extraction: replyExtraction,
+        preparedCustomerContext: replyCustomerContext ?? undefined,
         completedRsvp: { evidence: rsvpPhoneEvidence, outcome: operationalNote },
       });
     }
@@ -3337,6 +3389,7 @@ export class AgentService {
       promptBundleId: PENDING_COMPILER_PROMPT_ID,
       promptFilePaths: [],
       toolUsage: args.toolUsage,
+      customerContext: replyCustomerContext?.projection ?? null,
       rsvpPhoneEvidence,
       // No mutation was attempted on read-only/selection/unavailable turns,
       // so no completed-effect receipt is claimed; the current-state evidence
@@ -4438,7 +4491,6 @@ export class AgentService {
       return true;
     }
     return (
-      (extraction.normalizationIssues?.length ?? 0) > 0 ||
       // A text question the extractor tied to a prior image is information
       // work: it belongs on the resolver bundle with image evidence instead
       // of falling through to generic event-context routing. Typed linkage
@@ -4460,20 +4512,6 @@ export class AgentService {
     return act?.kind === 'report_issue' ||
       act?.kind === 'provide_detail' ||
       act?.kind === 'defer_submission';
-  }
-
-  /**
-   * Recognized receipt-assistance task: the extractor confirmed a
-   * payment-proof submission as provided detail. This task reads both
-   * authorized sources through the existing executor; it is never a
-   * bare acknowledgment, even when the extractor emitted no purchase
-   * request alongside it.
-   */
-  private isReceiptDiscoveryTask(
-    act: InformationSupportAct | null | undefined,
-  ): boolean {
-    return act?.kind === 'provide_detail' &&
-      (act.topic === 'payment_proof' || act.detail === 'submission_reported');
   }
 
   private shouldUseContextualClarification(
@@ -4589,6 +4627,7 @@ export class AgentService {
     responseClassifierTrace?: MessageResponseClassifierTrace;
     messageContext: TurnMessageContext;
     handleTurnStartedAt: number;
+    preparedCustomerContext?: PreparedCustomerContext;
   }): Promise<HandleTurnResponse> {
     const continuity = args.messageContext.continuity ?? deriveConversationContinuity({
       plan: args.plan,
@@ -4640,6 +4679,7 @@ export class AgentService {
       promptBundleId: PENDING_COMPILER_PROMPT_ID,
       promptFilePaths: [],
       toolUsage: args.toolUsage,
+      customerContext: args.preparedCustomerContext?.projection ?? null,
       continuity: this.resolveContinuityProjection(plan, args.messageContext),
       pendingQuestionRef: plan.owner_pending_question ?? null,
       imageEvidence: this.imageEvidenceForProjection({ projection: ownerProjection }),
@@ -4707,6 +4747,7 @@ export class AgentService {
     responseClassifierTrace?: MessageResponseClassifierTrace;
     messageContext: TurnMessageContext;
     handleTurnStartedAt: number;
+    preparedCustomerContext?: PreparedCustomerContext;
   }): Promise<HandleTurnResponse | null> {
     const ambiguity = args.extraction.ambiguity;
     const candidateOperations = ambiguity?.candidateOperations ?? [];
@@ -4824,9 +4865,10 @@ export class AgentService {
     // information flow: residual capability ambiguity (for example a mixed
     // write clarify with no servable read) never preempts it. Typed request
     // kinds only; no phrase detection.
-    if (effectiveDecision.status === 'clarify' &&
-      args.extraction.informationRequests.some((request) =>
-        request.kind === 'purchase' || request.kind === 'associated_event')) {
+    if (
+      (effectiveDecision.status === 'clarify' || effectiveDecision.status === 'unsupported') &&
+      args.extraction.informationRequests.length > 0
+    ) {
       return null;
     }
 
@@ -4862,6 +4904,7 @@ export class AgentService {
           promptBundleId: PENDING_COMPILER_PROMPT_ID,
           promptFilePaths: [],
           toolUsage: args.toolUsage,
+          customerContext: args.preparedCustomerContext?.projection ?? null,
           capabilityDecision: effectiveDecision,
           continuity: this.resolveContinuityProjection(plan, args.messageContext),
           imageEvidence: this.imageEvidenceForProjection({ projection: ownerProjection }),
@@ -4918,101 +4961,6 @@ export class AgentService {
       };
     }
 
-    const safeRead = await this.performCapabilitySafeRead({
-      inbound: args.inbound,
-      plan: args.plan,
-      extraction: args.extraction,
-      toolUsage: args.toolUsage,
-    });
-    const completedPurchaseSafeRead = safeRead.results.find(
-      (result): result is Extract<InformationTaskResult, { kind: 'purchase'; status: 'completed' }> =>
-        result.kind === 'purchase' && result.status === 'completed',
-    );
-    if (completedPurchaseSafeRead) {
-      const plan = args.plan.current_node === 'resolver_consultas_informativas'
-        ? args.plan
-        : mergePlan(args.plan, { current_node: 'resolver_consultas_informativas' });
-      // R2: capability replies share the resolved attachment projection and
-      // the continuity reference.
-      const ownerProjection = this.resolveOwnerImageProjectionForReply({
-        plan,
-        extraction: args.extraction,
-      });
-      const reply = await composeModelReply(this.dependencies.runtime, {
-        currentNode: 'resolver_consultas_informativas',
-        previousNode: args.previousNode,
-        userMessage: args.inbound.text,
-        messageContext: args.messageContext,
-        plan,
-        extraction: args.extraction,
-        missingFields: [],
-        searchReady: false,
-        providerResults: [],
-        turnDecision: this.informationTurnDecision('purchase_evidence_after_capability_read'),
-        errorMessage: null,
-        promptBundleId: PENDING_COMPILER_PROMPT_ID,
-        promptFilePaths: [],
-        toolUsage: args.toolUsage,
-        informationResults: safeRead.results,
-        continuity: this.resolveContinuityProjection(plan, args.messageContext),
-        imageEvidence: this.imageEvidenceForProjection({ projection: ownerProjection }),
-        imageUrlAttachments: ownerProjection.urls,
-        imageFileAttachments: ownerProjection.files,
-      });
-      // S2: render first for the verified outbound; the public handleTurn
-      // wrapper finalizes the latest-response record centrally.
-      const outbound = this.renderOutbound(
-        reply,
-        [],
-        args.inbound.channel,
-        plan.conversation_id,
-        plan,
-      );
-      const planToSave = plan;
-      await this.dependencies.planStore.save({
-        plan: planToSave,
-        reason: 'purchase_evidence_after_capability_read',
-      });
-      args.tokenUsage.reply = reply.tokenUsage ?? null;
-      args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
-      args.tokenUsage.total = this.sumTokenUsage(
-        args.tokenUsage.classifier,
-        args.tokenUsage.extraction,
-        args.tokenUsage.reply,
-      );
-      args.timingMs.total = Date.now() - args.handleTurnStartedAt;
-      return {
-        plan: planToSave,
-        outbound,
-        trace: this.buildTrace({
-          plan: planToSave,
-          previousNode: args.previousNode,
-          currentNode: plan.current_node,
-          nodePath: args.previousNode === plan.current_node
-            ? [plan.current_node]
-            : [args.previousNode, plan.current_node],
-          extraction: args.extraction,
-          missingFields: [],
-          searchReady: false,
-          promptBundleId: reply.compilerPrompt?.bundleId ?? reply.origin?.bundleId ?? UNREPORTED_COMPILER_PROMPT_ID,
-          promptFilePaths: reply.compilerPrompt != null ? [...reply.compilerPrompt.filePaths] : [],
-          toolUsage: args.toolUsage,
-          providerResults: [],
-          recommendationFunnel: this.resolveRecommendationFunnel(null, []),
-          planPersisted: true,
-          planPersistReason: 'purchase_evidence_after_capability_read',
-          timingMs: args.timingMs,
-          tokenUsage: args.tokenUsage,
-          messageContext: args.messageContext,
-          searchStrategy: 'none',
-          turnDecision: this.informationTurnDecision('purchase_evidence_after_capability_read'),
-          operationalNote: null,
-          responseClassifier: args.responseClassifierTrace,
-          capabilityDecision: effectiveDecision,
-          informationExecution: safeRead.summaries,
-        }),
-      };
-    }
     const alreadyRequested = args.plan.human_escalation.status === 'requested';
     const phoneNumber = this.resolveEscalationPhone(args.inbound);
     const takeoverResult = alreadyRequested
@@ -5063,7 +5011,7 @@ export class AgentService {
         promptBundleId: PENDING_COMPILER_PROMPT_ID,
         promptFilePaths: [],
         toolUsage: args.toolUsage,
-        informationResults: safeRead.results,
+        customerContext: args.preparedCustomerContext?.projection ?? null,
         capabilityDecision: effectiveDecision,
         handoffOutcome: takeoverSucceeded || alreadyRequested ? 'handoff_requested' : 'handoff_failed',
         continuity: this.resolveContinuityProjection(plan, args.messageContext),
@@ -5120,99 +5068,9 @@ export class AgentService {
         capabilityDecision: effectiveDecision,
         humanTakeoverAttempted: !alreadyRequested && effectiveDecision.status === 'unsupported' && effectiveDecision.humanTakeoverAvailable,
         humanTakeoverSucceeded: takeoverSucceeded,
-        informationExecution: safeRead.summaries,
+        informationExecution: [],
       }),
     };
-  }
-
-  /**
-   * A document/proof request may still benefit from the existing status read.
-   * The read is deliberately phone-scoped, uses only canonical projections,
-   * and is never sent to the reply model as raw endpoint data.
-   */
-  private async performCapabilitySafeRead(args: {
-    inbound: NormalizedInboundMessage;
-    plan: PlanSnapshot;
-    extraction: ExtractionResult;
-    toolUsage: ToolUsage;
-  }): Promise<CapabilitySafeReadOutcome> {
-    const operation = args.extraction.requestedOperation;
-    if (
-      operation !== 'confirmation_document.send' &&
-      operation !== 'purchase.modify'
-    ) {
-      return { results: [], summaries: [] };
-    }
-    const trustedPhone = splitInternationalPhone(
-      args.inbound.contactPhone ?? args.plan.contact_phone ?? null,
-    );
-    if (!trustedPhone) return { results: [], summaries: [] };
-
-    const extractedPurchase = args.extraction.informationRequests.find(
-      (request) => request.kind === 'purchase',
-    );
-    const persistedPurchase = args.plan.information_state.pending_requests.find(
-      (request): request is Extract<PendingInformationRequest, { kind: 'purchase' }> =>
-        request.kind === 'purchase',
-    );
-    const existingPurchase = persistedPurchase ?? extractedPurchase;
-    // A dedication change (purchase.modify) must read the gift partition even
-    // when a persisted or extracted request points at orders: the orders
-    // partition is empty for gift-only phones (live Joaquin), which stranded
-    // the safe read and forced an unsupported handoff without selection.
-    const safeReadResource = operation === 'purchase.modify' ? 'gift_purchases' : 'orders';
-    const safeReadAspects: PurchaseAspect[] = operation === 'purchase.modify'
-      ? ['summary', 'dedication']
-      : ['payment_status'];
-    const request: Extract<PendingInformationRequest, { kind: 'purchase' }> = existingPurchase
-      ? {
-          ...existingPurchase,
-          requestId: persistedPurchase?.requestId ?? 'capability-status-read',
-          resource: safeReadResource,
-          aspects: safeReadAspects,
-          sensitiveFields: [],
-          authAction: 'none',
-          // On a proof-validation turn the newly extracted amount describes
-          // what the user reports sending, not the order total used to select
-          // a purchase. Only a previously persisted selector remains valid.
-          amount: persistedPurchase?.amount ?? null,
-        }
-      : {
-          requestId: 'capability-status-read',
-          kind: 'purchase',
-          resource: operation === 'purchase.modify' ? 'gift_purchases' : 'orders',
-          query: args.inbound.text,
-          orderId: null,
-          aspects: operation === 'purchase.modify'
-            ? ['summary', 'dedication']
-            : ['summary', 'payment_status'],
-          sensitiveFields: [],
-          authAction: 'none',
-        };
-    const toolName = this.informationToolName(request);
-    this.recordDeterministicToolInput(
-      args.toolUsage,
-      toolName,
-      this.summarizeInformationToolInput(request),
-    );
-    const orchestrator =
-      this.dependencies.informationOrchestrator ??
-      new InformationOrchestrator({
-        knowledgeGateway: new NoopKnowledgeRetrievalGateway(),
-        providerGateway: this.dependencies.providerGateway,
-        agentGateway:
-          this.dependencies.agentConversationGateway ??
-          new NoopAgentConversationGateway('not_configured'),
-        capabilityManifest: this.capabilityManifest,
-      });
-    const execution = await orchestrator.execute({
-      requests: [request],
-      authentication: null,
-      authBlock: null,
-      trustedPhone,
-    });
-    this.recordInformationExecutionTrace(args.toolUsage, execution.summaries);
-    return execution;
   }
 
   private async handleMediaOnlyMessage(args: {
@@ -5225,6 +5083,9 @@ export class AgentService {
     handleTurnStartedAt: number;
   }): Promise<HandleTurnResponse> {
     const plan = mergePlan(args.plan, { current_node: 'resolver_consultas_informativas' });
+    const preparedCustomerContext = await this.prepareCustomerContextForTurn({
+      plan: args.plan, contactPhone: args.inbound.contactPhone, deadlineMs: args.handleTurnStartedAt + 7000,
+    });
     const extraction = this.buildNeutralMediaExtraction('Media-only message; content access is unavailable.');
     const decision = resolveCapabilityDecision({
       requestedOperation: 'media.image.inspect',
@@ -5245,6 +5106,7 @@ export class AgentService {
       promptBundleId: PENDING_COMPILER_PROMPT_ID,
       promptFilePaths: [],
       toolUsage: args.toolUsage,
+      customerContext: preparedCustomerContext.projection,
       imageEvidence: {
         status: 'unavailable',
         reason: 'media_unavailable',
@@ -5306,6 +5168,9 @@ export class AgentService {
     const plan = args.plan.current_node === 'resolver_consultas_informativas'
       ? args.plan
       : mergePlan(args.plan, { current_node: 'resolver_consultas_informativas' });
+    const preparedCustomerContext = await this.prepareCustomerContextForTurn({
+      plan: args.plan, contactPhone: args.inbound.contactPhone, deadlineMs: args.handleTurnStartedAt + 7000,
+    });
     // URL images ride the owner reply call as native image content, and
     // base64 images ride the persisted file reference the same way. The
     // describe-by-default inspection call is retired and removed: no turn
@@ -5343,6 +5208,7 @@ export class AgentService {
         promptBundleId: PENDING_COMPILER_PROMPT_ID,
         promptFilePaths: [],
         toolUsage: args.toolUsage,
+        customerContext: preparedCustomerContext.projection,
         continuity: this.resolveContinuityProjection(unavailablePlan, args.messageContext),
         imageEvidence: this.withImageObservation(
           { status: 'unavailable', reason, captionPresent: caption.trim().length > 0 },
@@ -5407,6 +5273,7 @@ export class AgentService {
         tokenUsage: args.tokenUsage,
         handleTurnStartedAt: args.handleTurnStartedAt,
         capabilityDecision: decision,
+        preparedCustomerContext,
       });
     }
 
@@ -5426,6 +5293,7 @@ export class AgentService {
       tokenUsage: args.tokenUsage,
       handleTurnStartedAt: args.handleTurnStartedAt,
       capabilityDecision: decision,
+      preparedCustomerContext,
     });
   }
 
@@ -5457,6 +5325,7 @@ export class AgentService {
     tokenUsage: TurnTokenUsage;
     handleTurnStartedAt: number;
     capabilityDecision: CapabilityDecision;
+    preparedCustomerContext?: PreparedCustomerContext;
   }): Promise<HandleTurnResponse> {
     const captionPresent = args.caption.trim().length > 0;
     const storedRefs = args.plan.image_attachments ?? [];
@@ -5502,6 +5371,7 @@ export class AgentService {
         handleTurnStartedAt: args.handleTurnStartedAt,
         capabilityDecision: args.capabilityDecision,
         reason: 'media_unavailable',
+        preparedCustomerContext: args.preparedCustomerContext,
       });
     }
     const digest = contentDigestForBytes(decoded);
@@ -5554,6 +5424,7 @@ export class AgentService {
         handleTurnStartedAt: args.handleTurnStartedAt,
         capabilityDecision: args.capabilityDecision,
         reason: 'upload_failed',
+        preparedCustomerContext: args.preparedCustomerContext,
       });
     }
     let uploaded: { fileId: string; expiresAt: string; byteLength: number };
@@ -5647,6 +5518,7 @@ export class AgentService {
     capabilityDecision: CapabilityDecision;
     fileRef: FileAttachmentRef;
     uploadedNewFileId: string | null;
+    preparedCustomerContext?: PreparedCustomerContext;
   }): Promise<HandleTurnResponse> {
     const captionPresent = args.caption.trim().length > 0;
     const planWithRef = mergePlan(args.plan, {
@@ -5719,7 +5591,11 @@ export class AgentService {
     handleTurnStartedAt: number;
     capabilityDecision: CapabilityDecision;
     imageTurn: ImageTurnContext;
+    preparedCustomerContext?: PreparedCustomerContext;
   }): Promise<HandleTurnResponse> {
+    const preparedCustomerContext = args.preparedCustomerContext ?? await this.prepareCustomerContextForTurn({
+      plan: args.plan, contactPhone: args.inbound.contactPhone, deadlineMs: args.handleTurnStartedAt + 7000,
+    });
     const extractionStartedAt = Date.now();
     let extraction: ExtractionResult;
     try {
@@ -5727,6 +5603,7 @@ export class AgentService {
         userMessage: args.caption,
         plan: args.plan,
         messageContext: args.messageContext,
+        customerContext: preparedCustomerContext.projection,
         currentMessageId: args.inbound.messageId,
         // Native decision input: the already-uploaded current file ref rides
         // the extraction call before routing. No double base64 upload, no
@@ -5831,6 +5708,7 @@ export class AgentService {
         messageContext: args.messageContext,
         handleTurnStartedAt: args.handleTurnStartedAt,
         imageTurn: args.imageTurn,
+        preparedCustomerContext,
       });
     }
     return await this.replyOnEstablishedImageNode({
@@ -5845,6 +5723,7 @@ export class AgentService {
       handleTurnStartedAt: args.handleTurnStartedAt,
       capabilityDecision: args.capabilityDecision,
       imageTurn: args.imageTurn,
+      preparedCustomerContext,
     });
   }
 
@@ -5973,7 +5852,11 @@ export class AgentService {
     handleTurnStartedAt: number;
     capabilityDecision: CapabilityDecision;
     reason: string;
+    preparedCustomerContext?: PreparedCustomerContext;
   }): Promise<HandleTurnResponse> {
+    const preparedCustomerContext = args.preparedCustomerContext ?? await this.prepareCustomerContextForTurn({
+      plan: args.plan, contactPhone: args.inbound.contactPhone, deadlineMs: args.handleTurnStartedAt + 7000,
+    });
     const captionPresent = args.caption.trim().length > 0;
     const unavailablePlan = args.plan.current_node === 'resolver_consultas_informativas'
       ? args.plan
@@ -5999,6 +5882,7 @@ export class AgentService {
       promptBundleId: PENDING_COMPILER_PROMPT_ID,
       promptFilePaths: [],
       toolUsage: args.toolUsage,
+      customerContext: preparedCustomerContext.projection,
       continuity: this.resolveContinuityProjection(unavailablePlan, args.messageContext),
       imageEvidence: this.withImageObservation(
         { status: 'unavailable', reason: args.reason, captionPresent },
@@ -6242,10 +6126,13 @@ export class AgentService {
    * submission-report support evidence only; never message keywords and
    * never pixel content.
    */
-  private isDepositMentioned(extraction: Pick<ExtractionResult, 'supportAct'>): boolean {
+  private isDepositMentioned(extraction: Pick<ExtractionResult, 'supportAct' | 'informationRequests'>): boolean {
     const act = extraction.supportAct;
     if (act === null || act === undefined) return false;
-    return act.topic === 'payment_proof' || act.detail === 'submission_reported';
+    return extraction.supportAct?.kind === 'provide_detail' &&
+      extraction.informationRequests.some((request) =>
+        request.kind === 'purchase' && request.amount !== null && request.amount !== undefined,
+      );
   }
 
   /**
@@ -6306,6 +6193,7 @@ export class AgentService {
     tokenUsage: TurnTokenUsage;
     handleTurnStartedAt: number;
     capabilityDecision: CapabilityDecision;
+    preparedCustomerContext?: PreparedCustomerContext;
   }): Promise<HandleTurnResponse> {
     const captionPresent = args.caption.trim().length > 0;
     const planWithRef = mergePlan(args.plan, {
@@ -6342,6 +6230,9 @@ export class AgentService {
       refStored,
       captionPresent,
     };
+    const preparedCustomerContext = args.preparedCustomerContext ?? await this.prepareCustomerContextForTurn({
+      plan: planWithRef, contactPhone: args.inbound.contactPhone, deadlineMs: args.handleTurnStartedAt + 7000,
+    });
     const extractionStartedAt = Date.now();
     let extraction: ExtractionResult;
     try {
@@ -6349,6 +6240,7 @@ export class AgentService {
         userMessage: args.caption,
         plan: planWithRef,
         messageContext: args.messageContext,
+        customerContext: preparedCustomerContext.projection,
         currentMessageId: args.inbound.messageId,
         // Native decision input: the existing backend URL rides the
         // extraction call before routing. No download, no base64 conversion,
@@ -6429,6 +6321,7 @@ export class AgentService {
         messageContext: args.messageContext,
         handleTurnStartedAt: args.handleTurnStartedAt,
         imageTurn,
+        preparedCustomerContext,
       });
     }
     return await this.replyOnEstablishedImageNode({
@@ -6443,6 +6336,7 @@ export class AgentService {
       handleTurnStartedAt: args.handleTurnStartedAt,
       capabilityDecision: args.capabilityDecision,
       imageTurn,
+      preparedCustomerContext,
     });
   }
 
@@ -6465,6 +6359,7 @@ export class AgentService {
     handleTurnStartedAt: number;
     capabilityDecision: CapabilityDecision;
     imageTurn: ImageTurnContext;
+    preparedCustomerContext?: PreparedCustomerContext;
   }): Promise<HandleTurnResponse> {
     const redactedShape = this.redactedImageTurnShape(args.imageTurn);
     const toolLabel = args.imageTurn.kind === 'file' ? 'image_file_context' : 'image_url_context';
@@ -6493,6 +6388,7 @@ export class AgentService {
         promptBundleId: PENDING_COMPILER_PROMPT_ID,
         promptFilePaths: [],
         toolUsage: args.toolUsage,
+        customerContext: args.preparedCustomerContext?.projection ?? null,
         owner: args.workingPlan.owner ?? null,
         continuity: this.resolveContinuityProjection(args.workingPlan, args.messageContext),
         pendingQuestionRef: args.workingPlan.owner_pending_question ?? null,
@@ -6923,544 +6819,130 @@ export class AgentService {
     };
   }
 
-  /**
-   * L4 customer operations projection for the reply model. Assembles the
-   * typed snapshot from this turn's authorized bounded reads (the existing
-   * orchestrator execution through the authorized cache/gateway path) and
-   * projects only current-question-relevant detail: a payment question never
-   * receives cart facts and a cart question never receives payment details.
-   * Returns null when there is no authorized identity or no customer work,
-   * so unrelated turns stay byte-identical. No profile model is introduced
-   * and the whole snapshot is never sent.
-   *
-   * S7: before assembly, performs bounded asynchronous linked-detail
-   * enrichment (authorized order -> gift detail; invitation/event -> event
-   * detail) through the existing orchestrator access checks and
-   * already-fetched IDs, within two edges / four reads / per-turn
-   * access-scoped visited-cache / shared invocation deadline. Inline
-   * payment/items/venue/address fields expand as typed data without another
-   * HTTP call. Optional failures never block ready facts; required
-   * unavailable detail stays explicitly unavailable in enrichment metadata.
-   */
-  private async resolveCustomerContextForReply(args: {
+  private informationOrchestrator(): InformationOrchestrator {
+    return this.dependencies.informationOrchestrator ?? new InformationOrchestrator({
+      knowledgeGateway: new NoopKnowledgeRetrievalGateway(),
+      providerGateway: this.dependencies.providerGateway,
+      agentGateway:
+        this.dependencies.agentConversationGateway ??
+        new NoopAgentConversationGateway('not_configured'),
+      capabilityManifest: this.capabilityManifest,
+    });
+  }
+
+  private projectPreparedCustomerContext(
+    snapshot: CustomerContextSnapshot,
+  ): CustomerContextProjection {
+    return projectCustomerContext(snapshot);
+  }
+
+  private async prepareCustomerContextForTurn(args: {
     plan: PlanSnapshot;
-    extraction: ExtractionResult;
-    requests: PendingInformationRequest[];
-    informationResults: InformationTaskResult[];
-    informationSummaries: InformationExecutionSummary[];
     contactPhone: string | null | undefined;
-    /** P1 entry snapshot built before resolution; reused through reply. */
-    entrySnapshot?: CustomerContextSnapshot | null;
-    orchestrator?: InformationOrchestrator | null;
-    authentication?: InformationAuthentication | null;
-    deadlineMs?: number | null;
-  }): Promise<CustomerContextProjection | null> {
-    const purchaseRequests = args.requests.filter(
-      (request): request is Extract<PendingInformationRequest, { kind: 'purchase' }> =>
-        request.kind === 'purchase',
+    deadlineMs: number | null;
+  }): Promise<PreparedCustomerContext> {
+    const persistedInformationRefusal = args.plan.information_state.pending_requests.some(
+      (request) => (request.kind === 'purchase' || request.kind === 'associated_event') &&
+        request.authAction === 'decline_authentication',
     );
-    const eventRequests = args.requests.filter((request) => request.kind === 'associated_event');
-    const hasRsvpSignals = args.extraction.actionIntent === 'responder_invitacion' ||
-      (args.extraction.rsvpAction !== null && args.extraction.rsvpAction !== undefined) ||
-      (args.extraction.rsvpCandidateGuestId !== null && args.extraction.rsvpCandidateGuestId !== undefined) ||
-      (args.extraction.rsvpEventReference !== null && args.extraction.rsvpEventReference !== undefined) ||
-      (args.extraction.rsvpParty !== null && args.extraction.rsvpParty !== undefined);
-    if (purchaseRequests.length === 0 && eventRequests.length === 0 && !hasRsvpSignals) {
-      return null;
-    }
-    const trustedPhone = splitInternationalPhone(args.contactPhone ?? null);
+    const authStateForbidsProfile = args.plan.user_auth.awaiting_phone_confirmation ||
+      isTerminalAuthRecovery(this.effectiveAuthRecovery(args.plan)) ||
+      persistedInformationRefusal;
+    const trustedPhone = authStateForbidsProfile
+      ? null
+      : splitInternationalPhone(args.contactPhone) ??
+        splitInternationalPhone(args.plan.contact_phone ?? null);
+    const authentication = !authStateForbidsProfile && hasValidUserAuthToken(args.plan) &&
+      typeof args.plan.user_auth.token === 'string' &&
+      typeof args.plan.user_auth.email === 'string'
+      ? { token: args.plan.user_auth.token, email: args.plan.user_auth.email }
+      : null;
     const nowIso = new Date().toISOString();
-    const identity = trustedPhone
+    const identity: IdentityEvidence | null = authentication
       ? {
-        customerRef: (args.contactPhone ?? '').trim(),
-        scope: 'trusted_phone',
-        source: 'channel_contact_phone',
+        customerRef: authentication.email,
+        scope: trustedPhone ? 'account+trusted_phone' : 'account',
+        source: trustedPhone ? 'authenticated_account+channel_contact_phone' : 'authenticated_account',
         fetchedAt: nowIso,
       }
-      : hasValidUserAuthToken(args.plan) && args.plan.user_auth.email
+      : trustedPhone
         ? {
-          customerRef: args.plan.user_auth.email,
-          scope: 'account',
-          source: 'authenticated_account',
+          customerRef: `${trustedPhone.phone_extension}${trustedPhone.phone_number}`,
+          scope: 'trusted_phone',
+          source: 'channel_contact_phone',
           fetchedAt: nowIso,
         }
         : null;
-    if (!identity) return null;
-    const relevantOrderIds = Array.from(new Set(purchaseRequests.flatMap((request) => {
-      const normalized = normalizeExtractedOrderReference(request.orderId);
-      return normalized ? [normalized] : [];
-    })));
-    const relevantEventIds = Array.from(new Set([
-      ...purchaseRequests.flatMap((request) => request.eventHint?.trim() ? [request.eventHint.trim()] : []),
-      ...eventRequests.flatMap((request) => request.eventHint?.trim() ? [request.eventHint.trim()] : []),
-    ]));
-    const knownOrderIds = Array.from(new Set(args.informationResults.flatMap((result) => {
-      if (result.status !== 'completed' || result.kind !== 'purchase') return [];
-      return result.purchases.map((purchase) => purchase.orderId);
-    })));
-    const knownEventEntries = args.informationResults.flatMap((result) => {
-      if (result.status !== 'completed') return [];
-      if (result.kind === 'associated_event') {
-        return result.result.events.flatMap((event) =>
-          event.eventId === null || event.eventId === undefined
-            ? []
-            : [{ id: event.eventId as number | string, name: event.name ?? null } as const],
-        );
-      }
-      if (result.kind === 'purchase' && result.linkedEvents) {
-        return result.linkedEvents.events.flatMap((event) =>
-          event.eventId === null || event.eventId === undefined
-            ? []
-            : [{ id: event.eventId as number | string, name: event.name ?? null } as const],
-        );
-      }
-      return [];
-    });
-    const knownEventIds = Array.from(new Set(args.informationResults.flatMap((result) => {
-      if (result.status !== 'completed') return [];
-      if (result.kind === 'associated_event') {
-        return result.result.events.flatMap((event) => event.eventId === null || event.eventId === undefined ? [] : [event.eventId]);
-      }
-      if (result.kind === 'purchase' && result.linkedEvents) {
-        return result.linkedEvents.events.flatMap((event) => event.eventId === null || event.eventId === undefined ? [] : [event.eventId]);
-      }
-      return [];
-    })));
-    const target = resolveRelevantTarget({
-      orderIds: knownOrderIds,
-      eventIds: knownEventIds,
-      relevantOrderIds,
-      relevantEventIds,
-    });
-    // B0/B1: the canonical profile carries every authorized record; the
-    // resolved target above is the relevance reference for the reply and
-    // for mutations. No focus-based copy is built or sent.
-    const focus = 'general' as const;
-    // P3 fact parity: name hints never match stable IDs, so resolve them
-    // against known authorized names once and reuse the resolved IDs for
-    // enrichment and for the detail projection below. A uniquely resolved
-    // result (explicit match or single-record target) is the detail target
-    // even when the extraction carries no ID, so its date/hour/venue and
-    // per-record state project from the profile instead of a second facts
-    // payload. Ambiguous turns still resolve nothing and stay candidates.
-    const resolvedEventIds = this.resolveExplicitEventIds(knownEventEntries, relevantEventIds);
-    const detailOrderIds = Array.from(new Set([
-      ...relevantOrderIds,
-      ...(target.kind === 'target' && target.orderId !== null ? [target.orderId] : []),
-    ]));
-    const detailEventIds = Array.from(new Set([
-      ...resolvedEventIds,
-      ...(target.kind === 'target' && target.eventId !== null ? [target.eventId] : []),
-    ]));
-    // P2 presentation-only ordering. Unresolved candidates stay discoverable
-    // for a focused read or clarification, ordered by actual temporal
-    // proximity without filtering. Fixed score weights are not conversational
-    // authority: an explicit reference already resolved to a target above, so
-    // nothing here selects, hides, or authorizes — recency alone never
-    // triggers a read detail choice or a mutation. No pending/answered
-    // tracking is added here: continuity reuses the existing pending-request
-    // and outbound-history state.
-    let unresolvedCandidateOrderIds: string[] = [];
-    let unresolvedCandidateEventIds: (number | string)[] = [];
-    if (target.kind === 'candidates') {
-      const knownPurchasesById = new Map(args.informationResults.flatMap((result) => {
-        if (result.status !== 'completed' || result.kind !== 'purchase') return [];
-        return result.purchases.map((purchase) => [purchase.orderId, purchase] as const);
-      }));
-      unresolvedCandidateOrderIds = this.orderUnresolvedCandidatesByTemporalProximity(
-        target.orderIds.map((orderId) => {
-          const known = knownPurchasesById.get(orderId);
-          return {
-            orderId,
-            eventName: known?.eventName ?? null,
-            paymentStatus: known?.paymentStatus ?? null,
-            createdAt: known?.createdAt ?? null,
-            eventDate: known?.eventDate ?? null,
-          };
-        }),
-      ).map((candidate) => candidate.orderId);
-      const knownEventsById = new Map(args.informationResults.flatMap((result) => {
-        if (result.status !== 'completed') return [];
-        if (result.kind === 'associated_event') {
-          return result.result.events.flatMap((event) =>
-            event.eventId === null || event.eventId === undefined
-              ? []
-              : [[String(event.eventId), event] as const],
-          );
-        }
-        if (result.kind === 'purchase' && result.linkedEvents) {
-          return result.linkedEvents.events.flatMap((event) =>
-            event.eventId === null || event.eventId === undefined
-              ? []
-              : [[String(event.eventId), event] as const],
-          );
-        }
-        return [];
-      }));
-      unresolvedCandidateEventIds = this.orderUnresolvedCandidatesByTemporalProximity(
-        target.eventIds.map((eventId) => {
-          const known = knownEventsById.get(String(eventId));
-          return {
-            orderId: String(eventId),
-            eventName: known?.name ?? null,
-            paymentStatus: null,
-            createdAt: known?.datetime ?? null,
-            eventDate: known?.datetime ?? null,
-          };
-        }),
-      ).map((candidate) => {
-        const original = target.eventIds.find((id) => String(id) === candidate.orderId);
-        return original ?? candidate.orderId;
-      });
-    }
-    // S7 same-turn reuse: an explicit target whose completed result already
-    // carries gift detail (fetched through the gift_purchases route earlier
-    // in this turn) or event detail (hydrated `detail` on the event) is
-    // excluded so enrichment never re-issues that read. Orders fetched only
-    // through the summary route still qualify for gift-detail enrichment.
-    const detailedOrderIds = Array.from(new Set(args.informationResults.flatMap((result) => {
-      if (result.status !== 'completed' || result.kind !== 'purchase') return [];
-      const resource = (result as { resource?: unknown }).resource;
-      const lookupResource = (result as { lookupResource?: unknown }).lookupResource;
-      if (resource !== 'gift_purchases' && lookupResource !== 'gift_purchases') return [];
-      return result.purchases.map((purchase) => purchase.orderId);
-    })));
-    const detailedEventIds = Array.from(new Set(args.informationResults.flatMap((result) => {
-      if (result.status !== 'completed') return [];
-      if (result.kind === 'associated_event') {
-        return result.result.events.flatMap((event) =>
-          event.eventId === null || event.eventId === undefined || event.detail == null
-            ? []
-            : [event.eventId],
-        );
-      }
-      // Purchase-linked root details hydrate through the same shared root:
-      // already-detailed linked events never re-issue their read here.
-      if (result.kind === 'purchase' && result.linkedEvents) {
-        return result.linkedEvents.events.flatMap((event) =>
-          event.eventId === null || event.eventId === undefined || event.detail == null
-            ? []
-            : [event.eventId],
-        );
-      }
-      return [];
-    })));
-    // Same-turn gift-detail follow-up: a discovery-identified single
-    // orders-route record missing requested gift-only facts (dedication,
-    // thanks, payment time) is read through the same-scope gift endpoint
-    // with its returned ID before the reply composes. Explicit targets
-    // keep bound priority; ambiguity enriches nothing.
-    const implicitGiftDetailOrderIds = selectImplicitGiftDetailOrderIds({
-      requests: purchaseRequests,
-      results: args.informationResults,
-    });
-    const enrichmentTargets = selectEnrichmentTargets({
-      knownOrderIds,
-      knownEventIds,
-      relevantOrderIds,
-      relevantEventIds: resolvedEventIds,
-      alreadyDetailedOrderIds: detailedOrderIds,
-      alreadyDetailedEventIds: detailedEventIds,
-      implicitOrderIds: implicitGiftDetailOrderIds,
-    });
-    let enrichedResults = args.informationResults;
-    let enrichment: CustomerEnrichmentSummary | null = null;
-    if (
-      (enrichmentTargets.orderIds.length > 0 || enrichmentTargets.eventIds.length > 0) &&
-      args.orchestrator
-    ) {
-      const trustedPhone = splitInternationalPhone(args.contactPhone ?? null);
-      const accessScope = enrichmentScopeKey(identity.scope ?? 'unknown', identity.customerRef);
-      try {
-        // S7 per-turn reuse: seed the visited set with the access-scoped keys
-        // of reads already completed this turn so the orchestrator never
-        // re-issues them (the orchestrator's own visited dedupe applies once
-        // the set is shared instead of fresh per call). Bounds, the shared
-        // invocation deadline and depth are unchanged.
-        const visited = new Set<string>();
-        for (const orderId of detailedOrderIds) {
-          visited.add(enrichmentVisitKey('order', orderId, accessScope));
-        }
-        for (const eventId of detailedEventIds) {
-          visited.add(enrichmentVisitKey('event', eventId, accessScope));
-        }
-        const linked = await args.orchestrator.enrichCustomerLinkedDetail({
-          orderIds: enrichmentTargets.orderIds,
-          eventIds: enrichmentTargets.eventIds,
-          authentication: args.authentication ?? null,
-          trustedPhone,
-          scope: accessScope,
-          detailCache: new Map(),
-          visited,
-          deadlineMs: args.deadlineMs ?? null,
-          depth: 1,
-        });
-        enrichedResults = this.mergeLinkedEnrichment(args.informationResults, linked);
-        enrichment = {
-          readsAttempted: linked.readsAttempted,
-          truncatedByBound: enrichmentTargets.truncatedByBound || linked.truncatedByBound,
-          unavailable: [...linked.unavailable],
-          failures: linked.failures.map((failure) => ({ ...failure })),
-        };
-      } catch {
-        enrichment = {
-          readsAttempted: 0,
-          truncatedByBound: enrichmentTargets.truncatedByBound,
-          unavailable: [],
-          failures: [],
-        };
-      }
-    } else if (enrichmentTargets.truncatedByBound) {
-      enrichment = {
-        readsAttempted: 0,
-        truncatedByBound: true,
-        unavailable: [],
-        failures: [],
-      };
-    }
-    const currentContextEvidence = {
-      relevantEventIds,
-      relevantOrderIds,
+    const currentContext: CurrentContextEvidence = {
+      relevantEventIds: [],
+      relevantOrderIds: [],
       pendingQuestion: args.plan.open_questions[0] ??
-        args.plan.owner_pending_question ??
-        null,
-      unresolvedCandidateOrderIds,
-      unresolvedCandidateEventIds,
+        args.plan.owner_pending_question ?? null,
+      unresolvedCandidateOrderIds: [],
+      unresolvedCandidateEventIds: [],
     };
-    // P1 single canonical copy: when an entry snapshot was built before
-    // resolution, enrich that same snapshot (failed routes preserve its
-    // known data and provenance); otherwise assemble fresh. Execution
-    // summaries keep operation/result status + refs for audit, never a
-    // second customer-data payload: the profile holds facts + coverage and
-    // action receipts stay typed outcomes.
-    const snapshot = args.entrySnapshot
-      ? mergeExecutionIntoSnapshot({
-        base: args.entrySnapshot,
-        execution: { results: enrichedResults, summaries: args.informationSummaries },
-        identity,
-        currentContext: currentContextEvidence,
-        nowIso,
-      })
-      : assembleCustomerContext({
-        execution: { results: enrichedResults, summaries: args.informationSummaries },
-        identity,
-        currentContext: currentContextEvidence,
-        nowIso,
-      });
-    return projectCustomerContext(snapshot, {
-      focus,
-      relevantOrderIds: detailOrderIds,
-      relevantEventIds: detailEventIds,
-    }, enrichment);
-  }
-
-  /**
-   * P1 canonical profile entry. Builds the entry snapshot on
-   * customer_assistance entry before reference resolution needs evidence,
-   * reusing the existing owner router: only the customer_assistance owner
-   * with a purchase/event/RSVP signal and grounded identity prefetches.
-   * Pure public FAQ turns and planning-only turns return null (no prefetch).
-   * No extraction or reference-inference changes here (P2 owns them).
-   */
-  private resolveEntryCustomerSnapshot(args: {
-    plan: PlanSnapshot;
-    extraction: ExtractionResult;
-    requests: PendingInformationRequest[];
-    contactPhone: string | null | undefined;
-  }): CustomerContextSnapshot | null {
-    if (isPurePublicFaqTurn(args.requests)) {
-      return null;
-    }
-    const purchaseRequests = args.requests.filter(
-      (request) => request.kind === 'purchase',
-    );
-    const eventRequests = args.requests.filter(
-      (request) => request.kind === 'associated_event',
-    );
-    const hasRsvpSignals = args.extraction.actionIntent === 'responder_invitacion' ||
-      (args.extraction.rsvpAction !== null && args.extraction.rsvpAction !== undefined) ||
-      (args.extraction.rsvpCandidateGuestId !== null && args.extraction.rsvpCandidateGuestId !== undefined) ||
-      (args.extraction.rsvpEventReference !== null && args.extraction.rsvpEventReference !== undefined) ||
-      (args.extraction.rsvpParty !== null && args.extraction.rsvpParty !== undefined);
-    if (purchaseRequests.length === 0 && eventRequests.length === 0 && !hasRsvpSignals) {
-      return null;
-    }
-    if (args.plan.owner !== 'customer_assistance') {
-      return null;
-    }
-    const trustedPhone = splitInternationalPhone(args.contactPhone ?? null);
-    const nowIso = new Date().toISOString();
-    const identity = trustedPhone
-      ? {
-        customerRef: (args.contactPhone ?? '').trim(),
-        scope: 'trusted_phone',
-        source: 'channel_contact_phone',
-        fetchedAt: nowIso,
-      }
-      : hasValidUserAuthToken(args.plan) && args.plan.user_auth.email
-        ? {
-          customerRef: args.plan.user_auth.email,
-          scope: 'account',
-          source: 'authenticated_account',
-          fetchedAt: nowIso,
-        }
-        : null;
-    if (!identity) return null;
-    return createEntryCustomerSnapshot({
+    const preparation = {
+      authentication,
+      trustedPhone,
       identity,
-      currentContext: {
-        relevantEventIds: [],
-        relevantOrderIds: [],
-        pendingQuestion: args.plan.open_questions[0] ??
-          args.plan.owner_pending_question ??
-          null,
-        unresolvedCandidateOrderIds: [],
-        unresolvedCandidateEventIds: [],
-      },
-      nowIso,
-    });
-  }
-
-  /**
-   * S7 single-copy merge of bounded linked detail into the already-fetched
-   * execution. Gift purchases merge into their matching order (inline
-   * payment/items/dedication/thanks expand without another HTTP call);
-   * unmatched gift rows are ignored so unrelated history never expands.
-   * Event details hydrate matching invitation venues (city/country/name plus
-   * typed detail) without inventing a street: missing street stays
-   * country_only downstream. Pure merge, no writes, sparse single-copy.
-   */
-  private mergeLinkedEnrichment(
-    results: InformationTaskResult[],
-    linked: {
-      readonly giftPurchases: readonly PurchaseInformation[];
-      readonly eventDetails: ReadonlyMap<number, HydratedEventDetail>;
-    },
-  ): InformationTaskResult[] {
-    if (linked.giftPurchases.length === 0 && linked.eventDetails.size === 0) {
-      return results;
-    }
-    const giftByOrderId = new Map(
-      linked.giftPurchases.map((purchase) => [purchase.orderId, purchase] as const),
-    );
-    return results.map((result) => {
-      if (result.status !== 'completed') return result;
-      if (result.kind === 'purchase') {
-        let changed = false;
-        const purchases = result.purchases.map((purchase) => {
-          const enriched = giftByOrderId.get(purchase.orderId);
-          if (!enriched) return purchase;
-          changed = true;
-          const inline = expandInlinePurchaseDetail(enriched);
-          return {
-            ...purchase,
-            paymentStatus: inline.paymentStatus ?? purchase.paymentStatus,
-            grandTotal: purchase.grandTotal,
-            paymentMethod: purchase.paymentMethod,
-            eventName: inline.eventName ?? purchase.eventName,
-            eventDate: inline.eventDate ?? purchase.eventDate,
-            eventUrl: inline.eventUrl ?? purchase.eventUrl,
-            items: inline.items.length > 0 ? inline.items : purchase.items,
-            payment: inline.payment ?? purchase.payment,
-            dedication: inline.dedication ?? purchase.dedication,
-            thanks: inline.thanks ?? purchase.thanks,
-            isThanked: inline.isThanked ?? purchase.isThanked,
-          };
-        });
-        return changed ? { ...result, purchases } : result;
-      }
-      if (result.kind === 'associated_event') {
-        let changed = false;
-        const events = result.result.events.map((event) => {
-          if (event.eventId === null || event.eventId === undefined) return event;
-          const detail = linked.eventDetails.get(Number(event.eventId));
-          if (!detail) return event;
-          changed = true;
-          return {
-            ...event,
-            name: detail.event.name ?? event.name,
-            place: detail.event.city ?? event.place,
-            country: detail.event.country ?? event.country,
-            ...(detail.event.city || detail.event.country
-              ? {
-                detail: {
-                  withTime: detail.event.withTime,
-                  timezone: detail.event.timezone,
-                  city: detail.event.city,
-                  celebrateds: detail.event.celebrateds,
-                  moments: detail.event.moments,
-                  dresscode: detail.event.dresscode,
-                  commonAsked: detail.event.commonAsked,
-                  contactInfo: detail.event.contactInfo,
-                },
-              }
-              : {}),
-          };
-        });
-        return changed ? { ...result, result: { ...result.result, events } } : result;
-      }
-      return result;
-    });
-  }
-
-  /**
-   * S7 hint-to-ID resolution among already-authorized summaries only. An
-   * explicit numeric reference matches by ID; an event-name hint matches by
-   * the shared event matcher against known authorized names. A name never
-   * authorizes a new lookup: hints without a known match resolve to nothing
-   * so ambiguous turns enrich nothing. No date cutoff, no recency.
-   */
-  private resolveExplicitEventIds(
-    knownEvents: ReadonlyArray<{ readonly id: number | string; readonly name: string | null }>,
-    hints: readonly string[],
-  ): (number | string)[] {
-    const resolved: (number | string)[] = [];
-    for (const hint of hints) {
-      const trimmed = hint.trim();
-      if (!trimmed) continue;
-      const idMatch = knownEvents.find((entry) => String(entry.id) === trimmed);
-      if (idMatch) {
-        resolved.push(idMatch.id);
-        continue;
-      }
-      for (const entry of knownEvents) {
-        if (eventMatches(entry.name, trimmed)) {
-          resolved.push(entry.id);
-        }
-      }
-    }
-    return Array.from(new Set(resolved.map((id) => String(id)))).map(
-      (key) => knownEvents.find((entry) => String(entry.id) === key)?.id ?? key,
-    );
-  }
-
-  /**
-   * P2 presentation-only ordering for unresolved candidates. Sorts by
-   * absolute temporal distance of the event date (falling back to record
-   * creation) to today; missing or invalid dates stay last in stable order.
-   * Nothing is filtered and nothing is selected: every candidate stays
-   * retrievable for a focused read or a one-question distinction. No date
-   * cutoff is applied — explicit years-old records remain listed — and the
-   * order never authorizes a read choice or a write on its own.
-   */
-  private orderUnresolvedCandidatesByTemporalProximity(
-    candidates: RankableCandidate[],
-  ): RankableCandidate[] {
-    const nowMs = Date.now();
-    const distanceOf = (candidate: RankableCandidate): number => {
-      const raw = candidate.eventDate ?? candidate.createdAt;
-      if (!raw) {
-        return Number.POSITIVE_INFINITY;
-      }
-      const parsed = Date.parse(raw);
-      return Number.isNaN(parsed) ? Number.POSITIVE_INFINITY : Math.abs(parsed - nowMs);
+      currentContext,
+      deadlineMs: args.deadlineMs,
     };
-    return candidates
-      .map((candidate, index) => ({ candidate, index, distance: distanceOf(candidate) }))
-      .sort((left, right) =>
-        left.distance !== right.distance ? left.distance - right.distance : left.index - right.index,
-      )
-      .map((entry) => entry.candidate);
+    const snapshot = await this.informationOrchestrator().prepareCustomerContext(preparation);
+    return {
+      ...preparation,
+      snapshot,
+      projection: this.projectPreparedCustomerContext(snapshot),
+    };
+  }
+
+  private async extendCustomerContextForAccountAuthorization(args: {
+    prepared: PreparedCustomerContext;
+    authentication: InformationAuthentication;
+  }): Promise<PreparedCustomerContext> {
+    const accountIdentity: IdentityEvidence = {
+      customerRef: args.authentication.email,
+      email: args.authentication.email,
+      phone: null,
+      scope: 'account',
+      source: 'authenticated_account',
+      authorizedScopes: ['account'],
+      fetchedAt: new Date().toISOString(),
+    };
+    const additionalSnapshot = await this.informationOrchestrator().prepareCustomerContext({
+      authentication: args.authentication,
+      trustedPhone: null,
+      identity: accountIdentity,
+      currentContext: args.prepared.currentContext,
+      deadlineMs: args.prepared.deadlineMs,
+    });
+    const snapshot = mergeCustomerContextSnapshots(args.prepared.snapshot, additionalSnapshot);
+    return {
+      ...args.prepared,
+      authentication: args.authentication,
+      identity: {
+        ...accountIdentity,
+        phone: args.prepared.identity?.phone ?? null,
+        scope: snapshot.identityAccess.scope,
+        source: snapshot.identityAccess.source,
+        authorizedScopes: snapshot.identityAccess.authorizedScopes,
+      },
+      snapshot,
+      projection: this.projectPreparedCustomerContext(snapshot),
+    };
+  }
+
+  private recordCustomerActionOutcome(
+    prepared: PreparedCustomerContext | null,
+    outcome: ActionOutcome,
+  ): PreparedCustomerContext | null {
+    if (prepared === null) return null;
+    const snapshot = recordActionOutcome(prepared.snapshot, outcome);
+    return {
+      ...prepared,
+      snapshot,
+      projection: this.projectPreparedCustomerContext(snapshot),
+    };
   }
 
   /**
@@ -7499,103 +6981,14 @@ export class AgentService {
   private shouldWithholdReadsForAmbiguity(args: {
     extraction: ExtractionResult;
     requests: PendingInformationRequest[];
-    plan: PlanSnapshot;
-    preservingLastCompletedContext: boolean;
-    isRetiredPhoneConfirmationRecovery: boolean;
   }): boolean {
     if (args.extraction.ambiguity?.status !== 'ambiguous') return false;
-    if (args.preservingLastCompletedContext || args.isRetiredPhoneConfirmationRecovery) return false;
     const hasExecutableRead = args.requests.some((request) =>
       request.kind === 'purchase' ||
       request.kind === 'associated_event' ||
       (request.kind === 'faq' && !request.hostWithdrawal));
     if (hasExecutableRead) return false;
-    if (this.approvalBoundaryServesAmbiguousRequest({
-      extraction: args.extraction,
-      plan: args.plan,
-    })) return false;
     return true;
-  }
-
-  /**
-   * Approval-boundary ambiguity carries an answerable record question, not a
-   * genuine choice. A status_or_proof_review ambiguity asks which of two
-   * invented tasks was intended, but the receipt amount alone never proves
-   * approval and the record shows whether any purchase stands approved. When
-   * typed receipt context exists (retained image attachments, an image
-   * reference, a live purchase/event request, or a last-completed
-   * purchase/event read) and a purchase read capability is available, the
-   * lookup executes and the record answers instead of asking. Typed evidence
-   * only; no phrase detection, no new state.
-   */
-  private approvalBoundaryServesAmbiguousRequest(args: {
-    extraction: ExtractionResult;
-    plan: PlanSnapshot;
-  }): boolean {
-    const ambiguity = args.extraction.ambiguity;
-    if (ambiguity?.status !== 'ambiguous') return false;
-    if (ambiguity.questionKey !== 'status_or_proof_review') return false;
-    const receiptContext =
-      (args.plan.image_attachments?.length ?? 0) > 0 ||
-      (args.extraction.imageReference != null &&
-        args.extraction.imageReference.status !== 'none') ||
-      args.extraction.informationRequests.some((request) =>
-        request.kind === 'purchase' || request.kind === 'associated_event') ||
-      args.plan.information_state.last_completed_request?.kind === 'purchase' ||
-      args.plan.information_state.last_completed_request?.kind === 'associated_event';
-    if (!receiptContext) return false;
-    return this.capabilityManifest['purchase.orders.read']?.available === true ||
-      this.capabilityManifest['purchase.gift_detail.read']?.available === true;
-  }
-
-  /**
-   * Reply-input reconciliation for the approval boundary (mirror of the
-   * runtime ambiguity/context projection, both delegating to the
-   * single-owner predicate in purchase-reconciliation). When a
-   * status_or_proof_review ambiguity reaches composition, the record
-   * already answers whether any purchase stands approved: a completed
-   * outcome (even an empty one) always settles it, a scoped attempted read
-   * that found nothing settles it when retained receipt context is
-   * present, and the established receipt boundary settles it even when no
-   * purchase read executed — the reply answers from receipt guidance
-   * instead of asking which task was meant. Returns the extraction with
-   * that answered ambiguity cleared; anything else returns it unchanged.
-   * Intake normalization still never clears ambiguity; only this
-   * evidence-bound reply projection does.
-   */
-  private reconcileApprovalBoundaryAmbiguity(args: {
-    extraction: ExtractionResult;
-    informationResults: InformationTaskResult[];
-    imageEvidence: ComposeReplyRequest['imageEvidence'];
-    plan: PlanSnapshot;
-  }): ExtractionResult {
-    const ambiguity = args.extraction.ambiguity;
-    if (ambiguity?.status !== 'ambiguous') return args.extraction;
-    if (ambiguity.questionKey !== 'status_or_proof_review') return args.extraction;
-    // Single-owner predicate in purchase-reconciliation: the record (or the
-    // established receipt boundary when no purchase read executed) settles
-    // whether any purchase stands approved. Intake normalization still never
-    // clears ambiguity; only this evidence-bound reply projection does.
-    const receiptContext =
-      args.imageEvidence != null ||
-      (args.plan.image_attachments?.length ?? 0) > 0 ||
-      (args.extraction.imageReference != null &&
-        args.extraction.imageReference.status !== 'none');
-    const answeredByRecord = isApprovalBoundaryAnsweredByRecord({
-      informationResults: args.informationResults,
-      receiptContext,
-    });
-    if (!answeredByRecord) return args.extraction;
-    return {
-      ...args.extraction,
-      ambiguity: {
-        status: 'clear',
-        clarificationQuestion: null,
-        interpretations: [],
-        candidateOperations: [],
-        questionKey: null,
-      },
-    };
   }
 
   private async handleInformationFlow(args: {
@@ -7611,6 +7004,7 @@ export class AgentService {
     handleTurnStartedAt: number;
     imageTurn?: ImageTurnContext;
     completedRsvp?: CompletedRsvpCarryover;
+    preparedCustomerContext?: PreparedCustomerContext;
   }): Promise<HandleTurnResponse> {
     const declined = args.extraction.informationRequests.some((request) =>
       (request.kind === 'purchase' || request.kind === 'associated_event') && request.authAction === 'decline_authentication');
@@ -7635,11 +7029,20 @@ export class AgentService {
         requests: this.mergeInformationRequests(args.workingPlan.information_state.pending_requests, args.extraction.informationRequests) });
     }
     const currentNode: DecisionNode = 'resolver_consultas_informativas';
+    const taskCapabilityDecision = args.extraction.requestedOperation
+      ? resolveCapabilityDecision({
+        requestedOperation: args.extraction.requestedOperation,
+        manifest: this.capabilityManifest,
+        ambiguity: args.extraction.ambiguity
+          ? {
+            status: args.extraction.ambiguity.status,
+            candidateOperations: args.extraction.ambiguity.candidateOperations ?? [],
+            questionKey: args.extraction.ambiguity.questionKey ?? undefined,
+          }
+          : undefined,
+      })
+      : null;
     const supportAcknowledgment = this.isSupportAcknowledgment(args.extraction.supportAct) &&
-      args.extraction.informationRequests.length === 0 && args.extraction.actionIntent === null;
-    // A recognized receipt task is never a bare acknowledgment: its
-    // synthesized discovery reads survive clearing and the ack shortcut.
-    const receiptDiscoveryTask = this.isReceiptDiscoveryTask(args.extraction.supportAct) &&
       args.extraction.informationRequests.length === 0 && args.extraction.actionIntent === null;
     const resumeNode =
       args.workingPlan.current_node === currentNode
@@ -7656,84 +7059,12 @@ export class AgentService {
       planWithContact.information_state.pending_requests,
       args.extraction.informationRequests,
     );
-    requests = this.defaultPurchaseRequestAspects(requests);
-    requests = this.expandReceiptDiscoveryRequests(requests, args.extraction, args.inbound.text);
     const lastCompletedRequest =
       planWithContact.information_state.last_completed_request;
     const supportContinuesPurchaseThread = supportAcknowledgment &&
       (lastCompletedRequest?.kind === 'purchase' ||
         lastCompletedRequest?.kind === 'associated_event');
-    if (supportAcknowledgment && !supportContinuesPurchaseThread && !receiptDiscoveryTask) requests = [];
-    // A typed purchase-status policy question is a record question, not a
-    // KB question: synthesize a purchase status read so the verified record
-    // outcome reaches the reply through the existing aspect machinery. Other
-    // ask_policy topics keep the support-policy FAQ synthesis untouched.
-    const supportAct = args.extraction.supportAct;
-    if (supportAct?.kind === 'ask_policy' && supportAct.topic === 'purchase_status' &&
-      !requests.some((request) => request.kind === 'purchase')) {
-      // Contract revision (purchase_discovery): a status-policy question
-      // carries no established ownership, so it reads discovery instead of
-      // defaulting the missing source to orders.
-      requests = [{
-        kind: 'purchase',
-        resource: 'purchase_discovery',
-        query: args.inbound.text,
-        orderId: null,
-        aspects: ['payment_status'],
-        sensitiveFields: [],
-        authAction: 'none',
-        requestId: 'support-policy',
-      }, ...requests];
-    } else if (supportAct?.kind === 'ask_policy' && supportAct.topic !== 'purchase_status' &&
-      !requests.some((request) => request.kind === 'faq')) {
-      requests = [{
-        kind: 'faq',
-        query: args.inbound.text,
-        requestId: 'support-policy',
-      }, ...requests];
-    }
-    // Approval-boundary record read: a status_or_proof_review ambiguity on
-    // retained receipt context without any purchase/event request still needs
-    // the record to answer whether anything stands approved. Synthesize the
-    // scoped status read through the existing aspect machinery so the
-    // boundary is answered from evidence instead of asking which of two
-    // invented tasks was intended. Typed ambiguity plus plan evidence only;
-    // acknowledgements synthesize nothing.
-    if (
-      !supportAcknowledgment &&
-      !requests.some((request) =>
-        request.kind === 'purchase' || request.kind === 'associated_event') &&
-      this.approvalBoundaryServesAmbiguousRequest({
-        extraction: args.extraction,
-        plan: planWithContact,
-      })
-    ) {
-      // Contract revision (purchase_discovery): the boundary read carries
-      // no established ownership, so it reads discovery instead of
-      // defaulting the missing source to orders.
-      requests = [{
-        kind: 'purchase',
-        resource: 'purchase_discovery',
-        query: args.inbound.text,
-        orderId: null,
-        aspects: ['payment_status'],
-        sensitiveFields: [],
-        authAction: 'none',
-        requestId: 'approval-boundary',
-      }, ...requests];
-    }
-    const replayingLastCompletedRequest = false;
-    const continuingLastCompletedRequest = Boolean(
-      args.extraction.actionIntent === null &&
-      lastCompletedRequest &&
-      (lastCompletedRequest.kind === 'purchase' ||
-        lastCompletedRequest.kind === 'associated_event') &&
-      args.extraction.informationRequests.some((request) =>
-        this.sameInformationThread(lastCompletedRequest, request),
-      ),
-    );
-    const preservingLastCompletedContext =
-      replayingLastCompletedRequest || continuingLastCompletedRequest;
+    if (supportAcknowledgment && !supportContinuesPurchaseThread) requests = [];
     let planForInformation = mergePlan(planWithContact, {
       current_node: currentNode,
       information_state: {
@@ -7795,7 +7126,7 @@ export class AgentService {
       }
     }
 
-    if (supportAcknowledgment && !supportContinuesPurchaseThread && !receiptDiscoveryTask) {
+    if (supportAcknowledgment && !supportContinuesPurchaseThread) {
       // Actionable-answer repair: an unresolved purchase/event-detail
       // request plus sufficient newly supplied typed context (event or
       // person reference, role correction, event reference, or a supplied
@@ -7806,11 +7137,11 @@ export class AgentService {
       // support acknowledgment with no such context still acknowledges
       // below. Only live pending requests resume here: completed, declined
       // and refused work never re-enters through this branch.
-      const supportEventReference = supportAct?.kind === 'provide_detail'
-        ? supportAct.eventReference?.trim() ?? null
+      const supportEventReference = args.extraction.supportAct?.kind === 'provide_detail'
+        ? args.extraction.supportAct.eventReference?.trim() ?? null
         : null;
-      const supportPersonReference = supportAct?.kind === 'provide_detail'
-        ? supportAct.personReference?.trim() ?? null
+      const supportPersonReference = args.extraction.supportAct?.kind === 'provide_detail'
+        ? args.extraction.supportAct.personReference?.trim() ?? null
         : null;
       // A supplied credential satisfies the required next input of a
       // pending protected request through the existing auth requirements
@@ -7883,44 +7214,15 @@ export class AgentService {
       (args.extraction.closeAction !== null && args.extraction.closeAction !== undefined) ||
       (args.extraction.rsvpCandidateGuestId !== null && args.extraction.rsvpCandidateGuestId !== undefined);
     const hasActionConflict = executesActionThisTurn && requests.length > 0 && !args.completedRsvp;
-    const isRetiredPhoneConfirmationRecovery =
-      planForInformation.user_auth.awaiting_phone_confirmation &&
-      Boolean(args.inbound.contactPhone) &&
-      requests.some(
-        (request) =>
-          request.kind === 'associated_event' || request.kind === 'purchase',
-      );
     const hasAmbiguity = this.shouldWithholdReadsForAmbiguity({
       extraction: args.extraction,
       requests,
-      plan: planForInformation,
-      preservingLastCompletedContext,
-      isRetiredPhoneConfirmationRecovery,
     });
-    const informationExtraction = isRetiredPhoneConfirmationRecovery ||
-      preservingLastCompletedContext
-      ? {
-          ...args.extraction,
-          ...(isRetiredPhoneConfirmationRecovery
-            ? {
-                conversationSummary: `Consulta pendiente recuperada: ${requests
-                  .map((request) => request.query)
-                  .join(' | ')}`,
-              }
-            : {}),
-          ambiguity: {
-            status: 'clear' as const,
-            clarificationQuestion: null,
-            interpretations: [],
-          },
-        }
-      : args.extraction;
+    const informationExtraction = args.extraction;
     let informationResults: InformationTaskResult[] = [];
     let informationSummaries: InformationExecutionSummary[] = [];
-    // P1 canonical profile entry snapshot, built before reference
-    // resolution needs evidence and reused through reply. Null for pure
-    // public FAQ / planning-only turns (no prefetch).
-    let entryCustomerSnapshot: CustomerContextSnapshot | null = null;
+    let informationCustomerSnapshot = args.preparedCustomerContext?.snapshot ?? null;
+    let preparedCustomerContext = args.preparedCustomerContext ?? null;
     let operationalNote: string | null = null;
     const protectedAuthAction = requests
       .filter((request) => request.kind === 'purchase' || request.kind === 'associated_event')
@@ -8001,11 +7303,10 @@ export class AgentService {
       });
     }
 
-    if ((args.extraction.normalizationIssues?.length ?? 0) > 0) {
-      operationalNote = 'La solicitud de soporte fue reconocida, pero no se pudo determinar de forma segura qué tipo de información de compra se necesita. Haz una sola pregunta breve para aclararlo. No des la bienvenida ni pidas correo o código todavía.';
-    } else if (hasActionConflict) {
-      operationalNote =
-        'El mensaje combina una acción del plan con consultas informativas. Haz una sola pregunta breve para confirmar cuál quiere resolver primero. No ejecutes ni respondas ninguna de las dos rutas todavía.';
+    if (hasActionConflict) {
+      // The profile remains available; no conflicting read or write is run
+      // until the model resolves the user's mixed request.
+      operationalNote = null;
     } else if (hasAmbiguity) {
       operationalNote = null;
       planForInformation = mergePlan(planForInformation, {
@@ -8019,17 +7320,6 @@ export class AgentService {
       });
     } else {
       const informationStartedAt = Date.now();
-      // P1 canonical profile entry: build the entry snapshot on
-      // customer_assistance entry before reference resolution needs
-      // evidence. The owner router is preserved; pure public FAQ and
-      // planning-only turns never prefetch customer data. The same
-      // snapshot object enriches through execution + linked detail + reply.
-      entryCustomerSnapshot = this.resolveEntryCustomerSnapshot({
-        plan: planForInformation,
-        extraction: informationExtraction,
-        requests,
-        contactPhone: args.inbound.contactPhone,
-      });
       const authResolution = await this.resolveInformationAuthentication({
         plan: planForInformation,
         userMessage: args.inbound.text,
@@ -8048,6 +7338,18 @@ export class AgentService {
         });
       }
 
+      if (
+        authResolution.authentication !== null &&
+        preparedCustomerContext !== null &&
+        !preparedCustomerContext.snapshot.identityAccess.authorizedScopes.includes('account')
+      ) {
+        preparedCustomerContext = await this.extendCustomerContextForAccountAuthorization({
+          prepared: preparedCustomerContext,
+          authentication: authResolution.authentication,
+        });
+        informationCustomerSnapshot = preparedCustomerContext.snapshot;
+      }
+
       requests.forEach((request) => {
         this.recordDeterministicToolInput(
           args.toolUsage,
@@ -8056,16 +7358,7 @@ export class AgentService {
         );
       });
 
-      const orchestrator =
-        this.dependencies.informationOrchestrator ??
-      new InformationOrchestrator({
-        knowledgeGateway: new NoopKnowledgeRetrievalGateway(),
-        providerGateway: this.dependencies.providerGateway,
-        agentGateway:
-          this.dependencies.agentConversationGateway ??
-          new NoopAgentConversationGateway('not_configured'),
-        capabilityManifest: this.capabilityManifest,
-      });
+      const orchestrator = this.informationOrchestrator();
       const execution = await withAuthenticationFlowContext(
         {
           authFlowId: authResolution.authFlowId,
@@ -8080,10 +7373,14 @@ export class AgentService {
             // run whenever a contact phone is known. Fall back to the
             // persisted plan phone when the inbound turn carries none, so
             // an accountless turn executes instead of asking.
-            trustedPhone: args.extraction.phoneConfirmation === 'no'
-              ? null
-              : splitInternationalPhone(args.inbound.contactPhone) ??
-                splitInternationalPhone(planForInformation.contact_phone ?? null),
+            trustedPhone: preparedCustomerContext
+              ? preparedCustomerContext.trustedPhone
+              : args.extraction.phoneConfirmation === 'no'
+                ? null
+                : splitInternationalPhone(args.inbound.contactPhone) ??
+                  splitInternationalPhone(planForInformation.contact_phone ?? null),
+            preparedCustomerContext: preparedCustomerContext?.snapshot,
+            deadlineMs: preparedCustomerContext?.deadlineMs ?? args.handleTurnStartedAt + 7000,
           });
           logAuthObservabilityEvent('info', 'information_auth_execution_completed', {
             auth_flow_operation_id: authResolution.authFlowId,
@@ -8096,6 +7393,7 @@ export class AgentService {
       args.timingMs.information_execution += Date.now() - informationStartedAt;
       informationResults = execution.results;
       informationSummaries = execution.summaries;
+      informationCustomerSnapshot = execution.customerContext ?? informationCustomerSnapshot;
       this.recordInformationExecutionTrace(
         args.toolUsage,
         informationSummaries,
@@ -8123,187 +7421,6 @@ export class AgentService {
           request.kind === 'purchase')
       ) {
         planForInformation = this.resetUserAuth(planForInformation, null);
-      }
-
-      const guestEventResult = informationResults.find(
-        (result) =>
-          result.status === 'completed' &&
-          result.kind === 'associated_event' &&
-          result.accessMethod === 'trusted_phone_guest',
-      );
-      const hasRemainingEmailAuthentication = informationResults.some(
-        (result) => result.status === 'needs_input' && result.nextInput === 'email',
-      );
-      if (
-        operationalNote === null &&
-        guestEventResult?.status === 'completed' &&
-        guestEventResult.kind === 'associated_event'
-      ) {
-        // The campaign reference is the newest provenance-bound campaign
-        // message (outbound only, server-time order). Inbound text claiming
-        // to be a campaign never counts. It travels as factual reference
-        // context bound to the resolved request/result alongside the
-        // request's event reference; user-message context and the
-        // explicit-target-priority instruction remain the model's basis for
-        // interpretation. Never interpolate a campaign body as an assistant
-        // instruction, and never label an inferred reference explicit.
-        const newestProvenanceCampaign = selectProvenanceBoundCampaignMessages(
-          args.messageContext.recentMessages,
-        ).at(-1) ?? null;
-        const currentReminderForEvent = newestProvenanceCampaign !== null
-          ? (args.messageContext.recentMessages.find(
-            (message) => message.id === newestProvenanceCampaign.sourceMessageId,
-          ) ?? null)
-          : null;
-        // The extractor may infer eventHint from a campaign, so a nonempty
-        // hint is a request reference, never proof of explicit wording.
-        const requestEventReference = requests
-          .filter((request) => request.kind === 'associated_event')
-          .map((request) => request.eventHint?.trim() ?? '')
-          .find((hint) => hint.length > 0) ?? null;
-        const detailedEventCount = guestEventResult.result.events.filter(
-          (event) => event.detail !== undefined,
-        ).length;
-        operationalNote =
-          currentReminderForEvent !== null && newestProvenanceCampaign !== null
-            ? JSON.stringify({
-              outcome: 'associated_event_resolved_with_campaign_reference',
-              request_event_reference: requestEventReference,
-              campaign_reference: {
-                source_message_id: newestProvenanceCampaign.sourceMessageId,
-                source: newestProvenanceCampaign.source,
-                delivery: newestProvenanceCampaign.delivery,
-                sent_at: newestProvenanceCampaign.sentAt,
-                body_excerpt: newestProvenanceCampaign.bodyExcerpt,
-              },
-              event_count: guestEventResult.result.events.length,
-              detailed_event_count: detailedEventCount,
-              email_authentication_pending: hasRemainingEmailAuthentication,
-            })
-            : guestEventResult.result.events.length > 1 && detailedEventCount === 0
-            ? 'El número confiable está invitado a varios eventos y la referencia no identifica uno de forma única. Muestra únicamente sus nombres y fechas y pregunta en una sola frase a cuál se refiere. No pidas correo ni código.'
-            : hasRemainingEmailAuthentication
-              // Lane B: a known lookup success travels as a fact. The
-              // pending-email direction stays because protected requests
-              // genuinely remain; no requested-fields recital is imposed.
-              ? 'La consulta del evento se resolvió directamente con la invitación asociada al número confiable. El correo registrado sigue pendiente únicamente para las consultas protegidas.'
-              : 'La consulta del evento se resolvió directamente con la invitación asociada al número confiable; no pidas correo ni código.';
-      }
-
-      const phonePurchaseResult = informationResults.find(
-        (result) =>
-          result.status === 'completed' &&
-          result.kind === 'purchase' &&
-          (result.accessMethod === 'trusted_phone_purchase' ||
-            result.accessMethod === 'trusted_phone_event_purchase'),
-      );
-      if (
-        operationalNote === null &&
-        phonePurchaseResult?.status === 'completed' &&
-        phonePurchaseResult.kind === 'purchase'
-      ) {
-        const unavailableSinglePurchase = phonePurchaseResult.referenceResolution === 'unavailable' &&
-          phonePurchaseResult.purchases.length === 1;
-        operationalNote = phonePurchaseResult.referenceResolution === 'unavailable'
-          ? unavailableSinglePurchase
-            ? 'El número confiable permitió recuperar la compra, pero la fuente no expuso el número de transacción visible para vincular el código solicitado. Responde de forma concisa solo el estado para el evento consultado, sin identificadores, montos, fechas ni preguntas de confirmación, y no pidas correo ni código.'
-            : 'El número confiable permitió recuperar compras, pero la fuente no expuso el número de transacción visible para vincular el código solicitado. Dilo brevemente, muestra opciones solo por monto, fecha y estado sin atribuir eventos, pide elegir una y no muestres identificadores internos ni pidas correo o código.'
-          : phonePurchaseResult.coverage === 'partial'
-          // Lane B: the requested-fields recital is deleted, but the
-          // partial-coverage acknowledgment stays: coverage genuinely is
-          // partial (typed), and the cart hedge contract pins this clause.
-          // The auth boundary stays.
-          ? 'La consulta se resolvió con información resumida asociada al número confiable porque el detalle no estuvo disponible; aclara brevemente que la cobertura es parcial. No pidas correo ni código.'
-          : phonePurchaseResult.coverage === 'inconsistent'
-            ? 'Las fuentes asociadas al número confiable discreparon. Usa únicamente los valores canónicos proyectados, indica que se requiere revisión para cualquier campo no concluyente y no muestres versiones contradictorias ni pidas correo o código.'
-            // Lane B: a known lookup success travels as a fact, not as a
-            // requested-fields instruction. The auth boundary stays.
-            : 'La consulta de compra se resolvió directamente con el número confiable; no pidas correo ni código.';
-        const asksExplicitAmount = args.extraction.informationRequests.some(
-          (request) => request.kind === 'purchase' && request.amount !== null && request.amount !== undefined,
-        );
-        const isSingleStatusQuery = phonePurchaseResult.purchases.length === 1 && !asksExplicitAmount &&
-          requests.filter((request) => request.kind === 'purchase').every((request) =>
-            request.kind === 'purchase' && request.aspects.length === 1 && request.aspects[0] === 'payment_status');
-        if (isSingleStatusQuery) {
-          operationalNote += ' Responde de forma concisa solo el estado (pendiente/en verificación o aprobado/confirmado) para el evento consultado, en español natural. No menciones monto, método de pago, moneda, registro ni plazos de validación.';
-        }
-        // S6: no TypeScript phrase template here. The projected order view
-        // already carries the trusted total, recorded method and currency
-        // provenance as typed facts (amountDisclosure presentation), and the
-        // node response contract owns the presentation policy. Facts only.
-        // Lane B: the time/currency-correction advisories are deleted. The
-        // typed facts (paymentAt with unknown timezone, currency
-        // availability, user-reported provenance) already carry the same
-        // boundary, so the conditional prose only duplicated them.
-        const hasCustomerTransactionNumber = phonePurchaseResult.purchases.some(
-          (purchase) => Boolean(purchase.customerTransactionNumber),
-        );
-        if (hasCustomerTransactionNumber) {
-          operationalNote += ' Nunca afirmes que no existe constancia o comprobante; no comentes fecha u hora de pago salvo que la persona lo pregunte.';
-        }
-        // Typed purchase facts (paymentStatus, paymentValidationExpectation)
-        // travel on the projected result; the node response contract owns
-        // their presentation, so no advisory prose is appended here.
-        // Lane B: no count-driven selection question is imposed. A genuine
-        // validated-reference mismatch still travels as typed selection
-        // evidence (missing purchase_selection), never as prose here.
-        // S6: cart and checkout policy travel only on an explicit
-        // checkout/cart question. Structured purchase aspects expressing
-        // checkout work (`payment_options`) or a cart-only outcome (no
-        // orders, carts present) authorize them; a payment receipt never
-        // reveals an abandoned cart and never carries transfer policy.
-        const wantsCheckout = requests.some((request) =>
-          request.kind === 'purchase' && request.aspects.includes('payment_options'),
-        );
-        const cartOnlyOutcome = phonePurchaseResult.purchases.length === 0 &&
-          (phonePurchaseResult.carts?.length ?? 0) > 0;
-        const indexedPaymentOptionsAvailable = informationResults.some(
-          (result) =>
-            result.requestId === informationPaymentOptionsPolicyRequestId &&
-            result.status === 'completed',
-        );
-        if (indexedPaymentOptionsAvailable && wantsCheckout) {
-          operationalNote += ' La transferencia está respaldada únicamente como opción general de pago para regalos según la política indexada; no afirmes que el carrito devolvió o confirmó ese método.';
-        }
-        const hasAbandonedCart = phonePurchaseResult.carts?.some(
-          (cart) => cart.wasAbandoned,
-        ) ?? false;
-        if (
-          hasAbandonedCart &&
-          (wantsCheckout || cartOnlyOutcome) &&
-          this.hasTrustedCartRecoveryPath(args.messageContext)
-        ) {
-          const abandonedCarts = phonePurchaseResult.carts?.filter((cart) => cart.wasAbandoned) ?? [];
-          const eventNames = [...new Set(abandonedCarts.map((cart) => cart.eventName).filter((name): name is string => Boolean(name?.trim())) )];
-          const eventClause = eventNames.length > 0 ? ` para ${eventNames.join(', ')}` : '';
-          operationalNote += ` La búsqueda telefónica encontró ${abandonedCarts.length === 1 ? 'un carrito abandonado' : `${abandonedCarts.length} carritos abandonados`}${eventClause}. El historial saliente confiable contiene una ruta de recuperación para este carrito. Indica explícitamente que encontraste el carrito al revisar las compras y carritos asociados a tu numero de WhatsApp - se encontró un carrito abandonado${eventClause} y que puede retomarlo desde el enlace de recuperacion ya enviado en esta conversacion; no afirmes que se envio por correo ni menciones otro canal de envio, sin inventar ni repetir la URL. Para este caso de solo carrito no anadas hedges genericos sobre informacion parcial.`;
-          if (indexedPaymentOptionsAvailable) {
-            operationalNote += ' La transferencia bancaria figura como opcion general para completar la compra segun la politica indexada de medios de pago.';
-          }
-        }
-      }
-      const requiresPhonePurchaseDetailHandoff = requests.some((request) => {
-        if (
-          request.kind !== 'purchase' ||
-          !request.aspects.some((aspect) => aspect === 'dedication' || aspect === 'thanks')
-        ) {
-          return false;
-        }
-        const result = informationResults.find(
-          (candidate) => candidate.requestId === request.requestId,
-        );
-        return result?.status === 'failed' && result.retryable;
-      });
-      if (
-        requiresPhonePurchaseDetailHandoff &&
-        args.inbound.contactPhone
-      ) {
-        return await this.escalateInformationAuthentication({
-          ...args,
-          plan: planForInformation,
-          reason: 'phone_purchase_detail_unavailable',
-        });
       }
 
       if (
@@ -8350,32 +7467,9 @@ export class AgentService {
       ...informationExtraction,
       informationRequests: requests,
     };
-    const customerContext = await this.resolveCustomerContextForReply({
-      plan: planForInformation,
-      extraction: replyExtraction,
-      requests,
-      informationResults,
-      informationSummaries,
-      contactPhone: args.inbound.contactPhone,
-      entrySnapshot: entryCustomerSnapshot,
-      orchestrator: this.dependencies.informationOrchestrator ?? new InformationOrchestrator({
-        knowledgeGateway: new NoopKnowledgeRetrievalGateway(),
-        providerGateway: this.dependencies.providerGateway,
-        agentGateway:
-          this.dependencies.agentConversationGateway ??
-          new NoopAgentConversationGateway('not_configured'),
-        capabilityManifest: this.capabilityManifest,
-      }),
-      authentication: hasValidUserAuthToken(planForInformation) &&
-          typeof planForInformation.user_auth.token === 'string' &&
-          typeof planForInformation.user_auth.email === 'string'
-        ? {
-          token: planForInformation.user_auth.token,
-          email: planForInformation.user_auth.email,
-        }
-        : null,
-      deadlineMs: args.handleTurnStartedAt + 7000,
-    });
+    const customerContext = informationCustomerSnapshot
+      ? this.projectPreparedCustomerContext(informationCustomerSnapshot)
+      : null;
     const imageRedactedShape = args.imageTurn
       ? this.redactedImageTurnShape(args.imageTurn)
       : null;
@@ -8394,20 +7488,7 @@ export class AgentService {
       plan: planForInformation,
       depositMentioned: this.isDepositMentioned(replyExtraction),
     });
-    // Approval-boundary reconciliation for the reply input: a
-    // status_or_proof_review ambiguity asks which of two invented tasks was
-    // intended, but a terminal purchase outcome already settles whether any
-    // purchase stands approved while a visible receipt alone never proves
-    // approval. Clearing the answered ambiguity here (reply projection only;
-    // intake normalization never clears) lifts both the clarification skip
-    // and the reply-side ask bind so the record answers. Typed evidence
-    // only; no phrase detection, no new state.
-    const boundaryResolvedExtraction = this.reconcileApprovalBoundaryAmbiguity({
-      extraction: replyExtraction,
-      informationResults,
-      imageEvidence: defaultImageEvidence,
-      plan: planForInformation,
-    });
+    // The full profile remains the reply evidence; ambiguity is interpreted against it.
     const composeInformationReply = (overrides: {
       imageEvidence?: ComposeReplyRequest['imageEvidence'];
       imageUrlAttachments?: ComposeReplyRequest['imageUrlAttachments'];
@@ -8421,7 +7502,7 @@ export class AgentService {
       userMessage: args.inbound.text,
       messageContext: args.messageContext,
       plan: planForInformation,
-      extraction: overrides.extraction ?? boundaryResolvedExtraction,
+      extraction: overrides.extraction ?? replyExtraction,
       missingFields: [],
       searchReady: false,
       providerResults: [],
@@ -8434,6 +7515,7 @@ export class AgentService {
       toolUsage: args.toolUsage,
       informationResults,
       customerContext,
+      capabilityDecision: taskCapabilityDecision,
       owner: planForInformation.owner ?? null,
       continuity: this.resolveContinuityProjection(planForInformation, args.messageContext),
       pendingQuestionRef: args.workingPlan.owner_pending_question ?? null,
@@ -8443,7 +7525,7 @@ export class AgentService {
     }, args.completedRsvp));
     let composedReply: ComposeReplyResult;
     let deliveredTurnDecision = this.informationTurnDecision(operationalNote ?? 'information_batch');
-    let deliveredOperationalNote = operationalNote;
+    let deliveredOperationalNote: string | null = operationalNote;
     let deliveredExtraction = informationExtraction;
     let planPersistReason: string = currentNode;
     try {
@@ -8625,28 +7707,11 @@ export class AgentService {
     args: Parameters<AgentService['handleInformationFlow']>[0],
     plan: PlanSnapshot,
     act: InformationSupportAct | null | undefined = args.extraction.supportAct,
-    operationalNote = 'A bounded user-reported support act was acknowledged from scoped evidence by the reply model.',
   ): Promise<HandleTurnResponse> {
     if (!act || !this.isSupportAcknowledgment(act)) {
       throw new Error('Support acknowledgment requires typed support evidence.');
     }
-    // Preserve the known support topic in the existing conversation
-    // projection: when guest/event details arrive on a completed support
-    // thread with no summary yet, the completed request's own query carries
-    // the topic (for example the card problem) into the reply context. This
-    // synthesizes no request and executes nothing; the turn stays a
-    // lightweight acknowledgment.
-    const completed = plan.information_state.last_completed_request;
-    const completedSupportTopic = completed?.kind === 'faq' ? completed.query.trim() : '';
-    const summaryBase = plan.conversation_summary.trim().length > 0 || completedSupportTopic.length === 0
-      ? plan.conversation_summary
-      : completedSupportTopic;
-    const planWithSupportContext = mergePlan(plan, {
-      conversation_summary: this.supportConversationSummary(
-        act,
-        summaryBase,
-      ),
-    });
+    const planWithSupportContext = plan;
     const currentNode: DecisionNode = 'resolver_consultas_informativas';
     const turnDecision = this.informationTurnDecision('support_acknowledgment');
     // R2: support replies share the resolved attachment projection and the
@@ -8681,6 +7746,7 @@ export class AgentService {
       promptBundleId: PENDING_COMPILER_PROMPT_ID,
       promptFilePaths: [],
       toolUsage: args.toolUsage,
+      customerContext: args.preparedCustomerContext?.projection ?? null,
       owner: planWithSupportContext.owner ?? null,
       continuity: this.resolveContinuityProjection(planWithSupportContext, args.messageContext),
       // The existing pending-question projection rides the acknowledgment
@@ -8868,38 +7934,10 @@ export class AgentService {
         responseClassifier: args.responseClassifierTrace,
         searchStrategy: 'none',
         turnDecision,
-        operationalNote,
+        operationalNote: null,
         informationExecution: [],
       }),
     };
-  }
-
-  private supportConversationSummary(
-    act: InformationSupportAct,
-    currentSummary: string,
-  ): string {
-    // The acknowledgment must not erase the known support topic (for
-    // example the card problem already supplied): a prior summary is kept
-    // and the turn note is appended once, never duplicated. A deferral
-    // keeps the prior summary untouched, as before.
-    const prior = currentSummary.trim();
-    if (act.kind === 'defer_submission') {
-      return prior.length > 0
-        ? currentSummary
-        : 'La persona indicó que enviará la información después.';
-    }
-    const noteForAct = ((): string => {
-      if (act.topic === 'mailbox_capacity' && act.detail === 'mailbox_full') {
-        return 'La persona informó que el buzón de su correo registrado está lleno.';
-      }
-      if (act.topic === 'payment_proof' && act.detail === 'submission_reported') {
-        return 'La persona informó que envió un comprobante; su contenido y el estado del pago no han sido verificados.';
-      }
-      return 'La persona aportó información adicional a la conversación.';
-    })();
-    if (prior.length === 0) return noteForAct;
-    if (prior === noteForAct || prior.endsWith(noteForAct)) return prior;
-    return `${prior} ${noteForAct}`;
   }
 
   /**
@@ -8937,6 +7975,9 @@ export class AgentService {
     // All host-status requests share one general policy; personal status is unsupported.
     const execution = await orchestrator.execute({
       requests: [first], authentication: null, authBlock: null,
+      ...(args.preparedCustomerContext?.snapshot
+        ? { preparedCustomerContext: args.preparedCustomerContext.snapshot }
+        : {}),
     });
     args.timingMs.information_execution += Date.now() - startedAt;
     this.recordInformationExecutionTrace(args.toolUsage, execution.summaries);
@@ -9050,6 +8091,7 @@ export class AgentService {
       promptFilePaths: [],
       toolUsage: args.toolUsage,
       informationResults: execution.results,
+      customerContext: args.preparedCustomerContext?.projection ?? null,
       handoffOutcome,
       owner: planToSave.owner ?? null,
       continuity: this.resolveContinuityProjection(planToSave, args.messageContext),
@@ -9125,27 +8167,11 @@ export class AgentService {
             ? {
                 ...request,
                 requestId: existing.requestId,
-                // Contract revision (purchase_discovery): the established
-                // resource wins over discovery in either direction — a new
-                // specific source adopts ownership, a new discovery keeps
-                // the established source. Aspects never change the source.
-                resource: request.resource === 'purchase_discovery'
-                  ? existing.resource
-                  : request.resource,
                 query: authenticationContinuation
                   ? existing.query
                   : request.query || existing.query,
                 orderId: normalizeExtractedOrderReference(
                   request.orderId ?? existing.orderId,
-                ),
-                aspects: Array.from(
-                  new Set([...existing.aspects, ...request.aspects]),
-                ),
-                sensitiveFields: Array.from(
-                  new Set([
-                    ...existing.sensitiveFields,
-                    ...request.sensitiveFields,
-                  ]),
                 ),
               }
             : {
@@ -9173,153 +8199,7 @@ export class AgentService {
       nextId += 1;
     }
 
-    const needsIndexedValidationPolicy = merged.some(
-      (request) => request.kind === 'purchase' && request.aspects.includes('validation_window'),
-    );
-    const hasValidationPolicyRequest = merged.some(
-      (request) => request.requestId === informationValidationPolicyRequestId,
-    );
-    if (needsIndexedValidationPolicy && !hasValidationPolicyRequest) {
-      merged.push({
-        requestId: informationValidationPolicyRequestId,
-        kind: 'faq',
-        query: 'Plazo de validación de pagos en proceso por método de pago',
-      });
-    }
-
-    const needsPaymentOptionsPolicy = merged.some(
-      (request) => request.kind === 'purchase' && request.aspects.includes('payment_options'),
-    );
-    const hasPaymentOptionsPolicyRequest = merged.some(
-      (request) => request.requestId === informationPaymentOptionsPolicyRequestId,
-    );
-    if (needsPaymentOptionsPolicy && !hasPaymentOptionsPolicyRequest) {
-      merged.push({
-        requestId: informationPaymentOptionsPolicyRequestId,
-        kind: 'faq',
-        query: 'Medios de pago disponibles para completar un regalo',
-      });
-    }
-
     return merged;
-  }
-
-  /**
-   * Packet C purchase normalization. Requested answer aspects are preserved
-   * verbatim through normalization, including payment_details: the explicit
-   * payment-time question must survive extraction-to-reply. The structured
-   * resource is preserved verbatim as well: it names the owning backend
-   * (orders, gift_purchases, or purchase_discovery when ownership is not
-   * established), and no aspect derivation overrides it here. One request
-   * per question from this step. The bounded receipt-assistance task
-   * resolves to a single purchase_discovery request afterwards through
-   * expandReceiptDiscoveryRequests; the executor expands that request into
-   * at most one read per available authorized source, which is the only
-   * dual-source path. Unknown payment time stays unknown downstream; the
-   * reply addresses that uncertainty instead of inferring it from event
-   * time or order creation. Missing source is never defaulted to orders.
-   */
-  /**
-   * Receipt discovery through the generic discovery expansion. A recognized
-   * receipt-assistance task (supportAct provide_detail with the
-   * payment_proof topic or the submission_reported detail) and no
-   * established record resolves to exactly ONE purchase_discovery request,
-   * so a gift-only match is never missed because orders was the only route
-   * read. The executor expands that request into at most one read per
-   * available authorized source with per-source capability checks; no pin
-   * or aspect derivation exists. An already identified record (explicit
-   * orderId) is untouched: no fan-out. When the extractor recognized the
-   * receipt but emitted no purchase request at all, the single discovery
-   * request is synthesized from the typed task instead of leaving the
-   * receipt undiscovered. The per-turn scoped lookup map still collapses
-   * repeated scoped reads. Typed evidence only: receipt names, phones and
-   * account numbers never establish access, and no keyword or pixel
-   * inspection happens here. Thanks and non-receipt turns are not receipt
-   * tasks and synthesize nothing.
-   */
-  private expandReceiptDiscoveryRequests(
-    requests: PendingInformationRequest[],
-    extraction: ExtractionResult,
-    inboundText: string,
-  ): PendingInformationRequest[] {
-    if (!this.isReceiptDiscoveryTask(extraction.supportAct)) return requests;
-    const hasOrderId = (orderId: string | null | undefined): boolean =>
-      orderId !== null && orderId !== undefined && orderId.trim().length > 0;
-    const identified = requests.some((request) =>
-      request.kind === 'purchase' && hasOrderId(request.orderId));
-    if (identified) return requests;
-    const unidentified = requests.filter((
-      request,
-    ): request is Extract<PendingInformationRequest, { kind: 'purchase' }> =>
-      request.kind === 'purchase');
-    const nextRequestId = (base: string): string => {
-      let requestId = `${base}:receipt-discovery`;
-      let suffix = 2;
-      while ([...requests, ...unidentified].some((request) => request.requestId === requestId)) {
-        requestId = `${base}:receipt-discovery-${suffix}`;
-        suffix += 1;
-      }
-      return requestId;
-    };
-    // Contract revision (purchase_discovery): the receipt-only
-    // parallel-source fan-out is removed. One discovery request replaces any
-    // unidentified purchase reads from this step; the executor performs the
-    // per-source expansion with honest per-source coverage.
-    const discoveryAspects = (candidates: PendingInformationRequest[]): PurchaseAspect[] => {
-      const aspects = candidates.flatMap((request) =>
-        request.kind === 'purchase' ? request.aspects : [],
-      );
-      const merged = Array.from(new Set(
-        aspects.length > 0 ? aspects : ['summary', 'payment_status'],
-      ));
-      return merged as PurchaseAspect[];
-    };
-    if (unidentified.length === 0) {
-      // Recognized receipt, no purchase request emitted: synthesize the
-      // single discovery request from the typed task. The query is internal
-      // evidence (hashed, never shown); image-only turns carry no text.
-      const query = inboundText.trim().length > 0
-        ? inboundText
-        : 'Comprobante recibido: identificar la compra y su estado.';
-      const baseId = `information-${requests.length + 1}`;
-      return [...requests, {
-        kind: 'purchase' as const,
-        resource: 'purchase_discovery' as const,
-        query,
-        orderId: null,
-        aspects: ['summary', 'payment_status'],
-        sensitiveFields: [],
-        authAction: 'none' as const,
-        requestId: nextRequestId(baseId),
-      }];
-    }
-    const [first, ...rest] = unidentified;
-    if (!first) return requests;
-    const restIds = new Set(rest.map((request) => request.requestId));
-    return requests
-      .filter((request) => !restIds.has(request.requestId))
-      .map((request) =>
-        request.requestId === first.requestId && request.kind === 'purchase'
-          ? {
-            ...request,
-            resource: 'purchase_discovery' as const,
-            aspects: discoveryAspects(unidentified),
-          }
-          : request,
-      );
-  }
-
-  private defaultPurchaseRequestAspects(
-    requests: PendingInformationRequest[],
-  ): PendingInformationRequest[] {
-    return requests.map((request) => {
-      if (request.kind !== 'purchase') return request;
-      if (request.aspects.length > 0) return request;
-      return {
-        ...request,
-        aspects: ['summary'],
-      };
-    });
   }
 
   private isTerminalInformationAuthBlock(
@@ -9344,6 +8224,7 @@ export class AgentService {
   }
 
   private async completeDeclinedInformationAuthentication(args: {
+    preparedCustomerContext?: PreparedCustomerContext;
     inbound: NormalizedInboundMessage;
     previousNode: DecisionNode;
     plan: PlanSnapshot;
@@ -9402,6 +8283,7 @@ export class AgentService {
         noFurtherCredentialRequests: true,
       },
       informationResults: [],
+      customerContext: args.preparedCustomerContext?.projection ?? null,
     }, args.completedRsvp));
     args.tokenUsage.reply = reply.tokenUsage ?? null;
     args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
@@ -9479,6 +8361,11 @@ export class AgentService {
     // states what actually happened; the pending question is preserved.
     // R4: repeat carries the exact persisted terminal reason, never a
     // generic label that would overwrite verification_failed.
+    const preparedCustomerContext = await this.prepareCustomerContextForTurn({
+      plan: args.existingPlan,
+      contactPhone: args.inbound.contactPhone,
+      deadlineMs: args.handleTurnStartedAt + 7000,
+    });
     const retainedReceiptOutcome = args.existingPlan.human_help_receipt?.outcome ?? null;
     const retainedTerminalReason = this.effectiveAuthRecovery(args.existingPlan).terminalReason ??
       'otp_recovery_exhausted';
@@ -9512,6 +8399,7 @@ export class AgentService {
         handoffOutcome: retainedHandoffOutcome,
       },
       handoffOutcome: retainedHandoffOutcome,
+      customerContext: preparedCustomerContext.projection,
     });
     args.tokenUsage.reply = reply.tokenUsage ?? null;
     args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
@@ -9552,6 +8440,7 @@ export class AgentService {
   }
 
   private async escalateInformationAuthentication(args: {
+    preparedCustomerContext?: PreparedCustomerContext;
     inbound: NormalizedInboundMessage;
     previousNode: DecisionNode;
     plan: PlanSnapshot;
@@ -9664,6 +8553,7 @@ export class AgentService {
       },
       handoffOutcome,
       informationResults: [],
+      customerContext: args.preparedCustomerContext?.projection ?? null,
     }, args.completedRsvp));
     args.tokenUsage.reply = reply.tokenUsage ?? null;
     args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
@@ -9713,17 +8603,6 @@ export class AgentService {
       return false;
     }
     if (pending.kind === 'purchase' && extracted.kind === 'purchase') {
-      // Contract revision (purchase_discovery): discovery bridges an
-      // unresolved source. A discovery side never breaks the thread on its
-      // own; the order/event checks below still decide continuity, and the
-      // merge adopts the established resource when one side names it.
-      if (
-        pending.resource !== extracted.resource &&
-        pending.resource !== 'purchase_discovery' &&
-        extracted.resource !== 'purchase_discovery'
-      ) {
-        return false;
-      }
       const pendingOrderId = normalizeExtractedOrderReference(pending.orderId);
       const extractedOrderId = normalizeExtractedOrderReference(extracted.orderId);
       if (pendingOrderId && extractedOrderId && pendingOrderId !== extractedOrderId) {
@@ -9765,30 +8644,6 @@ export class AgentService {
       : false;
   }
 
-  private hasTrustedCartRecoveryPath(messageContext: TurnMessageContext): boolean {
-    for (const message of messageContext.recentMessages) {
-      if (message.direction !== 'outbound') {
-        continue;
-      }
-      const candidates = message.body.match(/https?:\/\/[^\s<>]+/giu) ?? [];
-      for (const candidate of candidates) {
-        const trimmed = candidate.replace(/[),.;!?]+$/gu, '');
-        try {
-          const url = new URL(trimmed);
-          const hostname = url.hostname.toLocaleLowerCase('en');
-          if (
-            (hostname === 'sinenvolturas.com' || hostname.endsWith('.sinenvolturas.com')) &&
-            /^\/cart\/recover\/[^/]+\/?$/u.test(url.pathname)
-          ) {
-            return true;
-          }
-        } catch {
-          // Ignore malformed or non-URL text from conversation history.
-        }
-      }
-    }
-    return false;
-  }
 
   private async resolveInformationAuthentication(args: {
     plan: PlanSnapshot;
@@ -9824,11 +8679,7 @@ export class AgentService {
             kind: request.kind,
             request_id: request.requestId,
             ...(request.kind === 'purchase'
-              ? {
-                  resource: request.resource,
-                  order_id_present: Boolean(request.orderId),
-                  aspects: request.aspects,
-                }
+              ? { order_id_present: Boolean(request.orderId) }
               : request.kind === 'associated_event'
                 ? { event_hint_present: Boolean(request.eventHint) }
                 : {}),
@@ -10541,12 +9392,7 @@ export class AgentService {
       }
       const { requestId: _requestId, ...completedRequest } = request;
       void _requestId;
-      if (
-        request.requestId !== informationValidationPolicyRequestId &&
-        request.requestId !== informationPaymentOptionsPolicyRequestId
-      ) {
-        lastCompletedRequest = completedRequest;
-      }
+      lastCompletedRequest = completedRequest;
     }
 
     return { pendingRequests, selectionCandidates, lastCompletedRequest };
@@ -10555,21 +9401,9 @@ export class AgentService {
   private informationToolName(
     request: PendingInformationRequest,
   ): string {
-    if (request.kind === 'faq') {
-      return 'knowledge_base_search';
-    }
-    if (request.kind === 'associated_event') {
-      return 'associated_event_lookup';
-    }
-    // Contract revision (purchase_discovery): a discovery request expands
-    // inside the executor, so its deterministic input label is the generic
-    // purchase lookup; per-source reads travel in the execution coverage.
-    if (request.resource === 'purchase_discovery') {
-      return 'agent_api_purchase_lookup';
-    }
-    return request.resource === 'orders'
-      ? 'agent_api_orders'
-      : 'agent_api_gift_purchases';
+    if (request.kind === 'faq') return 'knowledge_base_search';
+    if (request.kind === 'associated_event') return 'associated_event_lookup';
+    return 'agent_api_purchase_lookup';
   }
 
   private summarizeInformationToolInput(
@@ -10589,10 +9423,7 @@ export class AgentService {
     }
     return {
       request_id: request.requestId,
-      resource: request.resource,
-      order_id_present: Boolean(request.orderId),
-      aspects: request.aspects,
-      sensitive_fields_requested: request.sensitiveFields,
+      order_reference_present: Boolean(request.orderId),
     };
   }
 
@@ -12434,8 +11265,6 @@ export class AgentService {
       information_request_kinds: extraction.informationRequests.map(
         (request) => request.kind,
       ),
-      information_normalization_rejected_count: extraction.normalizationIssues?.length ?? 0,
-      information_normalization_issue_reasons: extraction.normalizationIssues?.map((issue) => issue.reason) ?? [],
       support_act_kind: extraction.supportAct?.kind ?? null,
       ambiguity_status: extraction.ambiguity?.status ?? null,
       clarification_question_present: Boolean(

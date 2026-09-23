@@ -274,7 +274,7 @@ describe('proceed_confirmed close state', () => {
     const extraction = baseExtraction({
       actionIntent: null,
       contactPhone: '+51 954779071',
-      supportAct: { kind: 'provide_detail', topic: 'account_access', detail: 'unknown' } as never,
+      supportAct: { kind: 'provide_detail',} as never,
     });
     const agentGateway = new RecordingAgentGateway();
     const service = new AgentService({

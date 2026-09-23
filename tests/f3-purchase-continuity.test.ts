@@ -12,6 +12,7 @@ import type { ProviderGateway } from '../src/runtime/provider-gateway';
 import { PromptLoader } from '../src/runtime/prompt-loader';
 import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
+import { unavailableCustomerContext } from './customer-context-test-utils';
 import { createEmptyPlan, mergePlan } from '../src/core/plan';
 
 const emptyExtractionBase = {
@@ -68,8 +69,6 @@ function seedPurchasePlan(planId: string) {
           resource: 'orders',
           query: 'Quiero continuar el checkout',
           orderId: null,
-          aspects: ['summary', 'payment_status'],
-          sensitiveFields: [],
           authAction: 'none',
         },
       },
@@ -220,7 +219,7 @@ describe('F3a purchase thread stays in information flow', () => {
         },
       } as unknown as ProviderGateway,
       agentConversationGateway: gateway as unknown as AgentConversationGateway,
-      informationOrchestrator: { execute } as never,
+      informationOrchestrator: { prepareCustomerContext: unavailableCustomerContext, execute } as never,
       promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
       renderers: { whatsapp: new WhatsAppMessageRenderer() },
     });
@@ -259,8 +258,6 @@ describe('F3a purchase thread stays in information flow', () => {
       ...emptyExtractionBase,
       supportAct: {
         kind: 'provide_detail',
-        topic: 'purchase_status',
-        detail: 'unknown',
         eventReference: 'Claudia and Luis Felipe',
         personReference: null,
       },
@@ -311,7 +308,7 @@ describe('F3a purchase thread stays in information flow', () => {
         },
       } as unknown as ProviderGateway,
       agentConversationGateway: gateway as unknown as AgentConversationGateway,
-      informationOrchestrator: { execute } as never,
+      informationOrchestrator: { prepareCustomerContext: unavailableCustomerContext, execute } as never,
       promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
       renderers: { whatsapp: new WhatsAppMessageRenderer() },
     });
@@ -325,112 +322,5 @@ describe('F3a purchase thread stays in information flow', () => {
     });
     expect(result.plan.current_node).toBe('resolver_consultas_informativas');
     expect(execute).toHaveBeenCalled();
-  });
-});
-
-describe('F3 accountless status queries stay on the orders route', () => {
-  it('preserves payment_details without dedication or thanks so the lookup still uses orders', async () => {
-    const store = new InMemoryPlanStore();
-    await store.save({
-      plan: createEmptyPlan({ planId: 'p-f3-martha', channel: 'whatsapp', externalUserId: 'u-f3-martha' }),
-      reason: 'seed',
-    });
-    const execute = vi.fn(async () => ({
-      results: [
-        {
-          requestId: 'information-1',
-          kind: 'purchase',
-          status: 'completed',
-          resource: 'orders',
-          purchases: [],
-          carts: [],
-          needsSelection: false,
-          accessMethod: 'trusted_phone_purchase',
-          coverage: 'complete',
-        },
-      ],
-      summaries: [],
-    }));
-    const gateway = {
-      async logMessage(input: unknown) {
-        void input;
-        return { status: 'skipped', reason: 'disabled', message: 'Disabled.' };
-      },
-      async getRecentMessages() {
-        return { status: 'success', messages: [] };
-      },
-      async requestHumanTakeover() {
-        return { status: 'success', message: 'Requested.' };
-      },
-      async authByPhone() {
-        return { status: 'failed', error: 'Unused.', retryable: false };
-      },
-      async updatePhone() {
-        return { status: 'success' };
-      },
-      async getGuestEventsByPhone() {
-        return { status: 'not_found', error: 'not', retryable: false };
-      },
-      async getEventDetail() {
-        return { status: 'not_found', error: 'not', retryable: false };
-      },
-    };
-    const extraction: ExtractionResult = {
-      ...emptyExtractionBase,
-      informationRequests: [
-        {
-          kind: 'purchase',
-          resource: 'gift_purchases',
-          query: 'Que paso con el regalo que intente pagar',
-          orderId: null,
-          aspects: ['summary', 'payment_status', 'payment_details'],
-          sensitiveFields: [],
-          authAction: 'none',
-        },
-      ],
-    } as unknown as ExtractionResult;
-    const service = new AgentService({
-      planStore: store,
-      runtime: {
-        async extract(): Promise<ExtractionResult> {
-          return extraction;
-        },
-        async composeReply() {
-          return {
-            text: 'continuacion de compra',
-            structuredMessage: {
-              type: 'generic',
-              paragraphs_es: ['continuacion de compra'],
-            },
-          };
-        },
-      } as unknown as AgentRuntime,
-      providerGateway: {
-        async lookupUserEventContext() {
-          return null;
-        },
-      } as unknown as ProviderGateway,
-      agentConversationGateway: gateway as unknown as AgentConversationGateway,
-      informationOrchestrator: { execute } as never,
-      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
-      renderers: { whatsapp: new WhatsAppMessageRenderer() },
-    });
-    const result = await service.handleTurn({
-      channel: 'whatsapp',
-      externalUserId: 'u-f3-martha',
-      text: 'No me registre ni tengo cuenta. Que paso con el regalo que intente pagar?',
-      messageId: 'm-f3-martha-1',
-      receivedAt: '2026-09-04T15:01:00.000Z',
-      contactPhone: '+51900070122',
-    });
-    expect(result.plan.current_node).toBe('resolver_consultas_informativas');
-    expect(execute).toHaveBeenCalled();
-    const sent = (execute.mock.calls[0] as Array<{
-      requests?: Array<{ kind?: string; aspects?: string[] }>;
-    }>)[0];
-    const purchaseRequest = sent?.requests?.find((request) => request.kind === 'purchase');
-    expect(purchaseRequest).toBeDefined();
-    expect(purchaseRequest?.aspects).toContain('payment_details');
-    expect(purchaseRequest?.aspects).toContain('summary');
   });
 });

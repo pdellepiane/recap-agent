@@ -1,35 +1,7 @@
 Consultas informativas
 
-`requestedOperation` identifica la operación solicitada usando solo los identificadores de `extractors/capability_boundary.txt`; no expresa disponibilidad.
-
-`informationRequests`: ordenadas, compatibles con `actionIntent`. Seguimiento: pendiente, última completada, historial.
-
-Apoyo sin consulta
-
-Cuando la persona reporta un problema, aporta un dato, pospone un envío o pregunta una política, emite exactamente un `supportAct`: `kind=report_issue|provide_detail|defer_submission|ask_policy`; `topic=mailbox_capacity|payment_proof|purchase_status|account_access|unknown`; `detail=mailbox_full|submission_deferred|submission_reported|status_pending|status_approved|unknown`. Usa `unknown` sin referente. Puede coexistir con una consulta. Una solicitud de enviar una constancia o un enlace por correo usa `requestedOperation=confirmation_document.send`, no `supportAct`.
-
-Datos de un problema: usa `kind=provide_detail` aunque no haya pregunta. Copia literalmente los nombres en `personReference`/`eventReference`.
-
-- `faq`: pregunta general sobre Sin Envolturas, políticas, comisiones o funciones; `query` autosuficiente. Rol: `reportedEventRole` sin verificar.
-- Retiro: política/plazo/estado → `faq`; ejecución explícita. `hostWithdrawal`: `individual_status` si no llega; `policy_only` plazo
-- `kind=associated_event`: fecha, hora, lugar, anfitrión, confirmados; usa `eventHint`. Asistencia propia: RSVP. Elíptica: hereda aspecto con `eventHint` y conserva la intención de fecha y hora.
-- `purchase`: estado o detalle de compra propia o notificada. Origen por sujeto: orden o carrito conocido → `orders`; regalo conocido → `gift_purchases`; no establecido → `purchase_discovery` (`purchase.read`). Compra reportada sin número ni registro identificado ⇒ no establecido; `Compré` no establece una orden. Facetas (monto, pago, entrega, envío) nunca deciden origen. Nombres, envíos y montos no son IDs; `eventHint` es contexto, no identidad.
-- Pedir el destino de Yape o transferencia es `purchase` con `destination_account`; exige compra pendiente.
-
-Facetas: `summary` general, `payment_status` estado, `payment_details` hora, `payment_options` opciones, `validation_window` plazo, `shipping` envío, `dedication`, `thanks`, `decline`. Saldo ⇒ `payment_status` (+`validation_window` si pregunta plazo); runtime aporta total/pagado/verificabilidad, nunca calcula saldo. Recepción ⇒ `payment_status`; envío ⇒ `shipping`. Compra activa, constancia o moneda ⇒ `purchase`, no FAQ/plan.
-
-Sin número usa `orderId=null`. Código `COD301816`/`301816` → `purchase` con `orderId=301816`, nunca OTP. En compras llena `eventHint`/`amount` si son explícitos. `sensitiveFields` solo incluye datos pedidos explícitamente: `payment_id`, `transaction_status`, `gateway_message`, `operation_code`, `origin_bank`, `destination_account`, `voucher_image`, `decline_code` o `admin_comment`.
-
-Autenticación de consultas personales
-
-`phoneConfirmation=yes` solo con confirmación explícita; `unclear` equivale a ausente. `code_requested`: conserva consulta; los códigos solo viajan en `authAction`.
-
-Ayuda: `humanHelpIntent=none|request|accept_offer|retry|decline_offer`. Solo `request`/`retry` piden persona; `accept_offer` solo con oferta pendiente. Buzón lleno=`supportAct`+`none`+`actionIntent=null`.
-
-Capacidad no es pedido humano; pedir persona es `solicitar_humano`+`request`. “Y el evento es Baby Shower Catalina”=>`actionIntent=null`.
-
-Conserva literalmente el nombre del evento citado y continúa el problema con el siguiente paso necesario.
-
-Referencia contextual
-
-`eventHint` trae solo el nombre o referente del evento: objetivo explícito o referencia validada del contexto (referente previo, campaña saliente, estado compatible, cercanía temporal). Nunca la descripción de un producto o regalo; esas van en `query`. Un evento antiguo nombrado explícitamente vence a una campaña reciente o a un evento cercano. Un cambio claro de tema vence al foco previo.
+- `faq` es para información pública; `associated_event` para datos de eventos; `purchase` para órdenes, carritos, regalos, pagos, tarjetas, dedicatorias o agradecimientos. Pueden coexistir consultas distintas.
+- `orderId` solo contiene un ID estable del perfil o un número de orden explícito. `eventHint` conserva el nombre o referencia del evento, no es un ID.
+- `amount` solo contiene un monto reportado explícitamente por la persona; no copies al pedido los montos del perfil.
+- `supportAct` resume reportes, detalles, aplazamientos o preguntas de política; los nombres y eventos aportados no verifican identidad.
+- Modificar un registro requiere consentimiento expreso y objetivo identificable; el runtime valida el objetivo y la acción permitida.

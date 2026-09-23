@@ -86,7 +86,7 @@ describe('typed state fixes wave C5 attempt-3', () => {
       information_state: {
         pending_requests: [],
         selection_candidates: [],
-        last_completed_request: { kind: 'purchase', query: 'test', requestId: '1', resource: 'orders', orderId: null, aspects: [], sensitiveFields: [], orderId_present: true } as unknown as PlanSnapshot['information_state']['last_completed_request'],
+        last_completed_request: { kind: 'purchase', query: 'test', requestId: '1', resource: 'orders', orderId: null, orderId_present: true } as unknown as PlanSnapshot['information_state']['last_completed_request'],
         resume_node: null,
       },
     });
@@ -114,7 +114,7 @@ describe('typed state fixes wave C5 attempt-3', () => {
       information_state: {
         pending_requests: [],
         selection_candidates: [],
-        last_completed_request: { kind: 'purchase', query: 'test', requestId: '1', resource: 'orders', orderId: null, aspects: [], sensitiveFields: [] } as unknown as PlanSnapshot['information_state']['last_completed_request'],
+        last_completed_request: { kind: 'purchase', query: 'test', requestId: '1', resource: 'orders', orderId: null,} as unknown as PlanSnapshot['information_state']['last_completed_request'],
         resume_node: null,
       },
     });
@@ -153,7 +153,7 @@ describe('typed state fixes wave C5 attempt-3', () => {
       information_state: {
         pending_requests: [],
         selection_candidates: [],
-        last_completed_request: { kind: 'purchase', query: 'test', requestId: '1', resource: 'orders', orderId: null, aspects: [], sensitiveFields: [] } as unknown as PlanSnapshot['information_state']['last_completed_request'],
+        last_completed_request: { kind: 'purchase', query: 'test', requestId: '1', resource: 'orders', orderId: null,} as unknown as PlanSnapshot['information_state']['last_completed_request'],
         resume_node: null,
       },
     });
@@ -207,7 +207,7 @@ describe('typed state fixes wave C5 attempt-3', () => {
       information_state: {
         pending_requests: [],
         selection_candidates: [],
-        last_completed_request: { kind: 'purchase', query: 'test', requestId: '1', resource: 'orders', orderId: null, aspects: [], sensitiveFields: [] } as unknown as PlanSnapshot['information_state']['last_completed_request'],
+        last_completed_request: { kind: 'purchase', query: 'test', requestId: '1', resource: 'orders', orderId: null,} as unknown as PlanSnapshot['information_state']['last_completed_request'],
         resume_node: null,
       },
     });
@@ -265,7 +265,7 @@ describe('typed state fixes wave C5 attempt-3', () => {
         information_state: {
           pending_requests: [],
           selection_candidates: [],
-          last_completed_request: { kind, query: 'test', requestId: '1', resource: 'orders', orderId: null, aspects: [], sensitiveFields: [] } as unknown as PlanSnapshot['information_state']['last_completed_request'],
+          last_completed_request: { kind, query: 'test', requestId: '1', resource: 'orders', orderId: null,} as unknown as PlanSnapshot['information_state']['last_completed_request'],
           resume_node: null,
         },
       });

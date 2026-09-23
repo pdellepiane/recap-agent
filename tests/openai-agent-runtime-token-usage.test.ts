@@ -70,8 +70,6 @@ describe('host withdrawal minimum disclosure and role correction', () => {
       resource: null,
       orderId: null,
       amount: null,
-      aspects: [],
-      sensitiveFields: [],
       authAction: null,
       hostWithdrawal: 'policy_only',
     });
@@ -514,10 +512,7 @@ describe('OpenAiAgentRuntime token usage parsing', () => {
           kind: 'associated_event';
           query: string;
           eventHint: string | null;
-          resource: null;
           orderId: null;
-          aspects: [];
-          sensitiveFields: [];
           authAction: 'report_otp_not_received';
         }>;
       }) => ComposeReplyRequest['extraction'];
@@ -528,10 +523,7 @@ describe('OpenAiAgentRuntime token usage parsing', () => {
         kind: 'associated_event',
         query: '¿A qué hora es mi evento?',
         eventHint: 'Karem y Alfredo',
-        resource: null,
         orderId: null,
-        aspects: [],
-        sensitiveFields: [],
         authAction: 'report_otp_not_received',
       }],
     });
@@ -552,11 +544,8 @@ describe('OpenAiAgentRuntime token usage parsing', () => {
           kind: 'purchase';
           query: string;
           eventHint: string | null;
-          resource: 'orders';
           orderId: null;
           amount: number | null;
-          aspects: ['payment_status'];
-          sensitiveFields: [];
           authAction: 'none';
         }>;
       }) => ComposeReplyRequest['extraction'];
@@ -567,11 +556,8 @@ describe('OpenAiAgentRuntime token usage parsing', () => {
         kind: 'purchase',
         query: 'Estado del regalo de Samuel Josué por S/ 80.',
         eventHint: ' Samuel Josué ',
-        resource: 'orders',
         orderId: null,
         amount: 80,
-        aspects: ['payment_status'],
-        sensitiveFields: [],
         authAction: 'none',
       }],
     });
@@ -583,8 +569,6 @@ describe('OpenAiAgentRuntime token usage parsing', () => {
       orderId: null,
       eventHint: 'Samuel Josué',
       amount: 80,
-      aspects: ['payment_status'],
-      sensitiveFields: [],
       authAction: 'none',
     }]);
   });
@@ -598,8 +582,6 @@ describe('OpenAiAgentRuntime token usage parsing', () => {
       resource: 'gift_purchases',
       orderId: null,
       amount: 375.5,
-      aspects: ['payment_status'],
-      sensitiveFields: [],
       authAction: null,
     });
 
@@ -610,8 +592,6 @@ describe('OpenAiAgentRuntime token usage parsing', () => {
       orderId: null,
       eventHint: 'Evento de campaña',
       amount: 375.5,
-      aspects: ['payment_status'],
-      sensitiveFields: [],
       authAction: 'none',
     }]);
   });
@@ -625,8 +605,6 @@ describe('OpenAiAgentRuntime token usage parsing', () => {
       resource: null,
       orderId: null,
       amount: null,
-      aspects: [],
-      sensitiveFields: [],
       authAction: null,
     });
     const purchase = openAiInformationRequestSchema.parse({
@@ -636,8 +614,6 @@ describe('OpenAiAgentRuntime token usage parsing', () => {
       resource: 'gift_purchases',
       orderId: null,
       amount: null,
-      aspects: ['payment_status'],
-      sensitiveFields: [],
       authAction: null,
     });
 
@@ -649,8 +625,6 @@ describe('OpenAiAgentRuntime token usage parsing', () => {
         query: '¿Cuál es el estado de mi pago?',
         orderId: null,
         eventHint: 'Evento de campaña',
-        aspects: ['payment_status'],
-        sensitiveFields: [],
         authAction: 'none',
       },
     ]);
@@ -662,46 +636,35 @@ describe('OpenAiAgentRuntime token usage parsing', () => {
       kind: 'purchase',
       query: 'Quiero ingresar el código de verificación.',
       eventHint: null,
-      resource: 'orders',
       orderId: null,
       amount: null,
-      aspects: ['payment_status'],
-      sensitiveFields: [],
       authAction: 'provide_otp',
     });
 
     expect(normalizeInformationRequestsForTest(runtime, [request])).toEqual([{
       kind: 'purchase',
-      resource: 'orders',
       query: 'Quiero ingresar el código de verificación.',
       orderId: null,
-      aspects: ['payment_status'],
-      sensitiveFields: [],
       authAction: 'provide_otp',
     }]);
   });
 
-  it('does not invent a resource for a purchase request missing one', () => {
+  it('keeps a purchase question without model-selected backend routing', () => {
     const runtime = createRuntimeForTokenUsageTests();
     const request = openAiInformationRequestSchema.parse({
       kind: 'purchase',
       query: 'Necesito ayuda con una compra.',
       eventHint: null,
-      resource: null,
       orderId: null,
       amount: null,
-      aspects: ['payment_status'],
-      sensitiveFields: [],
       authAction: null,
     });
 
     const normalized = normalizeInformationExtractionForTest(runtime, [request]);
-    expect(normalized.informationRequests).toEqual([]);
-    expect(normalized.normalizationIssues).toEqual([{
-      requestKind: 'purchase',
-      field: 'resource',
-      reason: 'missing_resource',
-    }]);
+    expect(normalized.informationRequests).toEqual([expect.objectContaining({
+      kind: 'purchase',
+      query: 'Necesito ayuda con una compra.',
+    })]);
   });
 });
 
@@ -1415,8 +1378,6 @@ describe('OpenAiAgentRuntime information auth prompt isolation', () => {
       query: '¿Cuándo despachan el regalo digital y cuándo llega?',
       resource: 'gift_purchases',
       orderId: null,
-      aspects: ['shipping'],
-      sensitiveFields: [],
       authAction: 'none',
     }];
     request.plan.information_state.pending_requests = [{
@@ -1425,8 +1386,6 @@ describe('OpenAiAgentRuntime information auth prompt isolation', () => {
       resource: 'gift_purchases',
       query: '¿Cuándo despachan el regalo digital y cuándo llega?',
       orderId: null,
-      aspects: ['shipping'],
-      sensitiveFields: [],
       authAction: 'none',
     }];
     request.informationResults = [{
@@ -1485,8 +1444,6 @@ describe('OpenAiAgentRuntime information auth prompt isolation', () => {
         resource: 'gift_purchases',
         query: 'estado',
         orderId: null,
-        aspects: ['summary'],
-        sensitiveFields: [],
         authAction: 'provide_otp',
       },
     ];
@@ -1527,8 +1484,6 @@ describe('OpenAiAgentRuntime information auth prompt isolation', () => {
       resource: 'orders',
       query: '¿Ya se aprobó mi regalo?',
       orderId: null,
-      aspects: ['summary'],
-      sensitiveFields: [],
       authAction: 'none',
     }];
     request.informationResults = [{
@@ -1594,8 +1549,6 @@ describe('OpenAiAgentRuntime information auth prompt isolation', () => {
       resource: 'orders',
       query: 'estado y detalles del pago',
       orderId: null,
-      aspects: ['summary', 'payment_details'],
-      sensitiveFields: [],
       authAction: 'none',
     }];
     request.informationResults = [{
@@ -1615,13 +1568,6 @@ describe('OpenAiAgentRuntime information auth prompt isolation', () => {
         eventUrl: null,
         createdAt: '2026-07-10T12:00:00.000Z',
         items: [],
-        amountDisclosure: {
-          total: 63.85,
-          paid: null,
-          currency: null,
-          paymentMethod: 'Transferencia',
-          presentation: 'recorded_method_no_currency',
-        },
         paymentValidationExpectation: { maxBusinessHours: 72, appliesTo: 'indexed_validation_methods' },
       }],
     } as unknown as InformationTaskResult];
@@ -1991,8 +1937,6 @@ function l3PurchasePlan(): PersistedPlan {
     resource: 'orders',
     query: 'Estado del pago del regalo por S/ 63.85.',
     orderId: null,
-    aspects: ['payment_status'],
-    sensitiveFields: [],
     authAction: 'none',
   }];
   return plan;
@@ -2256,8 +2200,6 @@ describe('L3 established-lane minimal extraction requests', () => {
       orderId: null,
       eventHint: 'Evento de Lucía',
       amount: 120,
-      aspects: ['payment_status'],
-      sensitiveFields: [],
       authAction: 'none',
     }];
     changed.open_questions = ['¿Confirmas el monto de S/ 120?'];
@@ -2279,8 +2221,6 @@ describe('L3 established-lane minimal extraction requests', () => {
       query: '¿Llegó el pedido del Evento Inexistente ZQX 123?',
       orderId: null,
       eventHint: 'Evento Inexistente ZQX 123',
-      aspects: ['summary'],
-      sensitiveFields: [],
       authAction: 'none',
     }];
     const before = await captureL3ExtractionRequest(runtime, plan, message);

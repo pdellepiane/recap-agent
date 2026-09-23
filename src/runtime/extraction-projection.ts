@@ -178,7 +178,9 @@ export function projectExtraction(input: ExtractionProjectionInput): ExtractionP
   const allowedOperations = projectExtractionOperations({
     requestedDomain: input.requestedDomain,
     candidateOperations: input.candidateOperations,
-  });
+  }).filter((operation) =>
+    operation !== 'purchase.orders.read' && operation !== 'purchase.gift_detail.read',
+  );
   const schemaPropertyCount = Object.keys(
     createDynamicExtractionSchema({ allowedActionIntents, capabilities: profile }).shape,
   ).length;

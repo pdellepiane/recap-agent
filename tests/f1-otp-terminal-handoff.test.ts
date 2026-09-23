@@ -198,8 +198,6 @@ function reportContinuation() {
     resource: 'gift_purchases' as const,
     query: 'Revisar el estado del regalo pagado por la persona.',
     orderId: null,
-    aspects: ['summary' as const, 'payment_status' as const],
-    sensitiveFields: [],
     authAction: 'report_otp_not_received' as const,
   };
 }
@@ -241,8 +239,6 @@ async function seedOtpPlan(
             resource: 'gift_purchases',
             query: pendingQuery,
             orderId: null,
-            aspects: ['summary', 'payment_status'],
-            sensitiveFields: [],
             authAction: 'none',
           },
         ],
@@ -369,8 +365,6 @@ describe('F1b repeated missing-code report and resend request hand off without a
       resource: 'gift_purchases',
       query: 'Revisar el estado del regalo pagado por la persona.',
       orderId: null,
-      aspects: ['summary', 'payment_status'],
-      sensitiveFields: [],
       authAction: 'resend_otp',
     }])]);
     const agentGateway = new RecordingAgentGateway();
@@ -403,8 +397,6 @@ describe('F1c first rejected code verifies once then retains the human path', ()
       resource: 'gift_purchases' as const,
       query: giftQuery,
       orderId: null,
-      aspects: ['payment_status' as const, 'payment_details' as const],
-      sensitiveFields: [],
       authAction: 'provide_otp' as const,
     };
   }

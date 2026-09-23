@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { hostWithdrawalPolicyQuery, parseHostWithdrawalPolicy } from './host-withdrawal-policy';
 
 import {
@@ -12,10 +13,10 @@ import {
   type InformationTaskResult,
   type PendingInformationRequest,
   type PurchasePartition,
+  type PurchaseRecordSource,
   type PurchaseInformation,
   type PurchaseResource,
   type PurchaseSourceCoverage,
-  type SensitivePurchaseField,
 } from '../core/information';
 import { parseOrderReference } from '../core/order-reference';
 import type {
@@ -31,7 +32,6 @@ import type { KnowledgeRetrievalGateway } from './knowledge-retrieval-gateway';
 import type { ProviderGateway, UserEventLookupResult } from './provider-gateway';
 import {
   creditFulfillmentPolicyForItems,
-  hasPhysicalFulfillment,
   mapItemFulfillment,
   pendingPaymentValidationExpectation,
 } from './purchase-disclosure-policy';
@@ -39,13 +39,20 @@ import {
   eventMatches as sharedEventMatches,
 } from './event-matching';
 import {
-  detectConflictingFields,
   reconcileTwoRecords,
 } from './purchase-reconciliation';
 import type {
   RuntimeCapabilityManifest,
   RuntimeOperationId,
 } from './capability-manifest';
+import {
+  assembleCustomerContext,
+  mergeExecutionIntoSnapshot,
+  type CurrentContextEvidence,
+  type CustomerContextSnapshot,
+  type CustomerReadMetrics,
+  type IdentityEvidence,
+} from './customer-context';
 
 type PurchaseRequest = Extract<
   PendingInformationRequest,
@@ -81,9 +88,8 @@ type PhoneEventDetailResult =
 type EventDetailCache = Map<string, Promise<PhoneEventDetailResult>>;
 
 type PhoneContextSnapshot = {
+  /** Keyed by source + partition + stable order id, never by ID alone. */
   purchasesByOrderId: Map<string, PurchaseInformation>;
-  purchaseSourceByOrderId: Map<string, 'orders' | 'gift_purchases' | 'event'>;
-  purchasePartitionByOrderId: Map<string, PurchasePartition>;
   cartsById: Map<string, CartInformation>;
   inconsistentOrderIds: Set<string>;
 };
@@ -110,11 +116,83 @@ type SeededGuestRoot = {
  */
 type PartitionedPurchaseLookup = {
   purchases: PurchaseInformation[];
-  partitionByOrderId: Map<string, PurchasePartition>;
   carts: CartInformation[];
   hasPartitions: boolean;
   conflictingOrderIds: Set<string>;
 };
+
+async function settleWithConcurrency<T, R>(
+  values: readonly T[],
+  concurrency: number,
+  operation: (value: T, index: number) => Promise<R>,
+): Promise<PromiseSettledResult<R>[]> {
+  const results: Array<PromiseSettledResult<R> | undefined> = Array.from(
+    { length: values.length },
+    () => undefined,
+  );
+  let nextIndex = 0;
+  const workerCount = Math.min(Math.max(1, concurrency), values.length);
+  await Promise.all(Array.from({ length: workerCount }, async () => {
+    while (true) {
+      const index = nextIndex;
+      nextIndex += 1;
+      if (index >= values.length) return;
+      const value = values[index];
+      try {
+        results[index] = { status: 'fulfilled', value: await operation(value, index) };
+      } catch (reason) {
+        results[index] = { status: 'rejected', reason };
+      }
+    }
+  }));
+  return results.filter(
+    (result): result is PromiseSettledResult<R> => result !== undefined,
+  );
+}
+
+function phonePurchaseKey(
+  purchase: PurchaseInformation,
+  source: PurchaseRecordSource,
+  partition: PurchasePartition,
+  variant = 0,
+): string {
+  return JSON.stringify([source, partition, purchase.orderId, variant]);
+}
+
+function phonePurchasesForIds(
+  snapshot: PhoneContextSnapshot,
+  orderIds: ReadonlySet<string>,
+): PurchaseInformation[] {
+  return [...snapshot.purchasesByOrderId.values()].filter((purchase) =>
+    orderIds.has(purchase.orderId),
+  );
+}
+
+function hasPurchaseFactConflict(
+  left: PurchaseInformation,
+  right: PurchaseInformation,
+): boolean {
+  const provenance = new Set([
+    'recordSource',
+    'accessScope',
+    'partition',
+    'itemSourceConflict',
+    'creditFulfillmentPolicy',
+    'currencyConflict',
+  ]);
+  const authoritative = (value: unknown): boolean =>
+    value !== null && value !== undefined &&
+    !(typeof value === 'string' && value.trim() === '') &&
+    !(Array.isArray(value) && value.length === 0);
+  for (const field of new Set([...Object.keys(left), ...Object.keys(right)])) {
+    if (provenance.has(field)) continue;
+    const leftValue = (left as unknown as Record<string, unknown>)[field];
+    const rightValue = (right as unknown as Record<string, unknown>)[field];
+    if (authoritative(leftValue) && authoritative(rightValue) &&
+      JSON.stringify(leftValue) !== JSON.stringify(rightValue)) return true;
+  }
+  return false;
+}
 
 type SuccessfulPurchaseLookup =
   | Extract<AgentPhonePurchaseLookupResult, { status: 'success' }>
@@ -141,6 +219,15 @@ export type InformationAuthBlock = {
 export type InformationExecution = {
   results: InformationTaskResult[];
   summaries: InformationExecutionSummary[];
+  /** Updated canonical customer facts when a prepared profile was supplied. */
+  customerContext?: CustomerContextSnapshot;
+};
+
+type MutableCustomerReadMetrics = {
+  totalReads: number;
+  activeReads: number;
+  peakConcurrency: number;
+  readsByOperation: Record<string, number>;
 };
 
 export type EventDetailHydrationFailureKind =
@@ -192,6 +279,10 @@ export function transactionReferenceVisible(
 }
 
 export class InformationOrchestrator {
+  private activeCustomerReads = 0;
+  private readonly customerReadWaiters: Array<() => void> = [];
+  private readonly customerReadMetrics = new AsyncLocalStorage<MutableCustomerReadMetrics>();
+
   constructor(
     private readonly dependencies: {
       knowledgeGateway: KnowledgeRetrievalGateway;
@@ -200,6 +291,33 @@ export class InformationOrchestrator {
       capabilityManifest?: RuntimeCapabilityManifest;
     },
   ) {}
+
+  /** Four in-flight customer reads maximum; waiting work is never discarded. */
+  private async withCustomerRead<T>(operation: string, read: () => Promise<T>): Promise<T> {
+    if (this.activeCustomerReads >= enrichmentBounds.maxConcurrentReads) {
+      await new Promise<void>((resolve) => this.customerReadWaiters.push(resolve));
+    } else {
+      this.activeCustomerReads += 1;
+    }
+    const metrics = this.customerReadMetrics.getStore();
+    if (metrics) {
+      metrics.totalReads += 1;
+      metrics.activeReads += 1;
+      metrics.peakConcurrency = Math.max(metrics.peakConcurrency, metrics.activeReads);
+      metrics.readsByOperation[operation] = (metrics.readsByOperation[operation] ?? 0) + 1;
+    }
+    try {
+      return await read();
+    } finally {
+      if (metrics) metrics.activeReads -= 1;
+      const next = this.customerReadWaiters.shift();
+      if (next) {
+        next();
+      } else {
+        this.activeCustomerReads -= 1;
+      }
+    }
+  }
 
   private capabilityAvailable(
     operation: RuntimeOperationId,
@@ -293,11 +411,157 @@ export class InformationOrchestrator {
     return null;
   }
 
+  /**
+   * Load the full authorized customer profile before extraction. These
+   * internal reads do not depend on an extraction route, resource, aspect or
+   * record reference; subsequent task execution reuses this snapshot.
+   */
+  async prepareCustomerContext(args: {
+    readonly authentication: InformationAuthentication | null;
+    readonly trustedPhone: AgentAuthByPhoneInput | null;
+    readonly identity: IdentityEvidence | null;
+    readonly currentContext: CurrentContextEvidence | null;
+    readonly deadlineMs: number | null;
+  }): Promise<CustomerContextSnapshot> {
+    const nowIso = new Date().toISOString();
+    const authorized = args.authentication !== null || args.trustedPhone !== null;
+    const noReads: CustomerReadMetrics = {
+      totalReads: 0,
+      peakConcurrency: 0,
+      readsByOperation: {},
+    };
+    if (!authorized) {
+      const unavailable = assembleCustomerContext({
+        execution: null,
+        identity: null,
+        currentContext: args.currentContext,
+        nowIso,
+      });
+      return {
+        ...unavailable,
+        identityAccess: {
+          ...unavailable.identityAccess,
+          status: 'unavailable',
+          source: 'authorization',
+        },
+        purchasesCarts: {
+          ...unavailable.purchasesCarts,
+          status: 'unavailable',
+          source: 'authorization',
+        },
+        invitationsEvents: {
+          ...unavailable.invitationsEvents,
+          status: 'unavailable',
+          source: 'authorization',
+        },
+        readMetrics: noReads,
+      };
+    }
+
+    if (args.deadlineMs !== null && Date.now() >= args.deadlineMs) {
+      const expired = assembleCustomerContext({
+        execution: null,
+        identity: args.identity ?? {
+          customerRef: null,
+          scope: args.authentication ? 'account' : 'trusted_phone_purchase',
+          source: 'agent_api',
+        },
+        currentContext: args.currentContext,
+        nowIso,
+      });
+      return {
+        ...expired,
+        purchasesCarts: { ...expired.purchasesCarts, status: 'failed', source: 'deadline' },
+        invitationsEvents: { ...expired.invitationsEvents, status: args.authentication ? 'failed' : 'unavailable', source: 'deadline' },
+        readMetrics: noReads,
+      };
+    }
+
+    const metrics: MutableCustomerReadMetrics = {
+      totalReads: 0,
+      activeReads: 0,
+      peakConcurrency: 0,
+      readsByOperation: {},
+    };
+    return this.customerReadMetrics.run(metrics, async () => {
+      const readScope = async (
+        scope: 'account' | 'trusted_phone_purchase',
+      ): Promise<InformationExecution> => {
+        const suffix = scope === 'account' ? 'account' : 'phone';
+        const requests: PendingInformationRequest[] = [
+          {
+            requestId: `customer-context-${suffix}-purchases`,
+            kind: 'purchase',
+            resource: 'purchase_discovery',
+            query: 'customer context',
+            orderId: null,
+            authAction: 'none',
+          },
+          {
+            requestId: `customer-context-${suffix}-events`,
+            kind: 'associated_event',
+            query: 'customer context',
+            eventHint: null,
+            authAction: 'none',
+          },
+        ];
+        return this.execute({
+          requests,
+          authentication: scope === 'account' ? args.authentication : null,
+          authBlock: null,
+          trustedPhone: scope === 'trusted_phone_purchase' ? args.trustedPhone : null,
+          deadlineMs: args.deadlineMs,
+          hydrateAllAuthorizedEventDetails: true,
+        });
+      };
+      const executions = await Promise.all([
+        ...(args.authentication ? [readScope('account')] : []),
+        ...(args.trustedPhone ? [readScope('trusted_phone_purchase')] : []),
+      ]);
+      const execution: InformationExecution = {
+        results: executions.flatMap((entry) => entry.results),
+        summaries: executions.flatMap((entry) => entry.summaries),
+      };
+      const preferredScope = args.authentication ? 'account' : 'trusted_phone_purchase';
+      const identity: IdentityEvidence = {
+        ...(args.identity ?? {
+          customerRef: null,
+          scope: preferredScope,
+          source: 'agent_api',
+        }),
+        scope: preferredScope,
+        email: args.identity?.email ?? args.authentication?.email ?? null,
+        phone: args.identity?.phone ?? (args.trustedPhone
+          ? `${args.trustedPhone.phone_extension}${args.trustedPhone.phone_number}`
+          : null),
+        authorizedScopes: [
+          ...(args.authentication ? ['account'] : []),
+          ...(args.trustedPhone ? ['trusted_phone_purchase'] : []),
+        ],
+      };
+      const snapshot = assembleCustomerContext({
+        execution,
+        identity,
+        currentContext: args.currentContext,
+        nowIso,
+      });
+      const readMetrics: CustomerReadMetrics = {
+        totalReads: metrics.totalReads,
+        peakConcurrency: metrics.peakConcurrency,
+        readsByOperation: { ...metrics.readsByOperation },
+      };
+      return { ...snapshot, readMetrics };
+    });
+  }
+
   async execute(args: {
     requests: PendingInformationRequest[];
     authentication: InformationAuthentication | null;
     authBlock: InformationAuthBlock | null;
     trustedPhone?: AgentAuthByPhoneInput | null;
+    preparedCustomerContext?: CustomerContextSnapshot;
+    /** The preparation path hydrates every known event ID before extraction. */
+    hydrateAllAuthorizedEventDetails?: boolean;
     /** Current invocation deadline (epoch ms). Past it, bounded detail reads stop. */
     deadlineMs?: number | null;
   }): Promise<InformationExecution> {
@@ -319,12 +583,11 @@ export class InformationOrchestrator {
     const eventDetailLookups: EventDetailCache = new Map();
     const phoneContext: PhoneContextSnapshot = {
       purchasesByOrderId: new Map(),
-      purchaseSourceByOrderId: new Map(),
-      purchasePartitionByOrderId: new Map(),
       cartsById: new Map(),
       inconsistentOrderIds: new Set(),
     };
     const guestEventsPromise =
+      !args.preparedCustomerContext &&
       !args.authentication &&
       canUseTrustedPhone &&
       args.trustedPhone &&
@@ -357,6 +620,8 @@ export class InformationOrchestrator {
           args.deadlineMs ?? null,
           accountPurchaseLookups,
           seededRootPromise,
+          args.preparedCustomerContext,
+          args.hydrateAllAuthorizedEventDetails === true,
         );
           return { result, durationMs: Date.now() - startedAt };
         }),
@@ -422,7 +687,10 @@ export class InformationOrchestrator {
     // dependency (the seed is the only phone-context writer), so their
     // purchase-root gateway calls start together with the bounded
     // hydration instead of waiting on it.
-    if (args.requests.some((request) => request.kind === 'associated_event')) {
+    if (
+      args.requests.some((request) => request.kind === 'associated_event') &&
+      !args.authentication
+    ) {
       await executeIndexes(nonPurchaseIndexes);
       await rootSeedPromise;
       await executeIndexes(purchaseIndexes, rootSeedPromise);
@@ -492,7 +760,7 @@ export class InformationOrchestrator {
           : result.status === 'completed' && result.kind === 'purchase'
             ? {
                 accessMethod: result.accessMethod ?? 'authenticated_account',
-                coverage: result.coverage ?? 'complete',
+                ...(result.coverage === undefined ? {} : { coverage: result.coverage }),
                 ...(summaryResource ? { resource: summaryResource } : {}),
               }
             : result.status === 'failed' && result.accessMethod
@@ -505,7 +773,16 @@ export class InformationOrchestrator {
       };
     });
 
-    return { results, summaries };
+    const customerContext = args.preparedCustomerContext
+      ? mergeExecutionIntoSnapshot({
+        base: args.preparedCustomerContext,
+        execution: { results, summaries },
+        identity: null,
+        currentContext: null,
+        nowIso: new Date().toISOString(),
+      })
+      : undefined;
+    return { results, summaries, ...(customerContext ? { customerContext } : {}) };
   }
 
   private async executeRequest(
@@ -524,6 +801,8 @@ export class InformationOrchestrator {
     deadlineMs: number | null,
     accountPurchaseLookups?: Map<string, Promise<AgentPurchaseLookupResult | undefined>>,
     seededRootPromise?: Promise<SeededGuestRoot | null> | null,
+    preparedCustomerContext?: CustomerContextSnapshot,
+    hydrateAllAuthorizedEventDetails = false,
   ): Promise<InformationTaskResult> {
     if (request.kind === 'faq') {
       if (!this.capabilityAvailable('faq.read')) {
@@ -585,6 +864,13 @@ export class InformationOrchestrator {
       };
     }
 
+    if (preparedCustomerContext && request.kind === 'purchase') {
+      return this.purchaseResultFromPreparedContext(request, preparedCustomerContext);
+    }
+    if (preparedCustomerContext && request.kind === 'associated_event') {
+      return this.eventResultFromPreparedContext(request, preparedCustomerContext);
+    }
+
     if (
       request.kind === 'associated_event' &&
       !authentication &&
@@ -600,6 +886,7 @@ export class InformationOrchestrator {
           eventDetailLookups,
           phoneContext,
           deadlineMs,
+          hydrateAllAuthorizedEventDetails,
         );
       }
       if (guestEvents.status === 'failed') {
@@ -689,10 +976,12 @@ export class InformationOrchestrator {
 
     if (request.kind === 'associated_event') {
       try {
-        const result = await this.dependencies.providerGateway.lookupAuthenticatedUserEvents({
-          token: authentication.token,
-          email: authentication.email,
-        });
+        const result = await this.withCustomerRead('provider.user_events', () =>
+          this.dependencies.providerGateway.lookupAuthenticatedUserEvents({
+            token: authentication.token,
+            email: authentication.email,
+          }),
+        );
         if (!result) {
           return {
             requestId: request.requestId,
@@ -708,7 +997,7 @@ export class InformationOrchestrator {
           requestId: request.requestId,
           kind: 'associated_event',
           status: 'completed',
-          result: this.removePurchaseDataFromEventResult(result),
+          result,
           accessMethod: 'authenticated_account',
         };
       } catch (error) {
@@ -764,7 +1053,7 @@ export class InformationOrchestrator {
     if (lookup.status === 'success') {
       const evidence = this.partitionedPurchaseLookup(lookup);
       const candidates = this.filterPurchaseCandidates(evidence.purchases);
-      const carts = this.filterCartCandidates(evidence.carts, request);
+      const carts = evidence.carts;
       return {
         requestId: request.requestId,
         kind: 'purchase',
@@ -832,6 +1121,131 @@ export class InformationOrchestrator {
     };
   }
 
+  private purchaseResultFromPreparedContext(
+    request: PurchaseRequest,
+    snapshot: CustomerContextSnapshot,
+  ): InformationTaskResult {
+    const section = snapshot.purchasesCarts;
+    const accessMethod = snapshot.identityAccess.authorizedScopes.includes('account')
+      ? 'authenticated_account' as const
+      : 'trusted_phone_purchase' as const;
+    const sourceCoverage = section.sourceCoverage?.map((entry) => ({
+      ...entry,
+      childId: purchaseDiscoveryChildId(request.requestId, entry.source),
+    }));
+    if (section.status === 'failed') {
+      return {
+        requestId: request.requestId,
+        kind: 'purchase',
+        status: 'failed',
+        retryable: true,
+        failureKind: 'request_failed',
+        message: 'No se pudo completar la consulta de las fuentes disponibles.',
+        accessMethod,
+        ...(sourceCoverage ? { sourceCoverage } : {}),
+      };
+    }
+    if (section.status === 'unavailable' || section.status === 'not_requested') {
+      return {
+        requestId: request.requestId,
+        kind: 'purchase',
+        status: 'failed',
+        retryable: false,
+        failureKind: 'not_configured',
+        message: 'La consulta de compras no está disponible en este momento.',
+        accessMethod,
+        ...(sourceCoverage ? { sourceCoverage } : {}),
+      };
+    }
+    const requestedReference = this.parseRequestedCustomerTransactionNumber(request);
+    const requestedId = parseOrderReference(request.orderId);
+    const requestedMatches = requestedReference !== null
+      ? section.purchases.filter((purchase) =>
+        purchase.customerTransactionNumber === requestedReference,
+      )
+      : requestedId?.kind === 'backend_order_id'
+        ? section.purchases.filter((purchase) => purchase.orderId === requestedId.orderId)
+        : [];
+    const referenceWasRequested = requestedReference !== null || requestedId !== null;
+    const referenceMatched = requestedMatches.length > 0;
+    return {
+      requestId: request.requestId,
+      kind: 'purchase',
+      status: 'completed',
+      resource: request.resource,
+      ...(request.resource === 'purchase_discovery' ? {} : { lookupResource: request.resource }),
+      ...(sourceCoverage ? { sourceCoverage } : {}),
+      purchases: referenceMatched ? requestedMatches : [...section.purchases],
+      carts: [...section.carts],
+      needsSelection: referenceWasRequested && !referenceMatched,
+      accessMethod,
+      ...(referenceWasRequested
+        ? {
+            referenceResolution: referenceMatched ? 'matched' as const : 'unavailable' as const,
+            ...(requestedReference !== null
+              ? { requestedCustomerTransactionNumber: requestedReference }
+              : {}),
+          }
+        : {}),
+      ...(section.completeness === null
+        ? {}
+        : { coverage: section.completeness === 'complete' ? 'complete' as const : 'partial' as const }),
+    };
+  }
+
+  private eventResultFromPreparedContext(
+    request: Extract<PendingInformationRequest, { kind: 'associated_event' }>,
+    snapshot: CustomerContextSnapshot,
+  ): InformationTaskResult {
+    const section = snapshot.invitationsEvents;
+    const accessMethod = snapshot.identityAccess.authorizedScopes.includes('account')
+      ? 'authenticated_account' as const
+      : 'trusted_phone_guest' as const;
+    if (section.status === 'not_found') {
+      return {
+        requestId: request.requestId,
+        kind: 'associated_event',
+        status: 'failed',
+        retryable: false,
+        failureKind: 'not_found',
+        accessMethod,
+        message: 'La consulta autorizada no encontró eventos asociados.',
+      };
+    }
+    if (section.status === 'failed' || section.status === 'unavailable' || section.status === 'not_requested') {
+      return {
+        requestId: request.requestId,
+        kind: 'associated_event',
+        status: 'failed',
+        retryable: section.status === 'failed',
+        failureKind: section.status === 'unavailable' ? 'not_configured' : 'request_failed',
+        accessMethod,
+        message: 'No se pudo completar la consulta autorizada de eventos.',
+      };
+    }
+    const events = [...section.invitations];
+    return {
+      requestId: request.requestId,
+      kind: 'associated_event',
+      status: 'completed',
+      result: {
+        lookup: accessMethod === 'authenticated_account'
+          ? { email: snapshot.identityAccess.email ?? '' }
+          : { phone: snapshot.identityAccess.phone ?? '' },
+        user: null,
+        events,
+        counts: {
+          ownerEvents: events.filter((event) => event.relation === 'owner').length,
+          guestEvents: events.filter((event) => event.relation === 'guest').length,
+          hostEvents: events.filter((event) => event.relation === 'host').length,
+          celebratedEvents: events.filter((event) => event.relation === 'celebrated').length,
+          recentOrders: events.reduce((count, event) => count + (event.orderIds?.length ?? 0), 0),
+        },
+      },
+      accessMethod,
+    };
+  }
+
   private async lookupGuestEvents(
     phone: AgentAuthByPhoneInput,
   ): Promise<AgentGuestEventsResult> {
@@ -843,7 +1257,9 @@ export class InformationOrchestrator {
       };
     }
     try {
-      return await this.dependencies.agentGateway.getGuestEventsByPhone(phone);
+      return await this.withCustomerRead('agent.guest_events', () =>
+        this.dependencies.agentGateway.getGuestEventsByPhone!(phone),
+      );
     } catch {
       return {
         status: 'failed',
@@ -886,82 +1302,38 @@ export class InformationOrchestrator {
       return null;
     }
     if (guestEvents.status !== 'success' || guestEvents.events.length === 0) return null;
-    const hints = Array.from(new Set(
-      args.requests.flatMap((request) =>
-        request.kind === 'purchase' && request.eventHint?.trim()
-          ? [request.eventHint.trim()]
-          : [],
-      ),
-    ));
-    const passes = hints.length > 0 ? hints : [null];
-    const details = new Map<number, HydratedEventDetail>();
-    const failures: Array<{ eventId: number; failureKind: EventDetailHydrationFailureKind }> = [];
-    const seenFailures = new Set<string>();
-    let truncatedByBound = false;
-    for (const hint of passes) {
-      const hydration = await this.hydrateRelevantEventDetails({
-        events: guestEvents.events,
-        eventHint: hint,
-        trustedPhone: args.trustedPhone,
-        scope: 'trusted_phone_guest',
-        detailCache: args.eventDetailLookups,
-        deadlineMs: args.deadlineMs,
-      });
-      if (hydration.truncatedByBound) {
-        truncatedByBound = true;
-      }
-      for (const [eventId, detail] of hydration.details) {
-        if (!details.has(eventId)) {
-          details.set(eventId, detail);
-        }
-      }
-      for (const failure of hydration.failures) {
-        const key = `${failure.eventId}:${failure.failureKind}`;
-        if (!seenFailures.has(key)) {
-          seenFailures.add(key);
-          failures.push(failure);
-        }
-      }
-      for (const purchase of hydration.purchases) {
-        this.mergePhonePurchase(args.phoneContext, purchase, 'event');
-      }
+    const hydration = await this.hydrateRelevantEventDetails({
+      events: guestEvents.events,
+      trustedPhone: args.trustedPhone,
+      scope: 'trusted_phone_guest',
+      detailCache: args.eventDetailLookups,
+      deadlineMs: args.deadlineMs,
+    });
+    for (const purchase of hydration.purchases) {
+      this.mergePhonePurchase(args.phoneContext, purchase, 'event_detail');
     }
     return {
       events: [...guestEvents.events],
-      details,
-      failures,
-      truncatedByBound,
+      details: hydration.details,
+      failures: hydration.failures,
+      truncatedByBound: hydration.truncatedByBound,
       phoneNumber: args.trustedPhone?.phone_number ?? '',
     };
   }
 
   /**
-   * Bounded invitation -> event/venue detail expansion over documented
-   * gateway reads only (getEventDetail). At most two relationship edges per
-   * pass (summary -> detail here; detail -> purchases returned for the
-   * caller to merge), four concurrent reads, an access-scoped visited set
-   * so cyclic order -> event -> order links terminate, the current
-   * invocation deadline, and a per-turn cache for identical reads. P3: the
-   * hint is the extraction-supplied eventHint carrying the validated
-   * inferred target (explicit reference, active-question entity, campaign
-   * context, compatible state and temporal proximity as validated by the
-   * caller) — explicit-hint-only gating is removed, so a validated inferred
-   * hint hydrates the same as an explicit one. A uniquely matched hint
-   * hydrates its events; an absent, generic or unmatched hint hydrates the
-   * already authorized alternatives within the same bounds, so venue facts
-   * survive a failed name match. Reading alternatives never selects a
-   * mutation target and never declares an unmatched named event found.
-   * Failures are recorded, never
-   * thrown, and a bound or deadline never claims a complete profile.
+   * Load detail for every event returned by an authorized root. Four
+   * simultaneous reads bound backend pressure; the worker queue is not
+   * truncated. Scoped cache/visited keys deduplicate repeated IDs, and the
+   * invocation deadline preserves completed facts while marking unfinished
+   * IDs partial.
    */
   async hydrateRelevantEventDetails(args: {
     events: readonly AgentGuestEventSummary[];
-    eventHint: string | null;
     trustedPhone: AgentAuthByPhoneInput | null;
     scope: string;
     detailCache?: EventDetailCache;
     deadlineMs?: number | null;
-    depth?: number;
   }): Promise<EventDetailHydrationOutcome> {
     const outcome: EventDetailHydrationOutcome = {
       details: new Map(),
@@ -970,19 +1342,10 @@ export class InformationOrchestrator {
       readsAttempted: 0,
       truncatedByBound: false,
     };
-    const hint = args.eventHint?.trim() ? args.eventHint : null;
-    if ((args.depth ?? 0) >= enrichmentBounds.maxRelationshipEdges) {
-      outcome.truncatedByBound = true;
-      return outcome;
-    }
-    const matched = hint ? args.events.filter((event) =>
-      sharedEventMatches(event.name, hint) || sharedEventMatches(event.slug, hint),
-    ) : [];
-    // Read authorized alternatives before asking. A failed name match must
-    // not erase venue facts; reading candidates does not select a mutation target.
-    const candidates = matched.length > 0 ? matched : args.events;
-    const targets = candidates.slice(0, enrichmentBounds.maxConcurrentReads);
-    outcome.truncatedByBound = candidates.length > targets.length;
+    // The event hint selects no profile records. Hydrate every authorized
+    // event ID returned by the root; the worker pool bounds simultaneous
+    // reads without limiting the total queue.
+    const targets = args.events;
     const cache: EventDetailCache = args.detailCache ?? new Map<
       string,
       Promise<PhoneEventDetailResult>
@@ -1002,9 +1365,17 @@ export class InformationOrchestrator {
       }
       readable.push(event);
     }
-    const settled = await Promise.allSettled(
-      readable.map(async (event) => {
+    const settled = await settleWithConcurrency(
+      readable,
+      enrichmentBounds.maxConcurrentReads,
+      async (event) => {
         outcome.readsAttempted += 1;
+        if (args.deadlineMs !== null && args.deadlineMs !== undefined && Date.now() >= args.deadlineMs) {
+          return {
+            event,
+            detail: { status: 'failed', error: 'deadline_exceeded', retryable: true } as const,
+          };
+        }
         const detail = await this.lookupEventDetail(
           event.eventId,
           args.trustedPhone,
@@ -1013,10 +1384,14 @@ export class InformationOrchestrator {
           args.scope,
         );
         return { event, detail };
-      }),
+      },
     );
-    for (const entry of settled) {
+    for (const [index, entry] of settled.entries()) {
       if (entry.status === 'rejected') {
+        const event = readable[index];
+        if (event) {
+          outcome.failures.push({ eventId: event.eventId, failureKind: 'request_failed' });
+        }
         continue;
       }
       const { event, detail } = entry.value;
@@ -1027,6 +1402,9 @@ export class InformationOrchestrator {
         }
       } else if (detail.status === 'not_found') {
         outcome.failures.push({ eventId: event.eventId, failureKind: 'not_found' });
+      } else if (detail.error === 'deadline_exceeded') {
+        outcome.failures.push({ eventId: event.eventId, failureKind: 'deadline_exceeded' });
+        outcome.truncatedByBound = true;
       } else if (detail.error.includes('not configured')) {
         outcome.failures.push({ eventId: event.eventId, failureKind: 'not_configured' });
       } else {
@@ -1037,17 +1415,10 @@ export class InformationOrchestrator {
   }
 
   /**
-   * S7 bounded linked-detail enrichment before final owner composition.
-   * Follows at most two relationship edges (authorized order -> gift purchase
-   * detail; associated invitation/event -> event detail) with at most four
-   * reads in flight, a per-turn access-scoped visited/cache key and the
-   * shared invocation deadline. Reuses the existing orchestrator capability
-   * and gateway access checks plus already-fetched IDs: known IDs and
-   * authorized scopes are prerequisites, so a name or recency never
-   * authorizes a lookup. Duplicate IDs/cycles fetch once. Optional failures
-   * are recorded, never thrown; required unavailable detail stays explicitly
-   * unavailable. Read-only: never writes. Absent gateway capability is
-   * exposed as unavailable, never a guessed API.
+   * Load known linked order/event detail through the existing authorized
+   * routes. Four simultaneous reads bound backend pressure, while the entire
+   * deduplicated queue is retained. The caller's authorization scope and the
+   * current deadline apply to every read.
    */
   async enrichCustomerLinkedDetail(args: {
     orderIds: readonly string[];
@@ -1059,7 +1430,6 @@ export class InformationOrchestrator {
     detailCache?: EventDetailCache;
     visited?: Set<string>;
     deadlineMs?: number | null;
-    depth?: number;
   }): Promise<CustomerLinkedEnrichment> {
     const giftPurchases: PurchaseInformation[] = [];
     const eventDetails = new Map<number, HydratedEventDetail>();
@@ -1067,16 +1437,6 @@ export class InformationOrchestrator {
     const failures: Array<{ target: string; failureKind: string }> = [];
     let readsAttempted = 0;
     let truncatedByBound = false;
-    if ((args.depth ?? 0) >= enrichmentBounds.maxRelationshipEdges) {
-      return {
-        giftPurchases,
-        eventDetails,
-        readsAttempted,
-        truncatedByBound: true,
-        unavailable,
-        failures,
-      };
-    }
     const cache: EventDetailCache = args.detailCache ?? new Map<string, Promise<PhoneEventDetailResult>>();
     const visited: Set<string> = args.visited ?? new Set();
     const deadlineMs = args.deadlineMs ?? null;
@@ -1105,14 +1465,14 @@ export class InformationOrchestrator {
       visited.add(visitKey);
       planned.push({ kind: 'event', eventId: numeric, rawId, visitKey });
     }
-    const bounded = planned.slice(0, enrichmentBounds.maxConcurrentReads);
-    if (planned.length > bounded.length) truncatedByBound = true;
 
     const fetchGiftDetail = async (
       orderId: string,
     ): Promise<PurchaseInformation[] | { unavailable: true } | { failure: string }> => {
       if (pastDeadline()) return { failure: 'deadline_exceeded' };
-      if (args.authentication) {
+      const authentication = args.authentication;
+      const trustedPhone = args.trustedPhone;
+      if (authentication) {
         if (
           !this.capabilityAvailable('purchase.gift_detail.read', this.gatewayMethodConfigured('getGiftPurchases')) ||
           !this.dependencies.agentGateway.getGiftPurchases
@@ -1120,10 +1480,12 @@ export class InformationOrchestrator {
           return { unavailable: true };
         }
         try {
-          const lookup = await this.dependencies.agentGateway.getGiftPurchases({
-            token: args.authentication.token,
-            orderId,
-          });
+          const lookup = await this.withCustomerRead('agent.gift_detail', () =>
+            this.dependencies.agentGateway.getGiftPurchases!({
+              token: authentication.token,
+              orderId,
+            }),
+          );
           if (lookup.status === 'success') return lookup.purchases;
           if (lookup.status === 'not_found') return { unavailable: true };
           return { failure: 'request_failed' };
@@ -1131,7 +1493,7 @@ export class InformationOrchestrator {
           return { failure: 'request_failed' };
         }
       }
-      if (args.trustedPhone) {
+      if (trustedPhone) {
         if (
           !this.capabilityAvailable('purchase.gift_detail.read', this.gatewayMethodConfigured('getGuestGiftPurchasesByPhone')) ||
           !this.dependencies.agentGateway.getGuestGiftPurchasesByPhone
@@ -1139,11 +1501,13 @@ export class InformationOrchestrator {
           return { unavailable: true };
         }
         try {
-          const lookup = await this.dependencies.agentGateway.getGuestGiftPurchasesByPhone({
-            phone_extension: args.trustedPhone.phone_extension,
-            phone_number: args.trustedPhone.phone_number,
-            orderId,
-          });
+          const lookup = await this.withCustomerRead('agent.guest_gift_detail', () =>
+            this.dependencies.agentGateway.getGuestGiftPurchasesByPhone!({
+              phone_extension: trustedPhone.phone_extension,
+              phone_number: trustedPhone.phone_number,
+              orderId,
+            }),
+          );
           if (lookup.status === 'success') return lookup.purchases;
           if (lookup.status === 'not_found') return { unavailable: true };
           return { failure: 'request_failed' };
@@ -1154,8 +1518,10 @@ export class InformationOrchestrator {
       return { unavailable: true };
     };
 
-    const settled = await Promise.allSettled(
-      bounded.map(async (read) => {
+    const settled = await settleWithConcurrency(
+      planned,
+      enrichmentBounds.maxConcurrentReads,
+      async (read) => {
         if (pastDeadline()) {
           return { read, outcome: { failure: 'deadline_exceeded' } as const };
         }
@@ -1166,13 +1532,13 @@ export class InformationOrchestrator {
         }
         const detail = await this.lookupEventDetail(
           read.eventId,
-          args.trustedPhone,
+          args.trustedPhone ?? null,
           this.dependencies.agentGateway,
           cache,
           args.scope,
         );
         return { read, outcome: detail };
-      }),
+      },
     );
     for (const entry of settled) {
       if (entry.status === 'rejected') continue;
@@ -1211,7 +1577,7 @@ export class InformationOrchestrator {
         failures.push({ target: `event:${String(read.rawId)}`, failureKind: 'request_failed' });
       }
     }
-    if (pastDeadline() && (bounded.length > 0)) truncatedByBound = true;
+    if (pastDeadline() && planned.length > 0) truncatedByBound = true;
     return {
       giftPurchases,
       eventDetails,
@@ -1230,24 +1596,22 @@ export class InformationOrchestrator {
     eventDetailLookups: EventDetailCache,
     phoneContext: PhoneContextSnapshot,
     deadlineMs: number | null,
+    hydrateAllAuthorizedEventDetails = false,
   ): Promise<InformationTaskResult> {
     const selected = this.selectGuestEvent(events, request.eventHint);
-    if (!selected) {
-      // Shared names or several candidates: hydrate explicitly relevant
-      // details (bounded) so the reply can disambiguate with facts instead
-      // of asking for information that can be read. Without an explicit
-      // reference the summaries stay bare for clarification. Failures keep
-      // the known association; they never fail the whole read.
+    if (!selected || hydrateAllAuthorizedEventDetails) {
+      // Profile preparation hydrates every known event ID, while ordinary
+      // unresolved event requests use the same complete root to disambiguate.
+      // Failures keep known associations and are reflected in coverage.
       const hydration = await this.hydrateRelevantEventDetails({
         events,
-        eventHint: request.eventHint,
         trustedPhone,
         scope: 'trusted_phone_guest',
         detailCache: eventDetailLookups,
         deadlineMs,
       });
       for (const purchase of hydration.purchases) {
-        this.mergePhonePurchase(phoneContext, purchase, 'event');
+        this.mergePhonePurchase(phoneContext, purchase, 'event_detail');
       }
       if (hydration.details.size === 0) {
         return {
@@ -1367,7 +1731,7 @@ export class InformationOrchestrator {
     }
 
     for (const purchase of detail.event.purchases ?? []) {
-      this.mergePhonePurchase(phoneContext, purchase, 'event');
+        this.mergePhonePurchase(phoneContext, purchase, 'event_detail');
     }
 
     return {
@@ -1410,10 +1774,12 @@ export class InformationOrchestrator {
     if (existing) {
       return await existing;
     }
-    const lookup = phoneGateway.getEventDetail({
-      eventId,
-      ...(trustedPhone ? { phone: trustedPhone } : {}),
-    });
+    const lookup = this.withCustomerRead('agent.event_detail', () =>
+      phoneGateway.getEventDetail!({
+        eventId,
+        ...(trustedPhone ? { phone: trustedPhone } : {}),
+      }),
+    );
     eventDetailLookups.set(cacheKey, lookup);
     return await lookup;
   }
@@ -1473,6 +1839,8 @@ export class InformationOrchestrator {
           (effectiveEnriched === undefined ? purchases : []);
         return {
         relation: 'guest',
+        source: 'agent_guest_events',
+        accessScope: 'trusted_phone_guest',
         guestId:
           effectiveEnriched?.event.eventId === event.eventId
             ? effectiveAttendance?.guestId ?? null
@@ -1508,19 +1876,10 @@ export class InformationOrchestrator {
         transactionsCount: null,
         invitedGuestCount: null,
         confirmedGuestCount: null,
-        orders:
-          effectiveEnriched?.event.eventId === event.eventId
-            ? effectivePurchases.map((purchase) => ({
-                id: null,
-                incrementId: purchase.orderId,
-                giftType: purchase.items[0]?.type ?? null,
-                grandTotal: purchase.grandTotal,
-                paymentStatus: purchase.paymentStatus,
-                shippingStatus: purchase.shippingStatus,
-                createdAt: purchase.createdAt,
-                paymentMethod: purchase.paymentMethod,
-              }))
-            : [],
+        orders: [],
+        orderIds: effectiveEnriched?.event.eventId === event.eventId
+          ? effectivePurchases.map((purchase) => purchase.orderId)
+          : [],
         ...(effectiveDetail && effectiveDetail.eventId === event.eventId
           ? {
               place: effectiveDetail.city,
@@ -1566,20 +1925,31 @@ export class InformationOrchestrator {
     const hasPartitions = phoneResult?.orderPartitions !== undefined ||
       phoneResult?.carts !== undefined;
     const purchases: PurchaseInformation[] = [];
-    const partitionByOrderId = new Map<string, PurchasePartition>();
     const conflictingOrderIds = new Set<string>();
 
     const add = (entries: PurchaseInformation[], partition: PurchasePartition): void => {
       for (const purchase of entries) {
-        const existingPartition = partitionByOrderId.get(purchase.orderId);
-        if (existingPartition) {
-          if (existingPartition !== (purchase.partition ?? partition)) {
-            conflictingOrderIds.add(purchase.orderId);
-          }
-          continue;
+        const effectivePartition = purchase.partition ?? partition;
+        const record: PurchaseInformation = {
+          ...purchase,
+          recordSource: result.resource,
+          partition: effectivePartition,
+        };
+        const sameId = purchases.filter((existing) => existing.orderId === purchase.orderId);
+        const duplicate = sameId.find((existing) =>
+          existing.recordSource === record.recordSource &&
+          existing.partition === record.partition &&
+          JSON.stringify(existing) === JSON.stringify(record),
+        );
+        if (duplicate) continue;
+        if (sameId.some((existing) =>
+          existing.recordSource !== record.recordSource ||
+          existing.partition !== record.partition ||
+          hasPurchaseFactConflict(existing, record),
+        )) {
+          conflictingOrderIds.add(purchase.orderId);
         }
-        purchases.push(purchase);
-        partitionByOrderId.set(purchase.orderId, purchase.partition ?? partition);
+        purchases.push(record);
       }
     };
     add(pending, 'pending_orders');
@@ -1591,7 +1961,7 @@ export class InformationOrchestrator {
     if (!hasPartitions) {
       add(result.purchases, 'legacy_orders');
     }
-    return { purchases, partitionByOrderId, carts, hasPartitions, conflictingOrderIds };
+    return { purchases, carts, hasPartitions, conflictingOrderIds };
   }
 
   private async executePhonePurchaseRequest(
@@ -1682,8 +2052,8 @@ export class InformationOrchestrator {
           this.mergePhonePurchase(
             phoneContext,
             purchase,
-            lookup.sourceResource,
-            evidence.partitionByOrderId.get(purchase.orderId),
+            purchase.recordSource ?? lookup.sourceResource,
+            purchase.partition,
           );
         }
         // Stable-order-ID union within scope: event-scoped plus
@@ -1694,8 +2064,10 @@ export class InformationOrchestrator {
           ...candidates.purchases.map((purchase) => purchase.orderId),
         ]);
         if (request.orderId) {
-          const only = phoneContext.purchasesByOrderId.get(request.orderId);
-          const combined = only ? [only] : [];
+          const combined = phonePurchasesForIds(
+            phoneContext,
+            new Set([request.orderId]),
+          );
           if (combined.length === 0) {
             return withLinked({
               requestId: request.requestId,
@@ -1708,8 +2080,7 @@ export class InformationOrchestrator {
               coverage: 'partial' as const,
             });
           }
-          const canonical = combined[0];
-          if (!canonical) {
+          if (combined.length === 0) {
             return withLinked({
               requestId: request.requestId,
               kind: 'purchase' as const,
@@ -1727,13 +2098,13 @@ export class InformationOrchestrator {
             status: 'completed',
             resource: request.resource,
             lookupResource: lookup.sourceResource,
-            purchases: [this.projectPurchase(canonical, request, {
+            purchases: combined.map((purchase) => this.projectPurchase(purchase, request, {
               requestedCustomerTransactionNumber: lookup.requestedCustomerTransactionNumber ?? null,
-            })],
+            })),
             needsSelection: false,
             accessMethod: 'trusted_phone_event_purchase',
             coverage: seededIncomplete || lookup.coverage === 'partial' ? 'partial' : 'complete',
-            carts: this.filterCartCandidates(evidence.carts, request).map((cart) => this.projectCart(cart)),
+            carts: evidence.carts.map((cart) => this.projectCart(cart, 'trusted_phone_purchase')),
             ...(lookup.referenceResolution === 'not_requested'
               ? {}
               : {
@@ -1743,9 +2114,7 @@ export class InformationOrchestrator {
               }),
           });
         }
-        const combined = [...combinedIds]
-          .map((orderId) => phoneContext.purchasesByOrderId.get(orderId))
-          .filter((purchase): purchase is NonNullable<typeof purchase> => purchase !== undefined);
+        const combined = phonePurchasesForIds(phoneContext, combinedIds);
         // A failed optional source never erases ready facts: the merged
         // set answers with partial coverage below. Detail success never
         // proves purchase completeness: seeded-only success without the
@@ -1767,7 +2136,7 @@ export class InformationOrchestrator {
           needsSelection: false,
           accessMethod: 'trusted_phone_event_purchase',
           coverage: seededIncomplete || lookup.coverage === 'partial' ? 'partial' : 'complete',
-          carts: this.filterCartCandidates(evidence.carts, request).map((cart) => this.projectCart(cart)),
+          carts: evidence.carts.map((cart) => this.projectCart(cart, 'trusted_phone_purchase')),
           ...(lookup.referenceResolution === 'not_requested'
             ? {}
             : {
@@ -1824,7 +2193,7 @@ export class InformationOrchestrator {
       for (const cart of evidence.carts) {
         phoneContext.cartsById.set(cart.cartId, cart);
       }
-      const carts = this.filterCartCandidates(evidence.carts, request);
+      const carts = evidence.carts;
       const candidates = this.filterPurchaseCandidates(
         evidence.purchases,
         lookup.requestedCustomerTransactionNumber,
@@ -1843,7 +2212,7 @@ export class InformationOrchestrator {
           needsSelection: false,
           accessMethod: 'trusted_phone_purchase',
           coverage: 'partial',
-          carts: carts.map((cart) => this.projectCart(cart)),
+          carts: carts.map((cart) => this.projectCart(cart, 'trusted_phone_purchase')),
         };
         return result;
       }
@@ -1867,7 +2236,7 @@ export class InformationOrchestrator {
           phoneContext,
           purchase,
           lookup.sourceResource,
-          evidence.partitionByOrderId.get(purchase.orderId),
+          purchase.partition,
         );
       }
       const result: PurchaseTaskResult = {
@@ -1885,7 +2254,7 @@ export class InformationOrchestrator {
           lookup.referenceResolution === 'unavailable' || candidates.needsSelection,
         accessMethod: 'trusted_phone_purchase',
         coverage: lookup.coverage,
-        carts: carts.map((cart) => this.projectCart(cart)),
+        carts: carts.map((cart) => this.projectCart(cart, 'trusted_phone_purchase')),
         ...(lookup.referenceResolution === 'not_requested'
           ? {}
           : {
@@ -1955,15 +2324,30 @@ export class InformationOrchestrator {
         count: 0,
       }));
     const settled = await Promise.all(
-      available.map(async (source) => ({
-        source,
-        lookup: await this.lookupPurchase(
-          { ...request, resource: source },
-          authentication.token,
-          request.orderId,
-          accountPurchaseLookups,
-        ),
-      })),
+      available.map(async (source) => {
+        try {
+          return {
+            source,
+            lookup: await this.lookupPurchase(
+              { ...request, resource: source },
+              authentication.token,
+              request.orderId,
+              accountPurchaseLookups,
+            ),
+          };
+        } catch {
+          return {
+            source,
+            lookup: {
+              status: 'failed',
+              resource: source,
+              retryable: true,
+              failureKind: 'request_failed',
+              error: 'Customer source read failed.',
+            } as const,
+          };
+        }
+      }),
     );
     const merged = new Map<string, PurchaseInformation>();
     const carts = new Map<string, CartInformation>();
@@ -1984,9 +2368,18 @@ export class InformationOrchestrator {
           count: candidates.purchases.length,
         });
         for (const purchase of candidates.purchases) {
-          if (!merged.has(purchase.orderId)) merged.set(purchase.orderId, purchase);
+          const scopedPurchase: PurchaseInformation = {
+            ...purchase,
+            accessScope: 'authenticated_account',
+          };
+          const key = JSON.stringify([
+            scopedPurchase.recordSource ?? source,
+            scopedPurchase.partition ?? null,
+            scopedPurchase.orderId,
+          ]);
+          if (!merged.has(key)) merged.set(key, scopedPurchase);
         }
-        for (const cart of this.filterCartCandidates(evidence.carts, request)) {
+        for (const cart of evidence.carts) {
           if (!carts.has(cart.cartId)) carts.set(cart.cartId, cart);
         }
         continue;
@@ -2009,13 +2402,33 @@ export class InformationOrchestrator {
       failures.push(lookup);
     }
     const purchases = [...merged.values()];
-    const cartList = [...carts.values()].map((cart) => this.projectCart(cart));
+    const cartList = [...carts.values()].map((cart) => this.projectCart(cart, 'authenticated_account'));
     if (purchases.length === 0 && cartList.length === 0) {
+      const allRequestedSourcesRead = coverage.every((entry) =>
+        entry.status === 'completed' || entry.status === 'empty',
+      );
+      if (!request.orderId && this.parseRequestedCustomerTransactionNumber(request) === null &&
+        allRequestedSourcesRead && failures.length === 0) {
+        return {
+          requestId: request.requestId,
+          kind: 'purchase',
+          status: 'completed',
+          resource: 'purchase_discovery',
+          sourceCoverage: this.orderedCoverage(request.requestId, coverage),
+          purchases: [],
+          needsSelection: false,
+          accessMethod: 'authenticated_account',
+          coverage: this.discoveryCoverage(coverage),
+          carts: [],
+        };
+      }
       return {
         requestId: request.requestId,
         kind: 'purchase',
         status: 'failed',
-        ...this.discoveryLookupFailure('account', failures),
+        ...this.discoveryLookupFailure('account', failures.length > 0
+          ? failures
+          : this.discoveryCoverageFailures(coverage)),
         sourceCoverage: this.orderedCoverage(request.requestId, coverage),
       };
     }
@@ -2091,16 +2504,37 @@ export class InformationOrchestrator {
         status: this.unavailableSourceStatus(source),
         count: 0,
       }));
-    const legPromises = available.map(async (source) => ({
-      source,
-      lookup: await this.lookupPhonePurchase(
-        { ...request, resource: source },
-        trustedPhone,
-        phoneGateway,
-        phonePurchaseLookups,
-        { skipReferenceResolution: true },
-      ),
-    }));
+    const legPromises = available.map(async (source) => {
+      try {
+        return {
+          source,
+          lookup: await this.lookupPhonePurchase(
+            { ...request, resource: source },
+            trustedPhone,
+            phoneGateway,
+            phonePurchaseLookups,
+            { skipReferenceResolution: true },
+          ),
+        };
+      } catch {
+        return {
+          source,
+          lookup: {
+            result: {
+              status: 'failed',
+              resource: source,
+              retryable: true,
+              failureKind: 'request_failed',
+              error: 'Customer source read failed.',
+            } as const,
+            coverage: 'partial' as const,
+            sourceResource: source,
+            referenceResolution: 'not_requested' as const,
+            requestedCustomerTransactionNumber: null,
+          },
+        };
+      }
+    });
     const legRun = Promise.all(legPromises);
     const seeded = seededRootPromise ? await seededRootPromise : null;
     const eventScopedPurchases = this.eventScopedPurchasesForRequest(
@@ -2159,7 +2593,7 @@ export class InformationOrchestrator {
             phoneContext,
             purchase,
             lookup.sourceResource,
-            evidence.partitionByOrderId.get(purchase.orderId),
+          purchase.partition,
           );
           candidateIds.add(purchase.orderId);
         }
@@ -2198,8 +2632,8 @@ export class InformationOrchestrator {
         ? request.orderId
         : null;
     if (backendOrderId) {
-      const only = phoneContext.purchasesByOrderId.get(backendOrderId);
-      if (!only) {
+      const matching = phonePurchasesForIds(phoneContext, new Set([backendOrderId]));
+      if (matching.length === 0) {
         return withLinked({
           requestId: request.requestId,
           kind: 'purchase' as const,
@@ -2215,21 +2649,18 @@ export class InformationOrchestrator {
         status: 'completed' as const,
         resource: 'purchase_discovery' as const,
         sourceCoverage: this.orderedCoverage(request.requestId, coverage),
-        purchases: [this.projectPurchase(only, request, {
+        purchases: matching.map((purchase) => this.projectPurchase(purchase, request, {
           requestedCustomerTransactionNumber: requestedReference,
-        })],
+        })),
         needsSelection: false,
         accessMethod: 'trusted_phone_event_purchase' as const,
         coverage: this.discoveryCoverage(coverage, seededIncomplete),
-        carts: this.filterCartCandidates(
-          [...phoneContext.cartsById.values()],
-          request,
-        ).map((cart) => this.projectCart(cart)),
+        carts: [...phoneContext.cartsById.values()].map((cart) =>
+          this.projectCart(cart, 'trusted_phone_purchase'),
+        ),
       });
     }
-    let combined = [...scopedIds]
-      .map((orderId) => phoneContext.purchasesByOrderId.get(orderId))
-      .filter((purchase): purchase is NonNullable<typeof purchase> => purchase !== undefined);
+    let combined = phonePurchasesForIds(phoneContext, scopedIds);
     // A failed optional source never erases ready facts; event-scoped facts
     // stay usable with honest partial coverage.
     let referenceResolution: 'matched' | 'unavailable' | 'not_requested' = 'not_requested';
@@ -2247,13 +2678,33 @@ export class InformationOrchestrator {
     for (const cart of phoneContext.cartsById.values()) {
       if (!cartCandidates.has(cart.cartId)) cartCandidates.set(cart.cartId, cart);
     }
-    const carts = this.filterCartCandidates([...cartCandidates.values()], request);
+    const carts = [...cartCandidates.values()];
     if (combined.length === 0 && carts.length === 0) {
+      const allRequestedSourcesRead = coverage.every((entry) =>
+        entry.status === 'completed' || entry.status === 'empty',
+      );
+      if (!request.orderId && requestedReference === null && allRequestedSourcesRead &&
+        failures.length === 0) {
+        return withLinked({
+          requestId: request.requestId,
+          kind: 'purchase' as const,
+          status: 'completed' as const,
+          resource: 'purchase_discovery' as const,
+          sourceCoverage: this.orderedCoverage(request.requestId, coverage),
+          purchases: [],
+          needsSelection: false,
+          accessMethod: 'trusted_phone_purchase' as const,
+          coverage: this.discoveryCoverage(coverage, seededIncomplete),
+          carts: [],
+        });
+      }
       return withLinked({
         requestId: request.requestId,
         kind: 'purchase' as const,
         status: 'failed' as const,
-        ...this.discoveryLookupFailure('trusted_phone', failures),
+        ...this.discoveryLookupFailure('trusted_phone', failures.length > 0
+          ? failures
+          : this.discoveryCoverageFailures(coverage)),
         accessMethod: 'trusted_phone_purchase' as const,
         sourceCoverage: this.orderedCoverage(request.requestId, coverage),
         ...(requestedReference
@@ -2275,7 +2726,7 @@ export class InformationOrchestrator {
         needsSelection: false,
         accessMethod: 'trusted_phone_purchase' as const,
         coverage: 'partial' as const,
-        carts: carts.map((cart) => this.projectCart(cart)),
+        carts: carts.map((cart) => this.projectCart(cart, 'trusted_phone_purchase')),
       });
     }
     return withLinked({
@@ -2296,7 +2747,7 @@ export class InformationOrchestrator {
         ? 'trusted_phone_event_purchase'
         : 'trusted_phone_purchase',
       coverage: this.discoveryCoverage(coverage, seededIncomplete),
-      carts: carts.map((cart) => this.projectCart(cart)),
+      carts: carts.map((cart) => this.projectCart(cart, 'trusted_phone_purchase')),
       ...(referenceResolution === 'not_requested'
         ? {}
         : {
@@ -2419,6 +2870,24 @@ export class InformationOrchestrator {
     };
   }
 
+  /** Preserve an unavailable/unauthorized/failed source when no records remain. */
+  private discoveryCoverageFailures(
+    coverage: readonly PurchaseSourceCoverage[],
+  ): AgentPurchaseLookupResult[] {
+    return coverage.flatMap((entry): AgentPurchaseLookupResult[] => {
+      if (entry.status === 'unauthorized') {
+        return [{ status: 'unauthorized', resource: entry.source, error: 'Source authorization was unavailable.' }];
+      }
+      if (entry.status === 'unavailable') {
+        return [{ status: 'route_unavailable', resource: entry.source, retryable: false, error: 'Source was unavailable.' }];
+      }
+      if (entry.status === 'failed') {
+        return [{ status: 'failed', resource: entry.source, retryable: true, failureKind: 'request_failed', error: 'Source read failed.' }];
+      }
+      return [];
+    });
+  }
+
   /**
    * One source contract: a phone-scoped purchase request reads exactly its
    * structured resource. Aspects select answer facts, never the route, and
@@ -2507,7 +2976,8 @@ export class InformationOrchestrator {
           'complete',
         );
     }
-    const lookupPromise = lookupResource === 'orders'
+    const lookupPromise = this.withCustomerRead(`agent.guest_${lookupResource}`, () =>
+      lookupResource === 'orders'
       ? phoneGateway.getGuestOrdersByPhone!({
           phone_extension: trustedPhone.phone_extension,
           phone_number: trustedPhone.phone_number,
@@ -2517,46 +2987,18 @@ export class InformationOrchestrator {
           phone_extension: trustedPhone.phone_extension,
           phone_number: trustedPhone.phone_number,
           orderId: lookupOrderId,
-        });
+        }),
+    ).catch((): AgentPhonePurchaseLookupResult => ({
+      status: 'failed',
+      resource: lookupResource,
+      retryable: true,
+      failureKind: 'request_failed',
+      error: 'Customer source read failed.',
+    }));
     phonePurchaseLookups.set(key, lookupPromise);
-    let lookup = await lookupPromise;
-    let coverage: 'complete' | 'partial' = 'complete';
-    let sourceResource: 'orders' | 'gift_purchases' = lookupResource;
-
-    // Gift purchases is the detailed route. If it is temporarily failing,
-    // one summary/status request can still be answered through guest orders.
-    // Discovery legs skip this cross-source fallback: both roots are read
-    // directly by the expansion, so a fallback here would only re-read.
-    if (
-      !skipReferenceResolution &&
-      lookupResource === 'gift_purchases' &&
-      this.isSummaryOrStatusRequest(request) &&
-      this.isRetryableLookupFailure(lookup) &&
-      phoneGateway.getGuestOrdersByPhone &&
-      this.capabilityAvailable('purchase.orders.read', true)
-    ) {
-      const fallbackKey = [
-        'orders',
-        trustedPhone.phone_extension,
-        trustedPhone.phone_number,
-        lookupOrderId ?? '*',
-      ].join(':');
-      const fallbackExisting = phonePurchaseLookups.get(fallbackKey);
-      const fallbackPromise = fallbackExisting ?? phoneGateway.getGuestOrdersByPhone({
-        phone_extension: trustedPhone.phone_extension,
-        phone_number: trustedPhone.phone_number,
-        orderId: lookupOrderId,
-      });
-      if (!fallbackExisting) {
-        phonePurchaseLookups.set(fallbackKey, fallbackPromise);
-      }
-      const fallback = await fallbackPromise;
-      if (fallback?.status === 'success' && fallback.purchases.length > 0) {
-        lookup = fallback;
-        coverage = 'partial';
-        sourceResource = 'orders';
-      }
-    }
+    const lookup = await lookupPromise;
+    const coverage: 'complete' | 'partial' = 'complete';
+    const sourceResource: 'orders' | 'gift_purchases' = lookupResource;
     return skipReferenceResolution
       ? rawLookup(lookup, sourceResource, coverage)
       : this.resolveCustomerTransactionLookup(
@@ -2643,74 +3085,62 @@ export class InformationOrchestrator {
     request: PurchaseRequest,
     snapshot: PhoneContextSnapshot,
   ): PurchaseInformation[] {
-    if (request.orderId) {
-      const purchase = snapshot.purchasesByOrderId.get(request.orderId);
-      return purchase && snapshot.purchaseSourceByOrderId.get(request.orderId) === 'event'
-        ? [purchase]
-        : [];
-    }
-    return [...snapshot.purchasesByOrderId.entries()]
-      .filter(([orderId]) => snapshot.purchaseSourceByOrderId.get(orderId) === 'event')
-      .map(([, purchase]) => purchase);
+    return [...snapshot.purchasesByOrderId.values()].filter((purchase) =>
+      purchase.recordSource === 'event_detail' &&
+      (!request.orderId || purchase.orderId === request.orderId),
+    );
   }
 
   private mergePhonePurchase(
     snapshot: PhoneContextSnapshot,
     incoming: PurchaseInformation,
-    source: 'orders' | 'gift_purchases' | 'event',
+    source: PurchaseRecordSource,
     partition: PurchasePartition = 'legacy_orders',
   ): void {
-    const current = snapshot.purchasesByOrderId.get(incoming.orderId);
-    const currentSource = snapshot.purchaseSourceByOrderId.get(incoming.orderId);
-    if (!current || !currentSource) {
-      snapshot.purchasesByOrderId.set(incoming.orderId, incoming);
-      snapshot.purchaseSourceByOrderId.set(incoming.orderId, source);
-      snapshot.purchasePartitionByOrderId.set(incoming.orderId, partition);
+    const stamped: PurchaseInformation = {
+      ...incoming,
+      recordSource: source,
+      accessScope: incoming.accessScope ?? 'trusted_phone_purchase',
+      ...(partition ? { partition } : {}),
+    };
+    const sameId = [...snapshot.purchasesByOrderId.values()].filter((purchase) =>
+      purchase.orderId === stamped.orderId,
+    );
+    const current = sameId.find((purchase) =>
+      purchase.recordSource === source &&
+      (purchase.partition ?? 'legacy_orders') === partition,
+    );
+    const conflicting = sameId.some((purchase) => hasPurchaseFactConflict(purchase, stamped));
+    if (conflicting) snapshot.inconsistentOrderIds.add(stamped.orderId);
+    if (current) {
+      if (!hasPurchaseFactConflict(current, stamped)) {
+        const outcome = reconcileTwoRecords(
+          current,
+          source,
+          partition,
+          stamped,
+          source,
+          partition,
+        );
+        snapshot.purchasesByOrderId.set(
+          phonePurchaseKey(current, source, partition),
+          outcome.canonical,
+        );
+        return;
+      }
+      let variant = 1;
+      while (snapshot.purchasesByOrderId.has(phonePurchaseKey(stamped, source, partition, variant))) {
+        variant += 1;
+      }
+      snapshot.purchasesByOrderId.set(
+        phonePurchaseKey(stamped, source, partition, variant),
+        stamped,
+      );
       return;
     }
-    const currentPartition = snapshot.purchasePartitionByOrderId.get(incoming.orderId) ?? 'legacy_orders';
-    const outcome = reconcileTwoRecords(
-      current,
-      currentSource,
-      currentPartition,
-      incoming,
-      source,
-      partition,
-    );
-    if (outcome.status === 'conflict') {
-      snapshot.inconsistentOrderIds.add(incoming.orderId);
-    }
-    snapshot.purchasesByOrderId.set(incoming.orderId, outcome.canonical);
-    snapshot.purchaseSourceByOrderId.set(
-      incoming.orderId,
-      outcome.provenance['orderId']?.source ?? source,
-    );
-    snapshot.purchasePartitionByOrderId.set(
-      incoming.orderId,
-      outcome.canonical.partition ?? partition,
-    );
-  }
-
-  private mergePurchaseRecords(
-    preferred: PurchaseInformation,
-    fallback: PurchaseInformation,
-  ): PurchaseInformation {
-    const outcome = reconcileTwoRecords(
-      fallback,
-      'orders',
-      fallback.partition ?? 'legacy_orders',
-      preferred,
-      'gift_purchases',
-      preferred.partition ?? 'legacy_orders',
-    );
-    return outcome.canonical;
-  }
-
-  private purchaseRecordsConflict(
-    left: PurchaseInformation,
-    right: PurchaseInformation,
-  ): boolean {
-    return detectConflictingFields(left, right).length > 0;
+    const key = phonePurchaseKey(stamped, source, partition);
+    const exactDuplicate = sameId.some((purchase) => JSON.stringify(purchase) === JSON.stringify(stamped));
+    if (!exactDuplicate) snapshot.purchasesByOrderId.set(key, stamped);
   }
 
   private reconcilePhoneContextResults(
@@ -2720,12 +3150,6 @@ export class InformationOrchestrator {
   ): InformationTaskResult[] {
     const requestById = new Map(requests.map((request) => [request.requestId, request]));
     return results.map((result) => {
-      if (result.status === 'completed' && result.kind === 'associated_event') {
-        return {
-          ...result,
-          result: this.removePurchaseDataFromEventResult(result.result),
-        };
-      }
       if (
         result.status !== 'completed' ||
         result.kind !== 'purchase' ||
@@ -2738,39 +3162,14 @@ export class InformationOrchestrator {
       if (!request || request.kind !== 'purchase') {
         return result;
       }
-      const purchases = result.purchases.map((projected) => {
-        const canonical = snapshot.purchasesByOrderId.get(projected.orderId);
-        if (!canonical) return projected;
-        // Partition conflicts (same order id in pending and completed) never
-        // become a confident preferred status: strip settlement-critical
-        // fields so the reply must request review instead of asserting one side.
-        const conflicted = snapshot.inconsistentOrderIds.has(projected.orderId);
-        const effective = conflicted
-          ? { ...canonical, paymentStatus: null, grandTotal: null, paymentMethod: null, amountDisclosure: null }
-          : canonical;
-        return this.projectPurchase(effective, request, {
-          requestedCustomerTransactionNumber:
-            result.requestedCustomerTransactionNumber ?? null,
-        });
-      });
       return {
         ...result,
-        purchases,
-        coverage: purchases.some((purchase) =>
+        coverage: result.purchases.some((purchase) =>
           snapshot.inconsistentOrderIds.has(purchase.orderId))
           ? 'inconsistent'
           : result.coverage ?? 'complete',
       };
     });
-  }
-
-  private isSummaryOrStatusRequest(request: PurchaseRequest): boolean {
-    return request.aspects.every((aspect) =>
-      aspect === 'summary' ||
-      aspect === 'payment_status' ||
-      aspect === 'shipping' ||
-      aspect === 'decline'
-    );
   }
 
   private filterPurchaseCandidates(
@@ -2807,87 +3206,6 @@ export class InformationOrchestrator {
     };
   }
 
-  private isCurrentPaymentQuestion(request: PurchaseRequest): boolean {
-    return request.aspects.some((aspect) =>
-      aspect === 'payment_status' || aspect === 'payment_details' || aspect === 'summary',
-    );
-  }
-
-  private requestDateSelector(request: PurchaseRequest): string | null {
-    const candidate = request as PurchaseRequest & {
-      date?: string | null;
-      eventDate?: string | null;
-    };
-    const value = candidate.eventDate ?? candidate.date;
-    return typeof value === 'string' && value.trim() ? this.dateReference(value) : null;
-  }
-
-  private dateReference(value: string): string {
-    const isoDate = value.match(/\b\d{4}-\d{2}-\d{2}\b/u)?.[0];
-    return isoDate ?? value.trim().toLocaleLowerCase('es');
-  }
-
-  private eventMatches(
-    eventName: string | null | undefined,
-    hint: string | null | undefined,
-  ): boolean {
-    return sharedEventMatches(eventName, hint);
-  }
-
-  private filterCartCandidates(
-    carts: CartInformation[],
-    request: PurchaseRequest,
-  ): CartInformation[] {
-    const hasEventSelector = Boolean(request.eventHint?.trim());
-    const amount = request.amount;
-    // Mirror purchase guard: when the unique pending order is selected, the reported amount is payment
-    // evidence, not cart identity. Do not amount-filter the same-event cart in that typed case.
-    // Amount+eventHint selector behavior remains unchanged. Residual edge documented in filterPurchaseCandidates.
-    const skipAmountFilter =
-      !request.orderId &&
-      !hasEventSelector &&
-      amount !== null &&
-      amount !== undefined &&
-      this.isCurrentPaymentQuestion(request);
-    if (hasEventSelector && amount !== null && amount !== undefined) {
-      const eventMatched = carts.filter((cart) =>
-        this.eventMatches(cart.eventName, request.eventHint ?? ''),
-      );
-      if (eventMatched.length === 1) {
-        const amountMatchesAny = carts.some(
-          (cart) => typeof cart.subtotal === 'number' && Math.abs(cart.subtotal - amount) < 0.005,
-        );
-        if (!amountMatchesAny) {
-          return eventMatched;
-        }
-      }
-    }
-    return carts.filter((cart) => {
-      if (
-        hasEventSelector &&
-        !this.eventMatches(cart.eventName, request.eventHint ?? '')
-      ) {
-        return false;
-      }
-      if (!skipAmountFilter && amount !== null && amount !== undefined) {
-        if (typeof cart.subtotal !== 'number' || Math.abs(cart.subtotal - amount) >= 0.005) {
-          return false;
-        }
-      }
-      const requestedDate = this.requestDateSelector(request);
-      if (requestedDate && (!cart.eventDate || this.dateReference(cart.eventDate) !== requestedDate)) {
-        return false;
-      }
-      return true;
-    });
-  }
-
-  private isRetryableLookupFailure(
-    lookup: AgentPhonePurchaseLookupResult,
-  ): boolean {
-    return lookup.status === 'retryable_failure';
-  }
-
   private async lookupPurchase(
     request: PurchaseRequest,
     token: string,
@@ -2904,6 +3222,12 @@ export class InformationOrchestrator {
       throw new Error('lookupPurchase reads one established source; discovery legs narrow first.');
     }
     const partition = request.resource;
+    if (
+      (partition === 'orders' && !this.dependencies.agentGateway.getOrders) ||
+      (partition === 'gift_purchases' && !this.dependencies.agentGateway.getGiftPurchases)
+    ) {
+      return undefined;
+    }
     if (!this.capabilityAvailable(
       partition === 'orders' ? 'purchase.orders.read' : 'purchase.gift_detail.read',
       true,
@@ -2923,241 +3247,106 @@ export class InformationOrchestrator {
       if (existing) {
         return await existing;
       }
-      const pending = (async (): Promise<AgentPurchaseLookupResult | undefined> => (
+      const operation = partition === 'orders' ? 'agent.orders' : 'agent.gift_purchases';
+      const pending = this.withCustomerRead(operation, async () => (
         partition === 'orders'
-          ? await this.dependencies.agentGateway.getOrders?.({ token, orderId })
-          : await this.dependencies.agentGateway.getGiftPurchases?.({
-            token,
-            orderId,
-          })
-      ))();
+          ? await this.dependencies.agentGateway.getOrders!({ token, orderId })
+          : await this.dependencies.agentGateway.getGiftPurchases!({ token, orderId })
+      )).catch((): AgentPurchaseLookupResult => ({
+        status: 'failed',
+        resource: partition,
+        retryable: true,
+        failureKind: 'request_failed',
+        error: 'Customer source read failed.',
+      }));
       cache.set(scopeKey, pending);
       return await pending;
     }
-    return partition === 'orders'
-      ? await this.dependencies.agentGateway.getOrders?.({ token, orderId })
-      : await this.dependencies.agentGateway.getGiftPurchases?.({
-          token,
-          orderId,
-        });
-  }
-
-  private removePurchaseDataFromEventResult(
-    result: UserEventLookupResult,
-  ): UserEventLookupResult {
-    return {
-      ...result,
-      events: result.events.map((event) => ({
-        ...event,
-        amountCollected: null,
-        amountTransferred: null,
-        transactionsCount: null,
-        orders: [],
-      })),
-      counts: {
-        ...result.counts,
-        recentOrders: 0,
-      },
-    };
+    return this.withCustomerRead(
+      partition === 'orders' ? 'agent.orders' : 'agent.gift_purchases',
+      () => partition === 'orders'
+        ? this.dependencies.agentGateway.getOrders!({ token, orderId })
+        : this.dependencies.agentGateway.getGiftPurchases!({ token, orderId }),
+    ).catch((): AgentPurchaseLookupResult => ({
+      status: 'failed',
+      resource: partition,
+      retryable: true,
+      failureKind: 'request_failed',
+      error: 'Customer source read failed.',
+    }));
   }
 
   private projectPurchase(
     purchase: PurchaseInformation,
-    request: PurchaseRequest,
+    _request: PurchaseRequest,
     options?: {
-      /**
-       * S2 actual-request transaction strip. The model-facing projection
-       * carries the internal customer transaction number only when the
-       * read scope authorizes it (authenticated account) or the record
-       * number exactly matches the customer-supplied reference the lookup
-       * resolved (same equality filterPurchaseCandidates uses). Every
-       * other path projects null so a denied transaction-reference
-       * disclosure cannot leak through model input. The backend record
-       * itself is untouched; only the projected copy is stripped.
-       */
       readonly transactionReferenceAuthorized?: boolean;
       readonly requestedCustomerTransactionNumber?: string | null;
     },
   ): PurchaseInformation {
-    const aspectSet = new Set(request.aspects);
-    const sensitive = new Set<SensitivePurchaseField>(request.sensitiveFields);
-    const includePayment = aspectSet.has('payment_details');
-    const physicalFulfillment = hasPhysicalFulfillment(purchase);
-    // Answer-facet closure (evidence-preserving handoff Packet A): a balance
-    // or validation question needs total/paid availability even when it
-    // arrives as payment_status or validation_window, not only summary or
-    // payment time. Paid stays null when unknown, never zero.
-    const includeAmount = aspectSet.has('summary') ||
-      includePayment ||
-      aspectSet.has('payment_status') ||
-      aspectSet.has('validation_window');
-    const disclosedTotal = includeAmount ? purchase.grandTotal : null;
-    const disclosedPaid = includeAmount ? purchase.payment?.amount ?? null : null;
-    // Payment type grounds the pending-validation window message, so it is
-    // disclosed for payment_details requests and pending purchases. Approved
-    // summaries omit it: status answers never need the method type, and the
-    // accountless summary gate forbids introducing card wording.
-    const isPendingPurchase = purchase.paymentStatus?.trim().toLocaleLowerCase('en') === 'pending';
-    const disclosedMethod = includePayment || isPendingPurchase
-      ? purchase.paymentMethod ?? purchase.payment?.method ?? null
-      : null;
-    const shouldDiscloseAmount =
-      disclosedTotal !== null ||
-      disclosedPaid !== null ||
-      aspectSet.has('validation_window') ||
-      aspectSet.has('payment_status');
-    const amountDisclosure = shouldDiscloseAmount
-      ? {
-          total: disclosedTotal,
-          paid: disclosedPaid,
-          currency: purchase.currency ?? null,
-          currencySymbol: purchase.currency ? purchase.currencySymbol ?? null : null,
-          paymentMethod: disclosedMethod,
-          presentation: purchase.currency
-            ? 'explicit_currency' as const
-            : 'recorded_method_no_currency' as const,
-        }
-      : null;
-    // Gift fulfillment evidence. Summary, shipping and payment_status
-    // share one item projection preserving authorized giftName, quantity,
-    // amount, rowTotal and raw type with derived fulfillment. A
-    // credit-receipt question ("did hosts receive it?") needs payment state
-    // plus item fulfillment to keep mechanism distinct from posting; amounts
-    // support gift identification, matching and follow-ups; output relevance
-    // stays model-controlled and no amount-due arithmetic is performed here.
-    // All other aspects omit items so unrelated turns carry no fulfillment
-    // facts.
-    const includeItems = aspectSet.has('summary') ||
-      aspectSet.has('shipping') ||
-      aspectSet.has('payment_status');
-    const projectedItems = includeItems
-      ? purchase.items.map((item) => ({
-        giftName: item.giftName ?? null,
-        quantity: item.quantity ?? null,
-        amount: item.amount ?? null,
-        rowTotal: item.rowTotal ?? null,
-        type: item.type ?? null,
-        fulfillment: mapItemFulfillment(item.type),
-      }))
-      : [];
-    const creditFulfillmentPolicy = creditFulfillmentPolicyForItems(projectedItems);
-
+    const items = purchase.items.map((item) => ({
+      ...item,
+      fulfillment: mapItemFulfillment(item.type),
+    }));
+    const payment = purchase.payment
+      ? (() => {
+        const {
+          voucherImage,
+          paymentId: _paymentId,
+          ...facts
+        } = purchase.payment;
+        void _paymentId;
+        return {
+          ...facts,
+          ...(voucherImage !== undefined
+            ? {
+              voucherProvided: voucherImage === null
+                ? null
+                : Array.isArray(voucherImage)
+                  ? voucherImage.length > 0
+                  : voucherImage.length > 0,
+            }
+            : {}),
+        };
+      })()
+      : purchase.payment;
+    const {
+      customerTransactionNumber: _transactionReference,
+      adminComment: _adminComment,
+      ...customerFacts
+    } = purchase;
+    void _transactionReference;
+    void _adminComment;
+    const creditFulfillmentPolicy = creditFulfillmentPolicyForItems(items);
     return {
-      orderId: purchase.orderId,
-      // Per-record provenance survives projection sparsely: the phone
-      // partition and any carried conflict/currency markers ride the record
-      // so merged sources never masquerade as one provenance.
-      ...(purchase.partition ? { partition: purchase.partition } : {}),
-      ...(purchase.currencyConflict === true ? { currencyConflict: true as const } : {}),
-      ...(purchase.itemSourceConflict ? { itemSourceConflict: purchase.itemSourceConflict } : {}),
-      eventId: purchase.eventId ?? null,
-      currency: null,
-      customerTransactionNumber: transactionReferenceVisible(purchase, options) ? purchase.customerTransactionNumber ?? null : null,
-      // Payment/posting state is never masked as unknown solely because the
-      // question used another facet: shipping and validation_window carry it
-      // alongside summary/payment_status/decline, so a backend approved is
-      // never relabeled unavailable on a shipping question.
-      paymentStatus:
-        aspectSet.has('summary') ||
-          aspectSet.has('payment_status') ||
-          aspectSet.has('decline') ||
-          aspectSet.has('shipping') ||
-          aspectSet.has('validation_window')
-          ? purchase.paymentStatus
-          : null,
-      // Dispatch state applies only with affirmative physical evidence: a
-      // physical gift never implies dispatch on its own (null stays null, no
-      // recipient is derived here), and a non-physical record withholds the
-      // order-level state since no gift shipment applies. Item fulfillment
-      // carries shipment applicability per item; this field carries the
-      // recorded state only when a shipment can exist.
-      shippingStatus:
-        physicalFulfillment &&
-        (aspectSet.has('summary') || aspectSet.has('shipping'))
-          ? purchase.shippingStatus
-          : null,
-      grandTotal: null,
-      paymentMethod: null,
-      amountDisclosure,
+      ...customerFacts,
+      recordSource: purchase.recordSource ?? (
+        _request.resource === 'gift_purchases' ? 'gift_purchases' : 'orders'
+      ),
+      accessScope: purchase.accessScope ?? (options?.transactionReferenceAuthorized
+        ? 'authenticated_account'
+        : 'trusted_phone_purchase'),
+      customerTransactionNumber: transactionReferenceVisible(purchase, options)
+        ? purchase.customerTransactionNumber ?? null
+        : null,
+      items,
+      payment,
+      dedication: purchase.dedication ? { ...purchase.dedication } : null,
+      thanks: purchase.thanks ? { ...purchase.thanks } : purchase.thanks,
       paymentValidationExpectation: pendingPaymentValidationExpectation(purchase),
-      eventName: purchase.eventName,
-      eventDate: purchase.eventDate,
-      eventUrl: purchase.eventUrl,
-      createdAt: purchase.createdAt,
-      items: projectedItems,
       ...(creditFulfillmentPolicy !== undefined ? { creditFulfillmentPolicy } : {}),
-      ...(includePayment
-        ? {
-            payment: purchase.payment
-              ? {
-                  method: null,
-                  amount: null,
-                  paidAt: purchase.payment.paidAt,
-                  ...(sensitive.has('payment_id')
-                    ? { paymentId: purchase.payment.paymentId ?? null }
-                    : {}),
-                  ...(sensitive.has('transaction_status')
-                    ? { transactionStatus: purchase.payment.transactionStatus ?? null }
-                    : {}),
-                  ...(sensitive.has('gateway_message')
-                    ? { gatewayMessage: purchase.payment.gatewayMessage ?? null }
-                    : {}),
-                  ...(sensitive.has('operation_code')
-                    ? { operationCode: purchase.payment.operationCode ?? null }
-                    : {}),
-                  // Bank routing identifiers and uploaded vouchers are never
-                  // part of the model-facing evidence, even when requested.
-                }
-              : null,
-          }
-        : {}),
-      ...(aspectSet.has('decline')
-        ? {
-            declineCode: purchase.declineCode ?? null,
-            adminComment: purchase.adminComment ?? null,
-          }
-        : {}),
-      ...(aspectSet.has('dedication')
-        ? {
-            dedication: purchase.dedication
-              ? {
-                  ...purchase.dedication,
-                  physicalStatus: physicalFulfillment
-                    ? purchase.dedication.physicalStatus
-                    : null,
-                }
-              : null,
-          }
-        : {}),
-      ...(aspectSet.has('thanks')
-        ? {
-            thanks: purchase.thanks ?? null,
-            isThanked: purchase.isThanked ?? null,
-          }
-        : {}),
     };
   }
 
-  private projectCart(cart: CartInformation): CartInformation {
+  private projectCart(
+    cart: CartInformation,
+    accessScope: string,
+  ): CartInformation {
     return {
-      cartId: cart.cartId,
-      status: cart.status,
-      wasAbandoned: cart.wasAbandoned,
-      eventId: cart.eventId ?? null,
-      eventName: cart.eventName ?? null,
-      eventDate: cart.eventDate ?? null,
-      subtotal: null,
-      amountDisclosure: null,
-      giftsQuantity: cart.giftsQuantity ?? null,
-      // Offset-less timestamps are normalized to null by the gateway.
-      createdAt: cart.createdAt ?? null,
-      items: cart.items.map((item) => ({
-        giftName: item.giftName ?? null,
-        quantity: item.quantity ?? null,
-        amount: item.amount ?? null,
-        rowTotal: item.rowTotal ?? null,
-        type: item.type ?? null,
-      })),
+      ...cart,
+      recordSource: 'orders',
+      accessScope: cart.accessScope ?? accessScope,
+      items: cart.items.map((item) => ({ ...item })),
     };
   }
 
@@ -3211,72 +3400,6 @@ export class InformationOrchestrator {
         score: entry.score,
         contentHash: this.hash(entry.text),
       }));
-    }
-    // Packet O5 typed purchase facts for judge evidence (supersedes the
-    // R05 filename/score bridge). One entry per candidate-visible purchase:
-    // amounts, currency presence, method, status, shipment state, per-item
-    // facts and dedication travel as typed purchaseFact fields exactly as
-    // projected to the responder; order ids, phones, emails and reference
-    // values never travel (reference presence only). filename carries no
-    // event label and score carries no amount for purchase entries;
-    // contentHash still covers the fact tuple as the verifiable pair. No
-    // product behavior change: reply projection is untouched, only the
-    // summary evidence fills.
-    if (result.kind === 'purchase') {
-      return result.purchases.map((purchase) => {
-        const total = purchase.amountDisclosure?.total ?? purchase.grandTotal ?? null;
-        const currency = purchase.amountDisclosure?.currency ?? purchase.currency ?? null;
-        const currencySymbol = purchase.amountDisclosure?.currencySymbol ?? purchase.currencySymbol ?? null;
-        const paymentMethod = purchase.amountDisclosure?.paymentMethod ?? purchase.paymentMethod ?? null;
-        const dedication = purchase.dedication ?? null;
-        const items = purchase.items.map((item) => ({
-          name: item.giftName ?? null,
-          quantity: item.quantity ?? null,
-          amount: item.amount ?? null,
-          rowTotal: item.rowTotal ?? null,
-          fulfillment: item.fulfillment?.kind ?? null,
-        }));
-        const factTuple = [
-          total === null ? 'monto_desconocido' : `monto_${total}`,
-          currency === null ? 'moneda_ausente' : `moneda_${currency}`,
-          `metodo_${paymentMethod ?? 'desconocido'}`,
-          `estado_${purchase.paymentStatus ?? 'desconocido'}`,
-          `envio_${purchase.shippingStatus ?? 'desconocido'}`,
-          `evento_${purchase.eventName ?? 'sin_etiqueta'}`,
-          `fecha_${purchase.eventDate ?? 'desconocida'}`,
-          `dedicatoria_${dedication?.message ?? 'ausente'}`,
-          `articulos_${items.map((item) =>
-            [item.name ?? '?', item.quantity ?? '?', item.amount ?? '?', item.rowTotal ?? '?', item.fulfillment ?? '?'].join(','),
-          ).join(';')}`,
-        ].join('|');
-        return {
-          fileId: '',
-          filename: '',
-          score: 0,
-          contentHash: this.hash(factTuple),
-          purchaseFact: {
-            eventLabel: purchase.eventName ?? null,
-            total,
-            currency,
-            currencySymbol,
-            paymentMethod,
-            paymentStatus: purchase.paymentStatus ?? null,
-            shippingStatus: purchase.shippingStatus ?? null,
-            eventDate: purchase.eventDate ?? null,
-            createdAt: purchase.createdAt ?? null,
-            referencePresent: typeof purchase.customerTransactionNumber === 'string' &&
-              purchase.customerTransactionNumber.length > 0,
-            dedication: dedication
-              ? {
-                message: dedication.message ?? null,
-                sendPhysical: dedication.sendPhysical ?? null,
-                physicalStatus: dedication.physicalStatus ?? null,
-              }
-              : null,
-            items,
-          },
-        };
-      });
     }
     return [];
   }

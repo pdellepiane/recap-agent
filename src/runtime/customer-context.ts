@@ -2,32 +2,18 @@ import type {
   CartInformation,
   InformationExecutionSummary,
   InformationTaskResult,
-  PendingInformationRequest,
-  PurchaseAspect,
   PurchaseInformation,
   PurchaseItem,
   PurchaseItemSourceAlternative,
   PurchaseItemSourceConflict,
-  PurchasePartition,
   PurchaseSourceCoverage,
 } from '../core/information';
-import type { UserEventLookupResult } from './provider-gateway';
-import {
-  enrichmentBounds,
-  enrichmentVisitKey,
-  purchaseItemConflictAlternativeLimit,
-} from '../core/information';
-import { eventMatches } from './event-matching';
+import type { UserEventLookupResult, UserEventSummary } from './provider-gateway';
+import { enrichmentVisitKey } from '../core/information';
 import {
   creditFulfillmentPolicyForItems,
   mapItemFulfillment,
 } from './purchase-disclosure-policy';
-import {
-  disclosedPurchaseCurrency,
-  disclosedPurchaseMethod,
-  disclosedPurchasePaid,
-  disclosedPurchaseTotal,
-} from './purchase-reply-projector';
 
 /**
  * L4 Customer operations context assembly.
@@ -37,15 +23,15 @@ import {
  * them through Promise.allSettled); each section carries its own load
  * status so an unrelated slow or failed optional lookup never blocks a
  * ready answer, while a failed required section stays visible as
- * unavailable/failed. Only common references plus question-relevant detail
- * are projected to the model; the runtime snapshot may hold more fetched
- * data than the model ever sees.
+ * unavailable/failed. The serialized profile retains every authorized fact
+ * regardless of extraction choices.
  */
 
 export const customerSectionStatusValues = [
   'not_requested',
   'loading',
   'ready',
+  'empty',
   'not_found',
   'unavailable',
   'failed',
@@ -79,6 +65,9 @@ export type IdentityAccessSection = CustomerSectionBase & {
   readonly section: 'identity_access';
   readonly customerRef: string | null;
   readonly displayName: string | null;
+  readonly email: string | null;
+  readonly phone: string | null;
+  readonly authorizedScopes: readonly string[];
   readonly guestEventIds: readonly number[];
   readonly hostEventIds: readonly number[];
 };
@@ -92,42 +81,11 @@ export type CurrentContextSection = CustomerSectionBase & {
   readonly unresolvedCandidateEventIds: readonly (number | string)[];
 };
 
-export type PurchaseCartSummary = {
-  readonly orderId: string;
-  readonly eventId: number | string | null;
-  readonly eventName: string | null;
-  readonly paymentStatus: string | null;
-  readonly grandTotal: number | null;
-  /**
-   * Per-record provenance. Phone-scoped order candidates carry their backend
-   * partition; account reads omit it. Sparse: absent when unknown, never
-   * invented. Source-level coverage travels once per section, not per record.
-   */
-  readonly partition?: PurchasePartition;
-  /**
-   * Lane A explicit balance distinction. The sourced order total never
-   * reads as an amount owed: paid/remaining availability travels with it,
-   * unknown stays unknown, and a missing payment record never reads as
-   * paid=0. Raw grandTotal above stays available for total questions.
-   * Method travels sparsely for pending balances so the answer can name
-   * the registered method family without inventing currency.
-   */
-  readonly totalAvailability?: 'available' | 'unknown';
-  readonly paidAmount?: number | null;
-  readonly paidAvailability?: 'available' | 'unknown';
-  readonly remaining?: null;
-  readonly remainingVerifiable?: false;
-  readonly currencyAvailability?: 'available' | 'unknown';
-  readonly method?: string | null;
-  readonly methodAvailability?: 'available' | 'unknown';
-};
-
 export type PurchasesCartsSection = CustomerSectionBase & {
   readonly section: 'purchases_carts';
-  readonly purchases: readonly PurchaseCartSummary[];
+  /** One canonical record body per stable purchase identity and source. */
+  readonly purchases: readonly PurchaseInformation[];
   readonly carts: readonly CartInformation[];
-  /** Full records stay runtime-only; only matched records project detail. */
-  readonly detailedPurchases: readonly PurchaseInformation[];
   /**
    * Per-source coverage for discovery expansions behind this section, in
    * stable source order. Absent when no leg reported coverage. Partial or
@@ -136,20 +94,8 @@ export type PurchasesCartsSection = CustomerSectionBase & {
   readonly sourceCoverage?: readonly PurchaseSourceCoverage[];
 };
 
-export type InvitationEventSummary = {
-  readonly eventId: number | string | null;
-  readonly eventName: string | null;
-  readonly role: 'guest' | 'host' | 'owner' | null;
-  readonly rsvpState: 'pending' | 'attending' | 'declining' | 'unknown';
-  /**
-   * P3 fact parity: server event datetime (date + hour when the backend
-   * provides time). Sparse: present only when the completed result reports
-   * it, so event-fact answers read date/hour from the profile instead of a
-   * second facts payload.
-   */
-  readonly eventDatetime?: string;
-  readonly address: CustomerAddress | null;
-};
+/** Existing event records retain their guest/host, venue, moments and metadata fields. */
+export type InvitationEventSummary = UserEventSummary;
 
 export type InvitationsEventsSection = CustomerSectionBase & {
   readonly section: 'invitations_events';
@@ -232,57 +178,6 @@ export function classifyAddress(args: {
   };
 }
 
-/**
- * Venue parity: resolved moment locationDescription/locationReference maps
- * into the existing CustomerAddress.street. Moments are position-ordered; a
- * single venue moment keeps the plain `description, reference` form while
- * multiple venue moments keep labels (`first; Label: parts`) so ceremony
- * and reception never mix. One mapping, no new field, single serialization.
- * Nothing invented: null when no moment carries venue, country never used
- * as street.
- */
-function resolveVenueStreet(event: {
-  readonly detail?: {
-    readonly moments?: readonly {
-      readonly label?: string | null;
-      readonly locationDescription?: string | null;
-      readonly locationReference?: string | null;
-      readonly position?: number | null;
-    }[] | null;
-  } | null;
-}): string | null {
-  const moments = event.detail?.moments ?? [];
-  const ordered = [...moments].sort(
-    (a, b) => (a.position ?? 0) - (b.position ?? 0),
-  );
-  const venueMoments = ordered.filter(
-    (moment) =>
-      (moment.locationDescription?.trim() ?? '') !== '' ||
-      (moment.locationReference?.trim() ?? '') !== '',
-  );
-  if (venueMoments.length === 0) return null;
-  const venueParts = (moment: (typeof venueMoments)[number]): string | null => {
-    const parts = [
-      moment.locationDescription?.trim() || null,
-      moment.locationReference?.trim() || null,
-    ].filter((part): part is string => part !== null && part !== '');
-    if (parts.length === 0) return null;
-    return parts.join(', ');
-  };
-  const firstMoment = venueMoments[0];
-  if (firstMoment === undefined) return null;
-  const first = venueParts(firstMoment);
-  if (first === null) return null;
-  if (venueMoments.length === 1) return first;
-  const labeled = venueMoments.slice(1).map((moment) => {
-    const parts = venueParts(moment);
-    if (parts === null) return null;
-    const label = moment.label?.trim() ? moment.label.trim() : null;
-    return label !== null ? `${label}: ${parts}` : parts;
-  }).filter((entry): entry is string => entry !== null);
-  return labeled.length > 0 ? `${first}; ${labeled.join('; ')}` : first;
-}
-
 export type CustomerContextSnapshot = {
   readonly identityAccess: IdentityAccessSection;
   readonly currentContext: CurrentContextSection;
@@ -290,12 +185,23 @@ export type CustomerContextSnapshot = {
   readonly invitationsEvents: InvitationsEventsSection;
   readonly actionOutcomes: ActionOutcomesSection;
   readonly timingsMs: Readonly<Record<string, number>>;
+  /** Internal, turn-scoped instrumentation; omitted from model projections. */
+  readonly readMetrics?: CustomerReadMetrics;
+};
+
+export type CustomerReadMetrics = {
+  readonly totalReads: number;
+  readonly peakConcurrency: number;
+  readonly readsByOperation: Readonly<Record<string, number>>;
 };
 
 export type IdentityEvidence = {
   /** Backend customer reference (id, token hash, phone E.164). Never a name. */
   readonly customerRef: string | null;
   readonly displayName?: string | null;
+  readonly email?: string | null;
+  readonly phone?: string | null;
+  readonly authorizedScopes?: readonly string[];
   readonly scope: string | null;
   readonly source: string | null;
   readonly fetchedAt?: string | null;
@@ -350,6 +256,33 @@ function emptyBase(): Pick<
 type PurchaseResult = Extract<InformationTaskResult, { kind: 'purchase' }>;
 type EventResult = Extract<InformationTaskResult, { kind: 'associated_event' }>;
 
+function purchaseFromUserEventOrder(
+  order: NonNullable<UserEventLookupResult['recentOrders']>[number],
+  accessScope: string | null,
+): PurchaseInformation | null {
+  if (order.id === null) return null;
+  return {
+    orderId: String(order.id),
+    recordSource: 'user_lookup',
+    accessScope,
+    eventId: order.eventId ?? null,
+    currency: order.currency ?? null,
+    currencySymbol: order.currencySymbol ?? null,
+    customerTransactionNumber: order.incrementId,
+    paymentStatus: order.paymentStatus,
+    shippingStatus: order.shippingStatus,
+    grandTotal: order.grandTotal,
+    paymentMethod: order.paymentMethod,
+    eventName: order.eventName ?? null,
+    eventDate: order.eventDate ?? null,
+    eventUrl: order.eventUrl ?? null,
+    createdAt: order.createdAt,
+    items: order.giftType
+      ? [{ giftName: null, quantity: null, amount: null, rowTotal: null, type: order.giftType }]
+      : [],
+  };
+}
+
 function statusForResult(
   result: InformationTaskResult | undefined,
   summary: InformationExecutionSummary | undefined,
@@ -358,11 +291,13 @@ function statusForResult(
     return { status: 'not_requested', completeness: null };
   }
   if (result.status === 'completed') {
-    if (summary.outcomeCode === 'completed_without_results') {
-      return { status: 'not_found', completeness: null };
-    }
+    const hasFacts = result.kind === 'purchase'
+      ? result.purchases.length > 0 || (result.carts?.length ?? 0) > 0
+      : result.kind === 'associated_event'
+        ? result.result.events.length > 0 || (result.result.recentOrders?.length ?? 0) > 0
+        : result.evidence.length > 0;
     return {
-      status: 'ready',
+      status: hasFacts ? 'ready' : 'empty',
       completeness: summary.coverage === 'partial' || summary.coverage === 'inconsistent'
         ? 'partial'
         : 'complete',
@@ -371,11 +306,7 @@ function statusForResult(
   if (result.status === 'needs_input') {
     return { status: 'unavailable', completeness: null };
   }
-  if (
-    result.status === 'failed' &&
-    result.failureKind === 'not_found' &&
-    result.accessMethod !== undefined
-  ) {
+  if (result.status === 'failed' && result.failureKind === 'not_found') {
     // A scoped phone lookup that succeeded but found no association is an
     // authoritative absence, not a transport failure.
     return { status: 'not_found', completeness: null };
@@ -389,41 +320,6 @@ function statusForResult(
     return { status: 'unavailable', completeness: null };
   }
   return { status: 'failed', completeness: null };
-}
-
-/**
- * Lane A explicit balance markers for the canonical purchase summary.
- * Sourced through the existing disclosure readers (disclosure-first total,
- * paid, method and currency): no arithmetic, no invented currency, and a
- * missing payment record stays unknown, never zero.
- */
-function purchaseBalanceMarkers(
-  purchase: PurchaseInformation,
-): Pick<
-  PurchaseCartSummary,
-  | 'totalAvailability'
-  | 'paidAmount'
-  | 'paidAvailability'
-  | 'remaining'
-  | 'remainingVerifiable'
-  | 'currencyAvailability'
-  | 'method'
-  | 'methodAvailability'
-> {
-  const total = disclosedPurchaseTotal(purchase);
-  const paid = disclosedPurchasePaid(purchase);
-  const currency = disclosedPurchaseCurrency(purchase);
-  const method = disclosedPurchaseMethod(purchase);
-  return {
-    totalAvailability: total !== null ? 'available' : 'unknown',
-    paidAmount: paid,
-    paidAvailability: paid !== null ? 'available' : 'unknown',
-    remaining: null,
-    remainingVerifiable: false,
-    currencyAvailability: currency !== null ? 'available' : 'unknown',
-    method,
-    methodAvailability: method !== null ? 'available' : 'unknown',
-  };
 }
 
 /**
@@ -449,10 +345,14 @@ export function assembleCustomerContext(args: {
   const eventResults = results.filter(
     (result): result is EventResult => result.kind === 'associated_event',
   );
+  const authorizedUser = eventResults.find(
+    (result) => result.status === 'completed' && result.result.user !== null,
+  );
+  const eventUser = authorizedUser?.status === 'completed' ? authorizedUser.result.user : null;
   const purchaseSummaries = purchaseResults.map((result) => summaryById.get(result.requestId));
   const eventSummaries = eventResults.map((result) => summaryById.get(result.requestId));
 
-  const identityAccess: IdentityAccessSection = args.identity?.customerRef
+  const identityAccess: IdentityAccessSection = args.identity?.scope
     ? {
       section: 'identity_access',
       status: 'ready',
@@ -463,7 +363,12 @@ export function assembleCustomerContext(args: {
       paginationExhausted: null,
       historyLimit: null,
       customerRef: args.identity.customerRef,
-      displayName: args.identity.displayName ?? null,
+      displayName: args.identity.customerRef
+        ? args.identity.displayName ?? eventUser?.fullName ?? null
+        : null,
+      email: args.identity.email ?? eventUser?.email ?? null,
+      phone: args.identity.phone ?? eventUser?.fullPhone ?? null,
+      authorizedScopes: args.identity.authorizedScopes ?? [args.identity.scope],
       guestEventIds: args.identity.guestEventIds ?? [],
       hostEventIds: args.identity.hostEventIds ?? [],
     }
@@ -475,6 +380,9 @@ export function assembleCustomerContext(args: {
       ...emptyBase(),
       customerRef: null,
       displayName: null,
+      email: null,
+      phone: null,
+      authorizedScopes: [],
       guestEventIds: [],
       hostEventIds: [],
     };
@@ -509,28 +417,66 @@ export function assembleCustomerContext(args: {
     statusForResult(result, purchaseSummaries[index]),
   );
   const purchasePagination = paginationFor(purchaseSummaries);
-  // P1 canonical coalesce: duplicate route results for the same stable
-  // orderId + compatible access scope merge without detail loss; cross-scope
-  // duplicates stay explicit so cached broader access never masquerades as
-  // current authorization. Failed routes contribute nothing here, so known
-  // data assembled elsewhere is never erased by a failure.
+  // Canonicalize only duplicate reads of the same source, scope, partition
+  // and stable identity. Distinct roots with the same ID remain separate.
   const coalescedDetailed = coalescePurchasesByStableId(
-    purchaseResults.flatMap((result) =>
+    [
+      ...purchaseResults.flatMap((result) =>
       result.status === 'completed'
-        ? result.purchases.map((purchase) => ({
-          purchase,
-          accessMethod: result.accessMethod ?? null,
-        }))
+        ? result.purchases.map((purchase) => {
+          const rootSource = result.lookupResource ??
+            (result.resource === 'orders' || result.resource === 'gift_purchases'
+              ? result.resource
+              : result.accessMethod === 'trusted_phone_event_purchase'
+                ? 'event_detail'
+                : undefined);
+          return {
+            purchase: {
+              ...purchase,
+              recordSource: purchase.recordSource ?? rootSource,
+              accessScope: purchase.accessScope ?? result.accessMethod ?? null,
+            },
+            accessMethod: result.accessMethod ?? null,
+          };
+        })
         : [],
-    ),
+      ),
+      ...eventResults.flatMap((result) =>
+        result.status === 'completed'
+          ? (result.result.recentOrders ?? []).flatMap((order) => {
+            const purchase = purchaseFromUserEventOrder(
+              order,
+              result.accessMethod ?? null,
+            );
+            return purchase ? [{ purchase, accessMethod: result.accessMethod ?? null }] : [];
+          })
+          : [],
+      ),
+    ],
   );
+  const purchaseFactCount = coalescedDetailed.length + purchaseResults.reduce(
+    (count, result) => count + (result.status === 'completed' ? (result.carts ?? []).length : 0),
+    0,
+  );
+  const sourceCoverage = purchaseResults.flatMap((result) =>
+    result.status === 'completed' || result.status === 'failed'
+      ? result.sourceCoverage ?? []
+      : [],
+  );
+  const purchaseCompleteness = sectionCompleteness({
+    statuses: purchaseStatuses.map((entry) => entry.status),
+    factsAvailable: purchaseFactCount > 0,
+    paginationExhausted: purchasePagination.paginationExhausted,
+    sourceComplete: sourceCoverage.length > 0
+      ? sourceCoverage.every((entry) => entry.status === 'completed' || entry.status === 'empty')
+      : null,
+  });
   const purchasesCarts: PurchasesCartsSection = purchaseResults.length === 0
     ? {
       section: 'purchases_carts',
       ...emptyBase(),
       purchases: [],
       carts: [],
-      detailedPurchases: [],
     }
     : {
       section: 'purchases_carts',
@@ -540,34 +486,13 @@ export function assembleCustomerContext(args: {
       source: purchaseResults.length > 0 ? 'agent_api' : null,
       fetchedAt: args.nowIso,
       scope: args.identity?.scope ?? null,
-      completeness: purchasePagination.paginationExhausted === false ||
-        purchaseStatuses.some((entry) => entry.completeness === 'partial') ||
-        (purchaseStatuses.some((entry) => entry.status === 'ready') &&
-          purchaseStatuses.some((entry) => entry.status === 'failed' || entry.status === 'unavailable'))
-        ? 'partial'
-        : 'complete',
+      completeness: purchaseCompleteness,
       paginationExhausted: purchasePagination.paginationExhausted,
       historyLimit: purchasePagination.historyLimit,
-      // Lane B canonical parity: the summary total follows the same
-      // disclosure-first reader as totalAvailability, so a known total that
-      // the projection moved into amountDisclosure never reads as a null
-      // grandTotal beside an available total. Known payment status passes
-      // through untouched; item facts live once in detailedPurchases.
-      // Per-record partition provenance rides the summary sparsely when the
-      // projected record carries it; source coverage rides once per section.
-      purchases: coalescedDetailed.map((purchase) => ({
-        orderId: purchase.orderId,
-        eventId: purchase.eventId ?? null,
-        eventName: purchase.eventName ?? null,
-        paymentStatus: purchase.paymentStatus,
-        grandTotal: disclosedPurchaseTotal(purchase) ?? purchase.grandTotal,
-        ...(purchase.partition ? { partition: purchase.partition } : {}),
-        ...purchaseBalanceMarkers(purchase),
-      })),
+      purchases: coalescedDetailed,
       carts: purchaseResults.flatMap((result) =>
         result.status === 'completed' ? (result.carts ?? []) : [],
       ),
-      detailedPurchases: coalescedDetailed,
       ...collectedPurchaseSourceCoverage(purchaseResults),
     };
 
@@ -612,6 +537,12 @@ export function assembleCustomerContext(args: {
       ),
     ),
   ]);
+  const eventCompleteness = sectionCompleteness({
+    statuses: [...eventStatuses.map((entry) => entry.status), ...(linkedHasPartial ? ['failed' as const] : [])],
+    factsAvailable: coalescedInvitations.length > 0,
+    paginationExhausted: eventPagination.paginationExhausted,
+    sourceComplete: null,
+  });
   const hasLinkedEvents = linkedEventEntries.length > 0;
   const invitationsEvents: InvitationsEventsSection = eventResults.length === 0 && !hasLinkedEvents
     ? {
@@ -627,11 +558,7 @@ export function assembleCustomerContext(args: {
       source: 'agent_api',
       fetchedAt: args.nowIso,
       scope: args.identity?.scope ?? null,
-      completeness: eventPagination.paginationExhausted === false ||
-        linkedHasPartial ||
-        (eventStatuses.some((entry) => entry.status === 'ready') &&
-          eventStatuses.some((entry) => entry.status === 'failed' || entry.status === 'unavailable'))
-        ? 'partial' : 'complete',
+      completeness: eventCompleteness,
       paginationExhausted: eventPagination.paginationExhausted,
       historyLimit: eventPagination.historyLimit,
       invitations: coalescedInvitations,
@@ -740,6 +667,9 @@ function worstStatus(statuses: readonly CustomerSectionStatus[]): CustomerSectio
   if (statuses.some((status) => status === 'loading')) {
     return 'loading';
   }
+  if (statuses.every((status) => status === 'empty')) {
+    return 'empty';
+  }
   if (statuses.every((status) => status === 'not_found')) {
     return 'not_found';
   }
@@ -747,6 +677,27 @@ function worstStatus(statuses: readonly CustomerSectionStatus[]): CustomerSectio
     return 'ready';
   }
   return 'not_found';
+}
+
+function sectionCompleteness(args: {
+  readonly statuses: readonly CustomerSectionStatus[];
+  readonly factsAvailable: boolean;
+  readonly paginationExhausted: boolean | null;
+  readonly sourceComplete: boolean | null;
+}): CustomerSectionBase['completeness'] {
+  if (args.paginationExhausted === false) return 'partial';
+  if (args.sourceComplete === false) return args.factsAvailable ? 'partial' : null;
+  const unfinished = args.statuses.some((status) =>
+    status === 'failed' || status === 'unavailable' || status === 'loading',
+  );
+  if (unfinished) return args.factsAvailable ? 'partial' : null;
+  // A successful single response is not proof that the backend returned all
+  // pages when its contract exposes no continuation metadata. Keep
+  // completeness unknown until every paginated source explicitly exhausts.
+  if (args.paginationExhausted === true) {
+    return 'complete';
+  }
+  return null;
 }
 
 /** Required sections must be ready (or authoritative not_found) to answer. */
@@ -762,332 +713,74 @@ export function requiredSectionsReady(
           ? 'purchasesCarts'
           : 'invitationsEvents'
     ].status;
-    return status === 'ready' || status === 'not_found';
+    return status === 'ready' || status === 'not_found' || status === 'empty';
   });
 }
 
-export type CustomerProjectionFocus =
-  | 'payment'
-  | 'cart'
-  | 'rsvp'
-  | 'general';
-
-export type CustomerProjectionQuery = {
-  readonly focus: CustomerProjectionFocus;
-  readonly relevantOrderIds?: readonly string[];
-  readonly relevantEventIds?: readonly (number | string)[];
-};
-
-/**
- * S7 bounded-enrichment provenance. Records the linked-detail reads performed
- * before final owner composition (order -> gift detail, invitation/event ->
- * event detail) within the two-edge/four-read/deadline bound. Required
- * unavailable detail stays explicitly listed here so the reply stays honest;
- * optional failures never block ready facts. Single-copy, access-scoped.
- */
-export type CustomerEnrichmentSummary = {
-  readonly readsAttempted: number;
-  readonly truncatedByBound: boolean;
-  readonly unavailable: readonly string[];
-  readonly failures: readonly { readonly target: string; readonly failureKind: string }[];
-};
-
 export type CustomerContextProjection = {
-  readonly commonRefs: {
-    readonly orderIds: readonly string[];
-    readonly eventIds: readonly (number | string)[];
-    readonly pendingQuestion: string | null;
-  };
-  /**
-   * P3 compact candidate index. One lightweight summary per known
-   * candidate (all authorized orders + invitations in stable snapshot
-   * order), carrying only identifiers, names, dates and record state —
-   * never amounts or venue detail. Full authorized detail for the
-   * resolved/relevant records travels in purchases/detailedPurchases/
-   * invitations below, so the model sees every candidate once without a
-   * second facts payload. Null fields are omitted so noise never grows.
-   */
-  readonly candidates: readonly CompactCandidateSummary[];
-  /**
-   * P3 section availability. Retains the authoritative load state behind
-   * the projection (ready, not_found, unavailable, failed, partial via
-   * completeness) so "no other records" is never inferred from an
-   * unrequested or failed source.
-   */
-  readonly sections: {
-    readonly purchasesCarts: CustomerSectionStatus;
-    readonly invitationsEvents: CustomerSectionStatus;
-  };
-  readonly purchases: readonly PurchaseCartSummary[];
+  readonly identityAccess: IdentityAccessSection;
+  readonly currentContext: CurrentContextSection;
+  /** One canonical customer record body per source and stable identity. */
+  readonly purchases: readonly PurchaseInformation[];
   /** Carts ride the canonical profile as distinct records for later cart questions. */
   readonly carts: readonly CartInformation[];
-  readonly detailedPurchases: readonly PurchaseInformation[];
   readonly invitations: readonly InvitationEventSummary[];
   readonly actionOutcomes: readonly ActionOutcome[];
-  /** Null/absent when no linked-detail enrichment ran on this turn. */
-  readonly enrichment?: CustomerEnrichmentSummary | null;
-  /**
-   * Section provenance behind the projected records. Sparse: a section entry
-   * appears only when that section was requested, and only set fields are
-   * emitted. Carries the backend route, access scope, completeness,
-   * pagination/history bounds and per-source discovery coverage so "no other
-   * records" is never inferred from a partial or failed source. Per-record
-   * provenance (partition) rides each purchase summary and detail record.
-   */
-  readonly provenance?: CustomerContextProvenance;
+  /** Availability and source completeness sit beside, never duplicate, records. */
+  readonly coverage: CustomerContextCoverage;
 };
 
-/** Sparse per-section provenance for one projected customer profile. */
-export type CustomerSectionProvenance = {
-  readonly source?: string;
-  readonly scope?: string;
-  readonly completeness?: 'complete' | 'partial' | 'country_only';
-  readonly paginationExhausted?: boolean;
-  readonly historyLimit?: string;
-  readonly fetchedAt?: string;
-  readonly sourceCoverage?: readonly PurchaseSourceCoverage[];
-};
-
-/** Sparse provenance block for the projected customer profile. */
-export type CustomerContextProvenance = {
-  readonly purchasesCarts?: CustomerSectionProvenance;
-  readonly invitationsEvents?: CustomerSectionProvenance;
+export type CustomerContextCoverage = {
+  readonly purchasesCarts: Pick<CustomerSectionBase,
+    'status' | 'source' | 'fetchedAt' | 'scope' | 'completeness' | 'paginationExhausted' | 'historyLimit'> & {
+      readonly sourceCoverage?: readonly PurchaseSourceCoverage[];
+    };
+  readonly invitationsEvents: Pick<CustomerSectionBase,
+    'status' | 'source' | 'fetchedAt' | 'scope' | 'completeness' | 'paginationExhausted' | 'historyLimit'>;
 };
 
 /**
- * P3 compact candidate summary. Stable field order
- * (kind, orderId/eventId, eventName, eventDate, createdAt, total, currency,
- * state); only set fields are emitted so duplicate/null-value noise stays
- * out of model input. Candidate totals mirror the resolved record detail
- * (amountDisclosure first) and never conflict with it; venue detail and
- * provenance travel only with the resolved record detail, never here.
- */
-export type CompactCandidateSummary = {
-  readonly kind: 'order' | 'event';
-  readonly orderId?: string;
-  readonly eventId?: number | string;
-  readonly eventName?: string;
-  readonly eventDate?: string;
-  readonly createdAt?: string;
-  readonly total?: number;
-  readonly currency?: string;
-  readonly state?: string;
-};
-
-/**
- * P3 compact candidate index over the retained snapshot. Every known
- * authorized purchase and invitation appears once with identifiers, names,
- * dates, totals and record state (stable snapshot order, nulls omitted, no
- * venue detail, no provenance). Full detail for every authorized record is
- * projected alongside, so each fact has one home per section and candidate
- * amounts never conflict with the detail disclosure. No date cutoff:
- * historical candidates stay listed.
- */
-export function buildCompactCandidateSummaries(
-  snapshot: CustomerContextSnapshot,
-): CompactCandidateSummary[] {
-  const candidates: CompactCandidateSummary[] = [];
-  if (
-    snapshot.purchasesCarts.status === 'ready' ||
-    snapshot.purchasesCarts.status === 'not_found'
-  ) {
-    const detailByOrderId = new Map(
-      snapshot.purchasesCarts.detailedPurchases.map((purchase) => [purchase.orderId, purchase] as const),
-    );
-    for (const purchase of snapshot.purchasesCarts.purchases) {
-      const detail = detailByOrderId.get(purchase.orderId);
-      const eventDate = detail?.eventDate ?? null;
-      // Candidate amounts mirror the resolved record detail through the same
-      // disclosure-first readers the summary uses: the orchestrator nulls the
-      // direct total/currency into amountDisclosure, so reading the direct
-      // fields here would contradict the detail (currency always missing).
-      const total = detail !== undefined
-        ? disclosedPurchaseTotal(detail) ?? purchase.grandTotal
-        : purchase.grandTotal;
-      const currency = detail !== undefined ? disclosedPurchaseCurrency(detail) : null;
-      candidates.push({
-        kind: 'order',
-        ...(purchase.orderId.trim().length > 0 ? { orderId: purchase.orderId } : {}),
-        ...(purchase.eventName !== null && purchase.eventName.trim().length > 0
-          ? { eventName: purchase.eventName }
-          : {}),
-        ...(eventDate ? { eventDate } : {}),
-        ...(detail?.createdAt ? { createdAt: detail.createdAt } : {}),
-        ...(total != null ? { total } : {}),
-        ...(currency ? { currency } : {}),
-        ...(purchase.paymentStatus !== null && purchase.paymentStatus.trim().length > 0
-          ? { state: purchase.paymentStatus }
-          : {}),
-      });
-    }
-  }
-  if (
-    snapshot.invitationsEvents.status === 'ready' ||
-    snapshot.invitationsEvents.status === 'not_found'
-  ) {
-    for (const invitation of snapshot.invitationsEvents.invitations) {
-      candidates.push({
-        kind: 'event',
-        ...(invitation.eventId !== null ? { eventId: invitation.eventId } : {}),
-        ...(invitation.eventName !== null && invitation.eventName.trim().length > 0
-          ? { eventName: invitation.eventName }
-          : {}),
-        ...(invitation.eventDatetime ? { eventDate: invitation.eventDatetime } : {}),
-        ...(invitation.rsvpState !== 'unknown' ? { state: invitation.rsvpState } : {}),
-      });
-    }
-  }
-  return candidates;
-}
-
-/**
- * One canonical authorized customer profile. Every authorized record the
- * runtime already holds (purchases, carts, detailed purchases, invitations
- * with full attendance state) is projected once; nothing is hidden by
- * question focus or age. Response relevance travels through the caller's
- * target reference (relevant order/event IDs order relevant records first),
- * never through a second filtered copy. Authorization boundaries are
- * unchanged: transaction references stay stripped from model-visible detail.
+ * One canonical authorized customer profile. Request focus and entity hints
+ * never select which already-authorized facts are serialized. Access
+ * boundaries remain in force for internal customer transaction references.
  */
 export function projectCustomerContext(
   snapshot: CustomerContextSnapshot,
-  query: CustomerProjectionQuery,
-  enrichment?: CustomerEnrichmentSummary | null,
 ): CustomerContextProjection {
-  const relevantOrderIds = new Set(query.relevantOrderIds ?? []);
-  const relevantEventIds = new Set(
-    (query.relevantEventIds ?? []).map((id) => String(id)),
+  const purchases = snapshot.purchasesCarts.purchases.map((purchase) =>
+    stripTransactionIdForModel(purchase),
   );
-  const orderRank = (orderId: string): number => relevantOrderIds.has(orderId) ? 0 : 1;
-  const eventRank = (eventId: number | string | null): number =>
-    eventId !== null && relevantEventIds.has(String(eventId)) ? 0 : 1;
-
-  // S2: internal transaction references never reach model-visible detail.
-  // The runtime snapshot keeps the authorized record; the projection the
-  // model reads carries no customerTransactionNumber, so a denied
-  // transaction-reference disclosure cannot leak through model input.
-  const modelVisibleDetailed = snapshot.purchasesCarts.status === 'ready'
-    ? [...snapshot.purchasesCarts.detailedPurchases]
-      .sort((left, right) => orderRank(left.orderId) - orderRank(right.orderId))
-      .map(stripTransactionIdForModel)
-    : [];
-  const purchases = snapshot.purchasesCarts.status === 'ready'
-    ? [...snapshot.purchasesCarts.purchases]
-      .sort((left, right) => orderRank(left.orderId) - orderRank(right.orderId))
-    : [];
-  const carts = snapshot.purchasesCarts.status === 'ready'
-    ? [...snapshot.purchasesCarts.carts]
-    : [];
-  const invitations = snapshot.invitationsEvents.status === 'ready'
-    ? [...snapshot.invitationsEvents.invitations]
-      .sort((left, right) => eventRank(left.eventId) - eventRank(right.eventId))
-    : [];
-
   return {
-    commonRefs: {
-      orderIds: snapshot.purchasesCarts.purchases.map((purchase) => purchase.orderId),
-      eventIds: snapshot.invitationsEvents.invitations.flatMap((invitation) =>
-        invitation.eventId === null ? [] : [invitation.eventId],
-      ),
-      pendingQuestion: snapshot.currentContext.pendingQuestion,
-    },
-    // P3: compact summaries of ALL candidates in stable snapshot order
-    // (identifiers + names/dates/state/amounts, nulls omitted), while
-    // purchases/detailedPurchases/invitations below keep the full authorized
-    // detail. Section availability is retained so exhaustion is never
-    // claimed from an unrequested/failed source. Candidate amounts mirror
-    // the detail disclosure and never conflict with it.
-    candidates: buildCompactCandidateSummaries(snapshot),
-    sections: {
-      purchasesCarts: snapshot.purchasesCarts.status,
-      invitationsEvents: snapshot.invitationsEvents.status,
-    },
+    identityAccess: snapshot.identityAccess,
+    currentContext: snapshot.currentContext,
     purchases,
-    carts,
-    detailedPurchases: modelVisibleDetailed,
-    invitations,
-    actionOutcomes: snapshot.actionOutcomes.status === 'ready'
-      ? [...snapshot.actionOutcomes.outcomes]
-      : [],
-    enrichment: enrichment ?? null,
-    ...buildProfileProvenanceField(snapshot),
+    carts: [...snapshot.purchasesCarts.carts],
+    invitations: [...snapshot.invitationsEvents.invitations],
+    actionOutcomes: [...snapshot.actionOutcomes.outcomes],
+    coverage: {
+      purchasesCarts: {
+        status: snapshot.purchasesCarts.status,
+        source: snapshot.purchasesCarts.source,
+        fetchedAt: snapshot.purchasesCarts.fetchedAt,
+        scope: snapshot.purchasesCarts.scope,
+        completeness: snapshot.purchasesCarts.completeness,
+        paginationExhausted: snapshot.purchasesCarts.paginationExhausted,
+        historyLimit: snapshot.purchasesCarts.historyLimit,
+        ...(snapshot.purchasesCarts.sourceCoverage
+          ? { sourceCoverage: snapshot.purchasesCarts.sourceCoverage }
+          : {}),
+      },
+      invitationsEvents: {
+        status: snapshot.invitationsEvents.status,
+        source: snapshot.invitationsEvents.source,
+        fetchedAt: snapshot.invitationsEvents.fetchedAt,
+        scope: snapshot.invitationsEvents.scope,
+        completeness: snapshot.invitationsEvents.completeness,
+        paginationExhausted: snapshot.invitationsEvents.paginationExhausted,
+        historyLimit: snapshot.invitationsEvents.historyLimit,
+      },
+    },
   };
-}
-
-/**
- * Sparse section provenance for the model-visible profile. A section entry
- * appears only when that section was requested; only set fields serialize.
- * Keeps the backend route, access scope, completeness, pagination/history
- * bounds and discovery source coverage next to the records they describe,
- * so partial or failed sources never read as exhaustive. Pure projection.
- */
-function buildProfileProvenanceField(
-  snapshot: CustomerContextSnapshot,
-): { provenance?: CustomerContextProvenance } {
-  const provenance: CustomerContextProvenance = {};
-  if (snapshot.purchasesCarts.status !== 'not_requested') {
-    const section: CustomerSectionProvenance = {
-      ...(snapshot.purchasesCarts.source ? { source: snapshot.purchasesCarts.source } : {}),
-      ...(snapshot.purchasesCarts.scope ? { scope: snapshot.purchasesCarts.scope } : {}),
-      ...(snapshot.purchasesCarts.completeness ? { completeness: snapshot.purchasesCarts.completeness } : {}),
-      ...(snapshot.purchasesCarts.paginationExhausted !== null
-        ? { paginationExhausted: snapshot.purchasesCarts.paginationExhausted }
-        : {}),
-      ...(snapshot.purchasesCarts.historyLimit ? { historyLimit: snapshot.purchasesCarts.historyLimit } : {}),
-      ...(snapshot.purchasesCarts.fetchedAt ? { fetchedAt: snapshot.purchasesCarts.fetchedAt } : {}),
-      ...(snapshot.purchasesCarts.sourceCoverage && snapshot.purchasesCarts.sourceCoverage.length > 0
-        ? { sourceCoverage: snapshot.purchasesCarts.sourceCoverage }
-        : {}),
-    };
-    if (Object.keys(section).length > 0) {
-      (provenance as { purchasesCarts?: CustomerSectionProvenance }).purchasesCarts = section;
-    }
-  }
-  if (snapshot.invitationsEvents.status !== 'not_requested') {
-    const section: CustomerSectionProvenance = {
-      ...(snapshot.invitationsEvents.source ? { source: snapshot.invitationsEvents.source } : {}),
-      ...(snapshot.invitationsEvents.scope ? { scope: snapshot.invitationsEvents.scope } : {}),
-      ...(snapshot.invitationsEvents.completeness
-        ? { completeness: snapshot.invitationsEvents.completeness }
-        : {}),
-      ...(snapshot.invitationsEvents.paginationExhausted !== null
-        ? { paginationExhausted: snapshot.invitationsEvents.paginationExhausted }
-        : {}),
-      ...(snapshot.invitationsEvents.historyLimit
-        ? { historyLimit: snapshot.invitationsEvents.historyLimit }
-        : {}),
-      ...(snapshot.invitationsEvents.fetchedAt ? { fetchedAt: snapshot.invitationsEvents.fetchedAt } : {}),
-    };
-    if (Object.keys(section).length > 0) {
-      (provenance as { invitationsEvents?: CustomerSectionProvenance }).invitationsEvents = section;
-    }
-  }
-  return Object.keys(provenance).length > 0 ? { provenance } : {};
-}
-
-/**
- * Lane A profile-reference gate. The profile_ref optimization (dropping the
- * purchase outcome next to the canonical profile) is valid only when the
- * referenced profile record already carries the required balance facts for
- * every order: sourced-total, paid value/availability, unverifiable
- * remaining, currency availability and method availability. Otherwise the
- * caller must retain a compact typed limitation instead of duplicating the
- * full payload.
- */
-export function purchaseProfileCarriesBalanceFacts(
-  profile: CustomerContextProjection | null | undefined,
-  orderIds: readonly string[],
-): boolean {
-  if (!profile || orderIds.length === 0) return false;
-  return orderIds.every((orderId) => {
-    const summary = profile.purchases.find((entry) => entry.orderId === orderId);
-    return summary !== undefined &&
-      summary.totalAvailability !== undefined &&
-      summary.paidAvailability !== undefined &&
-      summary.remainingVerifiable === false &&
-      summary.currencyAvailability !== undefined &&
-      summary.methodAvailability !== undefined;
-  });
 }
 
 /**
@@ -1096,117 +789,30 @@ export function purchaseProfileCarriesBalanceFacts(
  * carries customerTransactionNumber. Pure copy, single-copy sparse.
  */
 export function stripTransactionIdForModel(purchase: PurchaseInformation): PurchaseInformation {
-  if (purchase.customerTransactionNumber == null) return purchase;
-  return { ...purchase, customerTransactionNumber: null };
-}
-
-/**
- * Aspects whose facts live only on the gift route (dedication, thanks, or
- * the requested payment time). Used as a fact-need signal for same-turn
- * gift-detail enrichment, never as a route override: the request reads its
- * own declared resource first, and only a uniquely identified orders-route
- * record missing these facts triggers one follow-up gift read.
- */
-const giftFactAspectValues: ReadonlySet<PurchaseAspect> = new Set([
-  'dedication',
-  'thanks',
-  'payment_details',
-]);
-
-/**
- * Same-turn gift-detail follow-up for a discovery-identified record. When
- * the turn's purchase aspects need gift-only facts, exactly one order ID
- * is known from completed orders-route reads, and that record lacks the
- * needed facts, its ID qualifies for one same-scope gift read through the
- * existing enrichment executor. Multiple candidates qualify nothing: the
- * reply asks the distinction instead of auto-selecting. Gift-route records
- * already carry their facts and qualify nothing. Pure selection; the
- * executor still enforces capability, scope, bounds and deadline.
- */
-export function selectImplicitGiftDetailOrderIds(args: {
-  readonly requests: readonly PendingInformationRequest[];
-  readonly results: readonly InformationTaskResult[];
-}): readonly string[] {
-  const needsGiftFacts = args.requests.some((request) =>
-    request.kind === 'purchase' &&
-    request.aspects.some((aspect) => giftFactAspectValues.has(aspect)));
-  if (!needsGiftFacts) return [];
-  const ordersPurchases = args.results.flatMap((result) => {
-    if (result.status !== 'completed' || result.kind !== 'purchase') return [];
-    const route = result.lookupResource ?? result.resource;
-    if (route !== 'orders') return [];
-    return result.purchases.map((purchase) => purchase);
-  });
-  const distinctIds = Array.from(new Set(ordersPurchases.map((purchase) => purchase.orderId)));
-  if (distinctIds.length !== 1) return [];
-  const only = ordersPurchases.find((purchase) => purchase.orderId === distinctIds[0]);
-  if (!only) return [];
-  const needsDedication = args.requests.some((request) =>
-    request.kind === 'purchase' && request.aspects.includes('dedication'));
-  const needsThanks = args.requests.some((request) =>
-    request.kind === 'purchase' && request.aspects.includes('thanks'));
-  const needsPaymentTime = args.requests.some((request) =>
-    request.kind === 'purchase' && request.aspects.includes('payment_details'));
-  // Discovery already supplies the required facts: no follow-up read.
-  if (needsDedication && only.dedication == null) return [only.orderId];
-  if (needsThanks && (only.thanks == null && only.isThanked == null)) return [only.orderId];
-  if (needsPaymentTime && only.payment == null) return [only.orderId];
-  return [];
-}
-
-/**
- * S7 bounded target selection for linked-detail enrichment. Only explicitly
- * relevant IDs that are also already known through authorized reads qualify:
- * a name or recency never authorizes a lookup. Ambiguous turns (no explicit
- * relevant ID) enrich nothing so the pending newest order is never
- * auto-selected. Fewer than the bound keeps every candidate discoverable;
- * beyond four reads the remainder stays discoverable through the same owner
- * later. No date cutoff: an explicit years-old target is retained. IDs whose
- * completed result already carries gift/event detail in this turn are
- * excluded so the same read is never re-issued. Implicit gift-detail IDs
- * (uniquely identified orders-route records missing requested gift-only
- * facts) follow the explicit IDs within the same bound.
- */
-export function selectEnrichmentTargets(args: {
-  readonly knownOrderIds: readonly string[];
-  readonly knownEventIds: readonly (number | string)[];
-  readonly relevantOrderIds: readonly string[];
-  readonly relevantEventIds: readonly (number | string)[];
-  /**
-   * S7 same-turn reuse: IDs whose completed result already carries
-   * gift/event detail (fetched through the detailed route earlier in this
-   * turn) are excluded so enrichment never re-issues that read. Bounds,
-   * old-target retention, no auto-select and no writes are unchanged.
-   */
-  readonly alreadyDetailedOrderIds?: readonly string[];
-  readonly alreadyDetailedEventIds?: readonly (number | string)[];
-  readonly implicitOrderIds?: readonly string[];
-}): { readonly orderIds: readonly string[]; readonly eventIds: readonly (number | string)[]; readonly truncatedByBound: boolean } {
-  const knownOrders = new Set(args.knownOrderIds);
-  const knownEvents = new Set(args.knownEventIds.map((id) => String(id)));
-  const alreadyDetailedOrders = new Set(args.alreadyDetailedOrderIds ?? []);
-  const alreadyDetailedEvents = new Set(
-    (args.alreadyDetailedEventIds ?? []).map((id) => String(id)),
-  );
-  const explicitOrders = Array.from(new Set(args.relevantOrderIds)).filter((id) =>
-    knownOrders.has(id) && !alreadyDetailedOrders.has(id),
-  );
-  const implicitOrders = Array.from(new Set(args.implicitOrderIds ?? [])).filter((id) =>
-    knownOrders.has(id) && !alreadyDetailedOrders.has(id) && !explicitOrders.includes(id),
-  );
-  const explicitEvents = Array.from(new Set(args.relevantEventIds.map((id) => String(id)))).filter(
-    (id) => knownEvents.has(id) && !alreadyDetailedEvents.has(id),
-  ).map((id) => args.relevantEventIds.find((original) => String(original) === id) ?? id);
-  const combined: Array<{ kind: 'order' | 'event'; id: string | number }> = [
-    ...explicitOrders.map((id) => ({ kind: 'order' as const, id })),
-    ...explicitEvents.map((id) => ({ kind: 'event' as const, id })),
-    ...implicitOrders.map((id) => ({ kind: 'order' as const, id })),
-  ];
-  const limited = combined.slice(0, enrichmentBounds.maxConcurrentReads);
+  const {
+    customerTransactionNumber: _transactionReference,
+    adminComment: _privateOperatorComment,
+    payment,
+    ...customerFacts
+  } = purchase;
+  void _transactionReference;
+  void _privateOperatorComment;
+  const safePayment = payment
+    ? (() => {
+      const {
+        paymentId: _internalPaymentId,
+        voucherImage: _privateVoucherLocation,
+        ...paymentFacts
+      } = payment;
+      void _internalPaymentId;
+      void _privateVoucherLocation;
+      return paymentFacts;
+    })()
+    : payment;
   return {
-    orderIds: limited.flatMap((entry) => entry.kind === 'order' ? [String(entry.id)] : []),
-    eventIds: limited.flatMap((entry) => entry.kind === 'event' ? [entry.id] : []),
-    truncatedByBound: combined.length > limited.length,
+    ...customerFacts,
+    customerTransactionNumber: null,
+    ...(payment !== undefined ? { payment: safePayment } : {}),
   };
 }
 
@@ -1329,85 +935,6 @@ export function isNameGrounded(
     (scoped) => scoped?.trim().toLocaleLowerCase('es') === candidate,
   );
 }
-export type RankableCandidate = {
-  readonly orderId: string;
-  readonly eventName: string | null;
-  readonly paymentStatus: string | null;
-  readonly createdAt: string | null;
-  readonly eventDate: string | null;
-};
-
-export type CandidateRelevanceSignals = {
-  /** Explicit customer reference (order id or COD); authoritative when matched. */
-  readonly explicitOrderId: string | null;
-  /** Explicit event wording from the current turn; matched by name, never by age. */
-  readonly explicitEventHint: string | null;
-  readonly questionFocus: CustomerProjectionFocus;
-};
-
-/**
- * Semantic relevance ordering over the retained candidate index. Explicit
- * reference dominates, observed backend state informs, recency only breaks
- * ties: a years-old explicit target always outranks a newer pending order,
- * and a recent pending order plus voucher never proves identity on its own.
- * Nothing is dropped — every candidate stays retrievable for a focused read
- * or clarification, so there is no fixed newest-record choice and no hidden
- * old record. No keyword inference: the hint match reuses the shared event
- * name matcher and the focus arrives as typed extraction evidence.
- */
-export function rankCandidatesByRelevance(
-  candidates: readonly RankableCandidate[],
-  signals: CandidateRelevanceSignals,
-): RankableCandidate[] {
-  const scored = candidates.map((candidate, index) => {
-    let score = 0;
-    if (
-      signals.explicitOrderId !== null &&
-      candidate.orderId === signals.explicitOrderId
-    ) {
-      score += 100;
-    }
-    if (
-      signals.explicitEventHint !== null &&
-      eventMatches(candidate.eventName, signals.explicitEventHint)
-    ) {
-      score += 50;
-    }
-    if (
-      (signals.questionFocus === 'payment' || signals.questionFocus === 'general') &&
-      candidate.paymentStatus?.trim().toLocaleLowerCase('en') === 'pending'
-    ) {
-      score += 10;
-    }
-    return { candidate, score, index };
-  });
-  return scored
-    .sort((left, right) => {
-      if (right.score !== left.score) {
-        return right.score - left.score;
-      }
-      const leftTime = rankableTime(candidateTime(left.candidate));
-      const rightTime = rankableTime(candidateTime(right.candidate));
-      if (rightTime !== leftTime) {
-        return rightTime - leftTime;
-      }
-      return left.index - right.index;
-    })
-    .map((entry) => entry.candidate);
-}
-
-function candidateTime(candidate: RankableCandidate): string | null {
-  return candidate.createdAt ?? candidate.eventDate;
-}
-
-function rankableTime(value: string | null): number {
-  if (!value) {
-    return Number.NEGATIVE_INFINITY;
-  }
-  const parsed = Date.parse(value);
-  return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed;
-}
-
 /**
  * After a confirmed effect, invalidate the affected section before the
  * model reports its outcome. A repeated acknowledgement finds the
@@ -1425,7 +952,6 @@ export function invalidateSectionAfterWrite(
         status: 'loading',
         purchases: [],
         carts: [],
-        detailedPurchases: [],
         sourceCoverage: undefined,
       },
     };
@@ -1529,10 +1055,7 @@ export function purchaseScopesCompatible(
   left: string | null | undefined,
   right: string | null | undefined,
 ): boolean {
-  if (left == null || right == null) return left === right;
-  if (left === right) return true;
-  const phoneFamily = new Set(['trusted_phone_purchase', 'trusted_phone_event_purchase']);
-  return phoneFamily.has(left) && phoneFamily.has(right);
+  return (left ?? null) === (right ?? null);
 }
 
 type CoalescablePurchase = {
@@ -1583,53 +1106,76 @@ function isAuthoritativeValue(value: unknown): boolean {
 export function coalescePurchasesByStableId(
   entries: readonly CoalescablePurchase[],
 ): PurchaseInformation[] {
-  const byOrderId = new Map<string, CoalescablePurchase[]>();
-  const scopeByOrderId = new Map<string, string | null>();
-  const deferred: PurchaseInformation[] = [];
+  const byIdentity = new Map<string, PurchaseInformation[]>();
   for (const entry of entries) {
-    const bucket = byOrderId.get(entry.purchase.orderId);
-    if (!bucket) {
-      byOrderId.set(entry.purchase.orderId, [entry]);
-      scopeByOrderId.set(entry.purchase.orderId, entry.accessMethod);
+    const source = entry.purchase.recordSource ?? 'unknown';
+    const identity = JSON.stringify([
+      entry.purchase.orderId,
+      source,
+      entry.purchase.partition ?? null,
+      entry.purchase.accessScope ?? entry.accessMethod,
+    ]);
+    const bucket = byIdentity.get(identity) ?? [];
+    if (bucket.some((purchase) => JSON.stringify(purchase) === JSON.stringify(entry.purchase))) {
       continue;
     }
-    const bucketScope = scopeByOrderId.get(entry.purchase.orderId) ?? null;
-    if (!purchaseScopesCompatible(bucketScope, entry.accessMethod)) {
-      deferred.push(entry.purchase);
-      continue;
+    const current = bucket[0];
+    if (current && bucket.length === 1) {
+      const conflicts = conflictingPurchaseFacts(current, entry.purchase);
+      if (conflicts.length === 0 || conflicts.every((field) => field === 'items')) {
+        bucket[0] = mergeTwoPurchases(
+          current,
+          entry.purchase,
+          { accessMethod: entry.accessMethod, scope: entry.purchase.accessScope ?? null },
+          { accessMethod: entry.accessMethod, scope: entry.purchase.accessScope ?? null },
+        );
+      } else {
+        bucket.push(entry.purchase);
+      }
+    } else {
+      bucket.push(entry.purchase);
     }
-    bucket.push(entry);
+    byIdentity.set(identity, bucket);
   }
-  const merged: PurchaseInformation[] = [];
-  for (const group of byOrderId.values()) {
-    const base = group[0];
-    if (!base || group.length === 1) {
-      if (base) merged.push(base.purchase);
+  return [...byIdentity.values()].flat();
+}
+
+function conflictingPurchaseFacts(
+  left: PurchaseInformation,
+  right: PurchaseInformation,
+): string[] {
+  const excluded = new Set([
+    'recordSource',
+    'accessScope',
+    'partition',
+    'itemSourceConflict',
+    'creditFulfillmentPolicy',
+    'currencyConflict',
+  ]);
+  const conflicts: string[] = [];
+  const fields = new Set([...Object.keys(left), ...Object.keys(right)]);
+  for (const field of fields) {
+    if (excluded.has(field)) continue;
+    const leftValue = (left as unknown as Record<string, unknown>)[field];
+    const rightValue = (right as unknown as Record<string, unknown>)[field];
+    if (field === 'items') {
+      if (left.items.length > 0 && right.items.length > 0 &&
+        itemListMultisetKey(left.items) !== itemListMultisetKey(right.items)) {
+        conflicts.push(field);
+      }
       continue;
     }
-    const scope = scopeByOrderId.get(base.purchase.orderId) ?? null;
-    let canonical: PurchaseInformation = {
-      ...base.purchase,
-      items: [...base.purchase.items],
-    };
-    let canonicalAccessMethod = base.accessMethod;
-    for (const incoming of group.slice(1)) {
-      canonical = mergeTwoPurchases(
-        canonical,
-        incoming.purchase,
-        { accessMethod: canonicalAccessMethod, scope },
-        { accessMethod: incoming.accessMethod, scope },
-      );
-      canonicalAccessMethod = canonicalAccessMethod ?? incoming.accessMethod;
+    if (isAuthoritativeValue(leftValue) && isAuthoritativeValue(rightValue) &&
+      JSON.stringify(leftValue) !== JSON.stringify(rightValue)) {
+      conflicts.push(field);
     }
-    merged.push(canonical);
   }
-  merged.push(...deferred);
-  return merged;
+  return conflicts;
 }
 
 type ItemSnapshotInput = {
   readonly items: readonly PurchaseItem[];
+  readonly source: PurchaseInformation['recordSource'] | null;
   readonly accessMethod: string | null;
   readonly scope: string | null;
 };
@@ -1666,9 +1212,8 @@ function withRecomputedFulfillment(items: readonly PurchaseItem[]): PurchaseItem
  * ignored): empty snapshots contribute nothing, equivalent lists collapse
  * to the first display order, and non-equivalent nonempty lists keep every
  * complete distinct list in a typed conflict with source/scope provenance
- * instead of pairing or enriching individual lines. Alternatives deduplicate
- * by multiset key; beyond the evidence bound the excess is cut and
- * truncated marks partial evidence.
+ * instead of pairing or enriching individual lines. Every alternative is
+ * retained and carries its own source and authorization scope.
  */
 export function resolveOrderItemSnapshots(
   snapshots: readonly ItemSnapshotInput[],
@@ -1692,10 +1237,16 @@ export function resolveOrderItemSnapshots(
   }
   const seen = new Map<string, PurchaseItemSourceAlternative>();
   for (const snapshot of nonempty) {
-    const key = itemListMultisetKey(snapshot.items);
+    const key = JSON.stringify([
+      snapshot.source,
+      snapshot.accessMethod,
+      snapshot.scope,
+      itemListMultisetKey(snapshot.items),
+    ]);
     if (!seen.has(key)) {
       seen.set(key, {
         items: withRecomputedFulfillment(snapshot.items),
+        source: snapshot.source,
         accessMethod: snapshot.accessMethod,
         scope: snapshot.scope,
       });
@@ -1705,8 +1256,8 @@ export function resolveOrderItemSnapshots(
   return {
     items: [],
     itemSourceConflict: {
-      alternatives: alternatives.slice(0, purchaseItemConflictAlternativeLimit),
-      truncated: alternatives.length > purchaseItemConflictAlternativeLimit,
+      alternatives,
+      truncated: false,
     },
   };
 }
@@ -1721,6 +1272,7 @@ function snapshotsOfPurchase(
   for (const alternative of purchase.itemSourceConflict?.alternatives ?? []) {
     snapshots.push({
       items: alternative.items,
+      source: alternative.source ?? null,
       accessMethod: alternative.accessMethod,
       scope: alternative.scope,
     });
@@ -1728,6 +1280,7 @@ function snapshotsOfPurchase(
   if (purchase.items.length > 0) {
     snapshots.push({
       items: purchase.items,
+      source: purchase.recordSource ?? null,
       accessMethod: provenance.accessMethod,
       scope: provenance.scope,
     });
@@ -1790,7 +1343,6 @@ function mergeTwoPurchases(
     payment: current.payment ?? incoming.payment,
     paymentValidationExpectation:
       current.paymentValidationExpectation ?? incoming.paymentValidationExpectation,
-    amountDisclosure: current.amountDisclosure ?? incoming.amountDisclosure,
     dedication: current.dedication ?? incoming.dedication,
     thanks: current.thanks ?? incoming.thanks,
     isThanked: current.isThanked ?? incoming.isThanked,
@@ -1815,10 +1367,7 @@ function mergeTwoPurchases(
       }
     }
   }
-  if (merged.paymentStatus === null || merged.grandTotal === null) {
-    merged.amountDisclosure = null;
-  }
-  return merged;
+    return merged;
 }
 
 type CoalescableInvitation = {
@@ -1837,41 +1386,19 @@ function invitationEntriesFromEventLookup(
   lookup: UserEventLookupResult,
   accessScope: string | null,
 ): CoalescableInvitation[] {
-  return lookup.events.flatMap((event) => {
-    if (event.eventId === null || event.eventId === undefined) return [];
-    const guestStatus = event.guestStatus;
-    const hasResponded = guestStatus?.hasResponded ?? null;
-    const willAttend = guestStatus?.willAttend ?? null;
-    const invitation: InvitationEventSummary = {
-      eventId: event.eventId,
-      eventName: event.name,
-      role: event.relation === 'guest' || event.relation === 'host' || event.relation === 'owner'
-        ? event.relation
-        : null,
-      rsvpState: guestStatus === null || guestStatus === undefined
-        ? 'unknown'
-        : !hasResponded
-          ? 'pending'
-          : willAttend === true
-            ? 'attending'
-            : willAttend === false
-              ? 'declining'
-              : 'unknown',
-      ...(event.datetime ? { eventDatetime: event.datetime } : {}),
-      address: classifyAddress({
-        kind: 'venue',
-        source: 'event_detail',
-        street: resolveVenueStreet(event as Parameters<typeof resolveVenueStreet>[0]),
-        city: event.place ?? null,
-        country: event.country ?? null,
-      }),
-    };
-    return [{
-      invitation,
-      guestId: event.guestId ?? null,
-      accessScope,
-    }];
-  });
+  return lookup.events.map((event) => ({
+    invitation: {
+      ...event,
+      orders: [],
+      orderIds: event.orderIds ?? event.orders.flatMap((order) =>
+        order.id === null ? [] : [String(order.id)],
+      ),
+      source: event.source ?? 'sinenvolturas_user_lookup',
+      accessScope: event.accessScope ?? accessScope,
+    },
+    guestId: event.guestId ?? null,
+    accessScope,
+  }));
 }
 
 /**
@@ -1885,30 +1412,206 @@ export function coalesceInvitationsBySlot(
 ): InvitationEventSummary[] {
   const seen = new Map<string, InvitationEventSummary>();
   for (const entry of entries) {
-    if (entry.invitation.eventId === null) {
-      continue;
-    }
-    const key = attendanceSlotKey(
-      entry.invitation.eventId,
-      entry.guestId,
-      entry.accessScope ?? 'unknown',
-    );
-    const existing = seen.get(key);
-    if (!existing) {
-      seen.set(key, entry.invitation);
-      continue;
-    }
-    const mergedDatetime = existing.eventDatetime ?? entry.invitation.eventDatetime;
-    seen.set(key, {
-      ...existing,
-      ...(mergedDatetime ? { eventDatetime: mergedDatetime } : {}),
-      address: existing.address ?? entry.invitation.address,
-      rsvpState: existing.rsvpState !== 'unknown'
-        ? existing.rsvpState
-        : entry.invitation.rsvpState,
-    });
+    const stableSlot = entry.invitation.eventId === null
+      ? `unkeyed:${seen.size}`
+      : attendanceSlotKey(
+        entry.invitation.eventId,
+        entry.guestId,
+        entry.accessScope ?? 'unknown',
+      );
+    // Exact duplicate reads of one stable slot collapse. Different source
+    // facts for that same slot remain alternatives instead of overwriting
+    // each other with a preferred-looking value.
+    const key = `${stableSlot}:${JSON.stringify(entry.invitation)}`;
+    if (!seen.has(key)) seen.set(key, entry.invitation);
   }
   return [...seen.values()];
+}
+
+/**
+ * Join separately prepared authorization scopes without allowing a newly
+ * granted scope to replace facts already read under another scope. This is
+ * used when authentication is established after extraction (for example,
+ * OTP verification): only the newly authorized roots are fetched, then both
+ * profiles remain available to the reply.
+ */
+export function mergeCustomerContextSnapshots(
+  base: CustomerContextSnapshot,
+  additional: CustomerContextSnapshot,
+): CustomerContextSnapshot {
+  const scopes = [...new Set([
+    ...base.identityAccess.authorizedScopes,
+    ...additional.identityAccess.authorizedScopes,
+  ])].sort();
+  const identityScope = scopes.length > 1 ? scopes.join('+') : scopes[0] ?? null;
+  const identityAccess: IdentityAccessSection = {
+    ...mergeSectionBase(base.identityAccess, additional.identityAccess, true),
+    section: 'identity_access',
+    customerRef: additional.identityAccess.customerRef ?? base.identityAccess.customerRef,
+    displayName: additional.identityAccess.displayName ?? base.identityAccess.displayName,
+    email: additional.identityAccess.email ?? base.identityAccess.email,
+    phone: additional.identityAccess.phone ?? base.identityAccess.phone,
+    scope: identityScope,
+    authorizedScopes: scopes,
+    guestEventIds: [...new Set([
+      ...base.identityAccess.guestEventIds,
+      ...additional.identityAccess.guestEventIds,
+    ])],
+    hostEventIds: [...new Set([
+      ...base.identityAccess.hostEventIds,
+      ...additional.identityAccess.hostEventIds,
+    ])],
+  };
+  const currentContext: CurrentContextSection = {
+    ...mergeSectionBase(base.currentContext, additional.currentContext, false),
+    section: 'current_context',
+    relevantEventIds: [...new Set([
+      ...base.currentContext.relevantEventIds,
+      ...additional.currentContext.relevantEventIds,
+    ])],
+    relevantOrderIds: [...new Set([
+      ...base.currentContext.relevantOrderIds,
+      ...additional.currentContext.relevantOrderIds,
+    ])],
+    pendingQuestion: additional.currentContext.pendingQuestion ?? base.currentContext.pendingQuestion,
+    unresolvedCandidateOrderIds: [...new Set([
+      ...base.currentContext.unresolvedCandidateOrderIds,
+      ...additional.currentContext.unresolvedCandidateOrderIds,
+    ])],
+    unresolvedCandidateEventIds: [...new Set([
+      ...base.currentContext.unresolvedCandidateEventIds,
+      ...additional.currentContext.unresolvedCandidateEventIds,
+    ])],
+  };
+  const purchases = coalescePurchasesByStableId([
+    ...base.purchasesCarts.purchases,
+    ...additional.purchasesCarts.purchases,
+  ].map((purchase) => ({ purchase, accessMethod: purchase.accessScope ?? null })));
+  const carts = mergeDistinctRecords(
+    base.purchasesCarts.carts,
+    additional.purchasesCarts.carts,
+    (cart) => `${cart.cartId}:${cart.accessScope ?? 'unknown'}`,
+  );
+  const purchaseCoverage = mergeDistinctRecords(
+    base.purchasesCarts.sourceCoverage ?? [],
+    additional.purchasesCarts.sourceCoverage ?? [],
+    (coverage) => `${coverage.source}:${coverage.childId}:${JSON.stringify(coverage)}`,
+  );
+  const purchasesCarts: PurchasesCartsSection = {
+    ...mergeSectionBase(base.purchasesCarts, additional.purchasesCarts, purchases.length + carts.length > 0),
+    section: 'purchases_carts',
+    purchases,
+    carts,
+    ...(purchaseCoverage.length > 0 ? { sourceCoverage: purchaseCoverage } : {}),
+  };
+  const invitations = coalesceInvitationsBySlot([
+    ...base.invitationsEvents.invitations.map((invitation) => ({
+      invitation,
+      guestId: invitation.guestId,
+      accessScope: invitation.accessScope ?? base.invitationsEvents.scope,
+    })),
+    ...additional.invitationsEvents.invitations.map((invitation) => ({
+      invitation,
+      guestId: invitation.guestId,
+      accessScope: invitation.accessScope ?? additional.invitationsEvents.scope,
+    })),
+  ]);
+  const invitationsEvents: InvitationsEventsSection = {
+    ...mergeSectionBase(base.invitationsEvents, additional.invitationsEvents, invitations.length > 0),
+    section: 'invitations_events',
+    invitations,
+  };
+  const outcomes = mergeDistinctRecords(
+    base.actionOutcomes.outcomes,
+    additional.actionOutcomes.outcomes,
+    (outcome) => outcome.dedupeKey ?? `${outcome.operation}:${outcome.target}:${outcome.observedAt}`,
+  );
+  const actionOutcomes: ActionOutcomesSection = {
+    ...mergeSectionBase(base.actionOutcomes, additional.actionOutcomes, outcomes.length > 0),
+    section: 'action_outcomes',
+    outcomes,
+  };
+  const readMetrics = mergeReadMetrics(base.readMetrics, additional.readMetrics);
+  return {
+    identityAccess,
+    currentContext,
+    purchasesCarts,
+    invitationsEvents,
+    actionOutcomes,
+    timingsMs: { ...base.timingsMs, ...additional.timingsMs },
+    ...(readMetrics ? { readMetrics } : {}),
+  };
+}
+
+function mergeDistinctRecords<T>(
+  left: readonly T[],
+  right: readonly T[],
+  identity: (record: T) => string,
+): T[] {
+  const records = new Map<string, T[]>();
+  for (const record of [...left, ...right]) {
+    const key = identity(record);
+    const bucket = records.get(key) ?? [];
+    if (!bucket.some((known) => JSON.stringify(known) === JSON.stringify(record))) {
+      bucket.push(record);
+    }
+    records.set(key, bucket);
+  }
+  return [...records.values()].flat();
+}
+
+function mergeSectionBase<T extends CustomerSectionBase>(
+  base: T,
+  additional: T,
+  factsAvailable: boolean,
+): CustomerSectionBase {
+  const statuses = [base.status, additional.status].filter((status) => status !== 'not_requested');
+  const status = worstStatus(statuses);
+  const paginationExhausted = base.paginationExhausted === false || additional.paginationExhausted === false
+    ? false
+    : base.paginationExhausted === true && additional.paginationExhausted === true
+      ? true
+      : null;
+  const hasFailedSource = statuses.includes('failed') || statuses.includes('unavailable');
+  const incomplete = base.completeness === 'partial' ||
+    additional.completeness === 'partial' ||
+    paginationExhausted === false ||
+    (factsAvailable && hasFailedSource);
+  const completeness: CustomerSectionBase['completeness'] = incomplete
+    ? 'partial'
+    : base.completeness === additional.completeness
+      ? base.completeness
+      : null;
+  const sources = [...new Set([base.source, additional.source].filter((source): source is string => source !== null))];
+  const scopes = [...new Set([base.scope, additional.scope].filter((scope): scope is string => scope !== null))];
+  const historyLimits = [...new Set([base.historyLimit, additional.historyLimit].filter((limit): limit is string => limit !== null))];
+  return {
+    status,
+    source: sources.length > 0 ? sources.join('+') : null,
+    fetchedAt: [base.fetchedAt, additional.fetchedAt].filter((value): value is string => value !== null).sort().at(-1) ?? null,
+    scope: scopes.length > 0 ? scopes.join('+') : null,
+    completeness,
+    paginationExhausted,
+    historyLimit: historyLimits.length > 0 ? historyLimits.join('+') : null,
+  };
+}
+
+function mergeReadMetrics(
+  base: CustomerReadMetrics | undefined,
+  additional: CustomerReadMetrics | undefined,
+): CustomerReadMetrics | undefined {
+  if (!base && !additional) return undefined;
+  const readsByOperation: Record<string, number> = {};
+  for (const metrics of [base, additional]) {
+    for (const [operation, count] of Object.entries(metrics?.readsByOperation ?? {})) {
+      readsByOperation[operation] = (readsByOperation[operation] ?? 0) + count;
+    }
+  }
+  return {
+    totalReads: (base?.totalReads ?? 0) + (additional?.totalReads ?? 0),
+    peakConcurrency: Math.max(base?.peakConcurrency ?? 0, additional?.peakConcurrency ?? 0),
+    readsByOperation,
+  };
 }
 
 /**
@@ -1969,6 +1672,7 @@ export function mergeExecutionIntoSnapshot(args: {
       ? fresh.actionOutcomes
       : args.base.actionOutcomes,
     timingsMs: { ...args.base.timingsMs, ...fresh.timingsMs },
+    ...(args.base.readMetrics ? { readMetrics: args.base.readMetrics } : {}),
   };
 }
 

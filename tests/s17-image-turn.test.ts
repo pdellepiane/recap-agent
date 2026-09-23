@@ -38,6 +38,7 @@ import { PromptLoader } from '../src/runtime/prompt-loader';
 import type { ProviderGateway } from '../src/runtime/provider-gateway';
 import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
+import { unavailableCustomerContext } from './customer-context-test-utils';
 
 const PNG_1X1 =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
@@ -1136,130 +1137,8 @@ describe('Unavailable media record checks', () => {
   });
 });
 
-describe('Approval-boundary ambiguity projection', () => {
-  function boundaryRuntime(): OpenAiAgentRuntime {
-    return new OpenAiAgentRuntime({
-      apiKey: 'test-key',
-      replyModel: 'gpt-5.6-luna',
-      extractorModel: 'gpt-5.6-luna',
-      replyProviderLimit: 4,
-      presentationProviderLimit: 5,
-      providerDetailLookupLimit: 3,
-      promptLoader: {} as never,
-      providerGateway: {} as never,
-    });
-  }
-
-  function boundaryRequest(overrides: {
-    purchaseResults?: Array<Record<string, unknown>>;
-    imageEvidence?: Record<string, unknown> | null;
-    storedAttachments?: number;
-  }): Record<string, unknown> {
-    return {
-      extraction: {
-        ambiguity: {
-          status: 'ambiguous',
-          clarificationQuestion: 'Quieres el estado o que revise el comprobante?',
-          interpretations: ['revisar aprobación', 'revisar comprobante'],
-          candidateOperations: [],
-          questionKey: 'status_or_proof_review',
-        },
-        imageReference: null,
-      },
-      imageEvidence: overrides.imageEvidence ?? null,
-      informationResults: overrides.purchaseResults ?? [],
-      rsvpPhoneEvidence: null,
-      providerResults: [],
-      plan: {
-        image_attachments: Array.from(
-          { length: overrides.storedAttachments ?? 0 },
-          (_, index) => ({ kind: 'file', messageId: `wamid.stored${index}` }),
-        ),
-      },
-    };
-  }
-
-  function answeredByEvidence(request: unknown): boolean {
-    const typed = boundaryRuntime() as unknown as {
-      ambiguityAnsweredByProjectedEvidence: (value: unknown) => boolean;
-    };
-    return typed.ambiguityAnsweredByProjectedEvidence(request);
-  }
-
-  it('resolves the invented approval choice on a completed empty purchase outcome', () => {
-    expect(
-      answeredByEvidence(
-        boundaryRequest({
-          purchaseResults: [
-            {
-              requestId: 'information-1',
-              kind: 'purchase',
-              status: 'completed',
-              resource: 'orders',
-              purchases: [],
-              needsSelection: false,
-              accessMethod: 'trusted_phone_purchase',
-              coverage: 'complete',
-            },
-          ],
-          storedAttachments: 1,
-        }),
-      ),
-    ).toBe(true);
-  });
-
-  it('resolves a scoped empty lookup with retained receipt context', () => {
-    expect(
-      answeredByEvidence(
-        boundaryRequest({
-          purchaseResults: [
-            {
-              requestId: 'information-1',
-              kind: 'purchase',
-              status: 'failed',
-              retryable: false,
-              accessMethod: 'trusted_phone_purchase',
-              failureKind: 'not_found',
-              message: 'No se encontró la compra.',
-            },
-          ],
-          imageEvidence: {
-            status: 'unavailable',
-            reason: 'media_unavailable',
-            captionPresent: false,
-          },
-        }),
-      ),
-    ).toBe(true);
-  });
-
-  it('can answer that a receipt alone cannot prove approval without a purchase read', () => {
-    expect(
-      answeredByEvidence(boundaryRequest({ storedAttachments: 1 })),
-    ).toBe(true);
-  });
-
-  it('keeps a scoped miss ambiguous without receipt context', () => {
-    expect(
-      answeredByEvidence(
-        boundaryRequest({
-          purchaseResults: [
-            {
-              requestId: 'information-1',
-              kind: 'purchase',
-              status: 'failed',
-              retryable: false,
-              accessMethod: 'trusted_phone_purchase',
-              failureKind: 'not_found',
-              message: 'No se encontró la compra.',
-            },
-          ],
-        }),
-      ),
-    ).toBe(false);
-  });
-
-  it('answers the approval boundary from the record instead of asking which task was intended', async () => {
+describe('Approval ambiguity stays model-owned', () => {
+  it('preserves extracted ambiguity for the reply model after an empty read', async () => {
     const runtime = new ImageStubRuntime();
     const planStore = new InMemoryPlanStore();
     const seed = createEmptyPlan({
@@ -1301,8 +1180,6 @@ describe('Approval-boundary ambiguity projection', () => {
           resource: 'orders',
           query: 'Con ese monto, ¿puedes asegurar que la tienda ya aprobó el pago?',
           orderId: null,
-          aspects: ['payment_status'],
-          sensitiveFields: [],
           authAction: 'none',
         },
       ],
@@ -1338,6 +1215,7 @@ describe('Approval-boundary ambiguity projection', () => {
       providerGateway: {} as unknown as ProviderGateway,
       agentConversationGateway: gateway,
       informationOrchestrator: {
+        prepareCustomerContext: unavailableCustomerContext,
         async execute(input: { requests?: Array<{ kind?: string }> }) {
           executed.push(input);
           return {
@@ -1372,10 +1250,14 @@ describe('Approval-boundary ambiguity projection', () => {
     expect(response.outbound.delivery.action).toBe('send');
     // The record was read instead of skipped for clarification.
     expect(executed).toHaveLength(1);
-    // The answered ambiguity no longer binds the reply to ask.
+    // The runtime keeps the extractor's uncertainty intact; the reply model
+    // receives both interpretations and the actual empty read outcome.
     const composed = runtime.composeRequests.at(-1);
-    expect(composed?.extraction.ambiguity?.status).toBe('clear');
-    expect(composed?.extraction.ambiguity?.interpretations ?? []).toHaveLength(0);
+    expect(composed?.extraction.ambiguity?.status).toBe('ambiguous');
+    expect(composed?.extraction.ambiguity?.interpretations).toEqual([
+      'revisar aprobación',
+      'revisar comprobante',
+    ]);
     // E4 narrow scope: the performed read stays an empty outcome. The twin
     // proves the boundary answer synthesizes no completed purchase, approves
     // no payment, and marks only the read that actually ran.
@@ -1529,18 +1411,14 @@ describe('B receipt discovery answers a captionless receipt from real state', ()
     return {
       supportAct: {
         kind: 'provide_detail',
-        topic: 'payment_proof',
-        detail: 'submission_reported',
         eventReference: null,
         personReference: null,
       },
       informationRequests: [{
         kind: 'purchase',
-        resource: 'orders',
+        resource: 'purchase_discovery',
         query: 'Estado del pago del comprobante.',
         orderId: null,
-        aspects: ['summary', 'payment_status'],
-        sensitiveFields: [],
         authAction: 'none',
       }],
       ambiguity: {
@@ -1602,8 +1480,10 @@ describe('B receipt discovery answers a captionless receipt from real state', ()
     expect(response.outbound.delivery.action).toBe('send');
     expect(response.outbound.text).not.toBeNull();
     expect(runtime.extractCalls).toBe(1);
-    // Default bounded discovery reads both authorized sources, one scoped
-    // read per source. The gift discovery read runs unscoped (no order id).
+    expect(runtime.lastExtractRequest?.customerContext?.purchases.map((purchase) => purchase.orderId)).toEqual(
+      expect.arrayContaining([RECEIPT_ORDER_ID, RECEIPT_GIFT_ID]),
+    );
+    // Profile preparation reads both authorized roots before extraction.
     expect(gateway.guestOrdersCalls).toBe(1);
     expect(gateway.guestGiftCalls).toBeGreaterThanOrEqual(1);
     expect(gateway.guestGiftOrderIds[0]).toBeNull();
@@ -1639,7 +1519,6 @@ describe('B receipt discovery answers a captionless receipt from real state', ()
     expect(customerContext).not.toBeNull();
     const profileIds = [
       ...(customerContext?.purchases.map((entry) => entry.orderId) ?? []),
-      ...(customerContext?.detailedPurchases.map((entry) => entry.orderId) ?? []),
     ];
     expect(profileIds).toContain(RECEIPT_ORDER_ID);
     expect(profileIds).toContain(RECEIPT_GIFT_ID);
@@ -1692,8 +1571,6 @@ describe('B receipt discovery answers a captionless receipt from real state', ()
               resource: 'orders',
               query: '¿Cuál es el estado de mi pago?',
               orderId: null,
-              aspects: ['payment_status'],
-              sensitiveFields: [],
               authAction: 'none',
             },
           },

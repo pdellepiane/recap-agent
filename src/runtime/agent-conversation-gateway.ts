@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import type {
   CartInformation,
+  PurchasePaymentDetails,
   PurchasePartition,
   PurchaseInformation,
   PurchaseResource,
@@ -30,6 +31,17 @@ export {
   type RuntimeOperationId,
 } from './capability-manifest';
 import { normalizeServerTimestamp } from '../core/server-timestamp';
+import {
+  agentEventDetailWireShape,
+  agentGiftPurchasesWireShape,
+  agentGuestEventsWireShape,
+  agentOrderWireShape,
+  agentPartitionedOrdersWireShape,
+  agentRecentMessagesWireShape,
+  reportUnmappedWireKeys,
+  type UnmappedWireKeySink,
+  type WireObjectShape,
+} from './wire-key-diagnostics';
 
 export { normalizeServerTimestamp as normalizePurchaseTimestamp } from '../core/server-timestamp';
 
@@ -709,6 +721,7 @@ const orderSchema = z.object({
   shipping_status: nullableStringSchema,
   grand_total: nullableNumberSchema,
   payment_method: nullableStringSchema,
+  payment: paymentSchema.nullable().optional(),
   event_id: z.union([z.number(), z.string()]).nullable().optional(),
   currency: nullableStringSchema.optional(),
   currency_code: nullableStringSchema.optional(),
@@ -843,6 +856,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
       messageLoggingEnabled: boolean;
       allowCustomerWrites?: boolean;
       environment?: 'development' | 'production';
+      onUnmappedWireKey?: UnmappedWireKeySink;
     },
   ) {
     this.capabilityDescriptor = buildRuntimeCapabilityManifest({
@@ -899,6 +913,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
       return this.publicFailure(response);
     }
 
+    this.diagnoseWireKeys('/conversations/messages', response.data, agentRecentMessagesWireShape);
     const parsed = messagesDataSchema.safeParse(response.data);
     if (!parsed.success) {
       return {
@@ -950,6 +965,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
       return response;
     }
 
+    this.diagnoseWireKeys('/orders', response.data, agentOrderWireShape);
     const purchases = this.parseOrders(response.data);
     if (!purchases) {
       return {
@@ -981,6 +997,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
       return response;
     }
 
+    this.diagnoseWireKeys('/gift-purchases', response.data, agentGiftPurchasesWireShape);
     const purchases = this.parseGiftPurchases(response.data);
     if (!purchases) {
       return {
@@ -1110,6 +1127,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
       };
     }
 
+    this.diagnoseWireKeys('/guest/events', response.data, agentGuestEventsWireShape);
     const parsed = guestEventsDataSchema.safeParse(response.data);
     if (!parsed.success) {
       return {
@@ -1197,6 +1215,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
       };
     }
 
+    this.diagnoseWireKeys('/event', response.data, agentEventDetailWireShape);
     const parsed = eventDetailDataSchema.safeParse(response.data);
     if (!parsed.success) {
       return {
@@ -1260,7 +1279,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
               responseDate: normalizeServerTimestamp(parsed.data.attendance.response_date),
             }
           : null,
-        purchases: parsed.data.purchases.map((purchase) => this.mapGiftPurchase(purchase)),
+        purchases: parsed.data.purchases.map((purchase) => this.mapGiftPurchase(purchase, 'event_detail')),
       },
     };
   }
@@ -1594,6 +1613,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
     const money = normalizePurchaseCurrency(order);
     return {
       orderId: order.id,
+      recordSource: 'orders',
       partition,
       eventId: order.event_id ?? null,
       currency: money.currency,
@@ -1617,6 +1637,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
         rowTotal: item.row_total ?? null,
         type: item.type ?? null,
       })),
+      ...(order.payment ? { payment: this.mapPayment(order.payment) } : {}),
     };
   }
 
@@ -1653,10 +1674,14 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
     return parsed.data.purchases.map((purchase) => this.mapGiftPurchase(purchase));
   }
 
-  private mapGiftPurchase(purchase: GiftPurchaseWire): PurchaseInformation {
+  private mapGiftPurchase(
+    purchase: GiftPurchaseWire,
+    recordSource: 'gift_purchases' | 'event_detail' = 'gift_purchases',
+  ): PurchaseInformation {
     const money = normalizePurchaseCurrency(purchase);
     return {
       orderId: purchase.id,
+      recordSource,
       eventId: purchase.event_id ?? null,
       currency: money.currency,
       currencySymbol: money.currencySymbol,
@@ -1679,28 +1704,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
         rowTotal: item.row_total ?? null,
         type: item.type ?? null,
       })),
-      payment: purchase.payment
-        ? {
-            method: purchase.payment.method ?? null,
-            amount: purchase.payment.amount ?? null,
-            paidAt: normalizeServerTimestamp(purchase.payment.paid_at),
-            paymentId: purchase.payment.payment_id ?? null,
-            transactionStatus: purchase.payment.transaction_status ?? null,
-            gatewayMessage: purchase.payment.gateway_message ?? null,
-            operationCode: purchase.payment.op_code ?? null,
-            originBank: purchase.payment.origin_bank ?? null,
-            destinationAccount: purchase.payment.destination_account
-              ? {
-                  holder: purchase.payment.destination_account.holder ?? null,
-                  bank: purchase.payment.destination_account.bank ?? null,
-                  number: purchase.payment.destination_account.number ?? null,
-                  cci: purchase.payment.destination_account.cci ?? null,
-                  type: purchase.payment.destination_account.type ?? null,
-                }
-              : null,
-            voucherImage: purchase.payment.voucher ?? null,
-          }
-        : null,
+      payment: purchase.payment ? this.mapPayment(purchase.payment) : null,
       declineCode: purchase.decline_code ?? null,
       adminComment: purchase.admin_comment ?? null,
       dedication: purchase.dedication
@@ -1718,6 +1722,32 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
           }
         : null,
       isThanked: purchase.is_thanked ?? null,
+    };
+  }
+
+  private mapPayment(payment: z.infer<typeof paymentSchema>): PurchasePaymentDetails {
+    const voucher = payment.voucher;
+    return {
+      method: payment.method ?? null,
+      amount: payment.amount ?? null,
+      paidAt: normalizeServerTimestamp(payment.paid_at),
+      paymentId: payment.payment_id ?? null,
+      transactionStatus: payment.transaction_status ?? null,
+      gatewayMessage: payment.gateway_message ?? null,
+      operationCode: payment.op_code ?? null,
+      originBank: payment.origin_bank ?? null,
+      voucherProvided: voucher === undefined ? null : voucher === null
+        ? null
+        : Array.isArray(voucher) ? voucher.length > 0 : voucher.length > 0,
+      destinationAccount: payment.destination_account
+        ? {
+          holder: payment.destination_account.holder ?? null,
+          bank: payment.destination_account.bank ?? null,
+          number: payment.destination_account.number ?? null,
+          cci: payment.destination_account.cci ?? null,
+          type: payment.destination_account.type ?? null,
+        }
+        : null,
     };
   }
 
@@ -1773,6 +1803,11 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
     const guestOrders = resource === 'orders'
       ? this.parseGuestOrders(response.data)
       : null;
+    this.diagnoseWireKeys(
+      resource === 'orders' ? '/guest/orders' : '/guest/gift-purchases',
+      response.data,
+      resource === 'orders' ? agentPartitionedOrdersWireShape : agentGiftPurchasesWireShape,
+    );
     const purchases = resource === 'orders'
       ? guestOrders?.purchases ?? null
       : this.parseGiftPurchases(response.data);
@@ -1797,6 +1832,14 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
       };
     }
     return { status: 'success', resource, purchases };
+  }
+
+  private diagnoseWireKeys(
+    endpoint: string,
+    value: unknown,
+    shape: WireObjectShape,
+  ): void {
+    reportUnmappedWireKeys(endpoint, value, shape, this.options.onUnmappedWireKey);
   }
 
   private async requestPurchase(

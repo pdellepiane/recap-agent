@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { createEmptyPlan, mergePlan } from '../src/core/plan';
 import type { PersistedPlan } from '../src/core/plan';
 import type { ComposeReplyRequest, ExtractRequest, ExtractionResult } from '../src/runtime/contracts';
+import type { CustomerContextProjection } from '../src/runtime/customer-context';
 import { OpenAiAgentRuntime } from '../src/runtime/openai-agent-runtime';
 import { PromptLoader } from '../src/runtime/prompt-loader';
 import { runtimeOperationIds } from '../src/runtime/capability-manifest';
@@ -56,7 +57,6 @@ function baseExtraction(overrides: Record<string, unknown> = {}): ExtractionResu
     informationRequests: [],
     supportAct: null,
     humanHelpIntent: null,
-    normalizationIssues: [],
     phoneConfirmation: null,
     rsvpAction: null,
     rsvpDecisionSource: 'plan_state',
@@ -158,6 +158,96 @@ function venueResult(requestId: string): Record<string, unknown> {
       counts: { ownerEvents: 0, guestEvents: 1, hostEvents: 0, celebratedEvents: 0, recentOrders: 0 },
     },
     accessMethod: 'trusted_phone_guest',
+  };
+}
+
+function venueCustomerContext(): CustomerContextProjection {
+  const section = {
+    status: 'ready' as const,
+    source: 'agent_profile',
+    fetchedAt: '2026-09-20T10:00:00.000Z',
+    scope: 'trusted_phone',
+    completeness: null,
+    paginationExhausted: null,
+    historyLimit: null,
+  };
+  return {
+    identityAccess: {
+      section: 'identity_access',
+      ...section,
+      customerRef: 'trusted-phone',
+      displayName: null,
+      email: null,
+      phone: null,
+      authorizedScopes: ['trusted_phone'],
+      guestEventIds: [702201],
+      hostEventIds: [],
+    },
+    currentContext: {
+      section: 'current_context',
+      ...section,
+      relevantEventIds: [],
+      relevantOrderIds: [],
+      pendingQuestion: null,
+      unresolvedCandidateOrderIds: [],
+      unresolvedCandidateEventIds: [],
+    },
+    purchases: [],
+    carts: [],
+    invitations: [{
+      relation: 'guest',
+      guestId: 42,
+      eventId: 702201,
+      slug: 'boda-ana-luis',
+      url: null,
+      name: 'Boda Ana y Luis',
+      place: 'Lima',
+      type: null,
+      datetime: '2026-09-20T18:00:00',
+      stage: null,
+      isVisible: null,
+      isPublic: null,
+      currency: null,
+      country: null,
+      guestStatus: null,
+      hostType: null,
+      hostPermission: null,
+      hostStatus: null,
+      celebratedType: null,
+      amountCollected: null,
+      amountTransferred: null,
+      transactionsCount: null,
+      invitedGuestCount: null,
+      confirmedGuestCount: null,
+      orders: [],
+      source: 'agent_profile',
+      accessScope: 'trusted_phone',
+      detail: {
+        withTime: true,
+        timezone: null,
+        city: 'Lima',
+        celebrateds: [],
+        moments: [{
+          label: 'Recepción y Fiesta',
+          description: null,
+          datetime: '2026-09-20T18:00:00',
+          withTime: true,
+          locationDescription: 'Hacienda Recoveco',
+          locationReference: 'Avenida Manuel Valle en Lima',
+          locationUrl: null,
+          locationCoords: null,
+          position: 0,
+        }],
+        dresscode: null,
+        commonAsked: [],
+        contactInfo: [],
+      },
+    }],
+    actionOutcomes: [],
+    coverage: {
+      purchasesCarts: { ...section, status: 'empty' },
+      invitationsEvents: section,
+    },
   };
 }
 
@@ -274,22 +364,30 @@ describe('Owner B B7 extractor instruction economy', () => {
     expect(spec.filePaths).not.toContain('extractors/planning.txt');
     expect(spec.filePaths).not.toContain('extractors/provider_management.txt');
     expect(spec.filePaths).not.toContain('extractors/close_pause.txt');
-    expect(spec.instructions).toContain('Delta vacío');
+    expect(bytes(spec.instructions)).toBeLessThanOrEqual(6_000);
+    expect(spec.instructions).not.toContain('purchase_discovery');
+    expect(spec.instructions).not.toContain('aspects');
   });
 
   it('keeps one source contract, auth boundary and recognition contracts', () => {
     const information = readFileSync(path.join(promptsDir, 'extractors/information.txt'), 'utf8');
-    expect(information).toContain('purchase_discovery');
-    expect(information).toContain('purchase.read');
-    expect(information).toContain('personReference');
-    expect(information).toContain('eventReference');
-    expect(information).toContain('Conserva literalmente el nombre del evento citado');
+    expect(information).toContain('orderId');
+    expect(information).toContain('eventHint');
+    expect(information).toContain('amount');
+    expect(information).not.toContain('purchase_discovery');
+    expect(information).not.toContain('orders` o `gift_purchases');
+    expect(information).toContain('supportAct');
+    expect(information).not.toContain('personReference');
+    expect(information).not.toContain('eventReference');
+    expect(information).not.toContain('Conserva literalmente el nombre del evento citado');
     const boundary = readFileSync(
       path.join(promptsDir, 'extractors/capability_boundary.txt'), 'utf8',
     );
-    expect(boundary).toContain('purchase.read');
+    expect(boundary).toContain('El runtime valida capacidad, identidad, autorización y precondiciones');
+    expect(boundary).not.toContain('purchase.read');
     const rsvp = readFileSync(path.join(promptsDir, 'extractors/rsvp.txt'), 'utf8');
-    expect(rsvp).toContain('Emite siempre `rsvpDecisionSource`');
+    expect(rsvp).toContain('`rsvpAction` solo refleja una decisión expresada ahora');
+    expect(rsvp).not.toContain('rsvpDecisionSource');
     const planning = readFileSync(path.join(promptsDir, 'extractors/planning.txt'), 'utf8');
     expect(planning).toContain('Fotografía y video');
     expect(planning).toContain('activeNeedCategory');
@@ -510,7 +608,7 @@ describe('Owner B decision 2 support continuity', () => {
     const runtime = testRuntime();
     const report = baseExtraction({
       supportAct: {
-        kind: 'report_issue', topic: 'unknown', detail: 'unknown',
+        kind: 'report_issue',
         personReference: null, eventReference: null,
       },
     });
@@ -530,14 +628,14 @@ describe('Owner B decision 2 support continuity', () => {
         userMessage: 'El invitado es Roger Abanto y el evento es Baby Shower Catalina',
         extraction: baseExtraction({
           supportAct: {
-            kind: 'provide_detail', topic: 'unknown', detail: 'unknown',
+            kind: 'provide_detail',
             personReference: 'Roger Abanto', eventReference: 'Baby Shower Catalina',
           },
         }),
       }),
     );
     expect(continued.modules.map((module) => module.id)).toContain('reply_support_continuity');
-    expect(continued.instructions).toContain('La persona aportó un dato o reportó una situación');
+    expect(continued.instructions).toContain('Usa el mensaje actual y el historial');
   });
 
   it('addresses the unresolved issue after names and separates handoff states', () => {
@@ -545,22 +643,10 @@ describe('Owner B decision 2 support continuity', () => {
       path.join(promptsDir, 'nodes/resolver_consultas_informativas/support_continuity.txt'), 'utf8',
     );
     // Card case: names alone never restart the interview.
-    expect(continuity).toContain('problema sin resolver');
-    expect(continuity).toContain('solo aporta nombres');
-    // Offer, accepted, attempted and verified handoff stay distinct.
-    expect(continuity).toContain('ofrecida, aceptada, intentada y confirmada');
-    expect(continuity).toContain('handoff_outcome');
-    // Completed work needs evidence; undone work is never promised.
-    expect(continuity).toContain('únicamente a resultados confirmados');
-    expect(continuity).toContain('No ofrezcas acciones que la evidencia no permite');
-    // Reported identity stays verbatim when needed, never forced.
-    expect(continuity).toContain('reported_guest_name');
-    expect(continuity).toContain('reported_event_name');
-    // Packet B: current-turn names are required in the acknowledgment; only
-    // prior-turn names stay unrepeated, and an optional prior question never
-    // becomes a mandatory re-ask.
-    expect(continuity).toContain('no repitas nombres de turnos anteriores que este mensaje no trae');
-    expect(continuity).toContain('no obliga a repetirla');
+    expect(continuity).toContain('Usa el mensaje actual y el historial');
+    expect(continuity).toContain('información reportada');
+    expect(continuity).toContain('resultado confirmado');
+    expect(bytes(continuity)).toBeLessThanOrEqual(500);
     expect(continuity).not.toContain('support_query_open');
   });
 
@@ -588,13 +674,15 @@ describe('Owner B decision 2 support continuity', () => {
 describe('Owner B B9 single reply core', () => {
   it('selects exactly one reply-core file in production', () => {
     // Negative control: restoring the four-file core breaks this identity.
-    expect([...instructionModuleRegistry.shared_invariants.files]).toEqual(['shared/reply_core.txt']);
+    expect([...instructionModuleRegistry.shared_invariants.files]).toEqual([
+      'shared/reply_core.txt',
+      'shared/customer_context_fields.txt',
+    ]);
     const core = readFileSync(path.join(promptsDir, 'shared/reply_core.txt'), 'utf8');
     expect(bytes(core)).toBeLessThanOrEqual(2_000);
-    expect(core).toContain('Resuelve lo que puedas de la solicitud');
-    expect(core).toContain('únicamente a resultados confirmados');
-    expect(core).toContain('español');
-    expect(core).toContain('No menciones nombres internos');
+    expect(core).toContain('Responde en español natural a la solicitud actual');
+    expect(core).toContain('Afirma una consulta o cambio únicamente según su resultado verificado');
+    expect(core).toContain('no los enumeres si no ayudan a responder');
     // The legacy files stay on disk for the static audit inventory only.
     for (const legacy of [
       'shared/base_system.txt',
@@ -616,9 +704,10 @@ describe('Owner B B9 single reply core', () => {
     expect(spec.filePaths).not.toContain('shared/agent_personality.txt');
     expect(spec.filePaths).not.toContain('shared/output_style.txt');
     expect(spec.filePaths).not.toContain('shared/common_anti_patterns.txt');
-    // Baseline first-support instructions measured 5,019 bytes.
+    // Shared field semantics are loaded once alongside the concise reply core.
     expect(bytes(spec.instructions)).toBeLessThan(2_000);
-    expect(spec.instructions).toContain('Resuelve lo que puedas de la solicitud');
+    expect(spec.instructions).toContain('Responde en español natural a la solicitud actual');
+    expect(spec.instructions).toContain('payment.amount');
     expect(spec.instructions).not.toContain('Claro, te ayudo');
     expect(spec.manifest.promptIdentity).toBe(spec.modules.map((module) => module.id).join('+'));
   });
@@ -646,7 +735,10 @@ describe('Owner B B10 tool narration and reply input', () => {
   it('keeps provider menus and catalogues out of support replies', async () => {
     const runtime = testRuntime();
     const spec = await runtime.buildReplyRequestSpec(
-      replyRequest(supportPlan(), { informationResults: [venueResult('req-venue')] }),
+      replyRequest(supportPlan(), {
+        informationResults: [venueResult('req-venue')],
+        customerContext: venueCustomerContext(),
+      }),
     );
     expect(spec.scopedTools).toEqual([]);
     expect(spec.input).not.toContain('Capacidades habilitadas');

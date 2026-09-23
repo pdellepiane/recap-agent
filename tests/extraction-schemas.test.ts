@@ -444,8 +444,6 @@ describe('structured extraction schemas', () => {
           resource: 'orders',
           query: 'Estado del pago.',
           orderId: null,
-          aspects: ['payment_status'],
-          sensitiveFields: [],
           authAction: 'none',
         }],
         selection_candidates: [],
@@ -484,8 +482,6 @@ describe('structured extraction schemas', () => {
           resource: 'orders',
           query: 'Estado del pago.',
           orderId: null,
-          aspects: ['payment_status'],
-          sensitiveFields: [],
           authAction: 'none',
         }],
         selection_candidates: [],
@@ -552,8 +548,8 @@ function capabilityProfile(
   };
 }
 
-describe('source discovery request contract', () => {
-  it('accepts purchase_discovery as a request-only resource', async () => {
+describe('purchase request schema keeps backend source routing outside extraction', () => {
+  it('strips backend source fields from an extracted purchase request', async () => {
     const schemas = await import('../src/runtime/extraction-schemas');
     const core = await import('../src/core/information');
     const parsed = schemas.openAiInformationRequestSchema.safeParse({
@@ -563,12 +559,13 @@ describe('source discovery request contract', () => {
       resource: 'purchase_discovery',
       orderId: null,
       amount: null,
-      aspects: ['summary', 'shipping'],
-      sensitiveFields: [],
       authAction: null,
       hostWithdrawal: null,
     });
     expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data).not.toHaveProperty('resource');
+    }
 
     const pending = core.pendingInformationRequestSchema.safeParse({
       requestId: 'information-1',
@@ -576,8 +573,6 @@ describe('source discovery request contract', () => {
       resource: 'purchase_discovery',
       query: '¿Cuándo llega mi regalo?',
       orderId: null,
-      aspects: ['summary'],
-      sensitiveFields: [],
       authAction: 'none',
     });
     expect(pending.success).toBe(true);
@@ -616,58 +611,21 @@ describe('source discovery request contract', () => {
     expect(manifestModule.isServableInformationRead('purchase.read')).toBe(true);
   });
 
-  it('keeps requestedOperation and resource in agreement', async () => {
-    const schemas = await import('../src/runtime/extraction-schemas');
-    const purchaseRequest = (
-      resource: 'orders' | 'gift_purchases' | 'purchase_discovery',
-    ) => ({
-      kind: 'purchase' as const,
-      hostWithdrawal: null,
-      resource,
-    });
-    // Agreeing pairs pass through untouched.
-    expect(
-      schemas.normalizeRequestedOperation('purchase.read', [purchaseRequest('purchase_discovery')], null),
-    ).toBe('purchase.read');
-    expect(
-      schemas.normalizeRequestedOperation('purchase.orders.read', [purchaseRequest('orders')], null),
-    ).toBe('purchase.orders.read');
-    expect(
-      schemas.normalizeRequestedOperation('purchase.read', [purchaseRequest('orders')], null),
-    ).toBe('purchase.read');
-    // A specific operation contradicting the subject-based resource is
-    // repaired toward the resource instead of rerouting the read.
-    expect(
-      schemas.normalizeRequestedOperation('purchase.orders.read', [purchaseRequest('gift_purchases')], null),
-    ).toBe('purchase.gift_detail.read');
-    expect(
-      schemas.normalizeRequestedOperation('purchase.gift_detail.read', [purchaseRequest('orders')], null),
-    ).toBe('purchase.orders.read');
-    // Non-purchase operations and turns without purchase requests are untouched.
-    expect(schemas.normalizeRequestedOperation('faq.read', [purchaseRequest('orders')], null)).toBe('faq.read');
-    expect(schemas.normalizeRequestedOperation('purchase.orders.read', [], null)).toBe('purchase.orders.read');
-    expect(schemas.isPurchaseOperationResourceAgreement('purchase.read', 'purchase_discovery')).toBe(true);
-    expect(schemas.isPurchaseOperationResourceAgreement('purchase.orders.read', 'gift_purchases')).toBe(false);
-  });
-
-  it('writes the subject-based source contract into the extractor prompts', async () => {
+  it('keeps backend source names and field selectors out of extractor prompts', async () => {
     const fs = await import('node:fs');
     const path = await import('node:path');
     const information = fs.readFileSync(
       path.resolve(process.cwd(), 'prompts/extractors/information.txt'),
       'utf8',
     );
-    expect(information).toContain('purchase_discovery');
-    expect(information).toContain('purchase.read');
-    // Subject-based ownership: established shop orders/carts read orders,
-    // established gift purchases read gift_purchases, unknown ownership
-    // reads purchase_discovery. Aspects never select the backend partition.
-    expect(information).not.toContain('gift_purchases` para pago');
-    expect(information).not.toMatch(/“estado de mi pedido”\s*→\s*`?orders/);
+    expect(information).not.toContain('purchase_discovery');
+    expect(information).not.toContain('gift_purchases');
+    expect(information).not.toContain('sensitiveFields');
+    expect(information).not.toContain('aspects');
     const boundary = fs.readFileSync(
       path.resolve(process.cwd(), 'prompts/extractors/capability_boundary.txt'),
       'utf8',
     );
-    expect(boundary).toContain('purchase.read');
+    expect(boundary).not.toContain('purchase.read');
   });
 });

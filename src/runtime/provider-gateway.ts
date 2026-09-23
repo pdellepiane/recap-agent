@@ -105,6 +105,12 @@ export type UserEventGuestStatus = {
 
 export type UserEventOrderSummary = {
   id: number | null;
+  eventId?: number | null;
+  eventName?: string | null;
+  eventDate?: string | null;
+  eventUrl?: string | null;
+  currency?: string | null;
+  currencySymbol?: string | null;
   incrementId: string | null;
   giftType: string | null;
   grandTotal: number | null;
@@ -122,13 +128,18 @@ export type UserEventSummary = {
   url: string | null;
   name: string | null;
   place: string | null;
+  location?: string | null;
+  address?: string | null;
   type: string | null;
+  typeDetail?: string | null;
   datetime: string | null;
   stage: string | null;
   isVisible: boolean | null;
   isPublic: boolean | null;
   currency: string | null;
+  currencySymbol?: string | null;
   country: string | null;
+  countryCode?: string | null;
   guestStatus: UserEventGuestStatus | null;
   hostType: string | null;
   hostPermission: string | null;
@@ -140,8 +151,12 @@ export type UserEventSummary = {
   invitedGuestCount: number | null;
   confirmedGuestCount: number | null;
   orders: UserEventOrderSummary[];
+  /** Stable links to canonical purchase records carried by the profile. */
+  orderIds?: string[];
+  source?: string | null;
+  accessScope?: string | null;
   detail?: {
-    withTime: boolean;
+    withTime: boolean | null;
     timezone: string | null;
     city: string | null;
     celebrateds: Array<{
@@ -152,7 +167,7 @@ export type UserEventSummary = {
       label: string;
       description: string | null;
       datetime: string | null;
-      withTime: boolean;
+      withTime: boolean | null;
       locationDescription: string | null;
       locationReference: string | null;
       locationUrl: string | null;
@@ -183,6 +198,8 @@ export type UserEventLookupResult = {
     fullPhone: string | null;
   } | null;
   events: UserEventSummary[];
+  /** All records returned by the root's recent_orders collection. */
+  recentOrders?: UserEventOrderSummary[];
   counts: {
     ownerEvents: number;
     guestEvents: number;

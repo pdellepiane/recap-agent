@@ -7,15 +7,11 @@ import { providerNeedSubQuerySchema } from '../core/provider-sub-query';
 import { closeActionSchema, closeActionWireSchema } from './close-flow-schemas';
 import { providerFitCriteriaSchema } from './provider-fit';
 import {
-  purchaseAspectValues,
   purchaseAuthActionValues,
-  purchaseRequestResourceValues,
-  sensitivePurchaseFieldValues,
   phoneConfirmationValues,
   humanHelpIntentSchema,
   informationSupportActSchema,
   type InformationSupportAct,
-  type PurchaseRequestResource,
 } from '../core/information';
 import {
   rsvpActionValues,
@@ -98,11 +94,16 @@ export const providerDetailRequestSchema = z.object({
 
 export type ProviderDetailRequest = z.infer<typeof providerDetailRequestSchema>;
 
+/** User-requested operation; source-specific reads remain internal capabilities. */
+const extractionOperationIds = runtimeOperationIds.filter(
+  (operation) => operation !== 'purchase.orders.read' && operation !== 'purchase.gift_detail.read',
+) as [RuntimeOperationId, ...RuntimeOperationId[]];
+
 export const ambiguityEvidenceSchema = z.object({
   status: z.enum(['clear', 'ambiguous']),
   clarificationQuestion: z.string().nullable(),
   interpretations: z.array(z.string()).max(3),
-  candidateOperations: z.array(z.enum(runtimeOperationIds)).max(3).default([]),
+  candidateOperations: z.array(z.enum(extractionOperationIds)).max(3).default([]),
   questionKey: z.enum([
     'status_or_document',
     'status_or_proof_review',
@@ -123,48 +124,8 @@ export const imageReferenceEvidenceSchema = z.object({
 
 export type ImageReferenceEvidence = z.infer<typeof imageReferenceEvidenceSchema>;
 
-/** User-requested operation; availability is decided deterministically. */
-export const requestedOperationSchema = z.enum(runtimeOperationIds);
-export type RequestedOperation = RuntimeOperationId;
-
-const purchaseReadOperations = [
-  'purchase.orders.read',
-  'purchase.gift_detail.read',
-  'purchase.read',
-] as const satisfies readonly RuntimeOperationId[];
-
-export type PurchaseReadOperation = (typeof purchaseReadOperations)[number];
-
-function isPurchaseReadOperation(operation: RequestedOperation): operation is PurchaseReadOperation {
-  return (purchaseReadOperations as readonly string[]).includes(operation);
-}
-
-/** Specific read operation owned by one backend source. */
-export function operationForPurchaseResource(
-  resource: PurchaseRequestResource,
-): PurchaseReadOperation {
-  switch (resource) {
-    case 'orders': return 'purchase.orders.read';
-    case 'gift_purchases': return 'purchase.gift_detail.read';
-    case 'purchase_discovery': return 'purchase.read';
-  }
-}
-
-/**
- * RequestedOperation/resource agreement for the subject-based source
- * contract. The generic `purchase.read` agrees with any purchase resource;
- * a specific read agrees only with its own source. Deterministic repair
- * (not model guidance): the resource names backend ownership, so a
- * disagreeing specific operation is the side that yields.
- */
-export function isPurchaseOperationResourceAgreement(
-  operation: RequestedOperation,
-  resource: PurchaseRequestResource,
-): boolean {
-  if (!isPurchaseReadOperation(operation)) return true;
-  if (operation === 'purchase.read') return true;
-  return operation === operationForPurchaseResource(resource);
-}
+export const requestedOperationSchema = z.enum(extractionOperationIds);
+export type RequestedOperation = z.infer<typeof requestedOperationSchema>;
 
 /**
  * A typed FAQ/support disposition is authoritative evidence that a withdrawal
@@ -173,29 +134,11 @@ export function isPurchaseOperationResourceAgreement(
  */
 export function normalizeRequestedOperation(
   requestedOperation: RequestedOperation | null | undefined,
-  informationRequests: readonly Pick<OpenAiInformationRequest, 'kind' | 'hostWithdrawal' | 'resource'>[],
+  informationRequests: readonly Pick<OpenAiInformationRequest, 'kind' | 'hostWithdrawal'>[],
   supportAct: Pick<InformationSupportAct, 'kind'> | null | undefined,
 ): RequestedOperation | null {
   const operation = requestedOperation ?? null;
-  if (operation !== 'refund_or_withdrawal.execute') {
-    if (operation !== null && isPurchaseReadOperation(operation)) {
-      const resources = new Set(
-        informationRequests.flatMap((request) =>
-          request.kind === 'purchase' && request.resource != null ? [request.resource] : [],
-        ),
-      );
-      // Single established resource with a disagreeing specific operation:
-      // repair the operation toward the resource. Mixed resources, no
-      // purchase request, or the generic read need no repair.
-      if (resources.size === 1) {
-        const resource = [...resources][0];
-        if (resource !== undefined && !isPurchaseOperationResourceAgreement(operation, resource)) {
-          return operationForPurchaseResource(resource);
-        }
-      }
-    }
-    return operation;
-  }
+  if (operation !== 'refund_or_withdrawal.execute') return operation;
 
   const hasInformationalWithdrawalEvidence =
     supportAct?.kind === 'ask_policy' ||
@@ -218,11 +161,8 @@ export const openAiInformationRequestSchema = z.object({
    * selector field exists; reuse this one.
    */
   eventHint: z.string().nullable(),
-  resource: z.enum(purchaseRequestResourceValues).nullable(),
   orderId: z.string().nullable(),
   amount: z.number().nonnegative().nullable(),
-  aspects: z.array(z.enum(purchaseAspectValues)),
-  sensitiveFields: z.array(z.enum(sensitivePurchaseFieldValues)),
   authAction: z.enum(purchaseAuthActionValues).nullable(),
   hostWithdrawal: z.enum(['policy_only', 'individual_status']).nullable().optional(),
 });
@@ -231,18 +171,7 @@ export type OpenAiInformationRequest = z.infer<
   typeof openAiInformationRequestSchema
 >;
 
-/**
- * Typed source agreement for the extraction contract. The structured
- * resource names the backend that owns the record — orders, gift_purchases,
- * or purchase_discovery when ownership is not established — and travels
- * unchanged from extraction through normalization to execution on both
- * access paths; aspects name the facts that answer the question, never the
- * route. No aspect-based override exists: adding one recreates the
- * conflicting source-selection contract. RequestedOperation and resource
- * agree: purchase.read pairs with purchase_discovery (or any established
- * source), purchase.orders.read with orders, purchase.gift_detail.read
- * with gift_purchases (see isPurchaseOperationResourceAgreement).
- */
+/** Extraction names the requested information task; retrieval owns source choice and field retention. */
 export const extractionSchema = z.object({
   reportedEventRole: z.enum(['host', 'guest']).nullable().optional(),
   actionIntent: z.enum(actionIntentValues).nullable(),

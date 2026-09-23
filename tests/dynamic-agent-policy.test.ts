@@ -152,8 +152,6 @@ describe('dynamic agent policy', () => {
           resource: null,
           orderId: null,
           amount: null,
-          aspects: [],
-          sensitiveFields: [],
           authAction: null,
         },
       ],

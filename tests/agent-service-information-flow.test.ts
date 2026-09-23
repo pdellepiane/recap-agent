@@ -72,9 +72,9 @@ const renderers = {
 describe('AgentService first-class information flow', () => {
   it('routes mailbox reports, deferrals and clarifications from empty information state without lookups or restarts', async () => {
     const runtime = new InformationRuntime([
-      { ...extraction([]), supportAct: { kind: 'report_issue', topic: 'mailbox_capacity', detail: 'mailbox_full' } },
-      { ...extraction([]), supportAct: { kind: 'defer_submission', topic: 'unknown', detail: 'unknown' } },
-      { ...extraction([]), supportAct: { kind: 'provide_detail', topic: 'mailbox_capacity', detail: 'mailbox_full' } },
+      { ...extraction([]), supportAct: { kind: 'report_issue',} },
+      { ...extraction([]), supportAct: { kind: 'defer_submission',} },
+      { ...extraction([]), supportAct: { kind: 'provide_detail',} },
     ]);
     const knowledge = new FakeKnowledgeGateway();
     const gateway = new FakePurchaseGateway();
@@ -209,7 +209,6 @@ describe('AgentService first-class information flow', () => {
       ),
     });
     const dedicationRequest = purchaseRequest(null);
-    dedicationRequest.aspects = ['dedication'];
     const base = extraction([dedicationRequest]);
     const runtime = new InformationRuntime([{
       ...base,
@@ -380,13 +379,13 @@ describe('AgentService first-class information flow', () => {
   it('acknowledges a deferral without executing or deleting an unresolved purchase selection', async () => {
     const store = new InMemoryPlanStore();
     const request = { kind: 'purchase' as const, resource: 'orders' as const, query: 'Consulta sobre mi regalo',
-      orderId: null, aspects: ['payment_status' as const], sensitiveFields: [], authAction: 'none' as const, requestId: 'pending' };
+      orderId: null, authAction: 'none' as const, requestId: 'pending' };
     await store.save({ reason: 'fixture', plan: mergePlan(createEmptyPlan({ planId: 'deferred', channel: 'whatsapp', externalUserId: 'deferred' }), {
       current_node: 'resolver_consultas_informativas', information_state: {
         resume_node: 'entrevista', pending_requests: [request], selection_candidates: [], last_completed_request: null,
       },
     }) });
-    const runtime = new InformationRuntime([{ ...extraction([]), supportAct: { kind: 'defer_submission', topic: 'payment_proof', detail: 'submission_deferred' } }]);
+    const runtime = new InformationRuntime([{ ...extraction([]), supportAct: { kind: 'defer_submission',} }]);
     const gateway = new FakePurchaseGateway();
     const service = createService({ runtime, knowledgeGateway: new FakeKnowledgeGateway(), purchaseGateway: gateway, providerGateway: providerGateway(), planStore: store });
     const response = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'deferred', contactPhone: '+51900000302',
@@ -398,11 +397,6 @@ describe('AgentService first-class information flow', () => {
   it('clarifies a rejected purchase extraction without welcoming, looking up data, or starting OTP', async () => {
     const runtime = new InformationRuntime([{
       ...extraction([]),
-      normalizationIssues: [{
-        requestKind: 'purchase',
-        field: 'resource',
-        reason: 'missing_resource',
-      }],
     }]);
     const gateway = new FakePurchaseGateway();
     const knowledge = new FakeKnowledgeGateway();
@@ -442,8 +436,6 @@ describe('AgentService first-class information flow', () => {
       ...extraction([]),
       supportAct: {
         kind: 'ask_policy',
-        topic: 'purchase_status',
-        detail: 'status_pending',
       },
     }]);
     const gateway = new FakePurchaseGateway();
@@ -758,8 +750,6 @@ describe('AgentService first-class information flow', () => {
         ...extraction([]),
         supportAct: {
           kind: 'provide_detail',
-          topic: 'unknown',
-          detail: 'unknown',
           personReference: 'Roger Abanto',
           eventReference: null,
         },
@@ -768,8 +758,6 @@ describe('AgentService first-class information flow', () => {
         ...extraction([]),
         supportAct: {
           kind: 'provide_detail',
-          topic: 'unknown',
-          detail: 'unknown',
           personReference: null,
           eventReference: 'Baby Shower Catalina',
         },
@@ -928,8 +916,6 @@ describe('AgentService first-class information flow', () => {
         resource: 'orders',
         query: 'Estado del pedido propio del usuario.',
         orderId: null,
-        aspects: ['summary', 'payment_status', 'shipping'],
-        sensitiveFields: [],
         authAction: 'none',
       },
     ]);
@@ -1258,7 +1244,6 @@ describe('AgentService first-class information flow', () => {
         expect.objectContaining({
           kind: 'purchase',
           resource: 'orders',
-          aspects: ['payment_status'],
         }),
       ]),
     );
@@ -1347,7 +1332,6 @@ describe('AgentService first-class information flow', () => {
     const request = purchaseRequest(null);
     request.resource = 'orders';
     request.eventHint = 'Carlos y Adriana';
-    request.aspects = ['payment_options'];
     const runtime = new InformationRuntime([extraction([request])]);
     const gateway = new FakePurchaseGateway();
     gateway.guestOrdersResult = {
@@ -1940,7 +1924,6 @@ describe('AgentService first-class information flow', () => {
 
   it('hands off without asking for email when phone-scoped gift detail fails', async () => {
     const detailRequest = purchaseRequest(null);
-    detailRequest.aspects = ['dedication'];
     const runtime = new InformationRuntime([extraction([detailRequest])]);
     const gateway = new FakePurchaseGateway();
     gateway.guestGiftResult = {
@@ -2040,8 +2023,6 @@ describe('AgentService first-class information flow', () => {
               resource: 'gift_purchases',
               query: 'Estado de mi compra.',
               orderId: null,
-              aspects: ['summary'],
-              sensitiveFields: [],
               authAction: 'provide_otp',
             },
           ],
@@ -2082,6 +2063,11 @@ describe('AgentService first-class information flow', () => {
     const makeService = async (updatePhoneResult: FakePurchaseGateway['updatePhoneResult']) => {
       const runtime = new InformationRuntime([extraction([], null, null)]);
       const gateway = new FakePurchaseGateway();
+      gateway.guestOrdersResult = {
+        status: 'success',
+        resource: 'orders',
+        purchases: [purchase('PHONE-SCOPED-ORDER')],
+      };
       gateway.updatePhoneResult = updatePhoneResult;
       const provider = providerGateway();
       const planStore = new InMemoryPlanStore();
@@ -2121,6 +2107,7 @@ describe('AgentService first-class information flow', () => {
           providerGateway: provider,
           planStore,
         }),
+        runtime,
         gateway,
       };
     };
@@ -2140,6 +2127,14 @@ describe('AgentService first-class information flow', () => {
       phone_extension: '+51',
       phone_number: '973296571',
     });
+    expect(success.gateway.ordersCalls).toBe(1);
+    expect(success.gateway.giftCalls).toBe(1);
+    expect(success.gateway.guestOrdersCalls).toBe(1);
+    expect(success.gateway.guestGiftCalls).toBe(1);
+    expect(success.runtime.composeRequests[0]?.customerContext?.identityAccess.authorizedScopes)
+      .toEqual(['account', 'trusted_phone_purchase']);
+    expect(success.runtime.composeRequests[0]?.customerContext?.purchases.map((entry) => entry.orderId))
+      .toContain('PHONE-SCOPED-ORDER');
 
     const conflict = await makeService({ status: 'phone_linked_to_other_account' });
     const conflictResponse = await conflict.service.handleTurn({
@@ -2424,7 +2419,6 @@ describe('AgentService first-class information flow', () => {
     const request = purchaseRequest(null);
     request.resource = 'orders';
     request.query = '¿Cuánto tarda en validarse mi pago en proceso?';
-    request.aspects = ['payment_status', 'validation_window'];
     const runtime = new InformationRuntime([extraction([request])]);
     const gateway = new FakePurchaseGateway();
     gateway.guestOrdersResult = {
@@ -2474,7 +2468,6 @@ describe('AgentService first-class information flow', () => {
     expect(firstResponse.plan.information_state.last_completed_request).toMatchObject({
       kind: 'purchase',
       resource: 'orders',
-      aspects: ['payment_status', 'validation_window'],
     });
     expect(runtime.composeRequests[0]?.informationResults).toEqual(
       expect.arrayContaining([
@@ -2484,20 +2477,6 @@ describe('AgentService first-class information flow', () => {
           status: 'completed',
           purchases: [expect.objectContaining({
             currency: null,
-            amountDisclosure: {
-              // Packet A facet closure: validation_window/payment_status
-              // retain the sourced total so balance questions answer from
-              // available records instead of a masked null.
-              total: 250,
-              paid: null,
-              currency: null,
-              currencySymbol: null,
-              // Pending purchases keep the recorded method so the reply can
-              // ground the indexed validation-window message; approved
-              // summaries omit it (accountless summary gate).
-              paymentMethod: 'PayPal',
-              presentation: 'recorded_method_no_currency',
-            },
             paymentValidationExpectation: {
               maxBusinessHours: 72,
               appliesTo: 'indexed_validation_methods',
@@ -2513,7 +2492,6 @@ describe('AgentService first-class information flow', () => {
     request.resource = 'orders';
     request.query = 'Estado del pago para Claudia y Luis Felipe.';
     request.eventHint = 'Claudia y Luis Felipe';
-    request.aspects = ['payment_status', 'validation_window'];
     const ambiguousCorrection = extraction([{ ...request }]);
     ambiguousCorrection.ambiguity = {
       status: 'ambiguous',
@@ -2783,10 +2761,8 @@ describe('AgentService first-class information flow', () => {
     const purchase = purchaseRequest(null);
     purchase.query =
       'Confirmar si el depósito del regalo llegó a los novios y revisar el estado del pago.';
-    purchase.aspects = ['payment_status', 'payment_details'];
     const codeAttempt = purchaseRequest(null);
     codeAttempt.query = purchase.query;
-    codeAttempt.aspects = purchase.aspects;
     codeAttempt.authAction = 'provide_otp';
     const runtime = new InformationRuntime([
       extraction([codeAttempt]),
@@ -3740,8 +3716,6 @@ function purchaseRequest(
     resource: 'gift_purchases',
     query: 'Estado del regalo comprado.',
     orderId,
-    aspects: ['summary', 'payment_status', 'shipping'],
-    sensitiveFields: [],
     authAction: 'none',
   };
 }
@@ -3901,7 +3875,6 @@ it('S6 projects recorded-method-no-currency as typed facts without a TypeScript 
   const request = purchaseRequest(null);
   request.resource = 'orders';
   request.query = 'Hice la compra para Suki Sofia pero no me llego confirmacion. Cual es el estado?';
-  request.aspects = ['summary', 'payment_status'];
   const runtime = new InformationRuntime([extraction([request])]);
   const gateway = new FakePurchaseGateway();
   const pendingPurchase = {
@@ -3961,12 +3934,12 @@ it('R4 merges a structured provide_detail eventReference into the unique pending
   }) });
   const detailExtraction: ExtractionResult = {
     ...extraction([]),
-    supportAct: { kind: 'provide_detail', topic: 'unknown', detail: 'unknown', eventReference: 'Diana y Fernando' },
+    supportAct: { kind: 'provide_detail', eventReference: 'Diana y Fernando' },
   };
   const runtime = new InformationRuntime([detailExtraction, detailExtraction, {
     ...extraction([]),
     actionIntent: 'solicitar_humano',
-    supportAct: { kind: 'provide_detail', topic: 'unknown', detail: 'unknown', eventReference: 'Diana y Fernando' },
+    supportAct: { kind: 'provide_detail', eventReference: 'Diana y Fernando' },
   }]);
   const knowledge = new FakeKnowledgeGateway();
   const search = vi.spyOn(knowledge, 'search').mockResolvedValue({ status: 'success', evidence: [{
@@ -4014,7 +3987,7 @@ it('R4 keeps ambiguous withdrawal targets ambiguous instead of selecting one', a
   }) });
   const runtime = new InformationRuntime([{
     ...extraction([]),
-    supportAct: { kind: 'provide_detail', topic: 'unknown', detail: 'unknown', eventReference: 'Diana y Fernando' },
+    supportAct: { kind: 'provide_detail', eventReference: 'Diana y Fernando' },
   }]);
   const gateway = new FakePurchaseGateway();
   const service = createService({ runtime, knowledgeGateway: new FakeKnowledgeGateway(), purchaseGateway: gateway, providerGateway: providerGateway(), planStore: store });
@@ -4026,8 +3999,6 @@ it('R4 keeps ambiguous withdrawal targets ambiguous instead of selecting one', a
 describe('gift root-cause review: discovery, detail and honest coverage', () => {
   const RECEIPT_ACT = {
     kind: 'provide_detail',
-    topic: 'payment_proof',
-    detail: 'submission_reported',
   } as const;
 
   function receiptExtraction(
@@ -4040,14 +4011,12 @@ describe('gift root-cause review: discovery, detail and honest coverage', () => 
     };
   }
 
-  function ordersRequest(aspects: Array<'summary' | 'payment_status' | 'dedication'>): Extract<ExtractedInformationRequest, { kind: 'purchase' }> {
+  function ordersRequest(): Extract<ExtractedInformationRequest, { kind: 'purchase' }> {
     return {
       kind: 'purchase',
       resource: 'orders',
       query: 'Estado del pedido.',
       orderId: null,
-      aspects: [...aspects],
-      sensitiveFields: [],
       authAction: 'none',
     };
   }
@@ -4146,7 +4115,7 @@ describe('gift root-cause review: discovery, detail and honest coverage', () => 
   });
 
   it('adds the missing source when the extractor emitted one purchase request', async () => {
-    const runtime = new InformationRuntime([receiptExtraction([ordersRequest(['summary', 'payment_status'])])]);
+    const runtime = new InformationRuntime([receiptExtraction([ordersRequest()])]);
     const gateway = new OrderIdRecordingGateway();
     gateway.guestOrdersResult = {
       status: 'success', resource: 'orders', purchases: [],
@@ -4182,8 +4151,6 @@ describe('gift root-cause review: discovery, detail and honest coverage', () => 
       resource: 'orders',
       query: 'Estado del pedido ORD-OLD.',
       orderId: 'ORD-OLD',
-      aspects: ['summary', 'payment_status'],
-      sensitiveFields: [],
       authAction: 'none',
     };
     const runtime = new InformationRuntime([receiptExtraction([identified])]);
@@ -4264,7 +4231,7 @@ describe('gift root-cause review: discovery, detail and honest coverage', () => 
   });
 
   it('answers a gift-only receipt from the gift record while carts stay uninvolved', async () => {
-    const runtime = new InformationRuntime([receiptExtraction([ordersRequest(['summary', 'payment_status'])])]);
+    const runtime = new InformationRuntime([receiptExtraction([ordersRequest()])]);
     const gateway = new OrderIdRecordingGateway();
     gateway.guestOrdersResult = {
       status: 'success', resource: 'orders', purchases: [],
@@ -4298,7 +4265,7 @@ describe('gift root-cause review: discovery, detail and honest coverage', () => 
   });
 
   it('fetches gift-only facts for a discovery-identified record in the same turn', async () => {
-    const runtime = new InformationRuntime([extraction([ordersRequest(['summary', 'dedication'])])]);
+    const runtime = new InformationRuntime([extraction([ordersRequest()])]);
     const gateway = new OrderIdRecordingGateway();
     gateway.guestOrdersResult = {
       status: 'success', resource: 'orders', purchases: [purchase('ORD-000880')],
@@ -4329,15 +4296,15 @@ describe('gift root-cause review: discovery, detail and honest coverage', () => 
     expect(gateway.giftOrderIds).toEqual(['ORD-000880']);
     expect(runtime.composeRequests).toHaveLength(1);
     const customerContext = runtime.composeRequests[0]?.customerContext;
-    expect(customerContext?.detailedPurchases.map((record) => record.orderId)).toEqual(['ORD-000880']);
-    expect(customerContext?.detailedPurchases[0]?.dedication?.message).toBe('Felicidades');
-    expect(customerContext?.enrichment?.readsAttempted).toBe(1);
+    expect(customerContext?.purchases.map((record) => record.orderId)).toEqual(['ORD-000880']);
+    expect(customerContext?.purchases[0]?.dedication?.message).toBe('Felicidades');
+    expect(gateway.guestGiftCalls).toBe(1);
     expect(gateway.takeoverCalls).toBe(0);
     expect(response.plan.human_escalation.status).toBe('none');
   });
 
   it('skips the gift follow-up when discovery already supplies the facts', async () => {
-    const runtime = new InformationRuntime([extraction([ordersRequest(['summary'])])]);
+    const runtime = new InformationRuntime([extraction([ordersRequest()])]);
     const gateway = new OrderIdRecordingGateway();
     gateway.guestOrdersResult = {
       status: 'success', resource: 'orders', purchases: [purchase('ORD-000880')],
@@ -4353,7 +4320,7 @@ describe('gift root-cause review: discovery, detail and honest coverage', () => 
   });
 
   it('preserves ready facts when the same-turn gift follow-up fails', async () => {
-    const runtime = new InformationRuntime([extraction([ordersRequest(['summary', 'dedication'])])]);
+    const runtime = new InformationRuntime([extraction([ordersRequest()])]);
     const gateway = new OrderIdRecordingGateway();
     gateway.guestOrdersResult = {
       status: 'success', resource: 'orders', purchases: [purchase('ORD-000880')],
@@ -4443,8 +4410,6 @@ describe('gift root-cause review: discovery, detail and honest coverage', () => 
       resource: 'gift_purchases',
       query: '¿Cuándo llegan mis regalos?',
       orderId: null,
-      aspects: ['summary', 'shipping'],
-      sensitiveFields: [],
       authAction: 'none',
     };
     const runtime = new InformationRuntime([extraction([giftRequest])]);
@@ -4488,8 +4453,6 @@ describe('gift root-cause review: discovery, detail and honest coverage', () => 
       resource: 'gift_purchases',
       query: '¿Cuándo llegan mis regalos?',
       orderId: null,
-      aspects: ['summary', 'shipping'],
-      sensitiveFields: [],
       authAction: 'none',
     };
     const runtime = new InformationRuntime([extraction([giftRequest])]);
@@ -4553,8 +4516,6 @@ describe('gift root-cause review: discovery, detail and honest coverage', () => 
       orderId: null,
       eventHint: 'luna de miel',
       amount: 80,
-      aspects: ['summary', 'payment_status'],
-      sensitiveFields: [],
       authAction: 'none',
     };
     const runtime = new InformationRuntime([extraction([giftRequest])]);
@@ -4673,8 +4634,6 @@ describe('source discovery information flow', () => {
       resource: 'purchase_discovery',
       query,
       orderId: null,
-      aspects: ['summary', 'payment_status'],
-      sensitiveFields: [],
       authAction: 'none',
     }], null, null, null);
   }
@@ -4717,8 +4676,6 @@ describe('source discovery information flow', () => {
         query: 'Consulta por Aniversario Lucia. ¿Ese pedido sigue pendiente?',
         orderId: null,
         eventHint: 'Aniversario Lucia',
-        aspects: ['summary', 'payment_status'],
-        sensitiveFields: [],
         authAction: 'none',
       }],
     }]);
@@ -4766,8 +4723,6 @@ describe('source discovery information flow', () => {
         query: '¿Cuánto fue lo que me regalaron?',
         orderId: null,
         amount: 250,
-        aspects: ['summary', 'payment_status'],
-        sensitiveFields: [],
         authAction: 'none',
       }],
     }]);
@@ -4809,8 +4764,6 @@ describe('source discovery information flow', () => {
         resource: 'purchase_discovery',
         query: 'Estado del pedido ORD-UNKNOWN.',
         orderId: 'ORD-UNKNOWN',
-        aspects: ['summary', 'payment_status'],
-        sensitiveFields: [],
         authAction: 'none',
       }],
     }]);
@@ -4854,7 +4807,7 @@ describe('source discovery information flow', () => {
   it('synthesizes one discovery request for receipt assistance', async () => {
     const runtime = new InformationRuntime([{
       ...extraction([], null, null, null),
-      supportAct: { kind: 'provide_detail', topic: 'payment_proof', detail: 'unknown' },
+      supportAct: { kind: 'provide_detail',},
     }]);
     const gateway = olderAndNewerGateway();
     const service = discoveryService(runtime, gateway);
@@ -4946,8 +4899,6 @@ describe('source discovery information flow', () => {
         resource: 'purchase_discovery',
         query: 'Estado del pedido COD999999.',
         orderId: 'COD999999',
-        aspects: ['summary', 'payment_status'],
-        sensitiveFields: [],
         authAction: 'none',
       }],
     }]);

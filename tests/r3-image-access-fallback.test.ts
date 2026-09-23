@@ -550,8 +550,6 @@ describe('R3 support-acknowledgment image recovery', () => {
       // that stays on the acknowledgment path.
       supportAct: {
         kind: 'provide_detail',
-        topic: 'mailbox_capacity',
-        detail: 'mailbox_full',
         eventReference: null,
         personReference: null,
       },

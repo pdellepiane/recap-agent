@@ -95,7 +95,7 @@ class SentinelRuntime implements AgentRuntime {
       providerPlanOperations: [],
       providerExplanationRequest: null,
       providerDetailRequest: null,
-      supportAct: { kind: 'defer_submission', topic: 'unknown', detail: 'unknown' },
+      supportAct: { kind: 'defer_submission',},
     };
   }
 

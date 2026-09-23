@@ -247,7 +247,7 @@ describe('D1 ambiguous confirmation', () => {
       {
         current_node: 'resolver_consultas_informativas',
         user_auth: { status: 'code_requested', email: 'a@b.invalid', token: null, token_expires_at: null, last_error: null, requested_at: '2026-08-24T21:18:00.000Z', failed_code_attempts: 0, otp_send_attempts: 1, otp_non_delivery_reports: 0, auth_method: null, awaiting_phone_confirmation: true },
-        information_state: { resume_node: 'deteccion_intencion', pending_requests: [{ requestId: 'information-1', kind: 'purchase', resource: 'gift_purchases', query: 'Estado del regalo.', orderId: null, aspects: ['summary'], sensitiveFields: [], authAction: 'none' }], selection_candidates: [], last_completed_request: null },
+        information_state: { resume_node: 'deteccion_intencion', pending_requests: [{ requestId: 'information-1', kind: 'purchase', resource: 'gift_purchases', query: 'Estado del regalo.', orderId: null, authAction: 'none' }], selection_candidates: [], last_completed_request: null },
       } as never,
     );
     await planStore.save({ plan: seed, reason: 'seed' });
@@ -273,7 +273,7 @@ describe('D2 mailbox and human arbitration', () => {
     await planStore.save({ plan: seed, reason: 'seed' });
     const extraction = baseExtraction({
       actionIntent: 'solicitar_humano',
-      supportAct: { kind: 'report_issue', topic: 'mailbox_capacity', detail: 'mailbox_full' } as never,
+      supportAct: { kind: 'report_issue',} as never,
       ...( { humanHelpIntent: 'none' } as Record<string, unknown>),
     });
     const runtime = new ScriptedRuntime([extraction]);
@@ -294,7 +294,7 @@ describe('D2 mailbox and human arbitration', () => {
     await planStore.save({ plan: seed, reason: 'seed' });
     const extraction = baseExtraction({
       actionIntent: 'solicitar_humano',
-      supportAct: { kind: 'report_issue', topic: 'mailbox_capacity', detail: 'mailbox_full' } as never,
+      supportAct: { kind: 'report_issue',} as never,
       ...( { humanHelpIntent: 'request' } as Record<string, unknown>),
     });
     const runtime = new ScriptedRuntime([extraction]);
@@ -352,12 +352,12 @@ describe('D3 missing purchase scoped rendering', () => {
       createEmptyPlan({ planId: 'd-missing', channel: 'whatsapp', externalUserId: 'd-user' }),
       {
         current_node: 'resolver_consultas_informativas',
-        information_state: { resume_node: 'deteccion_intencion', pending_requests: [{ requestId: 'information-1', kind: 'purchase', resource: 'orders', query: 'Quiero consultar si mi compra esta confirmada.', orderId: null, aspects: ['summary', 'payment_status'], sensitiveFields: [], authAction: 'none' }], selection_candidates: [], last_completed_request: null },
+        information_state: { resume_node: 'deteccion_intencion', pending_requests: [{ requestId: 'information-1', kind: 'purchase', resource: 'orders', query: 'Quiero consultar si mi compra esta confirmada.', orderId: null, authAction: 'none' }], selection_candidates: [], last_completed_request: null },
       } as never,
     );
     await planStore.save({ plan: seed, reason: 'seed' });
     const extraction = baseExtraction({
-      informationRequests: [{ kind: 'purchase', resource: 'orders', query: 'Quiero consultar si mi compra esta confirmada.', orderId: null, aspects: ['summary', 'payment_status'], sensitiveFields: [], authAction: 'none' } as never],
+      informationRequests: [{ kind: 'purchase', resource: 'orders', query: 'Quiero consultar si mi compra esta confirmada.', orderId: null, authAction: 'none' } as never],
     });
     const runtime = new ScriptedRuntime([extraction]);
     const gateway = new RecordingAgentGateway('success');
@@ -383,7 +383,7 @@ describe('D3 missing purchase scoped rendering', () => {
       {
         current_node: 'resolver_consultas_informativas',
         user_auth: { status: 'code_requested', email: 'a@b.invalid', token: null, token_expires_at: null, last_error: null, requested_at: '2026-08-24T21:18:00.000Z', failed_code_attempts: 0, otp_send_attempts: 1, otp_non_delivery_reports: 0, auth_method: null, awaiting_phone_confirmation: true },
-        information_state: { resume_node: 'deteccion_intencion', pending_requests: [{ requestId: 'information-1', kind: 'purchase', resource: 'gift_purchases', query: 'Estado del regalo.', orderId: null, aspects: ['summary'], sensitiveFields: [], authAction: 'none' }], selection_candidates: [], last_completed_request: null },
+        information_state: { resume_node: 'deteccion_intencion', pending_requests: [{ requestId: 'information-1', kind: 'purchase', resource: 'gift_purchases', query: 'Estado del regalo.', orderId: null, authAction: 'none' }], selection_candidates: [], last_completed_request: null },
       } as never,
     );
     await planStore.save({ plan: seed, reason: 'seed' });

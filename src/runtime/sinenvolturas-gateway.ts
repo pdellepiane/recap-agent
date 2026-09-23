@@ -37,6 +37,11 @@ import {
   logAuthObservabilityEvent,
   responseHeadersForAuthLog,
 } from './auth-observability';
+import {
+  reportUnmappedWireKeys,
+  userLookupWireShape,
+  type UnmappedWireKeySink,
+} from './wire-key-diagnostics';
 
 type ApiEnvelope<T> = {
   data: T;
@@ -133,6 +138,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
       summarySearchWordLimit: number;
       searchMode?: ProviderSearchMode;
       vectorSearchGateway?: Pick<ProviderVectorSearchGateway, 'search' | 'searchQueryIntent'> | null;
+      onUnmappedWireKey?: UnmappedWireKeySink;
     },
   ) {}
 
@@ -1354,6 +1360,12 @@ export class SinEnvolturasGateway implements ProviderGateway {
     input: UserEventLookupInput,
     data: Record<string, unknown>,
   ): UserEventLookupResult {
+    reportUnmappedWireKeys(
+      '/user-lookup',
+      data,
+      userLookupWireShape,
+      this.options.onUnmappedWireKey,
+    );
     const orders = this.recordArray(data.recent_orders).map((order) =>
       this.toUserEventOrderSummary(order),
     );
@@ -1404,6 +1416,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
           }
         : null,
       events: [...events, ...orderOnlyEvents],
+      recentOrders: orders,
       counts: {
         ownerEvents: this.recordArray(data.events).length,
         guestEvents: this.recordArray(data.guest_in_events).length,
@@ -1423,23 +1436,31 @@ export class SinEnvolturasGateway implements ProviderGateway {
     const eventId = event ? this.numberField(event, 'id') : this.numberField(source, 'event_id');
     const currency = this.recordOrNull(event?.currency ?? source.currency);
     const country = this.recordOrNull(event?.country ?? source.country);
+    const slug = event ? this.stringField(event, 'slug') : null;
     return {
       relation,
+      source: 'sinenvolturas_user_lookup',
       guestId: relation === 'guest' ? this.numberField(source, 'id') : null,
       eventId,
-      slug: event ? this.stringField(event, 'slug') : null,
-      url: event ? this.buildEventUrl(this.stringField(event, 'slug')) : null,
+      slug,
+      url: event ? this.stringField(event, 'url') ?? this.buildEventUrl(slug) : null,
       name: event ? this.stringField(event, 'name') : null,
-      place: this.resolveEventPlace(event, source),
+      place: (event ? this.stringField(event, 'place') : null) ?? this.stringField(source, 'place'),
+      location: (event ? this.stringField(event, 'location') : null) ?? this.stringField(source, 'location'),
+      address: (event ? this.stringField(event, 'address') : null) ?? this.stringField(source, 'address'),
       type: event ? this.stringField(event, 'type') : null,
+      typeDetail: event ? this.stringField(event, 'type_detail') : null,
       datetime: event ? this.stringField(event, 'datetime') : null,
       stage: event ? this.stringField(event, 'stage') : null,
       isVisible: event ? this.booleanField(event, 'is_visible') : null,
       isPublic: event ? this.booleanField(event, 'is_public') : null,
       currency: currency
         ? this.stringField(currency, 'cod_alpha') ?? this.stringField(currency, 'name')
-        : null,
+        : event ? this.stringField(event, 'currency') : this.stringField(source, 'currency'),
+      currencySymbol: (currency ? this.stringField(currency, 'symbol') : null) ??
+        (event ? this.stringField(event, 'currency_symbol') : this.stringField(source, 'currency_symbol')),
       country: country ? this.stringField(country, 'name') : null,
+      countryCode: country ? this.stringField(country, 'short_code') : null,
       guestStatus: relation === 'guest'
         ? {
             hasResponded: this.booleanField(source, 'has_responded'),
@@ -1457,14 +1478,32 @@ export class SinEnvolturasGateway implements ProviderGateway {
       transactionsCount: event ? this.numberField(event, 'transactions_count') : null,
       invitedGuestCount: event ? this.numberField(event, 'invited_guest') : null,
       confirmedGuestCount: event ? this.numberField(event, 'confirmed_guest') : null,
-      orders: eventId === null ? [] : ordersByEventId.get(eventId) ?? [],
+      orders: [],
+      orderIds: eventId === null
+        ? []
+        : (ordersByEventId.get(eventId) ?? [])
+          .flatMap((order) => order.id === null ? [] : [String(order.id)]),
+      ...(event ? this.toUserEventDetail(event) : {}),
     };
   }
 
   private toUserEventOrderSummary(order: Record<string, unknown>): UserEventOrderSummary {
     const paymentMethod = this.recordOrNull(order.payment_method);
+    const event = this.recordOrNull(order.event);
+    const currency = this.recordOrNull(event?.currency ?? order.currency);
     return {
       id: this.numberField(order, 'id'),
+      eventId: event ? this.numberField(event, 'id') : this.numberField(order, 'event_id'),
+      eventName: event ? this.stringField(event, 'name') : this.stringField(order, 'event_name'),
+      eventDate: event ? this.stringField(event, 'datetime') : this.stringField(order, 'event_date'),
+      eventUrl: event
+        ? this.stringField(event, 'url') ?? this.buildEventUrl(this.stringField(event, 'slug'))
+        : this.stringField(order, 'event_url'),
+      currency: currency
+        ? this.stringField(currency, 'cod_alpha') ?? this.stringField(currency, 'name')
+        : this.stringField(order, 'currency'),
+      currencySymbol: (currency ? this.stringField(currency, 'symbol') : null) ??
+        this.stringField(order, 'currency_symbol'),
       incrementId: this.stringField(order, 'increment_id'),
       giftType: this.stringField(order, 'gift_type'),
       grandTotal: this.numberField(order, 'grand_total'),
@@ -1475,32 +1514,65 @@ export class SinEnvolturasGateway implements ProviderGateway {
     };
   }
 
+  private toUserEventDetail(
+    event: Record<string, unknown>,
+  ): Pick<UserEventSummary, 'detail'> {
+    const detailKeys = [
+      'with_time', 'timezone', 'celebrateds', 'moments', 'dresscode',
+      'common_asked', 'contact_info',
+    ];
+    if (!detailKeys.some((key) => key in event)) return {};
+    const dresscode = this.recordOrNull(event.dresscode);
+    const contactInfo = Array.isArray(event.contact_info)
+      ? this.recordArray(event.contact_info).map((entry) => ({
+        label: this.stringField(entry, 'label') ?? '',
+        value: this.stringField(entry, 'value') ?? '',
+      }))
+      : Object.entries(this.recordOrNull(event.contact_info) ?? {}).map(([label, value]) => ({
+        label,
+        value: typeof value === 'string' ? value : '',
+      }));
+    return {
+      detail: {
+        withTime: this.booleanField(event, 'with_time'),
+        timezone: this.stringField(event, 'timezone'),
+        city: this.stringField(event, 'city'),
+        celebrateds: this.recordArray(event.celebrateds).map((entry) => ({
+          name: this.stringField(entry, 'name') ?? '',
+          type: this.stringField(entry, 'type'),
+        })),
+        moments: this.recordArray(event.moments).map((moment) => ({
+          label: this.stringField(moment, 'label') ?? '',
+          description: this.stringField(moment, 'description'),
+          datetime: this.stringField(moment, 'datetime'),
+          withTime: this.booleanField(moment, 'with_time'),
+          locationDescription: this.stringField(moment, 'location_description'),
+          locationReference: this.stringField(moment, 'location_reference'),
+          locationUrl: this.stringField(moment, 'location_url'),
+          locationCoords: this.stringField(moment, 'location_coords'),
+          position: this.numberField(moment, 'position') ?? 0,
+        })),
+        dresscode: dresscode
+          ? {
+            type: this.stringField(dresscode, 'type'),
+            description: this.stringField(dresscode, 'description'),
+          }
+          : null,
+        commonAsked: this.recordArray(event.common_asked).map((entry) => ({
+          question: this.stringField(entry, 'question') ?? '',
+          answer: this.stringField(entry, 'answer') ?? '',
+        })),
+        contactInfo,
+      },
+    };
+  }
+
   private buildEventUrl(slug: string | null): string | null {
     if (!slug) {
       return null;
     }
 
     return `https://sinenvolturas.com/${slug}`;
-  }
-
-  private resolveEventPlace(
-    event: Record<string, unknown> | null,
-    source: Record<string, unknown>,
-  ): string | null {
-    const directFields = [
-      event ? this.stringField(event, 'place') : null,
-      event ? this.stringField(event, 'location') : null,
-      event ? this.stringField(event, 'address') : null,
-      this.stringField(source, 'place'),
-      this.stringField(source, 'location'),
-      this.stringField(source, 'address'),
-    ].filter((value): value is string => value !== null);
-    if (directFields.length > 0) {
-      return directFields[0];
-    }
-
-    const country = this.recordOrNull(event?.country ?? source.country);
-    return country ? this.stringField(country, 'name') : null;
   }
 
   private groupOrdersByEventId(

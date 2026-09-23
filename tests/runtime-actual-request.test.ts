@@ -71,7 +71,6 @@ function baseExtraction(overrides: Record<string, unknown> = {}): ExtractionResu
     informationRequests: [],
     supportAct: null,
     humanHelpIntent: null,
-    normalizationIssues: [],
     phoneConfirmation: null,
     rsvpAction: null,
     rsvpDecisionSource: 'plan_state',
@@ -337,7 +336,7 @@ function venueRequest(eventId: number): {
     currentContext: null,
     nowIso: NOW,
   });
-  const customerContext = projectCustomerContext(snapshot, { focus: 'general', relevantEventIds: [eventId] });
+  const customerContext = projectCustomerContext(snapshot);
   const informationResults = [...venueExecution('req-venue', eventId).results];
   return { customerContext, informationResults };
 }
@@ -589,14 +588,11 @@ describe('actual reply request owns its instructions', () => {
       currentContext: null,
       nowIso: NOW,
     });
-    const purchaseContext = projectCustomerContext(purchaseSnapshot, {
-      focus: 'payment',
-      relevantOrderIds: ['ord-1'],
-    });
+    const purchaseContext = projectCustomerContext(purchaseSnapshot);
     const merged = {
       ...customerContext,
-      detailedPurchases: purchaseContext.detailedPurchases,
-      candidates: [...customerContext.candidates, ...purchaseContext.candidates],
+      purchases: [...customerContext.purchases, ...purchaseContext.purchases],
+      invitations: [...customerContext.invitations, ...purchaseContext.invitations],
     };
     const spec = await runtime.buildReplyRequestSpec(
       replyRequest(supportPlan(), {
@@ -607,7 +603,7 @@ describe('actual reply request owns its instructions', () => {
         ],
         extraction: baseExtraction({
           informationRequests: [
-            { kind: 'purchase', resource: 'orders', query: 'estado de mi pago', aspects: ['summary', 'payment_status'] },
+            { kind: 'purchase', resource: 'orders', query: 'estado de mi pago',},
           ],
         }),
       }),
@@ -697,8 +693,6 @@ describe('actual reply request owns its instructions', () => {
         extraction: baseExtraction({
           supportAct: {
             kind: 'provide_detail',
-            topic: 'unknown',
-            detail: 'unknown',
             eventReference: 'Baby Shower Catalina',
             personReference: 'Roger Abanto',
           },
@@ -740,7 +734,7 @@ describe('actual reply request owns its instructions', () => {
       currentContext: null,
       nowIso: NOW,
     });
-    const customerContext = projectCustomerContext(snapshot, { focus: 'payment', relevantOrderIds: ['ord-1'] });
+    const customerContext = projectCustomerContext(snapshot);
     const spec = await runtime.buildReplyRequestSpec(
       replyRequest(supportPlan(), {
         customerContext,
@@ -801,7 +795,7 @@ describe('actual reply request owns its instructions', () => {
       currentContext: null,
       nowIso: NOW,
     });
-    const customerContext = projectCustomerContext(snapshot, { focus: 'general', relevantEventIds: [205] });
+    const customerContext = projectCustomerContext(snapshot);
     const spec = await runtime.buildReplyRequestSpec(
       replyRequest(supportPlan(), {
         customerContext,
@@ -1116,8 +1110,6 @@ describe('actual reply request owns its instructions', () => {
         resource: 'orders',
         query: '¿Cuál es el estado de mi compra?',
         orderId: null,
-        aspects: ['summary'],
-        sensitiveFields: [],
         authAction: 'none',
       }],
       authentication: null,
@@ -1145,17 +1137,17 @@ describe('actual reply request owns its instructions', () => {
     expect(snapshot.invitationsEvents.status).toBe('ready');
     expect(snapshot.purchasesCarts.completeness).toBe('partial');
     // A and B survive canonically, one representation each.
-    const detailedIds = snapshot.purchasesCarts.detailedPurchases.map((purchase) => purchase.orderId).sort();
+    const detailedIds = snapshot.purchasesCarts.purchases.map((purchase) => purchase.orderId).sort();
     expect(detailedIds).toEqual(['ORD-000880', 'ORD-000881']);
-    const mergedA = snapshot.purchasesCarts.detailedPurchases.find((purchase) => purchase.orderId === 'ORD-000880');
+    const mergedA = snapshot.purchasesCarts.purchases.find((purchase) => purchase.orderId === 'ORD-000880');
     expect(mergedA?.eventName).toBe('Boda Ana y Luis');
     // Distinct events/guests never merged by name/date: two slots.
     const slots = snapshot.invitationsEvents.invitations;
     expect(slots.map((invitation) => invitation.eventId).sort()).toEqual([81, 82]);
-    expect(new Set(slots.map((invitation) => invitation.eventName)).size).toBe(2);
+    expect(new Set(slots.map((invitation) => invitation.name)).size).toBe(2);
 
     const runtime = testRuntime();
-    const customerContext = projectCustomerContext(snapshot, { focus: 'general' });
+    const customerContext = projectCustomerContext(snapshot);
     const spec = await runtime.buildReplyRequestSpec(
       replyRequest(supportPlan(), { customerContext, informationResults: execution.results }),
     );
@@ -1373,7 +1365,7 @@ describe('actual reply request auth, image, approval and faq-empty gating', () =
         informationResults: [purchaseResult('req-1', [purchase('ord-1')])],
         extraction: baseExtraction({
           informationRequests: [
-            { kind: 'purchase', resource: 'orders', query: 'resumen', aspects: ['summary'] },
+            { kind: 'purchase', resource: 'orders', query: 'resumen',},
           ],
         }),
       }),
@@ -1385,7 +1377,7 @@ describe('actual reply request auth, image, approval and faq-empty gating', () =
         informationResults: [purchaseResult('req-1', [purchase('ord-1')])],
         extraction: baseExtraction({
           informationRequests: [
-            { kind: 'purchase', resource: 'orders', query: 'estado de mi pago', aspects: ['summary', 'payment_status'] },
+            { kind: 'purchase', resource: 'orders', query: 'estado de mi pago',},
           ],
         }),
       }),
@@ -1490,10 +1482,7 @@ describe('actual reply request venue parity across two distinct records', () => 
       nowIso: NOW,
     });
     expect(snapshot.invitationsEvents.invitations).toHaveLength(2);
-    const customerContext = projectCustomerContext(snapshot, {
-      focus: 'general',
-      relevantEventIds: [702201, 903314],
-    });
+    const customerContext = projectCustomerContext(snapshot);
     const spec = await runtime.buildReplyRequestSpec(
       replyRequest(supportPlan(), {
         customerContext,
@@ -1506,194 +1495,6 @@ describe('actual reply request venue parity across two distinct records', () => 
     expect(spec.input).toContain('Casa Andina');
     expect(spec.input).toContain('Arequipa');
     expect(spec.input).toContain('Parroquia San Francisco');
-  });
-});
-
-describe('purchase profile-present balance preservation', () => {
-  function purchaseProfile(record: PurchaseInformation): CustomerContextProjection {
-    const snapshot = assembleCustomerContext({
-      execution: {
-        results: [purchaseResult('req-1', [record])],
-        summaries: [purchaseSummary('req-1')],
-      },
-      identity: { customerRef: '+51900000001', scope: 'trusted_phone', source: 'agent_api' },
-      currentContext: null,
-      nowIso: NOW,
-    });
-    return projectCustomerContext(snapshot, {
-      focus: 'payment',
-      relevantOrderIds: [record.orderId],
-    });
-  }
-
-  function legacyProfile(profile: CustomerContextProjection): CustomerContextProjection {
-    return {
-      ...profile,
-      purchases: profile.purchases.map((entry) => ({
-        orderId: entry.orderId,
-        eventId: entry.eventId,
-        eventName: entry.eventName,
-        paymentStatus: entry.paymentStatus,
-        grandTotal: entry.grandTotal,
-      })),
-    };
-  }
-
-  function parseTurnEvidence(spec: { input: string }): Record<string, unknown> {
-    const marker = 'Evidencia canónica del turno (JSON): ';
-    const markerIndex = spec.input.indexOf(marker);
-    expect(markerIndex).toBeGreaterThanOrEqual(0);
-    const index = spec.input.indexOf('{', markerIndex);
-    let depth = 0;
-    let inString = false;
-    let escaped = false;
-    for (let cursor = index; cursor < spec.input.length; cursor += 1) {
-      const ch = spec.input[cursor];
-      if (inString) {
-        if (escaped) {
-          escaped = false;
-        } else if (ch === '\\') {
-          escaped = true;
-        } else if (ch === '"') {
-          inString = false;
-        }
-        continue;
-      }
-      if (ch === '"') {
-        inString = true;
-      } else if (ch === '{') {
-        depth += 1;
-      } else if (ch === '}') {
-        depth -= 1;
-        if (depth === 0) {
-          return JSON.parse(spec.input.slice(index, cursor + 1)) as Record<string, unknown>;
-        }
-      }
-    }
-    throw new Error('turn evidence JSON not closed');
-  }
-
-  function purchaseQuestion(amount?: number) {
-    return baseExtraction({
-      informationRequests: [
-        {
-          kind: 'purchase',
-          resource: 'orders',
-          query: '¿Cuánto debo de mi compra?',
-          aspects: ['summary', 'payment_status'],
-          ...(amount !== undefined ? { amount } : {}),
-        },
-      ],
-    });
-  }
-
-  it('marks unknown paid and unverifiable remaining on the canonical profile record', async () => {
-    const runtime = testRuntime();
-    const record = { ...purchase('ord-luis-227'), payment: null, currency: null };
-    const spec = await runtime.buildReplyRequestSpec(
-      replyRequest(supportPlan(), {
-        customerContext: purchaseProfile(record),
-        informationResults: [purchaseResult('req-1', [record])],
-        extraction: purchaseQuestion(),
-      }),
-    );
-    const evidence = parseTurnEvidence(spec);
-    const profile = evidence.customer_context as CustomerContextProjection;
-    expect(profile.purchases[0]).toMatchObject({
-      orderId: 'ord-luis-227',
-      grandTotal: 227.76,
-      totalAvailability: 'available',
-      paidAmount: null,
-      paidAvailability: 'unknown',
-      remaining: null,
-      remainingVerifiable: false,
-      currencyAvailability: 'unknown',
-    });
-    const results = evidence.information_results as Array<Record<string, unknown>>;
-    expect(results[0]).toMatchObject({ outcome_kind: 'order_unique', profile_ref: 'customer_context' });
-    expect(results[0]).not.toHaveProperty('purchase_balance');
-    // The order total never serializes as a remaining balance.
-    expect(spec.input).not.toMatch(/"remaining":\s*227\.76/);
-  });
-
-  it('retains a compact balance limitation when the profile lacks balance facts', async () => {
-    const runtime = testRuntime();
-    const record = { ...purchase('ord-luis-227'), payment: null, currency: null };
-    const spec = await runtime.buildReplyRequestSpec(
-      replyRequest(supportPlan(), {
-        customerContext: legacyProfile(purchaseProfile(record)),
-        informationResults: [purchaseResult('req-1', [record])],
-        extraction: purchaseQuestion(),
-      }),
-    );
-    const evidence = parseTurnEvidence(spec);
-    const results = evidence.information_results as Array<Record<string, unknown>>;
-    expect(results[0]).toMatchObject({ outcome_kind: 'order_unique', profile_ref: 'customer_context' });
-    expect(results[0]).toEqual(expect.objectContaining({
-      purchase_balance: {
-        orderId: 'ord-luis-227',
-        total: 227.76,
-        totalAvailability: 'available',
-        paid: null,
-        paidAvailability: 'unknown',
-        remaining: null,
-        remainingVerifiable: false,
-        currency: null,
-        currencyAvailability: 'unknown',
-        method: 'transfer',
-        methodAvailability: 'available',
-        userReported: { amount: null, currency: null, paidAt: null },
-      },
-    }));
-    // Raw totals stay available for total questions; nothing reads as due.
-    const profile = evidence.customer_context as CustomerContextProjection;
-    expect(JSON.stringify(profile.detailedPurchases)).toContain('227.76');
-    expect(spec.input).not.toMatch(/"remaining":\s*227\.76/);
-  });
-
-  it('distinguishes an explicit zero paid amount from unknown paid', async () => {
-    const runtime = testRuntime();
-    const record = {
-      ...purchase('ord-zero-paid'),
-      currency: 'PEN',
-      payment: { method: 'Yape', amount: 0, paidAt: '2026-08-30 21:31:00' },
-    };
-    const spec = await runtime.buildReplyRequestSpec(
-      replyRequest(supportPlan(), {
-        customerContext: legacyProfile(purchaseProfile(record)),
-        informationResults: [purchaseResult('req-1', [record])],
-        extraction: purchaseQuestion(),
-      }),
-    );
-    const evidence = parseTurnEvidence(spec);
-    const results = evidence.information_results as Array<Record<string, unknown>>;
-    const balance = results[0]?.purchase_balance as Record<string, unknown>;
-    expect(balance.paid).toBe(0);
-    expect(balance.paidAvailability).toBe('available');
-    expect(balance.remaining).toBeNull();
-    expect(balance.remainingVerifiable).toBe(false);
-    expect(balance.currency).toBe('PEN');
-    expect(balance.currencyAvailability).toBe('available');
-  });
-
-  it('keeps a user-reported payment separate from recorded paid and total', async () => {
-    const runtime = testRuntime();
-    const record = { ...purchase('ord-reported-227'), payment: null, currency: null };
-    const spec = await runtime.buildReplyRequestSpec(
-      replyRequest(supportPlan(), {
-        customerContext: legacyProfile(purchaseProfile(record)),
-        informationResults: [purchaseResult('req-1', [record])],
-        extraction: purchaseQuestion(227.76),
-      }),
-    );
-    const evidence = parseTurnEvidence(spec);
-    const results = evidence.information_results as Array<Record<string, unknown>>;
-    const balance = results[0]?.purchase_balance as Record<string, unknown>;
-    expect(balance.total).toBe(227.76);
-    expect(balance.paid).toBeNull();
-    expect(balance.paidAvailability).toBe('unknown');
-    expect(balance.remainingVerifiable).toBe(false);
-    expect(balance.userReported).toEqual({ amount: 227.76, currency: null, paidAt: null });
   });
 });
 

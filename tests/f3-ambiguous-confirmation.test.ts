@@ -326,8 +326,6 @@ function carinaExtraction(
         resource: 'orders',
         query: 'Necesito una conformidad de pago.',
         orderId: null,
-        aspects: ['summary', 'payment_status'],
-        sensitiveFields: [],
         authAction: 'none',
       },
     ],
@@ -511,14 +509,13 @@ describe('L3 Carina status-or-document ambiguity', () => {
     expect(purchaseLookup?.outcomeCode).toBe('completed_with_results');
     expect(purchaseLookup?.resultCount).toBe(1);
     expect(purchaseLookup?.resource).toBe('orders');
-    // Facts, not phrases: the live lookup total and event label reach the
-    // summary evidence the judge reads through the typed purchaseFact, never
-    // through retrieval filename/score fields.
-    expect(purchaseLookup?.evidence?.[0]?.purchaseFact?.total).toBe(3173.81);
-    expect(purchaseLookup?.evidence?.[0]?.purchaseFact?.eventLabel).toBe('Baby Shower Catalina');
-    expect(purchaseLookup?.evidence?.[0]?.filename).toBe('');
-    expect(purchaseLookup?.evidence?.[0]?.score).toBe(0);
-    expect(purchaseLookup?.evidence?.[0]?.contentHash).toMatch(/^[a-f0-9]{64}$/u);
+    // The model receives customer records from the canonical profile, not a
+    // second purchase-fact copy in execution evidence.
+    expect(result.composeRequests[0]?.customerContext?.purchases).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ grandTotal: 3173.81, eventName: 'Baby Shower Catalina' }),
+      ]),
+    );
     // Extraction ambiguity still survives normalization on the composed turn.
     expect(result.composeRequests[0]?.extraction.ambiguity?.status).toBe('ambiguous');
     expect(

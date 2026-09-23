@@ -26,6 +26,8 @@ import { PromptLoader } from '../src/runtime/prompt-loader';
 import type { ProviderGateway, UserEventLookupResult } from '../src/runtime/provider-gateway';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
 import { InMemoryRsvpEffectStore } from '../src/runtime/rsvp-effect-executor';
+import type { CurrentContextEvidence, IdentityEvidence } from '../src/runtime/customer-context';
+import { unavailableCustomerContext } from './customer-context-test-utils';
 
 /**
  * Packet B service-level twins: the actual AgentService.handleTurn path with
@@ -319,8 +321,6 @@ describe('RSVP verified effect twins', () => {
         resource: 'orders',
         query: '¿Cuál es el estado de mi pago?',
         orderId: null,
-        aspects: ['payment_status'],
-        sensitiveFields: [],
         authAction: 'decline_authentication',
       }],
     })]);
@@ -441,11 +441,10 @@ describe('RSVP verified effect twins', () => {
     expect(result.outbound.text).toBe('TWIN_MODEL_SENTINEL');
   });
 
-  it('(l) completed write survives the purchase-detail handoff terminal as typed facts', async () => {
-    // The dedication read fails retryably on the trusted phone and the turn
-    // escalates, but the verified RSVP write already ran: the terminal reply
-    // carries both the completed-action typed evidence and the terminal auth
-    // facts in one composed request.
+  it('(l) completed write survives an unrelated purchase-source failure as typed facts', async () => {
+    // The purchase source fails, but that failure does not erase the
+    // independently verified RSVP effect or turn it into a success claim for
+    // the unavailable purchase.
     const store = new InMemoryRsvpEffectStore();
     const runtime = new TwinRuntime([twinExtraction({
       action: 'attending',
@@ -454,8 +453,6 @@ describe('RSVP verified effect twins', () => {
         resource: 'orders',
         query: 'Quiero dejar una dedicatoria en mi compra',
         orderId: null,
-        aspects: ['dedication'],
-        sensitiveFields: [],
         authAction: 'none',
       }],
     })]);
@@ -501,12 +498,17 @@ describe('RSVP verified effect twins', () => {
     const note = request?.errorMessage ?? '';
     expect(note).toContain('"verification_status":"verified"');
     expect(note).toContain('"requested_attendance_change_verified":true');
-    expect(request?.authenticationOutcome).toMatchObject({
-      status: 'terminal',
-      reason: 'phone_purchase_detail_unavailable',
-      handoffOutcome: 'handoff_requested',
-    });
-    expect(request?.handoffOutcome).toBe('handoff_requested');
+    expect(request?.informationResults).toEqual([
+      expect.objectContaining({
+        kind: 'purchase',
+        status: 'failed',
+        failureKind: 'request_failed',
+      }),
+    ]);
+    expect(request?.customerContext?.actionOutcomes).toContainEqual(expect.objectContaining({
+      operation: 'rsvp.response.write',
+      receipt: 'confirmed',
+    }));
     expect(result.outbound.text).toBe('TWIN_MODEL_SENTINEL');
   });
 });
@@ -745,7 +747,15 @@ function twinService(
     } as unknown as ProviderGateway,
     agentConversationGateway: gateway,
     rsvpEffectStore: effectStore,
-    ...(informationOrchestrator ? { informationOrchestrator: informationOrchestrator as never } : {}),
+    ...(informationOrchestrator ? {
+      informationOrchestrator: {
+        ...informationOrchestrator,
+        prepareCustomerContext: async (args: {
+          identity: IdentityEvidence | null;
+          currentContext: CurrentContextEvidence | null;
+        }) => unavailableCustomerContext(args),
+      } as never,
+    } : {}),
     promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
     renderers: { whatsapp: new WhatsAppMessageRenderer() },
   });

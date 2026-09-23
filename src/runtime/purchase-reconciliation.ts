@@ -3,9 +3,10 @@ import type {
   InformationTaskResult,
   PurchaseInformation,
   PurchasePartition,
+  PurchaseRecordSource,
 } from '../core/information';
 
-export type PurchaseRecordSource = 'orders' | 'gift_purchases' | 'event';
+export type { PurchaseRecordSource } from '../core/information';
 
 export type FieldProvenance = {
   source: PurchaseRecordSource;
@@ -97,8 +98,9 @@ export function detectConflictingFields(
 
 const SOURCE_PRIORITY: Record<PurchaseRecordSource, number> = {
   orders: 0,
-  event: 1,
-  gift_purchases: 2,
+  gift_purchases: 1,
+  user_lookup: 2,
+  event_detail: 3,
 };
 
 function mergeAgreeingRecords(
@@ -194,9 +196,6 @@ export function reconcileTwoRecords(
     if (field === 'eventDate') nulled.eventDate = null;
     if (field === 'createdAt') nulled.createdAt = null;
     if (field === 'items') nulled.items = [];
-  }
-  if (conflictingFields.includes('paymentStatus') || conflictingFields.includes('grandTotal')) {
-    nulled.amountDisclosure = null;
   }
   return {
     status: 'conflict',

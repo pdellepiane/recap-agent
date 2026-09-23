@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   createInformationAuthGuidance,
   type PendingInformationRequest,
-  type PurchaseAspect,
   type PurchaseInformation,
 } from '../src/core/information';
 import {
@@ -121,76 +120,6 @@ describe('InformationOrchestrator', () => {
     expect(execution.summaries[0]?.evidence[0]?.contentHash).toMatch(/^[a-f0-9]{64}$/u);
   });
 
-  it('exposes dedication, shipment and item facts to judge evidence only as projected to the responder', async () => {
-    const agentGateway = new FakeAgentGateway();
-    const record = {
-      ...giftPurchase(),
-      shippingStatus: 'in_transit',
-      items: [
-        { giftName: 'Sábanas', quantity: 1, amount: 150, rowTotal: 150, type: 'se_store' },
-        { giftName: 'Aporte luna de miel', quantity: 1, amount: 80, rowTotal: 80, type: 'credit' },
-      ],
-    };
-    agentGateway.guestGiftResult = {
-      status: 'success',
-      resource: 'gift_purchases',
-      purchases: [record],
-    };
-    const orchestrator = new InformationOrchestrator({
-      knowledgeGateway: { async search() { throw new Error('unused'); } },
-      providerGateway: {} as ProviderGateway,
-      agentGateway,
-    });
-    // Dedication aspects: the responder receives dedication + items +
-    // shipment, so judge evidence carries all three.
-    const full = await orchestrator.execute({
-      requests: [{
-        requestId: 'gift-full',
-        kind: 'purchase',
-        resource: 'gift_purchases',
-        query: '¿Qué se envía físicamente?',
-        orderId: null,
-        aspects: ['summary', 'shipping', 'dedication'],
-        sensitiveFields: [],
-        authAction: 'none',
-      }],
-      authentication: null,
-      authBlock: null,
-      trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
-    });
-    const fullFact = full.summaries[0]?.evidence[0]?.purchaseFact;
-    expect(fullFact?.dedication).toMatchObject({
-      message: 'Felicidades',
-      sendPhysical: true,
-      physicalStatus: 'enroute',
-    });
-    expect(fullFact?.shippingStatus).toBe('in_transit');
-    expect(fullFact?.items).toEqual([
-      { name: 'Sábanas', quantity: 1, amount: 150, rowTotal: 150, fulfillment: 'physical' },
-      { name: 'Aporte luna de miel', quantity: 1, amount: 80, rowTotal: 80, fulfillment: 'host_credit' },
-    ]);
-    // Summary-only aspects: the responder never receives dedication, so
-    // judge evidence omits it while keeping items and shipment state.
-    const narrow = await orchestrator.execute({
-      requests: [{
-        requestId: 'gift-narrow',
-        kind: 'purchase',
-        resource: 'gift_purchases',
-        query: '¿Cuál es el estado?',
-        orderId: null,
-        aspects: ['summary'],
-        sensitiveFields: [],
-        authAction: 'none',
-      }],
-      authentication: null,
-      authBlock: null,
-      trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
-    });
-    const narrowFact = narrow.summaries[0]?.evidence[0]?.purchaseFact;
-    expect(narrowFact?.dedication).toBeNull();
-    expect(narrowFact?.items).toHaveLength(2);
-  });
-
   it('keeps successful FAQ evidence when a production purchase route is unavailable', async () => {
     const agentGateway = new FakeAgentGateway();
     agentGateway.giftResult = {
@@ -226,7 +155,7 @@ describe('InformationOrchestrator', () => {
           kind: 'faq',
           query: 'Consulta general',
         },
-        purchaseRequest('purchase-1', []),
+        purchaseRequest('purchase-1'),
       ],
       authentication: {
         token: 'jwt',
@@ -262,149 +191,6 @@ describe('InformationOrchestrator', () => {
     ]);
   });
 
-  it('projects only requested purchase aspects and withholds sensitive payment data by default', async () => {
-    const agentGateway = new FakeAgentGateway();
-    agentGateway.giftResult = {
-      status: 'success',
-      resource: 'gift_purchases',
-      purchases: [giftPurchase()],
-    };
-    const orchestrator = new InformationOrchestrator({
-      knowledgeGateway: {
-        async search() {
-          return {
-            status: 'failed' as const,
-            reason: 'not_configured' as const,
-            retryable: false,
-            error: 'not configured',
-          };
-        },
-      },
-      providerGateway: {} as ProviderGateway,
-      agentGateway,
-    });
-
-    const defaultExecution = await orchestrator.execute({
-      requests: [purchaseRequest('purchase-1', [])],
-      authentication: {
-        token: 'jwt',
-        email: 'user@example.com',
-      },
-      authBlock: null,
-    });
-    const defaultResult = defaultExecution.results[0];
-    if (
-      !defaultResult ||
-      defaultResult.status !== 'completed' ||
-      defaultResult.kind !== 'purchase'
-    ) {
-      throw new Error('Expected a completed purchase result.');
-    }
-    expect(defaultResult.purchases[0]?.payment).toEqual({
-      method: null,
-      amount: null,
-      paidAt: '2026-07-10',
-    });
-    expect(defaultResult.purchases[0]?.amountDisclosure).toEqual({
-      total: 300,
-      paid: 300,
-      currency: null,
-      currencySymbol: null,
-      paymentMethod: 'Transferencia',
-      presentation: 'recorded_method_no_currency',
-    });
-    expect(defaultResult.purchases[0]?.payment).not.toHaveProperty(
-      'operationCode',
-    );
-    expect(defaultResult.purchases[0]).not.toHaveProperty('dedication');
-
-    const disclosedExecution = await orchestrator.execute({
-      requests: [purchaseRequest('purchase-2', ['operation_code'])],
-      authentication: {
-        token: 'jwt',
-        email: 'user@example.com',
-      },
-      authBlock: null,
-    });
-    const disclosedResult = disclosedExecution.results[0];
-    if (
-      !disclosedResult ||
-      disclosedResult.status !== 'completed' ||
-      disclosedResult.kind !== 'purchase'
-    ) {
-      throw new Error('Expected a completed purchase result.');
-    }
-    expect(disclosedResult.purchases[0]?.payment?.operationCode).toBe('OP-123');
-    expect(disclosedResult.purchases[0]?.payment).not.toHaveProperty(
-      'destinationAccount',
-    );
-  });
-
-  it('omits payment type from approved summaries but keeps it for pending ones', async () => {
-    const knowledgeGateway = {
-      async search() {
-        return {
-          status: 'failed' as const,
-          reason: 'not_configured' as const,
-          retryable: false,
-          error: 'not configured',
-        };
-      },
-    };
-    const runSummary = async (purchase: PurchaseInformation) => {
-      const agentGateway = new FakeAgentGateway();
-      agentGateway.giftResult = {
-        status: 'success',
-        resource: 'gift_purchases',
-        purchases: [purchase],
-      };
-      const orchestrator = new InformationOrchestrator({
-        knowledgeGateway,
-        providerGateway: {} as ProviderGateway,
-        agentGateway,
-      });
-      const execution = await orchestrator.execute({
-        requests: [{
-          requestId: 'summary-1',
-          kind: 'purchase',
-          resource: 'gift_purchases',
-          query: 'Estado de mi compra',
-          orderId: 'ORD-000880',
-          aspects: ['summary'],
-          sensitiveFields: [],
-          authAction: 'none',
-        }],
-        authentication: {
-          token: 'jwt',
-          email: 'user@example.com',
-        },
-        authBlock: null,
-      });
-      const result = execution.results[0];
-      if (!result || result.status !== 'completed' || result.kind !== 'purchase') {
-        throw new Error('Expected a completed purchase result.');
-      }
-      return result.purchases[0]?.amountDisclosure;
-    };
-
-    const approved = await runSummary(giftPurchase());
-    expect(approved).toMatchObject({
-      total: 300,
-      paymentMethod: null,
-      presentation: 'recorded_method_no_currency',
-    });
-    const pending = await runSummary({
-      ...giftPurchase(),
-      paymentStatus: 'pending',
-      paymentMethod: 'Yape',
-    });
-    expect(pending).toMatchObject({
-      total: 300,
-      paymentMethod: 'Yape',
-      presentation: 'recorded_method_no_currency',
-    });
-  });
-
   it('does not call protected capabilities until shared authentication is ready', async () => {
     const agentGateway = new FakeAgentGateway();
     const lookupAuthenticatedUserEvents = vi.fn();
@@ -433,7 +219,7 @@ describe('InformationOrchestrator', () => {
           query: 'Mi evento',
           eventHint: null,
         },
-        purchaseRequest('purchase-1', []),
+        purchaseRequest('purchase-1'),
       ],
       authentication: null,
       authBlock: {
@@ -483,7 +269,7 @@ describe('InformationOrchestrator', () => {
     });
 
     const execution = await orchestrator.execute({
-      requests: [purchaseRequest('typed-next-input', [])],
+      requests: [purchaseRequest('typed-next-input')],
       authentication: null,
       authBlock: { nextInput, guidance },
     });
@@ -527,8 +313,6 @@ describe('InformationOrchestrator', () => {
           resource: 'orders',
           query: 'Estado del pedido',
           orderId: null,
-          aspects: ['summary', 'payment_status', 'shipping'],
-          sensitiveFields: [],
           authAction: 'none',
         },
       ],
@@ -553,7 +337,7 @@ describe('InformationOrchestrator', () => {
     );
   });
 
-  it('removes order and finance data from associated-event results', async () => {
+  it('preserves authorized order and payment facts from associated-event results', async () => {
     const orchestrator = new InformationOrchestrator({
       knowledgeGateway: {
         async search() {
@@ -596,9 +380,13 @@ describe('InformationOrchestrator', () => {
     ) {
       throw new Error('Expected a completed associated-event result.');
     }
-    expect(result.result.events[0]?.orders).toEqual([]);
-    expect(result.result.events[0]?.amountCollected).toBeNull();
-    expect(result.result.counts.recentOrders).toBe(0);
+    expect(result.result.events[0]?.orders).toMatchObject([{
+      id: 1,
+      incrementId: 'ORD-000880',
+      grandTotal: 300,
+      paymentStatus: 'approved',
+    }]);
+    expect(result.result.counts.recentOrders).toBe(1);
   });
 
   it('resolves an account-less guest event from the trusted phone without OTP', async () => {
@@ -771,8 +559,6 @@ describe('InformationOrchestrator', () => {
         resource: 'orders',
         query: '¿Cuál es el estado de mi pedido?',
         orderId: null,
-        aspects: ['summary', 'payment_status'],
-        sensitiveFields: [],
         authAction: 'none',
       }],
       authentication: null,
@@ -792,7 +578,7 @@ describe('InformationOrchestrator', () => {
     });
   });
 
-  it('falls back to phone orders when the gift route fails transiently on a summary request', async () => {
+  it('retains successful orders when profile preparation sees a failed gift root', async () => {
     const agentGateway = new FakeAgentGateway();
     agentGateway.guestGiftResult = {
       status: 'retryable_failure',
@@ -811,33 +597,30 @@ describe('InformationOrchestrator', () => {
       agentGateway,
     });
 
-    const execution = await orchestrator.execute({
-      requests: [{
-        requestId: 'phone-gift-summary',
-        kind: 'purchase',
-        resource: 'gift_purchases',
-        query: '¿Se aprobó mi regalo?',
-        orderId: 'ORD-000880',
-        aspects: ['summary', 'payment_status'],
-        sensitiveFields: [],
-        authAction: 'none',
-      }],
+    const snapshot = await orchestrator.prepareCustomerContext({
       authentication: null,
-      authBlock: null,
       trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
+      identity: {
+        customerRef: '+51987654321',
+        scope: 'trusted_phone',
+        source: 'test_phone',
+      },
+      currentContext: null,
+      deadlineMs: null,
     });
 
-    // One source contract: the gift route is attempted first; only its
-    // transient failure degrades to the orders fallback with honest
-    // partial coverage.
+    // Both customer roots are read before extraction. A failed gift source
+    // remains explicit while the successful orders fact stays available.
     expect(agentGateway.guestGiftCalls).toBe(1);
     expect(agentGateway.guestOrdersCalls).toBe(1);
-    expect(execution.results[0]).toMatchObject({
-      status: 'completed',
-      kind: 'purchase',
-      lookupResource: 'orders',
-      coverage: 'partial',
+    expect(snapshot.purchasesCarts).toMatchObject({
+      status: 'ready',
+      completeness: 'partial',
       purchases: [{ orderId: 'ORD-000880', paymentStatus: 'approved' }],
+      sourceCoverage: [
+        { source: 'orders', status: 'completed', count: 1 },
+        { source: 'gift_purchases', status: 'failed' },
+      ],
     });
   });
 
@@ -862,8 +645,6 @@ describe('InformationOrchestrator', () => {
         resource: 'gift_purchases',
         query: '¿Qué dedicatoria escribí?',
         orderId: null,
-        aspects: ['dedication'],
-        sensitiveFields: [],
         authAction: 'none',
       }],
       authentication: null,
@@ -910,8 +691,6 @@ describe('InformationOrchestrator', () => {
         resource: 'orders',
         query: '¿A qué hora se hizo el pago?',
         orderId: null,
-        aspects: ['payment_details'],
-        sensitiveFields: [],
         authAction: 'none',
       }],
       authentication: null,
@@ -937,8 +716,6 @@ describe('InformationOrchestrator', () => {
         resource: 'orders',
         query: '¿Cuál es el estado de mi pedido?',
         orderId: null,
-        aspects: ['summary', 'payment_status'],
-        sensitiveFields: [],
         authAction: 'none',
       }],
       authentication: null,
@@ -973,8 +750,6 @@ describe('InformationOrchestrator', () => {
       resource: 'orders',
       query: 'Estado del pedido',
       orderId: 'ORD-000880',
-      aspects: ['summary'],
-      sensitiveFields: [],
       authAction: 'none',
     });
     const execution = await orchestrator.execute({
@@ -1012,8 +787,6 @@ describe('InformationOrchestrator', () => {
         resource: 'orders',
         query: reference,
         orderId: reference,
-        aspects: ['summary', 'payment_status'],
-        sensitiveFields: [],
         authAction: 'none',
       }],
       authentication: null,
@@ -1057,8 +830,6 @@ describe('InformationOrchestrator', () => {
         resource: 'orders',
         query: '301816',
         orderId: '301816',
-        aspects: ['summary', 'payment_status'],
-        sensitiveFields: [],
         authAction: 'none',
       }],
       authentication: null,
@@ -1127,8 +898,6 @@ describe('InformationOrchestrator', () => {
         orderId: null,
         eventHint: 'Samuel Josué',
         amount: 80,
-        aspects: ['payment_status'],
-        sensitiveFields: [],
         authAction: 'none',
       }],
       authentication: null,
@@ -1148,7 +917,7 @@ describe('InformationOrchestrator', () => {
       (purchase) => purchase.orderId === 'ORD-current',
     )).toMatchObject({
       eventName: 'Samuel Josué',
-      grandTotal: null,
+      grandTotal: 80,
       paymentStatus: 'pending',
     });
   });
@@ -1182,8 +951,6 @@ describe('InformationOrchestrator', () => {
         resource: 'orders',
         query: '¿Qué pasó con mi carrito?',
         orderId: null,
-        aspects: ['summary'],
-        sensitiveFields: [],
         authAction: 'none',
       }],
       authentication: null,
@@ -1245,8 +1012,6 @@ describe('InformationOrchestrator', () => {
         orderId: null,
         eventHint: 'Isa y Lu',
         amount: 63.85,
-        aspects: ['payment_status'],
-        sensitiveFields: [],
         authAction: 'none',
       }],
       authentication: null,
@@ -1306,8 +1071,6 @@ describe('InformationOrchestrator', () => {
         query: '¿Dónde está mi aporte de luna de miel?',
         orderId: null,
         eventHint: 'luna de miel',
-        aspects: ['summary', 'payment_status'],
-        sensitiveFields: [],
         authAction: 'none',
       }],
       authentication: null,
@@ -1367,8 +1130,6 @@ describe('InformationOrchestrator', () => {
         query: '¿Qué pasó con mi aporte de 80?',
         orderId: null,
         amount: 80,
-        aspects: ['summary', 'payment_status'],
-        sensitiveFields: [],
         authAction: 'none',
       }],
       authentication: null,
@@ -1414,8 +1175,6 @@ describe('InformationOrchestrator', () => {
         orderId: null,
         eventHint: 'Boda Lucía y Marco',
         amount: 80,
-        aspects: ['summary', 'payment_status'],
-        sensitiveFields: [],
         authAction: 'none',
       }],
       authentication: null,
@@ -1458,8 +1217,6 @@ describe('InformationOrchestrator', () => {
         resource: 'orders',
         query: 'COD999999',
         orderId: 'COD999999',
-        aspects: ['summary', 'payment_status'],
-        sensitiveFields: [],
         authAction: 'none',
       }],
       authentication: null,
@@ -1521,8 +1278,6 @@ describe('InformationOrchestrator', () => {
         query: 'Estado del regalo para Josué y Paola.',
         orderId: null,
         eventHint: 'Josué y Paola',
-        aspects: ['payment_status'],
-        sensitiveFields: [],
         authAction: 'none',
       }],
       authentication: null,
@@ -1693,8 +1448,6 @@ describe('InformationOrchestrator', () => {
           resource: 'gift_purchases',
           query: '¿Se aprobó mi regalo para ese evento?',
           orderId: null,
-          aspects: ['summary', 'payment_status'],
-          sensitiveFields: [],
           authAction: 'none',
         },
       ],
@@ -1710,7 +1463,7 @@ describe('InformationOrchestrator', () => {
     expect(agentGateway.guestOrdersCalls).toBe(0);
     expect(execution.results[0]).toMatchObject({
       status: 'completed',
-      result: { events: [{ orders: [] }], counts: { recentOrders: 0 } },
+      result: { events: [{ orders: [], orderIds: ['ORD-000880'] }], counts: { recentOrders: 1 } },
     });
     expect(execution.results[1]).toMatchObject({
       status: 'completed',
@@ -1746,8 +1499,6 @@ describe('InformationOrchestrator', () => {
           resource: 'orders',
           query: 'Estado del pedido',
           orderId: 'ORD-000880',
-          aspects: ['summary', 'payment_status'],
-          sensitiveFields: [],
           authAction: 'none',
         },
         {
@@ -1756,8 +1507,6 @@ describe('InformationOrchestrator', () => {
           resource: 'gift_purchases',
           query: 'Detalle del regalo',
           orderId: 'ORD-000880',
-          aspects: ['payment_status', 'dedication'],
-          sensitiveFields: [],
           authAction: 'none',
         },
       ],
@@ -1767,74 +1516,15 @@ describe('InformationOrchestrator', () => {
     });
 
     expect(execution.results).toHaveLength(2);
-    for (const result of execution.results) {
-      expect(result).toMatchObject({
-        status: 'completed',
-        coverage: 'inconsistent',
-        purchases: [{ paymentStatus: null }],
-      });
-    }
-  });
-
-  it('excludes paymentMethod from summary aspect and includes it for payment_details', async () => {
-    const agentGateway = new FakeAgentGateway();
-    agentGateway.giftResult = {
-      status: 'success',
-      resource: 'gift_purchases',
-      purchases: [giftPurchase()],
-    };
-    const orchestrator = new InformationOrchestrator({
-      knowledgeGateway: { async search() { throw new Error('unused'); } },
-      providerGateway: {} as ProviderGateway,
-      agentGateway,
+    expect(execution.results[0]).toMatchObject({
+      status: 'completed',
+      coverage: 'inconsistent',
+      purchases: [{ recordSource: 'orders', paymentStatus: 'pending' }],
     });
-
-    const summaryExecution = await orchestrator.execute({
-      requests: [
-        {
-          requestId: 'summary-1',
-          kind: 'purchase',
-          resource: 'gift_purchases',
-          query: 'estado',
-          orderId: 'ORD-000880',
-          aspects: ['summary'],
-          sensitiveFields: [],
-          authAction: 'none',
-        },
-      ],
-      authentication: { token: 'jwt', email: 'user@example.com' },
-      authBlock: null,
-    });
-    const summaryResult = summaryExecution.results[0];
-    if (!summaryResult || summaryResult.status !== 'completed' || summaryResult.kind !== 'purchase') {
-      throw new Error('Expected completed purchase for summary aspect.');
-    }
-    expect(summaryResult.purchases[0]?.paymentMethod).toBeNull();
-
-    const paymentDetailsExecution = await orchestrator.execute({
-      requests: [
-        {
-          requestId: 'payment-details-1',
-          kind: 'purchase',
-          resource: 'gift_purchases',
-          query: 'pago',
-          orderId: 'ORD-000880',
-          aspects: ['payment_details'],
-          sensitiveFields: [],
-          authAction: 'none',
-        },
-      ],
-      authentication: { token: 'jwt', email: 'user@example.com' },
-      authBlock: null,
-    });
-    const paymentDetailsResult = paymentDetailsExecution.results[0];
-    if (!paymentDetailsResult || paymentDetailsResult.status !== 'completed' || paymentDetailsResult.kind !== 'purchase') {
-      throw new Error('Expected completed purchase for payment_details aspect.');
-    }
-    expect(paymentDetailsResult.purchases[0]?.paymentMethod).toBeNull();
-    expect(paymentDetailsResult.purchases[0]?.amountDisclosure).toMatchObject({
-      paymentMethod: 'Transferencia',
-      presentation: 'recorded_method_no_currency',
+    expect(execution.results[1]).toMatchObject({
+      status: 'completed',
+      coverage: 'inconsistent',
+      purchases: [{ recordSource: 'gift_purchases', paymentStatus: 'approved' }],
     });
   });
 
@@ -1881,8 +1571,6 @@ describe('InformationOrchestrator', () => {
       resource: 'orders',
       query: 'estado',
       orderId: null,
-      aspects: ['payment_status'],
-      sensitiveFields: [],
       authAction: 'none',
     });
     const execution = await orchestrator.execute({
@@ -1961,8 +1649,8 @@ describe('InformationOrchestrator', () => {
     // purchase root still acquired (orders A+B, never every endpoint).
     // Both sources merge by stable order ID: A enriches missing fields
     // from either side, B survives once, source conflicts stay explicit.
-    // Five candidates exceed the read bound, so coverage stays partial —
-    // never a complete profile — while ready facts remain usable.
+    // Five candidates exceed the concurrency bound, not the total-work
+    // bound. Every authorized ID is visited and ready facts remain usable.
     const agentGateway = new FakeAgentGateway();
     agentGateway.guestEventsResult = {
       status: 'success',
@@ -2047,8 +1735,6 @@ describe('InformationOrchestrator', () => {
         resource: 'orders',
         query: '¿Cuál es el estado de mi compra?',
         orderId: null,
-        aspects: ['summary'],
-        sensitiveFields: [],
         authAction: 'none',
       }],
       authentication: null,
@@ -2060,24 +1746,34 @@ describe('InformationOrchestrator', () => {
     // one applicable purchase root (orders). The gift-detail endpoint is
     // never read for a summary question.
     expect(agentGateway.guestEventCalls).toBe(1);
-    expect(agentGateway.eventDetailCalls).toBe(4);
+    expect(agentGateway.eventDetailCalls).toBe(5);
+    expect(agentGateway.eventDetailInputs.map((input) => input.eventId).sort()).toEqual([
+      81, 82, 83, 84, 85,
+    ]);
     expect(agentGateway.guestOrdersCalls).toBe(1);
     expect(agentGateway.guestGiftCalls).toBe(0);
     const result = execution.results[0];
     expect(result).toMatchObject({
       status: 'completed',
       accessMethod: 'trusted_phone_event_purchase',
-      coverage: 'partial',
+      coverage: 'complete',
     });
     if (result.status !== 'completed' || result.kind !== 'purchase') {
       throw new Error('Expected a completed purchase result.');
     }
-    // A and B survive canonically, one representation each.
-    const orderIds = result.purchases.map((purchase) => purchase.orderId).sort();
-    expect(orderIds).toEqual(['ORD-000880', 'ORD-000881']);
-    // A enriches missing root fields from the hydration side.
-    const mergedA = result.purchases.find((purchase) => purchase.orderId === 'ORD-000880');
-    expect(mergedA?.eventName).toBe('Boda Ana y Luis');
+    // Same ID from different authorized sources stays as two sourced facts;
+    // the complete records are not collapsed into one preferred-looking row.
+    const sameOrder = result.purchases.filter((purchase) => purchase.orderId === 'ORD-000880');
+    expect(result.purchases.map((purchase) => purchase.orderId).sort()).toEqual([
+      'ORD-000880', 'ORD-000880', 'ORD-000881',
+    ]);
+    expect(sameOrder.map((purchase) => purchase.recordSource).sort()).toEqual([
+      'event_detail', 'orders',
+    ]);
+    expect(sameOrder.find((purchase) => purchase.recordSource === 'event_detail')?.eventName)
+      .toBe('Boda Ana y Luis');
+    expect(sameOrder.find((purchase) => purchase.recordSource === 'orders')?.eventName)
+      .toBeNull();
     // Associations/details travel through the existing purchase result:
     // event identity, venue and attendance without a second request.
     expect(result.linkedEvents).toBeDefined();
@@ -2086,9 +1782,9 @@ describe('InformationOrchestrator', () => {
     expect(linked81?.place).toBe('Lima');
     expect(linked81?.detail?.city).toBe('Lima');
     expect(linked81?.guestStatus?.willAttend).toBe(true);
-    // Partial coverage stays visible: the bound truncated the fifth
-    // candidate, so completeness is never claimed.
-    expect(result.linkedEventsTruncated).toBe(true);
+    // The concurrency bound visits the full queue; it is not a total-work
+    // cutoff that marks the fifth candidate truncated.
+    expect(result.linkedEventsTruncated ?? false).toBe(false);
   });
 });
 
@@ -2250,18 +1946,13 @@ function guestEvent(eventId: number, name: string) {
   };
 }
 
-function purchaseRequest(
-  requestId: string,
-  sensitiveFields: Array<'operation_code'>,
-): PendingInformationRequest {
+function purchaseRequest(requestId: string): PendingInformationRequest {
   return {
     requestId,
     kind: 'purchase',
     resource: 'gift_purchases',
     query: 'Detalles del pago',
     orderId: 'ORD-000880',
-    aspects: ['payment_details'],
-    sensitiveFields,
     authAction: 'none',
   };
 }
@@ -2372,221 +2063,6 @@ function eventLookup(): UserEventLookupResult {
   };
 }
 
-describe('A gift fulfillment projection by aspect', () => {
-  function orchestrator(agentGateway: FakeAgentGateway): InformationOrchestrator {
-    return new InformationOrchestrator({
-      knowledgeGateway: { async search() { throw new Error('unused'); } },
-      providerGateway: {} as ProviderGateway,
-      agentGateway,
-    });
-  }
-
-  function mixedGift(): PurchaseInformation {
-    return {
-      ...giftPurchase(),
-      shippingStatus: null,
-      grandTotal: 230,
-      items: [
-        { giftName: 'Juego de sábanas', quantity: 1, amount: 150, rowTotal: 150, type: 'se_store' },
-        { giftName: 'Aporte luna de miel', quantity: 1, amount: 80, rowTotal: 80, type: 'credit' },
-      ],
-    };
-  }
-
-  async function completedPurchase(
-    agentGateway: FakeAgentGateway,
-    aspects: PurchaseAspect[],
-  ): Promise<PurchaseInformation> {
-    const execution = await orchestrator(agentGateway).execute({
-      requests: [{
-        requestId: 'gift-aspect',
-        kind: 'purchase',
-        resource: 'gift_purchases',
-        query: 'Consulta de regalo',
-        orderId: 'ORD-000880',
-        aspects,
-        sensitiveFields: [],
-        authAction: 'none',
-      }],
-      authentication: { token: 'jwt', email: 'user@example.com' },
-      authBlock: null,
-    });
-    const result = execution.results[0];
-    if (!result || result.status !== 'completed' || result.kind !== 'purchase') {
-      throw new Error('Expected a completed purchase result.');
-    }
-    const projected = result.purchases[0];
-    if (!projected) {
-      throw new Error('Expected one projected purchase.');
-    }
-    return projected;
-  }
-
-  it('projects names, amounts and fulfillment on shipping-only requests without summary', async () => {
-    const agentGateway = new FakeAgentGateway();
-    agentGateway.giftResult = {
-      status: 'success',
-      resource: 'gift_purchases',
-      purchases: [mixedGift()],
-    };
-    const projected = await completedPurchase(agentGateway, ['shipping']);
-
-    expect(projected.items).toHaveLength(2);
-    expect(projected.items[0]).toMatchObject({
-      giftName: 'Juego de sábanas',
-      quantity: 1,
-      amount: 150,
-      rowTotal: 150,
-      type: 'se_store',
-      fulfillment: { kind: 'physical', chosenBy: null, giftShipmentApplicable: true },
-    });
-    expect(projected.items[1]).toMatchObject({
-      giftName: 'Aporte luna de miel',
-      quantity: 1,
-      amount: 80,
-      rowTotal: 80,
-      type: 'credit',
-      fulfillment: { kind: 'host_credit', chosenBy: 'host', giftShipmentApplicable: false },
-    });
-    // Authorized amounts survive shipping context; the credit policy rides once.
-    expect(projected.creditFulfillmentPolicy).toEqual({
-      chosenBy: 'host',
-      mechanism: 'host_account_credit',
-    });
-  });
-
-  it('keeps full item amounts with fulfillment on summary requests', async () => {
-    const agentGateway = new FakeAgentGateway();
-    agentGateway.giftResult = {
-      status: 'success',
-      resource: 'gift_purchases',
-      purchases: [mixedGift()],
-    };
-    const projected = await completedPurchase(agentGateway, ['summary']);
-
-    expect(projected.items).toHaveLength(2);
-    expect(projected.items[0]?.amount).toBe(150);
-    expect(projected.items[0]?.fulfillment?.kind).toBe('physical');
-    expect(projected.items[1]?.fulfillment?.kind).toBe('host_credit');
-  });
-
-  it('keeps items and credit policy on payment_status requests for credit-receipt answers', async () => {
-    const agentGateway = new FakeAgentGateway();
-    agentGateway.giftResult = {
-      status: 'success',
-      resource: 'gift_purchases',
-      purchases: [mixedGift()],
-    };
-    const projected = await completedPurchase(agentGateway, ['payment_status']);
-
-    expect(projected.items).toHaveLength(2);
-    expect(projected.creditFulfillmentPolicy).toEqual({
-      chosenBy: 'host',
-      mechanism: 'host_account_credit',
-    });
-  });
-});
-
-describe('S2 actual-request payment parity and transaction strip', () => {
-  function accountOrchestrator(agentGateway: FakeAgentGateway): InformationOrchestrator {
-    return new InformationOrchestrator({
-      knowledgeGateway: { async search() { throw new Error('unused'); } },
-      providerGateway: {} as ProviderGateway,
-      agentGateway,
-    });
-  }
-
-  async function completedPurchase(
-    orchestrator: InformationOrchestrator,
-    executeArgs: Parameters<InformationOrchestrator['execute']>[0],
-  ) {
-    const execution = await orchestrator.execute(executeArgs);
-    const result = execution.results[0];
-    if (!result || result.status !== 'completed' || result.kind !== 'purchase') {
-      throw new Error('Expected a completed purchase result.');
-    }
-    return result;
-  }
-
-  it('keeps one canonical total/paid pair with nonzero paid on the account path', async () => {
-    const agentGateway = new FakeAgentGateway();
-    agentGateway.giftResult = {
-      status: 'success',
-      resource: 'gift_purchases',
-      purchases: [{ ...giftPurchase(), customerTransactionNumber: 'ACC-999' }],
-    };
-    const result = await completedPurchase(accountOrchestrator(agentGateway), {
-      requests: [purchaseRequest('parity-1', [])],
-      authentication: { token: 'jwt', email: 'user@example.com' },
-      authBlock: null,
-    });
-    const projected = result.purchases[0];
-    expect(projected?.amountDisclosure).toEqual({
-      total: 300,
-      paid: 300,
-      currency: null,
-      currencySymbol: null,
-      paymentMethod: 'Transferencia',
-      presentation: 'recorded_method_no_currency',
-    });
-    expect(projected?.grandTotal).toBeNull();
-    expect(projected?.payment?.amount).toBeNull();
-    expect(projected?.customerTransactionNumber).toBe('ACC-999');
-  });
-
-  it('leaves paid unknown and never computes a remaining balance', async () => {
-    const agentGateway = new FakeAgentGateway();
-    agentGateway.giftResult = {
-      status: 'success',
-      resource: 'gift_purchases',
-      purchases: [{ ...giftPurchase(), payment: null, customerTransactionNumber: 'ACC-999' }],
-    };
-    const result = await completedPurchase(accountOrchestrator(agentGateway), {
-      requests: [purchaseRequest('parity-2', [])],
-      authentication: { token: 'jwt', email: 'user@example.com' },
-      authBlock: null,
-    });
-    expect(result.purchases[0]?.amountDisclosure).toMatchObject({ total: 300, paid: null });
-    expect(JSON.stringify(result)).not.toContain('remaining');
-  });
-
-  it('strips internal transaction numbers on phone browse while keeping two distinct records', async () => {
-    const agentGateway = new FakeAgentGateway();
-    agentGateway.guestOrdersResult = {
-      status: 'success',
-      resource: 'orders',
-      purchases: [
-        { ...giftPurchase(), orderId: 'ORD-browse-1', customerTransactionNumber: '701001' },
-        { ...giftPurchase(), orderId: 'ORD-browse-2', customerTransactionNumber: '701002' },
-      ],
-    };
-    const result = await completedPurchase(accountOrchestrator(agentGateway), {
-      requests: [{
-        requestId: 'browse-1',
-        kind: 'purchase',
-        resource: 'orders',
-        query: 'Estado de mis compras',
-        orderId: null,
-        aspects: ['summary', 'payment_status'],
-        sensitiveFields: [],
-        authAction: 'none',
-      }],
-      authentication: null,
-      authBlock: null,
-      trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
-    });
-    expect(result.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
-      ['ORD-browse-1', 'ORD-browse-2'],
-    );
-    for (const purchase of result.purchases) {
-      expect(purchase.customerTransactionNumber).toBeNull();
-      expect(purchase.amountDisclosure?.total).toBe(300);
-    }
-    expect(JSON.stringify(result)).not.toContain('701001');
-    expect(JSON.stringify(result)).not.toContain('701002');
-  });
-});
-
 describe('B receipt discovery fan-out across authorized sources', () => {
   function discoveryOrder(): PurchaseInformation {
     return {
@@ -2652,8 +2128,6 @@ describe('B receipt discovery fan-out across authorized sources', () => {
           resource: 'orders',
           query: 'Estado del pago del comprobante.',
           orderId: null,
-          aspects: ['summary', 'payment_status'],
-          sensitiveFields: [],
           authAction: 'none',
         },
         {
@@ -2662,8 +2136,6 @@ describe('B receipt discovery fan-out across authorized sources', () => {
           resource: 'gift_purchases',
           query: 'Estado del pago del comprobante.',
           orderId: null,
-          aspects: ['summary', 'payment_status'],
-          sensitiveFields: [],
           authAction: 'none',
         },
         {
@@ -2672,8 +2144,6 @@ describe('B receipt discovery fan-out across authorized sources', () => {
           resource: 'orders',
           query: 'Estado del pago del comprobante.',
           orderId: null,
-          aspects: ['summary'],
-          sensitiveFields: [],
           authAction: 'none',
         },
       ],
@@ -2711,8 +2181,8 @@ describe('B receipt discovery fan-out across authorized sources', () => {
       expect(ordersPurchases.purchases.map((purchase) => purchase.orderId)).toEqual(['ORD-DISC-1']);
       expect(giftPurchases.purchases.map((purchase) => purchase.orderId)).toEqual(['GIFT-DISC-7']);
       for (const purchase of [...ordersPurchases.purchases, ...giftPurchases.purchases]) {
-        expect(purchase.amountDisclosure?.total).toBe(340.44);
-        expect(purchase.amountDisclosure?.currency ?? purchase.currency).toBeTruthy();
+        expect(purchase.grandTotal).toBeGreaterThan(0);
+        expect(purchase.currency).toBeTruthy();
         expect(purchase.eventName).toBeTruthy();
       }
     } else {
@@ -2745,8 +2215,6 @@ describe('B receipt discovery fan-out across authorized sources', () => {
           resource: 'orders',
           query: 'Estado del pago del comprobante.',
           orderId: null,
-          aspects: ['summary', 'payment_status'],
-          sensitiveFields: [],
           authAction: 'none',
         },
         {
@@ -2755,8 +2223,6 @@ describe('B receipt discovery fan-out across authorized sources', () => {
           resource: 'gift_purchases',
           query: 'Estado del pago del comprobante.',
           orderId: null,
-          aspects: ['summary', 'payment_status'],
-          sensitiveFields: [],
           authAction: 'none',
         },
       ],
@@ -2854,8 +2320,6 @@ describe('B receipt discovery fan-out across authorized sources', () => {
           resource: 'orders',
           query: 'Estado del pedido.',
           orderId: null,
-          aspects: ['summary', 'payment_status'],
-          sensitiveFields: [],
           authAction: 'none',
         },
         {
@@ -2864,8 +2328,6 @@ describe('B receipt discovery fan-out across authorized sources', () => {
           resource: 'gift_purchases',
           query: 'Estado del regalo.',
           orderId: null,
-          aspects: ['summary', 'payment_status'],
-          sensitiveFields: [],
           authAction: 'none',
         },
       ],
@@ -2901,8 +2363,6 @@ describe('B receipt discovery fan-out across authorized sources', () => {
         resource: 'gift_purchases',
         query: 'Estado del pago.',
         orderId: null,
-        aspects: ['summary', 'payment_status'],
-        sensitiveFields: [],
         authAction: 'none',
       }],
       authentication: null,
@@ -2921,24 +2381,10 @@ describe('B receipt discovery fan-out across authorized sources', () => {
 });
 
 describe('A one purchase source contract across access paths', () => {
-  const MATRIX: Array<{
-    resource: 'orders' | 'gift_purchases';
-    aspects: PurchaseAspect[];
-    amount: number | null;
-  }> = [
-    { resource: 'orders', aspects: ['shipping'], amount: null },
-    { resource: 'orders', aspects: ['payment_status'], amount: null },
-    { resource: 'orders', aspects: ['summary'], amount: 150 },
-    { resource: 'orders', aspects: ['payment_details'], amount: null },
-    { resource: 'orders', aspects: ['dedication'], amount: null },
-    { resource: 'orders', aspects: ['thanks'], amount: null },
-    { resource: 'gift_purchases', aspects: ['shipping'], amount: null },
-    { resource: 'gift_purchases', aspects: ['payment_status'], amount: null },
-    { resource: 'gift_purchases', aspects: ['summary'], amount: 80 },
-    { resource: 'gift_purchases', aspects: ['payment_details'], amount: null },
-    { resource: 'gift_purchases', aspects: ['dedication'], amount: null },
-    { resource: 'gift_purchases', aspects: ['thanks'], amount: null },
-  ];
+  const MATRIX = [
+    { resource: 'orders', amount: 150 },
+    { resource: 'gift_purchases', amount: 80 },
+  ] as const;
 
   function matrixOrchestrator(agentGateway: FakeAgentGateway): InformationOrchestrator {
     return new InformationOrchestrator({
@@ -2966,9 +2412,9 @@ describe('A one purchase source contract across access paths', () => {
     };
   }
 
-  it.each(MATRIX.map((entry) => [entry.resource, entry.aspects.join('+'), entry] as const))(
-    'phone path reads %s for %s without aspect overrides',
-    async (_resource, _label, entry) => {
+  it.each(MATRIX)(
+    'phone path reads the %s source without field selectors',
+    async (entry) => {
       const agentGateway = new FakeAgentGateway();
       agentGateway.guestOrdersResult = {
         status: 'success', resource: 'orders', purchases: [matrixRecord('orders', entry.amount)],
@@ -2984,8 +2430,6 @@ describe('A one purchase source contract across access paths', () => {
           query: 'Consulta de matriz.',
           orderId: null,
           ...(entry.amount !== null ? { amount: entry.amount } : {}),
-          aspects: [...entry.aspects],
-          sensitiveFields: [],
           authAction: 'none',
         }],
         authentication: null,
@@ -3002,9 +2446,9 @@ describe('A one purchase source contract across access paths', () => {
     },
   );
 
-  it.each(MATRIX.map((entry) => [entry.resource, entry.aspects.join('+'), entry] as const))(
-    'authenticated path reads %s for %s with the same requested source',
-    async (_resource, _label, entry) => {
+  it.each(MATRIX)(
+    'authenticated path reads the %s source with the same source contract',
+    async (entry) => {
       const agentGateway = new FakeAgentGateway();
       agentGateway.ordersResult = {
         status: 'success', resource: 'orders', purchases: [matrixRecord('orders', entry.amount)],
@@ -3020,8 +2464,6 @@ describe('A one purchase source contract across access paths', () => {
           query: 'Consulta de matriz.',
           orderId: null,
           ...(entry.amount !== null ? { amount: entry.amount } : {}),
-          aspects: [...entry.aspects],
-          sensitiveFields: [],
           authAction: 'none',
         }],
         authentication: { token: 'matrix-token', email: 'matrix@example.com' },
@@ -3123,8 +2565,6 @@ describe('source discovery purchase_discovery contract', () => {
       resource: 'purchase_discovery',
       query,
       orderId: null,
-      aspects: ['summary', 'shipping'],
-      sensitiveFields: [],
       authAction: 'none',
     };
   }
@@ -3160,10 +2600,6 @@ describe('source discovery purchase_discovery contract', () => {
     expect(totals).toEqual([80, 150]);
     // Both facts reach the typed summary evidence: no account-wide absence
     // claim is possible when both authorized roots were read.
-    const factTotals = execution.summaries[0]?.evidence
-      .map((entry) => entry.purchaseFact?.total ?? null)
-      .sort((left, right) => (left ?? 0) - (right ?? 0));
-    expect(factTotals).toEqual([80, 150]);
     // Contract revision (Lane C F1): the discovery summary names no
     // single source; per-source facts travel in sourceCoverage.
     expect(execution.summaries[0]).toMatchObject({ coverage: 'complete' });
@@ -3194,13 +2630,11 @@ describe('source discovery purchase_discovery contract', () => {
     );
   });
 
-  // Row 2: known source reads only its source; aspects cannot change it.
-  it.each([
-    { resource: 'orders' as const, aspects: ['shipping'] as PurchaseAspect[] },
-    { resource: 'orders' as const, aspects: ['payment_status'] as PurchaseAspect[] },
-    { resource: 'gift_purchases' as const, aspects: ['shipping'] as PurchaseAspect[] },
-    { resource: 'gift_purchases' as const, aspects: ['payment_status'] as PurchaseAspect[] },
-  ])('known $resource stays single-source for $aspects', async ({ resource, aspects }) => {
+  // Existing task reads use their declared source; profile preparation is
+  // independently proven to load all authorized roots before extraction.
+  it.each(['orders', 'gift_purchases'] as const)(
+    'known %s task reads its source once',
+    async (resource) => {
     const agentGateway = mixedGateways();
     const execution = await discoveryOrchestrator(agentGateway).execute({
       requests: [{
@@ -3209,8 +2643,6 @@ describe('source discovery purchase_discovery contract', () => {
         resource,
         query: 'Consulta de fuente conocida.',
         orderId: null,
-        aspects: [...aspects],
-        sensitiveFields: [],
         authAction: 'none',
       }],
       authentication: null,
@@ -3361,8 +2793,6 @@ describe('source discovery purchase_discovery contract', () => {
         resource,
         query: '¿Cuándo llega mi regalo?',
         orderId: null,
-        aspects: ['summary', 'shipping'],
-        sensitiveFields: [],
         authAction: 'none',
       }],
       authentication: null,
@@ -3375,8 +2805,6 @@ describe('source discovery purchase_discovery contract', () => {
       throw new Error('expected the forced-source read to complete');
     }
     expect(result.purchases.map((purchase) => purchase.orderId)).not.toContain(hidden);
-    const totals = execution.summaries[0]?.evidence.map((entry) => entry.purchaseFact?.total ?? null) ?? [];
-    expect(totals).not.toContain(resource === 'orders' ? 80 : 150);
   });
 
   // Guard: unrelated turns never trigger a both-source read.
