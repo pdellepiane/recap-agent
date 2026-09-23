@@ -173,6 +173,21 @@ export function disclosedPurchaseMethod(
 }
 
 /**
+ * Packet A facet-closure paid reader. The orchestrator projection moves the
+ * trusted paid amount into amountDisclosure for balance facets
+ * (summary/payment_status/validation_window/payment_details), so the reply
+ * gate prefers the disclosure before falling back to the direct payment
+ * field (which stays masked on non-time aspects). Null means unknown, never
+ * zero: a missing payment record must not read as paid=0.
+ */
+export function disclosedPurchasePaid(
+  purchase: PurchaseInformation,
+): number | null {
+  return trustedAmount(purchase.amountDisclosure?.paid ?? null) ??
+    trustedAmount(purchase.payment?.amount);
+}
+
+/**
  * C1 currency provenance readers. The orchestrator projection nulls the
  * outward `currency`/`currencySymbol` and moves the trusted values into
  * `amountDisclosure`, so reply gates must prefer the disclosure before
@@ -216,9 +231,14 @@ function toOrderView(
   userReported: PurchaseReplyUserReported,
 ): OrderReplyView {
   const requested = new Set(requestedAspects);
+  // Status closure mirrors the orchestrator: shipping and validation_window
+  // carry payment/posting state so a backend approved is never masked as
+  // unknown solely because the question used another facet.
   const wantsStatus = requested.has('summary') ||
     requested.has('payment_status') ||
-    requested.has('decline');
+    requested.has('decline') ||
+    requested.has('shipping') ||
+    requested.has('validation_window');
   const wantsAmount = requested.has('summary') ||
     requested.has('validation_window') ||
     requested.has('payment_status');
@@ -226,12 +246,18 @@ function toOrderView(
   // paymentAt below, never the amount block. Projecting a total/currency
   // the question never asked for invites unrelated balance/currency
   // caveats on time-only answers.
-  // Payment method reaches the reply only when explicitly requested. An
-  // approved summary never needs the method type.
+  // Payment method reaches the reply for balance/validation facets. An
+  // approved summary alone never needs the method type, but a pending
+  // balance (payment_status/validation_window, or a pending summary) must
+  // retain it so the answer can name the registered method family without
+  // inventing currency.
+  const isPending = (purchase.paymentStatus ?? '').trim().toLocaleLowerCase('en') === 'pending';
   const wantsMethod = requested.has('payment_details') ||
-    requested.has('validation_window');
+    requested.has('validation_window') ||
+    requested.has('payment_status') ||
+    (requested.has('summary') && isPending);
   const total = disclosedPurchaseTotal(purchase);
-  const paid = trustedAmount(purchase.payment?.amount);
+  const paid = disclosedPurchasePaid(purchase);
   const currency = disclosedPurchaseCurrency(purchase);
   const currencySymbol = disclosedPurchaseCurrencySymbol(purchase);
   // R6: the authorized requested method comes from the disclosure reader,
@@ -442,10 +468,10 @@ export type PurchaseReplyEvidenceContext = {
 /**
  * Lane A compact balance limitation. Carries the single-order balance
  * distinction (sourced total, paid value/availability, unverifiable
- * remaining, currency availability) without duplicating the full purchase
- * payload next to the canonical profile. Derived from the existing order
- * view only: no arithmetic, no invented currency, user-reported amounts
- * stay user-reported and never merge into paid/total.
+ * remaining, currency and method availability) without duplicating the full
+ * purchase payload next to the canonical profile. Derived from the existing
+ * order view only: no arithmetic, no invented currency, user-reported
+ * amounts stay user-reported and never merge into paid/total.
  */
 export type PurchaseBalanceLimitation = {
   orderId: string;
@@ -466,6 +492,8 @@ export type PurchaseBalanceLimitation = {
   remainingVerifiable: false;
   currency: string | null;
   currencyAvailability: 'available' | 'unknown';
+  method: string | null;
+  methodAvailability: 'available' | 'unknown';
   userReported: {
     amount: number | null;
     currency: string | null;
@@ -485,6 +513,7 @@ export function projectPurchaseBalanceLimitation(
   const total = amount?.total ?? null;
   const paid = amount?.paid ?? null;
   const currency = amount?.currency ?? outcome.order.currency ?? null;
+  const method = amount?.method ?? null;
   return {
     orderId,
     total,
@@ -495,6 +524,8 @@ export function projectPurchaseBalanceLimitation(
     remainingVerifiable: false,
     currency,
     currencyAvailability: currency !== null ? 'available' : 'unknown',
+    method,
+    methodAvailability: method !== null ? 'available' : 'unknown',
     userReported: { ...outcome.order.userReported },
   };
 }

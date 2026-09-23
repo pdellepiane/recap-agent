@@ -2470,7 +2470,7 @@ describe('A gift fulfillment projection by aspect', () => {
     expect(projected.items[1]?.fulfillment?.kind).toBe('host_credit');
   });
 
-  it('omits items and credit policy on payment-only requests', async () => {
+  it('keeps items and credit policy on payment_status requests for credit-receipt answers', async () => {
     const agentGateway = new FakeAgentGateway();
     agentGateway.giftResult = {
       status: 'success',
@@ -2479,8 +2479,11 @@ describe('A gift fulfillment projection by aspect', () => {
     };
     const projected = await completedPurchase(agentGateway, ['payment_status']);
 
-    expect(projected.items).toHaveLength(0);
-    expect(projected.creditFulfillmentPolicy).toBeUndefined();
+    expect(projected.items).toHaveLength(2);
+    expect(projected.creditFulfillmentPolicy).toEqual({
+      chosenBy: 'host',
+      mechanism: 'host_account_credit',
+    });
   });
 });
 

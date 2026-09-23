@@ -24,6 +24,8 @@ import {
 } from './purchase-disclosure-policy';
 import {
   disclosedPurchaseCurrency,
+  disclosedPurchaseMethod,
+  disclosedPurchasePaid,
   disclosedPurchaseTotal,
 } from './purchase-reply-projector';
 
@@ -107,6 +109,8 @@ export type PurchaseCartSummary = {
    * reads as an amount owed: paid/remaining availability travels with it,
    * unknown stays unknown, and a missing payment record never reads as
    * paid=0. Raw grandTotal above stays available for total questions.
+   * Method travels sparsely for pending balances so the answer can name
+   * the registered method family without inventing currency.
    */
   readonly totalAvailability?: 'available' | 'unknown';
   readonly paidAmount?: number | null;
@@ -114,6 +118,8 @@ export type PurchaseCartSummary = {
   readonly remaining?: null;
   readonly remainingVerifiable?: false;
   readonly currencyAvailability?: 'available' | 'unknown';
+  readonly method?: string | null;
+  readonly methodAvailability?: 'available' | 'unknown';
 };
 
 export type PurchasesCartsSection = CustomerSectionBase & {
@@ -387,9 +393,9 @@ function statusForResult(
 
 /**
  * Lane A explicit balance markers for the canonical purchase summary.
- * Sourced through the existing disclosure readers (disclosure-first total
- * and currency, recorded paid amount): no arithmetic, no invented
- * currency, and a missing payment record stays unknown, never zero.
+ * Sourced through the existing disclosure readers (disclosure-first total,
+ * paid, method and currency): no arithmetic, no invented currency, and a
+ * missing payment record stays unknown, never zero.
  */
 function purchaseBalanceMarkers(
   purchase: PurchaseInformation,
@@ -401,11 +407,13 @@ function purchaseBalanceMarkers(
   | 'remaining'
   | 'remainingVerifiable'
   | 'currencyAvailability'
+  | 'method'
+  | 'methodAvailability'
 > {
   const total = disclosedPurchaseTotal(purchase);
-  const rawPaid = purchase.payment?.amount ?? null;
-  const paid = typeof rawPaid === 'number' && Number.isFinite(rawPaid) ? rawPaid : null;
+  const paid = disclosedPurchasePaid(purchase);
   const currency = disclosedPurchaseCurrency(purchase);
+  const method = disclosedPurchaseMethod(purchase);
   return {
     totalAvailability: total !== null ? 'available' : 'unknown',
     paidAmount: paid,
@@ -413,6 +421,8 @@ function purchaseBalanceMarkers(
     remaining: null,
     remainingVerifiable: false,
     currencyAvailability: currency !== null ? 'available' : 'unknown',
+    method,
+    methodAvailability: method !== null ? 'available' : 'unknown',
   };
 }
 
@@ -1060,8 +1070,9 @@ function buildProfileProvenanceField(
  * purchase outcome next to the canonical profile) is valid only when the
  * referenced profile record already carries the required balance facts for
  * every order: sourced-total, paid value/availability, unverifiable
- * remaining and currency availability. Otherwise the caller must retain a
- * compact typed limitation instead of duplicating the full payload.
+ * remaining, currency availability and method availability. Otherwise the
+ * caller must retain a compact typed limitation instead of duplicating the
+ * full payload.
  */
 export function purchaseProfileCarriesBalanceFacts(
   profile: CustomerContextProjection | null | undefined,
@@ -1074,7 +1085,8 @@ export function purchaseProfileCarriesBalanceFacts(
       summary.totalAvailability !== undefined &&
       summary.paidAvailability !== undefined &&
       summary.remainingVerifiable === false &&
-      summary.currencyAvailability !== undefined;
+      summary.currencyAvailability !== undefined &&
+      summary.methodAvailability !== undefined;
   });
 }
 

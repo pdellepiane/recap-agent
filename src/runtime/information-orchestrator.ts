@@ -2983,9 +2983,16 @@ export class InformationOrchestrator {
     const sensitive = new Set<SensitivePurchaseField>(request.sensitiveFields);
     const includePayment = aspectSet.has('payment_details');
     const physicalFulfillment = hasPhysicalFulfillment(purchase);
-    const includeAmount = aspectSet.has('summary') || includePayment;
+    // Answer-facet closure (evidence-preserving handoff Packet A): a balance
+    // or validation question needs total/paid availability even when it
+    // arrives as payment_status or validation_window, not only summary or
+    // payment time. Paid stays null when unknown, never zero.
+    const includeAmount = aspectSet.has('summary') ||
+      includePayment ||
+      aspectSet.has('payment_status') ||
+      aspectSet.has('validation_window');
     const disclosedTotal = includeAmount ? purchase.grandTotal : null;
-    const disclosedPaid = includePayment ? purchase.payment?.amount ?? null : null;
+    const disclosedPaid = includeAmount ? purchase.payment?.amount ?? null : null;
     // Payment type grounds the pending-validation window message, so it is
     // disclosed for payment_details requests and pending purchases. Approved
     // summaries omit it: status answers never need the method type, and the
@@ -3011,14 +3018,18 @@ export class InformationOrchestrator {
             : 'recorded_method_no_currency' as const,
         }
       : null;
-    // Gift fulfillment evidence. Summary and shipping share one item
-    // projection preserving authorized giftName, quantity, amount, rowTotal
-    // and raw type with derived fulfillment. Amounts support gift
-    // identification, matching and follow-ups; output relevance stays
-    // model-controlled and no amount-due arithmetic is performed here. All
-    // other aspects omit items so unrelated turns carry no fulfillment
+    // Gift fulfillment evidence. Summary, shipping and payment_status
+    // share one item projection preserving authorized giftName, quantity,
+    // amount, rowTotal and raw type with derived fulfillment. A
+    // credit-receipt question ("did hosts receive it?") needs payment state
+    // plus item fulfillment to keep mechanism distinct from posting; amounts
+    // support gift identification, matching and follow-ups; output relevance
+    // stays model-controlled and no amount-due arithmetic is performed here.
+    // All other aspects omit items so unrelated turns carry no fulfillment
     // facts.
-    const includeItems = aspectSet.has('summary') || aspectSet.has('shipping');
+    const includeItems = aspectSet.has('summary') ||
+      aspectSet.has('shipping') ||
+      aspectSet.has('payment_status');
     const projectedItems = includeItems
       ? purchase.items.map((item) => ({
         giftName: item.giftName ?? null,
@@ -3042,8 +3053,16 @@ export class InformationOrchestrator {
       eventId: purchase.eventId ?? null,
       currency: null,
       customerTransactionNumber: transactionReferenceVisible(purchase, options) ? purchase.customerTransactionNumber ?? null : null,
+      // Payment/posting state is never masked as unknown solely because the
+      // question used another facet: shipping and validation_window carry it
+      // alongside summary/payment_status/decline, so a backend approved is
+      // never relabeled unavailable on a shipping question.
       paymentStatus:
-        aspectSet.has('summary') || aspectSet.has('payment_status') || aspectSet.has('decline')
+        aspectSet.has('summary') ||
+          aspectSet.has('payment_status') ||
+          aspectSet.has('decline') ||
+          aspectSet.has('shipping') ||
+          aspectSet.has('validation_window')
           ? purchase.paymentStatus
           : null,
       // Dispatch state applies only with affirmative physical evidence: a

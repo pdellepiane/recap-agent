@@ -436,6 +436,8 @@ describe('S09 compact purchase balance limitation', () => {
       remainingVerifiable: false,
       currency: null,
       currencyAvailability: 'unknown',
+      method: 'Yape_o_Plin',
+      methodAvailability: 'available',
       userReported: { amount: null, currency: null, paidAt: null },
     });
   });

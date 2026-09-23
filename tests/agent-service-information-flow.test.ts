@@ -2485,7 +2485,10 @@ describe('AgentService first-class information flow', () => {
           purchases: [expect.objectContaining({
             currency: null,
             amountDisclosure: {
-              total: null,
+              // Packet A facet closure: validation_window/payment_status
+              // retain the sourced total so balance questions answer from
+              // available records instead of a masked null.
+              total: 250,
               paid: null,
               currency: null,
               currencySymbol: null,

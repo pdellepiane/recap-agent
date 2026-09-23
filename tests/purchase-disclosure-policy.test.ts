@@ -188,11 +188,14 @@ describe('purchase disclosure policy', () => {
     expect(shipping.items).toEqual(summary.items);
   });
 
-  it('omits item fulfillment on payment-only requests', async () => {
+  it('keeps item fulfillment on payment_status requests for credit-receipt answers', async () => {
     const result = await executePurchase(mixedPurchase(), ['payment_status']);
 
-    expect(result.items).toHaveLength(0);
-    expect(result.creditFulfillmentPolicy).toBeUndefined();
+    expect(result.items).toHaveLength(2);
+    expect(result.creditFulfillmentPolicy).toEqual({
+      chosenBy: 'host',
+      mechanism: 'host_account_credit',
+    });
   });
 });
 
