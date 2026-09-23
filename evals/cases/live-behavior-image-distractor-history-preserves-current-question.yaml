@@ -1,8 +1,8 @@
 template: template.base-live
 id: live_behavior.image_distractor_history_preserves_current_question
 suite: live_behavior_regression
-version: 2
-description: With stale campaign history present, a captionless image-only turn persists silently and a later text question is answered from the current image without leaking the distractor history or touching mutable backend data.
+version: 3
+description: With stale campaign history present, a captionless readable-receipt turn runs bounded reconciliation and a later text question is answered from the current image without leaking the distractor history or touching mutable backend data.
 tags: [live, behavior, image, image-file, distractor-history, conversation-continuity, s1]
 targetModes: [live_lambda]
 backendFixture:
@@ -28,6 +28,7 @@ notes:
   - "F1 2026-09-12: verified readable synthetic receipt evals/fixtures/images/receipt-readable-149-90.png (800x1000 PNG, sha256 15d3842a7e05e4538d15fb095891b5b3a2b4eea23915b49b42c49f62bb71001e, 40976 bytes). Visible text: COMPROBANTE DE PAGO, Comercio: Tienda Demo, Monto: S/ 149.90, Fecha: 05/09/2026, Operacion: 884211, Tarjeta: **** 4521. Synthetic, never a customer document."
   - "Backend image forwarding contract 2026-09-08."
   - "R05 oracle revision v1 to v2, 2026-09-16, Packet E1 judge-truth binding. Old distractor-current-question-answered-from-image stated the visible amount S/ 149.90 in rubric prose with no digest-bound fixture truth, so a wrong amount failed only by prose comparison. New contract binds the existing E1 judgeGroundTruth digest mechanism to this case: the turn-0 image bytes are byte-identical to the live_behavior.image_readable_captionless fixture (sha256 c3bed1bc2d4c85b35c74f617a0c8ec66d3021570608809ebb3cb10e6ded91d70, verified read-only against the case bytes, no repo writes), so the same manually verified text (COMPROBANTE DE PAGO, Comercio: Tienda Demo, Monto: S/ 149.90, Fecha: 05/09/2026, Operacion: 884211, Tarjeta: **** 4521) is bound via judgeGroundTruth (boundInputTurn 0). Ground truth rides the judge context only via resolveJudgeOnlyImageGroundTruth, never runtime input, no new OCR/vision. Read-only amount is not backend approval. Threshold 0.8, hard severity, requireJudge kept. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
+  - "C1 oracle revision v2 to v3, 2026-09-22, final work package. Old distractor-image-silent-persist-reason demanded plan_persist_reason image_file_silence for T0, but the T0 image is byte-identical to the readable receipt that the superseding native receipt-context package (live_behavior.image_readable_captionless v5) requires to be answered, not silenced; the frozen run-54da3f5a T0 trace ran bounded reconciliation (image_file_context plus authorized reads) and answered amount plus no-compatible-record exactly per that doctrine. New contract converts the pin to a hard T0 text_semantic bounded-reconciliation judge (Spanish, S/ 149.90, no compatible record, no approval claim, no campaign leak, no resend/OTP; minScore 0.8, requireJudge). Expectation id retained for ledger continuity; only its type changed. The image_file_context tool pin and all T1 expectations are unchanged. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
 expectations:
   - id: distractor-image-silent-persist-no-inspect
     type: tool_usage
@@ -36,9 +37,11 @@ expectations:
     turnIndex: 0
     severity: hard
   - id: distractor-image-silent-persist-reason
-    type: trace_field_equals
-    path: plan_persist_reason
-    expected: image_file_silence
+    type: text_semantic
+    rubric: >-
+      The turn carries a captionless readable receipt image plus stale unrelated campaign history. The judge-only ground truth for this fixture image is COMPROBANTE DE PAGO, Comercio: Tienda Demo, Monto: S/ 149.90, Fecha: 05/09/2026, Operacion: 884211, Tarjeta: **** 4521 (verified amount S/ 149.90; read accuracy only, never backend payment approval). Pass only if the assistant responds entirely in Spanish running bounded reconciliation: it conveys the receipt visible amount S/ 149.90 and states that no compatible pending purchase was found in the authorized records for this phone. It must not claim any payment was approved, validated, or settled from the image, must not repeat the old campaign invitations, must not ask the user to resend the image, and must not ask for an OTP or credentials. An empty response fails: blanket silence for a readable receipt is superseded.
+    minScore: 0.8
+    requireJudge: true
     turnIndex: 0
     severity: hard
   - id: distractor-question-no-campaign-leak

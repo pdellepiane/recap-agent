@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.s01_frozen_kiara_pending_replay
 suite: live_behavior_regression
-version: 3
+version: 4
 description: S01 frozen-world replay. Synthetic identity asks for the Suki Sofia gift status against the frozen Kiara pending world; the recorded 149.9 total is grounded and the pending state is reported.
 tags: [live, behavior, purchase, phone-orders, s01, frozen-world]
 targetModes: [live_lambda]
@@ -18,6 +18,7 @@ notes:
   - S01 frozen incident world purchase-kiara-frozen as of 2026-09-05T01:33:57.291Z. Synthetic identity only.
   - "R05 oracle revision v1 to v2, 2026-09-12, Packet F3. Old s01-frozen-pending-status-is-reported let the judge call the stated 149.9 a hallucinated amount although it is the recorded order total in the stored input (matrix: calling that invented is false). New contract names 149.9 grounded while keeping the pending-not-approved core. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
   - "R05 v3 (2026-09-17, support assessment hardening item 5): s01-frozen-enters-information no longer pins the internal resolver_consultas_informativas node. Old defect: a correct pending-status reply from phone-scoped order evidence composed through any routing passed the read evidence but failed the node pin, grading implementation instead of behavior. New contract proves the same read-only invariant observably: zero RSVP effects from receipts (fixture_effect_count rsvp.write 0/0/0 hard) together with the retained phone-orders read evidence and the pending-status semantic judge. Expectation id s01-frozen-enters-information is retained for ledger and run continuity; only its type changed from node_transition to fixture_effect_count. Threshold and hard severity kept; no threshold reduction. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
+  - "C1 oracle revision v3 to v4, 2026-09-22, final work package. Old s01-frozen-uses-order-summary-only demanded the lookup_guest_orders_by_phone label and forbade lookup_guest_gift_purchases_by_phone; the frozen run-54da3f5a T0 trace read the same authorized record via the gift lookup (Suki Sofia, pending, complete coverage) and answered grounded, so the pin graded the tool label instead of authorized evidence coverage. New contract empties mustCall and drops the gift-lookup ban (auth safety pins kept), adding hard s01-frozen-authorized-evidence asserting completed purchase evidence with complete coverage for the Suki Sofia record; either authorized source read passes, a wrong-partition read yields no such evidence. Frozen fixture world and baseline identity unchanged. Hard severity kept. Old v3 runs preserved; baseline and candidate must rerun on this v4 contract."
 expectations:
   - id: s01-frozen-enters-information
     type: fixture_effect_count
@@ -28,8 +29,21 @@ expectations:
     severity: hard
   - id: s01-frozen-uses-order-summary-only
     type: tool_usage
-    mustCall: [lookup_guest_orders_by_phone]
-    mustNotCall: [lookup_guest_gift_purchases_by_phone, auth_by_phone, request_user_login_code, verify_user_login_code]
+    mustCall: []
+    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
+    severity: hard
+  - id: s01-frozen-authorized-evidence
+    type: trace_field_subset
+    path: information_execution_summary
+    expected:
+      - kind: purchase
+        status: completed
+        outcomeCode: completed_with_results
+        coverage: complete
+        evidence:
+          - purchaseFact:
+              eventLabel: Suki Sofia
+    turnIndex: 0
     severity: hard
   - id: s01-frozen-pending-status-is-reported
     type: text_semantic

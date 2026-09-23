@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.purchase_delia_status_by_phone
 suite: live_behavior_regression
-version: 4
+version: 5
 description: Delia's payment status is answered from phone-scoped order summaries without an account or OTP loop. Isolated fixture-backed backend world.
 tags: [live, behavior, purchase, phone-orders, reported-interaction, delia]
 targetModes: [live_lambda]
@@ -17,6 +17,7 @@ inputs:
 notes:
   - "R05 oracle revision v1 to v2, 2026-09-14, Packet EX1. Old delia-approved-payment-is-reported let the judge demand one fixed approved phrasing (matrix: wording literalism fails natural paraphrases of one approval). New contract judges behavior only: approval stated once, in the model's own wording without any fixed required phrase. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
   - "R05 oracle revision v2 to v3, 2026-09-14, Packet A. This case runs against the live backend with no frozen fixture world, so the judge must weigh stated amounts and dates against the sanitized tool facts and user echo in the evidence, never as invention solely for a missing projection; inverted polarity, unauthorized writes, wrong entities, duplicate effects, and unanswered information still fail. Adds the operator-clarified ban on customer-facing image or URL requests (URLs arrive from the backend only). Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
+  - "C1 oracle revision v4 to v5, 2026-09-22, final work package. Old delia-uses-order-summary-only demanded the lookup_guest_orders_by_phone label and forbade lookup_guest_gift_purchases_by_phone; the frozen run-54da3f5a T0 trace read the same authorized record via the gift lookup (Caroline and Jason, approved, complete coverage) and answered grounded, so the pin graded the tool label instead of authorized evidence coverage. New contract empties mustCall and drops the gift-lookup ban (auth safety pins kept), adding hard delia-authorized-evidence asserting completed purchase evidence with complete coverage for the Caroline and Jason record; either authorized source read passes, a wrong-partition read yields no such evidence. Hard severity kept. Old v4 runs preserved; baseline and candidate must rerun on this v5 contract."
 expectations:
   - id: delia-enters-information
     type: node_transition
@@ -24,8 +25,21 @@ expectations:
     severity: hard
   - id: delia-uses-order-summary-only
     type: tool_usage
-    mustCall: [lookup_guest_orders_by_phone]
-    mustNotCall: [lookup_guest_gift_purchases_by_phone, auth_by_phone, request_user_login_code, verify_user_login_code]
+    mustCall: []
+    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
+    severity: hard
+  - id: delia-authorized-evidence
+    type: trace_field_subset
+    path: information_execution_summary
+    expected:
+      - kind: purchase
+        status: completed
+        outcomeCode: completed_with_results
+        coverage: complete
+        evidence:
+          - purchaseFact:
+              eventLabel: Caroline & Jason
+    turnIndex: 0
     severity: hard
   - id: delia-approved-payment-is-reported
     type: text_semantic

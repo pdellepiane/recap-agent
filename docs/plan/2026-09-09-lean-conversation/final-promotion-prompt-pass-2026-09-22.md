@@ -1,5 +1,7 @@
 # Final production-prompt pass — 2026-09-22
 
+> Historical pre-run procedure. It has already been executed and is superseded by final-work-package-2026-09-22.md. Do not rerun its gate or follow its promotion steps without a new explicit instruction.
+
 ## Decision and boundary
 
 Ship one verified development artifact, run the **entire** mandatory live suite once against those exact bytes, adjudicate from stored prompts and tool traces, and promote that identical artifact if the observed failures are limited to wording, completeness, or planning quality. The owner has explicitly accepted a red aggregate gate for this release; a red score is not a claim of green acceptance. Do not call a transport error or missing evidence a product pass. Wrong-entity disclosure or mutation, duplicate effect, fabricated successful write/approval, and a blank or undelivered support reply are product blockers requiring a repair before production. Keep production's current artifact available for rollback. Do not change model, reasoning effort, concurrency, judge thresholds, or fixtures during the one-run comparison.
@@ -31,7 +33,7 @@ No new deterministic conversation branches, reply templates, extra model pass, k
 - `gift_mixed_order_distinguishes_items`: extraction selects `gift_purchases` or authorized discovery; two gift items (physical 150 and host credit 80) appear in the model input; no order-number re-ask, no internal `type` citation, no invented shipment recipient, no credit posting claim.
 - `receipt_explicit_older_target_wins`: both old and newer records are visible; `outcome_kind=order_set`, no `purchase_selection`, explicit named older event answered rather than first-array/newest event; source read is grounded; no unrelated cart recital.
 - `receipt_dual_same_amount_asks`: both equal-amount records stay separate; no amount-only binding or unauthorized detail read; a useful distinction is requested only if the evidence remains genuinely ambiguous.
-- Gift shipping unknown/known, credit approved/pending, campaign-scope, image-only/delayed/combined, FAQ hours, card support continuity, OTP, RSVP effect/read-back, and close flow: inspect each source and consequence rather than relying on a single semantic score. Keep the mandatory 142-case suite as the denominator; planning failures may be explicitly accepted for this release, never silently removed.
+- Gift shipping unknown/known, credit approved/pending, campaign-scope, image-only/delayed/combined, FAQ hours, card support continuity, OTP, RSVP effect/read-back, and close flow: inspect each source and consequence rather than relying on a single semantic score. Keep the mandatory 138-case suite as the denominator; planning failures may be explicitly accepted for this release, never silently removed.
 
 ## Prompt cleanup after the promotion artifact is frozen
 

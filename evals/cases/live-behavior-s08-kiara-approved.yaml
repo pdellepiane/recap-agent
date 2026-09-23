@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.s08_kiara_approved_replay
 suite: live_behavior_regression
-version: 5
+version: 6
 description: S08 frozen-world replay. Synthetic identity asks for the Suki Sofia gift status against the frozen Kiara approved world; the recorded 149.9 total and event label are grounded. A balance-unknown disclaimer is relevance, never a pending claim.
 tags: [live, behavior, purchase, phone-orders, s08, frozen-world]
 targetModes: [live_lambda]
@@ -20,6 +20,7 @@ notes:
   - "R05 oracle revision v2 to v3, 2026-09-14, Packet EX1. Old s08-approved-status-is-reported let the judge demand one fixed approved phrasing (matrix: wording literalism fails natural paraphrases of one approval). New contract judges behavior only: approval stated once, in the model's own wording without any fixed required phrase. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
   - "R05 oracle revision v3 to v4, 2026-09-14, Packet A. No behavior change to the approved-once contract; adds the operator-clarified ban on customer-facing image or URL requests to the must-not list (URLs arrive from the backend only) and records that repetition alone is quality, not failure, unless it changes meaning or repeats an action. Old v3 runs preserved; baseline and candidate must rerun on this v4 contract."
   - "R05 oracle revision v4 to v5, 2026-09-15, recheck-b9a7662d. Old s08-approved-status-is-reported let the judge treat an unsolicited cannot-confirm-balance disclaimer as an affirmative pending-balance claim (recheck: unsolicited uncertainty, not an affirmative claim that the purchase is pending; judge overstates contradiction). New contract distinguishes a balance-unknown disclaimer, scored as relevance and concision only, from a false pending-balance assertion or stated balance amount, which still fails grounding with hard severity. Keeps the mandatory semantic judge, the approved-once behavior check, and the rejection of fabricated balance, status, and currency. Old v4 runs preserved; baseline and candidate must rerun on this v5 contract."
+  - "C1 oracle revision v5 to v6, 2026-09-22, final work package. Old s08-approved-uses-order-summary-only forbade lookup_guest_gift_purchases_by_phone; the frozen run-54da3f5a T0 trace read both authorized sources (orders plus gift_purchases, per-source coverage, Suki Sofia approved) and answered grounded, so the ban graded the tool label instead of authorized evidence coverage. New contract empties mustCall and drops the gift-lookup ban (auth safety pins kept), adding hard s08-approved-authorized-evidence asserting completed purchase evidence with complete coverage for the Suki Sofia record; a wrong-partition read yields no such evidence. Frozen fixture world unchanged. Hard severity kept. Old v5 runs preserved; baseline and candidate must rerun on this v6 contract."
 expectations:
   - id: s08-approved-enters-information
     type: node_transition
@@ -27,8 +28,21 @@ expectations:
     severity: hard
   - id: s08-approved-uses-order-summary-only
     type: tool_usage
-    mustCall: [lookup_guest_orders_by_phone]
-    mustNotCall: [lookup_guest_gift_purchases_by_phone, auth_by_phone, request_user_login_code, verify_user_login_code]
+    mustCall: []
+    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
+    severity: hard
+  - id: s08-approved-authorized-evidence
+    type: trace_field_subset
+    path: information_execution_summary
+    expected:
+      - kind: purchase
+        status: completed
+        outcomeCode: completed_with_results
+        coverage: complete
+        evidence:
+          - purchaseFact:
+              eventLabel: Suki Sofia
+    turnIndex: 0
     severity: hard
   - id: s08-approved-status-is-reported
     type: text_semantic

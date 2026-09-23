@@ -483,10 +483,12 @@ describe('Support assessment oracle hardening keeps defect detection (2026-09-17
     expect(plusOne.version).toBe(2);
     expect(effectCounts(plusOne, 'enters-rsvp-node')).toEqual([0, 0, 0]);
     const s01 = await loadCase('live-behavior-s01-frozen-world-identity.yaml');
-    expect(s01.version).toBe(3);
+    // 2026-09-22 C1 revised s01 v3 to v4 (tool-label pin replaced by evidence/coverage proof); the retained zero-effect pin below is unchanged.
+    expect(s01.version).toBe(4);
     expect(effectCounts(s01, 's01-frozen-enters-information')).toEqual([0, 0, 0]);
     const martha = await loadCase('live-behavior-purchase-martha-accountless.yaml');
-    expect(martha.version).toBe(4);
+    // 2026-09-22 C1 revised martha v4 to v5 (tool-label pin replaced by evidence/coverage proof); the retained zero-effect pin below is unchanged.
+    expect(martha.version).toBe(5);
     expect(effectCounts(martha, 'martha-enters-information')).toEqual([0, 0, 0]);
     const refusal = await loadCase('live-behavior-auth-refusal-closes-query.yaml');
     expect(refusal.version).toBe(2);

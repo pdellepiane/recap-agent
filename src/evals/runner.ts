@@ -76,7 +76,7 @@ import {
 } from './scheduler';
 import { runLiveLambdaCase } from './targets/live-lambda';
 import { runOfflineCase } from './targets/offline';
-import { DEFAULT_GPT_TEXT_MODEL } from '../runtime/openai-model-defaults';
+import { DEFAULT_EVAL_JUDGE_MODEL } from '../runtime/openai-model-defaults';
 import { redactArtifactText } from '../runtime/artifact-redaction';
 import {
   getEvaluationFixtureEffects,
@@ -201,8 +201,8 @@ export function inventoryDuplicateSemanticJudges(currentCase: EvalCase): Duplica
       if (scorerTurn !== expectationTurn) {
         continue;
       }
-      const scorerModel = scorer.judgeModel ?? DEFAULT_GPT_TEXT_MODEL;
-      const expectationModel = expectation.judgeModel ?? DEFAULT_GPT_TEXT_MODEL;
+      const scorerModel = scorer.judgeModel ?? DEFAULT_EVAL_JUDGE_MODEL;
+      const expectationModel = expectation.judgeModel ?? DEFAULT_EVAL_JUDGE_MODEL;
       if (scorerModel !== expectationModel) {
         continue;
       }
@@ -2138,7 +2138,7 @@ async function evaluateScorers(
           results.push({ id: scorer.id, type: scorer.type, score: 0, weight: scorer.weight, skipped: false, message: `Output-origin status ${turn?.outputOrigin?.status} fails semantic scoring.` });
           break;
         }
-        const scorerModel = scorer.judgeModel ?? DEFAULT_GPT_TEXT_MODEL;
+        const scorerModel = scorer.judgeModel ?? DEFAULT_EVAL_JUDGE_MODEL;
         const reused = reuseByKey.get(judgeReuseKeyForScorer({
           rubric: scorer.rubric,
           turnIndex: scorer.turnIndex,
@@ -2395,7 +2395,7 @@ async function evaluateExpectation(
       }
       try {
         const outcome = await runJudge({
-          model: expectation.judgeModel ?? DEFAULT_GPT_TEXT_MODEL,
+          model: expectation.judgeModel ?? DEFAULT_EVAL_JUDGE_MODEL,
           rubric: expectation.rubric,
           candidateText: resolved.candidateText,
           context: buildSemanticJudgeContext(

@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.purchase_kiara_pending_by_phone
 suite: live_behavior_regression
-version: 2
+version: 3
 description: Kiara's pending gift status is answered from phone-scoped orders without requesting an OTP that may never arrive.
 tags: [live, behavior, purchase, phone-orders, reported-interaction, kiara]
 targetModes: [live_lambda]
@@ -16,6 +16,7 @@ inputs:
       scenario: purchase-kiara-frozen
 notes:
   - S01 frozen incident world purchase-kiara-frozen as of 2026-09-05T01:33:57.291Z. Synthetic identity only; output must follow the frozen pending world, never mutable backend data.
+  - "C1 oracle revision v2 to v3, 2026-09-22, final work package. Old kiara-uses-order-summary-only forbade lookup_guest_gift_purchases_by_phone; the frozen run-54da3f5a T0 trace read both authorized sources (orders plus gift_purchases, per-source coverage, Suki Sofia pending) and answered grounded, so the ban graded the tool label instead of authorized evidence coverage. New contract empties mustCall and drops the gift-lookup ban (auth safety pins kept), adding hard kiara-authorized-evidence asserting completed purchase evidence with complete coverage for the Suki Sofia record; a wrong-partition read yields no such evidence. Frozen fixture world unchanged. Hard severity kept. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
 expectations:
   - id: kiara-enters-information
     type: node_transition
@@ -23,8 +24,21 @@ expectations:
     severity: hard
   - id: kiara-uses-order-summary-only
     type: tool_usage
-    mustCall: [lookup_guest_orders_by_phone]
-    mustNotCall: [lookup_guest_gift_purchases_by_phone, auth_by_phone, request_user_login_code, verify_user_login_code]
+    mustCall: []
+    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
+    severity: hard
+  - id: kiara-authorized-evidence
+    type: trace_field_subset
+    path: information_execution_summary
+    expected:
+      - kind: purchase
+        status: completed
+        outcomeCode: completed_with_results
+        coverage: complete
+        evidence:
+          - purchaseFact:
+              eventLabel: Suki Sofia
+    turnIndex: 0
     severity: hard
   - id: kiara-pending-status-is-reported
     type: text_semantic

@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.purchase_martha_accountless_selection
 suite: live_behavior_regression
-version: 4
+version: 5
 description: Martha's purchases are found by trusted phone even though she has no account, and multiple records are presented for selection without OTP; order labels never imply verified event membership.
 tags: [live, behavior, purchase, phone-orders, accountless, selection, reported-interaction, martha]
 targetModes: [live_lambda]
@@ -18,6 +18,7 @@ notes:
   - S01 frozen incident world purchase-martha-frozen as of 2026-09-05T01:33:57.291Z. Synthetic identity only; multiple frozen orders with no guest event, selection required.
   - "R05 oracle revision v2 to v3, 2026-09-12, Packet F3. Old martha-is-given-purchase-selection let the judge conflate naming order event labels with claiming separately verified event membership (matrix: two order event labels/dates/amounts/status are fixture facts). New contract names both fixture orders and states labels never imply membership verification, tightened with event-date semantics and no invented currency. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
   - "R05 v4 (2026-09-17, support assessment hardening item 5): martha-enters-information no longer pins the internal resolver_consultas_informativas node. Old defect: a correct purchase-selection reply from phone-scoped order evidence composed through any routing passed the read evidence but failed the node pin, grading implementation instead of behavior. New contract proves the same read-only invariant observably: zero RSVP effects from receipts (fixture_effect_count rsvp.write 0/0/0 hard) together with the retained phone-orders read evidence and the purchase-selection semantic judge. Expectation id martha-enters-information is retained for ledger and run continuity; only its type changed from node_transition to fixture_effect_count. Threshold and hard severity kept; no threshold reduction. Old v3 runs preserved; baseline and candidate must rerun on this v4 contract."
+  - "C1 oracle revision v4 to v5, 2026-09-22, final work package. Old martha-uses-phone-orders-without-auth demanded the lookup_guest_orders_by_phone label and forbade lookup_guest_gift_purchases_by_phone; the frozen run-54da3f5a T0 trace read the same two authorized records via the gift lookup (Evento Familiar Norte/Sur, both pending, complete coverage) and answered grounded, so the pin graded the tool label instead of authorized evidence coverage. New contract empties mustCall and drops the gift-lookup ban (auth and no-handoff safety pins kept), adding hard martha-authorized-evidence asserting completed purchase evidence with complete coverage for both records; either authorized source read passes, a wrong-partition read yields no such evidence. Frozen fixture world unchanged. Hard severity kept. Old v4 runs preserved; baseline and candidate must rerun on this v5 contract."
 expectations:
   - id: martha-enters-information
     type: fixture_effect_count
@@ -28,8 +29,23 @@ expectations:
     severity: hard
   - id: martha-uses-phone-orders-without-auth
     type: tool_usage
-    mustCall: [lookup_guest_orders_by_phone]
-    mustNotCall: [lookup_guest_gift_purchases_by_phone, auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover]
+    mustCall: []
+    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover]
+    severity: hard
+  - id: martha-authorized-evidence
+    type: trace_field_subset
+    path: information_execution_summary
+    expected:
+      - kind: purchase
+        status: completed
+        outcomeCode: completed_with_results
+        coverage: complete
+        evidence:
+          - purchaseFact:
+              eventLabel: Evento Familiar Norte
+          - purchaseFact:
+              eventLabel: Evento Familiar Sur
+    turnIndex: 0
     severity: hard
   - id: martha-is-given-purchase-selection
     type: text_semantic

@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
 
-import { DEFAULT_GPT_TEXT_MODEL, DEFAULT_PROMPT_CACHE_OPTIONS } from '../runtime/openai-model-defaults';
+import { DEFAULT_EVAL_JUDGE_MODEL, DEFAULT_GPT_TEXT_MODEL, DEFAULT_PROMPT_CACHE_OPTIONS } from '../runtime/openai-model-defaults';
 import type { EvalCase, EvalRunConfig, EvalTargetMode } from './case-schema';
 
 /**
@@ -370,7 +370,7 @@ export function resolveModelIdentity(selectedCases: EvalCase[]): RunManifest['mo
   const reply = process.env.OPENAI_MODEL ?? DEFAULT_GPT_TEXT_MODEL;
   const extractor = process.env.OPENAI_EXTRACTOR_MODEL ?? reply;
   const classifier = process.env.OPENAI_RESPONSE_CLASSIFIER_MODEL ?? reply;
-  const judges = new Set<string>([DEFAULT_GPT_TEXT_MODEL]);
+  const judges = new Set<string>([DEFAULT_EVAL_JUDGE_MODEL]);
   for (const currentCase of selectedCases) {
     for (const expectation of currentCase.expectations) {
       if (expectation.type === 'text_semantic' && expectation.judgeModel) {

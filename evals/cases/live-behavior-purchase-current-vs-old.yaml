@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.purchase_current_pending_over_old_approved
 suite: live_behavior_regression
-version: 2
+version: 3
 description: Explicit event, amount, date, and status select Victor's current pending gift instead of an older approved purchase.
 tags: [live, behavior, purchase, selection, contradiction, reported-interaction, victor]
 targetModes: [live_lambda]
@@ -16,6 +16,7 @@ backendFixture:
   scenario: purchase-victor-171
 notes:
   - "R05 oracle revision v1 to v2, 2026-09-14, Packet EX1. Old current-pending-wins-over-old-approved required that no currency symbol, code, or denomination appear anywhere, failing a reply that echoes the user's own stated S/ 80 (matrix: user-stated echo is not invention). The fixture record carries null currency, so novel currency facts remain forbidden. New contract allows echoing the user-stated S/ 80 and forbids only novel symbols, codes, or denominations beyond that echo. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
+  - "C1 oracle revision v2 to v3, 2026-09-22, final work package. Old current-purchase-uses-phone-orders demanded the lookup_guest_orders_by_phone label; the frozen run-54da3f5a T0 trace read the same authorized record via lookup_guest_gift_purchases_by_phone (Samuel Josue, pending, complete coverage) and answered grounded, so the pin graded the tool label instead of authorized evidence coverage. New contract empties mustCall (auth safety pins kept) and adds hard current-purchase-authorized-evidence asserting completed purchase evidence with complete coverage for the Samuel Josue record; either authorized source read passes, a wrong-partition read yields no such evidence. Hard severity kept. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
 expectations:
   - id: current-purchase-enters-information
     type: node_transition
@@ -23,8 +24,21 @@ expectations:
     severity: hard
   - id: current-purchase-uses-phone-orders
     type: tool_usage
-    mustCall: [lookup_guest_orders_by_phone]
+    mustCall: []
     mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
+    severity: hard
+  - id: current-purchase-authorized-evidence
+    type: trace_field_subset
+    path: information_execution_summary
+    expected:
+      - kind: purchase
+        status: completed
+        outcomeCode: completed_with_results
+        coverage: complete
+        evidence:
+          - purchaseFact:
+              eventLabel: Samuel Josue
+    turnIndex: 0
     severity: hard
   - id: current-pending-wins-over-old-approved
     type: text_semantic

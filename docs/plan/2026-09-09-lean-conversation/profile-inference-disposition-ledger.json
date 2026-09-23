@@ -4,7 +4,7 @@
   "inventory": "docs/plan/2026-09-09-lean-conversation/profile-inference-test-inventory-2026-09-15.json",
   "totalCases": 117,
   "totalExpectations": 530,
-  "currentExpectations": 528,
+  "currentExpectations": 534,
   "removed": [
     {
       "case": "live_behavior.repeated_otp_failure_preserves_gift_query",
@@ -149,6 +149,30 @@
     {
       "case": "live_behavior.owner_planning_to_faq_single_transfer",
       "expectation": "planning-turn-continues-interview"
+    },
+    {
+      "case": "live_behavior.purchase_current_pending_over_old_approved",
+      "expectation": "current-purchase-authorized-evidence"
+    },
+    {
+      "case": "live_behavior.purchase_delia_status_by_phone",
+      "expectation": "delia-authorized-evidence"
+    },
+    {
+      "case": "live_behavior.purchase_martha_accountless_selection",
+      "expectation": "martha-authorized-evidence"
+    },
+    {
+      "case": "live_behavior.purchase_kiara_pending_by_phone",
+      "expectation": "kiara-authorized-evidence"
+    },
+    {
+      "case": "live_behavior.s08_kiara_approved_replay",
+      "expectation": "s08-approved-authorized-evidence"
+    },
+    {
+      "case": "live_behavior.s01_frozen_kiara_pending_replay",
+      "expectation": "s01-frozen-authorized-evidence"
     }
   ],
   "counts": {
@@ -3587,6 +3611,18 @@
       "source": "rule"
     },
     {
+      "case": "live_behavior.purchase_current_pending_over_old_approved",
+      "file": "live-behavior-purchase-current-vs-old.yaml",
+      "expectation": "current-purchase-authorized-evidence",
+      "type": "trace_field_subset",
+      "severity": "hard",
+      "requireJudge": null,
+      "turnIndex": 0,
+      "disposition": "retain",
+      "rationale": "2026-09-22 C1: hard authorized evidence/coverage proof replacing the tool-label pin. Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).",
+      "source": "rule"
+    },
+    {
       "case": "live_behavior.purchase_delia_status_by_phone",
       "file": "live-behavior-purchase-delia-phone-orders.yaml",
       "expectation": "delia-enters-information",
@@ -3620,6 +3656,18 @@
       "turnIndex": null,
       "disposition": "retain",
       "rationale": "Hard semantic judge kept (requireJudge:true mandatory). Global judge rules now also require: accept grounded inference + useful extra detail; fail missing topics, unsupported certainty, unrelated dumps, and unnecessary clarification when context/tools suffice.",
+      "source": "rule"
+    },
+    {
+      "case": "live_behavior.purchase_delia_status_by_phone",
+      "file": "live-behavior-purchase-delia-phone-orders.yaml",
+      "expectation": "delia-authorized-evidence",
+      "type": "trace_field_subset",
+      "severity": "hard",
+      "requireJudge": null,
+      "turnIndex": 0,
+      "disposition": "retain",
+      "rationale": "2026-09-22 C1: hard authorized evidence/coverage proof replacing the tool-label pin. Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).",
       "source": "rule"
     },
     {
@@ -3731,6 +3779,18 @@
       "source": "rule"
     },
     {
+      "case": "live_behavior.purchase_kiara_pending_by_phone",
+      "file": "live-behavior-purchase-kiara-phone-orders.yaml",
+      "expectation": "kiara-authorized-evidence",
+      "type": "trace_field_subset",
+      "severity": "hard",
+      "requireJudge": null,
+      "turnIndex": 0,
+      "disposition": "retain",
+      "rationale": "2026-09-22 C1: hard authorized evidence/coverage proof replacing the tool-label pin. Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).",
+      "source": "rule"
+    },
+    {
       "case": "live_behavior.purchase_martha_accountless_selection",
       "file": "live-behavior-purchase-martha-accountless.yaml",
       "expectation": "martha-enters-information",
@@ -3764,6 +3824,18 @@
       "turnIndex": null,
       "disposition": "retain",
       "rationale": "Hard semantic judge kept (requireJudge:true mandatory). Global judge rules now also require: accept grounded inference + useful extra detail; fail missing topics, unsupported certainty, unrelated dumps, and unnecessary clarification when context/tools suffice.",
+      "source": "rule"
+    },
+    {
+      "case": "live_behavior.purchase_martha_accountless_selection",
+      "file": "live-behavior-purchase-martha-accountless.yaml",
+      "expectation": "martha-authorized-evidence",
+      "type": "trace_field_subset",
+      "severity": "hard",
+      "requireJudge": null,
+      "turnIndex": 0,
+      "disposition": "retain",
+      "rationale": "2026-09-22 C1: hard authorized evidence/coverage proof replacing the tool-label pin. Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).",
       "source": "rule"
     },
     {
@@ -5375,6 +5447,18 @@
       "source": "rule"
     },
     {
+      "case": "live_behavior.s01_frozen_kiara_pending_replay",
+      "file": "live-behavior-s01-frozen-world-identity.yaml",
+      "expectation": "s01-frozen-authorized-evidence",
+      "type": "trace_field_subset",
+      "severity": "hard",
+      "requireJudge": null,
+      "turnIndex": 0,
+      "disposition": "retain",
+      "rationale": "2026-09-22 C1: hard authorized evidence/coverage proof replacing the tool-label pin. Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).",
+      "source": "rule"
+    },
+    {
       "case": "live_behavior.s08_kiara_approved_replay",
       "file": "live-behavior-s08-kiara-approved.yaml",
       "expectation": "s08-approved-enters-information",
@@ -5408,6 +5492,18 @@
       "turnIndex": null,
       "disposition": "retain",
       "rationale": "Hard semantic judge kept (requireJudge:true mandatory). Global judge rules now also require: accept grounded inference + useful extra detail; fail missing topics, unsupported certainty, unrelated dumps, and unnecessary clarification when context/tools suffice.",
+      "source": "rule"
+    },
+    {
+      "case": "live_behavior.s08_kiara_approved_replay",
+      "file": "live-behavior-s08-kiara-approved.yaml",
+      "expectation": "s08-approved-authorized-evidence",
+      "type": "trace_field_subset",
+      "severity": "hard",
+      "requireJudge": null,
+      "turnIndex": 0,
+      "disposition": "retain",
+      "rationale": "2026-09-22 C1: hard authorized evidence/coverage proof replacing the tool-label pin. Authorization / effect identity / provenance / output-origin structural check; kept per directive (authorization, effect count/identity, provenance, output-origin stay).",
       "source": "rule"
     },
     {
