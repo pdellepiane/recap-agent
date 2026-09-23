@@ -212,6 +212,7 @@ describe('Owner C decision 4 model/deployment contracts', () => {
     expect(deploy).toContain('resolveProductionModelParams');
     expect(deploy).toContain('verifyProductionModelDeployment');
     expect(deploy).toContain('getLambdaConfiguration');
+    expect(deploy).toContain('developmentCodeSha256 !== expectedProductionCodeSha256');
     expect(PRODUCTION_MODEL_PARAMETERS.map((entry) => entry.parameterKey)).toEqual([
       'OpenAIModel',
       'OpenAIExtractorModel',
@@ -298,6 +299,7 @@ describe('Owner C decision 4 model/deployment contracts', () => {
         expectedModels,
         artifactKey: 'lambda/new.zip',
         codeSha256: 'abc123',
+        expectedCodeSha256: 'abc123',
       }),
     ).not.toThrow();
 
@@ -309,6 +311,7 @@ describe('Owner C decision 4 model/deployment contracts', () => {
         expectedModels,
         artifactKey: 'lambda/new.zip',
         codeSha256: 'abc123',
+        expectedCodeSha256: 'abc123',
       }),
     ).toThrow(/OpenAIModel mismatch/);
 
@@ -320,6 +323,7 @@ describe('Owner C decision 4 model/deployment contracts', () => {
         expectedModels,
         artifactKey: 'lambda/new.zip',
         codeSha256: 'abc123',
+        expectedCodeSha256: 'abc123',
       }),
     ).toThrow(/Lambda OPENAI_EXTRACTOR_MODEL mismatch/);
 
@@ -331,6 +335,7 @@ describe('Owner C decision 4 model/deployment contracts', () => {
         expectedModels,
         artifactKey: 'lambda/new.zip',
         codeSha256: 'abc123',
+        expectedCodeSha256: 'abc123',
       }),
     ).toThrow(/CodeS3Key mismatch/);
 
@@ -342,8 +347,21 @@ describe('Owner C decision 4 model/deployment contracts', () => {
         expectedModels,
         artifactKey: 'lambda/new.zip',
         codeSha256: '',
+        expectedCodeSha256: 'abc123',
       }),
-    ).toThrow(/CodeSha256 is missing/);
+    ).toThrow(/CodeSha256 mismatch/);
+
+    expect(() =>
+      verifyProductionModelDeployment({
+        stackParams: { ...expectedModels },
+        lambdaEnv,
+        deployedCodeS3Key: 'lambda/new.zip',
+        expectedModels,
+        artifactKey: 'lambda/new.zip',
+        codeSha256: 'different-code',
+        expectedCodeSha256: 'abc123',
+      }),
+    ).toThrow(/CodeSha256 mismatch/);
   });
 
   it('leaves historical baselines and frozen model identities untouched', () => {

@@ -103,6 +103,7 @@ let seApiSecretArn;
 let channelApiSecretArn;
 let targetFunctionName = functionName;
 let productionModelPromotion = null;
+let expectedProductionCodeSha256 = null;
 if (isProductionPromotion) {
   // Promotion must preserve the live stack's credential bindings. In
   // particular, local .env values are never copied into production.
@@ -136,6 +137,17 @@ if (isProductionPromotion) {
   if (developmentArtifactKey !== artifactKey) {
     throw new Error(
       'Production artifact must exactly match the content-addressed artifact currently deployed in development.',
+    );
+  }
+  expectedProductionCodeSha256 = Buffer.from(artifactSha256, 'hex').toString('base64');
+  const developmentFunctionName = requireCurrentStackValue(developmentStack, 'FunctionName');
+  const developmentCodeSha256 = getLambdaConfiguration(
+    developmentFunctionName,
+    awsEnv,
+  ).codeSha256;
+  if (developmentCodeSha256 !== expectedProductionCodeSha256) {
+    throw new Error(
+      `Development Lambda CodeSha256 mismatch: expected ${expectedProductionCodeSha256}, got ${developmentCodeSha256 || '<empty>'}.`,
     );
   }
   // C5: production promotion must also carry exactly the three model
@@ -265,6 +277,7 @@ if (isProductionPromotion) {
     expectedModels: productionModelPromotion.models,
     artifactKey,
     codeSha256: lambdaConfiguration.codeSha256,
+    expectedCodeSha256: expectedProductionCodeSha256,
   });
   console.log(`Production CodeSha256: ${lambdaConfiguration.codeSha256}`);
   console.log(

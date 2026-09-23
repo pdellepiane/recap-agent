@@ -24,4 +24,5 @@ export function verifyProductionModelDeployment(args: {
   expectedModels: Record<string, string>;
   artifactKey: string;
   codeSha256: string;
+  expectedCodeSha256: string;
 }): void;

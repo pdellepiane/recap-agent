@@ -91,6 +91,7 @@ export function resolveProductionModelParams({
  * @param {Record<string, string>} args.expectedModels intended parameterKey -> model values
  * @param {string} args.artifactKey content-addressed artifact key that must be deployed
  * @param {string} args.codeSha256 live Lambda CodeSha256 for the deployment record
+ * @param {string} args.expectedCodeSha256 CodeSha256 of the tested artifact and development Lambda
  */
 export function verifyProductionModelDeployment({
   stackParams,
@@ -99,14 +100,17 @@ export function verifyProductionModelDeployment({
   expectedModels,
   artifactKey,
   codeSha256,
+  expectedCodeSha256,
 }) {
   if (trimmed(deployedCodeS3Key) !== artifactKey) {
     throw new Error(
       `Production CodeS3Key mismatch: expected ${artifactKey}, got ${trimmed(deployedCodeS3Key) || '<empty>'}.`,
     );
   }
-  if (!trimmed(codeSha256)) {
-    throw new Error('Production Lambda CodeSha256 is missing; refusing to record the promotion.');
+  if (!trimmed(expectedCodeSha256) || trimmed(codeSha256) !== trimmed(expectedCodeSha256)) {
+    throw new Error(
+      `Production Lambda CodeSha256 mismatch: expected ${trimmed(expectedCodeSha256) || '<empty>'}, got ${trimmed(codeSha256) || '<empty>'}.`,
+    );
   }
   for (const { parameterKey, lambdaEnvKey } of PRODUCTION_MODEL_PARAMETERS) {
     const expected = expectedModels[parameterKey];
