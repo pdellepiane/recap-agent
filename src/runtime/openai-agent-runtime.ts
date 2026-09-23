@@ -1991,11 +1991,32 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
   private buildExtractorContinuityEvidence(
     request: ExtractRequest,
   ): string | null {
-    if (
-      request.plan.current_node !== 'resolver_consultas_informativas' ||
-      request.plan.user_auth.status !== 'none'
-    ) {
-      return null;
+    const gist = buildPriorAnswerGist(request.messageContext);
+    const pendingQuestion = request.plan.owner_pending_question?.trim()
+      ? request.plan.owner_pending_question.trim()
+      : null;
+    const pendingTask = request.plan.owner_pending_task?.trim()
+      ? request.plan.owner_pending_task.trim()
+      : null;
+    const supportLane = request.plan.current_node === 'resolver_consultas_informativas' &&
+      request.plan.user_auth.status === 'none';
+    if (!supportLane) {
+      // These facts used to reach every extractor call. Keep them available
+      // across RSVP, planning, and authentication transitions without
+      // carrying support-specific continuation guidance into those lanes.
+      if (gist === null && pendingQuestion === null && pendingTask === null) {
+        return null;
+      }
+      const shared: Record<string, unknown> = {};
+      if (request.messageContext.historyStatus !== 'empty') {
+        shared.history_status = request.messageContext.historyStatus;
+      }
+      if (gist !== null) shared.prior_answer_gist = gist;
+      if (pendingQuestion !== null) shared.pending_question = pendingQuestion;
+      if (pendingTask !== null) shared.pending_task = pendingTask;
+      return Object.keys(shared).length > 0
+        ? `Contexto previo relevante (JSON): ${JSON.stringify(shared)}`
+        : null;
     }
     const continuity = request.messageContext.continuity ?? deriveConversationContinuity({
       plan: request.plan,
@@ -2013,13 +2034,6 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     // The last-completed topic is a named recovered fact (decision 2): it
     // never traveled in the extractor plan snapshot, so detail-only turns
     // keep the issue their names refer to.
-    const gist = buildPriorAnswerGist(request.messageContext);
-    const pendingQuestion = request.plan.owner_pending_question?.trim()
-      ? request.plan.owner_pending_question.trim()
-      : null;
-    const pendingTask = request.plan.owner_pending_task?.trim()
-      ? request.plan.owner_pending_task.trim()
-      : null;
     const pending = request.plan.information_state.pending_requests;
     const lastCompleted = request.plan.information_state.last_completed_request ?? null;
     const hasSignal = continuity.hasPriorContext ||

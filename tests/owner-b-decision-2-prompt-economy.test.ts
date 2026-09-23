@@ -426,8 +426,60 @@ describe('Owner B B8 single extractor continuity object', () => {
       messageContext: localTurnMessageContext('not_configured'),
     });
     expect(spec.input).not.toContain('Evidencia condicional de continuidad');
+    expect(spec.input).not.toContain('Contexto previo relevante');
     expect(spec.filePaths).toContain('extractors/rsvp.txt');
     expect(spec.input).toContain('Mensaje del usuario: Sí, asistiré');
+  });
+
+  it.each([
+    ['responder_invitacion', 'none'],
+    ['entrevista', 'none'],
+    ['resolver_consultas_informativas', 'code_requested'],
+  ] as const)('retains the pending question on %s with auth %s', async (node, authStatus) => {
+    const runtime = testRuntime();
+    const plan = mergePlan(
+      createEmptyPlan({ planId: `continuity-${node}-${authStatus}`, channel: 'whatsapp', externalUserId: 'owner-b-user' }),
+      {
+        current_node: node,
+        owner_pending_question: '¿A cuál evento te refieres?',
+        user_auth: { status: authStatus },
+      },
+    ) as PersistedPlan;
+    const spec = await runtime.buildExtractionRequestSpec({
+      userMessage: 'Ese mismo',
+      plan,
+      messageContext: localTurnMessageContext('not_configured'),
+    });
+    expect(spec.input).toContain('Contexto previo relevante');
+    expect(spec.input).toContain('"pending_question":"¿A cuál evento te refieres?"');
+    expect(spec.input).not.toContain('El mensaje actual es un seguimiento de esta ruta');
+    expect(countOccurrences(spec.input, '"pending_question"')).toBe(1);
+  });
+
+  it('retains the prior answer gist after switching from support to RSVP', async () => {
+    const runtime = testRuntime();
+    const plan = mergePlan(
+      createEmptyPlan({ planId: 'continuity-rsvp-gist', channel: 'whatsapp', externalUserId: 'owner-b-user' }),
+      { current_node: 'responder_invitacion' },
+    ) as PersistedPlan;
+    const messageContext = buildTurnMessageContext({
+      messages: [{
+        id: 1, direction: 'outbound', source: 'agent',
+        body: 'La invitación de Ana sigue pendiente de respuesta.',
+        status: 'delivered', whatsappMessageId: null,
+        sentAt: '2026-09-22T10:00:00.000Z', createdAt: '2026-09-22T10:00:00.000Z',
+      }],
+      inbound: {
+        channel: 'whatsapp', externalUserId: 'owner-b-user', text: 'Sí, asistiré',
+        messageId: 'continuity-rsvp-gist', receivedAt: '2026-09-22T10:01:00.000Z',
+      },
+    });
+    const spec = await runtime.buildExtractionRequestSpec({
+      userMessage: 'Sí, asistiré', plan, messageContext,
+    });
+    expect(spec.input).toContain('"prior_answer_gist"');
+    expect(spec.input).toContain('La invitación de Ana sigue pendiente de respuesta.');
+    expect(spec.input).not.toContain('El mensaje actual es un seguimiento de esta ruta');
   });
 
   it('carries image presence only while stored refs exist', async () => {
