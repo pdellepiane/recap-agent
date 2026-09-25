@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.rsvp_plus_one_multiple_events_requires_selection
 suite: live_behavior_regression
-version: 1
+version: 2
 description: Plus-one request with multiple pending invitations requires one bounded event selection before mutation.
 tags: [live, behavior, rsvp, plus-one, selection, spanish]
 targetModes: [live_lambda]
@@ -15,9 +15,12 @@ inputs:
 backendFixture:
   scenario: rsvp-plus-one-multiple-pending
 expectations:
-  - id: enters-rsvp-node
-    type: node_transition
-    to: responder_invitacion
+  - id: no-rsvp-effect-before-selection
+    type: fixture_effect_count
+    operation: rsvp.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
     severity: hard
   - id: no-premature-mutation
     type: tool_usage
@@ -34,3 +37,5 @@ budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 1500
   estimatedCompletionTokensPerTurn: 180
+notes:
+  - "R05 v2 (2026-09-25): Replace the internal responder_invitacion node pin with a hard fixture RSVP effect count of 0/0/0. A correct bounded event-selection reply can be composed through a different owner; the retained hard no-mutation tool assertion, new effect receipt check and hard required semantic judge still reject choosing an event or writing an RSVP early. Historical v1 runs are unchanged."
