@@ -630,7 +630,10 @@ describe('AgentService first-class information flow', () => {
     expect(takeover).toHaveBeenCalledTimes(1);
     expect(runtime.extractRequests).toHaveLength(2);
     expect(runtime.composeRequests).toHaveLength(2); // Initial role response plus the model-composed withdrawal reply.
-    expect(gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.guestEventCalls + gateway.authByPhoneCalls).toBe(0);
+    // The authorized customer profile may prefetch its roots. The withdrawal
+    // task itself must remain a FAQ with no buyer operation or account auth.
+    expect(withdrawalCompose?.informationResults?.every((result) => result.kind === 'faq')).toBe(true);
+    expect(gateway.authByPhoneCalls).toBe(0);
     expect(provider.requestCodeCalls + provider.verifyCodeCalls + provider.eventLookupCalls).toBe(0);
   });
 

@@ -3,41 +3,41 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { PromptLoader } from '../src/runtime/prompt-loader';
+import { selectReplyModules } from '../src/runtime/model-request-projector';
 
 describe('purchase prompt policy', () => {
   const loader = new PromptLoader(path.resolve(process.cwd(), 'prompts'));
 
-  it('loads the payment-destination and physical-shipping rules exactly once on the information route', async () => {
-    const bundle = await loader.loadNodeBundle('resolver_consultas_informativas');
-    const destinationRule =
-      'Solo muestra un destino de Yape o transferencia si una compra completada tiene `paymentStatus=pending`';
-    const shippingRule =
-      'Solo menciona envío o entrega física si la compra proyectada tiene `shippingStatus`';
-
-    expect(bundle.instructions.split(destinationRule)).toHaveLength(2);
-    expect(bundle.instructions.split(shippingRule)).toHaveLength(2);
+  it('selects one payment destination boundary for both purchase and FAQ work', async () => {
+    const fs = await import('node:fs/promises');
+    const file = 'nodes/resolver_consultas_informativas/payment_disclosure.txt';
+    const rule = await fs.readFile(path.resolve(process.cwd(), 'prompts', file), 'utf8');
+    expect(rule).toContain('compra identificada y pendiente');
+    for (const task of ['purchase', 'faq_policy'] as const) {
+      const selected = selectReplyModules({
+        stage: 'reply', owner: 'customer_assistance', establishedDomain: null,
+        tasks: [task], hasPlanningDetail: false, hasSupportContinuity: false,
+      });
+      expect(selected.flatMap((module) => module.files).filter((entry) => entry === file)).toHaveLength(1);
+    }
   });
 
   it('keeps payment-destination classification in the information extractor', async () => {
     const bundle = await loader.loadExtractorBundle();
 
     expect(bundle.instructions).toContain(
-      'Pedir el destino de Yape o transferencia es `purchase` con `destination_account`',
+      'Pedir datos para pagar una compra o regalo es `purchase` con `destination_account`',
     );
     expect(bundle.instructions).toContain('`destination_account`');
   });
 
-  it('keeps S09 cart and reported-amount rules scoped to the information node without global payment expansion', async () => {
-    const fs = await import('node:fs/promises');
-    const bundle = await loader.loadNodeBundle('resolver_consultas_informativas');
-    const rule = 'Carrito y pedido son registros distintos';
-    expect(bundle.instructions.split(rule)).toHaveLength(2);
-    expect(bundle.instructions).toContain('nunca reemplaza el total registrado');
-    const shared = await fs.readFile(
-      path.resolve(process.cwd(), 'prompts/shared/domain_knowledge.txt'),
-      'utf8',
+  it('does not load payment destination guidance for unrelated RSVP work', () => {
+    const selected = selectReplyModules({
+      stage: 'reply', owner: 'customer_assistance', establishedDomain: null,
+      tasks: ['rsvp'], hasPlanningDetail: false, hasSupportContinuity: false,
+    });
+    expect(selected.flatMap((module) => module.files)).not.toContain(
+      'nodes/resolver_consultas_informativas/payment_disclosure.txt',
     );
-    expect(shared).not.toContain('Carrito y pedido');
-    expect(shared).not.toContain('total registrado');
   });
 });

@@ -588,6 +588,7 @@ describe('complete authorized customer context in serialized model requests', ()
     const creditCardGift = customerContext.purchases.find((record) => record.orderId === 'SHARED-ORDER-ID' && record.recordSource === 'gift_purchases');
     const profileEvent = customerContext.invitations.find((event) => event.eventId === 701);
     expect(olderOrder).toMatchObject({
+      customerTransactionNumber: 'COD-ORD-OLDER-2021',
       createdAt: '2020-12-20T09:00:00-05:00',
       eventDate: '2021-01-12',
       paymentStatus: 'pending',
@@ -617,6 +618,9 @@ describe('complete authorized customer context in serialized model requests', ()
       thanks: { message: 'Gracias por acompañarnos', sendMethod: 'whatsapp' },
       isThanked: true,
     });
+    expect(extractSpec.input).toContain('COD-ORD-OLDER-2021');
+    expect(empty.input).toContain('COD-ORD-OLDER-2021');
+    expect(empty.input).not.toContain('private-payment-id-sentinel');
     expect(cardOrder?.dedication?.physicalStatus).toBe('preparing');
     expect(creditCardGift).toMatchObject({
       items: [{ type: 'credit' }],

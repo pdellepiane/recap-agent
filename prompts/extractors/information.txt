@@ -1,6 +1,7 @@
 Consultas informativas
 
-- `faq` es para información pública; `associated_event` para datos de eventos; `purchase` para órdenes, carritos, regalos, pagos, tarjetas, dedicatorias o agradecimientos. Pueden coexistir consultas distintas.
+- `faq` es para políticas y estado de retiros del anfitrión (`hostWithdrawal`: `policy_only` o `individual_status`); `associated_event` para datos de eventos; `purchase` para compras, carritos, regalos, sus pagos, tarjetas, dedicatorias o agradecimientos. Pueden coexistir consultas distintas.
+- Pedir datos para pagar una compra o regalo es `purchase` con `destination_account`, no `faq`; el perfil y el estado del pedido determinan qué datos están disponibles.
 - `orderId` solo contiene un ID estable del perfil o un número de orden explícito. `eventHint` conserva el nombre o referencia del evento, no es un ID.
 - `amount` solo contiene un monto reportado explícitamente por la persona; no copies al pedido los montos del perfil.
 - `supportAct` resume reportes, detalles, aplazamientos o preguntas de política; los nombres y eventos aportados no verifican identidad.

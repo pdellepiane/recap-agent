@@ -748,7 +748,7 @@ export function projectCustomerContext(
   snapshot: CustomerContextSnapshot,
 ): CustomerContextProjection {
   const purchases = snapshot.purchasesCarts.purchases.map((purchase) =>
-    stripTransactionIdForModel(purchase),
+    projectPurchaseForModel(purchase),
   );
   return {
     identityAccess: snapshot.identityAccess,
@@ -784,18 +784,18 @@ export function projectCustomerContext(
 }
 
 /**
- * S2 model-visible transaction strip. The runtime snapshot retains the
- * authorized backend record; the projected copy the model reads never
- * carries customerTransactionNumber. Pure copy, single-copy sparse.
+ * The customer-visible transaction reference is part of the authorized
+ * purchase profile. Keeping it lets the extractor resolve a reference the
+ * customer supplied against the actual record without a separate lookup or
+ * guessing from event names. Internal payment IDs and operator notes remain
+ * outside the model projection.
  */
-export function stripTransactionIdForModel(purchase: PurchaseInformation): PurchaseInformation {
+export function projectPurchaseForModel(purchase: PurchaseInformation): PurchaseInformation {
   const {
-    customerTransactionNumber: _transactionReference,
     adminComment: _privateOperatorComment,
     payment,
     ...customerFacts
   } = purchase;
-  void _transactionReference;
   void _privateOperatorComment;
   const safePayment = payment
     ? (() => {
@@ -811,7 +811,6 @@ export function stripTransactionIdForModel(purchase: PurchaseInformation): Purch
     : payment;
   return {
     ...customerFacts,
-    customerTransactionNumber: null,
     ...(payment !== undefined ? { payment: safePayment } : {}),
   };
 }

@@ -489,7 +489,7 @@ export const instructionModuleRegistry: Record<InstructionModuleId, InstructionM
     consumer: 'openai-agent-runtime composeReply (planning nodes only)',
   },
   reply_purchase_facts: {
-    files: [],
+    files: ['nodes/resolver_consultas_informativas/payment_disclosure.txt'],
     stages: ['reply'],
     owners: ['customer_assistance', 'unknown'],
     tasks: ['purchase'],
@@ -510,7 +510,7 @@ export const instructionModuleRegistry: Record<InstructionModuleId, InstructionM
     consumer: 'openai-agent-runtime composeReply (RSVP evidence, no prose)',
   },
   reply_faq_policy: {
-    files: [],
+    files: ['nodes/resolver_consultas_informativas/payment_disclosure.txt'],
     stages: ['reply'],
     owners: ['faq', 'customer_assistance', 'unknown'],
     tasks: ['faq_policy'],
