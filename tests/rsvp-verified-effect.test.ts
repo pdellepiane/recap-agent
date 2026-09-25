@@ -159,6 +159,40 @@ describe('RSVP verified effect twins', () => {
     expect(receipt?.outcome?.companionVerification).toBe('unavailable');
   });
 
+  it('passes a saved companion write receipt without projecting a contradictory false confirmation', async () => {
+    const store = new InMemoryRsvpEffectStore();
+    const runtime = new TwinRuntime([twinExtraction({
+      action: 'attending',
+      party: {
+        scope: 'self_and_others',
+        mentioned_names: [],
+        companion_count: 'one',
+        plus_one_response: 'yes',
+      },
+    })]);
+    const gateway = new TwinGateway(
+      [responded({
+        action: 'attending',
+        willAttend: true,
+        plusOne: { saved: true, response: 'yes', reason: null },
+      })],
+      [readDetail({ willAttend: true })],
+    );
+    const service = twinService(runtime, gateway, store);
+
+    await service.handleTurn(twinInbound('Confirmo y vendrá mi acompañante', 'wamid-twin-companion-saved'));
+
+    expect(gateway.writes).toHaveLength(1);
+    expect(gateway.reads).toBe(1);
+    const note = runtime.composeRequests[0]?.errorMessage ?? '';
+    expect(note).toContain('"companion":{"echo":{"saved":true,"response":"yes","reason":null}}');
+    expect(note).not.toContain('"confirmed":false');
+    expect(note).not.toContain('"verification":"unavailable"');
+    const receipt = await store.loadByMessage('whatsapp#user-rsvp-twin', 'wamid-twin-companion-saved');
+    expect(receipt?.outcome?.plusOneEcho?.saved).toBe(true);
+    expect(receipt?.outcome?.attendanceConfirmed).toBe(true);
+  });
+
   it('(e) read failure stays unconfirmed with unknown persistence and unchanged evidence', async () => {
     const store = new InMemoryRsvpEffectStore();
     const runtime = new TwinRuntime([twinExtraction({ action: 'declining' })]);

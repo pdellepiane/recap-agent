@@ -4139,7 +4139,8 @@ export class AgentService {
     return trimmed.length > 0 && /\s/u.test(trimmed) ? trimmed.slice(0, 200) : null;
   }
 
-  private summarizeRsvpVerification(verification: RsvpVerifiedEffect): Record<string, unknown> {    return {
+  private summarizeRsvpVerification(verification: RsvpVerifiedEffect): Record<string, unknown> {
+    return {
       verification_status: verification.status,
       gateway_status: verification.gatewayStatus,
       requested: {
@@ -4160,11 +4161,10 @@ export class AgentService {
       effect_applied: verification.effectApplied,
       observed_without_attribution: verification.observedWithoutAttribution,
       companion: {
-        confirmed: verification.companionConfirmed,
-        verification: verification.companionVerification,
-        // Echo only, sanitized like the backend summary: single-token
-        // internal codes stay withheld behind reason_present semantics;
-        // only prose reasons reach the model.
+        // The read endpoint has no companion field. A successful write
+        // receipt is still a real backend result; projecting the absent
+        // independent read as `confirmed: false` contradicted saved=true
+        // and caused the reply to deny the completed companion update.
         echo: verification.plusOneEcho
           ? {
               saved: verification.plusOneEcho.saved,
@@ -4172,6 +4172,9 @@ export class AgentService {
               reason: this.sanitizeRsvpEchoReason(verification.plusOneEcho.reason),
             }
           : null,
+        ...(verification.plusOneEcho?.saved === false
+          ? { confirmed: false, verification: 'unavailable' }
+          : {}),
       },
       mismatch: verification.mismatch,
       read_status: verification.readStatus,
@@ -4545,6 +4548,12 @@ export class AgentService {
     // RSVP handler so an ambiguous event choice cannot fall through to the
     // generic contextual clarification prompt.
     if (plan.rsvp_state.status !== 'none') {
+      return false;
+    }
+    // A current RSVP event reference has an authorized read path that
+    // preserves each guest's own attendance state. Do not let a model's
+    // ambiguity marker divert it into clarification before that read.
+    if (hasCurrentMessageRsvpReference(extraction)) {
       return false;
     }
     // An active purchase/event thread replays its canonical request in the

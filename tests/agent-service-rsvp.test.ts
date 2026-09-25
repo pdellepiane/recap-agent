@@ -35,6 +35,28 @@ import type {
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
 
 describe('AgentService RSVP flow', () => {
+  it('reads an ambiguous current RSVP reference before composing and keeps both guests distinct', async () => {
+    const runtime = new RsvpRuntime([{
+      ...rsvpExtraction({ action: null, decisionSource: 'current_message', eventReference: 'Otra celebración prueba' }),
+      ambiguity: { status: 'ambiguous', clarificationQuestion: null, interpretations: [] },
+    }]);
+    const gateway = new RsvpGateway([]);
+    const result = await createService(runtime, gateway, new InMemoryPlanStore(), [
+      rsvpLookupInvitation({ guestId: 41, eventId: 205, eventName: 'Otra celebración prueba', hasResponded: true, willAttend: false }),
+      { ...rsvpLookupInvitation({ guestId: 42, eventId: 206, eventName: 'Otra celebración prueba', hasResponded: true, willAttend: true }), datetime: '2026-09-19' },
+    ]).handleTurn(inbound('¿Cuál es el estado de mi invitación a Otra celebración prueba?'));
+    expect(result.trace.tools_called).toContain('lookup_rsvp_invitations');
+    expect(result.trace.tools_called).not.toContain('guest_rsvp');
+    expect(runtime.composeRequests).toHaveLength(1);
+    expect(runtime.composeRequests[0]?.rsvpPhoneEvidence).toMatchObject({
+      state: 'needs_event_selection',
+      candidates: [
+        { event_date: '2026-09-12', rsvp_state: 'declining' },
+        { event_date: '2026-09-19', rsvp_state: 'attending' },
+      ],
+    });
+  });
+
   it('a current state query neither inherits an old action nor offers another mutation', async () => {
     const store = new InMemoryPlanStore();
     const input = inbound('Consulta mi asistencia; no cambies mi respuesta');
