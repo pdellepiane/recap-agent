@@ -1,5 +1,23 @@
 version: 1
 behaviorChanges:
+  - id: retain-authorized-customer-transaction-reference-in-model-profile
+    implementedBy: e8f6d3fe
+    liveCaseIds: [live_behavior.customer_transaction_reference_matched]
+  - id: keep-payment-destination-bound-to-identified-pending-purchase
+    implementedBy: e8f6d3fe
+    liveCaseIds: [live_behavior.payment_destination_requires_pending_purchase]
+  - id: classify-host-withdrawal-as-policy-or-status-instead-of-buyer-order
+    implementedBy: e8f6d3fe
+    liveCaseIds: [live_behavior.host_withdrawal_diana_policy_and_support]
+  - id: read-rsvp-candidates-before-generic-clarification
+    implementedBy: 654f01a3
+    liveCaseIds: [live_behavior.rsvp_plus_one_multiple_events_requires_selection]
+  - id: distinguish-saved-from-unsaved-rsvp-companion-receipt
+    implementedBy: 654f01a3
+    liveCaseIds: [live_behavior.rsvp_plus_one_uses_phone_scoped_mutation, live_behavior.rsvp_plus_one_not_eligible_no_false_success]
+  - id: answer-from-authorized-records-when-image-unavailable
+    implementedBy: 299ef95f
+    liveCaseIds: [live_behavior.image_unavailable_captioned]
   - id: approved-purchase-summary-omits-payment-type
     implementedBy: "53483659"
     liveCaseIds: [live_behavior.accountless_event_answer_precedes_remaining_private_auth]
