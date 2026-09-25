@@ -186,7 +186,9 @@ describe('AgentService RSVP flow', () => {
     expect(result.trace.route_kind).toBe('rsvp');
     expect(result.trace.tools_called).toContain('guest_rsvp');
     expect(result.trace.tools_called).toContain('lookup_guest_events_by_phone');
-    expect(gateway.guestEventLookupCalls).toBe(1);
+    // The complete authorized profile reads events before extraction; RSVP
+    // then performs its own fresh scoped read before the write.
+    expect(gateway.guestEventLookupCalls).toBe(2);
     expect(result.trace.timing_ms.rsvp_execution).toBeTypeOf('number');
     expect(runtime.composeRequests[0]?.errorMessage).toContain(expectedNote);
     expect(runtime.composeRequests[0]?.errorMessage).not.toContain('correo');
@@ -873,7 +875,9 @@ describe('AgentService RSVP flow', () => {
     const result = await service.handleTurn(inbound('Hola, ya confirmé, gracias'));
 
     expect(gateway.inputs).toEqual([]);
-    expect(gateway.guestEventLookupCalls).toBe(1);
+    // Profile preparation and the RSVP-specific read are distinct scopes of
+    // work within this turn; both remain bound to the trusted phone.
+    expect(gateway.guestEventLookupCalls).toBe(2);
     expect(result.trace.tools_called).toContain('lookup_rsvp_invitations');
     expect(result.trace.tools_called).toContain('lookup_guest_events_by_phone');
     expect(result.trace.tools_called).toContain('get_guest_event_detail');
@@ -1003,11 +1007,11 @@ describe('AgentService RSVP flow', () => {
 
     await service.handleTurn(inbound('¿Cómo está mi invitación?'));
 
-    expect(sequence).toEqual([
-      'user-context-start',
-      'guest-events-start',
-      'user-context-end',
-    ]);
+    expect(sequence.filter((step) => step === 'guest-events-start')).toHaveLength(2);
+    expect(sequence.filter((step) => step === 'user-context-start')).toHaveLength(1);
+    expect(sequence.indexOf('guest-events-start')).toBeLessThan(sequence.indexOf('user-context-start'));
+    expect(sequence.lastIndexOf('guest-events-start')).toBeGreaterThan(sequence.indexOf('user-context-start'));
+    expect(sequence.lastIndexOf('guest-events-start')).toBeLessThan(sequence.indexOf('user-context-end'));
   });
 
   it('records the latest response centrally on an ordinary RSVP send', async () => {
