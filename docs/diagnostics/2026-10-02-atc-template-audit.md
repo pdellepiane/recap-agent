@@ -61,7 +61,7 @@ The adjacent JSON inventory records each title, response SHA-256 and byte count.
 - Applied the legacy filename exclusion to fixture retrieval as well.
 - Preserved official FAQ expansion/citation, helper documents and the existing canonical customer-state projection. No model instruction was appended; changed instruction bytes are zero and rejected sample text contributes zero input bytes.
 
-The existing indexed files are preserved as historical material. The development runtime excludes them; no production promotion or destructive bulk deletion is performed. The production runtime still requires promotion of the tested artifact before this runtime exclusion applies there.
+The existing indexed files are preserved as historical material. The development runtime excludes them; no production promotion or destructive bulk deletion is performed. At audit completion, production still required promotion of the tested artifact; that later user-authorized promotion is recorded below.
 
 The withdrawal-specific parser also trusted one ATC filename and hid other FAQ evidence. It now requires a validated full official withdrawal article for any numeric processing window; absent that window, the available FAQ evidence remains visible. The current official withdrawal article does not establish 72 hours. Its previous mandatory live assertion was unsupported and has been replaced with an honest-outcome control; handoff/effect/access controls remain.
 
@@ -74,3 +74,7 @@ Development artifact and the explicitly selected live result are recorded in the
 The first selected development run completed six turns but failed 1/11 hard assertions: the deterministic source citation was missing. It did not expose an ATC sample. Trace evidence showed a first-ranked official commission article at score 0.799831, below the secondary 0.8 article-expansion threshold. The correction preserves complete verified article provenance when this recognized source ranks first, while keeping snapshot hash, live-batch, canonical URL and bounded expansion checks. An offline regression reproduces the observed scores. Historical failed evidence is retained in the implementation log.
 
 Final development validation: selected FAQ commission case passed 1/1, with 11/11 hard assertions across six turns, on artifact `12651d9c561b5469c7c6682373546da32f9e10cb87283499efa49c65dd0a17fd`. Run `eval-2026-10-02T15-53-40-385Z-0cb1afbe`, cost USD 0.005484. Retrieved evidence contains zero raw ATC samples. The adjacent `2026-10-02-atc-validation.json` records filenames, serialized request-byte measurements and the prior failed run identity. No full live panel or production promotion was performed.
+
+## Subsequent production promotion
+
+The user subsequently authorized production deployment and repository push. The exact tested development artifact was promoted successfully on 2 October. Production CodeSha256 and all three model parameters match development; existing production credentials and configuration were preserved. Fail-closed request/authentication smoke checks pass with tracking IDs. The source exclusion now applies to production as well. See `2026-10-02-production-promotion.json` and the implementation log for release and rollback identities.

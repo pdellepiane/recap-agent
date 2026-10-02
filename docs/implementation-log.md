@@ -13792,3 +13792,10 @@ Offline only. No deployment, paid call, live rerun, rescoring, or production pro
 
 - Replaced the audit tests' owner-specific Downloads export dependency with a temporary synthetic CSV/Markdown fixture. Preserved eligibility, deprecated-source, missing-file, missing-section, trigger-quality and read-only audit assertions without copying private templates into the repo.
 - Three audit-reader checks and the mandatory live-coverage linkage pass; scoped lint passes. This changes tests only; the previously validated development ZIP and production promotion artifact remain identical.
+
+## 2026-10-02 — User-authorized production promotion and repository push
+
+- The user explicitly authorized pushing all committed work and deploying it to production. Promoted the exact already-tested development artifact `12651d9c561b5469c7c6682373546da32f9e10cb87283499efa49c65dd0a17fd` through the repository CloudFormation deployment script, without rebuilding. Required AWS identity was verified through se-dev in us-east-1/account 684516060775. Existing production credential bindings and environment-specific configuration were preserved.
+- Production stack update succeeded. Live Lambda CodeSha256 matches the development ZIP, and reply, extractor and classifier models all match the tested gpt-6-luna settings. Prior artifact `cd63f3dde5f72790742896516468088cb6139f020dd2b0f5096018d217458022` remains recorded for rollback. The ATC exclusion and official-source corrections now apply in production.
+- Production boundary smoke checks pass: unauthenticated request returns 401; authenticated malformed JSON returns 400; both include request/correlation IDs. No real conversation, customer write or paid production panel was exercised. Development acceptance remains the explicitly selected six-turn case with 11/11 hard assertions; no full live panel claim is made.
+- Release receipt: `docs/diagnostics/2026-10-02-production-promotion.json`. Reader-facing PDF issue dates and September evidence are preserved. All repository work is committed before the main-branch push.
