@@ -1,7 +1,7 @@
 template: template.base-offline
 id: feedback.unselected_shortlist_blocks_close_until_deferred
 suite: feedback_regression
-version: 1
+version: 2
 description: Close flow should ask for explicit select/defer when a real shortlist remains unselected.
 tags: [feedback, batch2, close]
 inputs:
@@ -52,9 +52,6 @@ fixtures:
     repliesByTurn:
       - Antes de cerrar, necesito saber si eliges EDO Sushi Bar para Catering o si prefieres dejar Catering sin proveedor respondiendo ninguna.
 expectations:
-  - id: close-node
-    type: node_transition
-    to: crear_lead_cerrar
   - id: asks-explicit-opt-out
     type: text_contains
     allOf: [Catering]

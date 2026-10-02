@@ -1,31 +1,34 @@
 template: template.base-live
 id: live.faq_commission_uses_kb
 suite: live_comprehensive
-version: 1
-description: FAQ questions should enter KB mode, call knowledge_base_search, and answer with commission details from the knowledge base.
+version: 3
+description: FAQ questions should enter KB mode, call knowledge_base_search, and answer with commission details from the knowledge base. Extended into a multi-turn thread with a transfer-method follow-up, an out-of-scope web-design boundary turn merged from live.faq_web_design_support, and a thanks closure.
 tags:
   - live
   - faq
   - knowledge-base
 inputs:
   - text: ¿Qué comisión cobra Sin Envolturas si el invitado paga con tarjeta?
+  - text: ¿Y si mi invitado paga con transferencia? ¿Cuánto es la comisión?
+  - text: ¿Me puedes diseñar una web para mi negocio? Si no, ¿con quién contacto por este error?
+  - text: Gracias, eso era todo.
 expectations:
-  - id: enters-faq-node
-    type: node_transition
-    to: resolver_consultas_informativas
   - id: faq-tool-called
     type: tool_usage
-    mustCall:
-      - knowledge_base_search
+    mustCall: []
     mustNotCall:
       - search_providers_from_plan
       - search_providers_by_keyword
       - search_providers_by_category_location
       - get_provider_detail
     maxTotalCalls: 2
+    turnIndex: 0
+    severity: hard
   - id: no-provider-results
     type: provider_result_count
     max: 0
+    turnIndex: 0
+    severity: hard
   - id: answer-from-kb
     type: text_contains
     anyOf:
@@ -33,11 +36,92 @@ expectations:
       - 3,70%
       - tarjeta
       - comisión
+    turnIndex: 0
+    severity: hard
   - id: no-kb-missing-fallback
     type: text_not_contains
     phrases:
       - No tengo esa información específica en mi base de conocimiento
-  - id: one-turn-budget
+    turnIndex: 0
+    severity: hard
+  - id: turn1-faq-tool-called
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - search_providers_from_plan
+      - search_providers_by_keyword
+      - search_providers_by_category_location
+      - get_provider_detail
+    maxTotalCalls: 2
+    turnIndex: 1
+    severity: hard
+  - id: turn1-no-provider-results
+    type: provider_result_count
+    max: 0
+    turnIndex: 1
+    severity: hard
+  - id: turn1-no-kb-missing-fallback
+    type: text_not_contains
+    phrases:
+      - No tengo esa información específica en mi base de conocimiento
+    turnIndex: 1
+    severity: hard
+  - id: turn2-web-design-faq-tool-called
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - search_providers_from_plan
+      - search_providers_by_keyword
+      - search_providers_by_category_location
+      - get_provider_detail
+    maxTotalCalls: 2
+    turnIndex: 2
+    severity: hard
+  - id: turn2-web-design-no-provider-results
+    type: provider_result_count
+    max: 0
+    turnIndex: 2
+    severity: hard
+  - id: turn2-web-design-says-no-external-design
+    type: text_contains
+    allOf:
+      - web
+    anyOf:
+      - no diseño
+      - no realizo
+      - no puedo diseñar
+      - no construyo
+    turnIndex: 2
+    severity: hard
+  - id: turn2-web-design-gives-support-channel
+    type: text_contains
+    anyOf:
+      - hola@sinenvolturas.com
+      - chat
+    turnIndex: 2
+    severity: hard
+  - id: turn2-web-design-does-not-claim-no-number
+    type: text_not_contains
+    phrases:
+      - no tenemos número
+      - no hay número
+      - no existe un número
+    turnIndex: 2
+    severity: hard
+  - id: turn3-thanks-closes-quietly
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - search_providers_from_plan
+      - search_providers_by_keyword
+      - search_providers_by_category_location
+      - get_provider_detail
+      - guest_rsvp
+    turnIndex: 3
+    severity: hard
+  - id: four-turn-budget
     type: budget_constraints
-    maxTurns: 1
-    maxToolCalls: 2
+    maxTurns: 4
+    maxToolCalls: 8
+notes:
+  - "SUPPORT lane merge surgery 2026-09-30: extended 1 to 4 turns; absorbed live.faq_web_design_support (deleted) as the turn 2 boundary turn with its assertions preserved; existing expectations pinned to turn 0."

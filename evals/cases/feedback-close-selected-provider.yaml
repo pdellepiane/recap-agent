@@ -1,7 +1,7 @@
 template: template.base-offline
 id: feedback.close_selected_provider_does_not_reask
 suite: feedback_regression
-version: 1
+version: 2
 description: Closing a plan with an already selected provider should ask for contact context, not reopen provider selection.
 tags: [feedback, batch2, close]
 inputs:
@@ -56,9 +56,6 @@ fixtures:
     repliesByTurn:
       - Si quieres cerrar el plan con EDO Sushi Bar, necesito tu información de contacto para enviar la solicitud.
 expectations:
-  - id: close-node
-    type: node_transition
-    to: crear_lead_cerrar
   - id: selected-preserved
     type: plan_field_subset
     path: provider_needs

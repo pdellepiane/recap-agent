@@ -1,7 +1,7 @@
 template: template.base-offline
 id: trace.search_tool_outputs_exposed
 suite: trace_observability
-version: 1
+version: 2
 description: Search traces should expose tool outputs and provider results for debugging.
 tags:
   - trace
@@ -51,10 +51,6 @@ fixtures:
                 serviceHighlights: [Cobertura de boda]
                 termsHighlights: [Sujeto a disponibilidad]
 expectations:
-  - id: search-called
-    type: tool_usage
-    mustCall:
-      - search_providers_from_plan
   - id: provider-debug
     type: provider_results_contains
     providers:

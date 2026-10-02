@@ -1,0 +1,170 @@
+template: template.base-live
+id: live_behavior.faq_commission_full_article_citation
+suite: live_behavior_regression
+version: 7
+description: Commission question after campaign history answers from the complete help-center article with dollar examples and a deterministic source citation, never invented round percentages. Merged 2026-09-30 with live_behavior.faq_commission_50_pen_no_unverified_arithmetic (live-behavior-faq-commission-50-pen.yaml) as turns 3-5; all absorbed assertions kept with turnIndex+3.
+tags:
+  - live
+  - behavior
+  - faq
+  - knowledge-base
+  - citation
+  - reported-interaction
+  - jorge-commission
+  - commission
+  - kiyoshi-50-pen
+targetModes:
+  - live_lambda
+backendFixture:
+  scenario: faq-commission-jorge
+inputs:
+  - text: Hola, cuanto cobran de comision?
+    channel: whatsapp
+    contactPhone: "+51900006061"
+    sessionId: live-faq-commission-full-article-session
+    backendFixture:
+      scenario: faq-commission-jorge
+  - text: ¿La comisión la paga mi invitado o la pago yo?
+    channel: whatsapp
+    contactPhone: "+51900006061"
+    sessionId: live-faq-commission-full-article-session
+    backendFixture:
+      scenario: faq-commission-jorge
+  - text: Gracias, me quedó claro.
+    channel: whatsapp
+    contactPhone: "+51900006061"
+    sessionId: live-faq-commission-full-article-session
+    backendFixture:
+      scenario: faq-commission-jorge
+  - text: ¿Y cuánto es la comisión?
+    channel: whatsapp
+    contactPhone: "+51900006062"
+    sessionId: live-faq-commission-full-article-session
+    backendFixture:
+      scenario: faq-commission-kiyoshi-50-pen
+  - text: Osea si mi invitado regala o aporta 50 soles, ¿cuánto es la comisión?
+    channel: whatsapp
+    contactPhone: "+51900006062"
+    sessionId: live-faq-commission-full-article-session
+    backendFixture:
+      scenario: faq-commission-kiyoshi-50-pen
+  - text: Gracias, voy a revisar la calculadora.
+    channel: whatsapp
+    contactPhone: "+51900006062"
+    sessionId: live-faq-commission-full-article-session
+    backendFixture:
+      scenario: faq-commission-kiyoshi-50-pen
+expectations:
+  - id: commission-searches-kb
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+    turnIndex: 0
+    severity: hard
+  - id: commission-invents-no-round-percentages
+    type: text_not_contains
+    phrases:
+      - 5% por transferencia
+      - 7% por tarjeta
+      - 9% por PayPal
+    turnIndex: 0
+    severity: hard
+  - id: commission-uses-functional-calculator
+    type: text_contains
+    allOf:
+      - https://sinenvolturas.com/coste-del-servicio
+    turnIndex: 0
+    severity: hard
+  - id: payer-choice-searches-kb
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+    turnIndex: 1
+    severity: hard
+  - id: thanks-closes-quietly
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - guest_rsvp
+    turnIndex: 2
+    severity: hard
+  - id: first-question-uses-public-faq
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+    turnIndex: 3
+    severity: hard
+  - id: follow-up-uses-public-faq
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+    turnIndex: 4
+    severity: hard
+  - id: no-produced-s50-totals
+    type: text_not_contains
+    phrases:
+      - S/49.05
+      - S/47.71
+      - S/47.25
+      - S/0.95
+      - S/2.30
+      - S/2.75
+      - S/41.75
+      - S/43.07
+      - S/40.90
+      - S/58.71
+      - S/57.21
+      - S/59.78
+    turnIndex: 4
+    severity: hard
+  - id: follow-up-has-calculator-link
+    type: text_contains
+    allOf:
+      - https://sinenvolturas.com/coste-del-servicio
+    turnIndex: 4
+    severity: hard
+  - id: source-citation
+    type: text_contains
+    allOf:
+      - sinenvolturas.tawk.help/article/cuanto-cuesta
+    turnIndex: 4
+    severity: hard
+  - id: m1-thanks-closes-quietly
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - guest_rsvp
+    turnIndex: 5
+    severity: hard
+notes:
+  - "SUPPORT lane merge 2026-09-30 (m1): absorbed live-behavior-faq-commission-50-pen.yaml (live_behavior.faq_commission_50_pen_no_unverified_arithmetic, gate PASSED) as turns 3-5; all 9 absorbed expectations kept verbatim with turnIndex+3; session unified to live-faq-commission-full-article-session; carrier version bumped to 5."
+  - "SUPPORT lane merge surgery 2026-09-30: extended 1 to 3 turns with a payer-choice disambiguation and a thanks closure."
+  - "R05 v1 (2026-09-24): reconstructed from production trace 01M2Y4H6EK701Z033Y1639RM2A (2026-09-20T00:47:25Z), where chunk evidence plus model arithmetic produced invented 5%/7%/9% percentages. Guards full-article expansion, deterministic citation, KB table/link fidelity and record-field prompt scoping."
+  - "R05 v2 (2026-09-24): citation oracle asserts the exact footer URL target now that help-center article URLs pass the diagnostics redaction allowlist."
+  - "R05 v3 (2026-09-28): the published US$100 example and exact calculator URL are required; the earlier 0.8 rubric incorrectly passed omission of the example. Historical results are not regraded."
+  - "[absorbed live_behavior.faq_commission_50_pen_no_unverified_arithmetic] SUPPORT lane merge surgery 2026-09-30: extended 2 to 3 turns with a thanks closure."
+  - "[absorbed live_behavior.faq_commission_50_pen_no_unverified_arithmetic] v2 2026-09-28: saved dev judge scored a correct quoted US$100 FAQ example 0.72 because the earlier rubric did not enumerate the article's exact values and mistook repeated transfer/Yape outcomes for possible inconsistency. This revision names every authorized example value; all arbitrary-amount arithmetic, rounded-total bans, calculator requirement and 0.9 threshold remain hard. Historical v1 result is unchanged."
+  - "[absorbed live_behavior.faq_commission_50_pen_no_unverified_arithmetic] 2026-09-28 production Kiyoshi screenshots: the agent falsely named 5%/7%/9%, then calculated unverified S/50 net amounts without IGV/IVA. The two calculator screenshots show both payer modes and conflict with those figures. Synthetic keyed empty private records; no real customer data or calculator API quote is invented."
+budget:
+  maxTurns: 6
+  estimatedPromptTokensPerTurn: 3800
+  estimatedCompletionTokensPerTurn: 260
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1

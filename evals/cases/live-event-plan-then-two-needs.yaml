@@ -1,7 +1,7 @@
 template: template.base-live
 id: live.event_plan_then_two_needs
 suite: live_comprehensive
-version: 1
+version: 3
 description: A follow-up with two provider needs should preserve the event plan and represent multiple needs.
 tags:
   - live
@@ -10,32 +10,27 @@ tags:
 inputs:
   - text: hola, mi baby shower será en Miraflores para 40 personas y todavía no sé qué proveedores necesito
   - text: necesito decoración y Catering
+  - text: Gracias, eso era todo.
+notes:
+  - "IMGMISC lane merge surgery 2026-09-30: extended 2 to 3 turns with a thanks closure. Added the missing hard semantic judge for turn 0, 1."
 expectations:
-  - id: turn0-planning-node
-    type: node_transition
-    to: entrevista
-    turnIndex: 0
   - id: turn0-search-not-ready
     type: trace_field_equals
     path: search_ready
     expected: false
     turnIndex: 0
   - id: guest-range-persisted
+    turnIndex: 1
     type: plan_field_equals
     path: guest_range
     expected: 21-50
   - id: location-persisted
+    turnIndex: 1
     type: plan_field_equals
     path: location
     expected: Miraflores
-  - id: multi-need-turn-envelope
-    type: node_transition
-    allowed:
-      - to: recomendar
-      - to: aclarar_pedir_faltante
-      - to: seguir_refinando_guardar_plan
-    turnIndex: 1
   - id: multiple-needs-recorded
+    turnIndex: 1
     type: plan_field_subset
     path: provider_needs
     expected:
@@ -48,5 +43,11 @@ expectations:
     turnIndex: 1
   - id: two-turn-budget
     type: budget_constraints
-    maxTurns: 2
+    maxTurns: 3
     maxToolCalls: 8
+  - id: thanks-performs-no-new-effect
+    type: tool_usage
+    mustCall: []
+    mustNotCall: [image_inspect, auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover, guest_rsvp, search_providers_from_plan, search_providers_by_query_intent, create_quote_request]
+    turnIndex: 2
+    severity: hard

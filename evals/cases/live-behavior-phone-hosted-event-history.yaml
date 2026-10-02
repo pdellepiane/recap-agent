@@ -1,0 +1,78 @@
+template: template.base-live
+id: live_behavior.phone_hosted_event_history
+suite: live_behavior_regression
+version: 5
+description: A verified phone's complete event profile includes a past hosted event absent from the guest-event root, with a prior campaign event ID retained as reference context; the opening Kilimanjaro question stays read-only and grounded.
+tags: [ live, behavior, associated-event, canonical-profile, hosted-event, reported-interaction ]
+targetModes: [ live_lambda ]
+backendFixture:
+  scenario: phone-owner-history-kilimanjaro
+inputs:
+  - text: ¿Y tienes el del evento de Kilimanjaro?
+    channel: whatsapp
+    contactPhone: "+51900000400"
+    sessionId: live-phone-hosted-event-history
+    backendFixture:
+      scenario: phone-owner-history-kilimanjaro
+  - text: Es un evento pasado, fue el 22 de septiembre de 2026. ¿A qué hora fue?
+    channel: whatsapp
+    contactPhone: "+51900000400"
+    sessionId: live-phone-hosted-event-history
+    backendFixture:
+      scenario: phone-owner-history-kilimanjaro
+  - text: Gracias, eso era todo.
+    channel: whatsapp
+    contactPhone: "+51900000400"
+    sessionId: live-phone-hosted-event-history
+    backendFixture:
+      scenario: phone-owner-history-kilimanjaro
+expectations:
+  - id: no-rsvp-write
+    turnIndex: 1
+    type: fixture_effect_count
+    operation: rsvp.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: turn0-no-rsvp-write
+    type: fixture_effect_count
+    operation: rsvp.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    turnIndex: 0
+    severity: hard
+  - id: turn0-read-only-no-auth
+    type: tool_usage
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+    turnIndex: 0
+    severity: hard
+  - id: thanks-performs-no-new-effect
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+      - guest_rsvp
+      - create_quote_request
+    turnIndex: 2
+    severity: hard
+budget:
+  maxTurns: 3
+  estimatedPromptTokensPerTurn: 2000
+  estimatedCompletionTokensPerTurn: 300
+notes:
+  - "Gap fix v2, 2026-09-30: turn 0 previously carried no expectations; added read-only tool and effect pins plus a hard semantic judge. All other expectations unchanged."
+  - "2026-09-29: Reconstructs the observed 51991347878 conversation with synthetic identities and the two distinct backend roots. The real guest root returned six events and no September event; the phone account root returned Kilimanjaro as owner and host."
+  - "IMGMISC lane merge surgery 2026-09-30: extended 2 to 3 turns with a thanks closure."
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1

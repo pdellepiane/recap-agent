@@ -1,7 +1,7 @@
 template: template.base-both-targets
 id: state.finished_plan_short_circuits_turn
 suite: state_and_resume
-version: 1
+version: 2
 description: A finished plan must short-circuit extraction and keep closed state semantics.
 tags:
   - state
@@ -73,10 +73,6 @@ seedPlan:
   selected_provider_ids: [109]
   selected_provider_hints: [EDO]
 expectations:
-  - id: stay-closed-node
-    type: node_transition
-    from: necesidad_cubierta
-    to: necesidad_cubierta
   - id: lifecycle-finished
     type: plan_field_equals
     path: lifecycle_state

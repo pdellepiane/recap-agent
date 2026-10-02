@@ -3,6 +3,7 @@ import OpenAI from 'openai';
 
 import { redactArtifactText } from '../../runtime/artifact-redaction';
 import { isPermanentQuotaExhaustion } from '../../runtime/openai-retry';
+import type { JudgeUsage } from '../pricing';
 
 /**
  * Packet O3 — judge throughput and honest measurements.
@@ -52,6 +53,8 @@ export type SemanticJudgeOutcome = {
   retryCount?: number;
   /** Final disposition: scored | skipped | failed | retried_then_scored. */
   disposition?: string;
+  /** Measured token usage, summed across runner-owned retries when present. */
+  usage?: JudgeUsage;
 };
 
 export type SemanticJudgePacket = {
@@ -135,6 +138,7 @@ export async function runSemanticJudge(args: {
   const client = args.client ?? getSharedJudgeClient(args.apiKey, {});
   const delayFn = args.delayFn ?? defaultDelay;
   const attempts: JudgeAttemptRecord[] = [];
+  const totalUsage: JudgeUsage = { inputTokens: 0, outputTokens: 0, cachedInputTokens: 0 };
   let lastError: unknown = null;
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     try {
@@ -158,6 +162,9 @@ export async function runSemanticJudge(args: {
         ],
       }, { timeout: JUDGE_REQUEST_TIMEOUT_MS, maxRetries: JUDGE_SDK_MAX_RETRIES });
 
+      totalUsage.inputTokens += completion.usage?.prompt_tokens ?? 0;
+      totalUsage.outputTokens += completion.usage?.completion_tokens ?? 0;
+      totalUsage.cachedInputTokens += completion.usage?.prompt_tokens_details?.cached_tokens ?? 0;
       const raw = completion.choices[0]?.message?.content?.trim() ?? '';
       if (raw.length === 0) throw new Error(`Judge returned missing response. requestHash=${requestHash}`);
       const parsed = parseStrictJudgeJson(raw, requestHash);
@@ -178,6 +185,7 @@ export async function runSemanticJudge(args: {
         attempts,
         retryCount: attempts.length - 1,
         disposition: attempt === 1 ? 'scored' : 'retried_then_scored',
+        usage: { ...totalUsage },
       };
     } catch (error) {
       lastError = error;

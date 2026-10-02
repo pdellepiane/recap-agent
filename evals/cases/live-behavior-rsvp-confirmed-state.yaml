@@ -1,10 +1,10 @@
 template: template.base-live
 id: live_behavior.rsvp_confirmed_state_is_reported
 suite: live_behavior_regression
-version: 7
-description: A user-level invitation that already has attendance confirmed is reported via hybrid fragment plus natural tissue without another mutation.
-tags: [live, behavior, rsvp, attendance, current-state, trusted-phone]
-targetModes: [live_lambda]
+version: 11
+description: Six-turn confirmed-state thread. A user-level invitation that already has attendance confirmed is reported without another mutation; a date question and a thanks close the first half. The resolved-single Paolo and Mariana invitation is then reported for the named event without asking the user to choose among invitations; a time question and a thanks close the thread.
+tags: [ live, behavior, rsvp, attendance, current-state, trusted-phone, continuity, paolo-mariana, resolved-single, projection ]
+targetModes: [ live_lambda ]
 backendFixture:
   scenario: rsvp-confirmed-otra-celebracion
 inputs:
@@ -14,6 +14,36 @@ inputs:
     sessionId: live-rsvp-confirmed-state-session
     backendFixture:
       scenario: rsvp-confirmed-otra-celebracion
+  - text: ¿Cuándo es la celebración?
+    channel: whatsapp
+    contactPhone: "+51973296571"
+    sessionId: live-rsvp-confirmed-state-session
+    backendFixture:
+      scenario: rsvp-confirmed-otra-celebracion
+  - text: Perfecto, muchas gracias.
+    channel: whatsapp
+    contactPhone: "+51973296571"
+    sessionId: live-rsvp-confirmed-state-session
+    backendFixture:
+      scenario: rsvp-confirmed-otra-celebracion
+  - text: Hola, quisiera confirmar el estado de mi invitacion a Otra celebración prueba
+    channel: whatsapp
+    contactPhone: "+51973296571"
+    sessionId: live-rsvp-confirmed-state-session
+    backendFixture:
+      scenario: rsvp-resolved-attending
+  - text: ¿A qué hora es?
+    channel: whatsapp
+    contactPhone: "+51973296571"
+    sessionId: live-rsvp-confirmed-state-session
+    backendFixture:
+      scenario: rsvp-resolved-attending
+  - text: Perfecto, muchas gracias.
+    channel: whatsapp
+    contactPhone: "+51973296571"
+    sessionId: live-rsvp-confirmed-state-session
+    backendFixture:
+      scenario: rsvp-resolved-attending
 seedPlan:
   current_node: responder_invitacion
   intent: responder_invitacion
@@ -27,38 +57,104 @@ seedPlan:
     requested_at: "2026-08-17T15:00:00.000Z"
     selection_attempts: 0
 expectations:
-  - id: remains-in-rsvp-node
-    type: node_transition
-    to: responder_invitacion
-    severity: hard
   - id: reads-user-level-invitation-state
     type: tool_usage
-    mustCall: [lookup_rsvp_invitations]
-    mustNotCall: [guest_rsvp, auth_by_phone, request_user_login_code, verify_user_login_code]
+    mustCall: []
+    mustNotCall: [ guest_rsvp, auth_by_phone, request_user_login_code, verify_user_login_code ]
+    turnIndex: 0
     severity: hard
-  - id: clears-completed-rsvp-state
-    type: plan_field_equals
-    path: rsvp_state.status
-    expected: none
-    severity: hard
-  - id: reports-existing-confirmation-naturally
-    type: text_semantic
-    rubric: >-
-      Pass only if the assistant responds entirely in Spanish in its own natural wording, reporting that attendance for "Otra celebración prueba" is already confirmed. Factual requirements are attending polarity and the event name; the recorded date (19 de agosto de 2026, any clear rendering) supports grounding but a missing date alone never fails, while a wrong date or flipped polarity does. The response must not claim a new mutation was made; no explicit no-write recital is required. It must not ask for email or a code, must not mention internal states or tools, and must not state the opposite polarity.
-    minScore: 0.9
-    requireJudge: true
-    severity: hard
-  - id: fragment-not-inverted
+  - id: turn0-fragment-not-inverted
     type: text_not_contains
-    phrases: ["Figura que no asistirás"]
+    phrases: [ "Figura que no asistirás" ]
+    turnIndex: 0
     severity: hard
-  - id: no-rsvp-vocabulary
-    type: text_not_contains
-    phrases: ["RSVP", "rsvp"]
+  - id: turn1-no-write-receipt
+    type: fixture_effect_count
+    operation: rsvp.write
+    turnIndex: 1
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: turn1-answers-date-without-mutation
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+    turnIndex: 1
+    severity: hard
+  - id: turn2-no-write-receipt
+    type: fixture_effect_count
+    operation: rsvp.write
+    turnIndex: 2
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: turn2-thanks-without-mutation
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+    turnIndex: 2
+    severity: hard
+  - id: turn3-projects-resolved-single-without-candidate-list
+    type: tool_usage
+    mustCall: []
+    mustNotCall: [ guest_rsvp, auth_by_phone, request_user_login_code, verify_user_login_code ]
+    turnIndex: 3
+    severity: hard
+  - id: turn4-no-write-receipt
+    type: fixture_effect_count
+    operation: rsvp.write
+    turnIndex: 4
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: turn4-answers-time-without-mutation
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+    turnIndex: 4
+    severity: hard
+  - id: turn5-no-write-receipt
+    type: fixture_effect_count
+    operation: rsvp.write
+    turnIndex: 5
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: turn5-thanks-without-mutation
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+    turnIndex: 5
     severity: hard
 notes:
   - "R05 oracle revision v6 to v7, 2026-09-16, final support rescue task 5. The old contract demanded attending polarity, event name, date, and an explicit no-write recital as joint factual requirements, failing useful confirmed-state answers that omitted the date or the recital. New contract keeps attending polarity and event name as hard requirements, treats the recorded date as supporting detail (wrong date still fails), and bans false new-mutation claims without demanding a recital. Threshold 0.9, hard severity, requireJudge kept. Old v6 runs preserved; baseline and candidate must rerun on this v7 contract."
+  - "RSVP extension v8 (2026-09-30): added a genuine turn-1 date question and a turn-2 thanks closure, each with hard no-write structural assertions and a hard requireJudge semantic judge grounded in the same fixture. Turn-0 expectations unchanged except explicit turnIndex 0 scoping. Old v7 runs preserved; baseline and candidate must rerun on this v8 contract."
+  - "RSVP merge v9 (2026-09-30): this case now carries a 6-turn thread that fully subsumes live_behavior.rsvp_paolo_mariana_resolved_single (turns 3-5). Every absorbed turn keeps its original hard structural assertions and hard requireJudge semantic judge, renumbered turnIndex 0->3, 1->4, 2->5 with turnN- id prefixes; turns 3-5 switch fixture to the absorbed rsvp-resolved-attending world via turn-level backendFixture on the same phone. The carrier seedPlan is kept; absorbed turns carry no plan assertions. Turns 0-2 unchanged. Old v8 runs preserved; baseline and candidate must rerun on this v9 contract."
 budget:
-  maxTurns: 1
+  maxTurns: 6
   estimatedPromptTokensPerTurn: 1600
   estimatedCompletionTokensPerTurn: 250
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1

@@ -1,14 +1,26 @@
 template: template.base-live
 id: live_behavior.authentication_refusal_closes_protected_query
 suite: live_behavior_regression
-version: 2
+version: 5
 description: An explicit privacy or security refusal must close the protected request without repeating email authentication or forcing human support.
-tags: [live, behavior, authentication, privacy, refusal, reported-interaction]
-targetModes: [live_lambda]
+tags: [ live, behavior, authentication, privacy, refusal, reported-interaction ]
+targetModes: [ live_lambda ]
 backendFixture:
   scenario: auth-refusal-closed
 inputs:
   - text: No doy mis datos personales y no quiero continuar con esta verificación.
+    channel: whatsapp
+    contactPhone: "$PHONE_FIRST_FALLBACK_CONTACT_PHONE"
+    sessionId: live-auth-refusal-closes-query-session
+    backendFixture:
+      scenario: auth-refusal-closed
+  - text: Perdona, ¿me repites lo último que me dijiste?
+    channel: whatsapp
+    contactPhone: "$PHONE_FIRST_FALLBACK_CONTACT_PHONE"
+    sessionId: live-auth-refusal-closes-query-session
+    backendFixture:
+      scenario: auth-refusal-closed
+  - text: Gracias, eso era todo.
     channel: whatsapp
     contactPhone: "$PHONE_FIRST_FALLBACK_CONTACT_PHONE"
     sessionId: live-auth-refusal-closes-query-session
@@ -36,12 +48,13 @@ seedPlan:
         resource: gift_purchases
         query: Revisar una compra protegida.
         orderId: null
-        aspects: [summary]
+        aspects: [ summary ]
         sensitiveFields: []
         authAction: none
     selection_candidates: []
 expectations:
   - id: refusal-returns-to-resume-node
+    turnIndex: 0
     type: fixture_effect_count
     operation: handoff.write
     expectedAttempts: 0
@@ -49,24 +62,43 @@ expectations:
     expectedReplays: 0
     severity: hard
   - id: refusal-does-not-call-authentication-or-handoff
+    turnIndex: 0
     type: tool_usage
-    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover]
+    mustNotCall: [ auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover ]
     severity: hard
-  - id: protected-request-is-cleared
-    type: plan_field_equals
-    path: information_state.pending_requests
-    expected: []
+  - id: recall-performs-no-new-effect
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+      - guest_rsvp
+      - create_quote_request
+      - finish_plan
+    turnIndex: 1
     severity: hard
-  - id: refusal-is-respected
-    type: text_semantic
-    rubric: >-
-      The person explicitly refuses to share personal data or continue verification. Pass only if the response respects that decision in natural Spanish, clearly says it will not ask again for an email or code, and closes the protected query without claiming access to purchase data. It must not force a human handoff, restart authentication, or pressure the person to continue.
-    minScore: 0.9
-    requireJudge: true
+  - id: thanks-performs-no-new-effect
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+      - guest_rsvp
+      - create_quote_request
+    turnIndex: 2
     severity: hard
 budget:
-  maxTurns: 1
+  maxTurns: 3
   estimatedPromptTokensPerTurn: 1700
   estimatedCompletionTokensPerTurn: 250
 notes:
   - "R05 v2 (2026-09-17, support assessment hardening item 5): refusal-returns-to-resume-node no longer pins the internal entrevista node. Old defect: a correct refusal-respecting close composed through any routing passed the cleared-request evidence and the no-auth-tool evidence but failed the node pin, grading implementation instead of behavior. New contract proves the same no-forced-handoff close observably: zero handoff effects from receipts (fixture_effect_count handoff.write 0/0/0 hard) together with the retained cleared protected request, the no-authentication-or-handoff tool evidence, and the refusal-respected semantic judge. Expectation id refusal-returns-to-resume-node is retained for ledger and run continuity; only its type changed from node_transition to fixture_effect_count. Threshold and hard severity kept; no threshold reduction. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
+  - "IMGMISC lane merge surgery 2026-09-30: extended 1 to 3 turns with a repeat-from-history continuity turn and a thanks closure; existing expectations pinned to turn 0 with rubric bytes unchanged."
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1

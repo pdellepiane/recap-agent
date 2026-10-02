@@ -327,6 +327,15 @@ export type PipelineOutcome<Result> = {
   observedMaxSnapshots: number;
 };
 
+/** Fired exactly once per settled job, in completion order. */
+export type JobSettledEvent<Result> = {
+  jobIndex: number;
+  caseId: string;
+  /** False only when the case never executed (unadmitted before any paid work). */
+  executed: boolean;
+  outcome: { status: 'ok'; value: Result } | { status: 'error'; error: string };
+};
+
 /**
  * Bounded two-stage pipeline. Case slots (max N) cover execute; the case
  * slot and external lane are released before judging; judge slots (max M)
@@ -345,6 +354,7 @@ export async function runBoundedPipeline<Snapshot, Result>(args: {
   stopSignal?: { stopped: boolean; reason: SchedulerStopReason };
   drainMs?: number;
   onProgress?: (snapshot: ProgressSnapshot) => void;
+  onJobSettled?: (event: JobSettledEvent<Result>) => void;
   now?: () => number;
 }): Promise<PipelineOutcome<Result>> {
   const caseConcurrency = parseCaseConcurrency(args.caseConcurrency);
@@ -358,6 +368,23 @@ export async function runBoundedPipeline<Snapshot, Result>(args: {
   const judgeSlots = new Semaphore(judgeConcurrency);
   const snapshots = new BoundedSnapshotQueue<{ index: number; snapshot: Snapshot }>(snapshotCapacity);
   const outcomes = new Map<number, { status: 'ok'; value: Result } | { status: 'error'; error: string }>();
+  const settleJob = (
+    index: number,
+    outcome: { status: 'ok'; value: Result } | { status: 'error'; error: string },
+    executed: boolean,
+  ): void => {
+    if (outcomes.has(index)) {
+      return;
+    }
+    outcomes.set(index, outcome);
+    const job = jobs.find((candidate) => candidate.index === index);
+    args.onJobSettled?.({
+      jobIndex: index,
+      caseId: job?.caseId ?? `job-${index}`,
+      executed,
+      outcome,
+    });
+  };
   const stopState = args.stopSignal ?? { stopped: false, reason: null as SchedulerStopReason };
   let externalActive = 0;
   let observedMaxExternal = 0;
@@ -388,10 +415,7 @@ export async function runBoundedPipeline<Snapshot, Result>(args: {
     let unadmitted = 0;
     for (const job of jobs) {
       if (job.index >= fromCursor && !outcomes.has(job.index)) {
-        outcomes.set(job.index, {
-          status: 'error',
-          error: unadmittedError(),
-        });
+        settleJob(job.index, { status: 'error', error: unadmittedError() }, false);
         unadmitted += 1;
       }
     }
@@ -404,10 +428,7 @@ export async function runBoundedPipeline<Snapshot, Result>(args: {
     if (outcomes.has(job.index)) {
       return;
     }
-    outcomes.set(job.index, {
-      status: 'error',
-      error: unadmittedError(),
-    });
+    settleJob(job.index, { status: 'error', error: unadmittedError() }, false);
     tracker.markUnadmitted(1);
   };
 
@@ -449,19 +470,19 @@ export async function runBoundedPipeline<Snapshot, Result>(args: {
         // run. A successfully pushed snapshot still drains through judging;
         // only a refused push is recorded here explicitly.
         if (!outcomes.has(job.index)) {
-          outcomes.set(job.index, {
+          settleJob(job.index, {
             status: 'error',
             error: 'incomplete: execution finished but judging was stopped before finalization',
-          });
+          }, true);
           tracker.fail();
         }
       }
     } catch (error) {
       if (!outcomes.has(job.index)) {
-        outcomes.set(job.index, {
+        settleJob(job.index, {
           status: 'error',
           error: error instanceof Error ? error.message : String(error),
-        });
+        }, true);
         tracker.fail();
       }
     } finally {
@@ -486,15 +507,15 @@ export async function runBoundedPipeline<Snapshot, Result>(args: {
     try {
       const value = await job.judge(entry.snapshot, { signal: args.signal ?? null });
       if (!outcomes.has(job.index)) {
-        outcomes.set(job.index, { status: 'ok', value });
+        settleJob(job.index, { status: 'ok', value }, true);
         tracker.complete();
       }
     } catch (error) {
       if (!outcomes.has(job.index)) {
-        outcomes.set(job.index, {
+        settleJob(job.index, {
           status: 'error',
           error: error instanceof Error ? error.message : String(error),
-        });
+        }, true);
         tracker.fail();
       }
     } finally {
@@ -581,10 +602,10 @@ export async function runBoundedPipeline<Snapshot, Result>(args: {
   let leftover = snapshots.shift();
   while (leftover) {
     if (!outcomes.has(leftover.index)) {
-      outcomes.set(leftover.index, {
+      settleJob(leftover.index, {
         status: 'error',
         error: 'incomplete: execution finished but judging was stopped before finalization',
-      });
+      }, true);
       tracker.fail();
     }
     leftover = snapshots.shift();

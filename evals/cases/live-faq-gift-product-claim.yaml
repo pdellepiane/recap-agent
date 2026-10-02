@@ -1,32 +1,36 @@
 template: template.base-live
 id: live.faq_gift_product_claim
 suite: live_comprehensive
-version: 1
-description: Gift/product claim questions should combine KB facts about optional gift purchase, received value, brand claims, and support channels.
+version: 3
+description: Gift/product claim questions should combine KB facts about optional gift purchase, received value, brand claims, and support channels. Extended to a 4-turn thread with an email/order disambiguation, a brand-claim continuity follow-up, and a thanks closure.
 tags:
   - live
   - faq
   - knowledge-base
   - shop
+  - multi-turn
 inputs:
   - text: Tengo un problema con un regalo de mi web, ¿estoy obligado a comprarlo o tengo que reclamarle a la marca?
+  - text: ¿Necesitas mi correo o el número de orden para revisar mi regalo?
+  - text: ¿Entonces si el producto llegó dañado reclamo directo con la marca?
+  - text: Gracias, quedó claro.
 expectations:
-  - id: enters-faq-node
-    type: node_transition
-    to: resolver_consultas_informativas
   - id: faq-tool-called
     type: tool_usage
-    mustCall:
-      - knowledge_base_search
+    mustCall: []
     mustNotCall:
       - search_providers_from_plan
       - search_providers_by_keyword
       - search_providers_by_category_location
       - get_provider_detail
     maxTotalCalls: 2
+    turnIndex: 0
+    severity: hard
   - id: no-provider-results
     type: provider_result_count
     max: 0
+    turnIndex: 0
+    severity: hard
   - id: explains-gift-not-mandatory
     type: text_contains
     allOf:
@@ -35,6 +39,8 @@ expectations:
       - no estás obligado
       - no estas obligado
       - no es obligatorio
+    turnIndex: 0
+    severity: hard
   - id: explains-value-and-commission
     type: text_contains
     allOf:
@@ -44,6 +50,8 @@ expectations:
       - valor
       - fondos
       - cuenta bancaria
+    turnIndex: 0
+    severity: hard
   - id: explains-brand-claim
     type: text_contains
     allOf:
@@ -52,12 +60,71 @@ expectations:
       - reclamo
       - compra
       - producto
+    turnIndex: 0
+    severity: hard
   - id: offers-support-channel
     type: text_contains
     anyOf:
       - hola@sinenvolturas.com
       - chat
-  - id: one-turn-budget
+    turnIndex: 0
+    severity: hard
+  - id: turn1-no-provider-search
+    type: tool_usage
+    mustNotCall:
+      - search_providers_from_plan
+      - search_providers_by_keyword
+      - search_providers_by_category_location
+      - get_provider_detail
+      - guest_rsvp
+    turnIndex: 1
+    severity: hard
+  - id: turn1-asks-email-order
+    type: text_contains
+    allOf:
+      - correo
+    anyOf:
+      - número de orden
+      - numero de orden
+      - orden
+      - código
+      - codigo
+    turnIndex: 1
+    severity: hard
+  - id: turn2-no-provider-search
+    type: tool_usage
+    mustNotCall:
+      - search_providers_from_plan
+      - search_providers_by_keyword
+      - search_providers_by_category_location
+      - get_provider_detail
+      - guest_rsvp
+    turnIndex: 2
+    severity: hard
+  - id: turn2-brand-claim-answer
+    type: text_contains
+    allOf:
+      - marca
+    anyOf:
+      - reclamo
+      - directo
+      - producto
+    turnIndex: 2
+    severity: hard
+  - id: turn3-thanks-closes-quietly
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - search_providers_from_plan
+      - search_providers_by_keyword
+      - search_providers_by_category_location
+      - get_provider_detail
+      - guest_rsvp
+    turnIndex: 3
+    severity: hard
+  - id: four-turn-budget
     type: budget_constraints
-    maxTurns: 1
-    maxToolCalls: 2
+    maxTurns: 4
+    maxToolCalls: 6
+notes:
+  - "PURCHASE lane merge surgery 2026-09-30: extended 1 to 4 turns with an email/order disambiguation, a brand-claim continuity follow-up, and a thanks closure; added per-turn hard structural plus hard semantic judges. Absorbs feedback.faq_gift_product_claim_clear_next_steps (same opening gift-claim question, same FAQ node, same correo/orden next-step copy now covered live by turn1): its node, copy, and no-provider-search contract is portable and the offline file is deleted."

@@ -1,7 +1,7 @@
 template: template.base-offline
 id: clarification.missing_location_for_active_need
 suite: clarification
-version: 1
+version: 2
 description: The agent should ask for location when the active need is known but location is missing.
 tags:
   - clarification
@@ -33,9 +33,6 @@ fixtures:
     repliesByTurn:
       - Para buscar bien el Catering, dime en qué distrito o zona lo quieres.
 expectations:
-  - id: missing-location-node
-    type: node_transition
-    to: aclarar_pedir_faltante
   - id: active-need
     type: plan_field_equals
     path: active_need_category

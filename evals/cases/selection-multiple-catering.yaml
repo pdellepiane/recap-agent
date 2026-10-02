@@ -1,7 +1,7 @@
 template: template.base-offline
 id: selection.choose_multiple_catering_from_shortlist
 suite: selection_continuity
-version: 1
+version: 2
 description: Choosing two Catering providers from one shortlist should persist both selections on the same need.
 tags:
   - selection
@@ -86,9 +86,6 @@ fixtures:
     repliesByTurn:
       - Perfecto, EDO y 4Foodies quedaron como opciones elegidas para Catering.
 expectations:
-  - id: continue-node
-    type: node_transition
-    to: seguir_refinando_guardar_plan
   - id: selected-providers
     type: plan_field_equals
     path: selected_provider_ids

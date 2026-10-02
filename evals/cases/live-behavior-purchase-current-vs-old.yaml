@@ -1,12 +1,24 @@
 template: template.base-live
 id: live_behavior.purchase_current_pending_over_old_approved
 suite: live_behavior_regression
-version: 3
-description: Explicit event, amount, date, and status select Victor's current pending gift instead of an older approved purchase.
-tags: [live, behavior, purchase, selection, contradiction, reported-interaction, victor]
-targetModes: [live_lambda]
+version: 7
+description: Explicit event, amount, date, and status select Victor's current pending gift instead of an older approved purchase; an older-record follow-up and thanks close the thread.
+tags: [ live, behavior, purchase, selection, contradiction, reported-interaction, victor ]
+targetModes: [ live_lambda ]
 inputs:
   - text: Revisa el regalo de S/ 80 para Samuel Josué que hice por Yape el 29 de agosto de 2026. ¿Ya está aprobado o sigue pendiente?
+    channel: whatsapp
+    contactPhone: "+51981056171"
+    sessionId: live-purchase-current-vs-old-session
+    backendFixture:
+      scenario: purchase-victor-171
+  - text: ¿Y el pedido anterior de Josué y Paola también sigue pendiente?
+    channel: whatsapp
+    contactPhone: "+51981056171"
+    sessionId: live-purchase-current-vs-old-session
+    backendFixture:
+      scenario: purchase-victor-171
+  - text: Gracias, quedó claro.
     channel: whatsapp
     contactPhone: "+51981056171"
     sessionId: live-purchase-current-vs-old-session
@@ -17,15 +29,13 @@ backendFixture:
 notes:
   - "R05 oracle revision v1 to v2, 2026-09-14, Packet EX1. Old current-pending-wins-over-old-approved required that no currency symbol, code, or denomination appear anywhere, failing a reply that echoes the user's own stated S/ 80 (matrix: user-stated echo is not invention). The fixture record carries null currency, so novel currency facts remain forbidden. New contract allows echoing the user-stated S/ 80 and forbids only novel symbols, codes, or denominations beyond that echo. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
   - "C1 oracle revision v2 to v3, 2026-09-22, final work package. Old current-purchase-uses-phone-orders demanded the lookup_guest_orders_by_phone label; the frozen run-54da3f5a T0 trace read the same authorized record via lookup_guest_gift_purchases_by_phone (Samuel Josue, pending, complete coverage) and answered grounded, so the pin graded the tool label instead of authorized evidence coverage. New contract empties mustCall (auth safety pins kept) and adds hard current-purchase-authorized-evidence asserting completed purchase evidence with complete coverage for the Samuel Josue record; either authorized source read passes, a wrong-partition read yields no such evidence. Hard severity kept. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
+  - "2026-09-30 purchase-lane extension v5: grows 1 turn to 3 with an older-record follow-up and a thanks closure. Pre-existing un-indexed expectations gain explicit turnIndex 0 because un-indexed expectations evaluate the final turn. The purchaseFact evidence pin is retained unchanged."
 expectations:
-  - id: current-purchase-enters-information
-    type: node_transition
-    to: resolver_consultas_informativas
-    severity: hard
   - id: current-purchase-uses-phone-orders
     type: tool_usage
     mustCall: []
-    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
+    mustNotCall: [ auth_by_phone, request_user_login_code, verify_user_login_code ]
+    turnIndex: 0
     severity: hard
   - id: current-purchase-authorized-evidence
     type: trace_field_subset
@@ -40,14 +50,23 @@ expectations:
               eventLabel: Samuel Josue
     turnIndex: 0
     severity: hard
-  - id: current-pending-wins-over-old-approved
-    type: text_semantic
-    rubric: >-
-      The phone lookup returns two purchases: a current Samuel Josué purchase for 80 created on 2026-08-29 with pending status and null currency (recorded_method_no_currency), and an older Josué y Paola purchase for 88.18 with approved status. The user's explicit event, amount, date, and requested status identify the current Samuel Josué purchase. The backend method enum is Yape_o_Plin (combined name from the real API); rendering "Yape o Plin" or naming the registered method family is grounded, covered by the indexed validation-window policy. The response must be concise, natural, and entirely in Spanish; state that the current pending purchase of 80 for Samuel Josué is pending, for example "el regalo de 80 ... está pendiente". Echoing the user's own stated "S/ 80" is echo, never invention; only novel currency symbols, codes, or denominations beyond that user-stated echo are forbidden. It must select the current pending Samuel Josué purchase, must not expose, mention, or ask about the historical 88.18 Josué y Paola purchase, must state the pending status, must not claim the current gift is approved or successful, must not list contradictory statuses, must not ask the user to choose when typed evidence resolves one record, and must not request email/OTP.
-    minScore: 0.9
-    requireJudge: true
+  - id: older-record-no-auth
+    type: tool_usage
+    mustCall: []
+    mustNotCall: [ auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover ]
+    turnIndex: 1
+    severity: hard
+  - id: victor-thanks-no-auth
+    type: tool_usage
+    mustCall: []
+    mustNotCall: [ auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover ]
+    turnIndex: 2
     severity: hard
 budget:
-  maxTurns: 1
+  maxTurns: 3
   estimatedPromptTokensPerTurn: 1700
   estimatedCompletionTokensPerTurn: 220
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1

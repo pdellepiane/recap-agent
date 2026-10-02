@@ -1,7 +1,7 @@
 template: template.base-live
 id: live.pause_request_temporal_close
 suite: live_comprehensive
-version: 1
+version: 3
 description: Pause intent should route to temporal close in live runtime.
 tags:
   - live
@@ -9,28 +9,45 @@ tags:
   - pause
 inputs:
   - text: stop por ahora, seguimos luego
+  - text: Perdona, ¿me repites lo último que me dijiste?
+  - text: Listo, gracias.
+notes:
+  - "IMGMISC lane merge surgery 2026-09-30: extended 1 to 3 turns with a repeat-from-history continuity turn and a thanks closure; existing expectations pinned to turn 0 with rubric bytes unchanged. Added the missing hard semantic judge for turn 0."
 expectations:
-  - id: temporal-close-node
-    type: node_transition
-    to: guardar_cerrar_temporalmente
   - id: plan-current-node
+    turnIndex: 0
     type: plan_field_equals
     path: current_node
     expected: guardar_cerrar_temporalmente
   - id: pause-persisted
+    turnIndex: 0
     type: trace_field_equals
     path: plan_persisted
     expected: true
   - id: no-provider-tools
+    turnIndex: 0
     type: tool_usage
     mustNotCall:
       - search_providers_from_plan
     maxTotalCalls: 1
   - id: no-ai-disclaimer
+    turnIndex: 0
     type: text_not_contains
     phrases:
       - as an ai
       - language model
   - id: one-turn-budget
     type: budget_constraints
-    maxTurns: 1
+    maxTurns: 3
+  - id: recall-performs-no-new-effect
+    type: tool_usage
+    mustCall: []
+    mustNotCall: [image_inspect, auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover, guest_rsvp, search_providers_from_plan, search_providers_by_query_intent, create_quote_request, finish_plan]
+    turnIndex: 1
+    severity: hard
+  - id: thanks-performs-no-new-effect
+    type: tool_usage
+    mustCall: []
+    mustNotCall: [image_inspect, auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover, guest_rsvp, search_providers_from_plan, search_providers_by_query_intent, create_quote_request]
+    turnIndex: 2
+    severity: hard

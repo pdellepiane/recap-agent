@@ -1253,6 +1253,16 @@ export const evalReportSchema = z.object({
     retryCount: z.number().int().nonnegative(),
     rateLimitCount: z.number().int().nonnegative(),
   }).passthrough().optional(),
+  costSummary: z.object({
+    priced: z.boolean(),
+    pricingVersion: z.string().nullable(),
+    openaiUsd: z.number().nonnegative(),
+    judgeUsd: z.number().nonnegative(),
+    lambdaUsd: z.number().nonnegative(),
+    totalUsd: z.number().nonnegative(),
+    unpricedCases: z.array(z.string()),
+    unpricedModels: z.array(z.string()),
+  }).passthrough().optional(),
   results: z.array(evalArtifactResultSchema),
 });
 export type EvalArtifactResult = z.infer<typeof evalArtifactResultSchema>;

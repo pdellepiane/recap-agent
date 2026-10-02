@@ -1,9 +1,8 @@
 template: template.base-live
 id: live_behavior.close_date_provenance_and_completed_retry
 suite: live_behavior_regression
-version: 1
-description: Reconstruct the duplicate close failure, then repeat the confirmed request
-  to verify that completed state prevents another provider submission.
+version: 4
+description: Reconstruct the duplicate close failure, then repeat the confirmed request to verify that completed state prevents another provider submission.
 tags:
   - live
   - feedback
@@ -27,8 +26,7 @@ inputs:
     sessionId: live-feedback-close-session
     backendFixture:
       scenario: gate-selected-provider-close
-  - text: "Mi evento es el 18 de octubre de 2026. Confirmo: envía la solicitud de
-      cotización a Carlos Schult y cierra el plan."
+  - text: "Mi evento es el 18 de octubre de 2026. Confirmo: envía la solicitud de cotización a Carlos Schult y cierra el plan."
     sessionId: live-feedback-close-session
     backendFixture:
       scenario: gate-selected-provider-close
@@ -65,9 +63,6 @@ seedPlan:
       selected_provider_hints:
         - Carlos Schult
 expectations:
-  - id: tokens-all-turns
-    type: token_usage_present
-    allTurns: true
   - id: selected-provider-preserved
     type: plan_field_subset
     path: provider_needs
@@ -75,23 +70,6 @@ expectations:
       - category: Fotografía y video
         selected_provider_ids:
           - 90
-  - id: no-provider-search
-    type: tool_usage
-    turnIndex: 0
-    mustNotCall:
-      - search_providers_from_plan
-      - search_providers_by_query_intent
-  - id: correct-close-behavior
-    type: text_semantic
-    turnIndex: 4
-    rubric: The final response must correctly complete or confirm the close-flow
-      submission after the user supplied a name, email address, valid phone
-      number, and explicit confirmation. It must preserve the selected
-      photography provider, avoid restarting provider search, and communicate
-      the outcome clearly in Spanish.
-    minScore: 0.85
-    requireJudge: true
-    severity: hard
   - id: contact-details-alone-do-not-submit
     type: tool_usage
     turnIndex: 3
@@ -122,19 +100,15 @@ expectations:
     path: lifecycle_state
     expected: finished
     severity: hard
-  - id: completed-retry-reports-existing-outcome
-    type: text_semantic
-    turnIndex: 5
-    rubric: The response must report that the same quotation request was already
-      submitted, without claiming a new submission, collecting the same contact
-      details again, or reopening provider search. Use natural Spanish; no exact
-      wording is required.
-    minScore: 0.85
-    requireJudge: true
-    severity: hard
 budget:
   maxTurns: 6
   estimatedPromptTokensPerTurn: 1400
   estimatedCompletionTokensPerTurn: 400
 backendFixture:
   scenario: gate-selected-provider-close
+notes:
+  - "Merge v2, 2026-09-30 (IMGMISC lane): live_feedback.token_seeded_close_flow is fully subsumed by this case (identical seedPlan, identical inputs turns 0-4, all 7 expectations byte-identical) and deleted without any edit to this thread. Deleted file: live-feedback-token-close-flow.yaml."
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1

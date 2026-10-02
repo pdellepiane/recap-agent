@@ -1,10 +1,10 @@
 template: template.base-live
 id: live_behavior.rsvp_ambiguous_event_requires_grounded_selection
 suite: live_behavior_regression
-version: 5
-description: An underspecified event reference cannot select or mutate one of several persisted RSVP candidates; the follow-up answer continues on the chosen candidate without re-asking.
-tags: [live, behavior, rsvp, attendance, ambiguity, reported-interaction]
-targetModes: [live_lambda]
+version: 9
+description: Six-turn trusted-phone-empty thread. An underspecified event reference cannot select or mutate one of several persisted RSVP candidates; the follow-up answer continues on the chosen candidate without re-asking and a thanks closes the first half. A clear attending decision then reports the scoped empty-lookup outcome honestly, a doubting follow-up re-checks the same empty world, and a thanks closes the thread.
+tags: [ live, behavior, rsvp, attendance, ambiguity, reported-interaction, trusted-phone, agent-api, continuity ]
+targetModes: [ live_lambda ]
 backendFixture:
   scenario: rsvp-trusted-phone-empty
 inputs:
@@ -15,6 +15,30 @@ inputs:
     backendFixture:
       scenario: rsvp-trusted-phone-empty
   - text: El de Marta, el 19 de septiembre.
+    channel: whatsapp
+    contactPhone: "+12025550100"
+    sessionId: live-rsvp-ambiguous-event-session
+    backendFixture:
+      scenario: rsvp-trusted-phone-empty
+  - text: Perfecto, muchas gracias.
+    channel: whatsapp
+    contactPhone: "+12025550100"
+    sessionId: live-rsvp-ambiguous-event-session
+    backendFixture:
+      scenario: rsvp-trusted-phone-empty
+  - text: Sí, confirmo que asistiré a la invitación pendiente.
+    channel: whatsapp
+    contactPhone: "+12025550100"
+    sessionId: live-rsvp-ambiguous-event-session
+    backendFixture:
+      scenario: rsvp-trusted-phone-empty
+  - text: ¿Seguro? Yo esperaba una invitación.
+    channel: whatsapp
+    contactPhone: "+12025550100"
+    sessionId: live-rsvp-ambiguous-event-session
+    backendFixture:
+      scenario: rsvp-trusted-phone-empty
+  - text: Gracias, eso era todo.
     channel: whatsapp
     contactPhone: "+12025550100"
     sessionId: live-rsvp-ambiguous-event-session
@@ -44,50 +68,89 @@ expectations:
     expectedSuccesses: 0
     expectedReplays: 0
     severity: hard
-  - id: preserves-event-selection-state
-    type: plan_field_equals
-    path: rsvp_state.status
-    expected: awaiting_event_selection
-    turnIndex: 0
-    severity: hard
   - id: does-not-mutate-an-ungrounded-candidate
     type: tool_usage
-    mustNotCall: [guest_rsvp, auth_by_phone, request_user_login_code, verify_user_login_code]
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
     turnIndex: 0
-    severity: hard
-  - id: asks-which-persisted-event
-    type: text_semantic
-    # Rubric clarification (specification, not weakening): dates are required when enumerating candidates.
-    # Derived from prompts/nodes/responder_invitacion/response_contract.txt:9
-    # "Si rsvp_phone_evidence.state es needs_event_selection, enumera solo los candidatos de ese estado y formula una sola pregunta."
-    # Candidates are defined as {event_name, event_date}; enumeration must include dates when present, in any natural format when facts are identical.
-    rubric: >-
-      The guest says only “Ese” while two invitation candidates are pending: Matrimonio de Ana y Luis on 12 September 2026 and Cumpleaños de Marta on 19 September 2026. The response must not choose either event or claim that attendance was registered. It must identify the two available events with their dates in natural Spanish, in any date format when the facts are identical, and ask which one the guest means, without requesting email or an authentication code. Useful extra grounded detail passes.
-    minScore: 0.9
-    requireJudge: true
-    turnIndex: 0
-    severity: hard
-  - id: continuation-answers-on-chosen-candidate
-    type: text_semantic
-    rubric: >-
-      The guest answered the selection question with Cumpleaños de Marta on 19 September 2026. The response must continue on that chosen candidate in natural Spanish: it must never re-ask which event the guest means and never present Matrimonio de Ana y Luis facts as the selected event. It may confirm, ask for the attendance decision, or report state, but a repeated selection question fails. Useful extra grounded detail passes.
-    minScore: 0.85
-    requireJudge: true
-    turnIndex: 1
     severity: hard
   - id: continuation-needs-no-reauth
     type: tool_usage
-    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
+    mustNotCall: [ auth_by_phone, request_user_login_code, verify_user_login_code ]
     turnIndex: 1
     severity: hard
-  - id: no-rsvp-vocabulary
-    type: text_not_contains
-    phrases: ["RSVP", "rsvp"]
+  - id: turn2-no-write-receipt
+    type: fixture_effect_count
+    operation: rsvp.write
+    turnIndex: 2
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: turn2-thanks-without-mutation
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+    turnIndex: 2
+    severity: hard
+  - id: turn3-reads-user-level-invitations-without-auth
+    type: tool_usage
+    mustCall: []
+    mustNotCall: [ guest_rsvp, auth_by_phone, request_user_login_code, verify_user_login_code ]
+    turnIndex: 3
+    severity: hard
+  - id: turn4-no-write-receipt
+    type: fixture_effect_count
+    operation: rsvp.write
+    turnIndex: 4
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: turn4-rechecks-without-mutation
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+    turnIndex: 4
+    severity: hard
+  - id: turn5-no-write-receipt
+    type: fixture_effect_count
+    operation: rsvp.write
+    turnIndex: 5
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: turn5-thanks-without-mutation
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+    turnIndex: 5
     severity: hard
 notes:
   - "E1 v4 2026-09-15, profile-inference directive: counter pin records-one-ambiguous-attempt replaced by a turn-1 continuation proof (clarification answerable, state survives, no re-ask); literal allOf date pin projection-carries-candidate-dates folded into the format-tolerant semantic rubric; turn-0 expectations scoped with turnIndex 0. Node pin kept as a documented lane-routing invariant. R05: old v3 runs preserved; baseline and candidate must rerun on this v4 contract."
   - "R05 v5 2026-09-22, evidence-preserving handoff Packet C: remains-in-rsvp-node no longer pins the internal responder_invitacion node. Old defect: a correct two-candidate clarification composed through entrevista routing failed the node pin while passing the semantic judge, grading implementation instead of behavior. New contract proves the same stay-in-selection invariant observably: zero rsvp.write effects on turn 0 from receipts (fixture_effect_count rsvp.write 0/0/0 hard, same pattern as s11 v4) together with the retained awaiting_event_selection state, the zero-guest_rsvp tool evidence, and the two-candidate semantic judge with dates. Expectation id remains-in-rsvp-node is retained for ledger and run continuity; only its type changed from node_transition to fixture_effect_count. T1 audit (2026-09-23 targeted run): the Marta lookup returns not_found and the reply truthfully reports nonverification without claiming success; that is correct effect truth, not a successful RSVP, and the fixture does not permit a verified post-write state here. Threshold and hard severity kept; no threshold reduction. Old v4 runs preserved; baseline and candidate must rerun on this v5 contract."
+  - "RSVP extension v6 (2026-09-30): added a genuine turn-2 thanks closure with hard no-write structural assertions and a hard requireJudge semantic judge. The previously final-scoped no-rsvp-vocabulary pin is now scoped per turn (turn0/turn1/turn2). Turns 0-1 unchanged. Old v5 runs preserved; baseline and candidate must rerun on this v6 contract."
+  - "RSVP merge v7 (2026-09-30): this case now carries a 6-turn thread that fully subsumes live_behavior.rsvp_trusted_phone_reports_no_pending (turns 3-5). Every absorbed turn keeps its original hard structural assertions (node_transition, trace_field_equals, tool_usage, fixture_effect_count) and hard requireJudge semantic judge, renumbered turnIndex 0->3, 1->4, 2->5 with turnN- id prefixes. Turns 0-2 unchanged. A shared sessionId now threads all six turns on the same rsvp-trusted-phone-empty fixture and phone. Old v6 runs preserved; baseline and candidate must rerun on this v7 contract."
 budget:
-  maxTurns: 2
+  maxTurns: 6
   estimatedPromptTokensPerTurn: 1600
   estimatedCompletionTokensPerTurn: 300
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1

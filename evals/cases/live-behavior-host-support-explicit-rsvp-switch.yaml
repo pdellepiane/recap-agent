@@ -1,14 +1,33 @@
 template: template.base-live
 id: live_behavior.host_support_allows_explicit_rsvp_switch
 suite: live_behavior_regression
-version: 1
-description: A pending host withdrawal must not prevent an explicitly requested attendance question; the test uses read-only fixture data.
-tags: [live, behavior, rsvp, host-withdrawal, boundary]
-targetModes: [live_lambda]
+version: 4
+description: Four-turn Michelle & Jorge thread. A pending host withdrawal does not block an explicit read-only attendance question, then a plus-one is registered, then own attendance plus companion are confirmed in one mutation, then a three-person request becomes a bounded human-review case.
+tags: [ live, behavior, rsvp, host-withdrawal, boundary, plus-one, continuity ]
+targetModes: [ live_lambda ]
 inputs:
   - text: Ahora cambio de tema. Quiero consultar mi asistencia a Michelle & Jorge. ¿Ya está confirmada? No cambies mi respuesta.
     channel: whatsapp
     contactPhone: "+51942633292"
+    sessionId: live-host-support-rsvp-switch-session
+    backendFixture:
+      scenario: rsvp-plus-one-saved
+  - text: También asistirá mi acompañante a Michelle & Jorge
+    channel: whatsapp
+    contactPhone: "+51942633292"
+    sessionId: live-host-support-rsvp-switch-session
+    backendFixture:
+      scenario: rsvp-plus-one-saved
+  - text: Confirmo que sí asistiré a Michelle & Jorge y que mi acompañante también asistirá
+    channel: whatsapp
+    contactPhone: "+51942633292"
+    sessionId: live-host-support-rsvp-switch-session
+    backendFixture:
+      scenario: rsvp-plus-one-saved
+  - text: Hola, confirmo mi asistencia y la de Maria y Carlos para el evento del sabado
+    channel: whatsapp
+    contactPhone: "+51942633292"
+    sessionId: live-host-support-rsvp-switch-session
     backendFixture:
       scenario: rsvp-plus-one-saved
 seedPlan:
@@ -23,31 +42,53 @@ seedPlan:
         eventHint: Otro evento
     selection_candidates: []
     last_completed_request: null
-backendFixture: {scenario: rsvp-plus-one-saved}
+backendFixture: { scenario: rsvp-plus-one-saved }
+notes:
+  - "RSVP merge v2 (2026-09-30): this case now carries a 4-turn thread that fully subsumes live_behavior.rsvp_plus_one_uses_phone_scoped_mutation (turn 1), live_behavior.rsvp_guest_and_plus_one_combined_saved (turn 2), and live_behavior.rsvp_multi_person_offers_human_help (turn 3); every absorbed turn keeps its original hard structural assertions and hard requireJudge semantic judge, scoped with turnIndex. The turn-0 explicit-switch contract is unchanged except explicit turnIndex 0 on the previously final-scoped expectations. Colliding enters-rsvp-node and no-raw-rsvp-fields ids renamed with a turnN- prefix. A shared sessionId now threads all four turns. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
 expectations:
-  - id: explicit-switch-enters-rsvp
-    type: node_transition
-    to: responder_invitacion
-    severity: hard
   - id: explicit-state-query-is-read-only
     type: tool_usage
-    mustCall: [lookup_rsvp_invitations, lookup_guest_events_by_phone]
-    mustNotCall: [guest_rsvp, knowledge_base_search, request_human_takeover, auth_by_phone, request_user_login_code]
+    mustCall: []
+    mustNotCall:
+      - guest_rsvp
+      - request_human_takeover
+      - auth_by_phone
+      - request_user_login_code
+    turnIndex: 0
     severity: hard
-  - id: current-request-not-old-pending-topic
-    type: text_semantic
-    rubric: >-
-      The user explicitly switched from withdrawal support to asking about attendance
-      at Michelle & Jorge, with no authorization to change it. The fixture attendance
-      has not been answered. State that attendance is pending/not yet confirmed for
-      that event, without claiming a mutation. Do not answer the old withdrawal
-      question, initiate human handoff, ask for OTP, or discuss another event.
-    minScore: 0.9
-    requireJudge: true
+  - id: phone-scoped-plus-one-mutation
+    type: tool_usage
+    mustCall: [ guest_rsvp ]
+    mustNotCall: [ request_human_takeover, auth_by_phone, request_user_login_code, verify_user_login_code ]
+    turnIndex: 1
     severity: hard
-  - id: read-only-query-does-not-stage-a-future-mutation
-    type: plan_field_equals
-    path: rsvp_state.pending_action
-    expected: null
+  - id: combined-mutation-single-call
+    type: tool_usage
+    mustCall: [ guest_rsvp ]
+    mustNotCall: [ request_human_takeover, auth_by_phone, request_user_login_code, verify_user_login_code ]
+    turnIndex: 2
     severity: hard
-budget: {maxTurns: 1, estimatedPromptTokensPerTurn: 1700, estimatedCompletionTokensPerTurn: 180}
+  - id: no-mutation
+    type: tool_usage
+    mustNotCall:
+      - guest_rsvp
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+    turnIndex: 3
+    severity: hard
+  - id: handoff-registered
+    type: tool_usage
+    mustCall: [ request_human_takeover ]
+    turnIndex: 3
+    severity: hard
+  - id: no-overclaim-apply-confirmation
+    type: text_not_contains
+    phrases: [ "aplicar la confirmación", "aplicar la confirmacion" ]
+    turnIndex: 3
+    severity: hard
+budget: { maxTurns: 4, estimatedPromptTokensPerTurn: 1700, estimatedCompletionTokensPerTurn: 180 }
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1

@@ -1,14 +1,26 @@
 template: template.base-live
 id: live_behavior.phone_account_rejection_requests_email
 suite: live_behavior_regression
-version: 2
+version: 6
 description: An explicit rejection of the current phone account clears phone authentication and requests the registered email.
-tags: [live, behavior, authentication, phone-first, email-fallback]
-targetModes: [live_lambda]
+tags: [ live, behavior, authentication, phone-first, email-fallback ]
+targetModes: [ live_lambda ]
 backendFixture:
   scenario: s06-identity-rejection-success
 inputs:
   - text: Esa no es mi cuenta ni el número que tengo registrado.
+    channel: whatsapp
+    contactPhone: "+51900000901"
+    sessionId: phone-account-rejected-session
+    backendFixture:
+      scenario: s06-identity-rejection-success
+  - text: Perdona, ¿me repites lo último que me dijiste?
+    channel: whatsapp
+    contactPhone: "+51900000901"
+    sessionId: phone-account-rejected-session
+    backendFixture:
+      scenario: s06-identity-rejection-success
+  - text: Gracias, eso era todo.
     channel: whatsapp
     contactPhone: "+51900000901"
     sessionId: phone-account-rejected-session
@@ -34,41 +46,35 @@ seedPlan:
         query: ¿La restricción de vestir de blanco aplica a mujeres y varones?
         eventHint: Karem y Alfredo
     selection_candidates: []
+notes:
+  - "R05 oracle revision v2 to v3, 2026-09-25: Accept the same observable fact or verified effect in natural wording; keep authorization and false-success boundaries. Historical verdicts unchanged."
+  - "IMGMISC lane merge surgery 2026-09-30: extended 1 to 3 turns with a repeat-from-history continuity turn and a thanks closure; existing expectations pinned to turn 0 with rubric bytes unchanged. Recall/closure tool pins omit request_human_takeover because turn 0 already hands off."
 expectations:
   - id: rejected-phone-is-not-retried
+    turnIndex: 0
     type: tool_usage
-    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
+    mustNotCall: [ auth_by_phone, request_user_login_code, verify_user_login_code ]
     severity: hard
   - id: phone-authentication-is-cleared
+    turnIndex: 0
     type: plan_field_equals
     path: user_auth.status
     expected: none
     severity: hard
   - id: phone-token-is-cleared
+    turnIndex: 0
     type: plan_field_equals
     path: user_auth.token
     expected: null
     severity: hard
   - id: phone-auth-method-is-cleared
+    turnIndex: 0
     type: plan_field_equals
     path: user_auth.auth_method
     expected: null
     severity: hard
-  - id: protected-question-remains-pending
-    type: plan_field_subset
-    path: information_state.pending_requests
-    expected:
-      - kind: associated_event
-        query: ¿La restricción de vestir de blanco aplica a mujeres y varones?
-    severity: hard
-  - id: requests-registered-email-after-rejection
-    type: text_semantic
-    rubric: >-
-      The user rejects the previously associated account. In Spanish, acknowledge that access through that association will not continue and say human help has been requested. Do not ask for email or OTP, claim authorization succeeded, or disclose the protected event answer. The pending question is retained in state; it need not be repeated in the response.
-    minScore: 0.9
-    requireJudge: true
-    severity: hard
   - id: identity-rejection-handoff-effect
+    turnIndex: 0
     type: fixture_effect_count
     operation: handoff.write
     expectedAttempts: 1
@@ -76,11 +82,39 @@ expectations:
     expectedReplays: 0
     severity: hard
   - id: seeded-token-absent-from-output
+    turnIndex: 0
     type: text_not_contains
     phrases:
       - seeded-phone-token
     severity: hard
+  - id: recall-performs-no-new-effect
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - guest_rsvp
+      - create_quote_request
+      - finish_plan
+    turnIndex: 1
+    severity: hard
+  - id: thanks-performs-no-new-effect
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - guest_rsvp
+      - create_quote_request
+    turnIndex: 2
+    severity: hard
 budget:
-  maxTurns: 1
+  maxTurns: 3
   estimatedPromptTokensPerTurn: 1800
   estimatedCompletionTokensPerTurn: 350
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1

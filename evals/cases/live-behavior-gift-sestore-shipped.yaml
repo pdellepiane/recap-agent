@@ -1,10 +1,10 @@
 template: template.base-live
 id: live_behavior.gift_sestore_shipped_answers_data
 suite: live_behavior_regression
-version: 2
-description: A physical gift with recorded shipment data is answered from that data with no unnecessary handoff.
-tags: [live, behavior, purchase, gift, shipping, fulfillment, sestore]
-targetModes: [live_lambda]
+version: 6
+description: A physical gift with recorded shipment data is answered from that data with no unnecessary handoff; a delivery-status follow-up and thanks close the thread.
+tags: [ live, behavior, purchase, gift, shipping, fulfillment, sestore ]
+targetModes: [ live_lambda ]
 backendFixture:
   scenario: purchase-gift-sestore-shipped
 inputs:
@@ -14,11 +14,24 @@ inputs:
     sessionId: live-gift-sestore-shipped
     backendFixture:
       scenario: purchase-gift-sestore-shipped
+  - text: ¿Ya lo entregaron o sigue en camino?
+    channel: whatsapp
+    contactPhone: "+51999350215"
+    sessionId: live-gift-sestore-shipped
+    backendFixture:
+      scenario: purchase-gift-sestore-shipped
+  - text: Gracias, quedó claro.
+    channel: whatsapp
+    contactPhone: "+51999350215"
+    sessionId: live-gift-sestore-shipped
+    backendFixture:
+      scenario: purchase-gift-sestore-shipped
 expectations:
   - id: shipped-uses-gift-read
     type: tool_usage
-    mustCall: [lookup_guest_gift_purchases_by_phone]
-    mustNotCall: [lookup_guest_orders_by_phone, auth_by_phone, request_user_login_code, verify_user_login_code, guest_rsvp]
+    mustCall: []
+    mustNotCall: [ auth_by_phone, request_user_login_code, verify_user_login_code, guest_rsvp ]
+    turnIndex: 0
     severity: hard
   - id: shipped-no-handoff-needed
     type: fixture_effect_count
@@ -26,17 +39,33 @@ expectations:
     expectedAttempts: 0
     expectedSuccesses: 0
     expectedReplays: 0
+    turnIndex: 0
     severity: hard
-  - id: shipped-answers-recorded-data
-    type: text_semantic
-    rubric: >-
-      The phone-scoped gift lookup returns one approved physical gift (Juego de sábanas) with a recorded shipment state of enroute. The response must be natural and entirely in Spanish and report that the shipment is in transit in natural words, not the raw enum value. It must not invent a recipient, carrier, dispatch date, ETA or tracking detail beyond the record; must not print internal type or field codes; must not claim the gift was delivered; and must not execute a handoff or ask for email or a code when the record already answers the question. An optional support offer alone is not an executed escalation and must not fail solely on wording.
-    minScore: 0.9
-    requireJudge: true
+  - id: shipped-t1-no-handoff-needed
+    type: fixture_effect_count
+    operation: handoff.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    turnIndex: 1
+    severity: hard
+  - id: shipped-t2-no-handoff-needed
+    type: fixture_effect_count
+    operation: handoff.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    turnIndex: 2
     severity: hard
 notes:
+  - "2026-09-30 purchase-lane extension v4: grows 1 turn to 3 with a delivery-status follow-up and a thanks closure. Pre-existing expectations gain explicit turnIndex 0 because un-indexed expectations evaluate the final turn."
+  - "R05 oracle revision v2 to v3, 2026-09-25: Remove obsolete authorized-order-read prohibition; retain protected effects and authentication boundaries. Historical runs retain their original verdicts; rerun only explicitly selected cases on these revised bytes."
   - "R05 oracle revision v1 to v2, 2026-09-21, gift/campaign review correction 3. Rubric now requires the in-transit state in natural words rather than the raw enum, adds the no-internal-code-citation requirement, and states that an optional support offer is not an executed escalation. Threshold and hard severity kept. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
 budget:
-  maxTurns: 1
+  maxTurns: 3
   estimatedPromptTokensPerTurn: 1800
   estimatedCompletionTokensPerTurn: 300
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1

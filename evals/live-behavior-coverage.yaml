@@ -2,1334 +2,2490 @@ version: 1
 behaviorChanges:
   - id: retain-authorized-customer-transaction-reference-in-model-profile
     implementedBy: e8f6d3fe
-    liveCaseIds: [live_behavior.customer_transaction_reference_matched]
+    liveCaseIds: [ live_behavior.customer_transaction_reference_matched ]
   - id: keep-payment-destination-bound-to-identified-pending-purchase
     implementedBy: e8f6d3fe
-    liveCaseIds: [live_behavior.payment_destination_requires_pending_purchase]
+    liveCaseIds: [ live_behavior.payment_destination_requires_pending_purchase ]
+    retiredLiveCaseIds:
+      - live_behavior.payment_destination_requires_pending_purchase
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: classify-host-withdrawal-as-policy-or-status-instead-of-buyer-order
     implementedBy: e8f6d3fe
-    liveCaseIds: [live_behavior.host_withdrawal_diana_policy_and_support]
+    liveCaseIds: [ live_behavior.host_withdrawal_diana_policy_and_support ]
   - id: read-rsvp-candidates-before-generic-clarification
     implementedBy: 654f01a3
-    liveCaseIds: [live_behavior.rsvp_plus_one_multiple_events_requires_selection]
+    liveCaseIds: [ live_behavior.rsvp_explicit_mutation_targets_requested_event ]
   - id: distinguish-saved-from-unsaved-rsvp-companion-receipt
     implementedBy: 654f01a3
-    liveCaseIds: [live_behavior.rsvp_plus_one_uses_phone_scoped_mutation, live_behavior.rsvp_plus_one_not_eligible_no_false_success]
+    liveCaseIds: [ live_behavior.host_support_allows_explicit_rsvp_switch, live_behavior.rsvp_cristian_phone_enriched_confirmation ]
   - id: answer-from-authorized-records-when-image-unavailable
     implementedBy: 299ef95f
-    liveCaseIds: [live_behavior.image_unavailable_captioned]
+    liveCaseIds: [ live_behavior.image_unavailable_captioned ]
   - id: approved-purchase-summary-omits-payment-type
     implementedBy: "53483659"
-    liveCaseIds: [live_behavior.accountless_event_answer_precedes_remaining_private_auth]
+    liveCaseIds: [ live_behavior.accountless_guest_event_uses_phone_without_otp ]
   - id: preserve-neutral-auth-purchase-extraction-instead-of-welcome
     implementedBy: 4dce9960
-    liveCaseIds: [live_behavior.purchase_confirmation_carina_request_survives_normalization]
+    liveCaseIds: [ live_behavior.purchase_confirmation_carina_request_survives_normalization ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_confirmation_carina_request_survives_normalization
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: typed-mailbox-support-act-preserves-conversation-continuity
     implementedBy: ff9e1491
-    liveCaseIds: [live_behavior.mailbox_issue_deferral_and_clarification_preserve_support]
+    liveCaseIds: [ live_behavior.mailbox_issue_deferral_and_clarification_preserve_support ]
+    retiredLiveCaseIds:
+      - live_behavior.mailbox_issue_deferral_and_clarification_preserve_support
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: compact-established-support-extractor-omits-planning-context
     implementedBy: ff9e1491
-    liveCaseIds: [live_behavior.mailbox_issue_deferral_and_clarification_preserve_support]
+    liveCaseIds: [ live_behavior.mailbox_issue_deferral_and_clarification_preserve_support ]
+    retiredLiveCaseIds:
+      - live_behavior.mailbox_issue_deferral_and_clarification_preserve_support
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: deterministic-support-acknowledgment-avoids-reply-model-and-lookups
     implementedBy: ff9e1491
-    liveCaseIds: [live_behavior.mailbox_issue_deferral_and_clarification_preserve_support]
+    liveCaseIds: [ live_behavior.mailbox_issue_deferral_and_clarification_preserve_support ]
+    retiredLiveCaseIds:
+      - live_behavior.mailbox_issue_deferral_and_clarification_preserve_support
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: typed-support-anchor-preserves-ambiguous-followup-lane
     implementedBy: 297974f4
-    liveCaseIds: [live_behavior.mailbox_issue_deferral_and_clarification_preserve_support]
+    liveCaseIds: [ live_behavior.mailbox_issue_deferral_and_clarification_preserve_support ]
+    retiredLiveCaseIds:
+      - live_behavior.mailbox_issue_deferral_and_clarification_preserve_support
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: confirmation-document-checks-canonical-status-and-hands-off-once
     implementedBy: ff9e1491
-    liveCaseIds: [live_behavior.purchase_confirmation_carina_request_survives_normalization]
+    liveCaseIds: [ live_behavior.purchase_confirmation_carina_request_survives_normalization ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_confirmation_carina_request_survives_normalization
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: typed-policy-support-act-requires-indexed-faq-evidence
     implementedBy: ff9e1491
-    liveCaseIds: [live_behavior.support_detail_continuity]
+    liveCaseIds: [ live_behavior.support_detail_continuity ]
+    retiredLiveCaseIds:
+      - live_behavior.support_detail_continuity
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: rejected-purchase-extraction-cannot-fall-through-to-welcome
     implementedBy: ff9e1491
-    liveCaseIds: [live_behavior.purchase_confirmation_carina_request_survives_normalization]
+    liveCaseIds: [ live_behavior.purchase_confirmation_carina_request_survives_normalization ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_confirmation_carina_request_survives_normalization
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: phone-scoped-human-handoff-uses-only-trusted-channel-phone
     implementedBy: ff9e1491
-    liveCaseIds: [live_behavior.purchase_confirmation_carina_request_survives_normalization]
+    liveCaseIds: [ live_behavior.purchase_confirmation_carina_request_survives_normalization ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_confirmation_carina_request_survives_normalization
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: attendance-state-query-clears-old-mutations-and-does-not-offer-new-ones
     implementedBy: 202e75cc
-    liveCaseIds: [live_behavior.host_support_allows_explicit_rsvp_switch]
+    liveCaseIds: [ live_behavior.host_support_allows_explicit_rsvp_switch ]
   - id: personal-attendance-state-has-one-extraction-route
     implementedBy: "21234610"
-    liveCaseIds: [live_behavior.host_support_allows_explicit_rsvp_switch]
+    liveCaseIds: [ live_behavior.host_support_allows_explicit_rsvp_switch ]
   - id: host-withdrawal-policy-and-individual-status-support
     implementedBy: 01ea7d53
-    liveCaseIds: [live_behavior.host_withdrawal_diana_policy_and_support, live_behavior.host_withdrawal_general_policy_only]
+    liveCaseIds: [ live_behavior.host_withdrawal_diana_policy_and_support ]
   - id: pending-information-event-reference-does-not-start-rsvp
     implementedBy: 01ea7d53
-    liveCaseIds: [live_behavior.host_withdrawal_pending_event_followup, live_behavior.host_support_allows_explicit_rsvp_switch]
+    liveCaseIds:
+      - live_behavior.host_support_allows_explicit_rsvp_switch
+    retiredLiveCaseIds:
+      - live_behavior.host_withdrawal_pending_event_followup
   - id: guest-record-name-is-not-event-identity
     implementedBy: 01ea7d53
-    liveCaseIds: [live_behavior.rsvp_missing_event_identity_is_unavailable]
+    liveCaseIds: [ live_behavior.rsvp_missing_event_identity_is_unavailable ]
   - id: reported-event-role-does-not-force-welcome-schema
     implementedBy: 01ea7d53
-    liveCaseIds: [live_behavior.host_withdrawal_diana_policy_and_support]
+    liveCaseIds: [ live_behavior.host_withdrawal_diana_policy_and_support ]
   - id: remove-stale-retired-confirmation-summary
     implementedBy: 2f0d313
-    liveCaseIds: [live_behavior.phone_confirmation_unclear_requires_yes_or_no]
+    liveCaseIds: [ live_behavior.phone_confirmation_unclear_requires_yes_or_no ]
   - id: preserve-complete-numeric-faq-evidence
     implementedBy: 56dc2e0
-    liveCaseIds: [live.faq_from_recommendation_node]
+    liveCaseIds: [ live.faq_from_recommendation_node ]
+    retiredLiveCaseIds:
+      - live.faq_from_recommendation_node
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: state-explicit-numeric-faq-values
     implementedBy: 181f0e0
-    liveCaseIds: [live.faq_from_recommendation_node]
+    liveCaseIds: [ live.faq_from_recommendation_node ]
+    retiredLiveCaseIds:
+      - live.faq_from_recommendation_node
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: route-faq-from-active-planning-nodes
     implementedBy: 4e45fcb
-    liveCaseIds: [live.faq_from_recommendation_node]
+    liveCaseIds: [ live.faq_from_recommendation_node ]
+    retiredLiveCaseIds:
+      - live.faq_from_recommendation_node
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: preserve-ambiguous-confirmation-evidence
     implementedBy: 112015f
-    liveCaseIds: [live_behavior.ambiguous_confirmation_clarifies]
+    liveCaseIds: [ live_behavior.ambiguous_confirmation_clarifies ]
   - id: reject-ungrounded-multi-candidate-confirmations
     implementedBy: f99d6a2
-    liveCaseIds: [live_behavior.ambiguous_confirmation_clarifies]
+    liveCaseIds: [ live_behavior.ambiguous_confirmation_clarifies ]
   - id: reject-ungrounded-provider-selection-operations
     implementedBy: 20cbb0e
-    liveCaseIds: [live_behavior.ambiguous_confirmation_clarifies]
+    liveCaseIds: [ live_behavior.ambiguous_confirmation_clarifies ]
   - id: render-neutral-provider-confirmation-clarification
     implementedBy: 9284b0e
-    liveCaseIds: [live_behavior.ambiguous_confirmation_clarifies]
+    liveCaseIds: [ live_behavior.ambiguous_confirmation_clarifies ]
   - id: resolve-provider-price-references
     implementedBy: 112015f
-    liveCaseIds: [live_behavior.provider_reference_cheaper_option]
+    liveCaseIds: [ live_behavior.provider_reference_cheaper_option ]
+    retiredLiveCaseIds:
+      - live_behavior.provider_reference_cheaper_option
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: resolve-provider-location-references
     implementedBy: 112015f
-    liveCaseIds: [live_behavior.provider_reference_miraflores_option]
+    liveCaseIds: [ live_behavior.provider_reference_miraflores_option ]
   - id: enforce-spanish-only-output
     implementedBy: dab4c2b
-    liveCaseIds: [live_behavior.spanish_only_mixed_language_request]
+    liveCaseIds: [ live_behavior.spanish_only_mixed_language_request ]
+    retiredLiveCaseIds:
+      - live_behavior.spanish_only_mixed_language_request
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: preserve-close-phone-correction-context
     implementedBy: b4fe8f1
-    liveCaseIds: [live_feedback.token_seeded_contact_correction]
+    liveCaseIds: [ live_feedback.token_seeded_contact_correction ]
+    retiredLiveCaseIds:
+      - live_feedback.token_seeded_contact_correction
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: preserve-multi-need-event-plans
     implementedBy: 3063ebe
-    liveCaseIds: [live_feedback.token_fresh_multifront_stays_multi_need]
+    liveCaseIds: [ live_feedback.token_fresh_multifront_stays_multi_need ]
+    retiredLiveCaseIds:
+      - live_feedback.token_fresh_multifront_stays_multi_need
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: preserve-deferred-provider-needs-at-close
     implementedBy: cf43147
-    liveCaseIds: [live_feedback.token_seeded_selection_defer_close]
+    liveCaseIds: [ live_feedback.token_seeded_selection_defer_close ]
+    retiredLiveCaseIds:
+      - live_feedback.token_seeded_selection_defer_close
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: stop-repeated-verification-loops
     implementedBy: 82be35d
-    liveCaseIds: [live_behavior.repeated_otp_failure_preserves_gift_query]
+    liveCaseIds: [ live_behavior.repeated_otp_failure_preserves_gift_query ]
+    retiredLiveCaseIds:
+      - live_behavior.repeated_otp_failure_preserves_gift_query
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: render-completed-submissions-as-final
     implementedBy: 26893ff
-    liveCaseIds: [live_feedback.token_seeded_close_flow]
+    liveCaseIds: [ live_behavior.close_date_provenance_and_completed_retry ]
   - id: recover-retired-phone-confirmation-state
     implementedBy: bbe5ca6
-    liveCaseIds: [live_behavior.phone_confirmation_unclear_requires_yes_or_no]
+    liveCaseIds: [ live_behavior.phone_confirmation_unclear_requires_yes_or_no ]
   - id: clear-retired-phone-confirmation-ambiguity
     implementedBy: 4266f35
-    liveCaseIds: [live_behavior.phone_confirmation_unclear_requires_yes_or_no]
+    liveCaseIds: [ live_behavior.phone_confirmation_unclear_requires_yes_or_no ]
   - id: fall-back-after-explicit-phone-account-rejection
     implementedBy: 14e0e65
-    liveCaseIds: [live_behavior.phone_account_rejection_requests_email]
+    liveCaseIds: [ live_behavior.phone_account_rejection_requests_email ]
   - id: persist-sanitized-authentication-execution-diagnostics
     implementedBy: 14e0e65
-    liveCaseIds: [live_behavior.repeated_otp_failure_preserves_gift_query]
+    liveCaseIds: [ live_behavior.repeated_otp_failure_preserves_gift_query ]
+    retiredLiveCaseIds:
+      - live_behavior.repeated_otp_failure_preserves_gift_query
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: clarify-imprecise-phone-confirmation-answers
     implementedBy: de67a04
-    liveCaseIds: [live_behavior.phone_confirmation_unclear_requires_yes_or_no]
+    liveCaseIds: [ live_behavior.phone_confirmation_unclear_requires_yes_or_no ]
   - id: respond-to-missing-otp-reports
     implementedBy: de67a04
-    liveCaseIds: [live_behavior.otp_not_received_requires_response]
+    liveCaseIds: [ live_behavior.otp_not_received_requires_response ]
+    retiredLiveCaseIds:
+      - live_behavior.otp_not_received_requires_response
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: explain-image-limitation-after-sending-otp
     implementedBy: 7b14756
-    liveCaseIds: [live_behavior.otp_sent_explains_image_limitation]
+    liveCaseIds: [ live_behavior.otp_sent_explains_image_limitation ]
+    retiredLiveCaseIds:
+      - live_behavior.otp_sent_explains_image_limitation
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: accept-otp-expressed-as-spanish-digit-words
     implementedBy: "7332063"
-    liveCaseIds: [live_behavior.otp_number_words_are_verified]
+    liveCaseIds: [ live_behavior.otp_number_words_are_verified ]
   - id: preserve-resolved-information-query-in-reply-evidence
     implementedBy: ce63c1f
-    liveCaseIds: [live_behavior.phone_confirmation_unclear_requires_yes_or_no]
+    liveCaseIds: [ live_behavior.phone_confirmation_unclear_requires_yes_or_no ]
   - id: withhold-payment-destination-without-pending-purchase
     implementedBy: d08aac3
-    liveCaseIds: [live_behavior.payment_destination_requires_pending_purchase]
+    liveCaseIds: [ live_behavior.payment_destination_requires_pending_purchase ]
+    retiredLiveCaseIds:
+      - live_behavior.payment_destination_requires_pending_purchase
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: omit-shipping-for-nonphysical-purchases
     implementedBy: d08aac3
-    liveCaseIds: [live_behavior.nonphysical_purchase_omits_shipping]
+    liveCaseIds: [ live_behavior.payment_destination_requires_pending_purchase ]
+    retiredLiveCaseIds:
+      - live_behavior.payment_destination_requires_pending_purchase
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: route-rsvp-through-structured-extraction
     implementedBy: 5dd22c4
-    liveCaseIds: [live_behavior.rsvp_missing_action_requires_explicit_decision]
+    liveCaseIds: [ live_behavior.s11_rsvp_durability_confirms_once ]
   - id: require-explicit-rsvp-action-before-mutation
     implementedBy: 5dd22c4
-    liveCaseIds: [live_behavior.rsvp_missing_action_requires_explicit_decision]
+    liveCaseIds: [ live_behavior.s11_rsvp_durability_confirms_once ]
   - id: use-trusted-channel-phone-for-rsvp-without-account-auth
     implementedBy: 5dd22c4
-    liveCaseIds: [live_behavior.rsvp_trusted_phone_reports_no_pending]
+    liveCaseIds: [ live_behavior.rsvp_ambiguous_event_requires_grounded_selection ]
   - id: report-only-backend-confirmed-rsvp-outcomes
     implementedBy: 5dd22c4
-    liveCaseIds: [live_behavior.rsvp_trusted_phone_reports_no_pending]
+    liveCaseIds: [ live_behavior.rsvp_ambiguous_event_requires_grounded_selection ]
   - id: persist-multiple-pending-rsvp-candidates
     implementedBy: 5dd22c4
-    liveCaseIds: [live_behavior.rsvp_ambiguous_event_requires_grounded_selection]
+    liveCaseIds: [ live_behavior.rsvp_ambiguous_event_requires_grounded_selection ]
   - id: reject-ungrounded-rsvp-event-selection
     implementedBy: 5dd22c4
-    liveCaseIds: [live_behavior.rsvp_ambiguous_event_requires_grounded_selection]
+    liveCaseIds: [ live_behavior.rsvp_ambiguous_event_requires_grounded_selection ]
   - id: keep-pending-rsvp-followups-unsuppressed
     implementedBy: 5dd22c4
-    liveCaseIds: [live_behavior.rsvp_ambiguous_event_requires_grounded_selection]
+    liveCaseIds: [ live_behavior.rsvp_ambiguous_event_requires_grounded_selection ]
   - id: route-development-lambda-to-production-agent-api
     implementedBy: 570be47
-    liveCaseIds: [live_behavior.rsvp_trusted_phone_reports_no_pending]
+    liveCaseIds: [ live_behavior.rsvp_ambiguous_event_requires_grounded_selection ]
   - id: preserve-campaign-grounded-rsvp-when-no-mutation-is-pending-jose
     implementedBy: 6a9bbe6
-    liveCaseIds: [live_behavior.rsvp_jose_campaign_invitation_not_reported_missing]
+    liveCaseIds: [ live_behavior.rsvp_jose_campaign_invitation_not_reported_missing ]
+    retiredLiveCaseIds:
+      - live_behavior.rsvp_jose_campaign_invitation_not_reported_missing
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: preserve-campaign-grounded-rsvp-when-no-mutation-is-pending-cinthya
     implementedBy: e0557c3
-    liveCaseIds: [live_behavior.rsvp_cinthya_campaign_invitation_not_reported_missing]
+    liveCaseIds: [ live_behavior.rsvp_jose_campaign_invitation_not_reported_missing ]
+    retiredLiveCaseIds:
+      - live_behavior.rsvp_jose_campaign_invitation_not_reported_missing
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: keep-first-turn-rsvp-decision-out-of-acknowledgement-suppression
     implementedBy: c900d91
-    liveCaseIds: [live_behavior.rsvp_cinthya_campaign_invitation_not_reported_missing]
+    liveCaseIds: [ live_behavior.rsvp_jose_campaign_invitation_not_reported_missing ]
+    retiredLiveCaseIds:
+      - live_behavior.rsvp_jose_campaign_invitation_not_reported_missing
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: require-structured-extraction-before-suppressing-campaign-replies
     implementedBy: 7ee8bdc
-    liveCaseIds: [live_behavior.rsvp_cinthya_campaign_invitation_not_reported_missing]
+    liveCaseIds: [ live_behavior.rsvp_jose_campaign_invitation_not_reported_missing ]
+    retiredLiveCaseIds:
+      - live_behavior.rsvp_jose_campaign_invitation_not_reported_missing
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: render-selected-and-deferred-close-outcomes-accurately
     implementedBy: b82d28e
-    liveCaseIds: [live_feedback.token_seeded_selection_defer_close]
+    liveCaseIds: [ live_feedback.token_seeded_selection_defer_close ]
+    retiredLiveCaseIds:
+      - live_feedback.token_seeded_selection_defer_close
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: read-complete-user-level-rsvp-state-before-mutation
     implementedBy: 6a9bbe6
-    liveCaseIds: [live_behavior.rsvp_confirmed_state_is_reported, live_behavior.rsvp_declined_state_offers_one_change]
+    liveCaseIds: [ live_behavior.rsvp_confirmed_state_is_reported, live_behavior.s11_rsvp_durability_confirms_once ]
   - id: report-confirmed-rsvp-state-without-redundant-mutation
     implementedBy: 6a9bbe6
-    liveCaseIds: [live_behavior.rsvp_confirmed_state_is_reported]
+    liveCaseIds: [ live_behavior.rsvp_confirmed_state_is_reported ]
   - id: reject-false-rsvp-success-from-already-responded-envelope
     implementedBy: c132b28
-    liveCaseIds: [live_behavior.rsvp_state_reversal_ends_confirmed]
+    liveCaseIds: [ live_behavior.s11_rsvp_durability_confirms_once ]
   - id: distinguish-no-associated-invitations-from-no-pending-invitations
     implementedBy: c132b28
-    liveCaseIds: [live_behavior.rsvp_trusted_phone_reports_no_pending]
+    liveCaseIds: [ live_behavior.rsvp_ambiguous_event_requires_grounded_selection ]
   - id: request-email-code-by-copy-and-paste-without-text-wording
     implementedBy: c132b28
-    liveCaseIds: [live_behavior.otp_sent_explains_image_limitation]
+    liveCaseIds: [ live_behavior.otp_sent_explains_image_limitation ]
+    retiredLiveCaseIds:
+      - live_behavior.otp_sent_explains_image_limitation
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: distinguish-otp-transport-failures-from-invalid-codes
     implementedBy: dee1d45
-    liveCaseIds: [live_behavior.repeated_otp_failure_preserves_gift_query]
+    liveCaseIds: [ live_behavior.repeated_otp_failure_preserves_gift_query ]
+    retiredLiveCaseIds:
+      - live_behavior.repeated_otp_failure_preserves_gift_query
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: report-rsvp-state-only-after-explicit-backend-confirmation
     implementedBy: dee1d45
-    liveCaseIds: [live_behavior.rsvp_state_reversal_ends_confirmed]
+    liveCaseIds: [ live_behavior.s11_rsvp_durability_confirms_once ]
   - id: accept-backend-confirmed-rsvp-state-reversal
     implementedBy: dee1d45
-    liveCaseIds: [live_behavior.rsvp_state_reversal_ends_confirmed]
+    liveCaseIds: [ live_behavior.s11_rsvp_durability_confirms_once ]
   - id: preserve-associated-event-otp-nondelivery-action
     implementedBy: dee1d45
-    liveCaseIds: [live_behavior.otp_not_received_requires_response]
+    liveCaseIds: [ live_behavior.otp_not_received_requires_response ]
+    retiredLiveCaseIds:
+      - live_behavior.otp_not_received_requires_response
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: omit-cash-gift-shipping-fields-from-reply-model
     implementedBy: dee1d45
-    liveCaseIds: [live_behavior.nonphysical_purchase_omits_shipping]
+    liveCaseIds: [ live_behavior.payment_destination_requires_pending_purchase ]
+    retiredLiveCaseIds:
+      - live_behavior.payment_destination_requires_pending_purchase
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: complete-authorized-customer-profile-before-extraction
     implementedBy: "49000e34"
     liveCaseIds:
       - live_behavior.abandoned_cart_only_sonia
       - live_behavior.gift_credit_with_physical_card_distinguishes
-      - live_behavior.pending_balance_validation_luis
-      - live_behavior.gift_credit_pending_payment_stays_pending
+      - live_behavior.gift_credit_states_host_choice_no_shipment
       - live_behavior.current_campaign_order_over_historical_declined_maria_jose
-      - live_behavior.support_detail_continuity
       - live_behavior.concurrent_support_turns_preserve_context
-      - live_behavior.rsvp_tia_niur_old_target_wins
-      - live_behavior.support_pending_question_completed
-      - live_behavior.receipt_alone_then_followup_text
+      - live_behavior.rsvp_explicit_mutation_targets_requested_event
+      - live_behavior.receipt_text_pending_then_receipt_alone
       - live_behavior.authentication_refusal_closes_protected_query
       - live_behavior.s11_rsvp_durability_confirms_once
+    retiredLiveCaseIds:
+      - live_behavior.pending_balance_validation_luis
+      - live_behavior.support_detail_continuity
+      - live_behavior.support_pending_question_completed
   - id: persisted-authentication-refusal-blocks-profile-preparation
     implementedBy: "49000e34"
-    liveCaseIds: [live_behavior.authentication_refusal_closes_protected_query]
+    liveCaseIds: [ live_behavior.authentication_refusal_closes_protected_query ]
   - id: withhold-blocked-information-intent-from-authentication-replies
     implementedBy: "0280883"
-    liveCaseIds: [live_behavior.nonphysical_purchase_omits_shipping]
+    liveCaseIds: [ live_behavior.payment_destination_requires_pending_purchase ]
+    retiredLiveCaseIds:
+      - live_behavior.payment_destination_requires_pending_purchase
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: combine-critical-provider-search-questions
     implementedBy: f9232c8
-    liveCaseIds: [live_behavior.wedding_planner_location_completes_search]
+    liveCaseIds: [ live_behavior.wedding_planner_location_completes_search ]
+    retiredLiveCaseIds:
+      - live_behavior.wedding_planner_location_completes_search
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: focus-single-retrieval-ready-follow-up-query
     implementedBy: f9232c8
-    liveCaseIds: [live_behavior.wedding_planner_location_completes_search]
+    liveCaseIds: [ live_behavior.wedding_planner_location_completes_search ]
+    retiredLiveCaseIds:
+      - live_behavior.wedding_planner_location_completes_search
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: support-native-structured-plan-reset
     implementedBy: f9232c8
-    liveCaseIds: [live_behavior.reset_plan_discards_stored_context]
+    liveCaseIds: [ live_behavior.reset_plan_discards_stored_context ]
   - id: discard-all-stored-planning-context-on-reset
     implementedBy: f9232c8
-    liveCaseIds: [live_behavior.reset_plan_discards_stored_context]
+    liveCaseIds: [ live_behavior.reset_plan_discards_stored_context ]
   - id: discover-accountless-event-guests-before-email-otp
     implementedBy: f9232c8
-    liveCaseIds: [live_behavior.accountless_guest_event_uses_phone_without_otp]
+    liveCaseIds: [ live_behavior.accountless_guest_event_uses_phone_without_otp ]
   - id: read-accountless-guest-event-detail-without-jwt
     implementedBy: f9232c8
-    liveCaseIds: [live_behavior.accountless_guest_event_uses_phone_without_otp]
+    liveCaseIds: [ live_behavior.accountless_guest_event_uses_phone_without_otp ]
   - id: answer-accountless-event-data-before-authenticating-remaining-private-queries
     implementedBy: 370e41b
-    liveCaseIds: [live_behavior.accountless_event_answer_precedes_remaining_private_auth]
+    liveCaseIds: [ live_behavior.accountless_guest_event_uses_phone_without_otp ]
   - id: apply-explicit-rsvp-reversals-in-one-turn
     implementedBy: f9232c8
-    liveCaseIds: [live_behavior.rsvp_state_reversal_ends_confirmed]
+    liveCaseIds: [ live_behavior.s11_rsvp_durability_confirms_once ]
   - id: parse-documented-rsvp-pending-guests-envelope
     implementedBy: f9232c8
-    liveCaseIds: [live_behavior.rsvp_ambiguous_event_requires_grounded_selection]
+    liveCaseIds: [ live_behavior.rsvp_ambiguous_event_requires_grounded_selection ]
   - id: treat-will-attend-as-authoritative-rsvp-final-state
     implementedBy: f9232c8
-    liveCaseIds: [live_behavior.rsvp_state_reversal_ends_confirmed]
+    liveCaseIds: [ live_behavior.s11_rsvp_durability_confirms_once ]
   - id: anchor-conversation-context-to-newest-campaign
     implementedBy: f9232c8
-    liveCaseIds: [live_behavior.rsvp_cinthya_campaign_invitation_not_reported_missing]
+    liveCaseIds: [ live_behavior.rsvp_jose_campaign_invitation_not_reported_missing ]
+    retiredLiveCaseIds:
+      - live_behavior.rsvp_jose_campaign_invitation_not_reported_missing
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: automatically-resend-first-reported-otp-nondelivery
     implementedBy: ae90190
-    liveCaseIds: [live_behavior.otp_nondelivery_auto_resends_once]
+    liveCaseIds: [ live_behavior.otp_nondelivery_auto_resends_once ]
   - id: hand-off-after-exhausted-otp-nondelivery-recovery
     implementedBy: ae90190
-    liveCaseIds: [live_behavior.otp_not_received_requires_response]
+    liveCaseIds: [ live_behavior.otp_not_received_requires_response ]
+    retiredLiveCaseIds:
+      - live_behavior.otp_not_received_requires_response
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: hand-off-after-terminal-auth-service-failures
     implementedBy: ae90190
-    liveCaseIds: [live_behavior.otp_not_received_requires_response]
+    liveCaseIds: [ live_behavior.otp_not_received_requires_response ]
+    retiredLiveCaseIds:
+      - live_behavior.otp_not_received_requires_response
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: close-protected-request-after-explicit-authentication-refusal
     implementedBy: ae90190
-    liveCaseIds: [live_behavior.authentication_refusal_closes_protected_query]
+    liveCaseIds: [ live_behavior.authentication_refusal_closes_protected_query ]
   - id: fall-back-to-trusted-phone-event-association-for-rsvp
     implementedBy: ae90190
-    liveCaseIds: [live_behavior.rsvp_cinthya_campaign_invitation_not_reported_missing]
+    liveCaseIds: [ live_behavior.rsvp_jose_campaign_invitation_not_reported_missing ]
+    retiredLiveCaseIds:
+      - live_behavior.rsvp_jose_campaign_invitation_not_reported_missing
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: concurrently-read-rsvp-record-and-event-association-by-phone
     implementedBy: 121e3b7
-    liveCaseIds: [live_behavior.rsvp_cinthya_campaign_invitation_not_reported_missing]
+    liveCaseIds: [ live_behavior.rsvp_jose_campaign_invitation_not_reported_missing ]
+    retiredLiveCaseIds:
+      - live_behavior.rsvp_jose_campaign_invitation_not_reported_missing
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: project-one-minimal-reconciled-rsvp-phone-evidence-object
     implementedBy: 121e3b7
-    liveCaseIds: [live_behavior.rsvp_cinthya_campaign_invitation_not_reported_missing]
+    liveCaseIds: [ live_behavior.rsvp_jose_campaign_invitation_not_reported_missing ]
+    retiredLiveCaseIds:
+      - live_behavior.rsvp_jose_campaign_invitation_not_reported_missing
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: preserve-original-protected-query-through-authentication-continuations
     implementedBy: 56390b5
-    liveCaseIds: [live_behavior.repeated_otp_failure_preserves_gift_query]
+    liveCaseIds: [ live_behavior.repeated_otp_failure_preserves_gift_query ]
+    retiredLiveCaseIds:
+      - live_behavior.repeated_otp_failure_preserves_gift_query
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: name-the-pending-query-in-terminal-authentication-handoffs
     implementedBy: 56390b5
-    liveCaseIds: [live_behavior.repeated_otp_failure_preserves_gift_query]
+    liveCaseIds: [ live_behavior.repeated_otp_failure_preserves_gift_query ]
+    retiredLiveCaseIds:
+      - live_behavior.repeated_otp_failure_preserves_gift_query
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: disable-phone-scoped-guest-access-after-explicit-phone-rejection
     implementedBy: 56390b5
-    liveCaseIds: [live_behavior.phone_account_rejection_requests_email]
+    liveCaseIds: [ live_behavior.phone_account_rejection_requests_email ]
   - id: distinguish-phone-association-rejection-from-authentication-refusal
     implementedBy: 5403a10
-    liveCaseIds: [live_behavior.phone_account_rejection_requests_email, live_behavior.authentication_refusal_closes_protected_query]
+    liveCaseIds: [ live_behavior.phone_account_rejection_requests_email, live_behavior.authentication_refusal_closes_protected_query ]
   - id: route-phone-purchase-summary-without-account-auth
     implementedBy: aff284b
-    liveCaseIds: [live_behavior.purchase_delia_status_by_phone, live_behavior.purchase_kiara_pending_by_phone]
+    liveCaseIds: [ live_behavior.purchase_currency_pen_symbol, live_behavior.purchase_kiara_pending_by_phone ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_currency_pen_symbol
+      - live_behavior.purchase_kiara_pending_by_phone
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: route-phone-gift-detail-without-account-auth
     implementedBy: aff284b
-    liveCaseIds: [live_behavior.purchase_joaquin_dedication_selection]
+    liveCaseIds: [ live_behavior.purchase_joaquin_dedication_selection ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_joaquin_dedication_selection
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: resolve-accountless-phone-purchases-without-otp-loop
     implementedBy: aff284b
-    liveCaseIds: [live_behavior.purchase_martha_accountless_selection]
+    liveCaseIds: [ live_behavior.purchase_martha_accountless_selection ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_martha_accountless_selection
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: enrich-rsvp-state-through-phone-scoped-event
     implementedBy: 6a9bbe6
-    liveCaseIds: [live_behavior.rsvp_cristian_phone_enriched_confirmation, live_behavior.rsvp_cinthya_campaign_invitation_not_reported_missing]
+    liveCaseIds:
+      - live_behavior.rsvp_cristian_phone_enriched_confirmation
+    retiredLiveCaseIds:
+      - live_behavior.rsvp_jose_campaign_invitation_not_reported_missing
   - id: preserve-event-association-when-enriched-attendance-is-null
     implementedBy: aff284b
-    liveCaseIds: [live_behavior.accountless_guest_event_uses_phone_without_otp]
+    liveCaseIds: [ live_behavior.accountless_guest_event_uses_phone_without_otp ]
   - id: reuse-event-scoped-purchases-without-redundant-global-read
     implementedBy: aff284b
-    liveCaseIds: [live_behavior.accountless_event_answer_precedes_remaining_private_auth]
+    liveCaseIds: [ live_behavior.accountless_guest_event_uses_phone_without_otp ]
   - id: reconcile-phone-purchase-sources-with-minimum-disclosure
     implementedBy: aff284b
-    liveCaseIds: [live_behavior.purchase_delia_status_by_phone, live_behavior.purchase_joaquin_dedication_selection]
+    liveCaseIds: [ live_behavior.purchase_currency_pen_symbol, live_behavior.purchase_joaquin_dedication_selection ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_currency_pen_symbol
+      - live_behavior.purchase_joaquin_dedication_selection
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: normalize-customer-transaction-codes-by-phone
     implementedBy: 78ae24e
-    liveCaseIds: [live_behavior.customer_transaction_code_by_phone]
+    liveCaseIds: [ live_behavior.customer_transaction_code_by_phone ]
+    retiredLiveCaseIds:
+      - live_behavior.customer_transaction_code_by_phone
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: withhold-opaque-order-ids-when-customer-reference-is-unavailable
     implementedBy: 78ae24e
-    liveCaseIds: [live_behavior.customer_transaction_code_by_phone]
+    liveCaseIds: [ live_behavior.customer_transaction_code_by_phone ]
+    retiredLiveCaseIds:
+      - live_behavior.customer_transaction_code_by_phone
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: project-rsvp-phone-evidence-as-three-state
     implementedBy: 82d48b0
-    liveCaseIds: [live_behavior.rsvp_paolo_mariana_resolved_single]
+    liveCaseIds: [ live_behavior.rsvp_confirmed_state_is_reported ]
   - id: rsvp-resolved-single-thanks-no-change
     implementedBy: e1820df2
-    liveCaseIds: [live_behavior.rsvp_cristian_phone_enriched_confirmation, live_behavior.rsvp_cinthya_campaign_invitation_not_reported_missing]
+    liveCaseIds:
+      - live_behavior.rsvp_cristian_phone_enriched_confirmation
+    retiredLiveCaseIds:
+      - live_behavior.rsvp_jose_campaign_invitation_not_reported_missing
   - id: rsvp-unavailable-never-claim-confirmation
     implementedBy: 4c4a56a
-    liveCaseIds: [live_behavior.rsvp_trusted_phone_reports_no_pending]
+    liveCaseIds: [ live_behavior.rsvp_ambiguous_event_requires_grounded_selection ]
   - id: needs-event-selection-projection-carries-candidate-dates
     implementedBy: 1620bc3
-    liveCaseIds: [live_behavior.rsvp_ambiguous_event_requires_grounded_selection]
+    liveCaseIds: [ live_behavior.rsvp_ambiguous_event_requires_grounded_selection ]
   - id: rsvp-current-state-reported-via-hybrid-fragment
     implementedBy: 6a9bbe6
-    liveCaseIds: [live_behavior.rsvp_confirmed_state_is_reported]
+    liveCaseIds: [ live_behavior.rsvp_confirmed_state_is_reported ]
   - id: payment-type-excluded-from-summary-aspect
     implementedBy: "8172732"
-    liveCaseIds: [live_behavior.accountless_event_answer_precedes_remaining_private_auth]
+    liveCaseIds: [ live_behavior.accountless_guest_event_uses_phone_without_otp ]
   - id: rsvp-action-extracted-only-from-current-message
     implementedBy: 6e6d6d7
-    liveCaseIds: [live_behavior.rsvp_missing_action_requires_explicit_decision]
+    liveCaseIds: [ live_behavior.s11_rsvp_durability_confirms_once ]
   - id: rsvp-declining-offer-asks-explicit-question
     implementedBy: b5eed76
-    liveCaseIds: [live_behavior.rsvp_declined_state_offers_one_change]
+    liveCaseIds: [ live_behavior.s11_rsvp_durability_confirms_once ]
   - id: rsvp-mutation-requires-current-message-decision-source
     implementedBy: f937265
-    liveCaseIds: [live_behavior.rsvp_missing_action_requires_explicit_decision]
+    liveCaseIds: [ live_behavior.s11_rsvp_durability_confirms_once ]
   - id: rsvp-multi-person-references-offer-human-help
     implementedBy: afda04bd
-    liveCaseIds: [live_behavior.rsvp_multi_person_offers_human_help]
+    liveCaseIds: [ live_behavior.host_support_allows_explicit_rsvp_switch ]
   - id: rsvp-single-plus-one-phone-scoped-mutation
     implementedBy: 377386c1
-    liveCaseIds: [live_behavior.rsvp_plus_one_uses_phone_scoped_mutation]
+    liveCaseIds: [ live_behavior.host_support_allows_explicit_rsvp_switch ]
   - id: rsvp-multiple-companions-remain-bounded-human-review
     implementedBy: 377386c1
-    liveCaseIds: [live_behavior.rsvp_multi_person_offers_human_help]
+    liveCaseIds: [ live_behavior.host_support_allows_explicit_rsvp_switch ]
   - id: tighten-rsvp-party-detection-precision
     implementedBy: d81c760b
-    liveCaseIds: [live_behavior.rsvp_jose_campaign_invitation_not_reported_missing, live_behavior.rsvp_multi_person_offers_human_help]
+    liveCaseIds:
+      - live_behavior.host_support_allows_explicit_rsvp_switch
+    retiredLiveCaseIds:
+      - live_behavior.rsvp_jose_campaign_invitation_not_reported_missing
   # T12 backend-registered handoff: self_and_others still short-circuits BEFORE RSVP backend calls, but now CALLS backend request_human_takeover with typed inputs (conversation/plan dedupe_key rsvp_handoff:{conversation_id}, phone, party names, event_reference), dedupe via plan.assumptions conversation/plan-scoped key, retryable->one bounded retry, definitive->honest fallback (no claim of help), plan rsvp_state untouched, reply is single handoff sentence (success) or honest fallback (failure)
   # T12-fix tighten party detection: self_and_others ONLY with explicit companion evidence (named person "la de mi esposa Maria", pareja/esposo/esposa/acompañante/+1 as attending, or "los dos"/"nosotros dos" personal), we-form verbs alone ("confirmamos","vamos","apuntamos") NOT evidence, event titles never companions, mentioned_names empty unless real names
   - id: rsvp-tissue-bounded-to-one-closing-sentence
     implementedBy: eb20f19c
-    liveCaseIds: [live_behavior.rsvp_cristian_phone_enriched_confirmation, live_behavior.rsvp_jose_campaign_invitation_not_reported_missing, live_behavior.rsvp_declined_state_offers_one_change, live_behavior.rsvp_missing_action_requires_explicit_decision]
+    liveCaseIds:
+      - live_behavior.rsvp_cristian_phone_enriched_confirmation
+      - live_behavior.s11_rsvp_durability_confirms_once
+    retiredLiveCaseIds:
+      - live_behavior.rsvp_jose_campaign_invitation_not_reported_missing
   - id: consolidate-resolver-otp-email-duplication
     implementedBy: 6411cc7e
-    liveCaseIds: [live_behavior.otp_sent_explains_image_limitation]
+    liveCaseIds: [ live_behavior.otp_sent_explains_image_limitation ]
+    retiredLiveCaseIds:
+      - live_behavior.otp_sent_explains_image_limitation
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: consolidate-classifier-corporate-reception
     implementedBy: 008d0b50
-    liveCaseIds: [live_behavior.rsvp_missing_action_requires_explicit_decision]
+    liveCaseIds: [ live_behavior.s11_rsvp_durability_confirms_once ]
   - id: scope-information-domain-to-route
     implementedBy: d6bb8f08
-    liveCaseIds: [live_behavior.purchase_delia_status_by_phone]
+    liveCaseIds: [ live_behavior.purchase_currency_pen_symbol ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_currency_pen_symbol
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: tighten-responder-invitacion-contract-dedupe
     implementedBy: 5e0698f5
-    liveCaseIds: [live_behavior.rsvp_declined_state_offers_one_change, live_behavior.rsvp_cristian_phone_enriched_confirmation]
+    liveCaseIds: [ live_behavior.s11_rsvp_durability_confirms_once, live_behavior.rsvp_cristian_phone_enriched_confirmation ]
   - id: purchase-pending-transfer-currency-time-continuity
     implementedBy: 2090c12b
-    liveCaseIds: [live_behavior.purchase_pending_transfer_continuity]
+    liveCaseIds: [ live_behavior.purchase_pending_transfer_continuity ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_pending_transfer_continuity
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: support-subject-identity-continuity
     implementedBy: 377386c1
-    liveCaseIds: [live_behavior.support_detail_continuity]
+    liveCaseIds: [ live_behavior.support_detail_continuity ]
+    retiredLiveCaseIds:
+      - live_behavior.support_detail_continuity
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: current-pending-over-historical-completed
     implementedBy: 377386c1
-    liveCaseIds: [live_behavior.purchase_current_pending_over_old_approved]
+    liveCaseIds: [ live_behavior.purchase_current_pending_over_old_approved ]
   - id: active-cart-checkout-continuity-alex
     implementedBy: 377386c1
-    liveCaseIds: [live_behavior.active_cart_checkout_continuity_alex]
+    liveCaseIds: [ live_behavior.abandoned_cart_only_sonia ]
   - id: abandoned-cart-only-sonia
     implementedBy: 377386c1
-    liveCaseIds: [live_behavior.abandoned_cart_only_sonia]
+    liveCaseIds: [ live_behavior.abandoned_cart_only_sonia ]
   - id: current-campaign-order-over-historical-declined-maria-jose
     implementedBy: 2090c12b
-    liveCaseIds: [live_behavior.current_campaign_order_over_historical_declined_maria_jose]
+    liveCaseIds: [ live_behavior.current_campaign_order_over_historical_declined_maria_jose ]
   - id: pending-balance-validation-luis
     implementedBy: 2090c12b
-    liveCaseIds: [live_behavior.pending_balance_validation_luis]
+    liveCaseIds: [ live_behavior.pending_balance_validation_luis ]
+    retiredLiveCaseIds:
+      - live_behavior.pending_balance_validation_luis
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: rsvp-guest-and-plus-one-combined-saved
     implementedBy: 377386c1
-    liveCaseIds: [live_behavior.rsvp_guest_and_plus_one_combined_saved]
+    liveCaseIds: [ live_behavior.host_support_allows_explicit_rsvp_switch ]
   - id: rsvp-plus-one-multiple-events-requires-selection
     implementedBy: 377386c1
-    liveCaseIds: [live_behavior.rsvp_plus_one_multiple_events_requires_selection]
+    liveCaseIds: [ live_behavior.rsvp_explicit_mutation_targets_requested_event ]
   - id: rsvp-plus-one-not-eligible-no-false-success
     implementedBy: 377386c1
-    liveCaseIds: [live_behavior.rsvp_plus_one_not_eligible_no_false_success]
+    liveCaseIds: [ live_behavior.rsvp_cristian_phone_enriched_confirmation ]
   - id: reconcile-event-conjunctions-in-phone-purchase-selection
     implementedBy: 03f617cb
-    liveCaseIds: [live_behavior.purchase_pending_transfer_continuity]
+    liveCaseIds: [ live_behavior.purchase_pending_transfer_continuity ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_pending_transfer_continuity
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: preserve-cart-only-coverage-across-event-name-variants
     implementedBy: 03f617cb
-    liveCaseIds: [live_behavior.abandoned_cart_only_sonia]
+    liveCaseIds: [ live_behavior.abandoned_cart_only_sonia ]
   - id: route-cart-payment-options-through-orders-and-indexed-policy
     implementedBy: 1e7f6ab9
-    liveCaseIds: [live_behavior.abandoned_cart_only_sonia]
+    liveCaseIds: [ live_behavior.abandoned_cart_only_sonia ]
   - id: preserve-primary-purchase-across-derived-policy-continuations
     implementedBy: 1e7f6ab9
-    liveCaseIds: [live_behavior.purchase_pending_transfer_continuity]
+    liveCaseIds: [ live_behavior.purchase_pending_transfer_continuity ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_pending_transfer_continuity
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: project-derived-purchase-policies-with-minimum-disclosure
     implementedBy: 1e7f6ab9
-    liveCaseIds: [live_behavior.abandoned_cart_only_sonia, live_behavior.purchase_pending_transfer_continuity]
+    liveCaseIds:
+      - live_behavior.abandoned_cart_only_sonia
+    retiredLiveCaseIds:
+      - live_behavior.purchase_pending_transfer_continuity
   - id: classify-receipt-and-currency-corrections-as-purchase-continuations
     implementedBy: a8baf5ce
-    liveCaseIds: [live_behavior.purchase_pending_transfer_continuity]
+    liveCaseIds: [ live_behavior.purchase_pending_transfer_continuity ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_pending_transfer_continuity
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: preserve-reextracted-purchase-identity-across-corrections
     implementedBy: a8baf5ce
-    liveCaseIds: [live_behavior.purchase_pending_transfer_continuity]
+    liveCaseIds: [ live_behavior.purchase_pending_transfer_continuity ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_pending_transfer_continuity
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: project-unverifiable-purchase-currency-and-time-as-typed-limits
     implementedBy: a8baf5ce
-    liveCaseIds: [live_behavior.purchase_pending_transfer_continuity]
+    liveCaseIds: [ live_behavior.purchase_pending_transfer_continuity ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_pending_transfer_continuity
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: validate-trusted-cart-recovery-path-from-outbound-context
     implementedBy: eda1c694
-    liveCaseIds: [live_behavior.abandoned_cart_only_sonia]
+    liveCaseIds: [ live_behavior.abandoned_cart_only_sonia ]
   - id: scope-indexed-payment-options-as-general-gift-policy
     implementedBy: eda1c694
-    liveCaseIds: [live_behavior.abandoned_cart_only_sonia]
+    liveCaseIds: [ live_behavior.abandoned_cart_only_sonia ]
   - id: fix-cart-reply-minimum-disclosure-no-gifts-quantity
     implementedBy: 28d77337
-    liveCaseIds: [live_behavior.abandoned_cart_only_sonia]
+    liveCaseIds: [ live_behavior.abandoned_cart_only_sonia ]
   - id: fix-cart-reply-explicit-phone-attribution
     implementedBy: 975c7dbf
-    liveCaseIds: [live_behavior.abandoned_cart_only_sonia]
+    liveCaseIds: [ live_behavior.abandoned_cart_only_sonia ]
   - id: fix-cart-reply-grounded-transfer-availability
     implementedBy: c692e885
-    liveCaseIds: [live_behavior.abandoned_cart_only_sonia]
+    liveCaseIds: [ live_behavior.abandoned_cart_only_sonia ]
   - id: selector-guard-single-pending-amount-as-payment-evidence
     implementedBy: e9001af2
-    liveCaseIds: [live_behavior.pending_balance_validation_luis, live_behavior.current_campaign_order_over_historical_declined_maria_jose]
+    liveCaseIds:
+      - live_behavior.current_campaign_order_over_historical_declined_maria_jose
+    retiredLiveCaseIds:
+      - live_behavior.pending_balance_validation_luis
   - id: constancia-anchor-cod-reference-conditional
     implementedBy: e9001af2
-    liveCaseIds: [live_behavior.purchase_pending_transfer_continuity]
+    liveCaseIds: [ live_behavior.purchase_pending_transfer_continuity ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_pending_transfer_continuity
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: support-continuity-preserve-context-and-skip-faq-reprojection
     implementedBy: e9001af2
-    liveCaseIds: [live_behavior.support_detail_continuity]
+    liveCaseIds: [ live_behavior.support_detail_continuity ]
+    retiredLiveCaseIds:
+      - live_behavior.support_detail_continuity
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: declarative-pending-amount-extraction-example
     implementedBy: e9001af2
-    liveCaseIds: [live_behavior.pending_balance_validation_luis, live_behavior.current_campaign_order_over_historical_declined_maria_jose]
+    liveCaseIds:
+      - live_behavior.current_campaign_order_over_historical_declined_maria_jose
+    retiredLiveCaseIds:
+      - live_behavior.pending_balance_validation_luis
   - id: event-matching-bidirectional-and-amount-payment-evidence-with-declined-guard
     implementedBy: f045a579
-    liveCaseIds: [live_behavior.current_campaign_order_over_historical_declined_maria_jose]
+    liveCaseIds: [ live_behavior.current_campaign_order_over_historical_declined_maria_jose ]
   - id: classifier-active-information-thread-evidence
     implementedBy: f045a579
-    liveCaseIds: [live_behavior.pending_balance_validation_luis]
+    liveCaseIds: [ live_behavior.pending_balance_validation_luis ]
+    retiredLiveCaseIds:
+      - live_behavior.pending_balance_validation_luis
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: support-note-continuity-effectiveness
     implementedBy: f045a579
-    liveCaseIds: [live_behavior.support_detail_continuity]
+    liveCaseIds: [ live_behavior.support_detail_continuity ]
+    retiredLiveCaseIds:
+      - live_behavior.support_detail_continuity
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: payment-identifier-reply-exclusion-and-constancia-anchor-rewording
     implementedBy: 2b40848e
-    liveCaseIds: [live_behavior.purchase_current_pending_over_old_approved, live_behavior.purchase_pending_transfer_continuity]
+    liveCaseIds:
+      - live_behavior.purchase_current_pending_over_old_approved
+    retiredLiveCaseIds:
+      - live_behavior.purchase_pending_transfer_continuity
   - id: payment-report-provenance-and-voucher-fragment
     implementedBy: 2b40848e
-    liveCaseIds: [live_behavior.current_campaign_order_over_historical_declined_maria_jose, live_behavior.pending_balance_validation_luis]
+    liveCaseIds:
+      - live_behavior.current_campaign_order_over_historical_declined_maria_jose
+    retiredLiveCaseIds:
+      - live_behavior.pending_balance_validation_luis
   - id: support-note-effectiveness-and-no-menu-continuation
     implementedBy: 2b40848e
-    liveCaseIds: [live_behavior.support_detail_continuity]
+    liveCaseIds: [ live_behavior.support_detail_continuity ]
+    retiredLiveCaseIds:
+      - live_behavior.support_detail_continuity
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: currency-correction-grounding-in-purchase-replies
     implementedBy: b7d775d2
-    liveCaseIds: [live_behavior.purchase_pending_transfer_continuity]
+    liveCaseIds: [ live_behavior.purchase_pending_transfer_continuity ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_pending_transfer_continuity
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: serialize-lambda-conversation-turns-with-consistent-state-and-shared-keys
     implementedBy: 02ed1c4b
-    liveCaseIds: [live_behavior.concurrent_support_turns_preserve_context]
+    liveCaseIds: [ live_behavior.concurrent_support_turns_preserve_context ]
   - id: phone-scoped-misses-request-human-help-without-automatic-otp
     implementedBy: 576a381c
-    liveCaseIds: [live_behavior.concurrent_support_turns_preserve_context, live_behavior.phone_purchase_missing_hands_off_once]
+    liveCaseIds:
+      - live_behavior.concurrent_support_turns_preserve_context
+    retiredLiveCaseIds:
+      - live_behavior.phone_purchase_missing_hands_off_once
   - id: history-continuity-prevents-generic-welcome
     implementedBy: cecd8ac4
-    liveCaseIds: [live_behavior.concurrent_support_turns_preserve_context]
+    liveCaseIds: [ live_behavior.concurrent_support_turns_preserve_context ]
   - id: empty-extraction-with-history-uses-contextual-clarification
     implementedBy: cecd8ac4
-    liveCaseIds: [live_behavior.support_detail_continuity]
+    liveCaseIds: [ live_behavior.support_detail_continuity ]
+    retiredLiveCaseIds:
+      - live_behavior.support_detail_continuity
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: runtime-capability-manifest-bounds-unsupported-actions
     implementedBy: cecd8ac4
-    liveCaseIds: [live_behavior.purchase_pending_transfer_continuity]
+    liveCaseIds: [ live_behavior.purchase_pending_transfer_continuity ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_pending_transfer_continuity
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: unsupported-document-safe-read-and-single-handoff
     implementedBy: cecd8ac4
-    liveCaseIds: [live_behavior.purchase_confirmation_carina_request_survives_normalization]
+    liveCaseIds: [ live_behavior.purchase_confirmation_carina_request_survives_normalization ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_confirmation_carina_request_survives_normalization
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: text-plus-image-never-claims-content-access
     implementedBy: cecd8ac4
-    liveCaseIds: [live_behavior.otp_sent_explains_image_limitation]
+    liveCaseIds: [ live_behavior.otp_sent_explains_image_limitation ]
+    retiredLiveCaseIds:
+      - live_behavior.otp_sent_explains_image_limitation
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: server-timestamps-preserve-upstream-values
     implementedBy: cecd8ac4
-    liveCaseIds: [live_behavior.purchase_pending_transfer_continuity]
+    liveCaseIds: [ live_behavior.purchase_pending_transfer_continuity ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_pending_transfer_continuity
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: null-currency-remains-uninferred
     implementedBy: cecd8ac4
-    liveCaseIds: [live_behavior.pending_balance_validation_luis]
+    liveCaseIds: [ live_behavior.pending_balance_validation_luis ]
+    retiredLiveCaseIds:
+      - live_behavior.pending_balance_validation_luis
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: rsvp-plus-one-write-remains-capability-gated
     implementedBy: cecd8ac4
-    liveCaseIds: [live_behavior.rsvp_plus_one_not_eligible_no_false_success]
+    liveCaseIds: [ live_behavior.rsvp_cristian_phone_enriched_confirmation ]
   - id: extractor-emits-requested-operation-without-availability
     implementedBy: cecd8ac4
-    liveCaseIds: [live_behavior.purchase_confirmation_carina_request_survives_normalization]
+    liveCaseIds: [ live_behavior.purchase_confirmation_carina_request_survives_normalization ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_confirmation_carina_request_survives_normalization
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: fixture-local-email-otp-outcomes
     implementedBy: a904613e
-    liveCaseIds: [live_behavior.otp_sent_explains_image_limitation]
+    liveCaseIds: [ live_behavior.otp_sent_explains_image_limitation ]
+    retiredLiveCaseIds:
+      - live_behavior.otp_sent_explains_image_limitation
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: typed-support-reference-acknowledgement
     implementedBy: a904613e
-    liveCaseIds: [live_behavior.support_detail_continuity, live_behavior.concurrent_support_turns_preserve_context]
+    liveCaseIds:
+      - live_behavior.concurrent_support_turns_preserve_context
+    retiredLiveCaseIds:
+      - live_behavior.support_detail_continuity
   - id: gateway-capability-manifest-intersection
     implementedBy: a904613e
-    liveCaseIds: [live_behavior.purchase_confirmation_carina_request_survives_normalization, live_behavior.rsvp_plus_one_not_eligible_no_false_success]
+    liveCaseIds:
+      - live_behavior.rsvp_cristian_phone_enriched_confirmation
+    retiredLiveCaseIds:
+      - live_behavior.purchase_confirmation_carina_request_survives_normalization
   - id: server-event-timestamps-validated-without-conversion
     implementedBy: a904613e
-    liveCaseIds: [live_behavior.pending_balance_validation_luis, live_behavior.rsvp_plus_one_not_eligible_no_false_success]
+    liveCaseIds:
+      - live_behavior.rsvp_cristian_phone_enriched_confirmation
+    retiredLiveCaseIds:
+      - live_behavior.pending_balance_validation_luis
   - id: s01-frozen-incident-worlds
     implementedBy: 55a6c99
-    liveCaseIds: [live_behavior.s01_frozen_kiara_pending_replay]
+    liveCaseIds: [ live_behavior.s01_frozen_kiara_pending_replay ]
+    retiredLiveCaseIds:
+      - live_behavior.s01_frozen_kiara_pending_replay
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: evaluation-effects-fully-simulated-and-fail-closed
     implementedBy: 232e3d30
-    liveCaseIds: [live_behavior.rsvp_state_reversal_ends_confirmed]
+    liveCaseIds: [ live_behavior.s11_rsvp_durability_confirms_once ]
   - id: local-lease-fencing-and-available-id-dedup-without-second-store
     implementedBy: d5954bc2
-    liveCaseIds: [live_behavior.tito_numbered_name_and_post_rsvp_closure]
+    liveCaseIds: [ live_behavior.tito_numbered_name_and_post_rsvp_closure ]
+    retiredLiveCaseIds:
+      - live_behavior.tito_numbered_name_and_post_rsvp_closure
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: per-turn-capability-and-truthful-handoff
     implementedBy: e0374f31
-    liveCaseIds: [live_behavior.purchase_confirmation_carina_request_survives_normalization]
+    liveCaseIds: [ live_behavior.purchase_confirmation_carina_request_survives_normalization ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_confirmation_carina_request_survives_normalization
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: campaign-continuity-without-reopened-interview
     implementedBy: c38abf8c
-    liveCaseIds: [live_behavior.jose_campaign_greeting_then_acknowledgement]
+    liveCaseIds: [ live_behavior.jose_campaign_greeting_then_acknowledgement ]
+    retiredLiveCaseIds:
+      - live_behavior.jose_campaign_greeting_then_acknowledgement
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: s04-reminder-mismatch-escalates-without-write
     implementedBy: 9fa9df47
-    liveCaseIds: [live_behavior.roberto_reminder_invitation_disagreement]
+    liveCaseIds: [ live_behavior.roberto_verified_unique_rsvp_writes_once ]
+    retiredLiveCaseIds:
+      - live_behavior.roberto_verified_unique_rsvp_writes_once
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: s04-verified-unique-rsvp-writes-once
     implementedBy: 9fa9df47
-    liveCaseIds: [live_behavior.roberto_verified_unique_rsvp_writes_once]
+    liveCaseIds: [ live_behavior.roberto_verified_unique_rsvp_writes_once ]
+    retiredLiveCaseIds:
+      - live_behavior.roberto_verified_unique_rsvp_writes_once
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: s04-current-reminder-explanation-preserves-title
     implementedBy: 9fa9df47
-    liveCaseIds: [live_behavior.maria_paz_current_reminder_explanation]
+    liveCaseIds: [ live_behavior.maria_paz_current_reminder_explanation ]
+    retiredLiveCaseIds:
+      - live_behavior.maria_paz_current_reminder_explanation
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: s06-one-shot-send-no-resend-first-nondelivery-hands-off
     implementedBy: dcb652fc
-    liveCaseIds: [live_behavior.otp_nondelivery_auto_resends_once]
+    liveCaseIds: [ live_behavior.otp_nondelivery_auto_resends_once ]
   - id: f1a-first-nondelivery-report-hands-off-without-resend
     implementedBy: 75029f8f
-    liveCaseIds: [live_behavior.otp_nondelivery_auto_resends_once]
+    liveCaseIds: [ live_behavior.otp_nondelivery_auto_resends_once ]
   - id: f1b-repeat-missing-code-report-hands-off-without-second-send
     implementedBy: dc8a7196
-    liveCaseIds: [live_behavior.otp_not_received_requires_response]
+    liveCaseIds: [ live_behavior.otp_not_received_requires_response ]
+    retiredLiveCaseIds:
+      - live_behavior.otp_not_received_requires_response
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: s06-first-verification-failure-terminates-no-second-attempt
     implementedBy: dcb652fc
-    liveCaseIds: [live_behavior.repeated_otp_failure_preserves_gift_query]
+    liveCaseIds: [ live_behavior.repeated_otp_failure_preserves_gift_query ]
+    retiredLiveCaseIds:
+      - live_behavior.repeated_otp_failure_preserves_gift_query
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: f1c-first-rejected-code-verifies-once-then-hands-off
     implementedBy: 751d5104
-    liveCaseIds: [live_behavior.repeated_otp_failure_preserves_gift_query]
+    liveCaseIds: [ live_behavior.repeated_otp_failure_preserves_gift_query ]
+    retiredLiveCaseIds:
+      - live_behavior.repeated_otp_failure_preserves_gift_query
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: s06-number-word-code-verified-at-most-once
     implementedBy: dcb652fc
-    liveCaseIds: [live_behavior.otp_number_words_are_verified]
+    liveCaseIds: [ live_behavior.otp_number_words_are_verified ]
   - id: s08-purchase-reconciliation-preserves-identity-and-conflict
     implementedBy: 0898cf16
-    liveCaseIds: [live_behavior.purchase_kiara_pending_by_phone, live_behavior.s08_kiara_approved_replay, live_behavior.purchase_martha_accountless_selection, live_behavior.purchase_joaquin_dedication_selection]
+    liveCaseIds: [ live_behavior.purchase_kiara_pending_by_phone, live_behavior.s08_kiara_approved_replay, live_behavior.purchase_martha_accountless_selection, live_behavior.purchase_joaquin_dedication_selection ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_kiara_pending_by_phone
+      - live_behavior.s08_kiara_approved_replay
+      - live_behavior.purchase_martha_accountless_selection
+      - live_behavior.purchase_joaquin_dedication_selection
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: s07-declined-readonly-offers-one-change-no-mutation
     implementedBy: 5de1c1ed
-    liveCaseIds: [live_behavior.rsvp_declined_state_offers_one_change]
+    liveCaseIds: [ live_behavior.s11_rsvp_durability_confirms_once ]
   - id: s07-identical-attending-avoids-write-reversal-requires-validation
     implementedBy: 5de1c1ed
-    liveCaseIds: [live_behavior.s07_attending_identical_no_write, live_behavior.rsvp_state_reversal_ends_confirmed]
+    liveCaseIds: [ live_behavior.s11_rsvp_durability_confirms_once ]
   - id: s07-incomplete-identity-unavailable-without-placeholders
     implementedBy: 5de1c1ed
-    liveCaseIds: [live_behavior.rsvp_missing_event_identity_is_unavailable]
+    liveCaseIds: [ live_behavior.rsvp_missing_event_identity_is_unavailable ]
   - id: s09-cart-order-record-distinction
     implementedBy: b855d794
-    liveCaseIds: [live_behavior.active_cart_checkout_continuity_alex]
+    liveCaseIds: [ live_behavior.abandoned_cart_only_sonia ]
   - id: s09-reported-amount-never-settles
     implementedBy: b855d794
-    liveCaseIds: [live_behavior.current_campaign_order_over_historical_declined_maria_jose]
+    liveCaseIds: [ live_behavior.current_campaign_order_over_historical_declined_maria_jose ]
   - id: s09-unique-record-direct-no-false-uncertainty
     implementedBy: b855d794
-    liveCaseIds: [live_behavior.purchase_delia_status_by_phone]
+    liveCaseIds: [ live_behavior.purchase_currency_pen_symbol ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_currency_pen_symbol
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: s09-multiple-records-require-selection
     implementedBy: b855d794
-    liveCaseIds: [live_behavior.purchase_martha_accountless_selection]
+    liveCaseIds: [ live_behavior.purchase_martha_accountless_selection ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_martha_accountless_selection
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: s09-trusted-fields-only-no-generic-advice
     implementedBy: b855d794
-    liveCaseIds: [live_behavior.purchase_pending_transfer_continuity]
+    liveCaseIds: [ live_behavior.purchase_pending_transfer_continuity ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_pending_transfer_continuity
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: s09-user-reported-time-currency-server-local
     implementedBy: b855d794
-    liveCaseIds: [live_behavior.purchase_pending_transfer_continuity]
+    liveCaseIds: [ live_behavior.purchase_pending_transfer_continuity ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_pending_transfer_continuity
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: s13-otp-attempt-graded-structurally
     implementedBy: ce14079e
-    liveCaseIds: [live_behavior.repeated_otp_failure_preserves_gift_query]
+    liveCaseIds: [ live_behavior.repeated_otp_failure_preserves_gift_query ]
+    retiredLiveCaseIds:
+      - live_behavior.repeated_otp_failure_preserves_gift_query
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: s13-selected-provider-graded-structurally
     implementedBy: ce14079e
-    liveCaseIds: [live_behavior.purchase_joaquin_dedication_selection]
+    liveCaseIds: [ live_behavior.purchase_joaquin_dedication_selection ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_joaquin_dedication_selection
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: s13-fixture-history-subject-scoped
     implementedBy: ce14079e
-    liveCaseIds: [live_behavior.abandoned_cart_only_sonia]
+    liveCaseIds: [ live_behavior.abandoned_cart_only_sonia ]
   - id: s13-customer-reference-minimum-disclosure
     implementedBy: ce14079e
-    liveCaseIds: [live_behavior.customer_transaction_code_by_phone]
+    liveCaseIds: [ live_behavior.customer_transaction_code_by_phone ]
+    retiredLiveCaseIds:
+      - live_behavior.customer_transaction_code_by_phone
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: s13-spanish-calibration-joaquin-delia
     implementedBy: ce14079e
-    liveCaseIds: [live_behavior.purchase_joaquin_dedication_selection, live_behavior.purchase_delia_status_by_phone]
+    liveCaseIds: [ live_behavior.purchase_joaquin_dedication_selection, live_behavior.purchase_currency_pen_symbol ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_joaquin_dedication_selection
+      - live_behavior.purchase_currency_pen_symbol
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: s13-handoff-fallback-success-failed-unknown
     implementedBy: ce14079e
-    liveCaseIds: [live_behavior.otp_nondelivery_auto_resends_once]
+    liveCaseIds: [ live_behavior.otp_nondelivery_auto_resends_once ]
   - id: s10-extraction-projection-feeds-schema-and-text
     implementedBy: afd52519
-    liveCaseIds: [live_behavior.ambiguous_confirmation_clarifies]
+    liveCaseIds: [ live_behavior.ambiguous_confirmation_clarifies ]
   - id: s10-clarification-excludes-providers-ack-has-no-tools
     implementedBy: afd52519
-    liveCaseIds: [live_behavior.jose_campaign_greeting_then_acknowledgement, live_behavior.ambiguous_confirmation_clarifies]
+    liveCaseIds:
+      - live_behavior.ambiguous_confirmation_clarifies
+    retiredLiveCaseIds:
+      - live_behavior.jose_campaign_greeting_then_acknowledgement
   - id: s10-complete-deterministic-outcomes-skip-reply-model
     implementedBy: afd52519
-    liveCaseIds: [live_behavior.mailbox_issue_deferral_and_clarification_preserve_support]
+    liveCaseIds: [ live_behavior.mailbox_issue_deferral_and_clarification_preserve_support ]
+    retiredLiveCaseIds:
+      - live_behavior.mailbox_issue_deferral_and_clarification_preserve_support
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: s10-narrative-claims-fallback-without-corrective-call
     implementedBy: afd52519
-    liveCaseIds: [live_behavior.jose_campaign_greeting_then_acknowledgement]
+    liveCaseIds: [ live_behavior.jose_campaign_greeting_then_acknowledgement ]
+    retiredLiveCaseIds:
+      - live_behavior.jose_campaign_greeting_then_acknowledgement
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: s11-rsvp-effect-durability-before-reply
     implementedBy: 71ca0e4f
-    liveCaseIds: [live_behavior.s11_rsvp_durability_confirms_once]
+    liveCaseIds: [ live_behavior.s11_rsvp_durability_confirms_once ]
   - id: s12-per-provider-quote-completion-truthful-event-date
     implementedBy: 5724b17e
-    liveCaseIds: [live_behavior.s12_provider_completion_truthful_event_date]
+    liveCaseIds: [ live_behavior.s12_provider_completion_truthful_event_date ]
   - id: f2a-declined-readonly-offers-one-change
     implementedBy: f62e3ecb
-    liveCaseIds: [live_behavior.rsvp_declined_state_offers_one_change]
+    liveCaseIds: [ live_behavior.s11_rsvp_durability_confirms_once ]
   - id: f2a-pending-readonly-deterministic-without-mutation-claim
     implementedBy: f62e3ecb
-    liveCaseIds: [live_behavior.host_support_allows_explicit_rsvp_switch]
+    liveCaseIds: [ live_behavior.host_support_allows_explicit_rsvp_switch ]
   - id: f2b-empty-rsvp-with-reminder-escalates-once
     implementedBy: 8f995e93
-    liveCaseIds: [live_behavior.roberto_reminder_invitation_disagreement]
+    liveCaseIds: [ live_behavior.roberto_verified_unique_rsvp_writes_once ]
+    retiredLiveCaseIds:
+      - live_behavior.roberto_verified_unique_rsvp_writes_once
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: f2c-reminder-first-event-explanation
     implementedBy: 75bcc72e
-    liveCaseIds: [live_behavior.maria_paz_current_reminder_explanation]
+    liveCaseIds: [ live_behavior.maria_paz_current_reminder_explanation ]
+    retiredLiveCaseIds:
+      - live_behavior.maria_paz_current_reminder_explanation
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: f2c-frozen-concise-status-without-mutable-fields
     implementedBy: 75bcc72e
-    liveCaseIds: [live_behavior.s01_frozen_kiara_pending_replay, live_behavior.s08_kiara_approved_replay]
+    liveCaseIds: [ live_behavior.s01_frozen_kiara_pending_replay, live_behavior.s08_kiara_approved_replay ]
+    retiredLiveCaseIds:
+      - live_behavior.s01_frozen_kiara_pending_replay
+      - live_behavior.s08_kiara_approved_replay
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: f2c-rsvp-lane-never-suppresses-acknowledgement
     implementedBy: 9b3b3918
-    liveCaseIds: [live_behavior.tito_numbered_name_and_post_rsvp_closure]
+    liveCaseIds: [ live_behavior.tito_numbered_name_and_post_rsvp_closure ]
+    retiredLiveCaseIds:
+      - live_behavior.tito_numbered_name_and_post_rsvp_closure
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: f3a-cart-order-checkout-continuity
     implementedBy: "e9453652"
-    liveCaseIds: [live_behavior.active_cart_checkout_continuity_alex]
+    liveCaseIds: [ live_behavior.abandoned_cart_only_sonia ]
   - id: f3a-purchase-correction-continues-thread
     implementedBy: "8fc75409"
-    liveCaseIds: [live_behavior.purchase_pending_transfer_continuity]
+    liveCaseIds: [ live_behavior.purchase_pending_transfer_continuity ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_pending_transfer_continuity
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: f3b-approved-status-concise-without-identifiers
     implementedBy: 30cdd7ea
-    liveCaseIds: [live_behavior.purchase_delia_status_by_phone]
+    liveCaseIds: [ live_behavior.purchase_currency_pen_symbol ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_currency_pen_symbol
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: f3b-neutral-selection-without-event-attribution
     implementedBy: "1f453d51"
-    liveCaseIds: [live_behavior.purchase_martha_accountless_selection]
+    liveCaseIds: [ live_behavior.purchase_martha_accountless_selection ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_martha_accountless_selection
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: f3b-transfer-validation-concise-without-amount
     implementedBy: "539852d5"
-    liveCaseIds: [live_behavior.purchase_pending_transfer_continuity]
+    liveCaseIds: [ live_behavior.purchase_pending_transfer_continuity ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_pending_transfer_continuity
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: f3c-gift-safe-read-before-dedication-handoff
     implementedBy: "17041818"
-    liveCaseIds: [live_behavior.purchase_joaquin_dedication_selection]
+    liveCaseIds: [ live_behavior.purchase_joaquin_dedication_selection ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_joaquin_dedication_selection
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: f3c-voucher-report-continues-pending-order
     implementedBy: "8bab0865"
-    liveCaseIds: [live_behavior.pending_balance_validation_luis]
+    liveCaseIds: [ live_behavior.pending_balance_validation_luis ]
+    retiredLiveCaseIds:
+      - live_behavior.pending_balance_validation_luis
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: f3d-bare-confirmation-clarifies-provider-or-action
     implementedBy: "6516efdf"
-    liveCaseIds: [live_behavior.ambiguous_confirmation_clarifies]
+    liveCaseIds: [ live_behavior.ambiguous_confirmation_clarifies ]
   - id: f4a-hint-resolved-selection-trace-parity
     implementedBy: f068d0617d84365bcf96d4bee03a8bba33f08315
-    liveCaseIds: [live_behavior.provider_reference_cheaper_option, live_behavior.provider_reference_miraflores_option]
+    liveCaseIds:
+      - live_behavior.provider_reference_miraflores_option
+    retiredLiveCaseIds:
+      - live_behavior.provider_reference_cheaper_option
   - id: f4b-explicit-send-request-closes-same-turn-with-event-date
     implementedBy: ec0dc3f6eb79afdd99e7213b1e5cfbd0e529b61e
-    liveCaseIds: [live_behavior.s12_provider_completion_truthful_event_date]
+    liveCaseIds: [ live_behavior.s12_provider_completion_truthful_event_date ]
   - id: f4c-reported-pending-order-registry-distinction
     implementedBy: bfaff3ee0305853624d2023194315bf646c7ec16
-    liveCaseIds: [live_behavior.current_campaign_order_over_historical_declined_maria_jose]
+    liveCaseIds: [ live_behavior.current_campaign_order_over_historical_declined_maria_jose ]
   - id: f4-trace-unredact-finish-plan-debug-visibility
     implementedBy: 99e68bc8
-    liveCaseIds: [live_behavior.s12_provider_completion_truthful_event_date]
+    liveCaseIds: [ live_behavior.s12_provider_completion_truthful_event_date ]
   - id: f4d-close-failed-blocked-truthful
     implementedBy: edece4aa
-    liveCaseIds: [live_behavior.s12_provider_completion_truthful_event_date]
+    liveCaseIds: [ live_behavior.s12_provider_completion_truthful_event_date ]
   - id: f4e-finish-plan-explicit-date-fallback
     implementedBy: cbf42681
-    liveCaseIds: [live_behavior.s12_provider_completion_truthful_event_date]
+    liveCaseIds: [ live_behavior.s12_provider_completion_truthful_event_date ]
   - id: f4g-judge-close-evidence
     implementedBy: 4fd56549
-    liveCaseIds: [live_behavior.s12_provider_completion_truthful_event_date]
+    liveCaseIds: [ live_behavior.s12_provider_completion_truthful_event_date ]
   - id: s17-image-inspection-readable-turn
     implementedBy: cbf2c119
-    liveCaseIds: [live_behavior.image_readable_captionless, live_behavior.image_captioned_preserved]
+    liveCaseIds:
+      - live_behavior.image_file_captioned_persisted
+    retiredLiveCaseIds:
+      - live_behavior.image_expired_reference_resubmit
   - id: s17-image-delivery-error-fallback
     implementedBy: cbf2c119
-    liveCaseIds: [live_behavior.image_too_large_fallback, live_behavior.image_unavailable_captioned]
+    liveCaseIds: [ live_behavior.image_unavailable_captioned ]
   - id: s08-s09-purchase-currency-code-symbol
     implementedBy: cbf2c119
-    liveCaseIds: [live_behavior.purchase_currency_pen_symbol]
+    liveCaseIds: [ live_behavior.purchase_currency_pen_symbol ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_currency_pen_symbol
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: a-fixture-correctness-effect-evidence
     implementedBy: ae9e7bbd
-    liveCaseIds: [live_behavior.otp_terminal_handoff_failed, live_behavior.otp_terminal_handoff_unknown, live_behavior.otp_terminal_handoff_unavailable, live_behavior.otp_terminal_missing_trusted_phone]
+    liveCaseIds: [ live_behavior.otp_terminal_handoff_failed, live_behavior.otp_terminal_handoff_unknown, live_behavior.otp_terminal_handoff_unavailable, live_behavior.otp_terminal_missing_trusted_phone ]
   - id: b-fixture-aligned-oracles-verbatim
     implementedBy: "70855093"
-    liveCaseIds: [live_behavior.otp_terminal_handoff_failed, live_behavior.phone_account_rejection_requests_email, live_behavior.phone_purchase_missing_hands_off_once, live_behavior.repeated_otp_failure_preserves_gift_query, live_behavior.roberto_reminder_invitation_disagreement, live_behavior.mailbox_issue_deferral_and_clarification_preserve_support, live_behavior.ambiguous_confirmation_adversarial_selection]
+    liveCaseIds:
+      - live_behavior.otp_terminal_handoff_failed
+      - live_behavior.phone_account_rejection_requests_email
+      - live_behavior.ambiguous_confirmation_clarifies
+    retiredLiveCaseIds:
+      - live_behavior.phone_purchase_missing_hands_off_once
+      - live_behavior.repeated_otp_failure_preserves_gift_query
+      - live_behavior.roberto_verified_unique_rsvp_writes_once
+      - live_behavior.mailbox_issue_deferral_and_clarification_preserve_support
   - id: e-transaction-reference-worlds
     implementedBy: 61f52c09
-    liveCaseIds: [live_behavior.customer_transaction_reference_matched, live_behavior.customer_transaction_reference_unavailable_multiple, live_behavior.customer_transaction_code_by_phone]
+    liveCaseIds:
+      - live_behavior.customer_transaction_reference_matched
+      - live_behavior.customer_transaction_reference_unavailable_multiple
+    retiredLiveCaseIds:
+      - live_behavior.customer_transaction_code_by_phone
   - id: f-trace-packets-judge-isolation-digests
     implementedBy: d0a04298
-    liveCaseIds: [live_behavior.otp_terminal_handoff_failed, live_behavior.customer_transaction_reference_matched]
+    liveCaseIds: [ live_behavior.otp_terminal_handoff_failed, live_behavior.customer_transaction_reference_matched ]
   - id: c-terminal-auth-monotonic-recovery
     implementedBy: 4064a8a5
-    liveCaseIds: [live_behavior.otp_terminal_handoff_failed, live_behavior.otp_terminal_handoff_unknown, live_behavior.otp_terminal_handoff_unavailable, live_behavior.otp_not_received_requires_response, live_behavior.repeated_otp_failure_preserves_gift_query]
+    liveCaseIds:
+      - live_behavior.otp_terminal_handoff_failed
+      - live_behavior.otp_terminal_handoff_unknown
+      - live_behavior.otp_terminal_handoff_unavailable
+    retiredLiveCaseIds:
+      - live_behavior.otp_not_received_requires_response
+      - live_behavior.repeated_otp_failure_preserves_gift_query
   - id: d-grounded-routes-d1-d2-d3
     implementedBy: 37d309ed
-    liveCaseIds: [live_behavior.ambiguous_confirmation_adversarial_selection, live_behavior.mailbox_issue_deferral_and_clarification_preserve_support, live_behavior.phone_purchase_missing_hands_off_once]
+    liveCaseIds:
+      - live_behavior.ambiguous_confirmation_clarifies
+    retiredLiveCaseIds:
+      - live_behavior.mailbox_issue_deferral_and_clarification_preserve_support
+      - live_behavior.phone_purchase_missing_hands_off_once
   - id: gate-eight-scoped-auth-refusal
     implementedBy: 975d369f
-    liveCaseIds: [live_behavior.authentication_refusal_closes_protected_query]
+    liveCaseIds: [ live_behavior.authentication_refusal_closes_protected_query ]
   - id: gate-eight-accountless-conflicting-phone-rejection
     implementedBy: 975d369f
-    liveCaseIds: [live_behavior.purchase_martha_accountless_selection]
+    liveCaseIds: [ live_behavior.purchase_martha_accountless_selection ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_martha_accountless_selection
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: gate-eight-authorized-selection-omits-absent-fields
     implementedBy: 975d369f
-    liveCaseIds: [live_behavior.purchase_martha_accountless_selection]
+    liveCaseIds: [ live_behavior.purchase_martha_accountless_selection ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_martha_accountless_selection
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: gate-eight-equal-reported-amount-no-discrepancy
     implementedBy: 975d369f
-    liveCaseIds: [live_behavior.current_campaign_order_over_historical_declined_maria_jose]
+    liveCaseIds: [ live_behavior.current_campaign_order_over_historical_declined_maria_jose ]
   - id: gate-eight-decimal-safe-judge-evidence
     implementedBy: 975d369f
-    liveCaseIds: [live_behavior.purchase_delia_status_by_phone]
+    liveCaseIds: [ live_behavior.purchase_currency_pen_symbol ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_currency_pen_symbol
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: gate-eight-rsvp-verified-effect-evidence
     implementedBy: 975d369f
-    liveCaseIds: [live_behavior.roberto_verified_unique_rsvp_writes_once]
+    liveCaseIds: [ live_behavior.roberto_verified_unique_rsvp_writes_once ]
+    retiredLiveCaseIds:
+      - live_behavior.roberto_verified_unique_rsvp_writes_once
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: gate-eight-explicit-purchase-clarification
     implementedBy: 975d369f
-    liveCaseIds: [live_behavior.purchase_confirmation_carina_request_survives_normalization]
+    liveCaseIds: [ live_behavior.purchase_confirmation_carina_request_survives_normalization ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_confirmation_carina_request_survives_normalization
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: gate-eight-handoff-effect-instead-of-phrase
     implementedBy: 975d369f
-    liveCaseIds: [live_behavior.wrong_account_handoff_once]
+    liveCaseIds: [ live_behavior.wrong_account_handoff_once ]
+    retiredLiveCaseIds:
+      - live_behavior.wrong_account_handoff_once
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: gate-eight-authorized-isolated-close
     implementedBy: 975d369f
-    liveCaseIds: [live_feedback.token_seeded_close_flow]
+    liveCaseIds: [ live_behavior.close_date_provenance_and_completed_retry ]
   - id: l1-model-composed-support-acknowledgment
     implementedBy: 1305f973
-    liveCaseIds: [live_behavior.mailbox_issue_deferral_and_clarification_preserve_support]
+    liveCaseIds: [ live_behavior.mailbox_issue_deferral_and_clarification_preserve_support ]
+    retiredLiveCaseIds:
+      - live_behavior.mailbox_issue_deferral_and_clarification_preserve_support
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: close-user-date-provenance-before-tool-exposure
     implementedBy: d1b8598b
-    liveCaseIds: [live_feedback.token_seeded_close_flow, live_behavior.close_date_provenance_and_completed_retry]
+    liveCaseIds: [ live_behavior.close_date_provenance_and_completed_retry ]
   - id: close-confirmed-effect-persists-completed-plan
     implementedBy: d1b8598b
-    liveCaseIds: [live_behavior.close_date_provenance_and_completed_retry]
+    liveCaseIds: [ live_behavior.close_date_provenance_and_completed_retry ]
   - id: close-completed-reply-preserves-model-wording
     implementedBy: d1b8598b
-    liveCaseIds: [live_behavior.close_date_provenance_and_completed_retry]
+    liveCaseIds: [ live_behavior.close_date_provenance_and_completed_retry ]
   - id: close-completed-retry-no-new-write-evidence
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.close_date_provenance_and_completed_retry]
+    liveCaseIds: [ live_behavior.close_date_provenance_and_completed_retry ]
   - id: close-completed-plan-not-reset-by-confirm-intent
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.close_date_provenance_and_completed_retry]
+    liveCaseIds: [ live_behavior.close_date_provenance_and_completed_retry ]
   - id: close-completed-retry-existing-outcome-guidance
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.close_date_provenance_and_completed_retry]
+    liveCaseIds: [ live_behavior.close_date_provenance_and_completed_retry ]
   - id: l2-close-contact-model-written-replies
     implementedBy: 9f023f72e7a321ae0424a2bd48f159b5e0cf2df2
-    liveCaseIds: [live_behavior.close_date_provenance_and_completed_retry]
+    liveCaseIds: [ live_behavior.close_date_provenance_and_completed_retry ]
   - id: l2-close-receipt-evidence-before-delivery
     implementedBy: 2953dca83a182622f1f59a5a328f60df59fd40c8
-    liveCaseIds: [live_behavior.s12_provider_completion_truthful_event_date]
+    liveCaseIds: [ live_behavior.s12_provider_completion_truthful_event_date ]
   - id: l2-clarification-model-output-origin
     implementedBy: bdb4a88ac3b3c4fe424a2663fa4f79c6d5f6f157
-    liveCaseIds: [live_behavior.ambiguous_confirmation_adversarial_selection]
+    liveCaseIds: [ live_behavior.ambiguous_confirmation_clarifies ]
   - id: l2-image-outcome-evidence-and-caption-preservation
     implementedBy: bdb4a88ac3b3c4fe424a2663fa4f79c6d5f6f157
-    liveCaseIds: [live_behavior.image_unavailable_captioned, live_behavior.image_readable_captionless]
+    liveCaseIds:
+      - live_behavior.image_unavailable_captioned
+    retiredLiveCaseIds:
+      - live_behavior.image_expired_reference_resubmit
   - id: l2-auth-refusal-model-composed-outcome
     implementedBy: bdb4a88ac3b3c4fe424a2663fa4f79c6d5f6f157
-    liveCaseIds: [live_behavior.authentication_refusal_closes_protected_query]
+    liveCaseIds: [ live_behavior.authentication_refusal_closes_protected_query ]
   - id: l2-terminal-auth-result-model-projection
     implementedBy: bdb4a88ac3b3c4fe424a2663fa4f79c6d5f6f157
-    liveCaseIds: [live_behavior.otp_terminal_missing_trusted_phone, live_behavior.repeated_otp_failure_preserves_gift_query]
+    liveCaseIds:
+      - live_behavior.otp_terminal_missing_trusted_phone
+    retiredLiveCaseIds:
+      - live_behavior.repeated_otp_failure_preserves_gift_query
   - id: l2-capability-boundary-model-delivery
     implementedBy: bdb4a88ac3b3c4fe424a2663fa4f79c6d5f6f157
-    liveCaseIds: [live_behavior.purchase_confirmation_carina_request_survives_normalization]
+    liveCaseIds: [ live_behavior.purchase_confirmation_carina_request_survives_normalization ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_confirmation_carina_request_survives_normalization
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: followup-image-unavailable-routes-through-evidence
     implementedBy: bdb4a88ac3b3c4fe424a2663fa4f79c6d5f6f157
-    liveCaseIds: [live_behavior.image_unavailable_captioned]
+    liveCaseIds: [ live_behavior.image_unavailable_captioned ]
   - id: followup-ambiguous-provider-alternatives-stay-neutral
     implementedBy: bdb4a88ac3b3c4fe424a2663fa4f79c6d5f6f157
-    liveCaseIds: [live_behavior.ambiguous_confirmation_adversarial_selection]
+    liveCaseIds: [ live_behavior.ambiguous_confirmation_clarifies ]
   - id: followup-auth-refusal-closes-credential-requests
     implementedBy: bdb4a88ac3b3c4fe424a2663fa4f79c6d5f6f157
-    liveCaseIds: [live_behavior.authentication_refusal_closes_protected_query]
+    liveCaseIds: [ live_behavior.authentication_refusal_closes_protected_query ]
   - id: url-image-native-owner-projection
     implementedBy: bdb4a88
-    liveCaseIds: [live_behavior.image_url_describe_dice, live_behavior.image_url_receipt_payment_thread]
+    liveCaseIds: [ live_behavior.image_url_unavailable_evidence, live_behavior.image_url_receipt_payment_thread ]
+    retiredLiveCaseIds:
+      - live_behavior.image_url_unavailable_evidence
+      - live_behavior.image_url_receipt_payment_thread
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: url-image-unavailable-evidence
     implementedBy: bdb4a88
-    liveCaseIds: [live_behavior.image_url_unavailable_evidence]
+    liveCaseIds: [ live_behavior.image_url_unavailable_evidence ]
+    retiredLiveCaseIds:
+      - live_behavior.image_url_unavailable_evidence
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: url-image-bounded-attachment-refs
     implementedBy: bdb4a88
-    liveCaseIds: [live_behavior.image_url_describe_dice]
+    liveCaseIds: [ live_behavior.image_url_unavailable_evidence ]
+    retiredLiveCaseIds:
+      - live_behavior.image_url_unavailable_evidence
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: l4-persistent-owner-discrimination-and-single-transfer
     implementedBy: bdb4a88
-    liveCaseIds: [live_behavior.owner_planning_to_faq_single_transfer]
+    liveCaseIds: [ live_behavior.image_conversation_continuity ]
+    retiredLiveCaseIds:
+      - live_behavior.image_conversation_continuity
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: l4-customer-context-payment-relevance-and-owner-persistence
     implementedBy: bdb4a88
-    liveCaseIds: [live_behavior.owner_customer_payment_relevance]
+    liveCaseIds: [ live_behavior.image_url_receipt_payment_thread ]
+    retiredLiveCaseIds:
+      - live_behavior.image_url_receipt_payment_thread
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: base64-image-file-persistence-and-owner-projection
     implementedBy: bdb4a88
-    liveCaseIds: [live_behavior.image_file_captioned_persisted, live_behavior.image_file_explicit_describe]
+    liveCaseIds: [ live_behavior.image_file_captioned_persisted, live_behavior.image_unavailable_captioned ]
   - id: base64-image-delayed-question-via-plan-reload
     implementedBy: bdb4a88
-    liveCaseIds: [live_behavior.image_file_delayed_question]
+    liveCaseIds: [ live_behavior.image_file_delayed_question ]
   - id: base64-unrelated-turn-omits-persisted-pixels
     implementedBy: bdb4a88
-    liveCaseIds: [live_behavior.image_file_unrelated_omits_pixels]
+    liveCaseIds: [ live_behavior.image_file_captioned_persisted ]
   - id: base64-malformed-image-unavailable-evidence
     implementedBy: bdb4a88
-    liveCaseIds: [live_behavior.image_file_malformed_unavailable]
+    liveCaseIds: [ live_behavior.image_unavailable_captioned ]
   - id: step-c-order-total-vs-remaining-balance-projection
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.pending_balance_validation_luis]
+    liveCaseIds: [ live_behavior.pending_balance_validation_luis ]
+    retiredLiveCaseIds:
+      - live_behavior.pending_balance_validation_luis
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: step-c-currency-disclosure-provenance-pen
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.purchase_currency_pen_symbol]
+    liveCaseIds: [ live_behavior.purchase_currency_pen_symbol ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_currency_pen_symbol
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: step-c-cart-order-record-separation
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.active_cart_checkout_continuity_alex]
+    liveCaseIds: [ live_behavior.abandoned_cart_only_sonia ]
   - id: step-c-purchase-selection-record-facts
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.purchase_joaquin_dedication_selection, live_behavior.purchase_martha_accountless_selection]
+    liveCaseIds: [ live_behavior.purchase_joaquin_dedication_selection, live_behavior.purchase_martha_accountless_selection ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_joaquin_dedication_selection
+      - live_behavior.purchase_martha_accountless_selection
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: step-c-pending-transfer-correction-framing
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.purchase_pending_transfer_continuity]
+    liveCaseIds: [ live_behavior.purchase_pending_transfer_continuity ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_pending_transfer_continuity
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: step-c-terminal-handoff-outcome-truthfulness
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.otp_terminal_handoff_failed, live_behavior.otp_terminal_handoff_unavailable, live_behavior.otp_terminal_handoff_unknown, live_behavior.otp_terminal_missing_trusted_phone]
+    liveCaseIds: [ live_behavior.otp_terminal_handoff_failed, live_behavior.otp_terminal_handoff_unavailable, live_behavior.otp_terminal_handoff_unknown, live_behavior.otp_terminal_missing_trusted_phone ]
   - id: step-c-scoped-phone-search-miss-framing
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.phone_purchase_missing_hands_off_once]
+    liveCaseIds: [ live_behavior.phone_purchase_missing_hands_off_once ]
+    retiredLiveCaseIds:
+      - live_behavior.phone_purchase_missing_hands_off_once
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: step-c-auth-refusal-explicit-close
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.authentication_refusal_closes_protected_query]
+    liveCaseIds: [ live_behavior.authentication_refusal_closes_protected_query ]
   - id: step-c-rsvp-no-write-reporting
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.rsvp_confirmed_state_is_reported, live_behavior.rsvp_cristian_phone_enriched_confirmation, live_behavior.rsvp_jose_campaign_invitation_not_reported_missing, live_behavior.rsvp_cinthya_campaign_invitation_not_reported_missing]
+    liveCaseIds:
+      - live_behavior.rsvp_confirmed_state_is_reported
+      - live_behavior.rsvp_cristian_phone_enriched_confirmation
+    retiredLiveCaseIds:
+      - live_behavior.rsvp_jose_campaign_invitation_not_reported_missing
   - id: step-c-rsvp-declined-offers-change
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.rsvp_declined_state_offers_one_change]
+    liveCaseIds: [ live_behavior.s11_rsvp_durability_confirms_once ]
   - id: step-c-plus-one-unsaved-honesty
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.rsvp_plus_one_not_eligible_no_false_success]
+    liveCaseIds: [ live_behavior.rsvp_cristian_phone_enriched_confirmation ]
   - id: step-c-multi-person-handoff-honesty
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.rsvp_multi_person_offers_human_help]
+    liveCaseIds: [ live_behavior.host_support_allows_explicit_rsvp_switch ]
   - id: step-c-reminder-mismatch-without-denial
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.roberto_reminder_invitation_disagreement]
+    liveCaseIds: [ live_behavior.roberto_verified_unique_rsvp_writes_once ]
+    retiredLiveCaseIds:
+      - live_behavior.roberto_verified_unique_rsvp_writes_once
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: step-c-ambiguous-confirmation-typed-alternatives
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.ambiguous_confirmation_adversarial_selection]
+    liveCaseIds: [ live_behavior.ambiguous_confirmation_clarifies ]
   - id: step-c-spanish-only-evidence
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.spanish_only_mixed_language_request]
+    liveCaseIds: [ live_behavior.spanish_only_mixed_language_request ]
+    retiredLiveCaseIds:
+      - live_behavior.spanish_only_mixed_language_request
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: step-c-close-contact-completeness
     implementedBy: bdb4a88a
-    liveCaseIds: [live_feedback.token_seeded_contact_correction]
+    liveCaseIds: [ live_feedback.token_seeded_contact_correction ]
+    retiredLiveCaseIds:
+      - live_feedback.token_seeded_contact_correction
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: step-c-close-continuation-after-refinement
     implementedBy: bdb4a88a
-    liveCaseIds: [live_feedback.token_seeded_selection_defer_close]
+    liveCaseIds: [ live_feedback.token_seeded_selection_defer_close ]
+    retiredLiveCaseIds:
+      - live_feedback.token_seeded_selection_defer_close
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: declined-protected-request-on-phone-identity-rejects-association
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.phone_account_rejection_requests_email]
+    liveCaseIds: [ live_behavior.phone_account_rejection_requests_email ]
   - id: continuity-text-image-same-turn-single-answer
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.continuity_text_image_same_turn]
+    liveCaseIds: [ live_behavior.host_withdrawal_pending_event_followup ]
+    retiredLiveCaseIds:
+      - live_behavior.host_withdrawal_pending_event_followup
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: continuity-question-needs-image-preserved-then-answered
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.continuity_question_needs_image]
+    liveCaseIds: [ live_behavior.continuity_question_needs_image ]
+    retiredLiveCaseIds:
+      - live_behavior.continuity_question_needs_image
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: continuity-voucher-receipt-then-thanks-no-repeat
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.continuity_voucher_then_thanks]
+    liveCaseIds: [ live_behavior.continuity_voucher_then_thanks ]
+    retiredLiveCaseIds:
+      - live_behavior.continuity_voucher_then_thanks
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: image-only-silence-typed-persistence-no-origin-hash
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.image_file_delayed_question, live_behavior.image_readable_captionless]
+    liveCaseIds:
+      - live_behavior.image_file_delayed_question
+    retiredLiveCaseIds:
+      - live_behavior.image_expired_reference_resubmit
   - id: image-receipt-illegible-amount-stays-unknown
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.image_receipt_illegible_amount]
+    liveCaseIds: [ live_behavior.image_receipt_illegible_amount ]
+    retiredLiveCaseIds:
+      - live_behavior.image_receipt_illegible_amount
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: image-receipt-ambiguous-digits-never-confirmed
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.image_receipt_ambiguous_digits]
+    liveCaseIds: [ live_behavior.image_receipt_illegible_amount ]
+    retiredLiveCaseIds:
+      - live_behavior.image_receipt_illegible_amount
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: image-non-receipt-never-payment-proof
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.image_non_receipt_payment_claim]
+    liveCaseIds: [ live_behavior.image_receipt_illegible_amount ]
+    retiredLiveCaseIds:
+      - live_behavior.image_receipt_illegible_amount
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: image-multiple-pending-orders-no-auto-select
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.image_multiple_pending_orders_no_select]
+    liveCaseIds: [ live_behavior.image_multiple_pending_orders_no_select ]
   - id: image-expired-reference-asks-resubmission
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.image_expired_reference_resubmit]
+    liveCaseIds: [ live_behavior.image_expired_reference_resubmit ]
+    retiredLiveCaseIds:
+      - live_behavior.image_expired_reference_resubmit
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: sept14-r2-image-response-continuity-integration
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.image_conversation_continuity]
+    liveCaseIds: [ live_behavior.image_conversation_continuity ]
+    retiredLiveCaseIds:
+      - live_behavior.image_conversation_continuity
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: sept14-r5-authoritative-close-projection
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.close_date_provenance_and_completed_retry]
+    liveCaseIds: [ live_behavior.close_date_provenance_and_completed_retry ]
   - id: sept14-r6-purchase-disclosure-factual-time
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.purchase_confirmation_carina_request_survives_normalization]
+    liveCaseIds: [ live_behavior.purchase_confirmation_carina_request_survives_normalization ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_confirmation_carina_request_survives_normalization
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: sept14-secondary-email-capability-answer
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.accountless_event_answer_precedes_remaining_private_auth]
+    liveCaseIds: [ live_behavior.accountless_guest_event_uses_phone_without_otp ]
   - id: sept14-s1-durable-isolated-fixture-history
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.image_distractor_history_preserves_current_question]
+    liveCaseIds: [ live_behavior.image_distractor_history_preserves_current_question ]
+    retiredLiveCaseIds:
+      - live_behavior.image_distractor_history_preserves_current_question
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: sept14-s1-outbound-receipt-via-live-target
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.image_distractor_history_preserves_current_question]
+    liveCaseIds: [ live_behavior.image_distractor_history_preserves_current_question ]
+    retiredLiveCaseIds:
+      - live_behavior.image_distractor_history_preserves_current_question
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: s6-single-customer-context-serialization
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.owner_customer_payment_relevance]
+    liveCaseIds: [ live_behavior.image_url_receipt_payment_thread ]
+    retiredLiveCaseIds:
+      - live_behavior.image_url_receipt_payment_thread
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: s6-cart-relevance-from-structured-checkout-evidence
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.active_cart_checkout_continuity_alex]
+    liveCaseIds: [ live_behavior.abandoned_cart_only_sonia ]
   - id: s6-receipt-hides-abandoned-cart-explicit-checkout-preserved
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.abandoned_cart_only_sonia]
+    liveCaseIds: [ live_behavior.abandoned_cart_only_sonia ]
   - id: s6-typed-amount-presentation-without-phrase-template
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.purchase_pending_transfer_continuity]
+    liveCaseIds: [ live_behavior.purchase_pending_transfer_continuity ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_pending_transfer_continuity
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: s6-payment-receipt-thanks-stay-payment-focused
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.continuity_voucher_then_thanks]
+    liveCaseIds: [ live_behavior.continuity_voucher_then_thanks ]
+    retiredLiveCaseIds:
+      - live_behavior.continuity_voucher_then_thanks
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: s6-explicit-time-alternative-0500-1700
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.purchase_explicit_time_alternatives]
+    liveCaseIds: [ live_behavior.purchase_pending_transfer_continuity ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_pending_transfer_continuity
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: b4-s2-failed-delivery-preserves-pending
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.s2-failed-delivery-preserves-pending]
+    liveCaseIds: [ live_behavior.s3-stale-ref-silence-fails ]
+    retiredLiveCaseIds:
+      - live_behavior.s3-stale-ref-silence-fails
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: b4-s3-stale-ref-silence-fails
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.s3-stale-ref-silence-fails]
+    liveCaseIds: [ live_behavior.s3-stale-ref-silence-fails ]
+    retiredLiveCaseIds:
+      - live_behavior.s3-stale-ref-silence-fails
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: b4-s4-injected-renderer-prose-fails
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.s4-injected-renderer-prose-fails]
+    liveCaseIds: [ live_behavior.provider_reference_miraflores_option ]
   - id: b4-s5-generic-model-failure-not-image
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.s5-generic-model-failure-not-image]
+    liveCaseIds: [ live_behavior.image_file_delayed_question ]
   - id: b4-s7-ambiguous-orders-no-auto-select
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.s7-ambiguous-orders-no-auto-select]
+    liveCaseIds: [ live_behavior.image_multiple_pending_orders_no_select ]
   - id: ex1-tia-niur-ambiguous-reference-clarifies-never-newest
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.rsvp_tia_niur_ambiguous_clarifies]
+    liveCaseIds: [ live_behavior.rsvp_explicit_mutation_targets_requested_event ]
   - id: ex1-tia-niur-explicit-old-target-wins-over-newer
     implementedBy: bdb4a88a
-    liveCaseIds: [live_behavior.rsvp_tia_niur_old_target_wins]
+    liveCaseIds: [ live_behavior.rsvp_explicit_mutation_targets_requested_event ]
   - id: rsvp-explicit-event-precedence-over-pending
     implementedBy: 847a588b
-    liveCaseIds: [live_behavior.rsvp_explicit_mutation_targets_requested_event, live_behavior.rsvp_unmatched_named_event_no_mutation]
+    liveCaseIds: [ live_behavior.rsvp_explicit_mutation_targets_requested_event ]
   - id: rsvp-identity-bound-evidence-no-name-merge
     implementedBy: 847a588b
-    liveCaseIds: [live_behavior.rsvp_explicit_mutation_targets_requested_event]
+    liveCaseIds: [ live_behavior.rsvp_explicit_mutation_targets_requested_event ]
   - id: host-policy-attendance-precedence-over-response-flag
     implementedBy: 847a588b
-    liveCaseIds: [live_behavior.rsvp_host_set_declining_consistent]
+    liveCaseIds: [ live_behavior.rsvp_host_set_declining_consistent ]
   - id: lease-conditioned-rsvp-receipt-writes
     implementedBy: 847a588b
-    liveCaseIds: [live_behavior.s11_rsvp_durability_confirms_once]
+    liveCaseIds: [ live_behavior.s11_rsvp_durability_confirms_once ]
   - id: replayed-receipt-never-overwrites-fresh-state
     implementedBy: 847a588b
-    liveCaseIds: [live_behavior.tito_numbered_name_and_post_rsvp_closure]
+    liveCaseIds: [ live_behavior.tito_numbered_name_and_post_rsvp_closure ]
+    retiredLiveCaseIds:
+      - live_behavior.tito_numbered_name_and_post_rsvp_closure
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: extractor-thanks-returns-empty-delta
     implementedBy: 847a588b
-    liveCaseIds: [live_behavior.image_url_receipt_payment_thread]
+    liveCaseIds: [ live_behavior.image_url_receipt_payment_thread ]
+    retiredLiveCaseIds:
+      - live_behavior.image_url_receipt_payment_thread
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: purchase-disclosures-gated-by-requested-aspect
     implementedBy: 847a588b
-    liveCaseIds: [live_behavior.purchase_explicit_time_alternatives]
-# 2026-09-14 Packet E pre-deploy note (diagnostic-only, intentionally
-# unregistered): live_behavior.native_image_long_thread (6 inputs) and
-# live_behavior.event_context_long_thread (4 inputs) are in suite
-# live_behavior_regression as diagnostic specifications ("New specification,
-# not an implementation-complete claim" per their notes). No behavior change
-# was implemented for them in any commit, so no implementedBy SHA exists and
-# no fabricated hash is recorded here. Register distinct entries with real
-# commit SHAs only after an implementing change lands and passes the gate.
-# 2026-09-15 Packet E1 note (evaluation worker, uncommitted working tree):
-# the entries below implement the profile-inference directive expectation
-# audit. implementedBy temporarily names the working-tree HEAD (3c85b877);
-# the coordinator replaces each with the real atomic-commit SHA at commit
-# time, one entry per behavior change, never reusing an older entry as
-# coverage for a later change.
+    liveCaseIds: [ live_behavior.purchase_pending_transfer_continuity ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_pending_transfer_continuity
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
+  # 2026-09-14 Packet E pre-deploy note (diagnostic-only, intentionally
+  # unregistered): live_behavior.native_image_long_thread (6 inputs) and
+  # live_behavior.event_context_long_thread (4 inputs) are in suite
+  # live_behavior_regression as diagnostic specifications ("New specification,
+  # not an implementation-complete claim" per their notes). No behavior change
+  # was implemented for them in any commit, so no implementedBy SHA exists and
+  # no fabricated hash is recorded here. Register distinct entries with real
+  # commit SHAs only after an implementing change lands and passes the gate.
+  # 2026-09-15 Packet E1 note (evaluation worker, uncommitted working tree):
+  # the entries below implement the profile-inference directive expectation
+  # audit. implementedBy temporarily names the working-tree HEAD (3c85b877);
+  # the coordinator replaces each with the real atomic-commit SHA at commit
+  # time, one entry per behavior change, never reusing an older entry as
+  # coverage for a later change.
   - id: e1-host-declining-unique-guest-readonly
     implementedBy: "98231045"
-    liveCaseIds: [live_behavior.rsvp_host_set_declining_unique_guest]
+    liveCaseIds: [ live_behavior.rsvp_host_set_declining_consistent ]
   - id: e1-host-declining-ambiguous-identity-distinguishable
     implementedBy: "98231045"
-    liveCaseIds: [live_behavior.rsvp_host_set_declining_consistent]
+    liveCaseIds: [ live_behavior.rsvp_host_set_declining_consistent ]
   - id: e1-ambiguous-selection-continuation-proof
     implementedBy: "98231045"
-    liveCaseIds: [live_behavior.rsvp_ambiguous_event_requires_grounded_selection]
+    liveCaseIds: [ live_behavior.rsvp_ambiguous_event_requires_grounded_selection ]
   - id: e1-judge-only-image-ground-truth
     implementedBy: "98231045"
-    liveCaseIds: [live_behavior.image_file_delayed_question, live_behavior.image_readable_captionless]
+    liveCaseIds:
+      - live_behavior.image_file_delayed_question
+    retiredLiveCaseIds:
+      - live_behavior.image_expired_reference_resubmit
   - id: e1-s07-complete-utterance-zero-write
     implementedBy: "98231045"
-    liveCaseIds: [live_behavior.s07_attending_identical_no_write]
+    liveCaseIds: [ live_behavior.s11_rsvp_durability_confirms_once ]
   - id: e1-otp-attempt-counter-removal
     implementedBy: "98231045"
-    liveCaseIds: [live_behavior.repeated_otp_failure_preserves_gift_query]
+    liveCaseIds: [ live_behavior.repeated_otp_failure_preserves_gift_query ]
+    retiredLiveCaseIds:
+      - live_behavior.repeated_otp_failure_preserves_gift_query
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: e1-literal-pin-to-semantic-wedding-planner
     implementedBy: "98231045"
-    liveCaseIds: [live_behavior.wedding_planner_location_completes_search]
+    liveCaseIds: [ live_behavior.wedding_planner_location_completes_search ]
+    retiredLiveCaseIds:
+      - live_behavior.wedding_planner_location_completes_search
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: e1-inference-tolerant-judge-rules
     implementedBy: "98231045"
-    liveCaseIds: [live_behavior.rsvp_tia_niur_ambiguous_clarifies, live_behavior.current_campaign_order_over_historical_declined_maria_jose, live_behavior.spanish_only_mixed_language_request]
-# 2026-09-15 Packet E2 note (evaluation worker, uncommitted working tree):
-# diagnostic truth only: raw gate verdicts stay separate from the adjudicated
-# cause, fixture inconsistency is reported distinctly, and turn-boundary
-# evidence isolation is proved by tests. No runtime, prompt, or conversational
-# behavior change. implementedBy temporarily names the working-tree HEAD
-# (3c85b877); the coordinator replaces each with the real atomic-commit SHA
-# at commit time, one entry per behavior change, never reusing an older entry
-# as coverage for a later change.
+    liveCaseIds:
+      - live_behavior.rsvp_explicit_mutation_targets_requested_event
+      - live_behavior.current_campaign_order_over_historical_declined_maria_jose
+    retiredLiveCaseIds:
+      - live_behavior.spanish_only_mixed_language_request
+  # 2026-09-15 Packet E2 note (evaluation worker, uncommitted working tree):
+  # diagnostic truth only: raw gate verdicts stay separate from the adjudicated
+  # cause, fixture inconsistency is reported distinctly, and turn-boundary
+  # evidence isolation is proved by tests. No runtime, prompt, or conversational
+  # behavior change. implementedBy temporarily names the working-tree HEAD
+  # (3c85b877); the coordinator replaces each with the real atomic-commit SHA
+  # at commit time, one entry per behavior change, never reusing an older entry
+  # as coverage for a later change.
   - id: e2-raw-verdict-vs-adjudicated-cause
     implementedBy: "98231045"
-    liveCaseIds: [live_behavior.s11_rsvp_durability_confirms_once, live_behavior.s07_attending_identical_no_write]
+    liveCaseIds: [ live_behavior.s11_rsvp_durability_confirms_once ]
   - id: e2-fixture-inconsistency-reporting
     implementedBy: "98231045"
-    liveCaseIds: [live_behavior.image_file_delayed_question]
+    liveCaseIds: [ live_behavior.image_file_delayed_question ]
   - id: e2-turn-boundary-evidence-isolation
     implementedBy: "98231045"
-    liveCaseIds: [live_behavior.rsvp_ambiguous_event_requires_grounded_selection]
-# 2026-09-16 oracle-audit follow-up (Fixer, uncommitted working tree):
-# narrow typed-action conflict gate, read-only declining offer on typed
-# signal, and venue street parity already had implementing bytes in the tree
-# but no registry entries. implementedBy temporarily names the working-tree
-# HEAD (3c85b877); the coordinator replaces each with the real atomic-commit
-# SHA at commit time, one entry per behavior change, never reusing an older
-# entry as coverage for a later change.
+    liveCaseIds: [ live_behavior.rsvp_ambiguous_event_requires_grounded_selection ]
+  # 2026-09-16 oracle-audit follow-up (Fixer, uncommitted working tree):
+  # narrow typed-action conflict gate, read-only declining offer on typed
+  # signal, and venue street parity already had implementing bytes in the tree
+  # but no registry entries. implementedBy temporarily names the working-tree
+  # HEAD (3c85b877); the coordinator replaces each with the real atomic-commit
+  # SHA at commit time, one entry per behavior change, never reusing an older
+  # entry as coverage for a later change.
   - id: narrow-typed-action-conflict-gate
     implementedBy: "98231045"
-    liveCaseIds: [live_behavior.accountless_event_answer_precedes_remaining_private_auth]
+    liveCaseIds: [ live_behavior.accountless_guest_event_uses_phone_without_otp ]
   - id: read-only-declining-offer-on-typed-signal
     implementedBy: "98231045"
-    liveCaseIds: [live_behavior.rsvp_declined_state_offers_one_change]
+    liveCaseIds: [ live_behavior.s11_rsvp_durability_confirms_once ]
   - id: venue-street-parity-event-detail-moments
     implementedBy: "98231045"
-    liveCaseIds: [live_behavior.accountless_guest_event_uses_phone_without_otp]
-# 2026-09-16 support-relevance Packet E1 (implemented by 2b3583b3):
-# judge-packet repair independent of runtime. Amount answers need the exact
-# verified value in any wording (never a literal label), the judge scores the
-# complete utterance, handoff promises without a confirmed effect fail while
-# concise omission of internal mechanics passes, and the judge-only image line
-# names its bound input turn with selectedIndex gating.
+    liveCaseIds: [ live_behavior.accountless_guest_event_uses_phone_without_otp ]
+  # 2026-09-16 support-relevance Packet E1 (implemented by 2b3583b3):
+  # judge-packet repair independent of runtime. Amount answers need the exact
+  # verified value in any wording (never a literal label), the judge scores the
+  # complete utterance, handoff promises without a confirmed effect fail while
+  # concise omission of internal mechanics passes, and the judge-only image line
+  # names its bound input turn with selectedIndex gating.
   - id: e1-support-amount-value-not-literal
     implementedBy: "2b3583b3"
-    liveCaseIds: [live_behavior.image_file_delayed_question, live_behavior.image_readable_captionless]
+    liveCaseIds:
+      - live_behavior.image_file_delayed_question
+    retiredLiveCaseIds:
+      - live_behavior.image_expired_reference_resubmit
   - id: e1-support-full-utterance-handoff-omission
     implementedBy: "2b3583b3"
-    liveCaseIds: [live_behavior.host_withdrawal_diana_policy_and_support]
-# 2026-09-16 compiler-migration remediation (implemented by 2b3583b3):
-# reply instructions come from the compiler registry (auth split into its own
-# gated file, image/approval limits gated by task, receipt and transaction
-# stripping, contact/extraction gating, factual ATC format).
+    liveCaseIds: [ live_behavior.host_withdrawal_diana_policy_and_support ]
+  # 2026-09-16 compiler-migration remediation (implemented by 2b3583b3):
+  # reply instructions come from the compiler registry (auth split into its own
+  # gated file, image/approval limits gated by task, receipt and transaction
+  # stripping, contact/extraction gating, factual ATC format).
   - id: compiler-migration-owns-reply-requests
     implementedBy: "2b3583b3"
-    liveCaseIds: [live_behavior.accountless_guest_event_uses_phone_without_otp]
+    liveCaseIds: [ live_behavior.accountless_guest_event_uses_phone_without_otp ]
   - id: auth-split-terminal-limitation-gated
     implementedBy: "2b3583b3"
-    liveCaseIds: [live_behavior.otp_terminal_handoff_failed, live_behavior.otp_terminal_handoff_unknown]
+    liveCaseIds: [ live_behavior.otp_terminal_handoff_failed, live_behavior.otp_terminal_handoff_unknown ]
   - id: handoff-scoping-composes-with-answer
     implementedBy: "2b3583b3"
-    liveCaseIds: [live_behavior.host_withdrawal_diana_policy_and_support]
+    liveCaseIds: [ live_behavior.host_withdrawal_diana_policy_and_support ]
   - id: transaction-strip-model-request
     implementedBy: "2b3583b3"
-    liveCaseIds: [live_behavior.owner_customer_payment_relevance]
+    liveCaseIds: [ live_behavior.image_url_receipt_payment_thread ]
+    retiredLiveCaseIds:
+      - live_behavior.image_url_receipt_payment_thread
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: contact-extraction-gating
     implementedBy: "2b3583b3"
-    liveCaseIds: [live_behavior.mailbox_issue_deferral_and_clarification_preserve_support]
+    liveCaseIds: [ live_behavior.mailbox_issue_deferral_and_clarification_preserve_support ]
+    retiredLiveCaseIds:
+      - live_behavior.mailbox_issue_deferral_and_clarification_preserve_support
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: image-limits-gated-on-media-context
     implementedBy: "2b3583b3"
-    liveCaseIds: [live_behavior.image_file_delayed_question, live_behavior.image_readable_captionless]
+    liveCaseIds:
+      - live_behavior.image_file_delayed_question
+    retiredLiveCaseIds:
+      - live_behavior.image_expired_reference_resubmit
   - id: approval-boundary-receipt-guard
     implementedBy: "2b3583b3"
-    liveCaseIds: [live_behavior.owner_customer_payment_relevance]
+    liveCaseIds: [ live_behavior.image_url_receipt_payment_thread ]
+    retiredLiveCaseIds:
+      - live_behavior.image_url_receipt_payment_thread
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: faq-empty-evidence-limitation
     implementedBy: "2b3583b3"
-    liveCaseIds: [live_behavior.support_detail_continuity]
+    liveCaseIds: [ live_behavior.support_detail_continuity ]
+    retiredLiveCaseIds:
+      - live_behavior.support_detail_continuity
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: atc-factual-supplemental-format
     implementedBy: "2b3583b3"
-    liveCaseIds: [live_behavior.host_withdrawal_diana_policy_and_support, live_behavior.host_withdrawal_general_policy_only]
-# 2026-09-16 customer-support release, Evaluation lane E: oracle revisions without threshold changes plus one new integration
-# case, implemented by runtime 44d18c73. One entry per behavior change.
-# 2026-09-16 declined-state oracle acceptance (evaluator-owned v6 to v7):
-# a truthful declined-state report suffices with no mandatory unsolicited
-# change offer; the offer is optional and never required for full credit.
-# No runtime, threshold, severity, or judge change; truthful-state,
-# authorization, no-false-success, and identity checks retained.
+    liveCaseIds: [ live_behavior.host_withdrawal_diana_policy_and_support ]
+  # 2026-09-16 customer-support release, Evaluation lane E: oracle revisions without threshold changes plus one new integration
+  # case, implemented by runtime 44d18c73. One entry per behavior change.
+  # 2026-09-16 declined-state oracle acceptance (evaluator-owned v6 to v7):
+  # a truthful declined-state report suffices with no mandatory unsolicited
+  # change offer; the offer is optional and never required for full credit.
+  # No runtime, threshold, severity, or judge change; truthful-state,
+  # authorization, no-false-success, and identity checks retained.
   - id: support-release-e1-accountless-venue-effect-receipt
     implementedBy: "44d18c73"
-    liveCaseIds: [live_behavior.accountless_guest_event_uses_phone_without_otp]
+    liveCaseIds: [ live_behavior.accountless_guest_event_uses_phone_without_otp ]
   - id: support-release-e1-owner-payment-unknown-balance-equivalents
     implementedBy: "44d18c73"
-    liveCaseIds: [live_behavior.owner_customer_payment_relevance]
+    liveCaseIds: [ live_behavior.image_url_receipt_payment_thread ]
+    retiredLiveCaseIds:
+      - live_behavior.image_url_receipt_payment_thread
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: support-release-e1-diana-readonly-lookup-receipt-takeover
     implementedBy: "44d18c73"
-    liveCaseIds: [live_behavior.host_withdrawal_diana_policy_and_support]
+    liveCaseIds: [ live_behavior.host_withdrawal_diana_policy_and_support ]
   - id: support-release-e2-accountless-preauth-effect-receipt
     implementedBy: "44d18c73"
-    liveCaseIds: [live_behavior.accountless_event_answer_precedes_remaining_private_auth]
+    liveCaseIds: [ live_behavior.accountless_guest_event_uses_phone_without_otp ]
   - id: support-release-e2-missing-action-effect-receipt
     implementedBy: "44d18c73"
-    liveCaseIds: [live_behavior.rsvp_missing_action_requires_explicit_decision]
+    liveCaseIds: [ live_behavior.s11_rsvp_durability_confirms_once ]
   - id: support-release-e3-customer-event-task-continuity
     implementedBy: "44d18c73"
-    liveCaseIds: [live_behavior.customer_event_task_continuity]
+    liveCaseIds: [ live_behavior.customer_event_task_continuity ]
   - id: support-release-e4-declined-state-report-suffices
     implementedBy: "44d18c73"
-    liveCaseIds: [live_behavior.rsvp_declined_state_offers_one_change]
+    liveCaseIds: [ live_behavior.s11_rsvp_durability_confirms_once ]
   - id: failure-landing-payment-unknown-balance-profile-preservation
     implementedBy: "d1a4a0b1"
-    liveCaseIds: [live_behavior.pending_balance_validation_luis, live_behavior.owner_customer_payment_relevance]
+    liveCaseIds: [ live_behavior.pending_balance_validation_luis, live_behavior.image_url_receipt_payment_thread ]
+    retiredLiveCaseIds:
+      - live_behavior.pending_balance_validation_luis
+      - live_behavior.image_url_receipt_payment_thread
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: failure-landing-pending-credential-resume
     implementedBy: "1f6c0585"
-    liveCaseIds: [live_behavior.otp_sent_explains_image_limitation]
+    liveCaseIds: [ live_behavior.otp_sent_explains_image_limitation ]
+    retiredLiveCaseIds:
+      - live_behavior.otp_sent_explains_image_limitation
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: failure-landing-image-ack-recovery
     implementedBy: "1f6c0585"
-    liveCaseIds: [live_behavior.image_url_unavailable_evidence]
+    liveCaseIds: [ live_behavior.image_url_unavailable_evidence ]
+    retiredLiveCaseIds:
+      - live_behavior.image_url_unavailable_evidence
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: failure-landing-rsvp-existing-state-attribution
     implementedBy: "1f6c0585"
-    liveCaseIds: [live_behavior.rsvp_cinthya_campaign_invitation_not_reported_missing]
+    liveCaseIds: [ live_behavior.rsvp_jose_campaign_invitation_not_reported_missing ]
+    retiredLiveCaseIds:
+      - live_behavior.rsvp_jose_campaign_invitation_not_reported_missing
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: failure-landing-support-topic-preservation
     implementedBy: "1f6c0585"
-    liveCaseIds: [live_behavior.support_detail_continuity, live_behavior.concurrent_support_turns_preserve_context]
+    liveCaseIds:
+      - live_behavior.concurrent_support_turns_preserve_context
+    retiredLiveCaseIds:
+      - live_behavior.support_detail_continuity
   - id: actionable-answer-shared-directive-and-pending-resume
     implementedBy: "08bfda01"
-    liveCaseIds: [live_behavior.support_pending_question_completed]
+    liveCaseIds: [ live_behavior.support_pending_question_completed ]
+    retiredLiveCaseIds:
+      - live_behavior.support_pending_question_completed
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: actionable-answer-production-reasoning-low-and-classifier-budget
     implementedBy: "08bfda01"
-    liveCaseIds: [live_behavior.customer_event_task_continuity]
+    liveCaseIds: [ live_behavior.customer_event_task_continuity ]
   - id: actionable-answer-cumulative-effect-pin-corrections
     implementedBy: "02e68806"
-    liveCaseIds: [live_behavior.customer_event_task_continuity, live_behavior.host_withdrawal_diana_policy_and_support]
+    liveCaseIds: [ live_behavior.customer_event_task_continuity, live_behavior.host_withdrawal_diana_policy_and_support ]
   - id: actionable-answer-diana-ack-sufficient-and-context-retention
     implementedBy: "02e68806"
-    liveCaseIds: [live_behavior.host_withdrawal_diana_policy_and_support]
+    liveCaseIds: [ live_behavior.host_withdrawal_diana_policy_and_support ]
   - id: actionable-answer-concurrent-recital-removal
     implementedBy: "02e68806"
-    liveCaseIds: [live_behavior.concurrent_support_turns_preserve_context]
+    liveCaseIds: [ live_behavior.concurrent_support_turns_preserve_context ]
   - id: actionable-answer-pending-question-completed-case
     implementedBy: "02e68806"
-    liveCaseIds: [live_behavior.support_pending_question_completed]
+    liveCaseIds: [ live_behavior.support_pending_question_completed ]
+    retiredLiveCaseIds:
+      - live_behavior.support_pending_question_completed
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: wait-aware-triple-text-no-repeat
     implementedBy: "01e54544"
-    liveCaseIds: [live_behavior.wait_followup_no_repeat]
+    liveCaseIds: [ live_behavior.support_pending_question_completed ]
+    retiredLiveCaseIds:
+      - live_behavior.support_pending_question_completed
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: support-references-do-not-manufacture-open-review-status
     implementedBy: 6fb3a888
-    liveCaseIds: [live_behavior.support_detail_continuity, live_behavior.concurrent_support_turns_preserve_context]
+    liveCaseIds:
+      - live_behavior.concurrent_support_turns_preserve_context
+    retiredLiveCaseIds:
+      - live_behavior.support_detail_continuity
   - id: native-receipt-context-and-purchase-reconciliation
     implementedBy: "c011ee89"
-    liveCaseIds: [live_behavior.receipt_text_pending_then_receipt_alone, live_behavior.receipt_with_text_together, live_behavior.receipt_alone_then_followup_text, live_behavior.receipt_gift_only_match, live_behavior.receipt_dual_same_amount_asks, live_behavior.receipt_explicit_older_target_wins, live_behavior.receipt_approved_no_pending_story, live_behavior.receipt_non_receipt_image_no_reads]
+    liveCaseIds:
+      - live_behavior.receipt_text_pending_then_receipt_alone
+      - live_behavior.receipt_gift_only_match
+      - live_behavior.receipt_explicit_older_target_wins
+    retiredLiveCaseIds:
+      - live_behavior.receipt_non_receipt_image_no_reads
   - id: gift-fulfillment-per-item-mapping-and-projection
     implementedBy: "05ba3635"
-    liveCaseIds: [live_behavior.gift_sestore_unknown_shipping_offers_support, live_behavior.gift_credit_states_host_choice_no_shipment, live_behavior.gift_mixed_order_distinguishes_items, live_behavior.gift_sestore_shipped_answers_data, live_behavior.gift_unknown_type_preserves_uncertainty]
+    liveCaseIds:
+      - live_behavior.gift_sestore_shipped_answers_data
+      - live_behavior.gift_credit_states_host_choice_no_shipment
+      - live_behavior.gift_mixed_order_distinguishes_items
+    retiredLiveCaseIds:
+      - live_behavior.gift_unknown_type_preserves_uncertainty
   - id: gift-credit-policy-payment-independence-and-card-separation
     implementedBy: "05ba3635"
-    liveCaseIds: [live_behavior.gift_credit_pending_payment_stays_pending, live_behavior.gift_credit_with_physical_card_distinguishes]
+    liveCaseIds: [ live_behavior.gift_credit_states_host_choice_no_shipment, live_behavior.gift_credit_with_physical_card_distinguishes ]
   - id: gift-shipping-limitation-offer-then-single-handoff
     implementedBy: "05ba3635"
-    liveCaseIds: [live_behavior.gift_shipping_limitation_accepted_handoff_once]
+    liveCaseIds: [ live_behavior.gift_shipping_limitation_accepted_handoff_once ]
   - id: campaign-reference-precedence-scope-and-no-auto-handoff
     implementedBy: "56056936"
-    liveCaseIds: [live_behavior.campaign_scope_carryover_override_handoff, live_behavior.roberto_reminder_invitation_disagreement]
+    liveCaseIds: [ live_behavior.campaign_scope_carryover_override_handoff, live_behavior.roberto_verified_unique_rsvp_writes_once ]
+    retiredLiveCaseIds:
+      - live_behavior.campaign_scope_carryover_override_handoff
+      - live_behavior.roberto_verified_unique_rsvp_writes_once
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: gift-amounts-preserved-in-shipping-context
     implementedBy: "df8764ef"
-    liveCaseIds: [live_behavior.gift_mixed_order_distinguishes_items, live_behavior.gift_sestore_unknown_shipping_offers_support, live_behavior.gift_credit_states_host_choice_no_shipment]
+    liveCaseIds: [ live_behavior.gift_mixed_order_distinguishes_items, live_behavior.gift_sestore_shipped_answers_data, live_behavior.gift_credit_states_host_choice_no_shipment ]
   - id: item-source-conflicts-replace-positional-merge
     implementedBy: "b264d49c"
-    liveCaseIds: [live_behavior.gift_mixed_order_distinguishes_items, live_behavior.gift_unknown_type_preserves_uncertainty]
+    liveCaseIds:
+      - live_behavior.gift_mixed_order_distinguishes_items
+    retiredLiveCaseIds:
+      - live_behavior.gift_unknown_type_preserves_uncertainty
   - id: scoped-gift-presentation-without-code-citations
     implementedBy: "2862a8d6"
-    liveCaseIds: [live_behavior.gift_credit_states_host_choice_no_shipment, live_behavior.gift_credit_pending_payment_stays_pending, live_behavior.gift_credit_with_physical_card_distinguishes, live_behavior.gift_sestore_shipped_answers_data, live_behavior.gift_unknown_type_preserves_uncertainty, live_behavior.gift_sestore_unknown_shipping_offers_support, live_behavior.gift_shipping_limitation_accepted_handoff_once]
+    liveCaseIds:
+      - live_behavior.gift_credit_states_host_choice_no_shipment
+      - live_behavior.gift_credit_with_physical_card_distinguishes
+      - live_behavior.gift_sestore_shipped_answers_data
+      - live_behavior.gift_shipping_limitation_accepted_handoff_once
+    retiredLiveCaseIds:
+      - live_behavior.gift_unknown_type_preserves_uncertainty
   - id: campaign-dedup-and-request-reference-honesty
     implementedBy: "8fcd1d42"
-    liveCaseIds: [live_behavior.campaign_scope_carryover_override_handoff]
+    liveCaseIds: [ live_behavior.campaign_scope_carryover_override_handoff ]
+    retiredLiveCaseIds:
+      - live_behavior.campaign_scope_carryover_override_handoff
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: one-purchase-source-contract-verbal-resource
     implementedBy: "f285a74f"
-    liveCaseIds: [live_behavior.gift_sestore_unknown_shipping_offers_support, live_behavior.gift_credit_states_host_choice_no_shipment, live_behavior.gift_mixed_order_distinguishes_items, live_behavior.gift_sestore_shipped_answers_data, live_behavior.gift_unknown_type_preserves_uncertainty, live_behavior.gift_credit_pending_payment_stays_pending, live_behavior.gift_credit_with_physical_card_distinguishes]
+    liveCaseIds:
+      - live_behavior.gift_sestore_shipped_answers_data
+      - live_behavior.gift_credit_states_host_choice_no_shipment
+      - live_behavior.gift_mixed_order_distinguishes_items
+      - live_behavior.gift_credit_with_physical_card_distinguishes
+    retiredLiveCaseIds:
+      - live_behavior.gift_unknown_type_preserves_uncertainty
   - id: receipt-discovery-from-typed-task
     implementedBy: "f285a74f"
-    liveCaseIds: [live_behavior.receipt_dual_same_amount_asks, live_behavior.receipt_gift_only_match, live_behavior.receipt_with_text_together, live_behavior.receipt_alone_then_followup_text, live_behavior.receipt_approved_no_pending_story, live_behavior.receipt_text_pending_then_receipt_alone, live_behavior.receipt_explicit_older_target_wins]
+    liveCaseIds: [ live_behavior.receipt_explicit_older_target_wins, live_behavior.receipt_gift_only_match, live_behavior.receipt_text_pending_then_receipt_alone ]
   - id: same-turn-gift-detail-followup
     implementedBy: "f285a74f"
-    liveCaseIds: [live_behavior.gift_mixed_order_distinguishes_items, live_behavior.gift_sestore_shipped_answers_data, live_behavior.gift_sestore_unknown_shipping_offers_support]
+    liveCaseIds: [ live_behavior.gift_mixed_order_distinguishes_items, live_behavior.gift_sestore_shipped_answers_data ]
   - id: no-auto-handoff-on-empty-reads
     implementedBy: "f285a74f"
-    liveCaseIds: [live_behavior.gift_shipping_limitation_accepted_handoff_once, live_behavior.campaign_scope_carryover_override_handoff]
+    liveCaseIds:
+      - live_behavior.gift_shipping_limitation_accepted_handoff_once
+    retiredLiveCaseIds:
+      - live_behavior.campaign_scope_carryover_override_handoff
   - id: scoped-receipt-disclosure-no-transcription
     implementedBy: "f285a74f"
-    liveCaseIds: [live_behavior.receipt_approved_no_pending_story, live_behavior.receipt_dual_same_amount_asks, live_behavior.receipt_with_text_together, live_behavior.receipt_alone_then_followup_text]
+    liveCaseIds: [ live_behavior.receipt_gift_only_match, live_behavior.receipt_explicit_older_target_wins, live_behavior.receipt_text_pending_then_receipt_alone ]
   - id: conflict-truncation-monotonic
     implementedBy: "f285a74f"
-    liveCaseIds: [live_behavior.gift_unknown_type_preserves_uncertainty, live_behavior.gift_mixed_order_distinguishes_items]
+    liveCaseIds:
+      - live_behavior.gift_mixed_order_distinguishes_items
+    retiredLiveCaseIds:
+      - live_behavior.gift_unknown_type_preserves_uncertainty
   - id: retain-authorized-purchases-on-descriptive-hints
     implementedBy: "e2d80ed1"
-    liveCaseIds: [live_behavior.gift_credit_states_host_choice_no_shipment, live_behavior.gift_credit_pending_payment_stays_pending, live_behavior.gift_mixed_order_distinguishes_items]
+    liveCaseIds: [ live_behavior.gift_credit_states_host_choice_no_shipment, live_behavior.gift_mixed_order_distinguishes_items ]
   - id: faq-complete-passage-budget-with-explicit-coverage
     implementedBy: "9e5f5cd9"
-    liveCaseIds: [live_behavior.receipt_non_receipt_image_no_reads]
+    liveCaseIds: [ live_behavior.receipt_non_receipt_image_no_reads ]
+    retiredLiveCaseIds:
+      - live_behavior.receipt_non_receipt_image_no_reads
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: frozen-hours-kb-passage-for-image-clean-world
     implementedBy: "9e5f5cd9"
-    liveCaseIds: [live_behavior.receipt_non_receipt_image_no_reads]
+    liveCaseIds: [ live_behavior.receipt_non_receipt_image_no_reads ]
+    retiredLiveCaseIds:
+      - live_behavior.receipt_non_receipt_image_no_reads
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: purchase-discovery-bounded-source-expansion
     implementedBy: "5974e6f5"
-    liveCaseIds: [live_behavior.gift_mixed_order_distinguishes_items, live_behavior.receipt_explicit_older_target_wins]
+    liveCaseIds: [ live_behavior.gift_mixed_order_distinguishes_items, live_behavior.receipt_explicit_older_target_wins ]
   - id: subject-based-extractor-source-contract
     implementedBy: "5974e6f5"
-    liveCaseIds: [live_behavior.gift_mixed_order_distinguishes_items]
+    liveCaseIds: [ live_behavior.gift_mixed_order_distinguishes_items ]
   - id: count-driven-selection-removed
     implementedBy: "5974e6f5"
-    liveCaseIds: [live_behavior.receipt_explicit_older_target_wins, live_behavior.gift_mixed_order_distinguishes_items]
+    liveCaseIds: [ live_behavior.receipt_explicit_older_target_wins, live_behavior.gift_mixed_order_distinguishes_items ]
   - id: support-availability-typed-without-forced-handoff
     implementedBy: "5974e6f5"
-    liveCaseIds: [live_behavior.gift_shipping_limitation_accepted_handoff_once, live_behavior.gift_sestore_unknown_shipping_offers_support]
+    liveCaseIds: [ live_behavior.gift_shipping_limitation_accepted_handoff_once, live_behavior.gift_sestore_shipped_answers_data ]
   - id: canonical-record-parity-single-body
     implementedBy: "5974e6f5"
-    liveCaseIds: [live_behavior.gift_mixed_order_distinguishes_items, live_behavior.receipt_with_text_together]
+    liveCaseIds: [ live_behavior.gift_mixed_order_distinguishes_items, live_behavior.receipt_text_pending_then_receipt_alone ]
   - id: prompt-relevance-extraction-support-bundles
     implementedBy: "5974e6f5"
-    liveCaseIds: [live_behavior.gift_mixed_order_distinguishes_items]
+    liveCaseIds: [ live_behavior.gift_mixed_order_distinguishes_items ]
   - id: multi-purchase-outcome-never-labels-first-candidate-unique
     implementedBy: "6cbbe01f"
-    liveCaseIds: [live_behavior.receipt_explicit_older_target_wins, live_behavior.receipt_dual_same_amount_asks]
+    liveCaseIds: [ live_behavior.receipt_explicit_older_target_wins ]
   - id: extractor-uses-only-extraction-invariants-on-actual-call
     implementedBy: "3b810609"
-    liveCaseIds: [live_behavior.gift_mixed_order_distinguishes_items, live_behavior.receipt_explicit_older_target_wins]
+    liveCaseIds: [ live_behavior.gift_mixed_order_distinguishes_items, live_behavior.receipt_explicit_older_target_wins ]
   - id: reply-removes-unverified-action-phrase-examples
     implementedBy: "3b810609"
-    liveCaseIds: [live_behavior.gift_mixed_order_distinguishes_items, live_behavior.gift_shipping_limitation_accepted_handoff_once]
-# 2026-09-22 final work package integration (coordinator, offline only):
-# one entry per behavior change. Owner A canonical profile (47a624ca),
-# Owner B prompt economy and support continuity (a26a1eb0), Owner C
-# gpt-6-luna application migration (6a3e8a18). The C-model live gate is
-# UNRUN (offline-only instruction); these entries bind the behavior to
-# mandatory live cases for the future dev gate. No cache-hit claim.
+    liveCaseIds: [ live_behavior.gift_mixed_order_distinguishes_items, live_behavior.gift_shipping_limitation_accepted_handoff_once ]
+  # 2026-09-22 final work package integration (coordinator, offline only):
+  # one entry per behavior change. Owner A canonical profile (47a624ca),
+  # Owner B prompt economy and support continuity (a26a1eb0), Owner C
+  # gpt-6-luna application migration (6a3e8a18). The C-model live gate is
+  # UNRUN (offline-only instruction); these entries bind the behavior to
+  # mandatory live cases for the future dev gate. No cache-hit claim.
   - id: canonical-purchase-profile-provenance-source-coverage
     implementedBy: "47a624ca"
-    liveCaseIds: [live_behavior.gift_mixed_order_distinguishes_items, live_behavior.receipt_explicit_older_target_wins, live_behavior.purchase_current_pending_over_old_approved]
+    liveCaseIds: [ live_behavior.gift_mixed_order_distinguishes_items, live_behavior.receipt_explicit_older_target_wins, live_behavior.purchase_current_pending_over_old_approved ]
   - id: classifier-prompt-economy-general-campaign
     implementedBy: "a26a1eb0"
-    liveCaseIds: [live_behavior.rsvp_missing_action_requires_explicit_decision, live_behavior.spanish_only_mixed_language_request]
+    liveCaseIds:
+      - live_behavior.s11_rsvp_durability_confirms_once
+    retiredLiveCaseIds:
+      - live_behavior.spanish_only_mixed_language_request
   - id: extractor-prompt-economy-established-support
     implementedBy: "a26a1eb0"
-    liveCaseIds: [live_behavior.gift_mixed_order_distinguishes_items, live_behavior.support_detail_continuity]
+    liveCaseIds:
+      - live_behavior.gift_mixed_order_distinguishes_items
+    retiredLiveCaseIds:
+      - live_behavior.support_detail_continuity
   - id: extractor-single-continuity-object
     implementedBy: "a26a1eb0"
-    liveCaseIds: [live_behavior.support_detail_continuity, live_behavior.concurrent_support_turns_preserve_context]
+    liveCaseIds:
+      - live_behavior.concurrent_support_turns_preserve_context
+    retiredLiveCaseIds:
+      - live_behavior.support_detail_continuity
   - id: support-continuity-first-report-vs-followup
     implementedBy: "a26a1eb0"
-    liveCaseIds: [live_behavior.support_detail_continuity, live_behavior.support_pending_question_completed]
+    liveCaseIds: [ live_behavior.support_detail_continuity, live_behavior.support_pending_question_completed ]
+    retiredLiveCaseIds:
+      - live_behavior.support_detail_continuity
+      - live_behavior.support_pending_question_completed
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: support-continuity-unresolved-issue-handoff-prose
     implementedBy: "a26a1eb0"
-    liveCaseIds: [live_behavior.support_detail_continuity, live_behavior.concurrent_support_turns_preserve_context]
+    liveCaseIds:
+      - live_behavior.concurrent_support_turns_preserve_context
+    retiredLiveCaseIds:
+      - live_behavior.support_detail_continuity
   - id: reply-core-single-file
     implementedBy: "a26a1eb0"
-    liveCaseIds: [live_behavior.support_detail_continuity, live_behavior.customer_event_task_continuity]
+    liveCaseIds:
+      - live_behavior.customer_event_task_continuity
+    retiredLiveCaseIds:
+      - live_behavior.support_detail_continuity
   - id: reply-tool-narration-omitted-without-tools
     implementedBy: "a26a1eb0"
-    liveCaseIds: [live_behavior.support_detail_continuity, live_behavior.phone_purchase_missing_hands_off_once]
+    liveCaseIds: [ live_behavior.support_detail_continuity, live_behavior.phone_purchase_missing_hands_off_once ]
+    retiredLiveCaseIds:
+      - live_behavior.support_detail_continuity
+      - live_behavior.phone_purchase_missing_hands_off_once
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: application-model-gpt-6-luna-migration
     implementedBy: "6a3e8a18"
-    liveCaseIds: [live_behavior.gift_mixed_order_distinguishes_items, live_behavior.support_detail_continuity]
+    liveCaseIds:
+      - live_behavior.gift_mixed_order_distinguishes_items
+    retiredLiveCaseIds:
+      - live_behavior.support_detail_continuity
   - id: extractor-continuity-facts-survive-non-support-turns
     implementedBy: "746b04a5"
-    liveCaseIds: [live_behavior.customer_event_task_continuity, live_behavior.rsvp_ambiguous_event_requires_grounded_selection, live_behavior.authentication_refusal_closes_protected_query]
-# 2026-09-22 evidence-preserving handoff Packets A/B/C (coordinator commits
-# 57d01f79, ff57151b, plus this Packet C integration): one entry per
-# behavior change. Each binds to mandatory live Lambda cases with hard
-# structural assertions plus a hard requireJudge semantic.
+    liveCaseIds: [ live_behavior.customer_event_task_continuity, live_behavior.rsvp_ambiguous_event_requires_grounded_selection, live_behavior.authentication_refusal_closes_protected_query ]
+  # 2026-09-22 evidence-preserving handoff Packets A/B/C (coordinator commits
+  # 57d01f79, ff57151b, plus this Packet C integration): one entry per
+  # behavior change. Each binds to mandatory live Lambda cases with hard
+  # structural assertions plus a hard requireJudge semantic.
   - id: purchase-answer-facet-closure-balance-credit-shipping
     implementedBy: "57d01f79"
-    liveCaseIds: [live_behavior.pending_balance_validation_luis, live_behavior.gift_credit_pending_payment_stays_pending, live_behavior.gift_mixed_order_distinguishes_items]
+    liveCaseIds:
+      - live_behavior.gift_credit_states_host_choice_no_shipment
+      - live_behavior.gift_mixed_order_distinguishes_items
+    retiredLiveCaseIds:
+      - live_behavior.pending_balance_validation_luis
   - id: extractor-subject-ownership-facet-independence
     implementedBy: "ff57151b"
-    liveCaseIds: [live_behavior.pending_balance_validation_luis, live_behavior.gift_mixed_order_distinguishes_items]
+    liveCaseIds:
+      - live_behavior.gift_mixed_order_distinguishes_items
+    retiredLiveCaseIds:
+      - live_behavior.pending_balance_validation_luis
   - id: support-continuity-names-current-turn-no-obligatory-reask
     implementedBy: "ff57151b"
-    liveCaseIds: [live_behavior.support_detail_continuity, live_behavior.concurrent_support_turns_preserve_context]
+    liveCaseIds:
+      - live_behavior.concurrent_support_turns_preserve_context
+    retiredLiveCaseIds:
+      - live_behavior.support_detail_continuity
   - id: gift-fulfillment-applicability-vs-recorded-dispatch
     implementedBy: "ff57151b"
-    liveCaseIds: [live_behavior.gift_mixed_order_distinguishes_items, live_behavior.gift_credit_pending_payment_stays_pending]
+    liveCaseIds: [ live_behavior.gift_mixed_order_distinguishes_items, live_behavior.gift_credit_states_host_choice_no_shipment ]
   - id: image-receipt-identifying-amount-exact-currency
     implementedBy: "ff57151b"
-    liveCaseIds: [live_behavior.image_readable_captionless, live_behavior.image_url_receipt_payment_thread]
+    liveCaseIds: [ live_behavior.image_expired_reference_resubmit, live_behavior.image_url_receipt_payment_thread ]
+    retiredLiveCaseIds:
+      - live_behavior.image_expired_reference_resubmit
+      - live_behavior.image_url_receipt_payment_thread
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
   - id: rsvp-selection-node-pin-to-observable-zero-write
     implementedBy: "12a65617"
-    liveCaseIds: [live_behavior.rsvp_ambiguous_event_requires_grounded_selection, live_behavior.s11_rsvp_durability_confirms_once]
+    liveCaseIds: [ live_behavior.rsvp_ambiguous_event_requires_grounded_selection, live_behavior.s11_rsvp_durability_confirms_once ]
   - id: targeted-panel-discovery-default-url-tool-balance-facts
     implementedBy: "e2bc8daf"
-    liveCaseIds: [live_behavior.gift_mixed_order_distinguishes_items, live_behavior.image_url_receipt_payment_thread, live_behavior.pending_balance_validation_luis, live_behavior.gift_credit_pending_payment_stays_pending]
+    liveCaseIds:
+      - live_behavior.gift_mixed_order_distinguishes_items
+      - live_behavior.gift_credit_states_host_choice_no_shipment
+    retiredLiveCaseIds:
+      - live_behavior.image_url_receipt_payment_thread
+      - live_behavior.pending_balance_validation_luis
   - id: revert-recitation-requirements-after-t1-confabulation
     implementedBy: "2505876b"
-    liveCaseIds: [live_behavior.pending_balance_validation_luis, live_behavior.gift_credit_pending_payment_stays_pending, live_behavior.image_url_receipt_payment_thread]
-# 2026-09-23 confirmed-context root causes (offline corrections, no live run
-# in this package). One entry per conversational behavior change; CLI and
-# quota-harness changes are offline-only and carry no live case.
+    liveCaseIds:
+      - live_behavior.gift_credit_states_host_choice_no_shipment
+    retiredLiveCaseIds:
+      - live_behavior.pending_balance_validation_luis
+      - live_behavior.image_url_receipt_payment_thread
+  # 2026-09-23 confirmed-context root causes (offline corrections, no live run
+  # in this package). One entry per conversational behavior change; CLI and
+  # quota-harness changes are offline-only and carry no live case.
   - id: fixture-received-history-preservation
     implementedBy: "0bf5812e"
-    liveCaseIds: [live_behavior.support_detail_continuity, live_behavior.concurrent_support_turns_preserve_context]
+    liveCaseIds:
+      - live_behavior.concurrent_support_turns_preserve_context
+    retiredLiveCaseIds:
+      - live_behavior.support_detail_continuity
   - id: customer-profile-deadline-origin-and-expiry-mapping
     implementedBy: "7475f7c4"
-    liveCaseIds: [live_behavior.rsvp_plus_one_multiple_events_requires_selection, live_behavior.gift_mixed_order_distinguishes_items]
+    liveCaseIds: [ live_behavior.rsvp_explicit_mutation_targets_requested_event, live_behavior.gift_mixed_order_distinguishes_items ]
   - id: gift-card-oracle-orders-prohibition-removal
     implementedBy: "520de33d"
-    liveCaseIds: [live_behavior.gift_credit_with_physical_card_distinguishes]
+    liveCaseIds: [ live_behavior.gift_credit_with_physical_card_distinguishes ]
+  - id: faq-full-article-expansion-on-high-relevance
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.faq_commission_full_article_citation ]
+  - id: faq-deterministic-source-citation-footer
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.faq_commission_full_article_citation ]
+  - id: faq-record-field-prompt-scoping
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.faq_commission_full_article_citation ]
+  - id: kb-sync-table-and-link-fidelity
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.faq_commission_full_article_citation ]
+  - id: rsvp-per-invitation-state-and-source-conservation-2026-09-28
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.rsvp_host_set_declining_consistent, live_behavior.rsvp_foreign_number_decline ]
+  - id: rsvp-ineligible-companion-reason-and-no-retry-2026-09-28
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.rsvp_cristian_phone_enriched_confirmation ]
+  - id: explicit-campaign-decline-effect-and-reply-2026-09-28
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.rsvp_foreign_number_decline ]
+  - id: commission-source-scoped-worked-example-and-calculator-2026-09-28
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.faq_commission_full_article_citation ]
+  - id: commission-numeric-claim-grounding-gate-2026-09-28
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.faq_commission_full_article_citation ]
+  - id: host-withdrawal-policy-present-in-reply-2026-09-28
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.host_withdrawal_diana_policy_and_support ]
+  - id: standalone-customer-reference-structured-purchase-extraction-2026-09-28
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.customer_transaction_reference_matched ]
+  - id: unmatched-customer-reference-retains-all-candidates-2026-09-28
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.customer_transaction_reference_unavailable_multiple ]
+  - id: rsvp-typed-numeric-event-reference-binds-only-authorized-invitation-2026-09-29
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.rsvp_cristian_phone_enriched_confirmation, live_behavior.rsvp_explicit_mutation_targets_requested_event ]
+  - id: commission-complete-source-example-and-both-payer-outcomes-2026-09-29
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.faq_commission_full_article_citation ]
+  - id: rsvp-companion-rejection-does-not-imply-own-attendance-2026-09-29
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.rsvp_cristian_phone_enriched_confirmation ]
+  - id: purchase-partial-source-failure-scoped-support-2026-09-29
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.phone_purchase_missing_hands_off_once ]
+    retiredLiveCaseIds:
+      - live_behavior.phone_purchase_missing_hands_off_once
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
+  - id: rsvp-failed-lookup-preserves-unknown-state-2026-09-29
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.rsvp_missing_event_identity_is_unavailable ]
+  - id: rsvp-candidate-reconciled-state-precedence-2026-09-29
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.rsvp_host_set_declining_consistent ]
+  - id: global-international-phone-intake-2026-09-29
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.rsvp_foreign_number_decline ]
+  - id: rsvp-companion-request-keeps-own-attendance-undecided-2026-09-29
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.rsvp_cristian_phone_enriched_confirmation ]
+  - id: rsvp-explicit-offset-event-zone-projection-2026-09-29
+    implementedBy: "0000000"
+    liveCaseIds:
+      - live_behavior.rsvp_explicit_mutation_targets_requested_event
+      - live_behavior.customer_event_task_continuity
+    retiredLiveCaseIds:
+      - live_behavior.event_context_long_thread
+      - live_behavior.support_pending_question_completed
+  - id: associated-event-local-time-projection-2026-09-29
+    implementedBy: "0000000"
+    liveCaseIds:
+      - live_behavior.customer_event_task_continuity
+    retiredLiveCaseIds:
+      - live_behavior.event_context_long_thread
+  - id: preserve-recorded-event-hours-without-zone-conversion-2026-09-29
+    implementedBy: "0000000"
+    liveCaseIds:
+      - live_behavior.customer_event_task_continuity
+    retiredLiveCaseIds:
+      - live_behavior.event_context_long_thread
+  - id: include-verified-phone-owned-and-hosted-history-in-canonical-profile-2026-09-29
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.phone_hosted_event_history ]
+  - id: preserve-outbound-message-event-id-as-reference-evidence-2026-09-29
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.phone_hosted_event_history ]
+  - id: condense-rsvp-selection-threads-into-explicit-mutation-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.rsvp_explicit_mutation_targets_requested_event ]
+  - id: condense-rsvp-companion-threads-into-host-switch-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.host_support_allows_explicit_rsvp_switch ]
+  - id: condense-rsvp-state-threads-into-reversal-and-durability-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.s11_rsvp_durability_confirms_once ]
+  - id: condense-image-fallback-threads-into-captioned-survivors-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds:
+      - live_behavior.image_file_captioned_persisted
+      - live_behavior.image_unavailable_captioned
+      - live_behavior.image_multiple_pending_orders_no_select
+    retiredLiveCaseIds:
+      - live_behavior.image_receipt_illegible_amount
+  - id: condense-purchase-gift-owner-threads-into-continuity-survivors-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds:
+      - live_behavior.gift_sestore_shipped_answers_data
+    retiredLiveCaseIds:
+      - live_behavior.purchase_pending_transfer_continuity
+      - live_behavior.payment_destination_requires_pending_purchase
+      - live_behavior.image_url_receipt_payment_thread
+  - id: condense-accountless-hostwithdrawal-ambiguous-into-clarify-survivors-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.accountless_guest_event_uses_phone_without_otp, live_behavior.host_withdrawal_diana_policy_and_support, live_behavior.ambiguous_confirmation_clarifies ]
+  - id: emit-typed-purchasefact-evidence-on-completed-purchase-summaries-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.gift_mixed_order_distinguishes_items ]
+  - id: merge-active-cart-checkout-continuity-alex-into-survivor-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.abandoned_cart_only_sonia ]
+  - id: merge-continuity-text-image-same-turn-into-survivor-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.host_withdrawal_pending_event_followup ]
+    retiredLiveCaseIds:
+      - live_behavior.host_withdrawal_pending_event_followup
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
+  - id: merge-faq-commission-50-pen-no-unverified-arithmetic-into-survivor-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.faq_commission_full_article_citation ]
+  - id: merge-gift-credit-pending-payment-stays-pending-into-survivor-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.gift_credit_states_host_choice_no_shipment ]
+  - id: merge-image-file-explicit-describe-into-survivor-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.image_unavailable_captioned ]
+  - id: merge-image-file-unrelated-omits-pixels-into-survivor-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.image_file_captioned_persisted ]
+  - id: merge-image-readable-captionless-into-survivor-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.image_expired_reference_resubmit ]
+    retiredLiveCaseIds:
+      - live_behavior.image_expired_reference_resubmit
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
+  - id: merge-image-url-describe-dice-into-survivor-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.image_url_unavailable_evidence ]
+    retiredLiveCaseIds:
+      - live_behavior.image_url_unavailable_evidence
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
+  - id: merge-owner-planning-to-faq-single-transfer-into-survivor-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.image_conversation_continuity ]
+    retiredLiveCaseIds:
+      - live_behavior.image_conversation_continuity
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
+  - id: merge-purchase-delia-status-by-phone-into-survivor-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.purchase_currency_pen_symbol ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_currency_pen_symbol
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
+  - id: merge-receipt-alone-then-followup-text-into-survivor-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.receipt_text_pending_then_receipt_alone ]
+  - id: merge-receipt-approved-no-pending-story-into-survivor-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.receipt_gift_only_match ]
+  - id: merge-receipt-dual-same-amount-asks-into-survivor-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.receipt_explicit_older_target_wins ]
+  - id: merge-receipt-with-text-together-into-survivor-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.receipt_text_pending_then_receipt_alone ]
+  - id: merge-roberto-reminder-invitation-disagreement-into-survivor-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.roberto_verified_unique_rsvp_writes_once ]
+    retiredLiveCaseIds:
+      - live_behavior.roberto_verified_unique_rsvp_writes_once
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
+  - id: merge-rsvp-cinthya-campaign-invitation-not-reported-missing-into-survivor-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.rsvp_jose_campaign_invitation_not_reported_missing ]
+    retiredLiveCaseIds:
+      - live_behavior.rsvp_jose_campaign_invitation_not_reported_missing
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
+  - id: merge-rsvp-host-set-declining-unique-guest-into-survivor-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.rsvp_host_set_declining_consistent ]
+  - id: merge-rsvp-paolo-mariana-resolved-single-into-survivor-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.rsvp_confirmed_state_is_reported ]
+  - id: merge-rsvp-plus-one-not-eligible-no-false-success-into-survivor-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.rsvp_cristian_phone_enriched_confirmation ]
+  - id: merge-rsvp-sinar-campaign-decline-into-survivor-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.rsvp_foreign_number_decline ]
+  - id: merge-rsvp-state-reversal-ends-confirmed-into-survivor-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.s11_rsvp_durability_confirms_once ]
+  - id: merge-rsvp-trusted-phone-reports-no-pending-into-survivor-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.rsvp_ambiguous_event_requires_grounded_selection ]
+  - id: merge-s2-failed-delivery-preserves-pending-into-survivor-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.s3-stale-ref-silence-fails ]
+    retiredLiveCaseIds:
+      - live_behavior.s3-stale-ref-silence-fails
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
+  - id: merge-s4-injected-renderer-prose-fails-into-survivor-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.provider_reference_miraflores_option ]
+  - id: merge-s5-generic-model-failure-not-image-into-survivor-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.image_file_delayed_question ]
+  - id: merge-wait-followup-no-repeat-into-survivor-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.support_pending_question_completed ]
+    retiredLiveCaseIds:
+      - live_behavior.support_pending_question_completed
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
+  - id: merge-token-seeded-close-flow-into-survivor-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.close_date_provenance_and_completed_retry ]
+  - id: fixture-effect-count-per-turn-delta-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.rsvp_foreign_number_decline ]
+  - id: spanish-rsvp-link-vocabulary-enlace-de-invitacion-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.spanish_only_mixed_language_request ]
+    retiredLiveCaseIds:
+      - live_behavior.spanish_only_mixed_language_request
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
+  - id: resolver-hour-with-place-zone-no-conversion-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.customer_event_task_continuity ]
+  - id: extractor-operation-ambiguity-candidates-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.purchase_confirmation_carina_request_survives_normalization ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_confirmation_carina_request_survives_normalization
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
+  - id: extractor-receipt-image-reconciliation-query-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.receipt_gift_only_match ]
+  - id: extractor-modification-read-first-purchase-query-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.purchase_joaquin_dedication_selection ]
+    retiredLiveCaseIds:
+      - live_behavior.purchase_joaquin_dedication_selection
+    status: retired
+    retirementReason: 2026-09-30 user-directed 50% live-panel reduction. This historical scenario is excluded from the current gate; no equivalent coverage is claimed.
+  - id: extractor-rsvp-readonly-current-message-source-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.host_support_allows_explicit_rsvp_switch ]
+  - id: correct-no-new-write-live-oracles-after-turn-delta-checker-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds:
+      - live_behavior.customer_event_task_continuity
+      - live_behavior.gift_shipping_limitation_accepted_handoff_once
+      - live_behavior.host_withdrawal_diana_policy_and_support
+      - live_behavior.otp_terminal_handoff_failed
+      - live_behavior.otp_terminal_handoff_unknown
+  - id: pending-information-recall-cannot-replay-authentication-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.otp_number_words_are_verified ]
+  - id: fresh-self-rsvp-does-not-inherit-unresolved-companion-decision-2026-09-30
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.rsvp_explicit_mutation_targets_requested_event ]
+  - id: faq-helper-publications-preserve-original-only-source-footer-2026-10-02
+    implementedBy: "0000000"
+    liveCaseIds: [ live_behavior.faq_commission_full_article_citation ]

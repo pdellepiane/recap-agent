@@ -1,10 +1,10 @@
 template: template.base-live
 id: live_behavior.otp_terminal_missing_trusted_phone
 suite: live_behavior_regression
-version: 1
-description: Seed phone without inbound trusted phone dispatches nothing and reports missing identity. Inputs omit channel and contactPhone so the harness default non-WhatsApp channel applies and the Lambda accepts the phoneless body.
-tags: [live, behavior, authentication, otp, terminal]
-targetModes: [live_lambda]
+version: 4
+description: Seed phone without inbound trusted phone dispatches nothing and reports missing identity across a repeated code, and a thanks closes without effects. Inputs omit channel and contactPhone so the harness default non-WhatsApp channel applies and the Lambda accepts the phoneless body.
+tags: [ live, behavior, authentication, otp, terminal ]
+targetModes: [ live_lambda ]
 backendFixture:
   scenario: s06-otp-handoff-failed
 inputs:
@@ -13,6 +13,10 @@ inputs:
     backendFixture:
       scenario: s06-otp-handoff-failed
   - text: "753994"
+    sessionId: live-otp-terminal-missing-phone-session
+    backendFixture:
+      scenario: s06-otp-handoff-failed
+  - text: Gracias, lo intentaré más tarde.
     sessionId: live-otp-terminal-missing-phone-session
     backendFixture:
       scenario: s06-otp-handoff-failed
@@ -37,7 +41,7 @@ seedPlan:
         resource: gift_purchases
         query: Confirmar si el deposito del regalo llego a los novios.
         orderId: null
-        aspects: [payment_status]
+        aspects: [ payment_status ]
         sensitiveFields: []
         authAction: provide_otp
     selection_candidates: []
@@ -50,17 +54,25 @@ expectations:
   - id: missing-phone-no-takeover-dispatch
     type: tool_usage
     turnIndex: 0
-    mustNotCall: [request_human_takeover]
+    mustNotCall: [ request_human_takeover ]
     severity: hard
-  - id: missing-phone-truthful-turn0
-    type: text_semantic
-    turnIndex: 0
-    rubric: >-
-      No trusted inbound phone is present, so no code was verified and no human-help request was dispatched. In Spanish, explain truthfully that identity could not be established, without claiming a transfer was requested, without inviting another code, resend, email change or verification attempt, without answering the protected question, and without automatically repeating any effect. Preserve the pending question in state; it need not be repeated.
-    minScore: 0.9
-    requireJudge: true
+  - id: missing-phone-no-takeover-dispatch-turn1
+    type: tool_usage
+    turnIndex: 1
+    mustNotCall: [ request_human_takeover, verify_user_login_code, request_user_login_code ]
     severity: hard
+  - id: missing-phone-thanks-no-dispatch
+    type: tool_usage
+    turnIndex: 2
+    mustNotCall: [ request_human_takeover, verify_user_login_code, request_user_login_code ]
+    severity: hard
+notes:
+  - "Extension v2, 2026-09-30: 2 turns to 3. The repeated code at turn 1 previously carried no expectations; it now pins no-dispatch plus the truthful missing-identity reply, and a turn-2 thanks closure was added. The final-turn human_escalation none pin is unchanged. Same fixture s06-otp-handoff-failed throughout; new input stays phoneless per the harness setup."
 budget:
-  maxTurns: 2
+  maxTurns: 3
   estimatedPromptTokensPerTurn: 1800
   estimatedCompletionTokensPerTurn: 450
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1

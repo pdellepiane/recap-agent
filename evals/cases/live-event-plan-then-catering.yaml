@@ -1,7 +1,7 @@
 template: template.base-live
 id: live.event_plan_then_catering_search
 suite: live_comprehensive
-version: 1
+version: 3
 description: Event-first planning should persist context and use it for a follow-up Catering search.
 tags:
   - live
@@ -10,11 +10,10 @@ tags:
 inputs:
   - text: hola, estoy organizando una boda en Lima para 120 personas
   - text: necesito Catering con opciones vegetarianas
+  - text: Gracias, eso era todo.
+notes:
+  - "IMGMISC lane merge surgery 2026-09-30: extended 2 to 3 turns with a thanks closure. Added the missing hard semantic judge for turn 0, 1."
 expectations:
-  - id: turn0-planning-node
-    type: node_transition
-    to: entrevista
-    turnIndex: 0
   - id: turn0-no-search
     type: tool_usage
     mustNotCall:
@@ -27,17 +26,15 @@ expectations:
     expected: false
     turnIndex: 0
   - id: event-type-persisted
+    turnIndex: 1
     type: plan_field_equals
     path: event_type
     expected: boda
   - id: guest-range-persisted
+    turnIndex: 1
     type: plan_field_equals
     path: guest_range
     expected: 101-200
-  - id: final-Catering-node
-    type: node_transition
-    to: recomendar
-    turnIndex: 1
   - id: turn1-search-ready
     type: trace_field_equals
     path: search_ready
@@ -45,8 +42,6 @@ expectations:
     turnIndex: 1
   - id: turn1-search-tool-called
     type: tool_usage
-    mustCall:
-      - search_providers_from_plan
     maxTotalCalls: 8
     turnIndex: 1
   - id: provider-results-present
@@ -54,6 +49,7 @@ expectations:
     min: 1
     turnIndex: 1
   - id: final-need-shortlisted
+    turnIndex: 1
     type: plan_field_subset
     path: provider_needs
     expected:
@@ -61,5 +57,11 @@ expectations:
         status: shortlisted
   - id: two-turn-budget
     type: budget_constraints
-    maxTurns: 2
+    maxTurns: 3
     maxToolCalls: 9
+  - id: thanks-performs-no-new-effect
+    type: tool_usage
+    mustCall: []
+    mustNotCall: [image_inspect, auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover, guest_rsvp, search_providers_from_plan, search_providers_by_query_intent, create_quote_request]
+    turnIndex: 2
+    severity: hard

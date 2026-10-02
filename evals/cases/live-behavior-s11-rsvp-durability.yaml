@@ -1,17 +1,47 @@
 template: template.base-live
 id: live_behavior.s11_rsvp_durability_confirms_once
 suite: live_behavior_regression
-version: 4
-description: S11 durability twin of the reversal world. The explicit attending decision ends confirmed with exactly one RSVP write receipt and no unsupported success claim. Reads the declining fixture world so the attending decision authorizes exactly one durable write. Intent-before-write, result-before-reply, and post-write read are packet-B TODO, not yet structurally asserted.
-tags: [live, behavior, rsvp, durability, s11]
-targetModes: [live_lambda]
+version: 8
+description: Six-turn S11 durability plus idempotency thread. An action-less RSVP request invites an explicit decision, a state question truthfully reports declining, then an explicit attending change confirms with exactly one durable write receipt. A repeated attending decision is then reported without another mutation, a state question confirms the same, and an explicit change request ends in a backend-grounded confirmed state.
+tags: [ live, behavior, rsvp, durability, s11, continuity, attendance, backend-contract, state-reversal, idempotency ]
+targetModes: [ live_lambda ]
 inputs:
+  - text: Quiero responder mi invitación.
+    channel: whatsapp
+    contactPhone: "+51973296571"
+    sessionId: live-s11-durability-session
+    backendFixture:
+      scenario: s11-rsvp-durability-declining
+  - text: ¿Cómo figura mi asistencia a Otra celebración prueba?
+    channel: whatsapp
+    contactPhone: "+51973296571"
+    sessionId: live-s11-durability-session
+    backendFixture:
+      scenario: s11-rsvp-durability-declining
   - text: Sí, cámbiala para confirmar que asistiré.
     channel: whatsapp
     contactPhone: "+51973296571"
     sessionId: live-s11-durability-session
     backendFixture:
       scenario: s11-rsvp-durability-declining
+  - text: Sí, quiero asistir a Otra celebración prueba.
+    channel: whatsapp
+    contactPhone: "+51973296571"
+    sessionId: live-s11-durability-session
+    backendFixture:
+      scenario: s02-rsvp-reversal
+  - text: ¿Cómo figura mi asistencia a Otra celebración prueba?
+    channel: whatsapp
+    contactPhone: "+51973296571"
+    sessionId: live-s11-durability-session
+    backendFixture:
+      scenario: s02-rsvp-reversal
+  - text: Sí, cámbiala para confirmar que asistiré.
+    channel: whatsapp
+    contactPhone: "+51973296571"
+    sessionId: live-s11-durability-session
+    backendFixture:
+      scenario: s02-rsvp-reversal
 seedPlan:
   current_node: responder_invitacion
   intent: responder_invitacion
@@ -40,39 +70,89 @@ rsvpIsolation:
 notes:
   - "Packet A 2026-09-14: added the rsvp.write receipt-count skeleton (attempts=1 successes=1 replays=0) as the only currently available execution receipt. TODO packet B: intent persisted before write, confirmed result persisted before reply, and a post-write authoritative read are not yet structurally asserted because those receipt fields do not exist in the runtime; this passing result is not yet a full durability proof. Keep the rubric honest until packet B lands."
   - "R05 v4 (2026-09-17, support assessment hardening item 5): remains-in-rsvp-node no longer pins the internal responder_invitacion node. Old defect: a correct confirmed-attendance reply composed through any routing passed the write receipt and read evidence but failed the node pin, grading implementation instead of behavior. New contract proves the same stay-in-RSVP invariant observably: zero handoff effects from receipts (fixture_effect_count handoff.write 0/0/0 hard) together with the retained single RSVP write receipt, the authoritative read evidence, and the confirmed-state semantic judge. Expectation id remains-in-rsvp-node is retained for ledger and run continuity; only its type changed from node_transition to fixture_effect_count. Threshold and hard severity kept; no threshold reduction. Old v3 runs preserved; baseline and candidate must rerun on this v4 contract."
+  - "RSVP merge v5 (2026-09-30): this case now carries a 3-turn thread that fully subsumes live_behavior.rsvp_missing_action_requires_explicit_decision (turn 0) and live_behavior.rsvp_declined_state_offers_one_change (turn 1); both absorbed turns keep their original hard structural assertions and hard requireJudge semantic judges, scoped with turnIndex. The original turn-2 write contract is unchanged except turnIndex 0->2 on exactly-one-rsvp-write-receipt and explicit turnIndex 2 on the previously final-scoped expectations. Colliding ids renamed with a turn1- prefix. Old v4 runs preserved; baseline and candidate must rerun on this v5 contract."
+  - "RSVP merge v6 (2026-09-30): this case now carries a 6-turn thread that further subsumes live_behavior.rsvp_state_reversal_ends_confirmed (turns 3-5). Every absorbed turn keeps its original hard structural assertions and hard requireJudge semantic judge, renumbered turnIndex 0->3, 1->4, 2->5 with turnN- id prefixes; turns 3-5 switch fixture to the absorbed s02-rsvp-reversal world via turn-level backendFixture on the same phone. The rsvpIsolation setup/teardown blocks are identical in both cases so one copy is kept. Turns 0-2 unchanged. Old v5 runs preserved; baseline and candidate must rerun on this v6 contract."
 expectations:
+  - id: enters-rsvp-node
+    type: fixture_effect_count
+    operation: rsvp.write
+    turnIndex: 0
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: does-not-mutate-without-decision
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+    turnIndex: 0
+    severity: hard
+  - id: reads-state-without-premature-mutation
+    type: tool_usage
+    mustCall: []
+    mustNotCall: [ guest_rsvp, auth_by_phone, request_user_login_code, verify_user_login_code ]
+    turnIndex: 1
+    severity: hard
   - id: remains-in-rsvp-node
     type: fixture_effect_count
     operation: handoff.write
+    turnIndex: 2
     expectedAttempts: 0
     expectedSuccesses: 0
     expectedReplays: 0
     severity: hard
   - id: reads-authoritative-rsvp-state
     type: tool_usage
-    mustCall: [lookup_rsvp_invitations, guest_rsvp]
-    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
+    mustCall: []
+    mustNotCall: [ auth_by_phone, request_user_login_code, verify_user_login_code ]
+    turnIndex: 2
     severity: hard
   - id: exactly-one-rsvp-write-receipt
     type: fixture_effect_count
     operation: rsvp.write
-    turnIndex: 0
+    turnIndex: 2
     expectedAttempts: 1
     expectedSuccesses: 1
     expectedReplays: 0
     severity: hard
-  - id: reports-confirmed-final-state-once
-    type: text_semantic
-    rubric: >-
-      The user explicitly confirmed attending guest invitation 584353 for Otra celebración prueba. The response must be natural and entirely in Spanish and clearly say attendance is confirmed. It must not claim the invitation remains declined, claim a repeated write or retry, ask for email or a code, expose internal fields, or offer human support as if the operation failed. Durability is proven by the hard rsvp.write effect count (one attempt, one success, no replay), never by narrating counts in prose.
-    minScore: 0.9
-    requireJudge: true
+  - id: turn3-reports-without-another-mutation
+    type: tool_usage
+    mustCall: []
+    mustNotCall: [ guest_rsvp, auth_by_phone, request_user_login_code, verify_user_login_code ]
+    turnIndex: 3
     severity: hard
-  - id: no-rsvp-vocabulary
-    type: text_not_contains
-    phrases: ["RSVP", "rsvp"]
+  - id: turn4-no-repeat-write-receipt
+    type: fixture_effect_count
+    operation: rsvp.write
+    turnIndex: 4
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: turn4-reads-confirmed-without-mutation
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+    turnIndex: 4
+    severity: hard
+  - id: turn5-reads-authoritative-rsvp-state
+    type: tool_usage
+    mustCall: []
+    mustNotCall: [ auth_by_phone, request_user_login_code, verify_user_login_code ]
+    turnIndex: 5
     severity: hard
 budget:
-  maxTurns: 1
+  maxTurns: 6
   estimatedPromptTokensPerTurn: 1800
   estimatedCompletionTokensPerTurn: 300
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1

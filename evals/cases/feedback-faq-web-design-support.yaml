@@ -1,11 +1,13 @@
 template: template.base-offline
 id: feedback.faq_web_design_support_boundary
 suite: feedback_regression
-version: 1
-description: Web design support requests should stay in FAQ/support scope and not trigger provider search.
+version: 3
+description: Web design support requests should stay in FAQ/support scope and not trigger provider search. Extended with a support-contact follow-up and a channel-clarification turn.
 tags: [feedback, batch2, faq]
 inputs:
   - text: ¿Me puedes ayudar con el diseño de mi web y darme un contacto?
+  - text: ¿Me pasas el correo de soporte?
+  - text: ¿Y atienden por WhatsApp o solo por el chat?
 fixtures:
   offline:
     extractionsByTurn:
@@ -27,18 +29,83 @@ fixtures:
         conversationSummary: Pregunta fuera de alcance sobre diseño web y contacto de soporte.
         selectedProviderHints: []
         pauseRequested: false
+      - actionIntent: null
+        informationRequests:
+          - kind: faq
+            query: correo soporte contacto Sin Envolturas
+        intentConfidence: 0.95
+        eventType: null
+        vendorCategory: null
+        vendorCategories: []
+        activeNeedCategory: null
+        location: null
+        budgetSignal: null
+        guestRange: null
+        preferences: []
+        hardConstraints: []
+        assumptions: []
+        conversationSummary: Pide el correo de soporte de Sin Envolturas.
+        selectedProviderHints: []
+        pauseRequested: false
+      - actionIntent: null
+        informationRequests:
+          - kind: faq
+            query: canales atención WhatsApp chat soporte Sin Envolturas
+        intentConfidence: 0.93
+        eventType: null
+        vendorCategory: null
+        vendorCategories: []
+        activeNeedCategory: null
+        location: null
+        budgetSignal: null
+        guestRange: null
+        preferences: []
+        hardConstraints: []
+        assumptions: []
+        conversationSummary: Pregunta por los canales de atención de soporte.
+        selectedProviderHints: []
+        pauseRequested: false
     repliesByTurn:
       - No diseño ni construyo webs externas. Para soporte de Sin Envolturas, puedes escribir por el chat o a hola@sinenvolturas.com.
+      - Claro, el correo de soporte es hola@sinenvolturas.com.
+      - Te atendemos por el chat de la plataforma; por ahí te ayudamos con tu caso.
 expectations:
-  - id: faq-node
-    type: node_transition
-    to: resolver_consultas_informativas
   - id: no-provider-search
     type: tool_usage
     mustNotCall:
       - search_providers_from_plan
       - search_providers_by_query_intent
+    turnIndex: 0
+    severity: hard
   - id: support-boundary
     type: text_contains
     allOf: [web]
     anyOf: [hola@sinenvolturas.com, chat]
+    turnIndex: 0
+    severity: hard
+  - id: turn1-no-provider-search
+    type: tool_usage
+    mustNotCall:
+      - search_providers_from_plan
+      - search_providers_by_query_intent
+    turnIndex: 1
+    severity: hard
+  - id: turn1-support-email
+    type: text_contains
+    allOf: [hola@sinenvolturas.com]
+    turnIndex: 1
+    severity: hard
+  - id: turn2-no-provider-search
+    type: tool_usage
+    mustNotCall:
+      - search_providers_from_plan
+      - search_providers_by_query_intent
+    turnIndex: 2
+    severity: hard
+  - id: turn2-support-channel
+    type: text_contains
+    allOf: [chat]
+    turnIndex: 2
+    severity: hard
+notes:
+  - "SUPPORT lane merge surgery 2026-09-30: extended 1 to 3 turns with a support-email follow-up and a channel-clarification turn; existing expectations pinned to turn 0; deterministic assertions kept, no model judge in the offline suite."

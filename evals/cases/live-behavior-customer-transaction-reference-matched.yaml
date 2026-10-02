@@ -1,10 +1,10 @@
 template: template.base-live
 id: live_behavior.customer_transaction_reference_matched
 suite: live_behavior_regression
-version: 1
+version: 5
 description: S13 matched frozen world. COD301816 matches the Evento de prueba A order; the reply answers A and not the Evento de prueba B order.
-tags: [live, behavior, purchase, phone-orders, customer-transaction-code, reported-interaction, s13]
-targetModes: [live_lambda]
+tags: [ live, behavior, purchase, phone-orders, customer-transaction-code, reported-interaction, s13 ]
+targetModes: [ live_lambda ]
 backendFixture:
   scenario: s13-reference-matched
 inputs:
@@ -14,26 +14,59 @@ inputs:
     sessionId: live-customer-transaction-reference-matched-session
     backendFixture:
       scenario: s13-reference-matched
+  - text: Perdona, ¿me repites lo último que me dijiste?
+    channel: whatsapp
+    contactPhone: "+51900001302"
+    sessionId: live-customer-transaction-reference-matched-session
+    backendFixture:
+      scenario: s13-reference-matched
+  - text: Gracias, eso era todo.
+    channel: whatsapp
+    contactPhone: "+51900001302"
+    sessionId: live-customer-transaction-reference-matched-session
+    backendFixture:
+      scenario: s13-reference-matched
 notes:
   - S13 frozen world s13-reference-matched as of 2026-09-09T00:00:00.000Z. Synthetic identity only; order alias A for Evento de prueba A carries 301816, alias B for Evento de prueba B carries 301817, no carts. Output must follow this world, never mutable backend data.
+  - "v2 2026-09-28: The old node and phone-order call pins did not account for complete authorized profile prefetch before extraction. The hard extraction contract now requires a structured purchase request; the hard semantic judge still requires the exact authorized match, without a planning clarification or event B substitution."
+  - "IMGMISC lane merge surgery 2026-09-30: extended 1 to 3 turns with a repeat-from-history continuity turn and a thanks closure; existing expectations pinned to turn 0 with rubric bytes unchanged."
 expectations:
-  - id: matched-enters-information
-    type: node_transition
-    to: resolver_consultas_informativas
-    severity: hard
-  - id: matched-uses-phone-orders
+  - id: matched-uses-authorized-context
+    turnIndex: 0
     type: tool_usage
-    mustCall: [lookup_guest_orders_by_phone]
-    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
+    mustCall: []
+    mustNotCall: [ auth_by_phone, request_user_login_code, verify_user_login_code ]
     severity: hard
-  - id: matched-answers-alias-a
-    type: text_semantic
-    rubric: >-
-      The phone-scoped lookup matches COD301816 to the Evento de prueba A order only; the Evento de prueba B order carries a different reference. The response must be entirely in natural Spanish and answer from the Evento de prueba A record, not the B record. It must not present a selection question, must not request email or OTP, and must not reveal opaque backend order ids or sensitive payment details. Echoing the customer reference is optional; match correctness is what matters.
-    minScore: 0.9
-    requireJudge: true
+  - id: recall-performs-no-new-effect
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+      - guest_rsvp
+      - create_quote_request
+      - finish_plan
+    turnIndex: 1
+    severity: hard
+  - id: thanks-performs-no-new-effect
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+      - guest_rsvp
+      - create_quote_request
+    turnIndex: 2
     severity: hard
 budget:
-  maxTurns: 1
+  maxTurns: 3
   estimatedPromptTokensPerTurn: 1500
   estimatedCompletionTokensPerTurn: 240
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1

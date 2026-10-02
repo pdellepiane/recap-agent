@@ -1,8 +1,8 @@
 template: template.base-live
 id: live_behavior.rsvp_explicit_mutation_targets_requested_event
 suite: live_behavior_regression
-version: 1
-description: After a read-only question about Boda Ana y Luis, an explicit attending confirmation for Cumpleaños Marta must mutate only Marta (guest 80002); Ana facts must never leak into the Marta confirmation.
+version: 6
+description: Five-turn multi-event thread on the two-pending world. An ambiguous confirmation and an ambiguous plus-one each require a bounded selection, an explicit Marta confirmation mutates only Marta, an explicit Ana question is answered from Ana, and an unmatched Beto confirmation writes nothing.
 tags:
   - live
   - behavior
@@ -10,10 +10,18 @@ tags:
   - multi-event
   - event-identity
   - i1
+  - disambiguation
+  - continuity
 targetModes:
   - live_lambda
 inputs:
-  - text: ¿Cuándo es la Boda Ana y Luis?
+  - text: Hola, quiero confirmar mi asistencia al evento
+    channel: whatsapp
+    contactPhone: "+51941438999"
+    sessionId: live-rsvp-explicit-mutation-target
+    backendFixture:
+      scenario: rsvp-plus-one-multiple-pending
+  - text: Confirmo que mi acompañante asistirá al evento del sábado
     channel: whatsapp
     contactPhone: "+51941438999"
     sessionId: live-rsvp-explicit-mutation-target
@@ -25,53 +33,88 @@ inputs:
     sessionId: live-rsvp-explicit-mutation-target
     backendFixture:
       scenario: rsvp-plus-one-multiple-pending
+  - text: Gracias, y la Boda Ana y Luis, ¿cuándo es?
+    channel: whatsapp
+    contactPhone: "+51941438999"
+    sessionId: live-rsvp-explicit-mutation-target
+    backendFixture:
+      scenario: rsvp-plus-one-multiple-pending
+  - text: Confirmo mi asistencia a la Boda Beto
+    channel: whatsapp
+    contactPhone: "+51941438999"
+    sessionId: live-rsvp-explicit-mutation-target
+    backendFixture:
+      scenario: rsvp-plus-one-multiple-pending
 backendFixture:
   scenario: rsvp-plus-one-multiple-pending
 notes:
-  - "I1 2026-09-14, event-identity-review: the fixture phone carries two pending guests (80001/Boda Ana y Luis 2026-09-20 18:00, 80002/Cumpleaños Marta 2026-09-21 19:00). Turn 0 reads Ana only. Turn 1 explicitly confirms Marta: the write receipt must belong to Marta and the reply must confirm Marta facts only. Service-level twins prove exact selected/mutated IDs; this case proves same-entity behavior end to end. Never fixed phrases."
+  - "vNext (2026-09-29): Preserve the timestamp hour exactly as returned (18:00Z and 19:00Z); the event timezone is metadata and never changes these hours. Earlier local-conversion notes are historical and superseded. Hard structural and semantic requirements remain."
+  - "I1 2026-09-14, event-identity-review: the fixture phone carries two pending guests (80001/Boda Ana y Luis 2026-09-20 13:00 America/Lima, 80002/Cumpleaños Marta 2026-09-21 14:00 America/Lima). Turn 0 reads Ana only. Turn 1 explicitly confirms Marta: the write receipt must belong to Marta and the reply must confirm Marta facts only. Service-level twins prove exact selected/mutated IDs; this case proves same-entity behavior end to end. Never fixed phrases."
+  - "v2 (2026-09-28): The API timestamps end in Z, so 18:00Z and 19:00Z convert to 13:00 and 14:00 in America/Lima. Corrected the local-time oracle without changing mutation or judge requirements."
+  - "RSVP merge v3 (2026-09-30): this case now carries a 5-turn thread that fully subsumes live_behavior.rsvp_tia_niur_ambiguous_clarifies (turn 0), live_behavior.rsvp_plus_one_multiple_events_requires_selection (turn 1), live_behavior.rsvp_tia_niur_old_target_wins turn-1 assertion (turn 3, Marta grounding now comes from the turn-2 confirmation instead of the absorbed turn-0 read), and live_behavior.rsvp_unmatched_named_event_no_mutation (turn 4). Every absorbed turn keeps its original hard structural assertions and hard requireJudge semantic judge, scoped with turnIndex. The original Ana read-only turn is replaced by the turn-3 explicit old-target answer, which proves the same no-leak invariant after a real write; the Marta write contract is unchanged except turnIndex 1->2 (ids renamed turn1-* to turn2-*). Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
 expectations:
-  - id: turn0-reads-ana-without-write
+  - id: ambiguous-performs-no-mutation
+    type: tool_usage
+    mustCall: []
+    mustNotCall: [ guest_rsvp, auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover ]
+    turnIndex: 0
+    severity: hard
+  - id: no-rsvp-effect-before-selection
+    type: fixture_effect_count
+    operation: rsvp.write
+    turnIndex: 1
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: no-premature-mutation
     type: tool_usage
     mustNotCall:
-      - guest_rsvp
       - request_human_takeover
-      - request_user_login_code
-    turnIndex: 0
-    severity: hard
-  - id: turn0-answers-ana-facts
-    type: text_semantic
-    rubric: Answer about Boda Ana y Luis on 2026-09-20 at 18:00, naturally in Spanish. Never request an image or a URL. Do not invent an attendance action or blend Cumpleaños Marta facts into the answer. Natural equivalent wording is acceptable.
-    minScore: 0.8
-    requireJudge: true
-    turnIndex: 0
-    severity: hard
-  - id: turn1-writes-once-for-marta
-    type: tool_usage
-    mustCall:
-      - lookup_rsvp_invitations
-      - guest_rsvp
-    mustNotCall:
       - auth_by_phone
       - request_user_login_code
       - verify_user_login_code
     turnIndex: 1
     severity: hard
-  - id: turn1-single-marta-write-receipt
+  - id: turn2-writes-once-for-marta
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+    turnIndex: 2
+    severity: hard
+  - id: turn2-single-marta-write-receipt
     type: fixture_effect_count
     operation: rsvp.write
-    turnIndex: 1
+    turnIndex: 2
     expectedAttempts: 1
     expectedSuccesses: 1
     expectedReplays: 0
     severity: hard
-  - id: turn1-confirms-marta-entity-only
-    type: text_semantic
-    rubric: The user explicitly confirmed attending Cumpleaños Marta. The response must be natural and entirely in Spanish and clearly confirm attendance for Cumpleaños Marta with its own facts (2026-09-21 at 19:00 when a date is stated). It must never present Boda Ana y Luis facts (2026-09-20, 18:00) as the confirmed event, must never ask which event, must not claim another mutation, and must not expose internal guest or event identifiers. No fixed wording is required.
-    minScore: 0.85
-    requireJudge: true
-    turnIndex: 1
+  - id: old-target-performs-no-mutation
+    type: tool_usage
+    mustCall: []
+    mustNotCall: [ guest_rsvp, auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover ]
+    turnIndex: 3
+    severity: hard
+  - id: unmatched-names-no-mutation
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - guest_rsvp
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+    turnIndex: 4
     severity: hard
 budget:
-  maxTurns: 2
+  maxTurns: 5
   estimatedPromptTokensPerTurn: 6000
   estimatedCompletionTokensPerTurn: 250
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1

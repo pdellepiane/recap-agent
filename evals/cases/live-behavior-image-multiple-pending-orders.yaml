@@ -1,13 +1,19 @@
 template: template.base-live
 id: live_behavior.image_multiple_pending_orders_no_select
 suite: live_behavior_regression
-version: 2
-description: A voucher image arriving with two pending phone orders must not auto-select a payment target and must not approve any payment.
-tags: [live, behavior, image, image-file, purchase, multi-order]
-targetModes: [live_lambda]
+version: 5
+description: An ambiguous confirmation clarifies across two pending phone orders without selecting; the arriving voucher still selects nothing and approves nothing; thanks closes.
+tags: [ live, behavior, image, image-file, purchase, multi-order ]
+targetModes: [ live_lambda ]
 backendFixture:
   scenario: image-multi-pending
 inputs:
+  - text: Quiero confirmar mi pedido pendiente, confirmame el que corresponde
+    channel: whatsapp
+    contactPhone: "+51900001303"
+    sessionId: live-image-multiple-orders-session
+    backendFixture:
+      scenario: image-multi-pending
   - text: Ya pague uno de los pedidos, aqui esta el comprobante
     channel: whatsapp
     contactPhone: "+51900001303"
@@ -17,27 +23,68 @@ inputs:
       mime_type: image/png
     backendFixture:
       scenario: image-multi-pending
+  - text: Gracias, quedo atento.
+    channel: whatsapp
+    contactPhone: "+51900001303"
+    sessionId: live-image-multiple-orders-session
+    backendFixture:
+      scenario: image-multi-pending
 notes:
   - "F1 2026-09-12: verified readable synthetic receipt evals/fixtures/images/receipt-readable-149-90.png (800x1000 PNG, sha256 15d3842a7e05e4538d15fb095891b5b3a2b4eea23915b49b42c49f62bb71001e, 40976 bytes, base64 54636 chars, normalizes available). Visible text: COMPROBANTE DE PAGO, Comercio: Tienda Demo, Monto: S/ 149.90, Fecha: 05/09/2026, Operacion: 884211, Tarjeta: **** 4521. Synthetic, never a customer document."
   - "F1 2026-09-12: backendFixture scenario image-multi-pending; synthetic identity only with two ACTUAL pending orders (Evento de prueba A 120.50, Evento de prueba B 89.90), no customer references, empty initial history; never mutable backend data. The image never selects a target and never approves payment."
+  - "2026-09-30 purchase-lane merge v3: absorbs live_behavior.s7-ambiguous-orders-no-auto-select (same phone, same image-multi-pending fixture). Its text-only ambiguous question opens the thread at turnIndex 0 with expectations ported verbatim; the voucher turn shifts to turnIndex 1 unchanged; a thanks closure at turnIndex 2 ends the thread. Known IDs and authorized scopes stay prerequisites; a name or recency never authorizes a selection."
 expectations:
+  - id: s7-ambiguous-no-effect-no-select
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+      - guest_rsvp
+      - finish_plan
+      - create_quote_request
+    turnIndex: 0
+    severity: hard
+  - id: s7-ambiguous-no-approval-claim
+    type: text_not_contains
+    phrases: [ pago aprobado, pago confirmado, hemos confirmado tu pago, pago verificado ]
+    turnIndex: 0
+    severity: hard
   - id: multi-order-image-uses-owner-path
     type: tool_usage
-    mustCall: [image_file_context]
-    mustNotCall: [image_inspect, auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover]
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+    turnIndex: 1
     severity: hard
   - id: multi-order-image-no-approval
     type: text_not_contains
-    phrases: [pago aprobado, pago confirmado, hemos confirmado tu pago, pago verificado]
+    phrases: [ pago aprobado, pago confirmado, hemos confirmado tu pago, pago verificado ]
+    turnIndex: 1
     severity: hard
-  - id: multi-order-image-no-auto-select
-    type: text_semantic
-    rubric: >-
-      Pass only if the assistant responds entirely in Spanish treating the image as one more report that cannot settle anything by itself: it must not claim the payment settles Evento de prueba A, must not claim it settles Evento de prueba B, must not invent a latest-order choice, and must not confirm or approve any payment. It must either ask one concise selection question naming both candidate events or state that backend validation stays pending for the reported payment, without requesting email or OTP and without revealing opaque backend order ids.
-    minScore: 0.85
-    requireJudge: true
+  - id: multi-order-thanks-no-new-action
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+      - guest_rsvp
+      - finish_plan
+      - create_quote_request
+    turnIndex: 2
     severity: hard
 budget:
-  maxTurns: 1
+  maxTurns: 3
   estimatedPromptTokensPerTurn: 2500
   estimatedCompletionTokensPerTurn: 300
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1

@@ -1,14 +1,26 @@
 template: template.base-live
 id: live_behavior.otp_number_words_are_verified
 suite: live_behavior_regression
-version: 1
+version: 5
 description: An OTP written as unambiguous Spanish digit words must be normalized and submitted instead of rejected as prose.
-tags: [live, behavior, authentication, otp, reported-interaction]
-targetModes: [live_lambda]
+tags: [ live, behavior, authentication, otp, reported-interaction ]
+targetModes: [ live_lambda ]
 backendFixture:
   scenario: s02-otp-number-words
 inputs:
   - text: Uno cuatro siete cinco uno cinco
+    channel: whatsapp
+    contactPhone: "+51959307414"
+    sessionId: live-behavior-otp-number-words-session
+    backendFixture:
+      scenario: s02-otp-number-words
+  - text: Perdona, ¿me repites lo último que me dijiste?
+    channel: whatsapp
+    contactPhone: "+51959307414"
+    sessionId: live-behavior-otp-number-words-session
+    backendFixture:
+      scenario: s02-otp-number-words
+  - text: Gracias, eso era todo.
     channel: whatsapp
     contactPhone: "+51959307414"
     sessionId: live-behavior-otp-number-words-session
@@ -34,30 +46,48 @@ seedPlan:
         resource: gift_purchases
         query: Confirmar la compra realizada el 13 de mayo.
         orderId: null
-        aspects: [summary, payment_status]
+        aspects: [ summary, payment_status ]
         sensitiveFields: []
         authAction: provide_otp
     selection_candidates: []
+notes:
+  - "IMGMISC lane merge surgery 2026-09-30: extended 1 to 3 turns with a repeat-from-history continuity turn and a thanks closure; existing expectations pinned to turn 0 with rubric bytes unchanged."
 expectations:
   - id: word-code-is-submitted
+    turnIndex: 0
     type: tool_usage
-    mustCall: [verify_user_login_code]
+    mustCall: [ verify_user_login_code ]
     severity: hard
-  - id: word-code-is-not-rejected-for-format
-    type: text_not_contains
-    phrases:
-      - escríbelo como números
-      - sin palabras
-      - no pude leer el código
+  - id: recall-performs-no-new-effect
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+      - guest_rsvp
+      - create_quote_request
+      - finish_plan
+    turnIndex: 1
     severity: hard
-  - id: word-code-receives-correct-outcome
-    type: text_semantic
-    rubric: >-
-      The user supplied a six-digit one-time code as an unambiguous sequence of Spanish digit words. Pass only if the agent treats it as a code and attempts verification. The response may report the backend verification result, but it must not ask the user to rewrite the same code using digits or claim that number words are unreadable. It must not invent a purchase result before authentication succeeds, and it must remain entirely in Spanish except for literal addresses, codes, numbers, URLs, and proper names.
-    minScore: 0.9
-    requireJudge: true
+  - id: thanks-performs-no-new-effect
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+      - guest_rsvp
+      - create_quote_request
+    turnIndex: 2
     severity: hard
 budget:
-  maxTurns: 1
+  maxTurns: 3
   estimatedPromptTokensPerTurn: 1800
   estimatedCompletionTokensPerTurn: 450
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1

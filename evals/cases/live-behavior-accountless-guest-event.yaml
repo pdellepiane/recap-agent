@@ -1,14 +1,26 @@
 template: template.base-live
 id: live_behavior.accountless_guest_event_uses_phone_without_otp
 suite: live_behavior_regression
-version: 3
-description: An invited WhatsApp guest without an account receives event details through the trusted phone without being pushed into email OTP.
-tags: [live, behavior, associated-event, accountless-guest, phone-first, reported-interaction]
-targetModes: [live_lambda]
+version: 7
+description: An invited WhatsApp guest without an account receives event details through the trusted phone without being pushed into email OTP, then checks the event-scoped purchase status and closes with thanks.
+tags: [ live, behavior, associated-event, accountless-guest, phone-first, reported-interaction ]
+targetModes: [ live_lambda ]
 backendFixture:
   scenario: guest-julisabeth-andres
 inputs:
   - text: Respondí la invitación por WhatsApp. ¿Dónde será la recepción y fiesta?
+    channel: whatsapp
+    contactPhone: "+51904523314"
+    sessionId: live-accountless-guest-event-session
+    backendFixture:
+      scenario: guest-julisabeth-andres
+  - text: ¿Y cuál es el estado de mi compra?
+    channel: whatsapp
+    contactPhone: "+51904523314"
+    sessionId: live-accountless-guest-event-session
+    backendFixture:
+      scenario: guest-julisabeth-andres
+  - text: Gracias, eso era todo.
     channel: whatsapp
     contactPhone: "+51904523314"
     sessionId: live-accountless-guest-event-session
@@ -21,28 +33,79 @@ expectations:
     expectedAttempts: 0
     expectedSuccesses: 0
     expectedReplays: 0
+    turnIndex: 0
     severity: hard
   - id: uses-phone-enriched-event-context-directly
     type: tool_usage
-    mustCall: [lookup_guest_events_by_phone, get_guest_event_detail]
-    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code, update_phone, guest_rsvp]
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - update_phone
+    turnIndex: 0
     severity: hard
   - id: leaves-no-authentication-request-pending
     type: plan_field_equals
     path: user_auth.status
     expected: none
+    turnIndex: 0
     severity: hard
-  - id: answers-from-the-invited-event-without-otp
-    type: text_semantic
-    rubric: >-
-      The trusted WhatsApp number has no Sin Envolturas account but is an invited guest to Julisabeth y Andrés. The verified event detail identifies “Recepción y Fiesta” at Hacienda Recoveco on Avenida Manuel Valle in Lima. The answer must be concise, natural, and entirely in Spanish; directly provide that verified reception location, and must not ask for an email, OTP code, account creation, or another turn before answering.
-    minScore: 0.9
-    requireJudge: true
+  - id: purchase-followup-no-rsvp-write
+    type: fixture_effect_count
+    operation: rsvp.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    turnIndex: 1
+    severity: hard
+  - id: purchase-followup-reuses-scoped-reads-without-auth
+    type: tool_usage
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - update_phone
+    turnIndex: 1
+    severity: hard
+  - id: purchase-followup-keeps-auth-none
+    type: plan_field_equals
+    path: user_auth.status
+    expected: none
+    turnIndex: 1
+    severity: hard
+  - id: thanks-no-rsvp-write
+    type: fixture_effect_count
+    operation: rsvp.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    turnIndex: 2
+    severity: hard
+  - id: thanks-no-auth-or-mutation
+    type: tool_usage
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - update_phone
+    turnIndex: 2
+    severity: hard
+  - id: thanks-keeps-auth-none
+    type: plan_field_equals
+    path: user_auth.status
+    expected: none
+    turnIndex: 2
     severity: hard
 budget:
-  maxTurns: 1
+  maxTurns: 3
   estimatedPromptTokensPerTurn: 1800
   estimatedCompletionTokensPerTurn: 300
 
 notes:
+  - "Merge v5, 2026-09-30: absorbed live_behavior.accountless_event_answer_precedes_remaining_private_auth (same fixture guest-julisabeth-andres, same phone) as the turn-1 scoped purchase-status follow-up, reusing its disclosure-policy rubric, and added a turn-2 thanks closure. Turn-0 expectations unchanged apart from turnIndex. Deleted file: live-behavior-accountless-event-before-private-auth.yaml."
+  - "2026-09-29 v4: The v3 semantic judge penalized a verified attendance mention even though the fixture records a completed attending response. This revision permits that sourced fact while retaining venue and authentication requirements; historical scores remain unchanged."
   - "R05 v3 (2026-09-16, customer-support release E1): old contract pinned the internal route (node_transition to resolver_consultas_informativas). Old defect: a correct venue answer composed through any other routing passed the read evidence but failed the pin, grading implementation instead of behavior. New acceptance: zero RSVP mutations from effect receipts (fixture_effect_count rsvp.write 0/0/0 hard) plus mandatory actual venue facts (Hacienda Recoveco, Avenida Manuel Valle, Lima) and no email/OTP demand. Failing counterexample: an answer that performs a guest_rsvp write, omits the reception location, or asks for an OTP fails. Threshold and hard severity kept; earlier verdicts unchanged."
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1

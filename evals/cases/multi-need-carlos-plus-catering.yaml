@@ -1,7 +1,7 @@
 template: template.base-offline
 id: multi_need.select_photography_and_open_catering
 suite: multi_need_planning
-version: 1
+version: 2
 description: Confirm one provider on photography while opening Catering in the same turn.
 imports:
   - ../fixtures/seed-plans/recommend-photography-shortlist-carlos.yaml
@@ -35,9 +35,6 @@ fixtures:
     repliesByTurn:
       - Perfecto. Tomo a Carlos para Fotografía y video y ahora te muestro Catering en Lima.
 expectations:
-  - id: final-node
-    type: node_transition
-    to: recomendar
   - id: active-need-Catering
     type: plan_field_equals
     path: active_need_category

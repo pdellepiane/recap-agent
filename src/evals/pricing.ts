@@ -30,6 +30,119 @@ export type CostEstimate = {
   unpricedExternalCalls: number;
 };
 
+/** Measured judge token usage, summed across runner-owned retries. */
+export type JudgeUsage = {
+  inputTokens: number;
+  outputTokens: number;
+  cachedInputTokens: number;
+};
+
+export type TurnTraceCost = {
+  openaiUsd: number;
+  lambdaUsd: number;
+  totalUsd: number;
+  unpricedStages: string[];
+  unpricedModels: string[];
+};
+
+type PricedUsage = {
+  input_tokens: number;
+  output_tokens: number;
+  cached_input_tokens?: number;
+  cache_write_input_tokens?: number;
+};
+
+/** Minimal turn surface for trace pricing; both live and artifact turns satisfy it. */
+type PricedTurn = {
+  latencyMs: number;
+  trace: {
+    token_usage: {
+      classifier?: PricedUsage | null;
+      extraction: PricedUsage | null;
+      reply: PricedUsage | null;
+    };
+    openai_calls?: {
+      classifier?: { model: string } | null;
+      extraction?: { model: string } | null;
+      reply?: { model: string } | null;
+    } | null;
+  };
+};
+
+/** Presentation rounding: exact to a tenth of a microdollar. */
+export function roundUsd(value: number): number {
+  return Math.round(value * 1_000_000) / 1_000_000;
+}
+
+const PRICED_TRACE_STAGES = ['classifier', 'extraction', 'reply'] as const;
+
+/**
+ * Exact turn cost from measured trace usage and the per-stage models the
+ * trace recorded. Stages with usage but no recorded model, and models
+ * missing from the pricing file, are inventoried as unpriced — never
+ * silently zeroed.
+ */
+export function priceTurnFromTrace(
+  turn: PricedTurn,
+  pricing: PricingConfig,
+): TurnTraceCost {
+  let openaiUsd = 0;
+  const unpricedStages: string[] = [];
+  const unpricedModels: string[] = [];
+  for (const stage of PRICED_TRACE_STAGES) {
+    const usage = turn.trace.token_usage[stage] ?? null;
+    if (!usage) {
+      continue;
+    }
+    const model = turn.trace.openai_calls?.[stage]?.model ?? null;
+    if (!model) {
+      unpricedStages.push(stage);
+      continue;
+    }
+    const price = pricing.models[model];
+    if (!price) {
+      if (!unpricedModels.includes(model)) {
+        unpricedModels.push(model);
+      }
+      continue;
+    }
+    openaiUsd += estimateModelUsage(usage, price);
+  }
+  const lambdaUsd =
+    pricing.lambda.requestUsd +
+    (turn.latencyMs / 1000) * pricing.lambda.memoryGb * pricing.lambda.gbSecondUsd;
+  return {
+    openaiUsd,
+    lambdaUsd,
+    totalUsd: openaiUsd + lambdaUsd,
+    unpricedStages,
+    unpricedModels,
+  };
+}
+
+/** Exact judge cost from measured usage; unknown models price to zero as unpriced. */
+export function priceJudgeUsage(
+  model: string,
+  usage: JudgeUsage,
+  pricing: PricingConfig,
+): { usd: number; unpriced: boolean } {
+  const price = pricing.models[model];
+  if (!price) {
+    return { usd: 0, unpriced: true };
+  }
+  return {
+    usd: estimateModelUsage(
+      {
+        input_tokens: usage.inputTokens,
+        output_tokens: usage.outputTokens,
+        cached_input_tokens: usage.cachedInputTokens,
+      },
+      price,
+    ),
+    unpriced: false,
+  };
+}
+
 export function estimateTurnCost(
   turn: EvalArtifactTurnResult,
   pricing: PricingConfig,
@@ -58,7 +171,7 @@ export function estimateTurnCost(
 }
 
 function estimateModelUsage(
-  usage: EvalArtifactTurnResult['trace']['token_usage']['extraction'],
+  usage: PricedUsage | null | undefined,
   price: z.infer<typeof modelPriceSchema> | undefined,
 ): number {
   if (!usage || !price) {

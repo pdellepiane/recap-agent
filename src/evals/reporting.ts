@@ -32,6 +32,7 @@ export async function writeEvalArtifacts(args: {
   completion?: EvalReport['completion'];
   timingSummary?: EvalReport['timingSummary'];
   judgeSummary?: EvalReport['judgeSummary'];
+  costSummary?: EvalReport['costSummary'];
 }): Promise<{ runDir: string; report: EvalReport }> {
   const runDir = path.join(args.outputDir, args.runId);
   await fs.mkdir(runDir, { recursive: true });
@@ -45,6 +46,7 @@ export async function writeEvalArtifacts(args: {
     completion: args.completion,
     timingSummary: args.timingSummary,
     judgeSummary: args.judgeSummary,
+    costSummary: args.costSummary,
   });
   await writeAtomicText(
     path.join(runDir, 'results.jsonl'),
@@ -76,6 +78,7 @@ export async function writeProgressRecord(args: {
     elapsedMs: number;
     stopReason: string | null;
     complete: boolean;
+    costUsd?: number;
   };
   runId: string;
   partial?: boolean;
@@ -106,6 +109,7 @@ export function buildEvalReport(
     completion?: EvalReport['completion'];
     timingSummary?: EvalReport['timingSummary'];
     judgeSummary?: EvalReport['judgeSummary'];
+    costSummary?: EvalReport['costSummary'];
   },
 ): EvalReport {
   const safeResults = results.map(redactEvalResultForArtifact);
@@ -147,6 +151,7 @@ export function buildEvalReport(
     ...(options?.completion ? { completion: options.completion } : {}),
     ...(options?.timingSummary ? { timingSummary: options.timingSummary } : {}),
     ...(options?.judgeSummary ? { judgeSummary: options.judgeSummary } : {}),
+    ...(options?.costSummary ? { costSummary: options.costSummary } : {}),
     results: ordered,
   });
 }

@@ -51,6 +51,14 @@ import {
 } from './run-manifest';
 import { computeBenchmarkMetrics } from './metrics';
 import {
+  priceJudgeUsage,
+  priceTurnFromTrace,
+  pricingConfigSchema,
+  roundUsd,
+  type JudgeUsage,
+  type PricingConfig,
+} from './pricing';
+import {
   evaluateSemanticJudgeOutcome,
   getSharedJudgeClient,
   hashJudgePayload,
@@ -111,6 +119,17 @@ import {
 import { FixtureProviderGateway } from '../runtime/fixture-provider-gateway';
 import { buildConfigScopedFixtureRunId } from '../runtime/eval-fixture-state';
 
+export type CaseCostEvent = {
+  caseId: string;
+  status: 'ok' | 'error';
+  executed: boolean;
+  settledCases: number;
+  totalCases: number;
+  caseCostUsd: number;
+  runningCostUsd: number;
+  priced: boolean;
+};
+
 export type EvalRunnerOptions = {
   evalsDir: string;
   outputDir: string;
@@ -120,6 +139,14 @@ export type EvalRunnerOptions = {
   caseIds?: string[] | null;
   matrixPath?: string | null;
   dryRun?: boolean;
+  /**
+   * Exact cost tracking. Measured token usage and latency price against
+   * this pricing file; running cost streams via onCaseComplete and lands
+   * in the final report. Absent = unpriced (all costs zero, no summary).
+   */
+  pricingPath?: string;
+  /** Fired once per settled case, in completion order. */
+  onCaseComplete?: (event: CaseCostEvent) => void;
   caseOverrides?: EvalCase[];
   configLabel?: string;
   /**
@@ -156,10 +183,97 @@ export type JudgeRunStats = {
   rateLimitCount: number;
   judgeApiMs: number;
   judgeModels: Set<string>;
+  judgeUsageByModel: Record<string, JudgeUsage>;
 };
 
 export function newJudgeRunStats(): JudgeRunStats {
-  return { modelCalls: 0, retryCount: 0, rateLimitCount: 0, judgeApiMs: 0, judgeModels: new Set() };
+  return {
+    modelCalls: 0,
+    retryCount: 0,
+    rateLimitCount: 0,
+    judgeApiMs: 0,
+    judgeModels: new Set(),
+    judgeUsageByModel: {},
+  };
+}
+
+export type SettledCaseCost = {
+  openaiUsd: number;
+  judgeUsd: number;
+  lambdaUsd: number;
+  totalUsd: number;
+  unpricedCases: string[];
+  unpricedModels: string[];
+};
+
+/**
+ * Exact settled-case cost from measured artifacts. Candidate turns price
+ * from trace usage and recorded stage models; judge usage prices from the
+ * case judge stats (partial usage survives judge failures). Executed cases
+ * without a result lose their candidate turns and are inventoried, never
+ * zeroed silently. Pure and exported for unit tests.
+ */
+export function priceSettledCase(args: {
+  caseId: string;
+  executed: boolean;
+  result: EvalResult | null;
+  judgeStats: JudgeRunStats | null;
+  pricing: PricingConfig | null;
+}): SettledCaseCost {
+  const zero: SettledCaseCost = {
+    openaiUsd: 0,
+    judgeUsd: 0,
+    lambdaUsd: 0,
+    totalUsd: 0,
+    unpricedCases: [],
+    unpricedModels: [],
+  };
+  if (!args.pricing) {
+    return zero;
+  }
+  const pricing = args.pricing;
+  let openaiUsd = 0;
+  let lambdaUsd = 0;
+  let judgeUsd = 0;
+  const unpricedCases: string[] = [];
+  const unpricedModels: string[] = [];
+  const noteModel = (model: string): void => {
+    if (!unpricedModels.includes(model)) {
+      unpricedModels.push(model);
+    }
+  };
+  if (args.result) {
+    for (const turn of args.result.turns) {
+      const turnCost = priceTurnFromTrace(turn, pricing);
+      openaiUsd += turnCost.openaiUsd;
+      lambdaUsd += turnCost.lambdaUsd;
+      if (turnCost.unpricedStages.length > 0 && !unpricedCases.includes(args.caseId)) {
+        unpricedCases.push(args.caseId);
+      }
+      for (const model of turnCost.unpricedModels) {
+        noteModel(model);
+      }
+    }
+  } else if (args.executed) {
+    unpricedCases.push(args.caseId);
+  }
+  if (args.judgeStats) {
+    for (const [model, usage] of Object.entries(args.judgeStats.judgeUsageByModel)) {
+      const priced = priceJudgeUsage(model, usage, pricing);
+      judgeUsd += priced.usd;
+      if (priced.unpriced) {
+        noteModel(model);
+      }
+    }
+  }
+  return {
+    openaiUsd,
+    judgeUsd,
+    lambdaUsd,
+    totalUsd: openaiUsd + judgeUsd + lambdaUsd,
+    unpricedCases,
+    unpricedModels,
+  };
 }
 
 export type JudgeCallEnv = {
@@ -717,6 +831,12 @@ export async function runEvaluation(
   await fs.mkdir(earlyRunDir, { recursive: true });
   await writeRunManifestArtifact({ runDir: earlyRunDir, manifest });
 
+  let pricing: PricingConfig | null = null;
+  if (options.pricingPath) {
+    const rawPricing: unknown = JSON.parse(await fs.readFile(options.pricingPath, 'utf8'));
+    pricing = pricingConfigSchema.parse(rawPricing);
+  }
+
   // Packet O2 coordinator stop state: SIGINT stops admissions and drains
   // bounded in-flight work with teardown attempted; the 60-minute suite
   // deadline bounds local orchestration (not remote execution) with up to
@@ -748,6 +868,21 @@ export async function runEvaluation(
     }
   }
 
+  const plannedCases = runConfigs.reduce(
+    (sum, config) => sum +
+      selectedCases.filter((currentCase) => currentCase.targetModes.includes(config.target)).length,
+    0,
+  );
+  const runCost = {
+    settled: 0,
+    runningUsd: 0,
+    openaiUsd: 0,
+    judgeUsd: 0,
+    lambdaUsd: 0,
+    unpricedCases: new Set<string>(),
+    unpricedModels: new Set<string>(),
+  };
+
   const emitProgress = (progress: ProgressSnapshot): void => {
     void writeProgressRecord({
       runDir: earlyRunDir,
@@ -761,6 +896,7 @@ export async function runEvaluation(
         elapsedMs: progress.elapsedMs,
         stopReason: progress.stopReason,
         complete: progress.complete,
+        ...(pricing ? { costUsd: roundUsd(runCost.runningUsd) } : {}),
       },
       partial: !progress.complete,
     }).catch(() => {
@@ -891,6 +1027,36 @@ export async function runEvaluation(
       stopSignal: stopState,
       drainMs,
       onProgress: emitProgress,
+      onJobSettled: (event) => {
+        const settled = priceSettledCase({
+          caseId: event.caseId,
+          executed: event.executed,
+          result: event.outcome.status === 'ok' ? event.outcome.value : null,
+          judgeStats: caseStatsList[event.jobIndex] ?? null,
+          pricing,
+        });
+        runCost.settled += 1;
+        runCost.runningUsd += settled.totalUsd;
+        runCost.openaiUsd += settled.openaiUsd;
+        runCost.judgeUsd += settled.judgeUsd;
+        runCost.lambdaUsd += settled.lambdaUsd;
+        for (const id of settled.unpricedCases) {
+          runCost.unpricedCases.add(id);
+        }
+        for (const model of settled.unpricedModels) {
+          runCost.unpricedModels.add(model);
+        }
+        options.onCaseComplete?.({
+          caseId: event.caseId,
+          status: event.outcome.status,
+          executed: event.executed,
+          settledCases: runCost.settled,
+          totalCases: plannedCases,
+          caseCostUsd: roundUsd(settled.totalUsd),
+          runningCostUsd: roundUsd(runCost.runningUsd),
+          priced: pricing !== null,
+        });
+      },
     });
     for (const stats of caseStatsList) {
       runJudgeStats.modelCalls += stats.modelCalls;
@@ -967,6 +1133,18 @@ export async function runEvaluation(
       judgeApiMs: Math.round(runJudgeStats.judgeApiMs),
       judgeModels: [...runJudgeStats.judgeModels].sort(),
     },
+    costSummary: pricing
+      ? {
+        priced: true,
+        pricingVersion: pricing.version,
+        openaiUsd: roundUsd(runCost.openaiUsd),
+        judgeUsd: roundUsd(runCost.judgeUsd),
+        lambdaUsd: roundUsd(runCost.lambdaUsd),
+        totalUsd: roundUsd(runCost.runningUsd),
+        unpricedCases: [...runCost.unpricedCases].sort(),
+        unpricedModels: [...runCost.unpricedModels].sort(),
+      }
+      : undefined,
   });
   await writeProgressRecord({
     runDir,
@@ -980,6 +1158,7 @@ export async function runEvaluation(
       elapsedMs: makespanMs,
       stopReason: stopState.reason,
       complete: true,
+      ...(pricing ? { costUsd: roundUsd(runCost.runningUsd) } : {}),
     },
   });
 
@@ -2078,6 +2257,14 @@ async function callSemanticJudgeThroughLimiter(
       judge.stats.rateLimitCount += 1;
     }
     judge.stats.judgeModels.add(call.model);
+    if (outcome.usage) {
+      const slot = judge.stats.judgeUsageByModel[call.model] ??
+        { inputTokens: 0, outputTokens: 0, cachedInputTokens: 0 };
+      slot.inputTokens += outcome.usage.inputTokens;
+      slot.outputTokens += outcome.usage.outputTokens;
+      slot.cachedInputTokens += outcome.usage.cachedInputTokens;
+      judge.stats.judgeUsageByModel[call.model] = slot;
+    }
     return outcome;
   } finally {
     judge.stats.judgeApiMs += Date.now() - apiStart;
@@ -2585,14 +2772,20 @@ async function evaluateExpectation(
         result.message = `Missing fixture receipt evidence for ${expectation.operation}; it is not zero.`;
         return result;
       }
-      const matched = entry.attempts === expectation.expectedAttempts &&
-        entry.successes === expectation.expectedSuccesses &&
-        entry.replays === expectation.expectedReplays;
+      const current = { attempts: entry.attempts, successes: entry.successes, replays: entry.replays };
+      const position = expectation.turnIndex ?? context.turns.length - 1;
+      const delta = effectDeltaForTurn(context.turns, expectation.turnIndex, position, expectation.operation, current);
+      const matched = delta.attempts === expectation.expectedAttempts &&
+        delta.successes === expectation.expectedSuccesses &&
+        delta.replays === expectation.expectedReplays;
+      const scope = expectation.turnIndex === undefined
+        ? `attempts=${delta.attempts} successes=${delta.successes} replays=${delta.replays}`
+        : `turn=${expectation.turnIndex} delta attempts=${delta.attempts} successes=${delta.successes} replays=${delta.replays} (cumulative ${current.attempts}/${current.successes}/${current.replays})`;
       result.passed = matched;
       result.score = matched ? 1 : 0;
       result.message = matched
-        ? `Fixture ${expectation.operation} attempts=${entry.attempts} successes=${entry.successes} replays=${entry.replays} outcome=${entry.outcome}.`
-        : `Fixture ${expectation.operation} was attempts=${entry.attempts} successes=${entry.successes} replays=${entry.replays} outcome=${entry.outcome} instead of attempts=${expectation.expectedAttempts} successes=${expectation.expectedSuccesses} replays=${expectation.expectedReplays}.`;
+        ? `Fixture ${expectation.operation} ${scope} outcome=${entry.outcome}.`
+        : `Fixture ${expectation.operation} was ${scope} outcome=${entry.outcome} instead of attempts=${expectation.expectedAttempts} successes=${expectation.expectedSuccesses} replays=${expectation.expectedReplays}.`;
       return result;
     }
     default: {
@@ -3333,6 +3526,49 @@ function selectTurn(turns: EvalTurnResult[], turnIndex?: number) {
   return turns[turnIndex];
 }
 
+type FixtureEffectCounts = { attempts: number; successes: number; replays: number };
+
+/**
+ * Cumulative counts for one operation at one turn position, or null when
+ * the turn or its fixture evidence is absent (unknown, never zero). A
+ * present-but-unreceipted entry reads as zero: no receipt exists yet.
+ */
+function cumulativeEffectCounts(
+  turns: EvalTurnResult[],
+  position: number,
+  operation: string,
+): FixtureEffectCounts | null {
+  const turn = turns[position];
+  if (!turn) return null;
+  const effects = getEvaluationFixtureEffects(turn);
+  if (effects === null) return null;
+  const entry = effects.find((item) => item.operation === operation);
+  if (!entry || !entry.receiptPresent) return { attempts: 0, successes: 0, replays: 0 };
+  return { attempts: entry.attempts, successes: entry.successes, replays: entry.replays };
+}
+
+/**
+ * Per-turn delta for a turn-indexed expectation: current cumulative minus
+ * the previous turn position. Turn 0 and final (undefined index) compare
+ * absolute counts. Missing previous evidence baselines at zero.
+ */
+function effectDeltaForTurn(
+  turns: EvalTurnResult[],
+  turnIndex: number | undefined,
+  position: number,
+  operation: string,
+  current: FixtureEffectCounts,
+): FixtureEffectCounts {
+  if (turnIndex === undefined || position <= 0) return current;
+  const base = cumulativeEffectCounts(turns, position - 1, operation) ??
+    { attempts: 0, successes: 0, replays: 0 };
+  return {
+    attempts: current.attempts - base.attempts,
+    successes: current.successes - base.successes,
+    replays: current.replays - base.replays,
+  };
+}
+
 export function evaluateFixtureEffectCountForTesting(args: {
   turns: EvalTurnResult[];
   operation: string;
@@ -3358,14 +3594,20 @@ export function evaluateFixtureEffectCountForTesting(args: {
   if (!entry.receiptPresent) {
     return { passed: false, message: `Missing fixture receipt evidence for ${args.operation}; it is not zero.` };
   }
-  const matched = entry.attempts === args.expectedAttempts &&
-    entry.successes === args.expectedSuccesses &&
-    entry.replays === args.expectedReplays;
+  const current = { attempts: entry.attempts, successes: entry.successes, replays: entry.replays };
+  const position = args.turnIndex ?? args.turns.length - 1;
+  const delta = effectDeltaForTurn(args.turns, args.turnIndex, position, args.operation, current);
+  const matched = delta.attempts === args.expectedAttempts &&
+    delta.successes === args.expectedSuccesses &&
+    delta.replays === args.expectedReplays;
+  const scope = args.turnIndex === undefined
+    ? `attempts=${delta.attempts} successes=${delta.successes} replays=${delta.replays}`
+    : `turn=${args.turnIndex} delta attempts=${delta.attempts} successes=${delta.successes} replays=${delta.replays} (cumulative ${current.attempts}/${current.successes}/${current.replays})`;
   return {
     passed: matched,
     message: matched
-      ? `Fixture ${args.operation} attempts=${entry.attempts} successes=${entry.successes} replays=${entry.replays} outcome=${entry.outcome}.`
-      : `Fixture ${args.operation} was attempts=${entry.attempts} successes=${entry.successes} replays=${entry.replays} outcome=${entry.outcome} instead of attempts=${args.expectedAttempts} successes=${args.expectedSuccesses} replays=${args.expectedReplays}.`,
+      ? `Fixture ${args.operation} ${scope} outcome=${entry.outcome}.`
+      : `Fixture ${args.operation} was ${scope} outcome=${entry.outcome} instead of attempts=${args.expectedAttempts} successes=${args.expectedSuccesses} replays=${args.expectedReplays}.`,
   };
 }
 

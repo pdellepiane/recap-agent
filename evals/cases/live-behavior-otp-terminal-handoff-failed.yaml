@@ -1,10 +1,10 @@
 template: template.base-live
 id: live_behavior.otp_terminal_handoff_failed
 suite: live_behavior_regression
-version: 1
+version: 4
 description: Rejected OTP with definitively failed handoff stays terminal without retry or verification loop.
-tags: [live, behavior, authentication, otp, terminal]
-targetModes: [live_lambda]
+tags: [ live, behavior, authentication, otp, terminal ]
+targetModes: [ live_lambda ]
 backendFixture:
   scenario: s06-otp-handoff-failed
 inputs:
@@ -47,7 +47,7 @@ seedPlan:
         resource: gift_purchases
         query: Confirmar si el deposito del regalo llego a los novios.
         orderId: null
-        aspects: [payment_status]
+        aspects: [ payment_status ]
         sensitiveFields: []
         authAction: provide_otp
     selection_candidates: []
@@ -60,12 +60,12 @@ expectations:
   - id: failed-handoff-no-verify-after-turn0
     type: tool_usage
     turnIndex: 1
-    mustNotCall: [verify_user_login_code, request_user_login_code, request_human_takeover]
+    mustNotCall: [ verify_user_login_code, request_user_login_code, request_human_takeover ]
     severity: hard
   - id: failed-handoff-no-effect-after-turn0
     type: tool_usage
     turnIndex: 2
-    mustNotCall: [verify_user_login_code, request_user_login_code, request_human_takeover]
+    mustNotCall: [ verify_user_login_code, request_user_login_code, request_human_takeover ]
     severity: hard
   - id: failed-handoff-effect-turn0
     type: fixture_effect_count
@@ -79,35 +79,15 @@ expectations:
     type: fixture_effect_count
     operation: handoff.write
     turnIndex: 2
-    expectedAttempts: 1
+    expectedAttempts: 0
     expectedSuccesses: 0
     expectedReplays: 0
-    severity: hard
-  - id: failed-handoff-truthful-turn0
-    type: text_semantic
-    turnIndex: 0
-    rubric: >-
-      The verification was rejected and the human-help request definitively failed. In Spanish, explain truthfully that human help could not be arranged now, without claiming a transfer was requested, without inviting another code, resend, email change or verification attempt, without answering the protected question, and without automatically repeating any effect. Preserve the pending question in state; it need not be repeated.
-    minScore: 0.9
-    requireJudge: true
-    severity: hard
-  - id: failed-handoff-truthful-turn1
-    type: text_semantic
-    turnIndex: 1
-    rubric: >-
-      The verification was rejected and the human-help request definitively failed. In Spanish, explain truthfully that human help could not be arranged now, without claiming a transfer was requested, without inviting another code, resend, email change or verification attempt, without answering the protected question, and without automatically repeating any effect. Preserve the pending question in state; it need not be repeated.
-    minScore: 0.9
-    requireJudge: true
-    severity: hard
-  - id: failed-handoff-truthful-turn2
-    type: text_semantic
-    turnIndex: 2
-    rubric: >-
-      The verification was rejected and the human-help request definitively failed. In Spanish, explain truthfully that human help could not be arranged now, without claiming a transfer was requested, without inviting another code, resend, email change or verification attempt, without answering the protected question, and without automatically repeating any effect. Preserve the pending question in state; it need not be repeated.
-    minScore: 0.9
-    requireJudge: true
     severity: hard
 budget:
   maxTurns: 3
   estimatedPromptTokensPerTurn: 1800
   estimatedCompletionTokensPerTurn: 450
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1

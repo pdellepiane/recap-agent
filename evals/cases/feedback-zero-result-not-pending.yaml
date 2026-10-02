@@ -1,11 +1,13 @@
 template: template.base-offline
 id: feedback.zero_result_need_not_treated_as_pending
 suite: feedback_regression
-version: 1
-description: A searched need with zero providers should become no_providers_available and not be resumed as pending.
+version: 2
+description: A searched need with zero providers should become no_providers_available and not be resumed as pending. Extended with a location-refinement retry that also returns zero and a thanks closure.
 tags: [feedback, batch1, batch2, no-results]
 inputs:
   - text: busca locales para mi baby shower en La Molina
+  - text: prueba en Miraflores mejor
+  - text: gracias, lo dejo por ahora
 seedPlan:
   current_node: refinar_criterios
   event_type: baby_shower
@@ -41,10 +43,44 @@ fixtures:
         conversationSummary: Busca Locales para baby shower en La Molina.
         selectedProviderHints: []
         pauseRequested: false
+      - actionIntent: buscar_proveedores
+        intentConfidence: 0.9
+        eventType: baby_shower
+        vendorCategory: Locales
+        vendorCategories: [Locales]
+        activeNeedCategory: Locales
+        location: Miraflores
+        budgetSignal: null
+        guestRange: 21-50
+        preferences: []
+        hardConstraints: []
+        assumptions: []
+        conversationSummary: Reintenta Locales para baby shower en Miraflores.
+        selectedProviderHints: []
+        pauseRequested: false
+      - actionIntent: null
+        intentConfidence: 0.95
+        eventType: baby_shower
+        vendorCategory: Locales
+        vendorCategories: [Locales]
+        activeNeedCategory: Locales
+        location: Miraflores
+        budgetSignal: null
+        guestRange: 21-50
+        preferences: []
+        hardConstraints: []
+        assumptions: []
+        conversationSummary: Agradece y deja la búsqueda por ahora.
+        selectedProviderHints: []
+        pauseRequested: false
     repliesByTurn:
       - No encontré locales disponibles con esos criterios. No lo dejaré como pendiente; podemos buscar otro frente si quieres.
+      - Tampoco encontré locales disponibles en Miraflores. No lo dejaré como pendiente; avisame si quieres probar otro frente.
+      - De nada, aquí estoy cuando quieras retomar la búsqueda.
     providerGateway:
       searchProvidersByTurn:
+        - value:
+            providers: []
         - value:
             providers: []
 expectations:
@@ -54,9 +90,43 @@ expectations:
     expected:
       - category: Locales
         status: no_providers_available
+    turnIndex: 0
+    severity: hard
   - id: not-pending-copy
     type: text_not_contains
     phrases:
       - cuando quieras retomamos Locales
       - pendiente Locales
+    turnIndex: 0
+    severity: hard
+  - id: turn1-no-providers-status
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: Locales
+        status: no_providers_available
+    turnIndex: 1
+    severity: hard
+  - id: turn1-not-pending-copy
+    type: text_not_contains
+    phrases:
+      - cuando quieras retomamos Locales
+      - pendiente Locales
+    turnIndex: 1
+    severity: hard
+  - id: turn2-no-new-search
+    type: tool_usage
+    mustNotCall:
+      - search_providers_from_plan
+      - search_providers_by_query_intent
+    turnIndex: 2
+    severity: hard
+  - id: turn2-not-pending-copy
+    type: text_not_contains
+    phrases:
+      - pendiente Locales
+    turnIndex: 2
+    severity: hard
+notes:
+  - "SUPPORT lane merge surgery 2026-09-30: extended 1 to 3 turns with a Miraflores retry that also returns zero and a thanks closure; existing expectations pinned to turn 0; deterministic assertions kept, no model judge in the offline suite."
 

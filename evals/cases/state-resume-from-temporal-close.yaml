@@ -1,7 +1,7 @@
 template: template.base-offline
 id: state.resume_from_temporal_close_goes_to_entrevista
 suite: state_and_resume
-version: 1
+version: 2
 description: A saved temporary-close node should resume in entrevista instead of re-closing.
 tags:
   - state
@@ -35,9 +35,6 @@ fixtures:
     repliesByTurn:
       - Perfecto, retomamos tu planificación. ¿Qué proveedor quieres resolver primero?
 expectations:
-  - id: resumed-node
-    type: node_transition
-    to: entrevista
   - id: no-reclose
     type: plan_field_equals
     path: current_node

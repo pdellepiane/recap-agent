@@ -1,10 +1,10 @@
 template: template.base-live
 id: live_behavior.gift_credit_with_physical_card_distinguishes
 suite: live_behavior_regression
-version: 6
-description: A credit gift with a separate physical dedication card distinguishes the non-shipped product from the card artifact.
-tags: [live, behavior, purchase, gift, shipping, dedication, fulfillment, credit]
-targetModes: [live_lambda]
+version: 9
+description: A credit gift with a separate physical dedication card distinguishes the non-shipped product from the card artifact; a card-status follow-up and thanks close the thread.
+tags: [ live, behavior, purchase, gift, shipping, dedication, fulfillment, credit ]
+targetModes: [ live_lambda ]
 backendFixture:
   scenario: purchase-gift-credit-card
 inputs:
@@ -14,11 +14,24 @@ inputs:
     sessionId: live-gift-credit-card
     backendFixture:
       scenario: purchase-gift-credit-card
+  - text: ¿La tarjeta con la dedicatoria ya se envió?
+    channel: whatsapp
+    contactPhone: "+51999350216"
+    sessionId: live-gift-credit-card
+    backendFixture:
+      scenario: purchase-gift-credit-card
+  - text: Gracias, quedó claro.
+    channel: whatsapp
+    contactPhone: "+51999350216"
+    sessionId: live-gift-credit-card
+    backendFixture:
+      scenario: purchase-gift-credit-card
 expectations:
   - id: card-uses-gift-read
     type: tool_usage
-    mustCall: [lookup_guest_gift_purchases_by_phone]
-    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code, guest_rsvp]
+    mustCall: []
+    mustNotCall: [ auth_by_phone, request_user_login_code, verify_user_login_code, guest_rsvp ]
+    turnIndex: 0
     severity: hard
   - id: card-no-unsolicited-effects
     type: fixture_effect_count
@@ -26,21 +39,36 @@ expectations:
     expectedAttempts: 0
     expectedSuccesses: 0
     expectedReplays: 0
+    turnIndex: 0
     severity: hard
-  - id: card-distinguishes-product-from-artifact
-    type: text_semantic
-    rubric: >-
-      The phone-scoped gift lookup returns a credit gift (no product shipment; the hosts chose account credit) plus a separate physical dedication card that is being prepared. The response must be natural and entirely in Spanish and keep the two facts separate: the gift itself has no gift shipment, while the dedication card is a separate physical artifact with its own preparing state. Preparing or future physical intent alone (for example se enviará) is not fabricated dispatch; only claims of actual shipment, delivery, dispatch dates, tracking, or posting fail. It must not turn the credit gift into a physical product, must not confuse card preparation with shipment or delivery of the gift, must not invent dispatch dates or tracking, must not assert what the hosts will use the credit for (no purpose beyond value as account credit by host choice), must not print internal type or field codes, and must not claim any amount already posted, available, or settled. Stating the known recorded amount 80 is permitted when useful to the answer and is never required; any other amount, any currency, balance, ledger entry, bank payout, or posting-time claim fails as invention.
-    minScore: 0.9
-    requireJudge: true
+  - id: card-t1-no-unsolicited-effects
+    type: fixture_effect_count
+    operation: handoff.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    turnIndex: 1
+    severity: hard
+  - id: card-t2-no-unsolicited-effects
+    type: fixture_effect_count
+    operation: handoff.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    turnIndex: 2
     severity: hard
 notes:
+  - "2026-09-30 purchase-lane extension v7: grows 1 turn to 3 with a card-status follow-up and a thanks closure. Pre-existing expectations gain explicit turnIndex 0 because un-indexed expectations evaluate the final turn."
   - "R05 oracle revision v1 to v2, 2026-09-21, gift/campaign review correction 3. Rubric now requires natural Spanish with no internal-code citations and no unsolicited monetary or posting claims. Threshold and hard severity kept. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
   - "Oracle revision v2 to v3, 2026-09-21, gift live root-cause review: prohibits asserting the purpose or later use of the host credit (verified KB semantics: funds are held until the hosts withdraw to their bank; no choosing-gifts purpose). Stricter, never looser. Threshold and hard severity kept."
   - "R05 oracle revision v3 to v4, 2026-09-22, bounded-evidence Work 3: preparing or future physical intent alone (se enviará) is distinguished from shipped or delivered; only actual dispatch, delivery, date, tracking, or posting claims fail. Dispatch-date, tracking, posting, and credit-purpose invention bans unchanged. Threshold and hard severity kept."
   - "R05 oracle revision v4 to v5, 2026-09-22, extractor-context-completion package section C: the blanket 'no unsolicited monetary claims' ban is removed because the known identifying amount 80 is permitted useful-fact evidence, not a fabricated financial claim. Stating 80 is allowed but never required; invented amount/currency/balance/settlement/posting bans stay. Dispatch-date, tracking, posting, and credit-purpose bans unchanged. Threshold and hard severity kept. Positive/negative calibration examples live in the Lane C review report only; they do not prove live judge consistency."
   - "Oracle revision v5 to v6, 2026-09-23, confirmed-context root causes: remove only the obsolete lookup_guest_orders_by_phone prohibition, which contradicts authorized all-root preparation. Gift-read, authorization, identity, effect-count and physical-card/product semantic distinction checks are unchanged. No exact wording required."
 budget:
-  maxTurns: 1
+  maxTurns: 3
   estimatedPromptTokensPerTurn: 1800
   estimatedCompletionTokensPerTurn: 300
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1

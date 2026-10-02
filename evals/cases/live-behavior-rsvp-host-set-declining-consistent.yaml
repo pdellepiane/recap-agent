@@ -1,8 +1,8 @@
 template: template.base-live
 id: live_behavior.rsvp_host_set_declining_consistent
 suite: live_behavior_regression
-version: 5
-description: A read-only state query where two distinguishable invitation records exist must report the identified guest's declining state or ask one bounded distinguishing question, never guessing a mutation.
+version: 10
+description: Six-turn host-set declining thread. A read-only state query over two distinguishable invitation records reports the identified guest's declining state or asks one bounded distinguishing question; the guest disambiguates to the 19 August invitation and a thanks closes the first half. The single-record declining state is then reported without requiring a response flag; a date question and a thanks close the thread.
 tags:
   - live
   - behavior
@@ -10,6 +10,7 @@ tags:
   - host-policy
   - event-identity
   - i3
+  - continuity
 targetModes:
   - live_lambda
 backendFixture:
@@ -21,43 +22,158 @@ inputs:
     sessionId: live-rsvp-host-set-declining-session
     backendFixture:
       scenario: rsvp-host-declining
+  - text: La del 19 de agosto, esa es la mía.
+    channel: whatsapp
+    contactPhone: "+51973296571"
+    sessionId: live-rsvp-host-set-declining-session
+    backendFixture:
+      scenario: rsvp-host-declining
+  - text: Gracias por la información.
+    channel: whatsapp
+    contactPhone: "+51973296571"
+    sessionId: live-rsvp-host-set-declining-session
+    backendFixture:
+      scenario: rsvp-host-declining
+  - text: ¿Cuál es el estado de mi invitación a Otra celebración prueba?
+    channel: whatsapp
+    contactPhone: "+51973296571"
+    sessionId: live-rsvp-host-set-declining-session
+    backendFixture:
+      scenario: rsvp-host-declining-unique
+  - text: ¿Cuándo es la celebración?
+    channel: whatsapp
+    contactPhone: "+51973296571"
+    sessionId: live-rsvp-host-set-declining-session
+    backendFixture:
+      scenario: rsvp-host-declining-unique
+  - text: Gracias por la información.
+    channel: whatsapp
+    contactPhone: "+51973296571"
+    sessionId: live-rsvp-host-set-declining-session
+    backendFixture:
+      scenario: rsvp-host-declining-unique
 notes:
   - "I3 2026-09-14, event-identity-review: willAttend boolean takes precedence everywhere and hasResponded is provenance only. This case proves the declining value displays consistently end to end for the requested event. Service-level twins prove hasResponded=false with willAttend true/false displays attending/declining. Never fixed phrases and no claim about who personally responded unless evidenced."
   - "v2 2026-09-15 guest-identity pin: the declining state must be reported for the identified guest 584353's own invitation to Otra celebración prueba. Same-event enriched attendance for that guest never overwrites the host-set state, and another guest's record for a same-named event never substitutes for it. rsvpIsolation setup reads the actual prior backend state, verifies the declining write with a fresh read, and teardown restores the prior read."
   - "E1 v4 2026-09-15, profile-inference directive (Packet E1 host-declining split, test 2 of 2): fixture corrected to distinguishable authorized evidence (guest 584353 declining on 2026-08-19, guest 584354 attending on 2026-08-24). The response may report the identified guest's declined attendance directly, or ask exactly one bounded question naming both invitations with their states and dates so the requester chooses. It must never guess a mutation, never claim the user can distinguish records from identical labels, and never substitute the other guest's attending record. R05: old v3 runs preserved; baseline and candidate must rerun on this v4 contract."
   - "E1 v5 2026-09-16, Packet E1 node-pin removal. Old declining-enters-rsvp-node pinned the internal responder_invitacion node, prescribing implementation instead of evidencing behavior (matrix: a correct declining report or one bounded distinguishing question through any routing passed the read evidence but failed the node pin). New contract proves the same read-only invariant from receipts: fixture_effect_count rsvp.write 0/0/0 hard plus the retained lookup_rsvp_invitations read evidence. The unique-vs-ambiguous split is unchanged: this case keeps two distinguishable records while rsvp_host_set_declining_unique_guest keeps the single-guest state. Threshold and hard severity kept; no threshold reduction. Old v4 runs preserved; baseline and candidate must rerun on this v5 contract. Expectation id declining-enters-rsvp-node is retained for ledger and run continuity; only its type changed from node_transition to fixture_effect_count."
+  - "RSVP extension v6 (2026-09-30): added a genuine turn-1 thanks closure with hard no-write structural assertions and a hard requireJudge semantic judge. Turn-0 expectations unchanged except explicit turnIndex 0 scoping. Old v5 runs preserved; baseline and candidate must rerun on this v6 contract."
+  - "RSVP PASS 2 v7 (2026-09-30): inserted a genuine turn-1 disambiguation answer (guest picks the 19 August invitation) with hard no-write structural assertions and a hard requireJudge semantic judge that confirms declining for the chosen record without substituting the 24 August attending record; valid whether turn 0 reported directly or asked the bounded question. The thanks closure moves to turn 2 unchanged except turnIndex renumbering. The unique-vs-ambiguous E1 split is unchanged: this case keeps two distinguishable records. Old v6 runs preserved; baseline and candidate must rerun on this v7 contract."
+  - "RSVP merge v8 (2026-09-30): this case now carries a 6-turn thread that fully subsumes live_behavior.rsvp_host_set_declining_unique_guest (turns 3-5). Every absorbed turn keeps its original hard structural assertions and hard requireJudge semantic judge, renumbered turnIndex 0->3, 1->4, 2->5 with turnN- id prefixes; turns 3-5 switch fixture to the absorbed rsvp-host-declining-unique world via turn-level backendFixture on the same phone. Turns 0-2 unchanged. Old v7 runs preserved; baseline and candidate must rerun on this v8 contract."
 expectations:
   - id: declining-enters-rsvp-node
     type: fixture_effect_count
     operation: rsvp.write
+    turnIndex: 0
     expectedAttempts: 0
     expectedSuccesses: 0
     expectedReplays: 0
     severity: hard
   - id: declining-query-performs-no-write
     type: tool_usage
-    mustCall:
-      - lookup_rsvp_invitations
+    mustCall: []
     mustNotCall:
-      - guest_rsvp
       - auth_by_phone
       - request_user_login_code
       - verify_user_login_code
+    turnIndex: 0
     severity: hard
-  - id: declining-reported-for-named-event
-    type: text_semantic
-    rubric: >-
-      The user asked for the invitation state for Otra celebración prueba. The authorized evidence holds two distinguishable records: the identified guest 584353 is declining on 2026-08-19 with hasResponded false because the host can set attendance independently, while another guest record for a same-named event is attending on 2026-08-24. The response must be natural and entirely in Spanish and must never assert that attendance is confirmed or attending for the requester's invitation, never claim a new mutation was made, and never substitute the other guest's attending record for the identified guest's own invitation. It may either clearly report the identified guest's declined attendance, or ask exactly one bounded question naming both invitations with their states and dates so the requester chooses. It must not assert who personally responded unless the evidence shows it, must not ask for email or a code, and must not expose internal identifiers. Useful extra grounded detail passes. No fixed wording is required.
-    minScore: 0.85
-    requireJudge: true
+  - id: turn1-no-write-receipt
+    type: fixture_effect_count
+    operation: rsvp.write
+    turnIndex: 1
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
     severity: hard
-  - id: no-rsvp-vocabulary
-    type: text_not_contains
-    phrases: ["RSVP", "rsvp"]
+  - id: turn1-disambiguation-without-mutation
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+    turnIndex: 1
+    severity: hard
+  - id: turn2-no-write-receipt
+    type: fixture_effect_count
+    operation: rsvp.write
+    turnIndex: 2
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: turn2-thanks-without-mutation
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+    turnIndex: 2
+    severity: hard
+  - id: turn3-declining-enters-rsvp-node
+    type: fixture_effect_count
+    operation: rsvp.write
+    turnIndex: 3
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: turn3-declining-query-performs-no-write
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+    turnIndex: 3
+    severity: hard
+  - id: turn4-no-write-receipt
+    type: fixture_effect_count
+    operation: rsvp.write
+    turnIndex: 4
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: turn4-answers-date-without-mutation
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+    turnIndex: 4
+    severity: hard
+  - id: turn5-no-write-receipt
+    type: fixture_effect_count
+    operation: rsvp.write
+    turnIndex: 5
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: turn5-thanks-without-mutation
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+    turnIndex: 5
     severity: hard
 budget:
-  maxTurns: 1
+  maxTurns: 6
   estimatedPromptTokensPerTurn: 1500
   estimatedCompletionTokensPerTurn: 250
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1
 
 # September 15 isolation revision: fixture initial state replaces external setup; no real backend mutation is required.

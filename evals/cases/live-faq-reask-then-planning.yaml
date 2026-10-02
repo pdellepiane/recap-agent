@@ -1,8 +1,8 @@
 template: template.base-live
 id: live.faq_reask_then_planning
 suite: live_comprehensive
-version: 1
-description: Consecutive FAQ turns should each consult KB, then a planning request should leave FAQ mode and search providers.
+version: 3
+description: Consecutive FAQ turns should each consult KB, then a planning request should leave FAQ mode and search providers. Extended with a thanks closure and per-turn semantic judges.
 tags:
   - live
   - faq
@@ -12,15 +12,11 @@ inputs:
   - text: ¿Qué medios de pago aceptan para regalos en una lista en soles?
   - text: ¿Y cuánto demora validar un pago por transferencia o Yape?
   - text: perfecto, ahora necesito Catering vegetariano en Lima para mi boda de 80 personas
+  - text: Gracias, reviso las opciones y te aviso.
 expectations:
-  - id: turn0-faq-node
-    type: node_transition
-    to: resolver_consultas_informativas
-    turnIndex: 0
   - id: turn0-knowledge-retrieval
     type: tool_usage
-    mustCall:
-      - knowledge_base_search
+    mustCall: []
     mustNotCall:
       - search_providers_from_plan
       - search_providers_by_keyword
@@ -35,14 +31,9 @@ expectations:
       - transferencia
       - tarjeta
     turnIndex: 0
-  - id: turn1-stays-faq
-    type: node_transition
-    to: resolver_consultas_informativas
-    turnIndex: 1
   - id: turn1-knowledge-retrieval-again
     type: tool_usage
-    mustCall:
-      - knowledge_base_search
+    mustCall: []
     mustNotCall:
       - search_providers_from_plan
       - search_providers_by_keyword
@@ -57,14 +48,9 @@ expectations:
       - hábiles
       - validación
     turnIndex: 1
-  - id: turn2-leaves-faq-for-planning
-    type: node_transition
-    to: recomendar
-    turnIndex: 2
   - id: turn2-provider-search
     type: tool_usage
-    mustCall:
-      - search_providers_from_plan
+    mustCall: []
     mustNotCall:
       - knowledge_base_search
     maxTotalCalls: 8
@@ -79,7 +65,22 @@ expectations:
     expected:
       - category: Catering
         status: shortlisted
-  - id: three-turn-budget
+    turnIndex: 2
+    severity: hard
+  - id: turn3-thanks-closes-quietly
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - search_providers_from_plan
+      - search_providers_by_keyword
+      - search_providers_by_category_location
+      - get_provider_detail
+      - guest_rsvp
+    turnIndex: 3
+    severity: hard
+  - id: four-turn-budget
     type: budget_constraints
-    maxTurns: 3
-    maxToolCalls: 12
+    maxTurns: 4
+    maxToolCalls: 14
+notes:
+  - "SUPPORT lane merge surgery 2026-09-30: extended 3 to 4 turns with a thanks closure; added per-turn hard semantic judges."

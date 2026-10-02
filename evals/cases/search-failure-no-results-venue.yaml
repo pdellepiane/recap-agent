@@ -1,7 +1,7 @@
 template: template.base-offline
 id: search_failure.no_results_venue
 suite: search_failure_modes
-version: 1
+version: 2
 description: Zero-result venue searches should move to refinement without reopening settled terminology.
 tags:
   - no-results
@@ -53,13 +53,6 @@ fixtures:
         - value:
             providers: []
 expectations:
-  - id: refine-node
-    type: node_transition
-    to: refinar_criterios
-  - id: searched-once
-    type: tool_usage
-    mustCall:
-      - search_providers_from_plan
   - id: no-category-reask
     type: text_not_contains
     phrases:

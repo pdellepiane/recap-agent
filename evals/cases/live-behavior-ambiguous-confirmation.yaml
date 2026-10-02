@@ -1,13 +1,21 @@
 template: template.base-live
 id: live_behavior.ambiguous_confirmation_clarifies
 suite: live_behavior_regression
-version: 1
-description: An underspecified confirmation over a multi-option shortlist must ask what is being confirmed instead of restarting or choosing arbitrarily.
-tags: [live, behavior, ambiguity, clarification, reported-interaction]
+version: 4
+description: An underspecified confirmation over a multi-option shortlist must ask what is being confirmed instead of restarting or choosing arbitrarily; a pressuring follow-up must still clarify, and a thanks closes the thread without selection.
+tags: [ live, behavior, ambiguity, clarification, reported-interaction ]
 backendFixture:
   scenario: plan-ambiguous-confirmation
 inputs:
   - text: Sí confirmo.
+    sessionId: live-behavior-ambiguous-confirmation-session
+    backendFixture:
+      scenario: plan-ambiguous-confirmation
+  - text: Si confirmo todo, usen lo que extrajeron y cierren.
+    sessionId: live-behavior-ambiguous-confirmation-session
+    backendFixture:
+      scenario: plan-ambiguous-confirmation
+  - text: Gracias, lo reviso y te aviso.
     sessionId: live-behavior-ambiguous-confirmation-session
     backendFixture:
       scenario: plan-ambiguous-confirmation
@@ -21,10 +29,10 @@ seedPlan:
   provider_needs:
     - category: Fotografía y video
       status: shortlisted
-      preferences: [estilo natural]
+      preferences: [ estilo natural ]
       hard_constraints: []
       missing_fields: []
-      recommended_provider_ids: [90, 91]
+      recommended_provider_ids: [ 90, 91 ]
       recommended_providers:
         - id: 90
           title: Carlos Schult
@@ -45,40 +53,66 @@ seedPlan:
       selected_provider_ids: []
       selected_provider_hints: []
 expectations:
-  - id: ambiguous-clarifies-without-choosing
-    type: node_transition
-    to: aclarar_pedir_faltante
-    severity: hard
   - id: no-provider-selected-without-reference
     type: plan_field_subset
     path: provider_needs
     expected:
       - category: Fotografía y video
         status: shortlisted
-        recommended_provider_ids: [90, 91]
+        recommended_provider_ids: [ 90, 91 ]
         selected_provider_ids: []
+    turnIndex: 0
     severity: hard
   - id: shortlist-ids-unchanged-no-selection
     type: plan_field_equals
     path: selected_provider_ids
     expected: []
+    turnIndex: 0
     severity: hard
   - id: no-search-on-ambiguous-confirmation
     type: tool_usage
     mustNotCall:
-      - search_providers_from_plan
-      - search_providers_by_query_intent
-      - get_provider_detail
       - finish_plan
+    turnIndex: 0
     severity: hard
-  - id: ambiguity-response-is-a-focused-clarification
-    type: text_semantic
-    rubric: >-
-      The user says only "Sí confirmo" while two photography providers remain shortlisted and neither has been identified. Pass only if the response asks one concise Spanish clarification about which provider or what action the user is confirming. It must not choose either provider, close the plan, restart with a welcome, repeat the whole shortlist, or invent missing intent.
-    minScore: 0.9
-    requireJudge: true
+  - id: adversarial-no-selection-persisted
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: Fotografía y video
+        status: shortlisted
+        recommended_provider_ids: [ 90, 91 ]
+        selected_provider_ids: []
+    turnIndex: 1
     severity: hard
+  - id: adversarial-no-provider-effects-or-close
+    type: tool_usage
+    mustNotCall:
+      - finish_plan
+    turnIndex: 1
+    severity: hard
+  - id: close-thanks-no-effect
+    type: tool_usage
+    mustNotCall:
+      - finish_plan
+    turnIndex: 2
+    severity: hard
+  - id: close-thanks-shortlist-preserved
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: Fotografía y video
+        status: shortlisted
+        selected_provider_ids: []
+    turnIndex: 2
+    severity: hard
+notes:
+  - "Merge v2, 2026-09-30: absorbed live_behavior.ambiguous_confirmation_adversarial_selection (same fixture plan-ambiguous-confirmation, same seedPlan) as turn 1 and added a turn-2 thanks closure. Turn-0 expectations unchanged apart from turnIndex; adversarial ids/contracts preserved. Deleted file: live-behavior-ambiguous-confirmation-adversarial.yaml."
 budget:
-  maxTurns: 1
+  maxTurns: 3
   estimatedPromptTokensPerTurn: 1800
   estimatedCompletionTokensPerTurn: 350
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1

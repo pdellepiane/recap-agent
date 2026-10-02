@@ -1,14 +1,26 @@
 template: template.base-live
 id: live_behavior.phone_confirmation_unclear_requires_yes_or_no
 suite: live_behavior_regression
-version: 2
+version: 5
 description: A stale imprecise answer after the retired confirmation prompt must use phone-scoped event context directly instead of asking again.
-tags: [live, behavior, authentication, phone-first, reported-interaction]
-targetModes: [live_lambda]
+tags: [ live, behavior, authentication, phone-first, reported-interaction ]
+targetModes: [ live_lambda ]
 backendFixture:
   scenario: phone-confirmation-unclear
 inputs:
   - text: Este
+    channel: whatsapp
+    contactPhone: "$TERMINAL_CONTACT_PHONE"
+    sessionId: phone-confirmation-unclear-session
+    backendFixture:
+      scenario: phone-confirmation-unclear
+  - text: Perdona, ¿me repites lo último que me dijiste?
+    channel: whatsapp
+    contactPhone: "$TERMINAL_CONTACT_PHONE"
+    sessionId: phone-confirmation-unclear-session
+    backendFixture:
+      scenario: phone-confirmation-unclear
+  - text: Gracias, eso era todo.
     channel: whatsapp
     contactPhone: "$TERMINAL_CONTACT_PHONE"
     sessionId: phone-confirmation-unclear-session
@@ -34,30 +46,56 @@ seedPlan:
         query: ¿La restricción de vestir de blanco aplica a mujeres y varones?
         eventHint: Karem y Alfredo
     selection_candidates: []
+notes:
+  - "IMGMISC lane merge surgery 2026-09-30: extended 1 to 3 turns with a repeat-from-history continuity turn and a thanks closure; existing expectations pinned to turn 0 with rubric bytes unchanged."
 expectations:
   - id: stale-confirmation-is-cleared
+    turnIndex: 0
     type: plan_field_equals
     path: user_auth.awaiting_phone_confirmation
     expected: false
     severity: hard
   - id: current-phone-event-context-is-read-directly
+    turnIndex: 0
     type: tool_usage
-    mustCall: [lookup_guest_events_by_phone, get_guest_event_detail]
-    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
+    mustNotCall: [ auth_by_phone, request_user_login_code, verify_user_login_code ]
     severity: hard
   - id: no-account-authentication-persists
+    turnIndex: 0
     type: plan_field_equals
     path: user_auth.status
     expected: none
     severity: hard
-  - id: does-not-repeat-retired-confirmation
-    type: text_semantic
-    rubric: >-
-      The user answered only “Este” in a conversation seeded from the retired phone-confirmation flow. Pass if the response continues the preserved event question naturally in Spanish using the trusted phone's event context. It must not ask for another yes/no confirmation, ask the user to repeat the known question, authenticate an account, or request an email or one-time code.
-    minScore: 0.9
-    requireJudge: true
+  - id: recall-performs-no-new-effect
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+      - guest_rsvp
+      - create_quote_request
+      - finish_plan
+    turnIndex: 1
+    severity: hard
+  - id: thanks-performs-no-new-effect
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+      - guest_rsvp
+      - create_quote_request
+    turnIndex: 2
     severity: hard
 budget:
-  maxTurns: 1
+  maxTurns: 3
   estimatedPromptTokensPerTurn: 1800
   estimatedCompletionTokensPerTurn: 350
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1

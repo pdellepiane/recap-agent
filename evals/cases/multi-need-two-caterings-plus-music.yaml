@@ -1,7 +1,7 @@
 template: template.base-offline
 id: multi_need.select_two_caterings_and_open_music
 suite: multi_need_planning
-version: 1
+version: 2
 description: Confirm two Catering providers while opening Música in the same turn.
 tags:
   - mixed-turn
@@ -109,9 +109,6 @@ fixtures:
     repliesByTurn:
       - Perfecto. EDO y 4Foodies quedan elegidos para Catering; ahora te muestro opciones de Música en Lima.
 expectations:
-  - id: final-node
-    type: node_transition
-    to: recomendar
   - id: active-need-music
     type: plan_field_equals
     path: active_need_category

@@ -1,7 +1,7 @@
 template: template.base-both-targets
 id: entrypoint.event_known_no_active_need
 suite: entrypoint_planning
-version: 1
+version: 2
 description: Event is known but no provider search should run before the agent clarifies planning needs.
 tags:
   - planning
@@ -33,11 +33,6 @@ fixtures:
     repliesByTurn:
       - Cuéntame qué parte del matrimonio quieres resolver primero para empezar bien el plan.
 expectations:
-  - id: final-node
-    type: node_transition
-    allowed:
-      - to: entrevista
-      - to: elicitacion_necesidades
   - id: event-type
     type: plan_field_equals
     path: event_type

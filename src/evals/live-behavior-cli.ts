@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import fs from 'node:fs';
 import path from 'node:path';
 
 import dotenv from 'dotenv';
@@ -8,7 +9,7 @@ import type { EvalCase } from './case-schema';
 import { EvalLoader, type LoadedEvalCatalog } from './loader';
 import type { FixtureLoadResult } from '../runtime/eval-fixture-gateway';
 import { loadFixtureData } from '../runtime/eval-fixture-gateway';
-import type { EvalRunnerOptions } from './runner';
+import type { CaseCostEvent, EvalRunnerOptions } from './runner';
 import {
   isCleanGate,
   parseResumeModeOption as parseRunnerResumeMode,
@@ -33,6 +34,16 @@ type EvaluationRunner = (
     failedCases: number;
     erroredCases: number;
     skippedCases: number;
+    costSummary?: {
+      priced: boolean;
+      pricingVersion: string | null;
+      openaiUsd: number;
+      judgeUsd: number;
+      lambdaUsd: number;
+      totalUsd: number;
+      unpricedCases: string[];
+      unpricedModels: string[];
+    } | null;
   };
   runDir: string;
 }>;
@@ -48,6 +59,9 @@ Options:
   --judge-concurrency <1..2>  Judge API requests in flight (default: 2).
   --resume-mode <full|diagnostic>  Diagnostic labels an interrupted resume; never a clean gate (default: full).
   -h, --help    Show this help message.
+
+Progress: one stderr line per settled case with exact running cost; stdout
+carries only the final JSON summary.
 `;
 
 const KNOWN_FLAGS = new Set([
@@ -272,6 +286,33 @@ export type LiveBehaviorMainDeps = {
   loadFixture?: LiveBehaviorFixtureLoader;
 };
 
+/**
+ * Latest dated pricing file wins, by filename. Live behavior gates refuse
+ * to run unpriced: exact cost is mandatory observability, never an estimate.
+ */
+export function resolveLatestPricingPath(evalsDir: string): string {
+  const studiesDir = path.join(evalsDir, 'studies');
+  let entries: string[];
+  try {
+    entries = fs.readdirSync(studiesDir);
+  } catch {
+    throw new Error(`No pricing files found in ${studiesDir}; live behavior gates require exact cost tracking.`);
+  }
+  const latest = entries.filter((entry) => /^pricing-.*\.json$/.test(entry)).sort().at(-1);
+  if (!latest) {
+    throw new Error(`No pricing files found in ${studiesDir}; live behavior gates require exact cost tracking.`);
+  }
+  return path.join(studiesDir, latest);
+}
+
+/** Single stderr progress line per settled case; stdout stays final-JSON-only. */
+export function formatCaseProgressLine(event: CaseCostEvent): string {
+  const cost = event.priced
+    ? ` case=$${event.caseCostUsd.toFixed(6)} running=$${event.runningCostUsd.toFixed(6)}`
+    : '';
+  return `[${event.settledCases}/${event.totalCases}] ${event.caseId} ${event.status}${cost}`;
+}
+
 export async function main(
   argv: readonly string[] = process.argv.slice(2),
   loadRunner: EvaluationRunnerLoader = loadEvaluationRunner,
@@ -296,13 +337,17 @@ export async function main(
   const selectedCases = resolveSelectedLiveBehaviorCases(catalog, caseIds);
   await assertLiveBehaviorPrerequisites(selectedCases, deps.loadFixture ?? loadFixtureData);
 
-  if (!process.env.OPENAI_API_KEY) {
+  if (!process.env.OPENAI_API_KEY && selectedCases.some((evalCase) =>
+    evalCase.expectations?.some((expectation) => expectation.type === 'text_semantic') ||
+    evalCase.scorers?.some((scorer) => scorer.type === 'text_semantic'),
+  )) {
     throw new Error(
-      'OPENAI_API_KEY is required because live behavior regressions use mandatory semantic judges.',
+      'OPENAI_API_KEY is required when selected cases include semantic judges.',
     );
   }
 
   const runEvaluation = await loadRunner();
+  const pricingPath = resolveLatestPricingPath(evalsDir);
   const result = await runEvaluation({
     evalsDir,
     outputDir: path.resolve(process.cwd(), '.eval-runs'),
@@ -313,6 +358,10 @@ export async function main(
     requestedCaseConcurrency: caseConcurrency,
     requestedJudgeConcurrency: judgeConcurrency,
     resumeMode,
+    pricingPath,
+    onCaseComplete: (event) => {
+      process.stderr.write(`${formatCaseProgressLine(event)}\n`);
+    },
   });
   const summary = summarizeGateReport({
     totalCases: result.report.totalCases,
@@ -325,6 +374,7 @@ export async function main(
     runId: result.runId,
     runDir: result.runDir,
     ...summary,
+    cost: result.report.costSummary ?? null,
   };
 
   process.stdout.write(`${JSON.stringify(gatedSummary, null, 2)}\n`);

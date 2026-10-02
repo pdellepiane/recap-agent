@@ -1,0 +1,176 @@
+template: template.base-live
+id: live_behavior.rsvp_foreign_number_decline
+suite: live_behavior_regression
+version: 5
+description: Six-turn decline thread. A Lebanese +961 sender with one pending invitation declines explicitly; the decline executes once with the exact trusted +961 split and a truthful reply, and a date question plus a thanks close the first half. The Sinar domestic decline then records one verified decline for the only authorized invitation; a date question and a thanks close the thread.
+tags: [ live, behavior, rsvp, campaign, reported-interaction, decline, international-phone, continuity ]
+targetModes: [ live_lambda ]
+backendFixture:
+  scenario: rsvp-foreign-number-decline
+inputs:
+  - text: "Hola, qué tal? Lamentablemente, no podré asistir. Ya le envié un mensaje a Paula. Gracias."
+    channel: whatsapp
+    contactPhone: "+96170197268"
+    sessionId: live-rsvp-foreign-number-decline-session
+    backendFixture:
+      scenario: rsvp-foreign-number-decline
+  - text: ¿Cuándo es el evento de Paula & Fernando?
+    channel: whatsapp
+    contactPhone: "+96170197268"
+    sessionId: live-rsvp-foreign-number-decline-session
+    backendFixture:
+      scenario: rsvp-foreign-number-decline
+  - text: Gracias por tu ayuda.
+    channel: whatsapp
+    contactPhone: "+96170197268"
+    sessionId: live-rsvp-foreign-number-decline-session
+    backendFixture:
+      scenario: rsvp-foreign-number-decline
+  - text: "Hola, qué tal? Lamentablemente, no podré asistir. Ya le envié un mensaje a Paula. Gracias."
+    channel: whatsapp
+    contactPhone: "+51900000689"
+    sessionId: live-rsvp-foreign-number-decline-session
+    backendFixture:
+      scenario: rsvp-sinar-campaign-decline
+  - text: ¿Cuándo es el evento de Paula & Fernando?
+    channel: whatsapp
+    contactPhone: "+51900000689"
+    sessionId: live-rsvp-foreign-number-decline-session
+    backendFixture:
+      scenario: rsvp-sinar-campaign-decline
+  - text: Gracias por tu ayuda.
+    channel: whatsapp
+    contactPhone: "+51900000689"
+    sessionId: live-rsvp-foreign-number-decline-session
+    backendFixture:
+      scenario: rsvp-sinar-campaign-decline
+expectations:
+  - id: reads-the-single-authorized-invitation
+    type: tool_usage
+    mustCall: []
+    mustNotCall: [ auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover ]
+    turnIndex: 0
+    severity: hard
+  - id: exactly-one-decline-write
+    type: fixture_effect_count
+    operation: rsvp.write
+    turnIndex: 0
+    expectedAttempts: 1
+    expectedSuccesses: 1
+    expectedReplays: 0
+    severity: hard
+  - id: no-handoff-after-decline
+    type: fixture_effect_count
+    operation: handoff.write
+    turnIndex: 0
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: turn1-no-write-receipt
+    type: fixture_effect_count
+    operation: rsvp.write
+    turnIndex: 1
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: turn1-answers-date-without-mutation
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+    turnIndex: 1
+    severity: hard
+  - id: turn2-no-write-receipt
+    type: fixture_effect_count
+    operation: rsvp.write
+    turnIndex: 2
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: turn2-thanks-without-mutation
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+    turnIndex: 2
+    severity: hard
+  - id: turn3-reads-the-single-authorized-invitation
+    type: tool_usage
+    mustCall: []
+    mustNotCall: [ auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover ]
+    turnIndex: 3
+    severity: hard
+  - id: turn3-exactly-one-decline-write
+    type: fixture_effect_count
+    operation: rsvp.write
+    turnIndex: 3
+    expectedAttempts: 1
+    expectedSuccesses: 1
+    expectedReplays: 0
+    severity: hard
+  - id: turn3-no-handoff-after-decline
+    type: fixture_effect_count
+    operation: handoff.write
+    turnIndex: 3
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: turn4-no-write-receipt
+    type: fixture_effect_count
+    operation: rsvp.write
+    turnIndex: 4
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: turn4-answers-date-without-mutation
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+    turnIndex: 4
+    severity: hard
+  - id: turn5-no-write-receipt
+    type: fixture_effect_count
+    operation: rsvp.write
+    turnIndex: 5
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: turn5-thanks-without-mutation
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+    turnIndex: 5
+    severity: hard
+notes:
+  - "Synthetic foreign-number case for global E.164 intake: proves a valid +961 sender reaches RSVP lookup and write with the exact trusted split instead of a pre-validation 400."
+  - "The live scorer has effect-count, tool-use, trace, plan, and semantic checks but no typed assertion for the post-write RSVP state itself. The hard one-success receipt and semantic answer check are paired with tests/rsvp-foreign-number-decline.test.ts, which proves this fixture returns the same guest/event as declining on a fresh read."
+  - "RSVP extension v2 (2026-09-30): added a genuine turn-1 date question and a turn-2 thanks closure, each with hard no-write structural assertions and a hard requireJudge semantic judge grounded in the same fixture. Turn-0 expectations unchanged except explicit turnIndex 0 scoping. Old v1 runs preserved; baseline and candidate must rerun on this v2 contract."
+  - "RSVP merge v3 (2026-09-30): this case now carries a 6-turn thread that fully subsumes live_behavior.rsvp_sinar_campaign_decline (turns 3-5). Every absorbed turn keeps its original hard structural assertions and hard requireJudge semantic judge, renumbered turnIndex 0->3, 1->4, 2->5 with turnN- id prefixes; turns 3-5 switch phone and fixture to the absorbed rsvp-sinar-campaign-decline world via turn-level backendFixture. Turns 0-2 unchanged. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
+budget:
+  maxTurns: 6
+  estimatedPromptTokensPerTurn: 2200
+  estimatedCompletionTokensPerTurn: 300
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1

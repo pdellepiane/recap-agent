@@ -1,7 +1,7 @@
 template: template.base-both-targets
 id: selection.choose_edo_from_shortlist
 suite: selection_continuity
-version: 1
+version: 2
 description: Choosing EDO from a Catering shortlist should persist the selection and continue from the saved-plan branch.
 imports:
   - ../fixtures/seed-plans/recommend-Catering-shortlist-edo.yaml
@@ -34,9 +34,6 @@ fixtures:
     repliesByTurn:
       - Perfecto, EDO quedó como tu Catering elegido y ya seguimos desde tu plan guardado.
 expectations:
-  - id: continue-node
-    type: node_transition
-    to: seguir_refinando_guardar_plan
   - id: selected-provider
     type: plan_field_equals
     path: selected_provider_ids

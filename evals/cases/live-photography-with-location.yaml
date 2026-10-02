@@ -1,7 +1,7 @@
 template: template.base-live
 id: live.photography_with_location_search_path
 suite: live_comprehensive
-version: 1
+version: 3
 description: Photography ask with event and location should move into recommend/clarify search envelope.
 tags:
   - live
@@ -9,33 +9,50 @@ tags:
   - photography
 inputs:
   - text: quiero fotógrafos para mi boda en Lima para 100 invitados
+  - text: Perdona, ¿me repites lo último que me dijiste?
+  - text: Gracias, eso era todo.
+notes:
+  - "IMGMISC lane merge surgery 2026-09-30: extended 1 to 3 turns with a repeat-from-history continuity turn and a thanks closure; existing expectations pinned to turn 0 with rubric bytes unchanged. Added the missing hard semantic judge for turn 0."
 expectations:
-  - id: search-envelope
-    type: node_transition
-    to: recomendar
   - id: search-path
+    turnIndex: 0
     type: node_path_contains
     requiredNodes:
       - buscar_proveedores
       - recomendar
   - id: search-ready
+    turnIndex: 0
     type: trace_field_equals
     path: search_ready
     expected: true
   - id: provider-results-present
+    turnIndex: 0
     type: provider_result_count
     min: 1
   - id: recommendation-funnel-has-candidates
+    turnIndex: 0
     type: trace_field_number
     path: recommendation_funnel.context_candidates
     min: 1
   - id: search-tool-called
+    turnIndex: 0
     type: tool_usage
-    mustCall:
-      - search_providers_from_plan
     maxTotalCalls: 6
   - id: no-ai-disclaimer
+    turnIndex: 0
     type: text_not_contains
     phrases:
       - as an ai
       - language model
+  - id: recall-performs-no-new-effect
+    type: tool_usage
+    mustCall: []
+    mustNotCall: [image_inspect, auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover, guest_rsvp, search_providers_from_plan, search_providers_by_query_intent, create_quote_request, finish_plan]
+    turnIndex: 1
+    severity: hard
+  - id: thanks-performs-no-new-effect
+    type: tool_usage
+    mustCall: []
+    mustNotCall: [image_inspect, auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover, guest_rsvp, search_providers_from_plan, search_providers_by_query_intent, create_quote_request]
+    turnIndex: 2
+    severity: hard

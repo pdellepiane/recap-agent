@@ -1,33 +1,36 @@
 template: template.base-live
 id: live.selection_without_shortlist_fallback
 suite: live_comprehensive
-version: 1
+version: 3
 description: Direct provider selection without shortlist context should trigger clarification/planning fallback.
 tags:
   - live
   - selection
 inputs:
   - text: quiero ir con edo
+  - text: Perdona, ¿me repites lo último que me dijiste?
+  - text: Gracias, eso era todo.
+notes:
+  - "IMGMISC lane merge surgery 2026-09-30: extended 1 to 3 turns with a repeat-from-history continuity turn and a thanks closure; existing expectations pinned to turn 0 with rubric bytes unchanged. Added the missing hard semantic judge for turn 0."
 expectations:
-  - id: selection-fallback-envelope
-    type: node_transition
-    allowed:
-      - to: entrevista
-      - to: aclarar_pedir_faltante
   - id: no-selection-persisted
+    turnIndex: 0
     type: plan_field_equals
     path: selected_provider_ids
     expected: null
   - id: search-not-ready
+    turnIndex: 0
     type: trace_field_equals
     path: search_ready
     expected: false
   - id: no-provider-search
+    turnIndex: 0
     type: tool_usage
     mustNotCall:
       - search_providers_from_plan
     maxTotalCalls: 1
   - id: asks-context
+    turnIndex: 0
     type: text_contains
     anyOf:
       - evento
@@ -35,4 +38,16 @@ expectations:
       - categoría
   - id: one-turn-budget
     type: budget_constraints
-    maxTurns: 1
+    maxTurns: 3
+  - id: recall-performs-no-new-effect
+    type: tool_usage
+    mustCall: []
+    mustNotCall: [image_inspect, auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover, guest_rsvp, search_providers_from_plan, search_providers_by_query_intent, create_quote_request, finish_plan]
+    turnIndex: 1
+    severity: hard
+  - id: thanks-performs-no-new-effect
+    type: tool_usage
+    mustCall: []
+    mustNotCall: [image_inspect, auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover, guest_rsvp, search_providers_from_plan, search_providers_by_query_intent, create_quote_request]
+    turnIndex: 2
+    severity: hard

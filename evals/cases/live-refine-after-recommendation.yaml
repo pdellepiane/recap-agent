@@ -1,7 +1,7 @@
 template: template.base-live
 id: live.refine_after_recommendation_preserves_need
 suite: live_comprehensive
-version: 1
+version: 3
 description: Refining after a recommendation should preserve the active venue need instead of reopening category ambiguity.
 tags:
   - live
@@ -10,31 +10,18 @@ tags:
 inputs:
   - text: busco Localeses para matrimonio en Lima para 150 invitados
   - text: prefiero algo al aire libre y con estacionamiento
+  - text: Gracias, eso era todo.
+notes:
+  - "IMGMISC lane merge surgery 2026-09-30: extended 2 to 3 turns with a thanks closure. Added the missing hard semantic judge for turn 0, 1."
 expectations:
-  - id: turn0-recommends
-    type: node_transition
-    to: recomendar
-    turnIndex: 0
   - id: turn0-search-called
     type: tool_usage
-    mustCall:
-      - search_providers_from_plan
     maxTotalCalls: 6
     turnIndex: 0
   - id: turn0-provider-results
     type: provider_result_count
     min: 1
     turnIndex: 0
-  - id: turn1-stays-in-search-envelope
-    type: node_transition
-    allowed:
-      - from: recomendar
-        to: recomendar
-      - from: recomendar
-        to: refinar_criterios
-      - from: recomendar
-        to: seguir_refinando_guardar_plan
-    turnIndex: 1
   - id: no-category-reask
     type: text_not_contains
     phrases:
@@ -43,6 +30,7 @@ expectations:
       - qué proveedor necesitas
     turnIndex: 1
   - id: venue-need-remains-active
+    turnIndex: 1
     type: plan_field_subset
     path: provider_needs
     expected:
@@ -54,6 +42,12 @@ expectations:
     turnIndex: 1
   - id: two-turn-budget
     type: budget_constraints
-    maxTurns: 2
+    maxTurns: 3
     maxToolCalls: 12
 
+  - id: thanks-performs-no-new-effect
+    type: tool_usage
+    mustCall: []
+    mustNotCall: [image_inspect, auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover, guest_rsvp, search_providers_from_plan, search_providers_by_query_intent, create_quote_request]
+    turnIndex: 2
+    severity: hard

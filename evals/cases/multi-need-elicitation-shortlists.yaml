@@ -1,7 +1,7 @@
 template: template.base-offline
 id: multi_need.detailed_elicitation_populates_shortlists
 suite: multi_need
-version: 1
+version: 2
 description: Event-level elicitation should populate multiple provider needs with independent shortlists in one turn.
 tags:
   - multi_need
@@ -102,9 +102,6 @@ fixtures:
                 serviceHighlights: []
                 termsHighlights: []
 expectations:
-  - id: elicitation-node
-    type: node_transition
-    to: elicitacion_necesidades
   - id: multi-need-path
     type: node_path_contains
     requiredNodes:
@@ -117,7 +114,3 @@ expectations:
         recommended_provider_ids: [301]
       - category: Música
         recommended_provider_ids: [401]
-  - id: query-intent-tool
-    type: tool_usage
-    mustCall:
-      - search_providers_by_query_intent

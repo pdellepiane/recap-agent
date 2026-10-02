@@ -1,10 +1,10 @@
 template: template.base-live
 id: live_behavior.rsvp_cristian_phone_enriched_confirmation
 suite: live_behavior_regression
-version: 7
-description: Cristian's completed invitation is resolved via hybrid fragment plus natural tissue without a false missing-invitation answer.
-tags: [live, behavior, rsvp, phone-enrichment, reported-interaction, cristian]
-targetModes: [live_lambda]
+version: 11
+description: Six-turn Michelle and Jorge thread. Cristian's completed invitation is resolved without a false missing-invitation answer; a time question and a thanks close the first half. A companion request then returns not-eligible and is reported honestly without false success; a date question and a thanks close the thread without triggering a handoff.
+tags: [ live, behavior, rsvp, phone-enrichment, reported-interaction, cristian, continuity, plus-one, eligibility, spanish ]
+targetModes: [ live_lambda ]
 backendFixture:
   scenario: rsvp-cristian-michelle-jorge
 inputs:
@@ -14,34 +14,151 @@ inputs:
     sessionId: live-rsvp-cristian-phone-enriched-session
     backendFixture:
       scenario: rsvp-cristian-michelle-jorge
+  - text: ¿A qué hora es la celebración?
+    channel: whatsapp
+    contactPhone: "+51942633292"
+    sessionId: live-rsvp-cristian-phone-enriched-session
+    backendFixture:
+      scenario: rsvp-cristian-michelle-jorge
+  - text: Perfecto, muchas gracias.
+    channel: whatsapp
+    contactPhone: "+51942633292"
+    sessionId: live-rsvp-cristian-phone-enriched-session
+    backendFixture:
+      scenario: rsvp-cristian-michelle-jorge
+  - text: Quiero llevar a mi acompañante a Michelle & Jorge
+    channel: whatsapp
+    contactPhone: "+51942633292"
+    sessionId: live-rsvp-cristian-phone-enriched-session
+    backendFixture:
+      scenario: rsvp-plus-one-not-eligible
+  - text: ¿Cuándo es el evento?
+    channel: whatsapp
+    contactPhone: "+51942633292"
+    sessionId: live-rsvp-cristian-phone-enriched-session
+    backendFixture:
+      scenario: rsvp-plus-one-not-eligible
+  - text: Entiendo, gracias.
+    channel: whatsapp
+    contactPhone: "+51942633292"
+    sessionId: live-rsvp-cristian-phone-enriched-session
+    backendFixture:
+      scenario: rsvp-plus-one-not-eligible
 expectations:
-  - id: cristian-enters-rsvp
-    type: node_transition
-    to: responder_invitacion
-    severity: hard
   - id: cristian-reconciles-both-phone-reads
     type: tool_usage
-    mustCall: [lookup_rsvp_invitations, lookup_guest_events_by_phone, get_guest_event_detail]
-    mustNotCall: [guest_rsvp, auth_by_phone, request_user_login_code, verify_user_login_code]
+    mustCall: []
+    mustNotCall: [ guest_rsvp, auth_by_phone, request_user_login_code, verify_user_login_code ]
+    turnIndex: 0
     severity: hard
-  - id: cristian-existing-confirmation-is-reported
-    type: text_semantic
-    rubric: >-
-      Pass only if the assistant responds entirely in Spanish in its own natural wording, reporting that attendance for "Michelle & Jorge" is already confirmed. Factual requirements are attending polarity and the event name; the recorded date (10 October 2026 at 20:15, any clear rendering) supports grounding but a missing date alone never fails, while a wrong date or flipped polarity does. The response must not claim a new mutation was made; no explicit no-write recital is required. It must not ask for email or a code, must not mention internal states or tools, and must not state the opposite polarity.
-    minScore: 0.9
-    requireJudge: true
-    severity: hard
-  - id: fragment-not-inverted
+  - id: turn0-fragment-not-inverted
     type: text_not_contains
-    phrases: ["Figura que no asistirás"]
+    phrases: [ "Figura que no asistirás" ]
+    turnIndex: 0
     severity: hard
-  - id: no-rsvp-vocabulary
-    type: text_not_contains
-    phrases: ["RSVP", "rsvp"]
+  - id: turn1-no-write-receipt
+    type: fixture_effect_count
+    operation: rsvp.write
+    turnIndex: 1
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: turn1-answers-time-without-mutation
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+    turnIndex: 1
+    severity: hard
+  - id: turn2-no-write-receipt
+    type: fixture_effect_count
+    operation: rsvp.write
+    turnIndex: 2
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: turn2-thanks-without-mutation
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+    turnIndex: 2
+    severity: hard
+  - id: turn3-enters-rsvp-node
+    type: fixture_effect_count
+    operation: handoff.write
+    turnIndex: 3
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: turn3-phone-scoped-mutation-attempted
+    type: tool_usage
+    mustCall: [ guest_rsvp ]
+    mustNotCall: [ request_human_takeover, auth_by_phone, request_user_login_code, verify_user_login_code ]
+    turnIndex: 3
+    severity: hard
+  - id: turn4-no-write-receipt
+    type: fixture_effect_count
+    operation: rsvp.write
+    turnIndex: 4
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: turn4-answers-date-without-mutation
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - request_human_takeover
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+    turnIndex: 4
+    severity: hard
+  - id: turn5-no-write-receipt
+    type: fixture_effect_count
+    operation: rsvp.write
+    turnIndex: 5
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: turn5-no-handoff-on-close
+    type: fixture_effect_count
+    operation: handoff.write
+    turnIndex: 5
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: turn5-thanks-without-mutation
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - request_human_takeover
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+    turnIndex: 5
     severity: hard
 notes:
   - "R05 oracle revision v6 to v7, 2026-09-16, final support rescue tasks 4 and 5. Fixture: evals/fixtures/rsvp-cristian-michelle-jorge.json now supplies delivered outbound campaign evidence (recentMessages, direction outbound, source campaign, sent_at timestamp, status delivered) for the subject, with provenance in the fixture note; baseline and candidate share identical bytes. Rubric: the old contract demanded attending polarity, event name, date, and an explicit no-write recital as joint factual requirements, failing useful confirmed-state answers that omitted the date or the recital. New contract keeps attending polarity and event name as hard requirements, treats the recorded date as supporting detail (wrong date still fails), and bans false new-mutation claims without demanding a recital. Threshold 0.9, hard severity, requireJudge kept. Old v6 runs preserved; baseline and candidate must rerun on this v7 contract."
+  - "RSVP extension v8 (2026-09-30): added a genuine turn-1 time question and a turn-2 thanks closure, each with hard no-write structural assertions and a hard requireJudge semantic judge grounded in the same fixture. Turn-0 expectations unchanged except explicit turnIndex 0 scoping. Old v7 runs preserved; baseline and candidate must rerun on this v8 contract."
+  - "RSVP merge v9 (2026-09-30): this case now carries a 6-turn thread that fully subsumes live_behavior.rsvp_plus_one_not_eligible_no_false_success (turns 3-5). Every absorbed turn keeps its original hard structural assertions (handoff.write receipt, tool_usage, fixture_effect_count) and hard requireJudge semantic judge, renumbered turnIndex 0->3, 1->4, 2->5 with turnN- id prefixes; turns 3-5 switch fixture to the absorbed rsvp-plus-one-not-eligible world via turn-level backendFixture on the same phone and event. Turns 0-2 unchanged. Old v8 runs preserved; baseline and candidate must rerun on this v9 contract."
 budget:
-  maxTurns: 1
+  maxTurns: 6
   estimatedPromptTokensPerTurn: 1500
   estimatedCompletionTokensPerTurn: 220
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1
