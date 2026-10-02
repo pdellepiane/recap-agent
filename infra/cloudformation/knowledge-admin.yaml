@@ -1,0 +1,124 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Small internal FAQ document helper (add, preview, publish and delete)
+Parameters:
+  ArtifactBucket:
+    Type: String
+  ArtifactKey:
+    Type: String
+  OpenAISecretArn:
+    Type: String
+  KbVectorStoreId:
+    Type: String
+    AllowedPattern: 'vs_[A-Za-z0-9]+'
+Resources:
+  Documents:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+  DocumentsPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref Documents
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource: [!GetAtt Documents.Arn, !Sub '${Documents.Arn}/*']
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+  AdminPath:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: Unguessable URL path for the internal FAQ helper
+      GenerateSecretString:
+        PasswordLength: 48
+        ExcludePunctuation: true
+  Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: {Service: lambda.amazonaws.com}
+            Action: sts:AssumeRole
+      ManagedPolicyArns: [arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]
+      Policies:
+        - PolicyName: DocumentsAndSecrets
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: [secretsmanager:GetSecretValue]
+                Resource: [!Ref OpenAISecretArn, !Ref AdminPath]
+              - Effect: Allow
+                Action: [s3:ListBucket]
+                Resource: !GetAtt Documents.Arn
+              - Effect: Allow
+                Action: [s3:GetObject, s3:PutObject, s3:DeleteObject]
+                Resource: !Sub '${Documents.Arn}/documents/*'
+  Function:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: recap-agent-knowledge-admin-dev
+      Runtime: nodejs24.x
+      Handler: index.handler
+      Role: !GetAtt Role.Arn
+      Timeout: 120
+      MemorySize: 512
+      ReservedConcurrentExecutions: 4
+      Environment:
+        Variables:
+          DOCUMENT_BUCKET: !Ref Documents
+          ADMIN_PATH_SECRET_ID: !Ref AdminPath
+          OPENAI_SECRET_ID: !Ref OpenAISecretArn
+          KB_VECTOR_STORE_ID: !Ref KbVectorStoreId
+      Code:
+        S3Bucket: !Ref ArtifactBucket
+        S3Key: !Ref ArtifactKey
+  Url:
+    Type: AWS::Lambda::Url
+    Properties:
+      TargetFunctionArn: !GetAtt Function.Arn
+      AuthType: NONE
+  UrlPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref Function
+      Action: lambda:InvokeFunctionUrl
+      Principal: '*'
+      FunctionUrlAuthType: NONE
+  InvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref Function
+      Action: lambda:InvokeFunction
+      Principal: '*'
+      InvokedViaFunctionUrl: true
+  Logs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${Function}'
+      RetentionInDays: 14
+Outputs:
+  BaseUrl:
+    Value: !GetAtt Url.FunctionUrl
+  AdminPathSecretArn:
+    Value: !Ref AdminPath
+  DocumentBucket:
+    Value: !Ref Documents
+  FunctionName:
+    Value: !Ref Function
