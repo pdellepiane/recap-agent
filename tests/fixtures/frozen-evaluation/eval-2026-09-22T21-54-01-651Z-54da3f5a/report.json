@@ -1,0 +1,5641 @@
+{
+  "totalCases": 138,
+  "passedCases": 77,
+  "failedCases": 61,
+  "erroredCases": 0,
+  "skippedCases": 0,
+  "results": [
+    {
+      "caseId": "live_behavior.abandoned_cart_only_sonia",
+      "status": "passed",
+      "finalScore": 0.9736,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "abandoned-cart-enters-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "abandoned-cart-uses-phone-partitions",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "abandoned-cart-recognized",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 0.96
+        },
+        {
+          "id": "no-purchase-not-found",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-correo-channel-claim",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.accountless_event_answer_precedes_remaining_private_auth",
+      "status": "passed",
+      "finalScore": 0.9571428571428571,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "routes-to-information",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "reads-and-reuses-phone-enriched-event",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "keeps-email-auth-ready-for-the-private-query",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "answers-event-and-reuses-scoped-purchase",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.accountless_guest_event_uses_phone_without_otp",
+      "status": "passed",
+      "finalScore": 0.9800000000000001,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "routes-to-associated-event-information",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "uses-phone-enriched-event-context-directly",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "leaves-no-authentication-request-pending",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "answers-from-the-invited-event-without-otp",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.active_cart_checkout_continuity_alex",
+      "status": "failed",
+      "finalScore": 0.8382932504717717,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "active-cart-stays-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "active-cart-uses-phone-partitions",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "active-cart-continuity-stays-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "active-cart-not-flattened",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.65
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.ambiguous_confirmation_adversarial_selection",
+      "status": "failed",
+      "finalScore": 0.16762705923589205,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "adversarial-clarifies-without-choosing",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        },
+        {
+          "id": "adversarial-no-selection-persisted",
+          "type": "plan_field_subset",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        },
+        {
+          "id": "adversarial-no-provider-effects-or-close",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        },
+        {
+          "id": "adversarial-ambiguity-response-is-a-focused-clarification",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.ambiguous_confirmation_clarifies",
+      "status": "failed",
+      "finalScore": 0.8400000000000001,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "ambiguous-clarifies-without-choosing",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-provider-selected-without-reference",
+          "type": "plan_field_subset",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "shortlist-ids-unchanged-no-selection",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-search-on-ambiguous-confirmation",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "ambiguity-response-is-a-focused-clarification",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.authentication_refusal_closes_protected_query",
+      "status": "passed",
+      "finalScore": 1,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "refusal-returns-to-resume-node",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "refusal-does-not-call-authentication-or-handoff",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "protected-request-is-cleared",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "refusal-is-respected",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.campaign_scope_carryover_override_handoff",
+      "status": "failed",
+      "finalScore": 0.8595778272499466,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "scope-elliptical-reads-gift",
+          "type": "trace_field_subset",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "scope-elliptical-no-unsafe-calls",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "scope-carryover-answers-campaign-event",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.65
+        },
+        {
+          "id": "override-reads-events",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "override-explicit-target-wins",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "handoff-explicit-requests-once",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "handoff-effect-once",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "handoff-recorded-in-plan",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "handoff-truthful-confirmation",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.close_date_provenance_and_completed_retry",
+      "status": "passed",
+      "finalScore": 0.8935356077069448,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "tokens-all-turns",
+          "type": "token_usage_present",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "selected-provider-preserved",
+          "type": "plan_field_subset",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-provider-search",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "correct-close-behavior",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "contact-details-alone-do-not-submit",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "explicit-close-dispatches",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "explicit-close-effect",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "completed-retry-does-not-dispatch",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "completed-plan-is-durable",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "completed-retry-reports-existing-outcome",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.concurrent_support_turns_preserve_context",
+      "status": "passed",
+      "finalScore": 0.9111503050285783,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "first-support-question",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "first-support-question-answered",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 0.98
+        },
+        {
+          "id": "second-turn-remains-support",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "second-turn-loads-first-turn-plan",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "support-detail-acknowledgment-does-not-call-backend",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "support-detail-acknowledgment-lightweight-route",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-restart-or-identity-overwrite-after-overlap",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 0.98
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.continuity_question_needs_image",
+      "status": "failed",
+      "finalScore": 0.718331681984352,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "needs-image-first-turn-no-tools",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "needs-image-first-turn-clarifies",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        },
+        {
+          "id": "needs-image-second-turn-projected",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "needs-image-second-turn-answers-pending",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.continuity_text_image_same_turn",
+      "status": "passed",
+      "finalScore": 1,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "same-turn-image-persisted-and-projected",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "same-turn-answer-uses-both",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.continuity_voucher_then_thanks",
+      "status": "failed",
+      "finalScore": 0.8555234977788169,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "voucher-receipt-projected",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "voucher-receipt-no-approval",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "voucher-receipt-brief-and-honest",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.45
+        },
+        {
+          "id": "thanks-adds-no-payment-effect",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "thanks-no-repeated-explanation",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.current_campaign_order_over_historical_declined_maria_jose",
+      "status": "passed",
+      "finalScore": 0.9221920358558868,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "current-order-enters-information",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "current-order-uses-phone-partitions",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "current-pending-suppresses-historical-declined",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "shortfall-remains-pending",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 0.98
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.customer_event_task_continuity",
+      "status": "passed",
+      "finalScore": 0.8817745132069555,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "turn0-ana-time-no-write",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "turn0-ana-time-reads-events",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "turn0-ana-time-answered",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "turn1-only-marta-write",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "turn1-marta-write-and-read",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "turn1-marta-confirmed-with-time",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "turn2-ana-again-no-new-write",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "turn2-ana-again-no-mutation",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "turn2-ana-time-not-marta",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "turn3-thanks-no-restart",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "turn3-thanks-no-restart-tools",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "turn3-thanks-closes-or-silent",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.customer_transaction_code_by_phone",
+      "status": "passed",
+      "finalScore": 0.9800000000000001,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "transaction-code-enters-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "transaction-code-uses-phone-orders",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "transaction-code-unavailable-unique-grounded",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.customer_transaction_reference_matched",
+      "status": "passed",
+      "finalScore": 0.9800000000000001,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "matched-enters-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "matched-uses-phone-orders",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "matched-answers-alias-a",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.customer_transaction_reference_unavailable_multiple",
+      "status": "failed",
+      "finalScore": 0.8266666666666665,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "multiple-enters-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "multiple-uses-phone-orders-without-write",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "multiple-asks-grounded-selection",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.35
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.event_context_long_thread",
+      "status": "passed",
+      "finalScore": 0.8609751529126056,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "read-only-0",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "context-0",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "read-only-1",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "context-1",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "read-only-2",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "context-2",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "read-only-3",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "context-3",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.gift_credit_pending_payment_stays_pending",
+      "status": "failed",
+      "finalScore": 0.8399999999999999,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "pending-uses-gift-read",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "pending-no-unsolicited-effects",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "pending-policy-and-state-coexist",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.4
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.gift_credit_states_host_choice_no_shipment",
+      "status": "failed",
+      "finalScore": 0.89,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "credit-uses-gift-read",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "credit-no-unsolicited-effects",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "credit-no-internal-ids",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "credit-host-choice-no-shipment",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.45
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.gift_credit_with_physical_card_distinguishes",
+      "status": "passed",
+      "finalScore": 0.9946666666666666,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "card-uses-gift-read",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "card-no-unsolicited-effects",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "card-distinguishes-product-from-artifact",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 0.98
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.gift_mixed_order_distinguishes_items",
+      "status": "failed",
+      "finalScore": 0.7936836029326195,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "mixed-uses-gift-reads",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "mixed-gift-evidence-in-trace",
+          "type": "trace_field_subset",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        },
+        {
+          "id": "mixed-no-order-id-request-t0",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "mixed-no-unsolicited-effects",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "mixed-no-rsvp-writes",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "mixed-order-wide-distinguishes",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.8
+        },
+        {
+          "id": "mixed-t1-gift-evidence-in-trace",
+          "type": "trace_field_subset",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "mixed-no-order-id-request-t1",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "mixed-item-followup-answers-that-item",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 0.98
+        },
+        {
+          "id": "mixed-requested-amount-and-quantity",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.gift_sestore_shipped_answers_data",
+      "status": "passed",
+      "finalScore": 1,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "shipped-uses-gift-read",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "shipped-no-handoff-needed",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "shipped-answers-recorded-data",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.gift_sestore_unknown_shipping_offers_support",
+      "status": "failed",
+      "finalScore": 0.9400000000000001,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "sestore-uses-gift-read",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "sestore-no-unsolicited-effects",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "sestore-no-internal-ids",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "sestore-physical-without-invented-detail",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.7
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.gift_shipping_limitation_accepted_handoff_once",
+      "status": "failed",
+      "finalScore": 0.8815688187224575,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "handoff-limitation-reads-gift",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "handoff-no-effect-before-request",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "handoff-limitation-offers-support",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.45
+        },
+        {
+          "id": "handoff-accepted-requests-once",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "handoff-effect-once",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "handoff-recorded-in-plan",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "handoff-truthful-confirmation",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "handoff-thanks-never-reescalates",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "handoff-final-ledger-stays-once",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "handoff-thanks-safety",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.gift_unknown_type_preserves_uncertainty",
+      "status": "failed",
+      "finalScore": 0.9253333333333333,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "unknown-uses-gift-read",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "unknown-no-unsolicited-effects",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "unknown-preserves-uncertainty",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.72
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.host_support_allows_explicit_rsvp_switch",
+      "status": "passed",
+      "finalScore": 0.9666666666666666,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "explicit-switch-enters-rsvp",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "explicit-state-query-is-read-only",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "current-request-not-old-pending-topic",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "read-only-query-does-not-stage-a-future-mutation",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.host_withdrawal_diana_policy_and_support",
+      "status": "failed",
+      "finalScore": 0.7837551310406472,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "role-correction-is-not-a-buyer-lookup",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-handoff-effect-before-policy-turn",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "acknowledges-role-without-generic-reset",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.45
+        },
+        {
+          "id": "policy-and-human-support-without-unrelated-api-work",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "withdrawal-topic-retained",
+          "type": "plan_field_subset",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "supported-policy-not-invented-withdrawal-status",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 0.96
+        },
+        {
+          "id": "handoff-is-persisted",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "single-handoff-effect-after-policy-turn",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "later-event-message-stays-with-human-team",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        },
+        {
+          "id": "no-repeated-takeover-or-rsvp",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "one-handoff-effect-in-thread",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.host_withdrawal_general_policy_only",
+      "status": "passed",
+      "finalScore": 0.9946666666666666,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "only-general-policy-work",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-handoff-required",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "sourced-general-window",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 0.98
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.host_withdrawal_pending_event_followup",
+      "status": "passed",
+      "finalScore": 0.9800000000000001,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "event-name-continues-withdrawal-support",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "event-anchor-preserved",
+          "type": "plan_field_subset",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "pending-topic-not-invitations",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.image_captioned_preserved",
+      "status": "passed",
+      "finalScore": 1,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "captioned-image-native-persisted",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "caption-answered-in-spanish",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.image_conversation_continuity",
+      "status": "passed",
+      "finalScore": 0.9522062073193334,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "continuity-silent-persist-native",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "continuity-silent-persist-reason",
+          "type": "trace_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "continuity-no-resend-request",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "continuity-retained-image-answered",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.image_conversation_repeat_answered",
+      "status": "passed",
+      "finalScore": 0.9666666666666666,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "repeat-first-turn-native-persisted",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "repeat-first-turn-answered-in-spanish",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "repeat-no-resend-request",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "repeat-answered-amount-from-history",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.image_distractor_history_preserves_current_question",
+      "status": "failed",
+      "finalScore": 0.7753055574621914,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "distractor-image-silent-persist-no-inspect",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "distractor-image-silent-persist-reason",
+          "type": "trace_field_equals",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        },
+        {
+          "id": "distractor-question-no-campaign-leak",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "distractor-question-no-resend-or-backend-claim",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "distractor-question-no-backend-mutation",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "distractor-current-question-answered-from-image",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.image_expired_reference_resubmit",
+      "status": "passed",
+      "finalScore": 1,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "expired-no-inspect-no-write",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "expired-answers-from-evidence-or-asks-fact",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.image_file_captioned_persisted",
+      "status": "passed",
+      "finalScore": 1,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "file-image-uploads-and-projects",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "file-image-reply-has-no-bytes-or-id",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "file-image-caption-answered",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.image_file_delayed_question",
+      "status": "passed",
+      "finalScore": 0.9666666666666666,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "file-image-first-turn-persists",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "file-image-first-turn-silent-persist-reason",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "file-image-first-turn-no-rsvp-effect",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "file-image-first-turn-no-handoff-effect",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "file-image-delayed-answered-from-pixels",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.image_file_explicit_describe",
+      "status": "passed",
+      "finalScore": 1,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "file-image-describe-uses-owner-path",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "file-image-describe-no-ids",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "file-image-describe-answered",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.image_file_malformed_unavailable",
+      "status": "passed",
+      "finalScore": 1,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "file-image-malformed-no-inspect-no-effect",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "file-image-malformed-answered-in-spanish",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.image_file_unrelated_omits_pixels",
+      "status": "passed",
+      "finalScore": 0.9571428571428571,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "file-image-first-turn-persists",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "file-image-unrelated-no-visual-content",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "file-image-unrelated-answered-without-pixels",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.image_multiple_pending_orders_no_select",
+      "status": "failed",
+      "finalScore": 0.7133333333333333,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "multi-order-image-uses-owner-path",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "multi-order-image-no-approval",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "multi-order-image-no-auto-select",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.image_non_receipt_payment_claim",
+      "status": "failed",
+      "finalScore": 0.78,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "non-receipt-uses-owner-path",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "non-receipt-no-approval-or-effect",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "non-receipt-no-payment-proof",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "non-receipt-not-treated-as-proof",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.image_readable_captionless",
+      "status": "failed",
+      "finalScore": 0.6788550250364704,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "image-receipt-reconciles-no-inspect",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "image-receipt-no-compatible-record",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        },
+        {
+          "id": "image-receipt-no-payment-effect",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "image-silent-no-bytes-or-id",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "image-delayed-question-answered",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.5
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.image_receipt_ambiguous_digits",
+      "status": "passed",
+      "finalScore": 0.9800000000000001,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "ambiguous-uses-owner-path",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "ambiguous-no-approval-or-bytes",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "ambiguous-digits-not-confirmed",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.image_receipt_illegible_amount",
+      "status": "passed",
+      "finalScore": 1,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "illegible-uses-owner-path",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "illegible-no-approval-or-bytes",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "illegible-amount-stays-unknown",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.image_too_large_fallback",
+      "status": "failed",
+      "finalScore": 0.7333333333333333,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "too-large-no-effect-no-leak",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "too-large-no-inspection-claim",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "too-large-guidance-in-spanish",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.image_unavailable_captioned",
+      "status": "passed",
+      "finalScore": 1,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "unavailable-caption-no-effect",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "unavailable-caption-answered-plus-recovery",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.image_url_describe_dice",
+      "status": "failed",
+      "finalScore": 0.7333333333333333,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "url-image-uses-native-context",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "url-image-reply-has-no-link",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "url-image-dice-described",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.image_url_receipt_payment_thread",
+      "status": "failed",
+      "finalScore": 0.43084043684028794,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "receipt-url-uses-native-context",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        },
+        {
+          "id": "receipt-url-supports-without-proof",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.2
+        },
+        {
+          "id": "thanks-does-not-restart-explanation",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.image_url_unavailable_evidence",
+      "status": "passed",
+      "finalScore": 0.984,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "expired-url-no-team-handoff",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "expired-url-stays-informative",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "expired-url-no-link-leak",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "expired-url-unavailable-not-proof",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 0.92
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.jose_campaign_greeting_then_acknowledgement",
+      "status": "passed",
+      "finalScore": 0.9666666666666666,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "acknowledgement-performs-no-provider-or-rsvp-effect",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "acknowledgement-uses-no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "acknowledgement-closes-without-repeated-welcome-or-interview",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.mailbox_issue_deferral_and_clarification_preserve_support",
+      "status": "failed",
+      "finalScore": 0.7486753969657916,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "greeting-allows-brief-context-without-plan",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        },
+        {
+          "id": "report-enters-support",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "report-no-takeover-no-otp-no-purchase-faq",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "deferral-does-not-fetch-or-authenticate",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "clarification-no-takeover-no-otp-no-purchase-faq",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "mailbox-never-requests-handoff",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "clarification-stays-in-support",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "acknowledge-mailbox-not-welcome",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 0.98
+        },
+        {
+          "id": "acknowledge-deferral-without-inventing-referent",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.35
+        },
+        {
+          "id": "understand-full-mailbox-clarification",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 0.98
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.maria_paz_current_reminder_explanation",
+      "status": "passed",
+      "finalScore": 0.95129595007196,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "reminder-explanation-performs-no-rsvp-write",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "reminder-explanation-preserves-literal-title",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "reminder-explanation-uses-no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.native_image_long_thread",
+      "status": "passed",
+      "finalScore": 0.8592480414497267,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "image-arrival-silent",
+          "type": "trace_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-unsolicited-effects-0",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-unsolicited-effects-1",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-unsolicited-effects-2",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-unsolicited-effects-3",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-unsolicited-effects-4",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-unsolicited-effects-5",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "contextual-response-2",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "contextual-response-3",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "contextual-response-4",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "contextual-response-5",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 0.95
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.nonphysical_purchase_omits_shipping",
+      "status": "passed",
+      "finalScore": 1,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "enters-information-flow",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "does-not-use-provider-tools",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "nonphysical-purchase-has-no-shipping-claim",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "tokens-present",
+          "type": "token_usage_present",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.otp_nondelivery_auto_resends_once",
+      "status": "passed",
+      "finalScore": 1,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "first-nondelivery-enters-human-handoff",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "first-nondelivery-hands-off-without-another-code-operation",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "handoff-is-persisted",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "protected-query-remains-pending-after-handoff",
+          "type": "plan_field_subset",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "first-nondelivery-handoff-language-has-no-resend-loop",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "nondelivery-handoff-effect",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.otp_not_received_requires_response",
+      "status": "passed",
+      "finalScore": 0.9933333333333334,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "enters-human-handoff",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "challenge-and-question-remain-pending",
+          "type": "plan_field_subset",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "missing-code-report-hands-off-without-another-code-operation",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "handoff-is-persisted",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "ends-code-delivery-loop",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 0.95
+        },
+        {
+          "id": "exhausted-handoff-effect",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.otp_number_words_are_verified",
+      "status": "passed",
+      "finalScore": 0.9666666666666666,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "word-code-is-submitted",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "word-code-is-not-rejected-for-format",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "word-code-receives-correct-outcome",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.otp_sent_explains_image_limitation",
+      "status": "failed",
+      "finalScore": 0.7333333333333333,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "requests-email-code-without-phone-lookup",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "code-challenge-persists",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "post-send-image-guidance",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.otp_terminal_handoff_failed",
+      "status": "passed",
+      "finalScore": 0.8919423497164223,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "failed-handoff-is-not-requested",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "failed-handoff-no-verify-after-turn0",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "failed-handoff-no-effect-after-turn0",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "failed-handoff-effect-turn0",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "failed-handoff-effect-final-unchanged",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "failed-handoff-truthful-turn0",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "failed-handoff-truthful-turn1",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "failed-handoff-truthful-turn2",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.otp_terminal_handoff_unavailable",
+      "status": "passed",
+      "finalScore": 0.9478095238095238,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "unavailable-handoff-is-not-requested",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "unavailable-handoff-no-takeover-dispatch",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "unavailable-handoff-no-effect-turn1",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "unavailable-handoff-effect-none",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "unavailable-handoff-truthful-turn0",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 0.95
+        },
+        {
+          "id": "unavailable-handoff-truthful-turn1",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 0.98
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.otp_terminal_handoff_unknown",
+      "status": "failed",
+      "finalScore": 0.8364693888331309,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "unknown-handoff-is-not-requested",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "unknown-handoff-no-verify-after-turn0",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "unknown-handoff-no-effect-after-turn0",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "unknown-handoff-effect-turn0",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "unknown-handoff-effect-final-unchanged",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "unknown-handoff-truthful-turn0",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.78
+        },
+        {
+          "id": "unknown-handoff-truthful-turn1",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.82
+        },
+        {
+          "id": "unknown-handoff-truthful-turn2",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.82
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.otp_terminal_missing_trusted_phone",
+      "status": "passed",
+      "finalScore": 0.9732953818734602,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "missing-phone-handoff-is-not-requested",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "missing-phone-no-takeover-dispatch",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "missing-phone-truthful-turn0",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 0.98
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.owner_customer_payment_relevance",
+      "status": "passed",
+      "finalScore": 0.95,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "payment-turn-enters-information",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "payment-turn-uses-phone-orders",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "payment-turn-persists-customer-owner",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "payment-reply-answers-from-payment-evidence",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "thanks-closes-without-restart",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.owner_planning_to_faq_single_transfer",
+      "status": "failed",
+      "finalScore": 0.8358352865193703,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "planning-turn-does-not-search-early",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "planning-turn-continues-interview",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "faq-turn-enters-information",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "faq-turn-runs-no-provider-search",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "faq-turn-persists-faq-owner",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "faq-reply-answers-general-question",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.05
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.payment_destination_requires_pending_purchase",
+      "status": "passed",
+      "finalScore": 1,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "enters-information-flow",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "does-not-use-provider-tools",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "payment-destination-requires-pending-purchase",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "tokens-present",
+          "type": "token_usage_present",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.pending_balance_validation_luis",
+      "status": "passed",
+      "finalScore": 0.9115337738865966,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "pending-balance-enters-information",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "pending-balance-uses-phone-partitions",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "balance-unknown-no-currency",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "voucher-does-not-confirm",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.phone_account_rejection_requests_email",
+      "status": "passed",
+      "finalScore": 0.99,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "rejected-phone-is-not-retried",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "phone-authentication-is-cleared",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "phone-token-is-cleared",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "phone-auth-method-is-cleared",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "protected-question-remains-pending",
+          "type": "plan_field_subset",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "requests-registered-email-after-rejection",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 0.9
+        },
+        {
+          "id": "identity-rejection-handoff-effect",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "seeded-token-absent-from-output",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.phone_confirmation_unclear_requires_yes_or_no",
+      "status": "failed",
+      "finalScore": 0.784,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "stale-confirmation-is-cleared",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "current-phone-event-context-is-read-directly",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-account-authentication-persists",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "does-not-repeat-retired-confirmation",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.02
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.phone_purchase_missing_hands_off_once",
+      "status": "failed",
+      "finalScore": 0.44142857142857145,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "scoped-lookup-and-handoff",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        },
+        {
+          "id": "manual-help-requested",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        },
+        {
+          "id": "purchase-query-retained",
+          "type": "plan_field_subset",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-repeat-handoff-or-otp",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "scoped-missing-data-handoff-not-account-login",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.55
+        },
+        {
+          "id": "scoped-lookup-not-found-outcome",
+          "type": "trace_field_subset",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        },
+        {
+          "id": "missing-purchase-handoff-effect",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.provider_reference_cheaper_option",
+      "status": "failed",
+      "finalScore": 0.8099999999999999,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "cheaper-provider-selected",
+          "type": "plan_field_subset",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "selection-operation-recorded",
+          "type": "trace_field_subset",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-new-provider-search",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "cheaper-reference-response",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.05
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.provider_reference_miraflores_option",
+      "status": "failed",
+      "finalScore": 0.82,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "miraflores-provider-selected",
+          "type": "plan_field_subset",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "location-selection-operation-recorded",
+          "type": "trace_field_subset",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-new-provider-search",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "miraflores-reference-response",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.purchase_confirmation_carina_request_survives_normalization",
+      "status": "failed",
+      "finalScore": 0.3187472754811777,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "ambiguous-request-clarifies-before-lookup",
+          "type": "trace_field_equals",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        },
+        {
+          "id": "ambiguous-request-does-not-choose-an-operation",
+          "type": "trace_field_equals",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        },
+        {
+          "id": "ambiguous-request-no-external-call",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        },
+        {
+          "id": "asks-one-status-or-document-question",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        },
+        {
+          "id": "clarified-request-looks-up-current-order",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        },
+        {
+          "id": "answer-current-payment",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "repeated-request-does-not-authorize-document-or-otp",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "repeated-request-retains-operation-ambiguity",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.3
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.purchase_currency_pen_symbol",
+      "status": "passed",
+      "finalScore": 0.9800000000000001,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "currency-uses-phone-orders",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "currency-enters-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "currency-pen-no-inference",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.purchase_current_pending_over_old_approved",
+      "status": "failed",
+      "finalScore": 0.7333333333333333,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "current-purchase-enters-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "current-purchase-uses-phone-orders",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        },
+        {
+          "id": "current-pending-wins-over-old-approved",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.purchase_delia_status_by_phone",
+      "status": "failed",
+      "finalScore": 0.7333333333333333,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "delia-enters-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "delia-uses-order-summary-only",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        },
+        {
+          "id": "delia-approved-payment-is-reported",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.purchase_explicit_time_alternatives",
+      "status": "failed",
+      "finalScore": 0.8866666666666667,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "explicit-time-enters-information",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "explicit-time-uses-phone-orders",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "explicit-time-keeps-recorded-hour",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.65
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.purchase_joaquin_dedication_selection",
+      "status": "failed",
+      "finalScore": 0.8533333333333335,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "joaquin-enters-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "joaquin-uses-detailed-gift-read",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "joaquin-is-asked-to-select-one-purchase",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.45
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.purchase_kiara_pending_by_phone",
+      "status": "failed",
+      "finalScore": 0.7133333333333333,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "kiara-enters-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "kiara-uses-order-summary-only",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        },
+        {
+          "id": "kiara-pending-status-is-reported",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.purchase_martha_accountless_selection",
+      "status": "failed",
+      "finalScore": 0.7306666666666667,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "martha-enters-information",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "martha-uses-phone-orders-without-auth",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        },
+        {
+          "id": "martha-is-given-purchase-selection",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 0.99
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.purchase_pending_transfer_continuity",
+      "status": "failed",
+      "finalScore": 0.8327797878179535,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "pending-transfer-stays-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "pending-transfer-uses-phone-detail",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "pending-transfer-explains-window",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "currency-correction-stays-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "ambiguous-backend-time-does-not-reset",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "currency-time-claims-remain-grounded",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.72
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.receipt_alone_then_followup_text",
+      "status": "passed",
+      "finalScore": 0.9132064421669106,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "receipt-initiates-native-reads",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "receipt-initiates-no-payment-effect",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "receipt-initiates-explains-state",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "followup-retains-record",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.receipt_approved_no_pending_story",
+      "status": "passed",
+      "finalScore": 0.9800000000000001,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "approved-uses-native-reads",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "approved-no-payment-effect",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "approved-no-pending-window",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "approved-reports-approved",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.receipt_dual_same_amount_asks",
+      "status": "failed",
+      "finalScore": 0.78,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "dual-amount-reads-sources",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "dual-amount-no-payment-effect",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "dual-amount-no-approval-words",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "dual-amount-asks-one-discriminator",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.receipt_explicit_older_target_wins",
+      "status": "failed",
+      "finalScore": 0.9044444444444444,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "older-target-t0-reads-named-record",
+          "type": "trace_field_subset",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "older-target-t0-no-unrelated-target",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "older-target-t0-answers-named-record",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "older-target-uses-native-reads",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "older-target-no-payment-effect",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "older-target-no-newer-recital",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "older-target-uses-explicit-record",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.65
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.receipt_gift_only_match",
+      "status": "passed",
+      "finalScore": 0.9678425860857344,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "gift-match-reads-both-sources",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "gift-match-no-payment-effect",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "gift-match-cart-not-recited",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "gift-match-answers-gift",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.receipt_non_receipt_image_no_reads",
+      "status": "passed",
+      "finalScore": 0.9571428571428571,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "non-receipt-no-speculative-reads",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "non-receipt-first-turn-silent",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "non-receipt-no-payment-effect",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "non-receipt-followup-answered-without-pixels",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.receipt_text_pending_then_receipt_alone",
+      "status": "failed",
+      "finalScore": 0.8,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "receipt-alone-uses-native-reads",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "receipt-alone-no-payment-effect",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "receipt-alone-no-approval-words",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "receipt-alone-explains-state",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.3
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.receipt_with_text_together",
+      "status": "passed",
+      "finalScore": 0.9800000000000001,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "receipt-text-uses-native-reads",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "receipt-text-no-payment-effect",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "receipt-text-no-approval-words",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "receipt-text-explains-state",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.repeated_otp_failure_preserves_gift_query",
+      "status": "failed",
+      "finalScore": 0.8895940633305391,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "first-code-verified-once",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "second-code-never-verifies-nor-dispatches",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "prose-follow-up-does-not-reverify",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "first-failure-persists-human-handoff",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "gift-query-remains-pending",
+          "type": "plan_field_subset",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-copy-blame-or-email-loop-after-first-failure",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "turn0-auth-episode-ended-handoff-confirmed",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.85
+        },
+        {
+          "id": "turn0-handoff-effect",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "final-handoff-effect-unchanged",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.reset_plan_discards_stored_context",
+      "status": "passed",
+      "finalScore": 1,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "reset-is-a-native-state-transition",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "reset-route-is-explicit",
+          "type": "trace_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "fresh-plan-is-persisted",
+          "type": "trace_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "old-event-is-cleared",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "old-location-is-cleared",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "old-contact-email-is-cleared",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "old-provider-needs-are-cleared",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "reset-does-not-search-or-close",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "reset-response-confirms-completed-state-and-continues",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.roberto_reminder_invitation_disagreement",
+      "status": "passed",
+      "finalScore": 0.9708571428571429,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "mismatch-reads-invitations-without-rsvp-write",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "mismatch-escalates-once-to-human",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "mismatch-reply-is-truthful-without-denial",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 0.92
+        },
+        {
+          "id": "mismatch-uses-no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "mismatch-attendance-unchanged",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "mismatch-handoff-requested",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "mismatch-handoff-effect",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.roberto_verified_unique_rsvp_writes_once",
+      "status": "passed",
+      "finalScore": 0.95,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "verified-unique-writes-rsvp-once",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "verified-unique-reports-verified-outcome",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "verified-unique-uses-no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "verified-attendance-clears-pending-flow",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "verified-attendance-one-effect",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.rsvp_ambiguous_event_requires_grounded_selection",
+      "status": "failed",
+      "finalScore": 0.7861386278221143,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "remains-in-rsvp-node",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        },
+        {
+          "id": "preserves-event-selection-state",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "does-not-mutate-an-ungrounded-candidate",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "asks-which-persisted-event",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.65
+        },
+        {
+          "id": "continuation-answers-on-chosen-candidate",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 0.98
+        },
+        {
+          "id": "continuation-needs-no-reauth",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.rsvp_cinthya_campaign_invitation_not_reported_missing",
+      "status": "passed",
+      "finalScore": 0.9666666666666666,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "enters-rsvp-node",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "reads-user-level-state-without-account-auth",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "preserves-campaign-grounded-invitation",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.rsvp_confirmed_state_is_reported",
+      "status": "passed",
+      "finalScore": 0.9322060558395595,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "remains-in-rsvp-node",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "reads-user-level-invitation-state",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "clears-completed-rsvp-state",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "reports-existing-confirmation-naturally",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "fragment-not-inverted",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.rsvp_cristian_phone_enriched_confirmation",
+      "status": "failed",
+      "finalScore": 0.6799999999999999,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "cristian-enters-rsvp",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        },
+        {
+          "id": "cristian-reconciles-both-phone-reads",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        },
+        {
+          "id": "cristian-existing-confirmation-is-reported",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "fragment-not-inverted",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.rsvp_declined_state_offers_one_change",
+      "status": "passed",
+      "finalScore": 0.9666666666666666,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "remains-in-rsvp-node",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "reads-state-without-premature-mutation",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "waits-for-one-change-confirmation",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "preserves-attending-change",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "reports-decline-and-offers-change",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.rsvp_explicit_mutation_targets_requested_event",
+      "status": "failed",
+      "finalScore": 0.8137408780122295,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "turn0-reads-ana-without-write",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "turn0-answers-ana-facts",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.35
+        },
+        {
+          "id": "turn1-writes-once-for-marta",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "turn1-single-marta-write-receipt",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "turn1-confirms-marta-entity-only",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.rsvp_guest_and_plus_one_combined_saved",
+      "status": "failed",
+      "finalScore": 0.89,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "enters-rsvp-node",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "combined-mutation-single-call",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "combined-saved",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.7
+        },
+        {
+          "id": "no-raw-rsvp-fields",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.rsvp_host_set_declining_consistent",
+      "status": "failed",
+      "finalScore": 0.9099999999999999,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "declining-enters-rsvp-node",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "declining-query-performs-no-write",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "declining-reported-for-named-event",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.65
+        },
+        {
+          "id": "no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.rsvp_host_set_declining_unique_guest",
+      "status": "passed",
+      "finalScore": 0.9666666666666666,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "declining-enters-rsvp-node",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "declining-query-performs-no-write",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "declining-reported-without-response-flag",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.rsvp_jose_campaign_invitation_not_reported_missing",
+      "status": "passed",
+      "finalScore": 0.9666666666666666,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "enters-rsvp-node",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "reads-user-level-state-without-account-auth",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "preserves-campaign-grounded-invitation",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "fragment-not-inverted",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.rsvp_missing_action_requires_explicit_decision",
+      "status": "failed",
+      "finalScore": 0.8590644274273945,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "enters-rsvp-node",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "preserves-awaiting-action-state",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "preserves-attending-change",
+          "type": "plan_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "does-not-mutate-without-decision",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "asks-for-explicit-rsvp-decision",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.45
+        },
+        {
+          "id": "no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.rsvp_missing_event_identity_is_unavailable",
+      "status": "failed",
+      "finalScore": 0.6599999999999999,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "read-only-invitation-check",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "incomplete-evidence-is-not-no-invitation",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.2
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.rsvp_multi_person_offers_human_help",
+      "status": "passed",
+      "finalScore": 0.9973333333333333,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "enters-rsvp-node",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-mutation",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "handoff-registered",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "multi-person-offers-human-help",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 0.98
+        },
+        {
+          "id": "no-overclaim-apply-confirmation",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.rsvp_paolo_mariana_resolved_single",
+      "status": "passed",
+      "finalScore": 0.9666666666666666,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "enters-rsvp-node",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "projects-resolved-single-without-candidate-list",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "reports-already-resolved-invitation-for-named-event",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.rsvp_plus_one_multiple_events_requires_selection",
+      "status": "passed",
+      "finalScore": 0.9746666666666666,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "enters-rsvp-node",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-premature-mutation",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "requires-event-selection",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 0.98
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.rsvp_plus_one_not_eligible_no_false_success",
+      "status": "failed",
+      "finalScore": 0.8400000000000001,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "enters-rsvp-node",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "phone-scoped-mutation-attempted",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "not-eligible-reported-honestly",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.45
+        },
+        {
+          "id": "no-false-success",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.rsvp_plus_one_uses_phone_scoped_mutation",
+      "status": "failed",
+      "finalScore": 0.79,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "enters-rsvp-node",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "phone-scoped-plus-one-mutation",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "saved-outcome-only",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.2
+        },
+        {
+          "id": "no-raw-rsvp-fields",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.rsvp_state_reversal_ends_confirmed",
+      "status": "passed",
+      "finalScore": 0.9666666666666666,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "remains-in-rsvp-node",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "reads-authoritative-rsvp-state",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "reports-confirmed-final-state",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.rsvp_tia_niur_ambiguous_clarifies",
+      "status": "failed",
+      "finalScore": 0.5333333333333334,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "ambiguous-enters-rsvp-node",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        },
+        {
+          "id": "ambiguous-performs-no-mutation",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "ambiguous-asks-bounded-selection",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.25
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.rsvp_tia_niur_old_target_wins",
+      "status": "passed",
+      "finalScore": 0.9135537494023758,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "old-target-performs-no-mutation",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "explicit-old-target-wins-over-newer",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.rsvp_trusted_phone_reports_no_pending",
+      "status": "failed",
+      "finalScore": 0.368,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "enters-rsvp-node",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        },
+        {
+          "id": "reads-user-level-invitations-without-auth",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        },
+        {
+          "id": "records-rsvp-route",
+          "type": "trace_field_equals",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        },
+        {
+          "id": "reports-no-associated-invitation-outcome",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.05
+        },
+        {
+          "id": "no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.rsvp_unmatched_named_event_no_mutation",
+      "status": "passed",
+      "finalScore": 0.9800000000000001,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "unmatched-names-no-mutation",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "unmatched-never-answers-another-event-as-beto",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.s01_frozen_kiara_pending_replay",
+      "status": "failed",
+      "finalScore": 0.7333333333333333,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "s01-frozen-enters-information",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "s01-frozen-uses-order-summary-only",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        },
+        {
+          "id": "s01-frozen-pending-status-is-reported",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.s07_attending_identical_no_write",
+      "status": "passed",
+      "finalScore": 0.9626666666666667,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "remains-in-rsvp-node",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "reports-without-another-mutation",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "reports-confirmed-without-new-registration",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 0.98
+        },
+        {
+          "id": "no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.s08_kiara_approved_replay",
+      "status": "failed",
+      "finalScore": 0.708,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "s08-approved-enters-information",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "s08-approved-uses-order-summary-only",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        },
+        {
+          "id": "s08-approved-status-is-reported",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 0.98
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.s11_rsvp_durability_confirms_once",
+      "status": "passed",
+      "finalScore": 0.95,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "remains-in-rsvp-node",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "reads-authoritative-rsvp-state",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "exactly-one-rsvp-write-receipt",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "reports-confirmed-final-state-once",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.s12_provider_completion_truthful_event_date",
+      "status": "passed",
+      "finalScore": 1,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "submits-quotes-through-finish-plan",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "multi-need-selection-preserved",
+          "type": "plan_field_subset",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "confirms-per-provider-submission-with-explicit-date",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.s2-failed-delivery-preserves-pending",
+      "status": "passed",
+      "finalScore": 0.9391461912009857,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "s2-first-turn-no-mutation",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "s2-retry-projects-image-once",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "s2-retry-no-resend-no-duplicate",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "s2-preserved-then-answered",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.s3-stale-ref-silence-fails",
+      "status": "passed",
+      "finalScore": 1,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "s3-stale-ref-no-false-persist-tools",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "s3-stale-ref-no-false-success",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "s3-stale-ref-surfaces-image-problem",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.s4-injected-renderer-prose-fails",
+      "status": "failed",
+      "finalScore": 0.7333333333333333,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "s4-miraflores-card-selected",
+          "type": "plan_field_subset",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "s4-no-new-search-no-close",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "s4-genuine-card-correct",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.s5-generic-model-failure-not-image",
+      "status": "passed",
+      "finalScore": 0.9592249784030606,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "s5-captionless-persists",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "s5-answered-no-image-unavailable",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "s5-usage-present",
+          "type": "token_usage_present",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "s5-answered-from-pixels",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.s7-ambiguous-orders-no-auto-select",
+      "status": "passed",
+      "finalScore": 1,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "s7-ambiguous-no-effect-no-select",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "s7-ambiguous-no-approval-claim",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "s7-ambiguous-clarifies-without-selecting",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.spanish_only_mixed_language_request",
+      "status": "failed",
+      "finalScore": 0.8533333333333335,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "tokens-present",
+          "type": "token_usage_present",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-known-english-interface-terms",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "correct-behavior-and-spanish-only",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.45
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.support_detail_continuity",
+      "status": "failed",
+      "finalScore": 0.740483378347679,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "support-question-uses-kb",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "guest-name-stays-support",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "event-detail-stays-support",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "support-details-do-not-reset-or-rename",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.25
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.support_pending_question_completed",
+      "status": "passed",
+      "finalScore": 0.9138049745499602,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "turn0-ambiguous-time-no-write",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "turn0-ambiguous-time-no-mutation",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "turn0-ambiguous-time-asks-bounded-selection",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "turn1-reference-completes-no-write",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "turn1-reference-completes-no-mutation",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "turn1-reference-answered-grounded",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "turn2-thanks-no-restart",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "turn2-thanks-no-restart-tools",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "turn2-thanks-closes-or-silent",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.tito_numbered_name_and_post_rsvp_closure",
+      "status": "failed",
+      "finalScore": 0.7736335480237919,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "first-turn-reads-rsvp-state-without-account-auth",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "post-rsvp-comment-performs-no-rsvp-write",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "post-rsvp-comment-uses-no-rsvp-vocabulary",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "post-rsvp-comment-preserves-attendance-with-one-acknowledgement",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.25
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.wait_followup_no_repeat",
+      "status": "failed",
+      "finalScore": 0.7862927708802245,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "turn0-confirmed-no-write",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "turn0-no-new-mutation",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "turn0-existing-confirmation-answered",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "turn1-still-no-write",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "turn1-no-new-mutation",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "turn1-short-no-repeat",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.67
+        },
+        {
+          "id": "turn2-still-no-write",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "turn2-no-new-mutation",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "turn2-short-no-repeat",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.35
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.wedding_planner_location_completes_search",
+      "status": "failed",
+      "finalScore": 0.7930298856511572,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "explicit-need-asks-missing-context",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-search-before-required-context",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "final-turn-search-ready",
+          "type": "trace_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "final-turn-routes-to-recommendations",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "final-turn-searches-now",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "final-turn-has-provider-options",
+          "type": "provider_result_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "final-response-advances-without-an-empty-extra-step",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.15
+        }
+      ]
+    },
+    {
+      "caseId": "live_behavior.wrong_account_handoff_once",
+      "status": "passed",
+      "finalScore": 1,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "wrong-account-real-handoff",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "wrong-account-escalates",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "wrong-account-no-otp-recovery",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "wrong-account-handoff-effect-confirmed",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_feedback.token_fresh_multifront_stays_multi_need",
+      "status": "failed",
+      "finalScore": 0.8671247249361851,
+      "hardGatePassed": false,
+      "expectationResults": [
+        {
+          "id": "tokens-all-turns",
+          "type": "token_usage_present",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "multi-node",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "multi-strategy",
+          "type": "trace_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "correct-multifront-behavior",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": false,
+          "score": 0.82
+        }
+      ]
+    },
+    {
+      "caseId": "live_feedback.token_seeded_close_flow",
+      "status": "passed",
+      "finalScore": 0.9065470255898969,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "tokens-all-turns",
+          "type": "token_usage_present",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "selected-provider-preserved",
+          "type": "plan_field_subset",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-provider-search",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "correct-close-behavior",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "contact-details-alone-do-not-submit",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "explicit-close-dispatches",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "explicit-close-effect",
+          "type": "fixture_effect_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_feedback.token_seeded_contact_correction",
+      "status": "passed",
+      "finalScore": 0.9714158186038209,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "tokens-all-turns",
+          "type": "token_usage_present",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "first-phone-invalid",
+          "type": "trace_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "corrected-phone-final",
+          "type": "trace_field_equals",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "correct-contact-correction-behavior",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "correct-final-close-behavior",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live_feedback.token_seeded_selection_defer_close",
+      "status": "passed",
+      "finalScore": 0.957725055560366,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "tokens-all-turns",
+          "type": "token_usage_present",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "photography-selected",
+          "type": "plan_field_subset",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "catering-defer-recorded",
+          "type": "trace_field_subset",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "catering-deferred",
+          "type": "plan_field_subset",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "correct-selection-defer-close-behavior",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "caseId": "live.faq_from_recommendation_node",
+      "status": "passed",
+      "finalScore": 1,
+      "hardGatePassed": true,
+      "expectationResults": [
+        {
+          "id": "recommendation-to-faq",
+          "type": "node_transition",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "faq-knowledge-retrieval-called",
+          "type": "tool_usage",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-provider-results-in-faq",
+          "type": "provider_result_count",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "commission-answer",
+          "type": "text_semantic",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "no-missing-kb-fallback",
+          "type": "text_not_contains",
+          "severity": "hard",
+          "passed": true,
+          "score": 1
+        },
+        {
+          "id": "one-turn-budget",
+          "type": "budget_constraints",
+          "severity": "soft",
+          "passed": true,
+          "score": 1
+        }
+      ]
+    }
+  ],
+  "provenance": {
+    "originalRunId": "eval-2026-09-22T21-54-01-651Z-54da3f5a",
+    "originalManifestSha256": "55698120bf89d35e73b9e5745f82eda2967916e6a69bf7f094d38d5f70e5e68c",
+    "originalReportSha256": "4150a93858fb79ab494008fe445e3573de3b0617710c4407f06bd6ec79335b9f",
+    "projection": "Only frozen result identities, numeric outcomes and expectation outcomes; no delivered conversation text, prompts or customer records."
+  }
+}

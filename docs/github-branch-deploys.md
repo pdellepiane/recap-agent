@@ -2,18 +2,21 @@
 
 > **Dated deployment design and setup record.** The final 29 September production promotion used the exact tested artifact through the authorized CloudFormation path. Check [the current technical report](thesis/architecture-report/recap-agent-architecture-report.pdf) and the current stack before relying on pending setup steps below.
 
-The repository is prepared for this release model:
+## Current execution policy
 
-- pull requests into `develop` or `main` run mandatory CI;
-- pushes to `develop` run CI and deploy the exact built ZIP to
-  `recap-agent-runtime-dev`;
-- pushes to `main` run CI but never deploy production;
-- production is a manual, reviewer-gated promotion from `main` of the exact
-  content-addressed S3 object currently deployed in development.
+CI is manual-only under the user's 2 October instruction. Pushes and pull
+requests start neither CI nor deployment. CI may be explicitly dispatched or
+called by an explicitly started development deployment. Development deployment
+is also dispatch-only, from `develop`; production remains a manual promotion
+from `main` of the exact tested content-addressed development artifact.
 
-The workflows are locally complete but are not active until this commit and the
-`develop` branch are pushed. No workflow, AWS bootstrap, environment, branch
-rule, push, or deployment was created while preparing this migration.
+CI checks out full Git history because historical prompt comparisons use fixed
+Git references. The test catalog uses exact tracked fixture filenames, and
+historical audit controls consume sanitized versioned result metadata rather
+than the ignored local `.eval-runs/` directory.
+
+The remaining setup details include historical rollout context. They do not
+authorize an automatic run or alter the current manual-only policy.
 
 ## Safety properties
 
@@ -123,30 +126,24 @@ environment.
 
 After pushing `develop`, protect both branches. At minimum:
 
-- `develop`: pull request required, CI required, no force pushes or deletion;
-- `main`: pull request required, CI required, no force pushes or deletion;
+- `develop`: no force pushes or deletion; run CI explicitly when requested;
+- `main`: no force pushes or deletion; run CI explicitly when requested;
 - allow only `develop` to merge into `main` as a repository policy/process;
 - keep direct production deployment absent—production remains promotion-only.
 
-The required check name must be selected from the first successful CI run,
-rather than guessed before GitHub has registered it.
+If required checks are enabled as a later repository policy, account for the
+manual-only execution model; do not enable automatic triggers implicitly.
 
-## First activation sequence
+## Explicit activation sequence
 
-1. Review and commit the migration locally.
-2. Run the AWS bootstrap and configure the two GitHub environments as above.
-3. Push `main` containing the workflows. This runs CI only; it cannot deploy
-   production.
-4. Push the existing local `develop` branch. This runs CI and then the first
-   development deployment.
-5. Confirm the development stack's `CodeS3Key`, Lambda health, and mandatory
-   live behavior gate for any conversational change before promotion.
-6. Configure required branch checks after GitHub has registered the check name.
-7. Run two additional manual development deployments from `develop` to obtain
-   three clean runs if that rollout criterion is retained.
-8. Promote only a digest that is still the development stack's current
-   `CodeS3Key`, from the `main` version of `promote-production.yml`, after a
-   production reviewer approves it.
+1. Review and commit workflow or implementation changes locally.
+2. Configure the AWS bootstrap and GitHub environments when needed.
+3. Push the desired branch. A push starts no CI or deployment workflow.
+4. Explicitly dispatch CI if requested, or dispatch development deployment
+   from `develop`, which calls the offline CI gate before deployment.
+5. Validate conversational changes using explicitly selected development live
+   cases after deployment; never run the unfiltered paid panel.
+6. Explicitly promote the still-current tested development digest from `main`.
 
 ## Current exact-artifact state (2026-09-17)
 

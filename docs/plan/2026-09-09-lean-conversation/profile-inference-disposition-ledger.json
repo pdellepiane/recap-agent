@@ -9851,6 +9851,22 @@
       "disposition": "retain",
       "rationale": "Post-Sep-15 addition (condensation-era case/expectation); retained as authored under the current E1 directive. Not individually E1-audited at regen time; future audits may revise.",
       "reason": "absent from 2026-09-30 catalog (condensation merge/deletion/rename)"
+    },
+    {
+      "case": "live.faq_kb_sources_official_and_atc",
+      "expectation": "atc-template-gift-claim-signal",
+      "type": "text_contains",
+      "disposition": "retain",
+      "rationale": "Post-Sep-15 addition (condensation-era case/expectation); retained as authored under the current E1 directive. Not individually E1-audited at regen time; future audits may revise.",
+      "reason": "absent from 2026-09-30 catalog (condensation merge/deletion/rename)"
+    },
+    {
+      "case": "live_behavior.host_withdrawal_diana_policy_and_support",
+      "expectation": "sourced-withdrawal-window-delivered",
+      "type": "text_contains",
+      "disposition": "retain",
+      "rationale": "Post-Sep-15 addition (condensation-era case/expectation); retained as authored under the current E1 directive. Not individually E1-audited at regen time; future audits may revise.",
+      "reason": "absent from 2026-09-30 catalog (condensation merge/deletion/rename)"
     }
   ],
   "added": [
@@ -14801,6 +14817,14 @@
     {
       "case": "live_behavior.gift_mixed_order_distinguishes_items",
       "expectation": "requested-sheet-amount-delivered"
+    },
+    {
+      "case": "live.faq_kb_sources_official_and_atc",
+      "expectation": "official-faq-gift-claim-signal"
+    },
+    {
+      "case": "live_behavior.host_withdrawal_diana_policy_and_support",
+      "expectation": "no-unsupported-transfer-processing-or-arrival-promise"
     }
   ],
   "counts": {
@@ -14831,10 +14855,10 @@
       "retain": 4
     },
     "text_contains": {
-      "retain": 33
+      "retain": 32
     },
     "text_not_contains": {
-      "retain": 50
+      "retain": 51
     },
     "tool_usage": {
       "retain": 219
@@ -16068,18 +16092,6 @@
     {
       "case": "live.faq_kb_sources_official_and_atc",
       "file": "live-faq-kb-sources-official-and-atc.yaml",
-      "expectation": "atc-template-gift-claim-signal",
-      "type": "text_contains",
-      "severity": "hard",
-      "requireJudge": null,
-      "turnIndex": 0,
-      "disposition": "retain",
-      "rationale": "Post-Sep-15 addition (condensation-era case/expectation); retained as authored under the current E1 directive. Not individually E1-audited at regen time; future audits may revise.",
-      "source": "rule:post-inventory-retain"
-    },
-    {
-      "case": "live.faq_kb_sources_official_and_atc",
-      "file": "live-faq-kb-sources-official-and-atc.yaml",
       "expectation": "faq-knowledge-retrieval-called",
       "type": "tool_usage",
       "severity": "hard",
@@ -16106,6 +16118,18 @@
       "file": "live-faq-kb-sources-official-and-atc.yaml",
       "expectation": "no-provider-results",
       "type": "provider_result_count",
+      "severity": "hard",
+      "requireJudge": null,
+      "turnIndex": 0,
+      "disposition": "retain",
+      "rationale": "Post-Sep-15 addition (condensation-era case/expectation); retained as authored under the current E1 directive. Not individually E1-audited at regen time; future audits may revise.",
+      "source": "rule:post-inventory-retain"
+    },
+    {
+      "case": "live.faq_kb_sources_official_and_atc",
+      "file": "live-faq-kb-sources-official-and-atc.yaml",
+      "expectation": "official-faq-gift-claim-signal",
+      "type": "text_contains",
       "severity": "hard",
       "requireJudge": null,
       "turnIndex": 0,
@@ -18336,6 +18360,18 @@
     {
       "case": "live_behavior.host_withdrawal_diana_policy_and_support",
       "file": "live-behavior-host-withdrawal-diana.yaml",
+      "expectation": "no-unsupported-transfer-processing-or-arrival-promise",
+      "type": "text_not_contains",
+      "severity": "hard",
+      "requireJudge": null,
+      "turnIndex": 2,
+      "disposition": "retain",
+      "rationale": "Post-Sep-15 addition (condensation-era case/expectation); retained as authored under the current E1 directive. Not individually E1-audited at regen time; future audits may revise.",
+      "source": "rule:post-inventory-retain"
+    },
+    {
+      "case": "live_behavior.host_withdrawal_diana_policy_and_support",
+      "file": "live-behavior-host-withdrawal-diana.yaml",
       "expectation": "one-handoff-effect-in-thread",
       "type": "fixture_effect_count",
       "severity": "hard",
@@ -18380,18 +18416,6 @@
       "disposition": "retain",
       "rationale": "2026-09-17 assessment hardening item 1 v5: cumulative 1/1/0 at turn 1 proves the single confirmed takeover; a second mutation fails.",
       "source": "rule"
-    },
-    {
-      "case": "live_behavior.host_withdrawal_diana_policy_and_support",
-      "file": "live-behavior-host-withdrawal-diana.yaml",
-      "expectation": "sourced-withdrawal-window-delivered",
-      "type": "text_contains",
-      "severity": "hard",
-      "requireJudge": null,
-      "turnIndex": 2,
-      "disposition": "retain",
-      "rationale": "Post-Sep-15 addition (condensation-era case/expectation); retained as authored under the current E1 directive. Not individually E1-audited at regen time; future audits may revise.",
-      "source": "rule:post-inventory-retain"
     },
     {
       "case": "live_behavior.image_file_captioned_persisted",

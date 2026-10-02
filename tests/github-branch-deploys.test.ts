@@ -17,17 +17,18 @@ function workflow(name: string): Record<string, unknown> {
 }
 
 describe('GitHub branch deployment workflows', () => {
-  it('runs CI for pull requests and main while remaining reusable', () => {
+  it('requires explicit CI dispatch or an explicitly started calling workflow', () => {
     const ci = workflow('ci.yml');
     const triggers = ci['on'] as Record<string, unknown>;
     expect(triggers).toHaveProperty('workflow_call');
     expect(triggers).toHaveProperty('workflow_dispatch');
-    expect(triggers).toHaveProperty('pull_request');
-    expect(triggers).toHaveProperty('push');
+    expect(Object.keys(triggers).sort()).toEqual(['workflow_call', 'workflow_dispatch']);
+    const jobs = ci['jobs'] as { ci: { steps: { name?: string; with?: Record<string, unknown> }[] } };
+    expect(jobs.ci.steps.find((step) => step.name === 'Checkout')?.with?.['fetch-depth']).toBe(0);
     expect(JSON.stringify(ci)).not.toContain('continue-on-error');
   });
 
-  it('deploys development only from develop and uses a ZIP-file digest', () => {
+  it('deploys development only on explicit dispatch from develop with a ZIP-file digest', () => {
     const text = fs.readFileSync(
       path.resolve(process.cwd(), '.github/workflows/deploy-development.yml'),
       'utf8',
@@ -35,7 +36,7 @@ describe('GitHub branch deployment workflows', () => {
     const deploy = workflow('deploy-development.yml');
     const triggers = deploy['on'] as Record<string, unknown>;
     expect(triggers).toHaveProperty('workflow_dispatch');
-    expect(triggers).toHaveProperty('push');
+    expect(Object.keys(triggers)).toEqual(['workflow_dispatch']);
     expect(text).toContain('refs/heads/develop');
     expect(text).toContain('sha256sum .artifacts/deployment/lambda.zip');
     expect(text).toContain('DEPLOY_ARTIFACT_SHA256');

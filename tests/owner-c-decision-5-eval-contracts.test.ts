@@ -76,7 +76,7 @@ function readJson(filePath: string): unknown {
 
 describe('Owner C decision 5 eval contracts', () => {
   it('keeps the frozen run immutable at 77 pass / 61 fail', () => {
-    const runDir = path.resolve(process.cwd(), '.eval-runs', RUN_ID);
+    const runDir = path.resolve(process.cwd(), 'tests/fixtures/frozen-evaluation', RUN_ID);
     const manifest = readJson(path.join(runDir, 'manifest.json')) as {
       cases: { orderedIds: string[] };
       referenceStatus: string;
@@ -100,7 +100,7 @@ describe('Owner C decision 5 eval contracts', () => {
   });
 
   it('builds a 138-row ledger from the frozen run without rescoring', () => {
-    const runDir = path.resolve(process.cwd(), '.eval-runs', RUN_ID);
+    const runDir = path.resolve(process.cwd(), 'tests/fixtures/frozen-evaluation', RUN_ID);
     const manifest = readJson(path.join(runDir, 'manifest.json')) as {
       cases: { orderedIds: string[] };
     };

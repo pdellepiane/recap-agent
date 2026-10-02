@@ -69,3 +69,19 @@ Test fixtures must supply the dependencies and stable backend records used by th
 7. Handoff the exact tested scope, artifact and costs, all remaining failures, contract changes and negative-control evidence. A passing subset or a source archive is not a production promotion or a clean Git release.
 
 For case syntax, harness components and artifact formats, see the [evaluation framework](evaluation-framework.md).
+
+## Fresh-checkout portability validation
+
+The post-consolidation offline run completed in a fresh checkout without local
+environment files or ignored historical run artifacts: **1,497 passed, zero
+failed, one existing skipped; 199/199 files passed**. These later results do not
+rewrite the September report's evidence cutoff. Exact Git filename checks now
+catch case-sensitive import mistakes even on macOS. Frozen audit tests use
+sanitized, versioned metadata with hashes of the original run artifacts.
+
+GitHub CI is manual-only: pushes and pull requests do not trigger it, and the
+development deployment workflow is also explicitly dispatched. The current
+workflow fetches full history for its historical prompt comparisons. See
+`docs/diagnostics/2026-10-02-ci-portability.json` for the failed GitHub run and
+fresh-checkout validation identities. No new GitHub run or paid live evaluation
+was started during this repair.
