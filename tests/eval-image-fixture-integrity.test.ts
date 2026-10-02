@@ -108,11 +108,14 @@ function darkCount(grid: { width: number; height: number; at: (x: number, y: num
   return count;
 }
 
-function casePayload(caseFile: string): string {
+function casePayload(caseFile: string, inputIndex?: number): string {
   const doc = YAML.parse(readFileSync(path.join(REPO, caseFile), 'utf8')) as {
     inputs?: Array<{ image?: { data?: unknown } }>;
   };
-  const found = (doc.inputs ?? []).find((input) => typeof input.image?.data === 'string');
+  const inputs = doc.inputs ?? [];
+  const found = inputIndex === undefined
+    ? inputs.find((input) => typeof input.image?.data === 'string')
+    : inputs[inputIndex];
   if (!found?.image?.data || typeof found.image.data !== 'string') {
     throw new Error(`${caseFile} has no image.data payload.`);
   }
@@ -120,7 +123,8 @@ function casePayload(caseFile: string): string {
 }
 
 describe('F1 image fixture integrity', () => {
-  it('readable asset decodes with recorded dimensions, hash, and byte limit', () => {
+  it('recorded assets decode with expected dimensions, hashes, and visible content', () => {
+    // Readable receipt: recorded bytes, hash, dimensions, and byte limit.
     const raw = readFileSync(path.join(REPO, READABLE_ASSET));
     expect(raw.length).toBe(40976);
     expect(raw.length).toBeLessThanOrEqual(MAX_IMAGE_BYTES);
@@ -128,87 +132,77 @@ describe('F1 image fixture integrity', () => {
     const grid = readGrayscalePixels(raw);
     expect(grid.width).toBe(800);
     expect(grid.height).toBe(1000);
-    const normalized = normalizeInboundImage({ data: raw.toString('base64'), mime_type: 'image/png' });
-    expect(normalized.status).toBe('available');
-  });
-
-  it('receipt 340.44 asset decodes with recorded dimensions, hash, and visible amount', () => {
-    const raw = readFileSync(path.join(REPO, RECEIPT_340_44_ASSET));
-    expect(raw.length).toBe(45359);
-    expect(raw.length).toBeLessThanOrEqual(MAX_IMAGE_BYTES);
-    expect(createHash('sha256').update(raw).digest('hex')).toBe(RECEIPT_340_44_SHA256);
-    const grid = readGrayscalePixels(raw);
-    expect(grid.width).toBe(800);
-    expect(grid.height).toBe(1000);
-    // Title row and the S/ 340.44 amount value region both carry ink.
-    expect(darkCount(grid, [95, 90, 705, 160])).toBeGreaterThan(200);
-    expect(darkCount(grid, [300, 340, 600, 410])).toBeGreaterThan(200);
-    const normalized = normalizeInboundImage({ data: raw.toString('base64'), mime_type: 'image/png' });
-    expect(normalized.status).toBe('available');
-  });
-
-  it('readable asset actually renders text where the amount and date sit', () => {
-    const raw = readFileSync(path.join(REPO, READABLE_ASSET));
-    const grid = readGrayscalePixels(raw);
     // Amount value region and date value region both carry ink.
     expect(darkCount(grid, [217, 285, 410, 326])).toBeGreaterThan(200);
     expect(darkCount(grid, [198, 373, 410, 413])).toBeGreaterThan(200);
-  });
+    const normalized = normalizeInboundImage({ data: raw.toString('base64'), mime_type: 'image/png' });
+    expect(normalized.status).toBe('available');
 
-  it('obscured asset keeps labels legible while amount and date values are solid ink', () => {
-    const raw = readFileSync(path.join(REPO, OBSCURED_ASSET));
-    expect(raw.length).toBe(34099);
-    expect(createHash('sha256').update(raw).digest('hex')).toBe(OBSCURED_SHA256);
-    const grid = readGrayscalePixels(raw);
-    expect(grid.width).toBe(800);
-    expect(grid.height).toBe(1000);
+    // 340.44 receipt: same recorded-shape checks plus its own ink regions.
+    const receipt34044 = readFileSync(path.join(REPO, RECEIPT_340_44_ASSET));
+    expect(receipt34044.length).toBe(45359);
+    expect(receipt34044.length).toBeLessThanOrEqual(MAX_IMAGE_BYTES);
+    expect(createHash('sha256').update(receipt34044).digest('hex')).toBe(RECEIPT_340_44_SHA256);
+    const receiptGrid = readGrayscalePixels(receipt34044);
+    expect(receiptGrid.width).toBe(800);
+    expect(receiptGrid.height).toBe(1000);
+    // Title row and the S/ 340.44 amount value region both carry ink.
+    expect(darkCount(receiptGrid, [95, 90, 705, 160])).toBeGreaterThan(200);
+    expect(darkCount(receiptGrid, [300, 340, 600, 410])).toBeGreaterThan(200);
+    const receiptNormalized = normalizeInboundImage({ data: receipt34044.toString('base64'), mime_type: 'image/png' });
+    expect(receiptNormalized.status).toBe('available');
+
+    // Obscured receipt: labels stay legible while amount and date values are solid ink.
+    const obscured = readFileSync(path.join(REPO, OBSCURED_ASSET));
+    expect(obscured.length).toBe(34099);
+    expect(createHash('sha256').update(obscured).digest('hex')).toBe(OBSCURED_SHA256);
+    const obscuredGrid = readGrayscalePixels(obscured);
+    expect(obscuredGrid.width).toBe(800);
+    expect(obscuredGrid.height).toBe(1000);
     const amountBox: [number, number, number, number] = [217, 285, 410, 326];
     const dateBox: [number, number, number, number] = [198, 373, 410, 413];
     const amountArea = (amountBox[2] - amountBox[0]) * (amountBox[3] - amountBox[1]);
     const dateArea = (dateBox[2] - dateBox[0]) * (dateBox[3] - dateBox[1]);
     // Value regions are fully blacked out: every pixel is ink.
-    expect(darkCount(grid, amountBox)).toBe(amountArea);
-    expect(darkCount(grid, dateBox)).toBe(dateArea);
+    expect(darkCount(obscuredGrid, amountBox)).toBe(amountArea);
+    expect(darkCount(obscuredGrid, dateBox)).toBe(dateArea);
     // The Monto: label column stays legible.
-    expect(darkCount(grid, [70, 281, 217, 330])).toBeGreaterThan(200);
-    const normalized = normalizeInboundImage({ data: raw.toString('base64'), mime_type: 'image/png' });
-    expect(normalized.status).toBe('available');
+    expect(darkCount(obscuredGrid, [70, 281, 217, 330])).toBeGreaterThan(200);
+    const obscuredNormalized = normalizeInboundImage({ data: obscured.toString('base64'), mime_type: 'image/png' });
+    expect(obscuredNormalized.status).toBe('available');
   });
 
   it('positive case payloads are byte-identical to their recorded assets', () => {
     const readablePayload = readFileSync(path.join(REPO, READABLE_ASSET)).toString('base64');
-    const obscuredPayload = readFileSync(path.join(REPO, OBSCURED_ASSET)).toString('base64');
     const receipt34044Payload = readFileSync(path.join(REPO, RECEIPT_340_44_ASSET)).toString('base64');
     expect(casePayload('evals/cases/live-behavior-image-multiple-pending-orders.yaml')).toBe(readablePayload);
-    expect(casePayload('evals/cases/live-behavior-image-readable-captionless.yaml')).toBe(readablePayload);
-    expect(casePayload('evals/cases/live-behavior-image-receipt-illegible-amount.yaml')).toBe(obscuredPayload);
-    expect(casePayload('evals/cases/live-behavior-image-receipt-ambiguous-digits.yaml')).toBe(obscuredPayload);
+    // 2026-09-30 live compression: the captionless thread merged into the
+    // expired-reference survivor with its image bytes intact.
+    // 2026-09-30 condensation: the ambiguous-digits thread merged into the illegible-amount case.
+    // 2026-09-30 live compression: the alone-followup thread is turn 1 and
+    // the with-text thread is turn 2 of the text-pending survivor.
     expect(casePayload('evals/cases/live-behavior-receipt-text-pending-then-alone.yaml')).toBe(receipt34044Payload);
-    expect(casePayload('evals/cases/live-behavior-receipt-with-text-together.yaml')).toBe(receipt34044Payload);
-    expect(casePayload('evals/cases/live-behavior-receipt-alone-then-followup.yaml')).toBe(receipt34044Payload);
+    expect(casePayload('evals/cases/live-behavior-receipt-text-pending-then-alone.yaml', 2)).toBe(receipt34044Payload);
     expect(casePayload('evals/cases/live-behavior-receipt-gift-only-match.yaml')).toBe(receipt34044Payload);
-    expect(casePayload('evals/cases/live-behavior-receipt-dual-same-amount.yaml')).toBe(receipt34044Payload);
-    expect(casePayload('evals/cases/live-behavior-receipt-explicit-older-target.yaml')).toBe(receipt34044Payload);
-    expect(casePayload('evals/cases/live-behavior-receipt-approved-state.yaml')).toBe(receipt34044Payload);
+    // 2026-09-30 live compression: the approved-story thread is turn 2 of
+    // the gift-only survivor.
+    expect(casePayload('evals/cases/live-behavior-receipt-gift-only-match.yaml', 2)).toBe(receipt34044Payload);
+    // 2026-09-30 live compression: the dual-amount thread is turn 0 of the
+    // explicit-older-target survivor.
+    expect(casePayload('evals/cases/live-behavior-receipt-explicit-older-target.yaml', 0)).toBe(receipt34044Payload);
   });
 
-  it('corrupt base64 is never padded into a fake pass', () => {
+  it('rejects corrupt and truncated payloads as unavailable', () => {
+    // The removed live-behavior-image-file-malformed case carried this exact
+    // corrupt payload; it stays covered directly without the case-file hop.
     expect(normalizeInboundImage({ data: '!!!!not-valid-base64!!!!', mime_type: 'image/png' }).status)
       .toBe('unavailable');
     // Historical truncated payloads stay rejected.
     expect(normalizeInboundImage({ data: 'iVBORw0KGgoAAAANSUhEUgAAAZAAAADICAIAAABJdyC1', mime_type: 'image/png' }).status)
       .toBe('unavailable');
-  });
-
-  it('a truncated PNG never normalizes as available', () => {
     const raw = readFileSync(path.join(REPO, READABLE_ASSET));
     const truncated = raw.subarray(0, raw.length - 64);
     const result = normalizeInboundImage({ data: truncated.toString('base64'), mime_type: 'image/png' });
     expect(result.status).toBe('unavailable');
-  });
-
-  it('malformed case stays malformed', () => {
-    const payload = casePayload('evals/cases/live-behavior-image-file-malformed.yaml');
-    expect(normalizeInboundImage({ data: payload, mime_type: 'image/png' }).status).toBe('unavailable');
   });
 });

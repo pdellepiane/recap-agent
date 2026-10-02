@@ -395,7 +395,7 @@ describe('packet E2 bounded runner and complete fixture preflight need no extern
 });
 
 describe('packet E2 coverage linkage', () => {
-  it('every e2 entry points at a mandatory-suite case with hard structure and a hard judge', async () => {
+  it('every e2 entry points at a mandatory-suite case with hard structure and no semantic judge', async () => {
     const evalDirectory = path.resolve(process.cwd(), 'evals');
     const registry = z.object({
       behaviorChanges: z.array(z.object({
@@ -423,8 +423,8 @@ describe('packet E2 coverage linkage', () => {
         ).toBe(true);
         expect(
           live?.expectations.some((e) => e.type === 'text_semantic' && e.severity === 'hard' && e.requireJudge === true),
-          `${caseId} needs a hard required semantic judge`,
-        ).toBe(true);
+          `${caseId} must not require a semantic judge`,
+        ).toBe(false);
       }
     }
   });

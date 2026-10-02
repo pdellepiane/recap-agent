@@ -1658,6 +1658,7 @@ export function mergeExecutionIntoSnapshot(args: {
     (fresh.invitationsEvents.status === 'not_found' && args.base.invitationsEvents.status === 'ready')
     ? args.base.invitationsEvents
     : fresh.invitationsEvents;
+  const merged = mergeCustomerContextSnapshots(args.base, fresh);
   return {
     identityAccess: args.base.identityAccess.status === 'ready'
       ? args.base.identityAccess
@@ -1665,8 +1666,12 @@ export function mergeExecutionIntoSnapshot(args: {
     currentContext: fresh.currentContext.status === 'ready'
       ? fresh.currentContext
       : args.base.currentContext,
-    purchasesCarts: keepPurchases,
-    invitationsEvents: keepInvitations,
+    purchasesCarts: keepPurchases === fresh.purchasesCarts
+      ? merged.purchasesCarts
+      : keepPurchases,
+    invitationsEvents: keepInvitations === fresh.invitationsEvents
+      ? merged.invitationsEvents
+      : keepInvitations,
     actionOutcomes: fresh.actionOutcomes.status === 'ready'
       ? fresh.actionOutcomes
       : args.base.actionOutcomes,

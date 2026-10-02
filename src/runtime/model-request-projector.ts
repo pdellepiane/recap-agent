@@ -34,6 +34,8 @@ export type CompilerTask =
   | 'venue'
   | 'rsvp'
   | 'faq_policy'
+  | 'faq_commission'
+  | 'host_withdrawal_policy'
   | 'handoff'
   | 'auth'
   | 'image'
@@ -62,6 +64,14 @@ export type ModuleSelectionContext = {
    * deriveReplyCompilerContext always sets it explicitly.
    */
   readonly hasSupportContinuity?: boolean;
+  /** Outcome of an exact customer reference lookup, never inferred from prose. */
+  readonly customerReferenceResolution?: 'matched' | 'unavailable' | null;
+  /** Backend-rejected companion receipt, independent of attendance state. */
+  readonly hasRejectedRsvpCompanion?: boolean;
+  /** Exact typed lookup outcomes; no inference from the customer's words. */
+  readonly hasPartialPurchaseFailure?: boolean;
+  readonly hasFailedRsvpLookup?: boolean;
+  readonly hasKnownRsvpCandidateStates?: boolean;
 };
 
 export type SelectedModule = {
@@ -204,6 +214,8 @@ export type ReplyCompilerSource = Pick<
   | 'authenticationOutcome'
   | 'imageEvidence'
   | 'rsvpPhoneEvidence'
+  | 'rsvpCompanionOutcome'
+  | 'errorMessage'
 >;
 
 export function deriveReplyCompilerContext(
@@ -281,6 +293,21 @@ export function deriveReplyCompilerContext(
   if (request.authenticationOutcome != null) tasks.add('auth');
   if (request.imageEvidence != null) tasks.add('image');
   if (owner === 'planning') tasks.add('planning');
+  const unavailableCustomerReference = (request.informationResults ?? []).some(
+    (result) => result.kind === 'purchase' && result.status === 'completed' &&
+      result.requestedCustomerTransactionNumber != null &&
+      result.referenceResolution === 'unavailable',
+  );
+  const matchedCustomerReference = (request.informationResults ?? []).some(
+    (result) => result.kind === 'purchase' && result.status === 'completed' &&
+      result.requestedCustomerTransactionNumber != null &&
+      result.referenceResolution === 'matched',
+  );
+  const customerReferenceResolution = unavailableCustomerReference
+    ? 'unavailable' as const
+    : matchedCustomerReference
+      ? 'matched' as const
+      : null;
   // B11: real continuation requires actual prior delivered context (an
   // owner pending question/task, a persisted outbound record, or pending
   // information work). A support act alone never counts: on an
@@ -295,6 +322,22 @@ export function deriveReplyCompilerContext(
     (pendingTask !== null && pendingTask.trim().length > 0) ||
     request.plan.last_outbound_context != null ||
     (request.plan.information_state.pending_requests ?? []).length > 0;
+  const hasPartialPurchaseFailure = (request.informationResults ?? []).some((result) =>
+    result.kind === 'purchase' && result.status === 'failed' &&
+    (result.sourceCoverage ?? []).some((source) => source.status === 'failed'));
+  let hasFailedRsvpLookup = false;
+  if (request.currentNode === 'responder_invitacion' && request.errorMessage) {
+    try {
+      const note: unknown = JSON.parse(request.errorMessage);
+      hasFailedRsvpLookup = typeof note === 'object' && note !== null &&
+        (note as Record<string, unknown>)['outcome'] === 'invitation_lookup_failed';
+    } catch {
+      hasFailedRsvpLookup = false;
+    }
+  }
+  const hasKnownRsvpCandidateStates = request.rsvpPhoneEvidence?.state === 'needs_event_selection' &&
+    request.rsvpPhoneEvidence.candidates.some((candidate) =>
+      candidate.state_read_status === 'known');
   return {
     stage: 'reply',
     owner,
@@ -302,6 +345,11 @@ export function deriveReplyCompilerContext(
     tasks: [...tasks],
     hasPlanningDetail: false,
     hasSupportContinuity,
+    customerReferenceResolution,
+    hasRejectedRsvpCompanion: request.rsvpCompanionOutcome?.saved === false,
+    hasPartialPurchaseFailure,
+    hasFailedRsvpLookup,
+    hasKnownRsvpCandidateStates,
   };
 }
 
@@ -319,6 +367,11 @@ export function selectReplyModules(
     selected('shared_invariants', 'stable conversational invariants on every call', []),
   ];
   const has = (task: CompilerTask): boolean => context.tasks.includes(task);
+  if (has('purchase') || has('venue') || has('rsvp')) {
+    candidates.push(
+      selected('reply_customer_context_fields', 'record-field semantics for projected customer records', ['customerContext.purchases', 'customerContext.invitations', 'rsvpPhoneEvidence']),
+    );
+  }
   if (has('planning') || context.owner === 'planning') {
     candidates.push(
       selected('reply_planning_owner', 'planning owner task on this turn', ['plan.provider_needs', 'turnDecision']),
@@ -328,6 +381,25 @@ export function selectReplyModules(
     candidates.push(
       selected('reply_purchase_facts', 'canonical purchase records and typed outcomes', ['customerContext.purchases', 'customerContext.actionOutcomes', 'informationResults.purchase.references']),
     );
+    if (context.hasPartialPurchaseFailure === true) {
+      candidates.push(selected(
+        'reply_purchase_partial_failure', 'a purchase source failed during this lookup',
+        ['informationResults.purchase.sourceCoverage'],
+      ));
+    }
+    if (context.customerReferenceResolution === 'matched') {
+      candidates.push(selected(
+        'reply_customer_reference_matched',
+        'validated exact customer reference matched a purchase',
+        ['informationResults.purchase.referenceResolution', 'informationResults.purchase.recordReferences'],
+      ));
+    } else if (context.customerReferenceResolution === 'unavailable') {
+      candidates.push(selected(
+        'reply_customer_reference_unavailable',
+        'validated customer reference had no purchase match',
+        ['informationResults.purchase.referenceResolution', 'informationResults.purchase.recordReferences'],
+      ));
+    }
   }
   if (has('venue')) {
     candidates.push(
@@ -338,10 +410,37 @@ export function selectReplyModules(
     candidates.push(
       selected('reply_rsvp_facts', 'grounded invitation candidates, state and explicit action', ['rsvpPhoneEvidence', 'extraction.rsvpAction']),
     );
+    if (context.hasFailedRsvpLookup === true) {
+      candidates.push(selected(
+        'reply_rsvp_lookup_failed', 'invitation read failed before identity verification',
+        ['rsvpOperationalNote.outcome'],
+      ));
+    }
+    if (context.hasKnownRsvpCandidateStates === true) {
+      candidates.push(selected(
+        'reply_rsvp_candidate_states', 'reconciled state exists for multiple invitation candidates',
+        ['rsvpPhoneEvidence.candidates'],
+      ));
+    }
+    if (context.hasRejectedRsvpCompanion === true) {
+      candidates.push(
+        selected('reply_rsvp_companion_rejected', 'backend declined companion save', ['rsvpCompanionOutcome']),
+      );
+    }
   }
   if (has('faq_policy')) {
     candidates.push(
       selected('reply_faq_policy', 'source-backed policy facts for the asked question', ['informationResults.faq']),
+    );
+  }
+  if (has('faq_commission')) {
+    candidates.push(
+      selected('reply_faq_commission', 'commission guidance for a verified commission article', ['informationResults.faq.citationUrl']),
+    );
+  }
+  if (has('host_withdrawal_policy')) {
+    candidates.push(
+      selected('reply_host_withdrawal_policy', 'verified processing hours for a host withdrawal', ['informationResults.faq.hostWithdrawalPolicy.maxBusinessHours']),
     );
   }
   if (has('image')) {

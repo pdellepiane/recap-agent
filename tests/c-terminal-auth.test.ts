@@ -8,9 +8,6 @@ import { AgentService } from '../src/runtime/agent-service';
 import { buildRuntimeCapabilityManifest } from '../src/runtime/capability-manifest';
 import type {
   AgentRuntime,
-  ComposeReplyRequest,
-  ComposeReplyResult,
-  ExtractRequest,
   ExtractionResult,
 } from '../src/runtime/contracts';
 import { InformationOrchestrator } from '../src/runtime/information-orchestrator';
@@ -19,6 +16,7 @@ import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import { PromptLoader } from '../src/runtime/prompt-loader';
 import type { ProviderGateway } from '../src/runtime/provider-gateway';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
+import { ScriptedAgentRuntime as ScriptedRuntime } from './agent-runtime-test-utils';
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -28,24 +26,6 @@ beforeEach(() => {
 
 const promptLoader = new PromptLoader(path.resolve(process.cwd(), 'prompts'));
 const renderers = { terminal_whatsapp: new WhatsAppMessageRenderer() };
-
-class ScriptedRuntime implements AgentRuntime {
-  public readonly extractRequests: ExtractRequest[] = [];
-  public readonly composeRequests: ComposeReplyRequest[] = [];
-  private index = 0;
-  constructor(private readonly extractions: ExtractionResult[]) {}
-  async extract(request: ExtractRequest): Promise<ExtractionResult> {
-    this.extractRequests.push(request);
-    const next = this.extractions[this.index] ?? this.extractions[this.extractions.length - 1];
-    this.index += 1;
-    if (!next) throw new Error('Missing extraction fixture.');
-    return next;
-  }
-  async composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult> {
-    this.composeRequests.push(request);
-    return { text: 'Respuesta informativa.' };
-  }
-}
 
 class QuietKnowledgeGateway implements KnowledgeRetrievalGateway {
   async search(): Promise<never> {

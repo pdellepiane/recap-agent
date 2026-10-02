@@ -170,71 +170,73 @@ describe('O1 execution identity', () => {
 });
 
 describe('O1 fixture RSVP isolation performs zero real writes', () => {
-  it('sets up and tears down the s11 world without HTTP and without effects', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('real HTTP is forbidden here'));
-    const loadResult = await loadFixtureData('s11-rsvp-durability-declining');
-    expect(loadResult.status).toBe('loaded');
-    if (loadResult.status !== 'loaded') return;
-    const store = new InMemoryEvalFixtureStateStore();
-    const gateway = new FixtureAgentConversationGateway('s11-rsvp-durability-declining', loadResult, {
-      runId: buildConfigScopedFixtureRunId('run-o1', 'cfg'),
-      caseId: 'live_behavior.s11_rsvp_durability_confirms_once',
-      stateStore: store,
-    });
-    const context = await setupFixtureRsvpIsolation({
-      setup: {
-        guestId: 584353,
-        eventName: 'Otra celebración prueba',
-        phone: '+51973296571',
-        targetState: 'declining',
-      },
-      gateway,
-      requiredOperations: collectFixtureCaseOperations(
-        makeCase({ id: 'probe', backendFixture: { scenario: 's11-rsvp-durability-declining' } }),
-      ).conversation,
-    });
-    expect(context?.priorState).toBe('declining');
-    expect(context?.targetState).toBe('declining');
-    expect(fetchSpy).not.toHaveBeenCalled();
-    expect(await store.count(context ? 'run-o1::cfg' : '', 'live_behavior.s11_rsvp_durability_confirms_once', 'rsvp.write')).toBe(0);
+  it('sets up fixture RSVP isolation with zero writes and rejects contradicting priors', async () => {
+    {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('real HTTP is forbidden here'));
+      const loadResult = await loadFixtureData('s11-rsvp-durability-declining');
+      expect(loadResult.status).toBe('loaded');
+      if (loadResult.status !== 'loaded') return;
+      const store = new InMemoryEvalFixtureStateStore();
+      const gateway = new FixtureAgentConversationGateway('s11-rsvp-durability-declining', loadResult, {
+        runId: buildConfigScopedFixtureRunId('run-o1', 'cfg'),
+        caseId: 'live_behavior.s11_rsvp_durability_confirms_once',
+        stateStore: store,
+      });
+      const context = await setupFixtureRsvpIsolation({
+        setup: {
+          guestId: 584353,
+          eventName: 'Otra celebración prueba',
+          phone: '+51973296571',
+          targetState: 'declining',
+        },
+        gateway,
+        requiredOperations: collectFixtureCaseOperations(
+          makeCase({ id: 'probe', backendFixture: { scenario: 's11-rsvp-durability-declining' } }),
+        ).conversation,
+      });
+      expect(context?.priorState).toBe('declining');
+      expect(context?.targetState).toBe('declining');
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(await store.count(context ? 'run-o1::cfg' : '', 'live_behavior.s11_rsvp_durability_confirms_once', 'rsvp.write')).toBe(0);
 
-    await teardownFixtureRsvpIsolation({
-      setup: {
-        guestId: 584353,
-        eventName: 'Otra celebración prueba',
-        phone: '+51973296571',
-        targetState: 'declining',
-      },
-      teardown: {
-        guestId: 584353,
-        eventName: 'Otra celebración prueba',
-        phone: '+51973296571',
-        restore: true,
-      },
-      context,
-      gateway,
-    });
-    expect(fetchSpy).not.toHaveBeenCalled();
-    expect(await store.count('run-o1::cfg', 'live_behavior.s11_rsvp_durability_confirms_once', 'rsvp.write')).toBe(0);
-  });
+      await teardownFixtureRsvpIsolation({
+        setup: {
+          guestId: 584353,
+          eventName: 'Otra celebración prueba',
+          phone: '+51973296571',
+          targetState: 'declining',
+        },
+        teardown: {
+          guestId: 584353,
+          eventName: 'Otra celebración prueba',
+          phone: '+51973296571',
+          restore: true,
+        },
+        context,
+        gateway,
+      });
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(await store.count('run-o1::cfg', 'live_behavior.s11_rsvp_durability_confirms_once', 'rsvp.write')).toBe(0);
+    }
 
-  it('rejects setup when the explicit prior contradicts the fixture world', async () => {
-    const loadResult = await loadFixtureData('s11-rsvp-durability-declining');
-    if (loadResult.status !== 'loaded') return;
-    const gateway = new FixtureAgentConversationGateway('s11-rsvp-durability-declining', loadResult, {
-      runId: 'run-o1',
-      caseId: 'case-prior',
-    });
-    await expect(setupFixtureRsvpIsolation({
-      setup: {
-        guestId: 584353,
-        eventName: 'Otra celebración prueba',
-        phone: '+51973296571',
-        targetState: 'declining',
-        priorState: 'attending',
-      },
-      gateway,
-    })).rejects.toThrow('prior mismatch');
+    {
+      const loadResult = await loadFixtureData('s11-rsvp-durability-declining');
+      if (loadResult.status !== 'loaded') return;
+      const gateway = new FixtureAgentConversationGateway('s11-rsvp-durability-declining', loadResult, {
+        runId: 'run-o1',
+        caseId: 'case-prior',
+      });
+      await expect(setupFixtureRsvpIsolation({
+        setup: {
+          guestId: 584353,
+          eventName: 'Otra celebración prueba',
+          phone: '+51973296571',
+          targetState: 'declining',
+          priorState: 'attending',
+        },
+        gateway,
+      })).rejects.toThrow('prior mismatch');
+    }
   });
 
   it('verifies fixture gateway operations; marker presence is insufficient', async () => {
@@ -252,47 +254,49 @@ describe('O1 fixture RSVP isolation performs zero real writes', () => {
 });
 
 describe('O1 real-backend isolation fails closed', () => {
-  it('is a setup error when no gateway is available', async () => {
-    const saved = {
-      SE_API_KEY: process.env.SE_API_KEY,
-      AGENT_API_KEY: process.env.AGENT_API_KEY,
-      CHANNEL_API_KEY: process.env.CHANNEL_API_KEY,
-    };
-    delete process.env.SE_API_KEY;
-    delete process.env.AGENT_API_KEY;
-    delete process.env.CHANNEL_API_KEY;
-    try {
-      await expect(setupRsvpIsolation({
-        setup: { guestId: 1, eventName: 'E', phone: '+51900000001', targetState: 'attending' },
-      })).rejects.toThrow('no backend gateway');
-    } finally {
-      if (saved.SE_API_KEY !== undefined) process.env.SE_API_KEY = saved.SE_API_KEY;
-      if (saved.AGENT_API_KEY !== undefined) process.env.AGENT_API_KEY = saved.AGENT_API_KEY;
-      if (saved.CHANNEL_API_KEY !== undefined) process.env.CHANNEL_API_KEY = saved.CHANNEL_API_KEY;
+  it('fails setup closed without a gateway, identity, or verifiable prior', async () => {
+    {
+      const saved = {
+        SE_API_KEY: process.env.SE_API_KEY,
+        AGENT_API_KEY: process.env.AGENT_API_KEY,
+        CHANNEL_API_KEY: process.env.CHANNEL_API_KEY,
+      };
+      delete process.env.SE_API_KEY;
+      delete process.env.AGENT_API_KEY;
+      delete process.env.CHANNEL_API_KEY;
+      try {
+        await expect(setupRsvpIsolation({
+          setup: { guestId: 1, eventName: 'E', phone: '+51900000001', targetState: 'attending' },
+        })).rejects.toThrow('no backend gateway');
+      } finally {
+        if (saved.SE_API_KEY !== undefined) process.env.SE_API_KEY = saved.SE_API_KEY;
+        if (saved.AGENT_API_KEY !== undefined) process.env.AGENT_API_KEY = saved.AGENT_API_KEY;
+        if (saved.CHANNEL_API_KEY !== undefined) process.env.CHANNEL_API_KEY = saved.CHANNEL_API_KEY;
+      }
     }
-  });
 
-  it('is a setup error on ambiguous identity (two same-named events)', async () => {
-    stubBackend({
-      events: [
-        { event_id: 100, name: 'Otra celebración prueba' },
-        { event_id: 101, name: 'Otra celebración prueba' },
-      ],
-      attendance: null,
-    });
-    await expect(setupRsvpIsolation({
-      setup: { guestId: 584353, eventName: 'Otra celebración prueba', phone: '+51973296571', targetState: 'declining' },
-    })).rejects.toThrow('no known restorable prior');
-  });
+    {
+      stubBackend({
+        events: [
+          { event_id: 100, name: 'Otra celebración prueba' },
+          { event_id: 101, name: 'Otra celebración prueba' },
+        ],
+        attendance: null,
+      });
+      await expect(setupRsvpIsolation({
+        setup: { guestId: 584353, eventName: 'Otra celebración prueba', phone: '+51973296571', targetState: 'declining' },
+      })).rejects.toThrow('no known restorable prior');
+    }
 
-  it('is a setup error on inconclusive verification (no attendance record)', async () => {
-    stubBackend({
-      events: [{ event_id: 100, name: 'Otra celebración prueba' }],
-      attendance: null,
-    });
-    await expect(setupRsvpIsolation({
-      setup: { guestId: 584353, eventName: 'Otra celebración prueba', phone: '+51973296571', targetState: 'declining' },
-    })).rejects.toThrow('no known restorable prior');
+    {
+      stubBackend({
+        events: [{ event_id: 100, name: 'Otra celebración prueba' }],
+        attendance: null,
+      });
+      await expect(setupRsvpIsolation({
+        setup: { guestId: 584353, eventName: 'Otra celebración prueba', phone: '+51973296571', targetState: 'declining' },
+      })).rejects.toThrow('no known restorable prior');
+    }
   });
 
   it('teardown without a setup context fails instead of scoring green', async () => {
@@ -313,94 +317,100 @@ describe('O1 willAttend precedence with hasResponded false', () => {
 });
 
 describe('O1 lane classification is fail-closed', () => {
-  it('admits a fully fixture-scoped case to the parallel lane', () => {
-    const verdict = classifyEvalCaseLane(makeCase({
-      id: 'parallel-probe',
-      backendFixture: { scenario: 's11-rsvp-durability-declining' },
-      inputs: [{ text: 'hola', backendFixture: { scenario: 's11-rsvp-durability-declining' } }],
-      expectations: [
-        {
-          id: 'writes-once',
-          type: 'tool_usage' as const,
-          mustCall: ['lookup_rsvp_invitations', 'guest_rsvp'],
-          mustNotCall: [],
-          severity: 'hard' as const,
+  it('classifies fixture-scoped cases to parallel and everything else to external', () => {
+    {
+      const verdict = classifyEvalCaseLane(makeCase({
+        id: 'parallel-probe',
+        backendFixture: { scenario: 's11-rsvp-durability-declining' },
+        inputs: [{ text: 'hola', backendFixture: { scenario: 's11-rsvp-durability-declining' } }],
+        expectations: [
+          {
+            id: 'writes-once',
+            type: 'tool_usage' as const,
+            mustCall: ['lookup_rsvp_invitations', 'guest_rsvp'],
+            mustNotCall: [],
+            severity: 'hard' as const,
+          },
+          {
+            id: 'receipt',
+            type: 'fixture_effect_count' as const,
+            operation: 'rsvp.write' as const,
+            expectedAttempts: 1,
+            expectedSuccesses: 1,
+            expectedReplays: 0,
+            severity: 'hard' as const,
+          },
+        ],
+      }));
+      expect(verdict.lane).toBe('parallel');
+    }
+
+    {
+      expect(classifyEvalCaseLane(makeCase({ id: 'no-fixture' })).lane).toBe('external');
+      expect(classifyEvalCaseLane(makeCase({
+        id: 'unknown-tool',
+        backendFixture: { scenario: 's' },
+        expectations: [{ id: 't', type: 'tool_usage' as const, mustCall: ['invented_backend_tool'], mustNotCall: [], severity: 'hard' as const }],
+      })).lane).toBe('external');
+      expect(classifyEvalCaseLane(makeCase({
+        id: 'literal-identity',
+        backendFixture: { scenario: 's' },
+        expectations: [{ id: 'p', type: 'plan_field_equals' as const, path: 'external_user_id', expected: 'live-x', severity: 'hard' as const }],
+      })).lane).toBe('external');
+      expect(classifyEvalCaseLane(makeCase({
+        id: 'real-isolation',
+        rsvpIsolation: {
+          setup: { guestId: 1, eventName: 'E', phone: '+51900000001', targetState: 'declining' },
+          teardown: { guestId: 1, eventName: 'E', phone: '+51900000001', restore: true },
         },
-        {
-          id: 'receipt',
-          type: 'fixture_effect_count' as const,
-          operation: 'rsvp.write' as const,
-          expectedAttempts: 1,
-          expectedSuccesses: 1,
-          expectedReplays: 0,
-          severity: 'hard' as const,
-        },
-      ],
-    }));
-    expect(verdict.lane).toBe('parallel');
+      })).lane).toBe('external');
+    }
   });
 
-  it('sends fixture-less, unknown-tool, and literal-identity cases to external', () => {
-    expect(classifyEvalCaseLane(makeCase({ id: 'no-fixture' })).lane).toBe('external');
-    expect(classifyEvalCaseLane(makeCase({
-      id: 'unknown-tool',
-      backendFixture: { scenario: 's' },
-      expectations: [{ id: 't', type: 'tool_usage' as const, mustCall: ['invented_backend_tool'], mustNotCall: [], severity: 'hard' as const }],
-    })).lane).toBe('external');
-    expect(classifyEvalCaseLane(makeCase({
-      id: 'literal-identity',
-      backendFixture: { scenario: 's' },
-      expectations: [{ id: 'p', type: 'plan_field_equals' as const, path: 'external_user_id', expected: 'live-x', severity: 'hard' as const }],
-    })).lane).toBe('external');
-    expect(classifyEvalCaseLane(makeCase({
-      id: 'real-isolation',
-      rsvpIsolation: {
-        setup: { guestId: 1, eventName: 'E', phone: '+51900000001', targetState: 'declining' },
-        teardown: { guestId: 1, eventName: 'E', phone: '+51900000001', restore: true },
-      },
-    })).lane).toBe('external');
-  });
 });
 
 describe('O1 external lane lock', () => {
-  it('refuses a second owner and never steals on elapsed time', async () => {
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'o1-lock-'));
-    const first = acquireExternalLaneLock(dir, 'run-a');
-    expect(() => acquireExternalLaneLock(dir, 'run-b')).toThrow('refusing a second owner');
-    releaseExternalLaneLock(first);
-    const second = acquireExternalLaneLock(dir, 'run-b');
-    releaseExternalLaneLock(second);
-    await fs.rm(dir, { recursive: true, force: true });
+  it('locks the external lane to one live owner on the coordinator host', async () => {
+    {
+      const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'o1-lock-'));
+      const first = acquireExternalLaneLock(dir, 'run-a');
+      expect(() => acquireExternalLaneLock(dir, 'run-b')).toThrow('refusing a second owner');
+      releaseExternalLaneLock(first);
+      const second = acquireExternalLaneLock(dir, 'run-b');
+      releaseExternalLaneLock(second);
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+
+    {
+      const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'o1-lock-'));
+      const lockPath = path.join(dir, '.eval-external-lane.lock');
+      await fs.writeFile(
+        lockPath,
+        JSON.stringify({ pid: 2147483647, runId: 'run-gone', startedAt: new Date(0).toISOString(), hostname: os.hostname() }),
+        'utf8',
+      );
+      const acquired = acquireExternalLaneLock(dir, 'run-next');
+      // A foreign lock is never removed by release.
+      await fs.writeFile(
+        lockPath,
+        JSON.stringify({ pid: 2147483647, runId: 'run-rival', startedAt: new Date(0).toISOString(), hostname: os.hostname() }),
+        'utf8',
+      );
+      releaseExternalLaneLock(acquired);
+      expect(await fs.readFile(lockPath, 'utf8')).toContain('run-rival');
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+
+    {
+      const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'o1-lock-'));
+      vi.stubEnv('EVAL_COORDINATOR_HOST', 'some-other-host.invalid');
+      expect(() => acquireExternalLaneLock(dir, 'run-a')).toThrow('restricted to coordinator host');
+      vi.stubEnv('EVAL_COORDINATOR_HOST', '');
+      expect(() => acquireExternalLaneLock(dir, 'run-a')).toThrow('EVAL_COORDINATOR_HOST');
+      await fs.rm(dir, { recursive: true, force: true });
+    }
   });
 
-  it('replaces only a lock whose PID is gone, and never deletes another owner on release', async () => {
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'o1-lock-'));
-    const lockPath = path.join(dir, '.eval-external-lane.lock');
-    await fs.writeFile(
-      lockPath,
-      JSON.stringify({ pid: 2147483647, runId: 'run-gone', startedAt: new Date(0).toISOString(), hostname: os.hostname() }),
-      'utf8',
-    );
-    const acquired = acquireExternalLaneLock(dir, 'run-next');
-    // A foreign lock is never removed by release.
-    await fs.writeFile(
-      lockPath,
-      JSON.stringify({ pid: 2147483647, runId: 'run-rival', startedAt: new Date(0).toISOString(), hostname: os.hostname() }),
-      'utf8',
-    );
-    releaseExternalLaneLock(acquired);
-    expect(await fs.readFile(lockPath, 'utf8')).toContain('run-rival');
-    await fs.rm(dir, { recursive: true, force: true });
-  });
-
-  it('restricts external evaluations to the named coordinator host', async () => {
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'o1-lock-'));
-    vi.stubEnv('EVAL_COORDINATOR_HOST', 'some-other-host.invalid');
-    expect(() => acquireExternalLaneLock(dir, 'run-a')).toThrow('restricted to coordinator host');
-    vi.stubEnv('EVAL_COORDINATOR_HOST', '');
-    expect(() => acquireExternalLaneLock(dir, 'run-a')).toThrow('EVAL_COORDINATOR_HOST');
-    await fs.rm(dir, { recursive: true, force: true });
-  });
 });
 
 describe('O1 shared-phone executions stay disjoint', () => {

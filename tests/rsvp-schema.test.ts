@@ -75,11 +75,15 @@ describe('RSVP typed state and extraction', () => {
     });
 
     expect(withoutRsvp.keyof().options).not.toContain('rsvpAction');
+    expect(withoutRsvp.keyof().options).not.toContain('rsvpParty');
     expect(withRsvp.keyof().options).toEqual(expect.arrayContaining([
       'rsvpAction',
       'rsvpCandidateGuestId',
       'rsvpEventReference',
+      'rsvpParty',
     ]));
+    expect(Object.keys(withoutRsvp.shape)).not.toContain('rsvpParty');
+    expect(Object.keys(withRsvp.shape)).toContain('rsvpParty');
     expect(withRsvp.parse({
       actionIntent: 'responder_invitacion',
       intentConfidence: 0.98,

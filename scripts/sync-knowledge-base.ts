@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { TawkHelpScraper } from '../src/knowledge-sync/scraper';
@@ -10,7 +11,8 @@ const scrapedFaqSource = 'recap-agent-knowledge-sync';
 
 async function main() {
   const baseUrl = process.env.KB_BASE_URL ?? 'https://sinenvolturas.tawk.help';
-  const outputDir = process.env.KB_OUTPUT_DIR ?? path.resolve(process.cwd(), 'dist', 'knowledge-base');
+  const outputDir = process.env.KB_OUTPUT_DIR ?? path.resolve(process.cwd(), 'knowledge-base');
+  const articlesDir = path.join(outputDir, 'articles');
   const openAiApiKey = process.env.OPENAI_API_KEY;
   const vectorStoreId = process.env.KB_VECTOR_STORE_ID ?? null;
   const vectorStoreName = process.env.KB_VECTOR_STORE_NAME ?? 'Sin Envolturas Knowledge Base';
@@ -23,10 +25,10 @@ async function main() {
 
   console.log(`Scraped ${articles.length} articles`);
 
-  fs.mkdirSync(outputDir, { recursive: true });
-  for (const existingFile of fs.readdirSync(outputDir)) {
+  fs.mkdirSync(articlesDir, { recursive: true });
+  for (const existingFile of fs.readdirSync(articlesDir)) {
     if (existingFile.endsWith('.md')) {
-      fs.rmSync(path.join(outputDir, existingFile));
+      fs.rmSync(path.join(articlesDir, existingFile));
     }
   }
 
@@ -34,7 +36,7 @@ async function main() {
 
   for (const article of articles) {
     const formatted = formatArticleToMarkdown(article, baseUrl);
-    const filePath = path.join(outputDir, `${article.slug}.md`);
+    const filePath = path.join(articlesDir, `${article.slug}.md`);
     fs.writeFileSync(filePath, formatted.markdown, 'utf-8');
     formattedArticles.push({
       filePath,
@@ -44,7 +46,7 @@ async function main() {
     });
   }
 
-  console.log(`Wrote ${formattedArticles.length} articles to ${outputDir}`);
+  console.log(`Wrote ${formattedArticles.length} articles to ${articlesDir}`);
 
   if (!skipUpload) {
     if (!openAiApiKey) {
@@ -86,8 +88,37 @@ async function main() {
       );
     }
 
+    // OpenAI blocks downloading uploaded files, so the runtime expands
+    // complete articles from this committed snapshot instead of the Files
+    // API. The manifest binds the snapshot to the uploaded batch; the
+    // gateway refuses expansion when the live store reports another batch.
+    const manifest = {
+      version: 1 as const,
+      source: scrapedFaqSource,
+      batchId: result.batchId,
+      vectorStoreId: result.vectorStoreId,
+      syncedAt: new Date().toISOString(),
+      articles: formattedArticles
+        .map((article) => ({
+          slug: article.slug,
+          sha256: sha256File(article.filePath),
+          bytes: fs.statSync(article.filePath).size,
+        }))
+        .sort((a, b) => a.slug.localeCompare(b.slug)),
+    };
+    fs.writeFileSync(
+      path.join(outputDir, 'manifest.json'),
+      `${JSON.stringify(manifest, null, 2)}\n`,
+      'utf-8',
+    );
+
     console.log('Upload complete:', { ...result, audit });
+    console.log(`Wrote manifest for batch ${result.batchId} to ${outputDir}`);
   }
+}
+
+function sha256File(filePath: string): string {
+  return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
 }
 
 main().catch((error) => {

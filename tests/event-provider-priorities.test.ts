@@ -10,11 +10,8 @@ describe('event provider priorities', () => {
     expect(prioritizedProviderCategoriesForEvent('boda')).toContain('Wedding planners');
   });
 
-  it('does not offer wedding planners by default for birthdays', () => {
+  it('returns compact starter menus without wedding planners by default', () => {
     expect(starterProviderCategoriesForEvent('cumpleanos')).not.toContain('Wedding planners');
-  });
-
-  it('returns a compact starter menu', () => {
     expect(starterProviderCategoriesForEvent('boda')).toEqual([
       'Locales',
       'Catering',

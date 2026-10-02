@@ -145,22 +145,23 @@ describe('EvalLoader', () => {
   it('keeps reported phone-scoped live cases on their exact fixtures', async () => {
     const loader = new EvalLoader(path.resolve(process.cwd(), 'evals'));
     const catalog = await loader.loadCatalog();
-    const delia = catalog.cases.find(
-      (currentCase) => currentCase.id === 'live_behavior.purchase_delia_status_by_phone',
+    // The hard-contract panel retains distinct accountless and mixed-gift identities.
+    const accountless = catalog.cases.find(
+      (currentCase) => currentCase.id === 'live_behavior.accountless_guest_event_uses_phone_without_otp',
     );
-    const martha = catalog.cases.find(
-      (currentCase) => currentCase.id === 'live_behavior.purchase_martha_accountless_selection',
+    const mixed = catalog.cases.find(
+      (currentCase) => currentCase.id === 'live_behavior.gift_mixed_order_distinguishes_items',
     );
 
-    expect(delia?.inputs.map((input) => input.contactPhone)).toEqual([
-      '+51962983263',
+    expect(accountless?.backendFixture?.scenario).toBe('guest-julisabeth-andres');
+    expect(mixed?.inputs.map((input) => input.contactPhone)).toEqual([
+      '+51999350213',
+      '+51999350213',
+      '+51999350213',
     ]);
-    expect(martha?.inputs.map((input) => input.contactPhone)).toEqual([
-      '+51900070122',
-    ]);
-    expect(martha?.backendFixture?.scenario).toBe('purchase-martha-frozen');
-    expect(delia?.inputs[0]?.contactPhone).not.toBe(
-      martha?.inputs[0]?.contactPhone,
+    expect(mixed?.backendFixture?.scenario).toBe('purchase-gift-mixed');
+    expect(accountless?.inputs[0]?.contactPhone).not.toBe(
+      mixed?.inputs[0]?.contactPhone,
     );
   });
 });

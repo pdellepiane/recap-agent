@@ -3,6 +3,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 type AuthObservabilityContext = {
   lambdaRequestId: string | null;
+  correlationId: string | null;
   authFlowId: string | null;
   planId: string | null;
 };
@@ -47,9 +48,11 @@ export type AuthSecretDescription = {
 export function withRequestObservabilityContext<T>(
   lambdaRequestId: string,
   callback: () => T,
+  options?: { correlationId?: string },
 ): T {
   return contextStorage.run({
     lambdaRequestId,
+    correlationId: options?.correlationId ?? null,
     authFlowId: null,
     planId: null,
   }, callback);
@@ -62,9 +65,19 @@ export function withAuthenticationFlowContext<T>(
   const current = contextStorage.getStore();
   return contextStorage.run({
     lambdaRequestId: current?.lambdaRequestId ?? null,
+    correlationId: current?.correlationId ?? null,
     authFlowId: args.authFlowId,
     planId: args.planId,
   }, callback);
+}
+
+/**
+ * Cross-system correlation id for the current request, when the inbound
+ * adapter supplied one. Adapter HTTP clients attach it as
+ * `x-recap-correlation-id` so their records join the Lambda request log.
+ */
+export function getRequestCorrelationId(): string | null {
+  return contextStorage.getStore()?.correlationId ?? null;
 }
 
 export function createAuthOperationId(): string {
@@ -82,6 +95,7 @@ export function logAuthObservabilityEvent(
     event,
     observed_at: new Date().toISOString(),
     lambda_request_id: context?.lambdaRequestId ?? null,
+    correlation_id: context?.correlationId ?? null,
     auth_flow_id: context?.authFlowId ?? null,
     plan_id: context?.planId ?? null,
     ...sanitizedDetails,

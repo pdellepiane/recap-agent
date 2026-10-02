@@ -34,6 +34,7 @@ import {
   type RuntimeOperationId,
 } from './capability-manifest';
 import { normalizeServerTimestamp } from '../core/server-timestamp';
+import { splitInternationalPhone } from './phone';
 import type { EvalFixtureStateStore, FixtureEffectReceipt, FixtureLoggedMessage } from './eval-fixture-state';
 import { InMemoryEvalFixtureStateStore, LOCAL_FIXTURE_CONVERSATION_KEY, assertFixtureAllowed } from './eval-fixture-state';
 import {
@@ -285,6 +286,7 @@ const attendanceSchema = z.object({
 
 const messageSchema = z.object({
   id: z.number(),
+  event_id: z.number().int().positive().nullable().optional(),
   direction: z.enum(['inbound', 'outbound']),
   source: z.string().nullable().optional(),
   body: z.string(),
@@ -561,25 +563,12 @@ export function buildFixturePhoneLookupKeys(phoneInput: string): string[] {
   const keys: string[] = [phoneInput];
   // Try to parse international phone; derive national, extKey, concatenated
   const normalized = phoneInput.replace(/\D/gu, '');
-  // Attempt splitInternationalPhone logic without importing full parser to avoid circular; simple heuristic
-  // Use the fixture's own normalize path: try known extensions +51, +52, +1
-  const candidates: Array<{ ext: string; national: string }> = [];
-  if (phoneInput.startsWith('+')) {
-    const digits = phoneInput.replace(/\D/gu, '');
-    for (const ext of ['52', '51', '1']) {
-      if (digits.startsWith(ext)) {
-        const national = digits.slice(ext.length);
-        if (national.length >= 7) {
-          candidates.push({ ext: `+${ext}`, national });
-          break;
-        }
-      }
-    }
-  } else if (normalized.length >= 11 && normalized.startsWith('51')) {
-    // Already concatenated form without '+', treat as concatenated directly
-    const national = normalized.slice(2);
-    candidates.push({ ext: '+51', national });
-  }
+  // Use the shared global parser (phone.ts depends only on zod, so no
+  // import cycle): longest-prefix country split for every assigned code.
+  const parts = splitInternationalPhone(phoneInput);
+  const candidates: Array<{ ext: string; national: string }> = parts
+    ? [{ ext: parts.phone_extension, national: parts.phone_number }]
+    : [];
   for (const c of candidates) {
     const national = c.national;
     const extKey = `${c.ext}:${national}`;
@@ -981,6 +970,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
         for (const message of parsed.data.messages) {
           seed.push({
             id: message.id,
+            ...(message.event_id ? { eventId: message.event_id } : {}),
             direction: message.direction,
             source: message.source ?? null,
             body: message.body,
@@ -1608,17 +1598,13 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
       await this.recordEffect('rsvp.write', { guest_id: input.guest_id ?? null, action: input.action ?? null }, failed.status);
       return failed;
     }
-    const expectedWillAttend = input.action === 'attending';
     const returnedWillAttend = parsed.data.will_attend === true || parsed.data.will_attend === 1
       ? true
       : parsed.data.will_attend === false || parsed.data.will_attend === 0
         ? false
         : null;
-    if (input.action && (returnedWillAttend === null || returnedWillAttend !== expectedWillAttend)) {
-      const failed: AgentGuestRsvpResult = { status: 'failed', error: 'Agent API RSVP response did not confirm the requested attendance state.', retryable: false };
-      await this.recordEffect('rsvp.write', { guest_id: input.guest_id ?? null, action: input.action ?? null }, failed.status);
-      return failed;
-    }
+    // Match the HTTP gateway: preserve a companion receipt and leave
+    // attendance verification to the fresh-read executor.
     // Packet B: reject a different returned guest identity instead of
     // falling back to the requested id.
     const returnedGuestId = parsed.data.guest_id ?? null;

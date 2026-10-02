@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import path from 'node:path';
 import { normalizeInboundImage } from '../core/inbound-image';
 import OpenAI from 'openai';
 import { OpenAiImageFileStore } from '../runtime/image-file-store';
@@ -59,6 +60,13 @@ import {
 } from '../runtime/artifact-redaction';
 import { bearerTokenMatchIndex, readBearerAuthorization } from './bearer-auth';
 import {
+  CORRELATION_HEADER_NAME,
+  captureProtectedPayload,
+  resolveRequestCorrelation,
+  type ProtectedPayloadCapture,
+  type RequestCorrelation,
+} from './request-payload-capture';
+import {
   agentParticipationRequestSchema,
   channelRequestSchema,
 } from './request-contract';
@@ -117,9 +125,11 @@ export async function handler(
       ? remainingMs
       : 0;
   const hardDeadlineMs = Date.now() + effectiveRemainingMs;
+  const correlation = resolveRequestCorrelation(event.headers ?? {}, requestId, event.body);
   return await withRequestObservabilityContext(
     requestId,
-    async () => await handleRequest(event, requestId, hardDeadlineMs),
+    async () => await handleRequest(event, requestId, hardDeadlineMs, correlation),
+    { correlationId: correlation.correlationId },
   );
 }
 
@@ -127,6 +137,7 @@ async function handleRequest(
   event: APIGatewayProxyEventV2,
   requestId: string,
   hardDeadlineMs: number,
+  correlation: RequestCorrelation,
 ): Promise<APIGatewayProxyStructuredResultV2> {
   const startedAt = Date.now();
   const method = event.requestContext.http.method;
@@ -145,12 +156,27 @@ async function handleRequest(
     mediaKinds?: string[];
     providerMediaIds?: string[];
   } = {};
+  const withTrackingIds = (value: unknown): unknown => {
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+      return {
+        data: value,
+        correlation_id: correlation.correlationId,
+        request_id: requestId,
+      };
+    }
+    return {
+      ...(value as Record<string, unknown>),
+      correlation_id: correlation.correlationId,
+      request_id: requestId,
+    };
+  };
   const respond = (
     statusCode: number,
     body: unknown,
     outcome: ChannelRequestOutcome,
     diagnostics?: {
       validationIssues?: ChannelRequestValidationIssue[];
+      payloadCapture?: ProtectedPayloadCapture | null;
       deliveryAction?: string;
       currentNode?: string;
       traceId?: string;
@@ -173,6 +199,9 @@ async function handleRequest(
   ): APIGatewayProxyStructuredResultV2 => {
     const record = buildChannelRequestLog({
       requestId,
+      correlationId: correlation.correlationId,
+      correlationSource: correlation.source,
+      payloadCapture: diagnostics?.payloadCapture,
       method,
       requestPath: event.rawPath,
       requestRoute: route,
@@ -215,8 +244,9 @@ async function handleRequest(
     } else {
       console.info(record);
     }
-    return json(statusCode, body, {
+    return json(statusCode, withTrackingIds(body), {
       'x-recap-request-id': requestId,
+      [CORRELATION_HEADER_NAME]: correlation.correlationId,
       ...diagnostics?.responseHeaders,
     });
   };
@@ -279,7 +309,9 @@ async function handleRequest(
     try {
       rawBody = JSON.parse(event.body) as unknown;
     } catch {
-      return respond(400, { error: 'Request body must be valid JSON.' }, 'invalid_json');
+      return respond(400, { error: 'Request body must be valid JSON.' }, 'invalid_json', {
+        payloadCapture: captureProtectedPayload(event.body),
+      });
     }
     // S1 fixture-marker boundary: every backendFixture marker is rejected in
     // production before schema parsing, so an incomplete evaluation identity
@@ -309,7 +341,10 @@ async function handleRequest(
             path: issue.path,
             message: issue.message,
           })),
-        }, 'invalid_request', { validationIssues });
+        }, 'invalid_request', {
+          validationIssues,
+          payloadCapture: captureProtectedPayload(event.body),
+        });
       }
 
       const controlRequest = parsedOperation.data;
@@ -375,7 +410,10 @@ async function handleRequest(
           path: issue.path,
           message: issue.message,
         })),
-      }, 'invalid_request', { validationIssues });
+      }, 'invalid_request', {
+        validationIssues,
+        payloadCapture: captureProtectedPayload(event.body),
+      });
     }
     const body = parsedBody.data;
     if (body.backendFixture && config.deployment.environment !== 'development') {
@@ -384,7 +422,9 @@ async function handleRequest(
     if (body.backendFixture && (!body.backendFixture.runId || !body.backendFixture.caseId)) {
       return respond(400, {
         error: 'Evaluation fixture execution requires a complete identity (scenario, runId, caseId).',
-      }, 'invalid_request');
+      }, 'invalid_request', {
+        payloadCapture: captureProtectedPayload(event.body),
+      });
     }
     const channel = body.channel;
     const messageId = body.message_id ?? crypto.randomUUID();
@@ -565,9 +605,15 @@ export function buildCliResponseBody(args: {
     return body;
   }
 
+  // Diagnostics-only path (live eval observation): help-center article
+  // URLs stay visible so oracles can verify deterministic citation
+  // targets. Real channel responses never take this branch.
+  const kbArticlePrefix = `${config.knowledgeBase.baseUrl.replace(/\/+$/u, '')}/article/`;
   return {
     ...body,
-    message: originalText === null ? null : redactPublicResponseText(originalText),
+    message: originalText === null
+      ? null
+      : redactPublicResponseText(originalText, { preserveUrlPrefixes: [kbArticlePrefix] }),
     message_redaction_applied: true,
     trace: projectSafeTrace(args.response.trace),
     perf: args.perf === null || args.perf === undefined
@@ -629,6 +675,11 @@ async function getSharedRuntimeDeps(): Promise<SharedRuntimeDeps> {
               maxResults: config.knowledgeBase.maxResults,
               scoreThreshold: config.knowledgeBase.scoreThreshold,
               timeoutMs: config.openAi.timeoutsMs.retrieval,
+              articleBaseUrl: config.knowledgeBase.baseUrl,
+              articlesDir: path.join(__dirname, '..', 'knowledge-base'),
+              fullArticleMinScore: config.knowledgeBase.fullArticleMinScore,
+              fullArticleMaxFiles: config.knowledgeBase.fullArticleMaxFiles,
+              fullArticleMaxChars: config.knowledgeBase.fullArticleMaxChars,
             })
           : new NoopKnowledgeRetrievalGateway();
       const capabilityManifest = buildRuntimeCapabilityManifest({

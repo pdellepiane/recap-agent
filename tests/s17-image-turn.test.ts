@@ -205,7 +205,7 @@ beforeEach(() => {
 });
 
 describe('S17 image turns', () => {
-  it('persists an image-only turn silently when no task is outstanding', async () => {
+  it('persists image-only turns silently when no task is outstanding, despite synthetic ambiguity', async () => {
     const runtime = new ImageStubRuntime();
     const { service, planStore } = serviceWith(runtime);
     const image = normalizeInboundImage({ data: JPEG_MINIMAL, mime_type: 'image/jpeg' });
@@ -232,11 +232,10 @@ describe('S17 image turns', () => {
     expect(traceJson).not.toContain('base64,');
     expect(traceJson).not.toContain('file-test-image-1');
     expect(traceJson).toContain('silent_persisted');
-  });
-
-  it('persists an image-only empty-text turn silently despite synthetic ambiguity', async () => {
-    const runtime = new ImageStubRuntime();
-    runtime.scripted = {
+    // Same-turn synthetic ambiguity on empty text is not an outstanding
+    // task either: typed silence with no pending question stashed.
+    const ambiguousRuntime = new ImageStubRuntime();
+    ambiguousRuntime.scripted = {
       ambiguity: {
         status: 'ambiguous',
         clarificationQuestion: 'Quieres hacer una consulta o planificar un evento?',
@@ -245,26 +244,22 @@ describe('S17 image turns', () => {
         questionKey: null,
       },
     };
-    const { service, planStore } = serviceWith(runtime);
-    const image = normalizeInboundImage({ data: JPEG_MINIMAL, mime_type: 'image/jpeg' });
-    const response = await service.handleTurn(inboundWithImage(image, ''));
-
-    // Same-turn synthetic ambiguity on empty text is not an outstanding
-    // task: no generation, typed silence, reference persisted, and no
-    // pending question stashed for a later turn.
-    expect(runtime.composeRequests).toHaveLength(0);
-    expect(response.outbound.text).toBeNull();
-    expect(response.outbound.delivery).toMatchObject({
+    const ambiguous = serviceWith(ambiguousRuntime);
+    const ambiguousImage = normalizeInboundImage({ data: JPEG_MINIMAL, mime_type: 'image/jpeg' });
+    const ambiguousResponse = await ambiguous.service.handleTurn(inboundWithImage(ambiguousImage, ''));
+    expect(ambiguousRuntime.composeRequests).toHaveLength(0);
+    expect(ambiguousResponse.outbound.text).toBeNull();
+    expect(ambiguousResponse.outbound.delivery).toMatchObject({
       action: 'suppress',
       reason: 'image_only_no_outstanding_task',
     });
-    expect(response.trace.plan_persist_reason).toBe('image_file_silence');
-    const reloaded = await planStore.getByExternalUser('whatsapp', 'whatsapp:+51987654321');
-    expect(reloaded?.image_attachments).toHaveLength(1);
-    expect(reloaded?.owner_pending_question).toBeNull();
+    expect(ambiguousResponse.trace.plan_persist_reason).toBe('image_file_silence');
+    const ambiguousReloaded = await ambiguous.planStore.getByExternalUser('whatsapp', 'whatsapp:+51987654321');
+    expect(ambiguousReloaded?.image_attachments).toHaveLength(1);
+    expect(ambiguousReloaded?.owner_pending_question).toBeNull();
   });
 
-  it('preserves the caption with the image in a single owner turn', async () => {
+  it('preserves the caption with the image in a single owner turn over one continuity projection', async () => {
     const runtime = new ImageStubRuntime();
     const { service } = serviceWith(runtime);
     const image = normalizeInboundImage({ data: PNG_1X1, mime_type: 'image/png' });
@@ -281,6 +276,15 @@ describe('S17 image turns', () => {
       captionPresent: true,
       refStored: true,
     });
+    // One answer uses both parts over a single continuity projection.
+    expect(request?.continuity).toMatchObject({
+      pendingQuestion: null,
+      pendingTask: null,
+      hasPendingInformation: false,
+      hasCompletedInformation: false,
+      hasPriorOutbound: false,
+    });
+    expect(response.outbound.delivery).toMatchObject({ action: 'send' });
     expect(response.outbound.text).toBe('caption:Cuanto dice aqui?');
     expect(response.outbound.outputOrigin).toMatchObject({
       status: 'verified',
@@ -289,73 +293,42 @@ describe('S17 image turns', () => {
     });
   });
 
-  it('reports image_too_large as unavailable evidence without inspecting', async () => {
-    const runtime = new ImageStubRuntime();
-    const { service } = serviceWith(runtime);
-    const response = await service.handleTurn(
-      inboundWithImage({ status: 'unavailable', reason: 'image_too_large', mimeType: 'image/jpeg' }, ''),
-    );
+  it('reports unavailable media as unavailable evidence without inspecting', async () => {
+    for (const reason of ['image_too_large', 'media_unavailable'] as const) {
+      const runtime = new ImageStubRuntime();
+      const { service } = serviceWith(runtime);
+      const response = await service.handleTurn(
+        inboundWithImage({ status: 'unavailable', reason, mimeType: 'image/jpeg' }, ''),
+      );
 
-    expect(runtime.extractCalls).toBe(0);
-    expect(response.outbound.text).toBe('caption:');
-    expect(runtime.composeRequests.at(-1)?.imageEvidence).toMatchObject({
-      status: 'unavailable',
-      reason: 'image_too_large',
-      captionPresent: false,
-    });
-    // No fake human intent, confidence, or planning projection on media errors.
-    expect(runtime.composeRequests.at(-1)?.extraction).toMatchObject({
-      actionIntent: null,
-      intentConfidence: null,
-      vendorCategories: [],
-      activeNeedCategory: null,
-      providerFitCriteria: null,
-    });
+      expect(runtime.extractCalls).toBe(0);
+      expect(response.outbound.text).toBe('caption:');
+      expect(runtime.composeRequests.at(-1)?.imageEvidence).toMatchObject({
+        status: 'unavailable',
+        reason,
+        captionPresent: false,
+      });
+      // No fake human intent, confidence, or planning projection on media errors.
+      expect(runtime.composeRequests.at(-1)?.extraction).toMatchObject({
+        actionIntent: null,
+        intentConfidence: null,
+        vendorCategories: [],
+        activeNeedCategory: null,
+        providerFitCriteria: null,
+      });
+    }
+    // Mismatched bytes normalize to unavailable and take the same path.
+    const image = normalizeInboundImage({ data: PNG_1X1, mime_type: 'image/jpeg' });
+    expect(image.status).toBe('unavailable');
+    const mismatchRuntime = new ImageStubRuntime();
+    const { service: mismatchService } = serviceWith(mismatchRuntime);
+    const mismatch = await mismatchService.handleTurn(inboundWithImage(image, ''));
+
+    expect(mismatch.outbound.text).toBe('caption:');
+    expect(mismatchRuntime.composeRequests.at(-1)?.imageEvidence?.reason).toBe('media_unavailable');
   });
 
-  it('reports media_unavailable as unavailable evidence without inspecting', async () => {
-    const runtime = new ImageStubRuntime();
-    const { service } = serviceWith(runtime);
-    const response = await service.handleTurn(
-      inboundWithImage({ status: 'unavailable', reason: 'media_unavailable', mimeType: 'image/jpeg' }, ''),
-    );
-
-    expect(response.outbound.text).toBe('caption:');
-    expect(runtime.composeRequests.at(-1)?.imageEvidence).toMatchObject({
-      status: 'unavailable',
-      reason: 'media_unavailable',
-      captionPresent: false,
-    });
-    // No fake human intent, confidence, or planning projection on media errors.
-    expect(runtime.composeRequests.at(-1)?.extraction).toMatchObject({
-      actionIntent: null,
-      intentConfidence: null,
-      vendorCategories: [],
-      activeNeedCategory: null,
-      providerFitCriteria: null,
-    });
-  });
-
-  it('answers the caption through the model pipeline without appending a fallback', async () => {
-    const runtime = new ImageStubRuntime();
-    const { service } = serviceWith(runtime);
-    const response = await service.handleTurn(
-      inboundWithImage(
-        { status: 'unavailable', reason: 'media_unavailable', mimeType: 'image/jpeg' },
-        'Mi pedido sigue pendiente?',
-      ),
-    );
-
-    expect(runtime.extractCalls).toBe(0);
-    expect(response.outbound.text).toBe('caption:Mi pedido sigue pendiente?');
-    expect(runtime.composeRequests.at(-1)?.imageEvidence).toMatchObject({
-      status: 'unavailable',
-      reason: 'media_unavailable',
-      captionPresent: true,
-    });
-  });
-
-  it('keeps an unavailable-image caption in the image fallback evidence path', async () => {
+  it('keeps an unavailable-image caption in the image fallback evidence path without appending a fallback', async () => {
     const runtime = new ImageStubRuntime();
     const gateway = {
       ...handoffGateway({ status: 'skipped', reason: 'disabled', message: 'disabled' }),
@@ -385,6 +358,7 @@ describe('S17 image turns', () => {
 
     expect(response.plan.current_node).toBe('resolver_consultas_informativas');
     expect(runtime.extractCalls).toBe(0);
+    expect(response.outbound.text).toBe('caption:Hola');
     expect(runtime.composeRequests.at(-1)?.currentNode).toBe('resolver_consultas_informativas');
     expect(runtime.composeRequests.at(-1)?.imageEvidence).toMatchObject({
       status: 'unavailable',
@@ -393,18 +367,7 @@ describe('S17 image turns', () => {
     });
   });
 
-  it('treats mismatched bytes as unavailable instead of inspecting', async () => {
-    const image = normalizeInboundImage({ data: PNG_1X1, mime_type: 'image/jpeg' });
-    expect(image.status).toBe('unavailable');
-    const runtime = new ImageStubRuntime();
-    const { service } = serviceWith(runtime);
-    const response = await service.handleTurn(inboundWithImage(image, ''));
-
-    expect(response.outbound.text).toBe('caption:');
-    expect(runtime.composeRequests.at(-1)?.imageEvidence?.reason).toBe('media_unavailable');
-  });
-
-  it('routes an action caption through the owner with the persisted file instead of human help', async () => {
+  it('routes action captions through the owner with the persisted file regardless of handoff registration', async () => {
     const runtime = new ImageStubRuntime();
     const { service } = serviceWith(runtime, handoffGateway({ status: 'success', message: 'ok' }));
     const image = normalizeInboundImage({ data: JPEG_MINIMAL, mime_type: 'image/jpeg' });
@@ -416,19 +379,19 @@ describe('S17 image turns', () => {
     expect(runtime.composeRequests[0]?.imageFileAttachments).toHaveLength(1);
     expect(response.outbound.text).toBe('caption:Confirma mi pago con este voucher');
     expect(response.plan.image_attachments).toHaveLength(1);
-  });
-
-  it('keeps the file ref when the owner answers without human registration', async () => {
-    const runtime = new ImageStubRuntime();
-    const { service } = serviceWith(
-      runtime,
+    // A failed handoff registration changes nothing: the owner still
+    // answers with the persisted file.
+    const failedRuntime = new ImageStubRuntime();
+    const { service: failedService } = serviceWith(
+      failedRuntime,
       handoffGateway({ status: 'failed', error: 'boom', retryable: false }),
     );
-    const image = normalizeInboundImage({ data: JPEG_MINIMAL, mime_type: 'image/jpeg' });
-    const response = await service.handleTurn(inboundWithImage(image, 'Confirma mi pago'));
-
-    expect(response.outbound.text).toBe('caption:Confirma mi pago');
-    expect(response.plan.image_attachments).toHaveLength(1);
+    const failedImage = normalizeInboundImage({ data: JPEG_MINIMAL, mime_type: 'image/jpeg' });
+    const failedResponse = await failedService.handleTurn(inboundWithImage(failedImage, 'Confirma mi pago'));
+    expect(failedRuntime.composeRequests).toHaveLength(1);
+    expect(failedRuntime.composeRequests[0]?.imageFileAttachments).toHaveLength(1);
+    expect(failedResponse.outbound.text).toBe('caption:Confirma mi pago');
+    expect(failedResponse.plan.image_attachments).toHaveLength(1);
   });
 
   it('continues a persisted outstanding request on an image-only turn instead of silencing', async () => {
@@ -479,7 +442,7 @@ describe('S17 image turns', () => {
     expect(response.plan.image_attachments).toHaveLength(1);
   });
 
-  it('reloads a silently persisted image for a later text question in another invocation', async () => {
+  it('reloads a silently persisted image for later text questions, with or without explicit linkage ids', async () => {
     const runtime = new ImageStubRuntime();
     const { service, planStore } = serviceWith(runtime);
     const image = normalizeInboundImage({ data: PNG_1X1, mime_type: 'image/png' });
@@ -504,15 +467,9 @@ describe('S17 image turns', () => {
     expect(request?.imageFileAttachments).toEqual([
       { fileId: 'file-test-image-1', messageId: 'wamid.HBgLNTE5ODc2NTQzMjE' },
     ]);
+    expect(request?.imageEvidence).toMatchObject({ status: 'available', source: 'file' });
     const reloaded = await planStore.getByExternalUser('whatsapp', 'whatsapp:+51987654321');
     expect(reloaded?.image_attachments).toHaveLength(1);
-  });
-
-  it('carries the single stored image when prior_single linkage arrives without message ids', async () => {
-    const runtime = new ImageStubRuntime();
-    const { service } = serviceWith(runtime);
-    const image = normalizeInboundImage({ data: PNG_1X1, mime_type: 'image/png' });
-    await service.handleTurn(inboundWithImage(image, '', '2026-09-08T14:30:00Z'));
 
     // Structured single-prior linkage without visible message ids still
     // carries the one usable stored image (deterministic single-candidate
@@ -521,15 +478,16 @@ describe('S17 image turns', () => {
       informationRequests: [{ kind: 'faq', query: 'Que monto ves ahi?' }],
       imageReference: { status: 'prior_single', referencedMessageIds: [] },
     };
-    const second = await service.handleTurn(
-      textTurn('Que monto ves ahi?', 'wamid.followup2', '2026-09-08T14:30:10Z'),
+    const idless = await service.handleTurn(
+      textTurn('Que monto ves ahi?', 'wamid.followup2', '2026-09-08T14:30:20Z'),
     );
 
-    expect(second.outbound.delivery.action).toBe('send');
-    const request = runtime.composeRequests.at(-1);
-    expect(request?.imageFileAttachments).toEqual([
+    expect(idless.outbound.delivery.action).toBe('send');
+    const idlessRequest = runtime.composeRequests.at(-1);
+    expect(idlessRequest?.imageFileAttachments).toEqual([
       { fileId: 'file-test-image-1', messageId: 'wamid.HBgLNTE5ODc2NTQzMjE' },
     ]);
+    expect(idlessRequest?.imageUrlAttachments ?? []).toEqual([]);
   });
 
   it('projects nothing for prior_single without linkage when several images are stored', async () => {
@@ -574,6 +532,8 @@ describe('S17 image turns', () => {
 
     const request = runtime.composeRequests.at(-1);
     expect(request?.imageFileAttachments ?? []).toEqual([]);
+    expect(request?.imageUrlAttachments ?? []).toEqual([]);
+    expect(request?.imageEvidence).toBeUndefined();
     // Projection cleared, reference retained for a later linked question.
     const reloaded = await planStore.getByExternalUser('whatsapp', 'whatsapp:+51987654321');
     expect(reloaded?.image_attachments).toHaveLength(1);
@@ -601,7 +561,7 @@ describe('S17 image turns', () => {
     expect(response.plan.image_attachments).toHaveLength(1);
   });
 
-  it('propagates a reply credential failure instead of relabeling it as image unavailability', async () => {
+  it('propagates credential failures without composing or relabeling them as image unavailability', async () => {
     const runtime = new ImageStubRuntime();
     runtime.composeFailure = Object.assign(new Error('bad key'), {
       name: 'AuthenticationError',
@@ -616,22 +576,29 @@ describe('S17 image turns', () => {
     expect(runtime.composeRequests).toHaveLength(0);
     // The fresh upload is cleaned up; no false durable success persists.
     expect(imageStore.deletions).toEqual(['file-test-image-1']);
-  });
-
-  it('propagates an extraction credential failure without composing', async () => {
-    const runtime = new ImageStubRuntime();
-    runtime.extractFailure = Object.assign(new Error('bad key'), {
+    // An extraction credential failure propagates the same way.
+    const extractRuntime = new ImageStubRuntime();
+    extractRuntime.extractFailure = Object.assign(new Error('bad key'), {
       name: 'AuthenticationError',
       status: 401,
     });
-    const { service } = serviceWith(runtime);
-    const image = normalizeInboundImage({ data: JPEG_MINIMAL, mime_type: 'image/jpeg' });
-
-    await expect(service.handleTurn(inboundWithImage(image, 'Es mi comprobante'))).rejects.toThrow('bad key');
-    expect(runtime.composeRequests).toHaveLength(0);
+    const { service: extractService } = serviceWith(extractRuntime);
+    const extractImage = normalizeInboundImage({ data: JPEG_MINIMAL, mime_type: 'image/jpeg' });
+    await expect(extractService.handleTurn(inboundWithImage(extractImage, 'Es mi comprobante'))).rejects.toThrow('bad key');
+    expect(extractRuntime.composeRequests).toHaveLength(0);
+    // An upload credential failure is never unavailable evidence either.
+    const uploadRuntime = new ImageStubRuntime();
+    const { service: uploadService, imageStore: uploadStore } = serviceWith(uploadRuntime);
+    uploadStore.failUpload = new ImageFileUploadError('bad key', {
+      retryable: false,
+      causeName: 'AuthenticationError',
+    });
+    const uploadImage = normalizeInboundImage({ data: JPEG_MINIMAL, mime_type: 'image/jpeg' });
+    await expect(uploadService.handleTurn(inboundWithImage(uploadImage, 'Hola'))).rejects.toThrow('bad key');
+    expect(uploadRuntime.composeRequests).toHaveLength(0);
   });
 
-  it('propagates a generic model failure without an image_unavailable fallback', async () => {
+  it('keeps generic model and generation failures distinct without an image_unavailable fallback', async () => {
     const runtime = new ImageStubRuntime();
     runtime.composeFailure = new ModelComposedFailureError('model_error');
     runtime.failComposeTimes = 10;
@@ -663,9 +630,36 @@ describe('S17 image turns', () => {
     expect(reloaded?.owner_pending_question).toBe('Que monto ves ahi?');
     expect(reloaded?.open_questions).toContain('Que monto ves ahi?');
     expect(reloaded?.image_attachments ?? []).toHaveLength(0);
+    // A plain generation failure stays distinct the same way: the failed
+    // turn throws instead of degrading to silence or a false success.
+    const boomRuntime = new ImageStubRuntime();
+    boomRuntime.composeFailure = new Error('boom');
+    boomRuntime.failComposeTimes = 1;
+    const boom = serviceWith(boomRuntime);
+    const boomSeed = createEmptyPlan({
+      planId: 'seed-pending-failure',
+      channel: 'whatsapp',
+      externalUserId: 'whatsapp:+51987654321',
+    });
+    await boom.planStore.save({
+      plan: mergePlan(boomSeed, {
+        owner_pending_question: 'Que monto ves ahi?',
+        open_questions: ['Que monto ves ahi?'],
+      }),
+      reason: 'test-seed',
+    });
+    const boomImage = normalizeInboundImage({ data: JPEG_MINIMAL, mime_type: 'image/jpeg' });
+    await expect(
+      boom.service.handleTurn(inboundWithImage(boomImage, 'Es mi comprobante', '2026-09-08T14:30:10Z')),
+    ).rejects.toThrow('boom');
+    expect(boom.imageStore.deletions).toEqual(['file-test-image-1']);
+    const boomReloaded = await boom.planStore.getByExternalUser('whatsapp', 'whatsapp:+51987654321');
+    expect(boomReloaded?.owner_pending_question).toBe('Que monto ves ahi?');
+    expect(boomReloaded?.open_questions).toContain('Que monto ves ahi?');
+    expect(boomReloaded?.image_attachments ?? []).toHaveLength(0);
   });
 
-  it('propagates a retryable transport upload failure without composing', async () => {
+  it('propagates a retryable transport upload failure without composing or bad-input evidence', async () => {
     const runtime = new ImageStubRuntime();
     const { service, imageStore } = serviceWith(runtime);
     imageStore.failUpload = new ImageFileUploadError('Image file upload failed.', {
@@ -682,18 +676,6 @@ describe('S17 image turns', () => {
     expect(runtime.composeRequests).toHaveLength(0);
   });
 
-  it('propagates an upload credential failure instead of unavailable evidence', async () => {
-    const runtime = new ImageStubRuntime();
-    const { service, imageStore } = serviceWith(runtime);
-    imageStore.failUpload = new ImageFileUploadError('bad key', {
-      retryable: false,
-      causeName: 'AuthenticationError',
-    });
-    const image = normalizeInboundImage({ data: JPEG_MINIMAL, mime_type: 'image/jpeg' });
-
-    await expect(service.handleTurn(inboundWithImage(image, 'Hola'))).rejects.toThrow('bad key');
-    expect(runtime.composeRequests).toHaveLength(0);
-  });
 });
 
 /**
@@ -737,29 +719,6 @@ class ThanksSuppressingClassifier implements MessageResponseClassifier {
 }
 
 describe('Inbound continuity sequences', () => {
-  it('shares one continuity projection across text plus image in the same invocation', async () => {
-    const runtime = new ImageStubRuntime();
-    const { service } = serviceWith(runtime);
-    const image = normalizeInboundImage({ data: PNG_1X1, mime_type: 'image/png' });
-    const response = await service.handleTurn(inboundWithImage(image, 'Cuanto dice aqui?'));
-
-    // One answer uses both parts: no greeting-only reply, no second
-    // image-description answer.
-    expect(runtime.composeRequests).toHaveLength(1);
-    const request = runtime.composeRequests[0];
-    expect(request?.userMessage).toBe('Cuanto dice aqui?');
-    expect(request?.imageFileAttachments).toHaveLength(1);
-    expect(request?.continuity).toMatchObject({
-      pendingQuestion: null,
-      pendingTask: null,
-      hasPendingInformation: false,
-      hasCompletedInformation: false,
-      hasPriorOutbound: false,
-    });
-    expect(response.outbound.delivery).toMatchObject({ action: 'send' });
-    expect(response.outbound.text).toBe('caption:Cuanto dice aqui?');
-  });
-
   it('answers the question, persists the image silently, then answers the follow-up: two answers', async () => {
     const runtime = new ImageStubRuntime();
     const { service, planStore, imageStore } = serviceWith(runtime);
@@ -831,70 +790,9 @@ describe('Inbound continuity sequences', () => {
     expect(reloaded?.image_attachments).toHaveLength(1);
   });
 
-  it('answers a persisted owner question when the fulfilling image arrives', async () => {
-    const runtime = new ImageStubRuntime();
-    const { service, planStore } = serviceWith(runtime);
-    const seed = createEmptyPlan({
-      planId: 'seed-pending-question',
-      channel: 'whatsapp',
-      externalUserId: 'whatsapp:+51987654321',
-    });
-    await planStore.save({
-      plan: mergePlan(seed, {
-        owner_pending_question: 'Que monto ves ahi?',
-        open_questions: ['Que monto ves ahi?'],
-      }),
-      reason: 'test-seed',
-    });
-    const image = normalizeInboundImage({ data: JPEG_MINIMAL, mime_type: 'image/jpeg' });
-    const response = await service.handleTurn(
-      inboundWithImage(image, '', '2026-09-08T14:30:10Z'),
-    );
-
-    // The pending question travels on the shared projection and the image
-    // answers it: one reply, pixels attached, reference stored.
-    expect(runtime.composeRequests).toHaveLength(1);
-    expect(runtime.composeRequests[0]?.continuity).toMatchObject({
-      pendingQuestion: 'Que monto ves ahi?',
-    });
-    expect(runtime.composeRequests[0]?.imageFileAttachments).toHaveLength(1);
-    expect(response.outbound.delivery.action).toBe('send');
-    const reloaded = await planStore.getByExternalUser('whatsapp', 'whatsapp:+51987654321');
-    expect(reloaded?.image_attachments).toHaveLength(1);
-  });
-
-  it('keeps a generation failure distinct and preserves the pending question', async () => {
-    const runtime = new ImageStubRuntime();
-    runtime.composeFailure = new Error('boom');
-    runtime.failComposeTimes = 1;
-    const { service, planStore, imageStore } = serviceWith(runtime);
-    const seed = createEmptyPlan({
-      planId: 'seed-pending-failure',
-      channel: 'whatsapp',
-      externalUserId: 'whatsapp:+51987654321',
-    });
-    await planStore.save({
-      plan: mergePlan(seed, {
-        owner_pending_question: 'Que monto ves ahi?',
-        open_questions: ['Que monto ves ahi?'],
-      }),
-      reason: 'test-seed',
-    });
-    const image = normalizeInboundImage({ data: JPEG_MINIMAL, mime_type: 'image/jpeg' });
-
-    // A failed turn throws instead of degrading to silence or a false
-    // success: failures stay distinct from suppressions.
-    await expect(
-      service.handleTurn(inboundWithImage(image, 'Es mi comprobante', '2026-09-08T14:30:10Z')),
-    ).rejects.toThrow('boom');
-    expect(imageStore.deletions).toEqual(['file-test-image-1']);
-    // The pending question is never marked answered by a failed turn.
-    const reloaded = await planStore.getByExternalUser('whatsapp', 'whatsapp:+51987654321');
-    expect(reloaded?.owner_pending_question).toBe('Que monto ves ahi?');
-    expect(reloaded?.open_questions).toContain('Que monto ves ahi?');
-    expect(reloaded?.image_attachments ?? []).toHaveLength(0);
-  });
-
+  // A seeded pending question answered by a fulfilling image is covered by
+  // the receipt continuity chain below (stash plus fulfillment with
+  // clearing, projection, and reference assertions).
   it('keeps a suppressed thanks distinct from a failure and preserves the pending question', async () => {
     const runtime = new ImageStubRuntime();
     const classifier = new ThanksSuppressingClassifier();
@@ -1063,7 +961,7 @@ describe('Unavailable media record checks', () => {
     };
   }
 
-  it('omits purchase-record evidence entirely when no purchase read was attempted', () => {
+  it('projects record checks only for unavailable images, carrying attempted reads with real outcomes', () => {
     const checks = typedBoundary(boundaryRuntime()).buildRecordCheckFacts({
       imageEvidence: unavailableImage,
       informationResults: [],
@@ -1073,10 +971,8 @@ describe('Unavailable media record checks', () => {
       reason: 'media_unavailable',
     });
     expect(checks.record_checks ?? {}).not.toHaveProperty('purchase_records');
-  });
-
-  it('omits purchase-record evidence when only unrelated reads ran', () => {
-    const checks = typedBoundary(boundaryRuntime()).buildRecordCheckFacts({
+    // Unrelated reads do not conjure purchase records either.
+    const unrelated = typedBoundary(boundaryRuntime()).buildRecordCheckFacts({
       imageEvidence: unavailableImage,
       informationResults: [
         {
@@ -1087,15 +983,13 @@ describe('Unavailable media record checks', () => {
         },
       ],
     });
-    expect(checks.record_checks ?? {}).not.toHaveProperty('purchase_records');
-  });
-
-  it('carries an attempted empty read as an empty outcome, never an absence claim', () => {
-    const checks = typedBoundary(boundaryRuntime()).buildRecordCheckFacts({
+    expect(unrelated.record_checks ?? {}).not.toHaveProperty('purchase_records');
+    // Attempted reads ride with their real outcomes, never absence claims.
+    const completed = typedBoundary(boundaryRuntime()).buildRecordCheckFacts({
       imageEvidence: unavailableImage,
       informationResults: [completedEmptyPurchase()],
     });
-    expect(checks.record_checks?.purchase_records).toMatchObject({
+    expect(completed.record_checks?.purchase_records).toMatchObject({
       lookups_attempted: 1,
       results_returned: 0,
       outcomes: [
@@ -1107,14 +1001,12 @@ describe('Unavailable media record checks', () => {
         },
       ],
     });
-  });
-
-  it('carries a failed read as unavailable with its real outcome and provenance', () => {
-    const checks = typedBoundary(boundaryRuntime()).buildRecordCheckFacts({
+    // A failed read rides the same shape with its real outcome and provenance.
+    const failed = typedBoundary(boundaryRuntime()).buildRecordCheckFacts({
       imageEvidence: unavailableImage,
       informationResults: [failedPhonePurchase()],
     });
-    expect(checks.record_checks?.purchase_records).toMatchObject({
+    expect(failed.record_checks?.purchase_records).toMatchObject({
       lookups_attempted: 1,
       results_returned: 0,
       outcomes: [
@@ -1126,14 +1018,12 @@ describe('Unavailable media record checks', () => {
         },
       ],
     });
-  });
-
-  it('projects no record checks when the image is available', () => {
-    const checks = typedBoundary(boundaryRuntime()).buildRecordCheckFacts({
+    // An available image projects no record checks at all.
+    const available = typedBoundary(boundaryRuntime()).buildRecordCheckFacts({
       imageEvidence: { status: 'available' },
       informationResults: [completedEmptyPurchase()],
     });
-    expect(checks).toEqual({});
+    expect(available).toEqual({});
   });
 });
 
@@ -1280,7 +1170,7 @@ describe('Approval ambiguity stays model-owned', () => {
 describe('Native extraction attachments (decision call sees the current image)', () => {
   const RECEIPT_URL = 'https://example.com/media/receipt-native.png';
 
-  it('passes the already-uploaded file ref into the single extraction call', async () => {
+  it('passes the current image into the single extraction call for file and URL turns, and none on text-only turns', async () => {
     const runtime = new ImageStubRuntime();
     const { service } = serviceWith(runtime);
     const image = normalizeInboundImage({ data: JPEG_MINIMAL, mime_type: 'image/jpeg' });
@@ -1298,40 +1188,35 @@ describe('Native extraction attachments (decision call sees the current image)',
     expect(runtime.composeRequests).toHaveLength(1);
     expect(runtime.composeRequests[0]?.imageFileAttachments).toHaveLength(1);
     expect(response.outbound.delivery.action).toBe('send');
-  });
-
-  it('passes the backend URL into the single extraction call on URL turns', async () => {
-    const runtime = new ImageStubRuntime();
-    const { service } = serviceWith(runtime);
-    const response = await service.handleTurn(
+    // Backend-URL turns ride the same single call as native URL attachments.
+    const urlRuntime = new ImageStubRuntime();
+    const { service: urlService } = serviceWith(urlRuntime);
+    const urlResponse = await urlService.handleTurn(
       inboundWithImage(
         { status: 'available', source: 'url', url: RECEIPT_URL, mimeType: null },
         'Es mi comprobante',
       ),
     );
-
-    expect(runtime.extractCalls).toBe(1);
-    expect(runtime.lastExtractRequest?.imageUrlAttachments).toEqual([
+    expect(urlRuntime.extractCalls).toBe(1);
+    expect(urlRuntime.lastExtractRequest?.imageUrlAttachments).toEqual([
       { url: RECEIPT_URL, messageId: 'wamid.HBgLNTE5ODc2NTQzMjE' },
     ]);
-    expect(runtime.lastExtractRequest?.imageFileAttachments).toEqual([]);
-    expect(runtime.composeRequests).toHaveLength(1);
-    expect(runtime.composeRequests[0]?.imageUrlAttachments).toEqual([
+    expect(urlRuntime.lastExtractRequest?.imageFileAttachments).toEqual([]);
+    expect(urlRuntime.composeRequests).toHaveLength(1);
+    expect(urlRuntime.composeRequests[0]?.imageUrlAttachments).toEqual([
       { url: RECEIPT_URL, messageId: 'wamid.HBgLNTE5ODc2NTQzMjE' },
     ]);
-    expect(response.outbound.delivery.action).toBe('send');
-  });
-
-  it('carries no native attachments on text-only turns', async () => {
-    const runtime = new ImageStubRuntime();
-    const { service } = serviceWith(runtime);
-    await service.handleTurn(
+    expect(urlResponse.outbound.delivery.action).toBe('send');
+    // Text-only turns carry no native attachments into extraction.
+    const textRuntime = new ImageStubRuntime();
+    const { service: textService } = serviceWith(textRuntime);
+    await textService.handleTurn(
       textTurn('¿Cuál es el horario?', 'wamid.txtnative1', '2026-09-08T14:31:00Z'),
     );
 
-    expect(runtime.extractCalls).toBe(1);
-    expect(runtime.lastExtractRequest?.imageFileAttachments ?? []).toEqual([]);
-    expect(runtime.lastExtractRequest?.imageUrlAttachments ?? []).toEqual([]);
+    expect(textRuntime.extractCalls).toBe(1);
+    expect(textRuntime.lastExtractRequest?.imageFileAttachments ?? []).toEqual([]);
+    expect(textRuntime.lastExtractRequest?.imageUrlAttachments ?? []).toEqual([]);
   });
 });
 

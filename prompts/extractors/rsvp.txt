@@ -2,6 +2,6 @@ Asistencia a eventos
 
 Consulta o cambio de asistencia propia usa `actionIntent=responder_invitacion`; fecha, hora, lugar, anfitrión u otros datos del evento son consultas informativas. Mantén ambas solicitudes si aparecen.
 
-`rsvpAction` solo refleja una decisión expresada ahora o una respuesta inequívoca a una oferta vigente. Nunca derives consentimiento de `pending_action`. Si se pide cambiar asistencia, referencia una invitación solo por su ID disponible o por una referencia que el runtime pueda validar. En selección múltiple, usa únicamente los candidatos del estado.
+`rsvpAction` solo refleja una decisión expresada ahora o una respuesta inequívoca a una oferta vigente. Nunca derives consentimiento de `pending_action`. Si se pide cambiar asistencia, referencia una invitación solo por datos disponibles o validables. En selección múltiple, usa únicamente los candidatos del estado. Pregunta de solo lectura sobre tu asistencia: `rsvpDecisionSource=current_message`, `rsvpAction=null`, referencia al evento.
 
-Identifica acompañantes solo con evidencia explícita del mensaje actual; conserva los nombres aportados, no infieras personas desde el plan. Una acción de asistencia no implica una acción para acompañantes.
+Extrae acompañantes y sus nombres solo del mensaje actual; no los infieras desde el plan. Pedir llevar un acompañante deja `rsvpAction` en null y registra la decisión del acompañante en `rsvpParty`. Confirmar asistencia propia no confirma acompañantes pendientes; `rsvpParty` refleja solo la decisión actual.

@@ -15,40 +15,22 @@ import type { EvalCase } from '../src/evals/case-schema';
 import type { FixtureLoadResult } from '../src/runtime/eval-fixture-gateway';
 
 describe('live-behavior-cli parseCaseIds', () => {
-  it('returns undefined when no --case flag is present', () => {
+  it('parses repeatable --case selections in spaced and equals forms', () => {
     expect(parseCaseIds([])).toBeUndefined();
     expect(parseCaseIds(['--other', 'foo'])).toBeUndefined();
-  });
-
-  it('parses single --case <id>', () => {
     expect(parseCaseIds(['--case', 'live_behavior.rsvp_cristian_phone_enriched_confirmation'])).toEqual([
       'live_behavior.rsvp_cristian_phone_enriched_confirmation',
     ]);
-  });
-
-  it('parses repeatable --case <id> flags', () => {
     expect(parseCaseIds(['--case', 'a', '--case', 'b', '--case', 'c'])).toEqual(['a', 'b', 'c']);
-  });
-
-  it('parses --case=<id> form', () => {
     expect(parseCaseIds(['--case=a', '--case=b'])).toEqual(['a', 'b']);
-  });
-
-  it('supports mixed spaced and equals forms', () => {
     expect(parseCaseIds(['--case', 'a', '--case=b', '--case', 'c'])).toEqual(['a', 'b', 'c']);
-  });
-
-  it('ignores incomplete trailing --case with no value', () => {
     expect(parseCaseIds(['--case'])).toBeUndefined();
-  });
-
-  it('ignores --case followed by another flag', () => {
     expect(parseCaseIds(['--case', '--case', 'foo'])).toEqual(['foo']);
   });
 });
 
 describe('live-behavior-cli help', () => {
-  it('prints usage without loading or calling runEvaluation', async () => {
+  it('prints usage for --help and -h without loading or calling runEvaluation', async () => {
     const runEvaluation = vi.fn(async () => ({
       runId: 'unexpected',
       runDir: 'unexpected',
@@ -66,6 +48,7 @@ describe('live-behavior-cli help', () => {
     try {
       await main(['--help'], loadRunner);
       expect(write).toHaveBeenCalledWith(expect.stringContaining('Usage: npm run eval:behavior-live'));
+      await expect(main(['-h'], loadRunner)).resolves.toBeUndefined();
     } finally {
       write.mockRestore();
     }
@@ -74,31 +57,17 @@ describe('live-behavior-cli help', () => {
     expect(runEvaluation).not.toHaveBeenCalled();
   });
 
-  it('accepts the short help flag', async () => {
-    const loadRunner = vi.fn(async () => {
-      throw new Error('runner should not load for help');
-    });
-
-    await expect(main(['-h'], loadRunner)).resolves.toBeUndefined();
-    expect(loadRunner).not.toHaveBeenCalled();
-  });
 });
 
 describe('live-behavior-cli concurrency flags (O2)', () => {
-  it('defaults to four case workers and two judges', () => {
+  it('parses bounded concurrency flags with defaults', () => {
     expect(parseCaseConcurrencyFlag([])).toBe(4);
     expect(parseJudgeConcurrencyFlag([])).toBe(2);
     expect(parseCaseConcurrencyFlag(['--case', 'a'])).toBe(4);
-  });
-
-  it('parses spaced and equals forms', () => {
     expect(parseCaseConcurrencyFlag(['--case-concurrency', '3'])).toBe(3);
     expect(parseCaseConcurrencyFlag(['--case-concurrency=1'])).toBe(1);
     expect(parseJudgeConcurrencyFlag(['--judge-concurrency', '1'])).toBe(1);
     expect(parseJudgeConcurrencyFlag(['--judge-concurrency=2'])).toBe(2);
-  });
-
-  it('rejects missing and invalid values', () => {
     expect(() => parseCaseConcurrencyFlag(['--case-concurrency'])).toThrow(/missing value/i);
     expect(() => parseCaseConcurrencyFlag(['--case-concurrency', '--case', 'a'])).toThrow(/missing value/i);
     expect(() => parseCaseConcurrencyFlag(['--case-concurrency='])).toThrow(/missing value/i);
@@ -121,9 +90,9 @@ describe('live-behavior-cli concurrency flags (O2)', () => {
     expect(() => parseResumeMode(['--resume-mode', 'partial'])).toThrow(/full or diagnostic/);
   });
 
-  it('passes bounded concurrency into runEvaluation with explicit selection', async () => {
+  it('dispatches the hard-contract selection without local judge credentials', async () => {
     const previousKey = process.env.OPENAI_API_KEY;
-    process.env.OPENAI_API_KEY = 'test-key';
+    delete process.env.OPENAI_API_KEY;
     const seen: Array<Record<string, unknown>> = [];
     const runEvaluation = vi.fn(async (options: Record<string, unknown>) => {
       seen.push(options);
@@ -140,9 +109,14 @@ describe('live-behavior-cli concurrency flags (O2)', () => {
       backendFixture: undefined,
       inputs: [{ text: 'hola' }],
     } as unknown as EvalCase;
+    const caseB = { id: 'b', backendFixture: undefined, inputs: [{ text: 'hola' }] } as unknown as EvalCase;
     try {
       await main(['--case', 'a', '--case-concurrency', '3', '--judge-concurrency=1'], loadRunner, {
         loadCatalog: async () => ({ cases: [fakeCase], suites: [], templates: new Map() }),
+        loadFixture: async () => ({ status: 'loaded', data: {} }) as unknown as FixtureLoadResult,
+      });
+      await main(['--case', 'a', '--case', 'b'], loadRunner, {
+        loadCatalog: async () => ({ cases: [fakeCase, caseB], suites: [], templates: new Map() }),
         loadFixture: async () => ({ status: 'loaded', data: {} }) as unknown as FixtureLoadResult,
       });
     } finally {
@@ -161,17 +135,11 @@ describe('live-behavior-cli concurrency flags (O2)', () => {
       requestedJudgeConcurrency: 1,
       resumeMode: 'full',
     });
+    expect(loadRunner).toHaveBeenCalledTimes(2);
+    expect(runEvaluation).toHaveBeenCalledTimes(2);
+    expect(seen[1]).toMatchObject({ caseIds: ['a', 'b'] });
   });
 
-  it('rejects missing selectors before loading the runner or dispatching', async () => {
-    const runEvaluation = vi.fn();
-    const loadRunner = vi.fn(async () => runEvaluation);
-    await expect(main([], loadRunner)).rejects.toThrow(/explicit case selection/i);
-    expect(loadRunner).not.toHaveBeenCalled();
-    expect(runEvaluation).not.toHaveBeenCalled();
-    expect(() => requireExplicitCaseIds(undefined)).toThrow(/explicit case selection/i);
-    expect(() => requireExplicitCaseIds([])).toThrow(/explicit case selection/i);
-  });
 });
 
 describe('live-behavior-cli import-safe selection (Finding 3)', () => {
@@ -205,6 +173,14 @@ describe('live-behavior-cli import-safe selection (Finding 3)', () => {
   });
 
   it('rejects unknown IDs and missing prerequisites with zero dispatch', async () => {
+    expect(() => requireExplicitCaseIds(undefined)).toThrow(/explicit case selection/i);
+    expect(() => requireExplicitCaseIds([])).toThrow(/explicit case selection/i);
+    const emptyRunner = vi.fn();
+    const emptyLoader = vi.fn(async () => emptyRunner);
+    await expect(main([], emptyLoader)).rejects.toThrow(/explicit case selection/i);
+    expect(emptyLoader).not.toHaveBeenCalled();
+    expect(emptyRunner).not.toHaveBeenCalled();
+
     const known = { id: 'known.case', backendFixture: undefined, inputs: [{ text: 'hola' }] } as unknown as EvalCase;
     expect(() => resolveSelectedLiveBehaviorCases({ cases: [known] }, ['missing.case'])).toThrow(/unknown.*missing\.case/i);
 
@@ -245,37 +221,80 @@ describe('live-behavior-cli import-safe selection (Finding 3)', () => {
     expect(loadRunner).not.toHaveBeenCalled();
   });
 
-  it('dispatches exactly the valid explicit selection', async () => {
+});
+
+describe('live-behavior-cli exact cost streaming', () => {
+  it('passes pricing, streams per-case lines to stderr, and reports cost in the summary', async () => {
     const previousKey = process.env.OPENAI_API_KEY;
     process.env.OPENAI_API_KEY = 'test-key';
     const seen: Array<Record<string, unknown>> = [];
+    const costSummary = {
+      priced: true,
+      pricingVersion: '2026-08-04',
+      openaiUsd: 0.001,
+      judgeUsd: 0.002,
+      lambdaUsd: 0.00003,
+      totalUsd: 0.00303,
+      unpricedCases: [],
+      unpricedModels: [],
+    };
     const runEvaluation = vi.fn(async (options: Record<string, unknown>) => {
       seen.push(options);
+      (options.onCaseComplete as (event: unknown) => void)({
+        caseId: 'a',
+        status: 'ok',
+        executed: true,
+        settledCases: 1,
+        totalCases: 1,
+        caseCostUsd: 0.00303,
+        runningCostUsd: 0.00303,
+        priced: true,
+      });
       return {
         runId: 'run-1',
         runDir: 'dir-1',
-        report: { totalCases: 2, passedCases: 2, failedCases: 0, erroredCases: 0, skippedCases: 0 },
+        report: {
+          totalCases: 1,
+          passedCases: 1,
+          failedCases: 0,
+          erroredCases: 0,
+          skippedCases: 0,
+          costSummary,
+        },
       };
     });
     const loadRunner = vi.fn(async () => runEvaluation);
-    const write = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
-    const caseA = { id: 'a', backendFixture: undefined, inputs: [{ text: 'hola' }] } as unknown as EvalCase;
-    const caseB = { id: 'b', backendFixture: undefined, inputs: [{ text: 'hola' }] } as unknown as EvalCase;
+    const stdoutWrite = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    const stderrWrite = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    const fakeCase = {
+      id: 'a',
+      backendFixture: undefined,
+      inputs: [{ text: 'hola' }],
+    } as unknown as EvalCase;
+    let stderr = '';
+    let stdout = '';
     try {
-      await main(['--case', 'a', '--case', 'b'], loadRunner, {
-        loadCatalog: async () => ({ cases: [caseA, caseB], suites: [], templates: new Map() }),
+      await main(['--case', 'a'], loadRunner, {
+        loadCatalog: async () => ({ cases: [fakeCase], suites: [], templates: new Map() }),
         loadFixture: async () => ({ status: 'loaded', data: {} }) as unknown as FixtureLoadResult,
       });
+      // Capture before restore: mockRestore clears call history.
+      stderr = stderrWrite.mock.calls.map((call) => String(call[0])).join('');
+      stdout = stdoutWrite.mock.calls.map((call) => String(call[0])).join('');
     } finally {
-      write.mockRestore();
+      stdoutWrite.mockRestore();
+      stderrWrite.mockRestore();
       if (previousKey === undefined) {
         delete process.env.OPENAI_API_KEY;
       } else {
         process.env.OPENAI_API_KEY = previousKey;
       }
     }
-    expect(loadRunner).toHaveBeenCalledTimes(1);
-    expect(runEvaluation).toHaveBeenCalledTimes(1);
-    expect(seen[0]).toMatchObject({ caseIds: ['a', 'b'] });
+    expect(String(seen[0]?.pricingPath)).toMatch(/studies\/pricing-\d{4}-\d{2}-\d{2}\.json$/);
+    expect(typeof seen[0]?.onCaseComplete).toBe('function');
+    expect(stderr).toContain('[1/1] a ok case=$0.003030 running=$0.003030');
+    expect(stdout).not.toContain('[1/1]');
+    const parsed = JSON.parse(stdout) as { cost: unknown };
+    expect(parsed.cost).toEqual(costSummary);
   });
 });

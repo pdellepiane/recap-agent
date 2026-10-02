@@ -4,7 +4,6 @@ import { FixtureAgentConversationGateway, normalizePurchaseTimestamp } from '../
 import type { FixtureData } from '../src/runtime/eval-fixture-gateway';
 import { InMemoryEvalFixtureStateStore } from '../src/runtime/eval-fixture-state';
 import type { EvalFixtureStateStore } from '../src/runtime/eval-fixture-state';
-import { HttpAgentConversationGateway } from '../src/runtime/agent-conversation-gateway';
 import type { AgentAuthByPhoneInput } from '../src/runtime/agent-conversation-gateway';
 
 describe('eval fixture seam', () => {
@@ -23,64 +22,55 @@ describe('eval fixture seam', () => {
     vi.restoreAllMocks();
   });
 
-  it('production request without marker validates exactly as before', () => {
-    const result = channelRequestSchema.safeParse(validWhatsAppPayload);
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.backendFixture).toBeUndefined();
+  it('validates the backendFixture marker identity', () => {
+    {
+      const result = channelRequestSchema.safeParse(validWhatsAppPayload);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.backendFixture).toBeUndefined();
+      }
     }
-  });
 
-  it('request with valid backendFixture marker validates', () => {
-    const payload = {
-      ...validWhatsAppPayload,
-      backendFixture: { scenario: 'purchase-victor-171', runId: 'run-2026-09-14', caseId: 'live_behavior.case' },
-    };
-    const result = channelRequestSchema.safeParse(payload);
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.backendFixture?.scenario).toBe('purchase-victor-171');
-      expect(result.data.backendFixture?.runId).toBe('run-2026-09-14');
-      expect(result.data.backendFixture?.caseId).toBe('live_behavior.case');
+    {
+      const payload = {
+        ...validWhatsAppPayload,
+        backendFixture: { scenario: 'purchase-victor-171', runId: 'run-2026-09-14', caseId: 'live_behavior.case' },
+      };
+      const result = channelRequestSchema.safeParse(payload);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.backendFixture?.scenario).toBe('purchase-victor-171');
+        expect(result.data.backendFixture?.runId).toBe('run-2026-09-14');
+        expect(result.data.backendFixture?.caseId).toBe('live_behavior.case');
+      }
     }
-  });
 
-  it('request with incomplete evaluation identity fails validation', () => {
-    const missingCase = {
-      ...validWhatsAppPayload,
-      backendFixture: { scenario: 'purchase-victor-171', runId: 'run-2026-09-14' },
-    };
-    expect(channelRequestSchema.safeParse(missingCase).success).toBe(false);
-    const missingRun = {
-      ...validWhatsAppPayload,
-      backendFixture: { scenario: 'purchase-victor-171', caseId: 'live_behavior.case' },
-    };
-    expect(channelRequestSchema.safeParse(missingRun).success).toBe(false);
-    const scenarioOnly = {
-      ...validWhatsAppPayload,
-      backendFixture: { scenario: 'purchase-victor-171' },
-    };
-    expect(channelRequestSchema.safeParse(scenarioOnly).success).toBe(false);
-  });
+    {
+      const missingCase = {
+        ...validWhatsAppPayload,
+        backendFixture: { scenario: 'purchase-victor-171', runId: 'run-2026-09-14' },
+      };
+      expect(channelRequestSchema.safeParse(missingCase).success).toBe(false);
+      const missingRun = {
+        ...validWhatsAppPayload,
+        backendFixture: { scenario: 'purchase-victor-171', caseId: 'live_behavior.case' },
+      };
+      expect(channelRequestSchema.safeParse(missingRun).success).toBe(false);
+      const scenarioOnly = {
+        ...validWhatsAppPayload,
+        backendFixture: { scenario: 'purchase-victor-171' },
+      };
+      expect(channelRequestSchema.safeParse(scenarioOnly).success).toBe(false);
+    }
 
-  it('request with malformed fixture marker fails validation', () => {
-    const payload = {
-      ...validWhatsAppPayload,
-      backendFixture: { scenario: '' },
-    };
-    const result = channelRequestSchema.safeParse(payload);
-    expect(result.success).toBe(false);
-  });
-
-  it('marker absent -> Http gateway is used (construction path)', () => {
-    const gateway = new HttpAgentConversationGateway({
-      baseUrl: 'https://example.com/api/agent',
-      apiKey: 'test-key',
-      timeoutMs: 1000,
-      maxRetries: 0,
-      messageLoggingEnabled: false,
-    });
-    expect(gateway).toBeInstanceOf(HttpAgentConversationGateway);
+    {
+      const payload = {
+        ...validWhatsAppPayload,
+        backendFixture: { scenario: '' },
+      };
+      const result = channelRequestSchema.safeParse(payload);
+      expect(result.success).toBe(false);
+    }
   });
 
   it('marker present -> fixture gateway used and no HTTP fetch is attempted', async () => {
@@ -106,35 +96,37 @@ describe('eval fixture seam', () => {
     expect(eventsResult.status === 'success' || eventsResult.status === 'not_found' || eventsResult.status === 'failed').toBe(true);
   });
 
-  it('simulates email OTP outcomes locally without contacting the provider', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch');
-    const gateway = await FixtureAgentConversationGateway.create('otp-sent-image-guidance');
+  it('simulates email OTP only for fixtures with an auth outcome', async () => {
+    {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch');
+      const gateway = await FixtureAgentConversationGateway.create('otp-sent-image-guidance');
 
-    expect(gateway.capabilityDescriptor['auth.email_otp']).toMatchObject({
-      id: 'auth.email_otp',
-      available: true,
-    });
-    await expect(gateway.requestUserLoginCode('customer@example.invalid')).resolves.toEqual({
-      status: 'sent',
-      httpStatus: 200,
-      requestId: 'fixture-otp-request',
-    });
-    await expect(gateway.verifyUserLoginCode('customer@example.invalid', '123456')).resolves.toMatchObject({
-      status: 'unavailable',
-    });
-    expect(fetchSpy).not.toHaveBeenCalled();
-  });
+      expect(gateway.capabilityDescriptor['auth.email_otp']).toMatchObject({
+        id: 'auth.email_otp',
+        available: true,
+      });
+      await expect(gateway.requestUserLoginCode('customer@example.invalid')).resolves.toEqual({
+        status: 'sent',
+        httpStatus: 200,
+        requestId: 'fixture-otp-request',
+      });
+      await expect(gateway.verifyUserLoginCode('customer@example.invalid', '123456')).resolves.toMatchObject({
+        status: 'unavailable',
+      });
+      expect(fetchSpy).not.toHaveBeenCalled();
+    }
 
-  it('does not advertise or call email OTP when a fixture has no auth outcome', async () => {
-    const gateway = await FixtureAgentConversationGateway.create('purchase-victor-171');
-    expect(gateway.capabilityDescriptor['auth.email_otp']).toMatchObject({
-      id: 'auth.email_otp',
-      available: false,
-      reason: 'feature_disabled',
-    });
-    await expect(gateway.requestUserLoginCode('customer@example.invalid')).resolves.toMatchObject({
-      status: 'unavailable',
-    });
+    {
+      const gateway = await FixtureAgentConversationGateway.create('purchase-victor-171');
+      expect(gateway.capabilityDescriptor['auth.email_otp']).toMatchObject({
+        id: 'auth.email_otp',
+        available: false,
+        reason: 'feature_disabled',
+      });
+      await expect(gateway.requestUserLoginCode('customer@example.invalid')).resolves.toMatchObject({
+        status: 'unavailable',
+      });
+    }
   });
 
   it('loads Carina with the realistic international phone and preserves the current partitioned order', async () => {
@@ -173,43 +165,41 @@ describe('eval fixture seam', () => {
     }
   });
 
-  it('unknown scenario -> typed fail-closed error, never fallback to real backend', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch');
-    const gateway = await FixtureAgentConversationGateway.create('unknown-scenario-xyz');
-    const phone: AgentAuthByPhoneInput = { phone_extension: '+51', phone_number: '51999999999' };
-    const result = await gateway.getGuestOrdersByPhone({ phone_extension: phone.phone_extension, phone_number: phone.phone_number });
-    expect(result.status).toBe('invalid_response');
-    if (result.status === 'invalid_response') {
-      expect(result.error).toContain('Unknown fixture scenario');
+  it('fails closed on unknown scenarios and malformed fixture data', async () => {
+    {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch');
+      const gateway = await FixtureAgentConversationGateway.create('unknown-scenario-xyz');
+      const phone: AgentAuthByPhoneInput = { phone_extension: '+51', phone_number: '51999999999' };
+      const result = await gateway.getGuestOrdersByPhone({ phone_extension: phone.phone_extension, phone_number: phone.phone_number });
+      expect(result.status).toBe('invalid_response');
+      if (result.status === 'invalid_response') {
+        expect(result.error).toContain('Unknown fixture scenario');
+      }
+      const rsvpResult = await gateway.guestRsvp({ phone_extension: '+51', phone_number: '51999999999', guest_id: 123, plus_one_response: 'yes' });
+      expect(rsvpResult.status).toBe('failed');
+      if (rsvpResult.status === 'failed') {
+        expect(rsvpResult.error).toContain('Unknown fixture scenario');
+      }
+      expect(fetchSpy).not.toHaveBeenCalled();
     }
-    const rsvpResult = await gateway.guestRsvp({ phone_extension: '+51', phone_number: '51999999999', guest_id: 123, plus_one_response: 'yes' });
-    expect(rsvpResult.status).toBe('failed');
-    if (rsvpResult.status === 'failed') {
-      expect(rsvpResult.error).toContain('Unknown fixture scenario');
-    }
-    expect(fetchSpy).not.toHaveBeenCalled();
-  });
 
-  it('fixture schema violations -> typed invalid_response, not crash', async () => {
-    // Create a gateway with malformed fixture data injected
-    const malformedData = {
-      guestOrders: {
-        '51999999999': {
-          pending_orders: 'not-an-array',
-          completed_orders: [],
-          carts: [],
+    {
+      // Create a gateway with malformed fixture data injected
+      const malformedData = {
+        guestOrders: {
+          '51999999999': {
+            pending_orders: 'not-an-array',
+            completed_orders: [],
+            carts: [],
+          },
         },
-      },
-    };
-    const gateway = FixtureAgentConversationGateway.createSync('malformed-test', malformedData, new Set(['malformed-test']));
-    const phone: AgentAuthByPhoneInput = { phone_extension: '+51', phone_number: '51999999999' };
-    const result = await gateway.getGuestOrdersByPhone({ phone_extension: '+51', phone_number: '51999999999' });
-    expect(result.status).toBe('invalid_response');
-    expect(fetchSpyNotCalled()).toBe(true);
-    function fetchSpyNotCalled(): boolean {
-      return true;
+      };
+      const gateway = FixtureAgentConversationGateway.createSync('malformed-test', malformedData, new Set(['malformed-test']));
+      const phone: AgentAuthByPhoneInput = { phone_extension: '+51', phone_number: '51999999999' };
+      const result = await gateway.getGuestOrdersByPhone({ phone_extension: '+51', phone_number: '51999999999' });
+      expect(result.status).toBe('invalid_response');
+      void phone;
     }
-    void phone;
   });
 
   it('fixture timestamp normalization preserves server timezone strings', async () => {
@@ -369,84 +359,150 @@ describe('F1 fixture conversation history', () => {
     return FixtureAgentConversationGateway.create(scenario, undefined, { stateStore: store, runId, caseId, conversationKey });
   }
 
-  it('follow-up fixture history contains the preceding inbound turn and the sent answer', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch');
-    const store = new InMemoryEvalFixtureStateStore();
-    const first = await historyGateway('image-clean-world', store, 'run-f1', 'case-question');
-    // Empty seed history for this phone.
-    const before = await first.getRecentMessages(imagePhone);
-    expect(before.status).toBe('success');
-    if (before.status === 'success') expect(before.messages).toEqual([]);
+  it('merged history retains observed turns across invocations and scenario transitions', async () => {
+    {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch');
+      const store = new InMemoryEvalFixtureStateStore();
+      const first = await historyGateway('image-clean-world', store, 'run-f1', 'case-question');
+      // Empty seed history for this phone.
+      const before = await first.getRecentMessages(imagePhone);
+      expect(before.status).toBe('success');
+      if (before.status === 'success') expect(before.messages).toEqual([]);
 
-    // Simulate the first invocation: history read, then the inbound turn logs,
-    // then the actual delivered model text is recorded as the sent receipt.
-    await expect(first.logMessage({
-      phoneNumber: imagePhone,
-      body: 'Cuanto dice ahi?',
-      direction: 'inbound',
-      whatsappMessageId: 'wamid-first',
-      sentAt: '2026-09-12T00:00:00-05:00',
-    })).resolves.toMatchObject({ status: 'success' });
-    await expect(first.recordOutboundReceipt({
-      phoneNumber: imagePhone,
-      body: 'El comprobante muestra S/ 149.90.',
-      deliveryAction: 'sent',
-    })).resolves.toMatchObject({ status: 'success' });
+      // Simulate the first invocation: history read, then the inbound turn logs,
+      // then the actual delivered model text is recorded as the sent receipt.
+      await expect(first.logMessage({
+        phoneNumber: imagePhone,
+        body: 'Cuanto dice ahi?',
+        direction: 'inbound',
+        whatsappMessageId: 'wamid-first',
+        sentAt: '2026-09-12T00:00:00-05:00',
+      })).resolves.toMatchObject({ status: 'success' });
+      await expect(first.recordOutboundReceipt({
+        phoneNumber: imagePhone,
+        body: 'El comprobante muestra S/ 149.90.',
+        deliveryAction: 'sent',
+      })).resolves.toMatchObject({ status: 'success' });
 
-    // A later invocation sharing the store sees seed + both records in order.
-    const second = await historyGateway('image-clean-world', store, 'run-f1', 'case-question');
-    const after = await second.getRecentMessages(imagePhone);
-    expect(after.status).toBe('success');
-    if (after.status === 'success') {
-      expect(after.messages.map((message) => message.body)).toEqual([
-        'Cuanto dice ahi?',
-        'El comprobante muestra S/ 149.90.',
-      ]);
-      expect(after.messages.map((message) => message.direction)).toEqual(['inbound', 'outbound']);
-    }
-    expect(fetchSpy).not.toHaveBeenCalled();
-  });
-
-  it('same phone in two cases remains isolated; two phones in one case remain isolated', async () => {
-    const store = new InMemoryEvalFixtureStateStore();
-    const caseA = await historyGateway('image-clean-world', store, 'run-f1', 'case-a');
-    const caseB = await historyGateway('image-clean-world', store, 'run-f1', 'case-b');
-    await caseA.logMessage({ phoneNumber: imagePhone, body: 'mensaje del caso A', direction: 'inbound', whatsappMessageId: 'wamid-a' });
-    await caseB.logMessage({ phoneNumber: imagePhone, body: 'mensaje del caso B', direction: 'inbound', whatsappMessageId: 'wamid-b' });
-
-    const readA = await caseA.getRecentMessages(imagePhone);
-    const readB = await caseB.getRecentMessages(imagePhone);
-    expect(readA.status).toBe('success');
-    expect(readB.status).toBe('success');
-    if (readA.status === 'success' && readB.status === 'success') {
-      expect(readA.messages.map((message) => message.body)).toEqual(['mensaje del caso A']);
-      expect(readB.messages.map((message) => message.body)).toEqual(['mensaje del caso B']);
+      // A later invocation sharing the store sees seed + both records in order.
+      const second = await historyGateway('image-clean-world', store, 'run-f1', 'case-question');
+      const after = await second.getRecentMessages(imagePhone);
+      expect(after.status).toBe('success');
+      if (after.status === 'success') {
+        expect(after.messages.map((message) => message.body)).toEqual([
+          'Cuanto dice ahi?',
+          'El comprobante muestra S/ 149.90.',
+        ]);
+        expect(after.messages.map((message) => message.direction)).toEqual(['inbound', 'outbound']);
+      }
+      expect(fetchSpy).not.toHaveBeenCalled();
     }
 
-    const otherPhone = await caseA.getRecentMessages('+51900027801');
-    expect(otherPhone.status).toBe('success');
-    if (otherPhone.status === 'success') expect(otherPhone.messages).toEqual([]);
-  });
+    {
+      const store = new InMemoryEvalFixtureStateStore();
+      const first = await FixtureAgentConversationGateway.create('image-clean-world', undefined, { stateStore: store, runId: 'run-s1', caseId: 'case-transition', conversationKey: 'conv-keep' });
+      await expect(first.logMessage({
+        phoneNumber: imagePhone, body: 'Cuanto dice ahi?', direction: 'inbound', whatsappMessageId: 'wamid-q1',
+      })).resolves.toMatchObject({ status: 'success' });
+      await expect(first.recordOutboundReceipt({
+        phoneNumber: imagePhone, body: 'El comprobante muestra S/ 149.90.', deliveryAction: 'sent',
+        whatsappMessageId: 'outbound:turn-0',
+      })).resolves.toMatchObject({ status: 'success' });
 
-  it('duplicate delivery of the same message id does not duplicate the current entry', async () => {
-    const store = new InMemoryEvalFixtureStateStore();
-    const gateway = await historyGateway('image-clean-world', store, 'run-f1', 'case-dupe');
-    const input = {
-      phoneNumber: imagePhone,
-      body: 'Cuanto dice ahi?',
-      direction: 'inbound' as const,
-      whatsappMessageId: 'wamid-same',
-    };
-    await expect(gateway.logMessage(input)).resolves.toMatchObject({ status: 'success' });
-    await expect(gateway.logMessage(input)).resolves.toMatchObject({ status: 'success' });
-    const read = await gateway.getRecentMessages(imagePhone);
-    expect(read.status).toBe('success');
-    if (read.status === 'success') {
-      expect(read.messages).toHaveLength(1);
-      expect(read.messages[0]?.body).toBe('Cuanto dice ahi?');
+      // Intentional scenario transition on the same conversation: the new
+      // scenario seed (campaign distractors) is a prefix and must not erase
+      // the observed messages.
+      const second = await FixtureAgentConversationGateway.create('image-distractor-history', undefined, { stateStore: store, runId: 'run-s1', caseId: 'case-transition', conversationKey: 'conv-keep' });
+      const read = await second.getRecentMessages(imagePhone);
+      expect(read.status).toBe('success');
+      if (read.status === 'success') {
+        const bodies = read.messages.map((message) => message.body);
+        expect(bodies.slice(0, 2).every((body) => body.includes('Baby shower') || body.includes('CIVIL'))).toBe(true);
+        expect(bodies).toContain('Cuanto dice ahi?');
+        expect(bodies).toContain('El comprobante muestra S/ 149.90.');
+      }
     }
   });
+  it('fixture history stays isolated across cases, phones, conversations, and runs', async () => {
+    {
+      const store = new InMemoryEvalFixtureStateStore();
+      const caseA = await historyGateway('image-clean-world', store, 'run-f1', 'case-a');
+      const caseB = await historyGateway('image-clean-world', store, 'run-f1', 'case-b');
+      await caseA.logMessage({ phoneNumber: imagePhone, body: 'mensaje del caso A', direction: 'inbound', whatsappMessageId: 'wamid-a' });
+      await caseB.logMessage({ phoneNumber: imagePhone, body: 'mensaje del caso B', direction: 'inbound', whatsappMessageId: 'wamid-b' });
 
+      const readA = await caseA.getRecentMessages(imagePhone);
+      const readB = await caseB.getRecentMessages(imagePhone);
+      expect(readA.status).toBe('success');
+      expect(readB.status).toBe('success');
+      if (readA.status === 'success' && readB.status === 'success') {
+        expect(readA.messages.map((message) => message.body)).toEqual(['mensaje del caso A']);
+        expect(readB.messages.map((message) => message.body)).toEqual(['mensaje del caso B']);
+      }
+
+      const otherPhone = await caseA.getRecentMessages('+51900027801');
+      expect(otherPhone.status).toBe('success');
+      if (otherPhone.status === 'success') expect(otherPhone.messages).toEqual([]);
+    }
+
+    {
+      const store = new InMemoryEvalFixtureStateStore();
+      const convA = await FixtureAgentConversationGateway.create('image-clean-world', undefined, { stateStore: store, runId: 'run-s1', caseId: 'case-a', conversationKey: 'conv-a' });
+      const convB = await FixtureAgentConversationGateway.create('image-clean-world', undefined, { stateStore: store, runId: 'run-s1', caseId: 'case-b', conversationKey: 'conv-b' });
+      await convA.logMessage({ phoneNumber: imagePhone, body: 'mensaje del caso A', direction: 'inbound', whatsappMessageId: 'wamid-a' });
+      await convB.logMessage({ phoneNumber: imagePhone, body: 'mensaje del caso B', direction: 'inbound', whatsappMessageId: 'wamid-b' });
+      const readA = await convA.getRecentMessages(imagePhone);
+      const readB = await convB.getRecentMessages(imagePhone);
+      expect(readA.status).toBe('success');
+      expect(readB.status).toBe('success');
+      if (readA.status === 'success' && readB.status === 'success') {
+        expect(readA.messages.map((message) => message.body)).toEqual(['mensaje del caso A']);
+        expect(readB.messages.map((message) => message.body)).toEqual(['mensaje del caso B']);
+      }
+      const laterRun = await FixtureAgentConversationGateway.create('image-clean-world', undefined, { stateStore: store, runId: 'run-s2', caseId: 'case-a', conversationKey: 'conv-a' });
+      const readLater = await laterRun.getRecentMessages(imagePhone);
+      expect(readLater.status).toBe('success');
+      if (readLater.status === 'success') expect(readLater.messages).toEqual([]);
+    }
+  });
+  it('idempotent message ids never duplicate the current entry', async () => {
+    {
+      const store = new InMemoryEvalFixtureStateStore();
+      const gateway = await historyGateway('image-clean-world', store, 'run-f1', 'case-dupe');
+      const input = {
+        phoneNumber: imagePhone,
+        body: 'Cuanto dice ahi?',
+        direction: 'inbound' as const,
+        whatsappMessageId: 'wamid-same',
+      };
+      await expect(gateway.logMessage(input)).resolves.toMatchObject({ status: 'success' });
+      await expect(gateway.logMessage(input)).resolves.toMatchObject({ status: 'success' });
+      const read = await gateway.getRecentMessages(imagePhone);
+      expect(read.status).toBe('success');
+      if (read.status === 'success') {
+        expect(read.messages).toHaveLength(1);
+        expect(read.messages[0]?.body).toBe('Cuanto dice ahi?');
+      }
+    }
+
+    {
+      const store = new InMemoryEvalFixtureStateStore();
+      const gateway = await FixtureAgentConversationGateway.create('image-clean-world', undefined, { stateStore: store, runId: 'run-s1', caseId: 'case-dupe', conversationKey: 'conv-dupe' });
+      const first = await gateway.logMessage({
+        phoneNumber: imagePhone, body: 'Cuanto dice ahi?', direction: 'inbound', whatsappMessageId: 'wamid-same',
+      });
+      expect(first.status).toBe('success');
+      const retry = await gateway.logMessage({
+        phoneNumber: imagePhone, body: 'Cuanto dice ahi?', direction: 'inbound', whatsappMessageId: 'wamid-same',
+      });
+      expect(retry.status).toBe('success');
+      const stored = await store.listMessages('run-s1', 'case-dupe', 'conv-dupe');
+      expect(stored).toHaveLength(1);
+      const read = await gateway.getRecentMessages(imagePhone);
+      expect(read.status).toBe('success');
+      if (read.status === 'success') expect(read.messages).toHaveLength(1);
+    }
+  });
   it('suppressed, failed, and unverified turns never enter merged history', async () => {
     const store = new InMemoryEvalFixtureStateStore();
     const gateway = await historyGateway('image-clean-world', store, 'run-f1', 'case-suppressed');
@@ -474,46 +530,48 @@ describe('F1 fixture conversation history', () => {
     expect(all).toHaveLength(4);
   });
 
-  it('failed logger degrades to typed failure without crashing or calling production', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch');
-    const broken: EvalFixtureStateStore = {
-      record: () => Promise.reject(new Error('store down')),
-      count: () => Promise.resolve(0),
-      list: () => Promise.resolve([]),
-      lastReceipt: () => Promise.resolve(null),
-      recordMessage: () => Promise.reject(new Error('store down')),
-      listMessages: () => Promise.reject(new Error('store down')),
-      resetForTesting: () => Promise.resolve(),
-    };
-    const gateway = await historyGateway('image-clean-world', broken, 'run-f1', 'case-broken');
-    await expect(gateway.logMessage({
-      phoneNumber: imagePhone, body: 'hola', direction: 'inbound',
-    })).resolves.toMatchObject({ status: 'failed' });
-    const read = await gateway.getRecentMessages(imagePhone);
-    expect(read.status).toBe('failed');
-    expect(fetchSpy).not.toHaveBeenCalled();
-  });
+  it('fails history reads closed on broken stores, malformed seeds, and unknown scenarios', async () => {
+    {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch');
+      const broken: EvalFixtureStateStore = {
+        record: () => Promise.reject(new Error('store down')),
+        count: () => Promise.resolve(0),
+        list: () => Promise.resolve([]),
+        lastReceipt: () => Promise.resolve(null),
+        recordMessage: () => Promise.reject(new Error('store down')),
+        listMessages: () => Promise.reject(new Error('store down')),
+        resetForTesting: () => Promise.resolve(),
+      };
+      const gateway = await historyGateway('image-clean-world', broken, 'run-f1', 'case-broken');
+      await expect(gateway.logMessage({
+        phoneNumber: imagePhone, body: 'hola', direction: 'inbound',
+      })).resolves.toMatchObject({ status: 'failed' });
+      const read = await gateway.getRecentMessages(imagePhone);
+      expect(read.status).toBe('failed');
+      expect(fetchSpy).not.toHaveBeenCalled();
+    }
 
-  it('malformed seed history fails closed instead of returning silent empty history', async () => {
-    const gateway = FixtureAgentConversationGateway.createSync(
-      'malformed-history',
-      { recentMessages: { '51987654321': { messages: 'not-an-array' } } } as unknown as FixtureData,
-      new Set(['malformed-history']),
-    );
-    const read = await gateway.getRecentMessages(imagePhone);
-    expect(read.status).toBe('failed');
-    if (read.status === 'failed') expect(read.error).toContain('recentMessages');
-  });
+    {
+      const gateway = FixtureAgentConversationGateway.createSync(
+        'malformed-history',
+        { recentMessages: { '51987654321': { messages: 'not-an-array' } } } as unknown as FixtureData,
+        new Set(['malformed-history']),
+      );
+      const read = await gateway.getRecentMessages(imagePhone);
+      expect(read.status).toBe('failed');
+      if (read.status === 'failed') expect(read.error).toContain('recentMessages');
+    }
 
-  it('unknown scenario message paths fail closed and never reach production', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch');
-    const gateway = await FixtureAgentConversationGateway.create('unknown-scenario-xyz');
-    await expect(gateway.logMessage({
-      phoneNumber: imagePhone, body: 'hola', direction: 'inbound',
-    })).resolves.toMatchObject({ status: 'failed' });
-    const read = await gateway.getRecentMessages(imagePhone);
-    expect(read.status).toBe('failed');
-    expect(fetchSpy).not.toHaveBeenCalled();
+    {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch');
+      const gateway = await FixtureAgentConversationGateway.create('unknown-scenario-xyz');
+      await expect(gateway.logMessage({
+        phoneNumber: imagePhone, body: 'hola', direction: 'inbound',
+      })).resolves.toMatchObject({ status: 'failed' });
+      const read = await gateway.getRecentMessages(imagePhone);
+      expect(read.status).toBe('failed');
+      expect(fetchSpy).not.toHaveBeenCalled();
+    }
   });
 
   it('F1 fixture worlds: empty, two pending orders, and distractor history', async () => {
@@ -566,92 +624,31 @@ describe('S1 durable isolated fixture history', () => {
     return FixtureAgentConversationGateway.create(scenario, undefined, { stateStore: store, runId, caseId, conversationKey });
   }
 
-  it('same conversation retains observed history across an intentional scenario transition', async () => {
-    const store = new InMemoryEvalFixtureStateStore();
-    const first = await scopedGateway('image-clean-world', store, 'run-s1', 'case-transition', 'conv-keep');
-    await expect(first.logMessage({
-      phoneNumber: imagePhone, body: 'Cuanto dice ahi?', direction: 'inbound', whatsappMessageId: 'wamid-q1',
-    })).resolves.toMatchObject({ status: 'success' });
-    await expect(first.recordOutboundReceipt({
-      phoneNumber: imagePhone, body: 'El comprobante muestra S/ 149.90.', deliveryAction: 'sent',
-      whatsappMessageId: 'outbound:turn-0',
-    })).resolves.toMatchObject({ status: 'success' });
-
-    // Intentional scenario transition on the same conversation: the new
-    // scenario seed (campaign distractors) is a prefix and must not erase
-    // the observed messages.
-    const second = await scopedGateway('image-distractor-history', store, 'run-s1', 'case-transition', 'conv-keep');
-    const read = await second.getRecentMessages(imagePhone);
-    expect(read.status).toBe('success');
-    if (read.status === 'success') {
-      const bodies = read.messages.map((message) => message.body);
-      expect(bodies.slice(0, 2).every((body) => body.includes('Baby shower') || body.includes('CIVIL'))).toBe(true);
-      expect(bodies).toContain('Cuanto dice ahi?');
-      expect(bodies).toContain('El comprobante muestra S/ 149.90.');
+  it('scopes fixture records, keys, and gateways to the conversation', async () => {
+    {
+      const store = new InMemoryEvalFixtureStateStore();
+      const gateway = await scopedGateway('image-clean-world', store, 'run-s1', 'case-ttl', 'conv-ttl');
+      await gateway.logMessage({ phoneNumber: imagePhone, body: 'hola', direction: 'inbound' });
+      const stored = await store.listMessages('run-s1', 'case-ttl', 'conv-ttl');
+      expect(stored).toHaveLength(1);
+      expect(stored[0]?.ttl).toBeGreaterThan(Math.floor(Date.now() / 1000));
+      expect(stored[0]?.conversationKey).toBe('conv-ttl');
     }
-  });
 
-  it('two conversations on one phone and a later run stay isolated', async () => {
-    const store = new InMemoryEvalFixtureStateStore();
-    const convA = await scopedGateway('image-clean-world', store, 'run-s1', 'case-a', 'conv-a');
-    const convB = await scopedGateway('image-clean-world', store, 'run-s1', 'case-b', 'conv-b');
-    await convA.logMessage({ phoneNumber: imagePhone, body: 'mensaje del caso A', direction: 'inbound', whatsappMessageId: 'wamid-a' });
-    await convB.logMessage({ phoneNumber: imagePhone, body: 'mensaje del caso B', direction: 'inbound', whatsappMessageId: 'wamid-b' });
-    const readA = await convA.getRecentMessages(imagePhone);
-    const readB = await convB.getRecentMessages(imagePhone);
-    expect(readA.status).toBe('success');
-    expect(readB.status).toBe('success');
-    if (readA.status === 'success' && readB.status === 'success') {
-      expect(readA.messages.map((message) => message.body)).toEqual(['mensaje del caso A']);
-      expect(readB.messages.map((message) => message.body)).toEqual(['mensaje del caso B']);
+    {
+      const { buildFixtureConversationKey } = await import('../src/runtime/eval-fixture-state');
+      expect(buildFixtureConversationKey('terminal_whatsapp_eval', 'user-1')).toBe('terminal_whatsapp_eval#user-1');
+      expect(() => buildFixtureConversationKey('', 'user-1')).toThrow();
+      expect(() => buildFixtureConversationKey('terminal_whatsapp_eval', '  ')).toThrow();
     }
-    const laterRun = await scopedGateway('image-clean-world', store, 'run-s2', 'case-a', 'conv-a');
-    const readLater = await laterRun.getRecentMessages(imagePhone);
-    expect(readLater.status).toBe('success');
-    if (readLater.status === 'success') expect(readLater.messages).toEqual([]);
-  });
 
-  it('write-side idempotent message ids never duplicate the current entry', async () => {
-    const store = new InMemoryEvalFixtureStateStore();
-    const gateway = await scopedGateway('image-clean-world', store, 'run-s1', 'case-dupe', 'conv-dupe');
-    const first = await gateway.logMessage({
-      phoneNumber: imagePhone, body: 'Cuanto dice ahi?', direction: 'inbound', whatsappMessageId: 'wamid-same',
-    });
-    expect(first.status).toBe('success');
-    const retry = await gateway.logMessage({
-      phoneNumber: imagePhone, body: 'Cuanto dice ahi?', direction: 'inbound', whatsappMessageId: 'wamid-same',
-    });
-    expect(retry.status).toBe('success');
-    const stored = await store.listMessages('run-s1', 'case-dupe', 'conv-dupe');
-    expect(stored).toHaveLength(1);
-    const read = await gateway.getRecentMessages(imagePhone);
-    expect(read.status).toBe('success');
-    if (read.status === 'success') expect(read.messages).toHaveLength(1);
-  });
-
-  it('fixture records carry TTL and conversation scope', async () => {
-    const store = new InMemoryEvalFixtureStateStore();
-    const gateway = await scopedGateway('image-clean-world', store, 'run-s1', 'case-ttl', 'conv-ttl');
-    await gateway.logMessage({ phoneNumber: imagePhone, body: 'hola', direction: 'inbound' });
-    const stored = await store.listMessages('run-s1', 'case-ttl', 'conv-ttl');
-    expect(stored).toHaveLength(1);
-    expect(stored[0]?.ttl).toBeGreaterThan(Math.floor(Date.now() / 1000));
-    expect(stored[0]?.conversationKey).toBe('conv-ttl');
-  });
-
-  it('conversation keys derive from channel and user and reject blanks', async () => {
-    const { buildFixtureConversationKey } = await import('../src/runtime/eval-fixture-state');
-    expect(buildFixtureConversationKey('terminal_whatsapp_eval', 'user-1')).toBe('terminal_whatsapp_eval#user-1');
-    expect(() => buildFixtureConversationKey('', 'user-1')).toThrow();
-    expect(() => buildFixtureConversationKey('terminal_whatsapp_eval', '  ')).toThrow();
-  });
-
-  it('gateway exposes its conversation scope and never uses scenario-derived identity', async () => {
-    const store = new InMemoryEvalFixtureStateStore();
-    const gateway = await scopedGateway('image-clean-world', store, 'run-s1', 'case-scope', 'conv-explicit');
-    expect(gateway.getConversationKey()).toBe('conv-explicit');
-    expect(gateway.runId).toBe('run-s1');
-    expect(gateway.caseId).toBe('case-scope');
+    {
+      const store = new InMemoryEvalFixtureStateStore();
+      const gateway = await scopedGateway('image-clean-world', store, 'run-s1', 'case-scope', 'conv-explicit');
+      expect(gateway.getConversationKey()).toBe('conv-explicit');
+      expect(gateway.runId).toBe('run-s1');
+      expect(gateway.caseId).toBe('case-scope');
+    }
   });
 
   it('two gate runs sharing phone and case stay effect-isolated by runId', async () => {

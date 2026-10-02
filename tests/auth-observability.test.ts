@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  getRequestCorrelationId,
   logAuthObservabilityEvent,
   sanitizeAuthLogValue,
   withAuthenticationFlowContext,
@@ -68,7 +69,7 @@ describe('authentication observability', () => {
     expect(JSON.stringify(value)).not.toContain(token);
   });
 
-  it('correlates flow logs with the Lambda request, flow, and plan ids', () => {
+  it('correlates flow logs and propagates the cross-system correlation id', () => {
     const records: unknown[] = [];
     vi.spyOn(console, 'info').mockImplementation((...values: unknown[]) => {
       records.push(...values);
@@ -93,6 +94,27 @@ describe('authentication observability', () => {
     expect(requestBody.email).toBe('maria@example.com');
     expect(otp.redacted).toBe(true);
     expect(otp.length).toBe(6);
+
+    const correlated: unknown[] = [];
+    vi.spyOn(console, 'info').mockImplementation((...values: unknown[]) => {
+      correlated.push(...values);
+    });
+    expect(getRequestCorrelationId()).toBeNull();
+
+    withRequestObservabilityContext('lambda-request-1', () => {
+      expect(getRequestCorrelationId()).toBe('se-adapter-7');
+      withAuthenticationFlowContext(
+        { authFlowId: 'auth-flow-1', planId: 'plan-1' },
+        () => {
+          expect(getRequestCorrelationId()).toBe('se-adapter-7');
+          logAuthObservabilityEvent('info', 'auth_test_event', {});
+        },
+      );
+    }, { correlationId: 'se-adapter-7' });
+
+    expect(getRequestCorrelationId()).toBeNull();
+    expect(asRecord(correlated[0]).correlation_id).toBe('se-adapter-7');
+    vi.restoreAllMocks();
   });
 });
 

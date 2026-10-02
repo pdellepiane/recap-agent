@@ -18,7 +18,8 @@ function op(type: ProviderPlanOperation['type'], category: string): ProviderPlan
 }
 
 describe('F4 hint-resolved provider selection is recorded in trace operations', () => {
-  it('returns a synthetic select_provider operation per resolved category when extraction has none', () => {
+  it('records exactly the missing selection trace operations', () => {
+    // A synthetic select_provider operation per resolved category when extraction has none.
     const missing = missingSelectionTraceOperations({
       existing: [],
       selectedCategories: ['Catering'],
@@ -26,21 +27,15 @@ describe('F4 hint-resolved provider selection is recorded in trace operations', 
     expect(missing).toHaveLength(1);
     expect(missing[0]?.type).toBe('select_provider');
     expect(missing[0]?.category).toBe('Catering');
-  });
-
-  it('does not duplicate a select_provider operation the extraction already carries', () => {
-    const missing = missingSelectionTraceOperations({
+    // No duplicate when the extraction already carries the operation.
+    expect(missingSelectionTraceOperations({
       existing: [op('select_provider', 'Catering')],
       selectedCategories: ['Catering'],
-    });
-    expect(missing).toHaveLength(0);
-  });
-
-  it('returns no operations when the selection did not resolve', () => {
-    const missing = missingSelectionTraceOperations({
+    })).toHaveLength(0);
+    // No operations when the selection did not resolve.
+    expect(missingSelectionTraceOperations({
       existing: [],
       selectedCategories: [],
-    });
-    expect(missing).toHaveLength(0);
+    })).toHaveLength(0);
   });
 });

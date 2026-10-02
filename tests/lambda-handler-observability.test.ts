@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import type { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -81,6 +82,108 @@ describe('Lambda handler request observability', () => {
       ownership_operation: 'resume',
       request_body_present: false,
     });
+
+    info.mockRestore();
+  });
+
+  it('echoes the inbound correlation id and captures the exact bytes on invalid JSON', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    const rawBody = '{"text": "truncated';
+
+    const response = await lambdaHandler(buildEvent({
+      method: 'POST',
+      rawPath: '/',
+      headers: {
+        authorization: `Bearer ${process.env.CHANNEL_API_KEY ?? ''}`,
+        'x-recap-correlation-id': 'se-adapter-7',
+      },
+      body: rawBody,
+    }));
+
+    expect(response.statusCode).toBe(400);
+    expect(response.headers).toMatchObject({
+      'x-recap-request-id': 'lambda-request-1',
+      'x-recap-correlation-id': 'se-adapter-7',
+    });
+    expect(info.mock.calls[0]?.[0] satisfies ChannelRequestLog).toMatchObject({
+      outcome: 'invalid_json',
+      correlation_id: 'se-adapter-7',
+      correlation_source: 'inbound_header',
+      payload_capture: {
+        body_bytes: Buffer.byteLength(rawBody, 'utf8'),
+        body_sha256: crypto.createHash('sha256').update(rawBody, 'utf8').digest('hex'),
+        body_parse: 'invalid_json',
+      },
+    });
+
+    info.mockRestore();
+  });
+
+  it('falls back to the Lambda request id and inventories shape on invalid request', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    const rawBody = JSON.stringify({
+      text: 'hola',
+      user_id: 'whatsapp:51999999999',
+      channel: 'whatsapp',
+    });
+
+    const response = await lambdaHandler(buildEvent({
+      method: 'POST',
+      rawPath: '/',
+      headers: { authorization: `Bearer ${process.env.CHANNEL_API_KEY ?? ''}` },
+      body: rawBody,
+    }));
+
+    expect(response.statusCode).toBe(400);
+    expect(response.headers).toMatchObject({
+      'x-recap-correlation-id': 'lambda-request-1',
+    });
+    const record = info.mock.calls[0]?.[0] satisfies ChannelRequestLog as ChannelRequestLog;
+    expect(record).toMatchObject({
+      outcome: 'invalid_request',
+      correlation_id: 'lambda-request-1',
+      correlation_source: 'lambda_request',
+      payload_capture: {
+        body_bytes: Buffer.byteLength(rawBody, 'utf8'),
+        body_sha256: crypto.createHash('sha256').update(rawBody, 'utf8').digest('hex'),
+        body_parse: 'json_object',
+        top_level_fields: ['channel:string', 'text:string', 'user_id:string'],
+      },
+    });
+    expect(JSON.stringify(record)).not.toContain('51999999999');
+
+    info.mockRestore();
+  });
+
+  it('auto-correlates by native message id and tracks ids in the response body', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    const rawBody = JSON.stringify({
+      text: 'hola',
+      user_id: 'whatsapp:51999999999',
+      channel: 'whatsapp',
+      message_id: 'wamid.native-42',
+    });
+
+    const response = await lambdaHandler(buildEvent({
+      method: 'POST',
+      rawPath: '/',
+      headers: { authorization: `Bearer ${process.env.CHANNEL_API_KEY ?? ''}` },
+      body: rawBody,
+    }));
+
+    expect(response.statusCode).toBe(400);
+    expect(response.headers).toMatchObject({
+      'x-recap-correlation-id': 'wamid.native-42',
+    });
+    expect(info.mock.calls[0]?.[0] satisfies ChannelRequestLog).toMatchObject({
+      outcome: 'invalid_request',
+      correlation_id: 'wamid.native-42',
+      correlation_source: 'native_message',
+    });
+    const parsedBody = JSON.parse(response.body ?? '{}') as Record<string, unknown>;
+    expect(parsedBody.correlation_id).toBe('wamid.native-42');
+    expect(parsedBody.request_id).toBe('lambda-request-1');
+    expect(JSON.stringify(info.mock.calls[0]?.[0])).not.toContain('51999999999');
 
     info.mockRestore();
   });

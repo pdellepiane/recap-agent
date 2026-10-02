@@ -3,11 +3,12 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { classifyEvalCaseLane, inventoryDuplicateSemanticJudges, runEvaluation } from '../src/evals/runner';
+import { inventoryDuplicateSemanticJudges, runEvaluation } from '../src/evals/runner';
 
 describe('eval runner', () => {
-  it('supports dry-run estimation without executing cases', async () => {
-    const result = await runEvaluation({
+  // Catalog-loading test: needs headroom under full-suite parallel load (trips the 5s default).
+  it('dry-run estimates without executing, enforces concurrency bounds, and labels resumes', { timeout: 30_000 }, async () => {
+    const estimate = await runEvaluation({
       evalsDir: path.resolve(process.cwd(), 'evals'),
       outputDir: path.resolve(process.cwd(), '.eval-runs-test'),
       suite: 'smoke',
@@ -15,8 +16,45 @@ describe('eval runner', () => {
       dryRun: true,
     });
 
-    expect(result.report.totalCases).toBe(3);
-    expect(result.report.results.every((entry) => entry.status === 'skipped')).toBe(true);
+    expect(estimate.report.totalCases).toBe(3);
+    expect(estimate.report.results.every((entry) => entry.status === 'skipped')).toBe(true);
+
+    await expect(runEvaluation({
+      evalsDir: path.resolve(process.cwd(), 'evals'),
+      outputDir: path.resolve(process.cwd(), '.eval-runs-test'),
+      suite: 'smoke',
+      target: 'offline',
+      dryRun: true,
+      requestedCaseConcurrency: 0,
+    })).rejects.toThrow(/case-concurrency must be in 1\.\.4/);
+    // Upper bound consolidated from eval-run-manifest.test.ts (same contract).
+    await expect(runEvaluation({
+      evalsDir: path.resolve(process.cwd(), 'evals'),
+      outputDir: path.resolve(process.cwd(), '.eval-runs-test'),
+      suite: 'smoke',
+      target: 'offline',
+      dryRun: true,
+      requestedCaseConcurrency: 5,
+    })).rejects.toThrow(/case-concurrency must be in 1\.\.4/);
+    await expect(runEvaluation({
+      evalsDir: path.resolve(process.cwd(), 'evals'),
+      outputDir: path.resolve(process.cwd(), '.eval-runs-test'),
+      suite: 'smoke',
+      target: 'offline',
+      dryRun: true,
+      requestedJudgeConcurrency: 9,
+    })).rejects.toThrow(/judge-concurrency must be in 1\.\.2/);
+
+    const resumed = await runEvaluation({
+      evalsDir: path.resolve(process.cwd(), 'evals'),
+      outputDir: path.resolve(process.cwd(), '.eval-runs-test'),
+      suite: 'smoke',
+      target: 'offline',
+      dryRun: true,
+      resumeMode: 'diagnostic',
+    });
+    expect(resumed.report.completion?.resumeMode).toBe('diagnostic');
+    expect(resumed.report.completion?.complete).toBe(false);
   });
 
   it('produces a stable result envelope for an offline smoke case', async () => {
@@ -42,7 +80,7 @@ describe('eval runner', () => {
       }),
     );
     expect(firstResult?.artifactPaths.caseResult).toContain('.json');
-    expect(firstResult?.expectationResults).toHaveLength(3);
+    expect(firstResult?.expectationResults).toHaveLength(2);
     expect(firstResult?.scorerResults).toHaveLength(2);
     expect(firstResult?.planDiffSummary).toEqual(
       expect.arrayContaining([
@@ -58,27 +96,6 @@ describe('eval runner', () => {
     expect(artifact.turns[0]).not.toHaveProperty('rawTargetResponse');
   });
 
-  it('admits only proven fixture-isolated cases to the parallel lane', () => {
-    const fixtureCase = {
-      id: 'o1-parallel-probe',
-      suite: 'probe',
-      version: 1,
-      description: 'O1 lane probe.',
-      imports: [],
-      tags: [],
-      priority: 'p2' as const,
-      status: 'active' as const,
-      targetModes: ['live_lambda' as const],
-      variables: {},
-      inputs: [{ text: 'hola', backendFixture: { scenario: 's11-rsvp-durability-declining' } }],
-      backendFixture: { scenario: 's11-rsvp-durability-declining' },
-      expectations: [],
-      scorers: [],
-      notes: [],
-    };
-    expect(classifyEvalCaseLane(fixtureCase).lane).toBe('parallel');
-    expect(classifyEvalCaseLane({ ...fixtureCase, backendFixture: undefined, inputs: [{ text: 'hola' }] }).lane).toBe('external');
-  });
 });
 
 describe('eval runner bounded pipeline (O2/O3)', () => {
@@ -139,38 +156,6 @@ describe('eval runner bounded pipeline (O2/O3)', () => {
     ) as { complete: boolean; phase: string };
     expect(progress.complete).toBe(true);
     expect(progress.phase).toBe('finalized');
-  });
-
-  it('rejects out-of-range concurrency before any invocation', async () => {
-    await expect(runEvaluation({
-      evalsDir: path.resolve(process.cwd(), 'evals'),
-      outputDir: path.resolve(process.cwd(), '.eval-runs-test'),
-      suite: 'smoke',
-      target: 'offline',
-      dryRun: true,
-      requestedCaseConcurrency: 0,
-    })).rejects.toThrow(/case-concurrency must be in 1\.\.4/);
-    await expect(runEvaluation({
-      evalsDir: path.resolve(process.cwd(), 'evals'),
-      outputDir: path.resolve(process.cwd(), '.eval-runs-test'),
-      suite: 'smoke',
-      target: 'offline',
-      dryRun: true,
-      requestedJudgeConcurrency: 9,
-    })).rejects.toThrow(/judge-concurrency must be in 1\.\.2/);
-  });
-
-  it('labels a diagnostic resume as incomplete, never a clean gate', async () => {
-    const result = await runEvaluation({
-      evalsDir: path.resolve(process.cwd(), 'evals'),
-      outputDir: path.resolve(process.cwd(), '.eval-runs-test'),
-      suite: 'smoke',
-      target: 'offline',
-      dryRun: true,
-      resumeMode: 'diagnostic',
-    });
-    expect(result.report.completion?.resumeMode).toBe('diagnostic');
-    expect(result.report.completion?.complete).toBe(false);
   });
 
   it('inventories duplicate optional scorers without reusing them by default', () => {

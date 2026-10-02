@@ -14,7 +14,7 @@ describe('OpenAiMessageResponseClassifier', () => {
     vi.unstubAllGlobals();
   });
 
-  it('uses Structured Outputs, bounded context, and a suppression decision', async () => {
+  it('uses Structured Outputs with bounded context, history window, and a suppression decision', async () => {
     const fetchMock = vi.fn().mockResolvedValue(responseForDecision({
       action: 'suppress_acknowledgement',
       reason: 'acknowledgement',
@@ -98,9 +98,54 @@ describe('OpenAiMessageResponseClassifier', () => {
     };
     expect(classifierInput.inbound_message.length).toBeLessThanOrEqual(1_200);
     expect(classifierInput.recent_messages[0]?.body.length).toBeLessThanOrEqual(400);
+
+    const windowMock = vi.fn().mockResolvedValue(responseForDecision({
+      action: 'respond',
+      reason: 'requires_response',
+    }));
+    vi.stubGlobal('fetch', windowMock);
+    const windowClassifier = new OpenAiMessageResponseClassifier({
+      apiKey: 'test-key',
+      model: 'gpt-5.6-luna',
+      mode: 'enforce',
+      promptLoader,
+    });
+    await windowClassifier.classify({
+      inboundText: 'Necesito ayuda con mi evento.',
+      plan: createEmptyPlan({
+        planId: 'classifier-last-five',
+        channel: 'terminal_whatsapp',
+        externalUserId: '51991347878',
+      }),
+      messages: Array.from({ length: 7 }, (_, index) => ({
+        id: index + 1,
+        direction: index % 2 === 0 ? 'outbound' as const : 'inbound' as const,
+        source: 'agent',
+        body: `message-${index + 1}`,
+        status: 'sent',
+        sentAt: null,
+        createdAt: null,
+      })),
+      contextSource: 'agent_api',
+    });
+
+    const windowCalls = windowMock.mock.calls as unknown as Array<[string, { body?: unknown }]>;
+    const windowRequest = JSON.parse(String(windowCalls[0]?.[1]?.body)) as {
+      input: Array<{ content: string }>;
+    };
+    const windowInput = JSON.parse(windowRequest.input[1]?.content ?? '{}') as {
+      recent_messages: Array<{ body: string }>;
+    };
+    expect(windowInput.recent_messages.map((message) => message.body)).toEqual([
+      'message-3',
+      'message-4',
+      'message-5',
+      'message-6',
+      'message-7',
+    ]);
   });
 
-  it('fails open when the API response cannot be parsed', async () => {
+  it('fails open with an explicit unavailable decision on unusable output', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('not-json', {
       status: 200,
       headers: { 'content-type': 'text/plain' },
@@ -129,6 +174,61 @@ describe('OpenAiMessageResponseClassifier', () => {
       would_suppress: false,
     });
     expect(response.tokenUsage).toBeNull();
+
+    // Enabled reasoning shares the output budget with the structured
+    // schema: an incomplete response must stay an explicit failure path
+    // (respond + classifier_unavailable), never a fabricated decision.
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      id: 'resp_incomplete',
+      object: 'response',
+      created_at: 1,
+      status: 'incomplete',
+      model: 'gpt-5.6-luna',
+      output: [],
+      usage: {
+        input_tokens: 12,
+        output_tokens: 5,
+        total_tokens: 17,
+        input_tokens_details: { cached_tokens: 0, cache_write_tokens: 0 },
+        output_tokens_details: { reasoning_tokens: 5 },
+      },
+      incomplete_details: { reason: 'max_output_tokens' },
+      parallel_tool_calls: true,
+      store: true,
+      temperature: 1,
+      top_p: 1,
+      truncation: 'disabled',
+    }), {
+      status: 200,
+      headers: {
+        'content-type': 'application/json',
+        'x-request-id': 'req_incomplete',
+      },
+    })));
+    const incompleteClassifier = new OpenAiMessageResponseClassifier({
+      apiKey: 'test-key',
+      model: 'gpt-5.6-luna',
+      mode: 'enforce',
+      promptLoader,
+    });
+    const incomplete = await incompleteClassifier.classify({
+      inboundText: 'Gracias',
+      plan: createEmptyPlan({
+        planId: 'classifier-incomplete',
+        channel: 'terminal_whatsapp',
+        externalUserId: '51991347878',
+      }),
+      messages: [],
+      contextSource: 'agent_api',
+    });
+
+    expect(incomplete.trace).toMatchObject({
+      action: 'respond',
+      reason: 'classifier_unavailable',
+      fallback_used: true,
+      would_suppress: false,
+    });
+    expect(incomplete.tokenUsage).toBeNull();
   });
 
   it('propagates permanent quota exhaustion with one HTTP request and no fallback', async () => {
@@ -209,7 +309,7 @@ describe('OpenAiMessageResponseClassifier', () => {
     expect(response.openAiCall?.requestMetrics.transport?.observedRequestCount).toBe(2);
   });
 
-  it('accepts high-confidence automated suppression without outbound context', async () => {
+  it('accepts high-confidence automated suppression with or without outbound context', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(responseForDecision({
       action: 'suppress_automated_response',
       reason: 'automated_response',
@@ -239,9 +339,46 @@ describe('OpenAiMessageResponseClassifier', () => {
       fallback_used: false,
       would_suppress: true,
     });
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(responseForDecision({
+      action: 'suppress_automated_response',
+      reason: 'automated_response',
+    })));
+    const contextualClassifier = new OpenAiMessageResponseClassifier({
+      apiKey: 'test-key',
+      model: 'gpt-5.6-luna',
+      mode: 'enforce',
+      promptLoader,
+    });
+    const contextual = await contextualClassifier.classify({
+      inboundText: 'Gracias por comunicarte. Elige una opción para continuar.',
+      plan: createEmptyPlan({
+        planId: 'classifier-automated-response',
+        channel: 'terminal_whatsapp',
+        externalUserId: '51991347878',
+      }),
+      messages: [{
+        id: 1,
+        direction: 'outbound',
+        source: 'agent',
+        body: 'Hola, ¿en qué podemos ayudarte?',
+        status: 'sent',
+        sentAt: null,
+        createdAt: null,
+      }],
+      contextSource: 'agent_api',
+    });
+
+    expect(contextual.trace).toMatchObject({
+      action: 'suppress_automated_response',
+      reason: 'automated_response',
+      would_suppress: true,
+      has_prior_outbound_message: true,
+      fallback_used: false,
+    });
   });
 
-  it('suppresses a clearly non-actionable acknowledgement without outbound context', async () => {
+  it('honors model suppression decisions without outbound context', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(responseForDecision({
       action: 'suppress_acknowledgement',
       reason: 'acknowledgement',
@@ -252,7 +389,7 @@ describe('OpenAiMessageResponseClassifier', () => {
       mode: 'enforce',
       promptLoader,
     });
-    const response = await classifier.classify({
+    const ack = await classifier.classify({
       inboundText: 'Gracias',
       plan: createEmptyPlan({
         planId: 'classifier-contextual-acknowledgement',
@@ -263,16 +400,45 @@ describe('OpenAiMessageResponseClassifier', () => {
       contextSource: 'agent_api',
     });
 
-    expect(response.trace).toMatchObject({
+    expect(ack.trace).toMatchObject({
       action: 'suppress_acknowledgement',
       reason: 'acknowledgement',
       has_prior_outbound_message: false,
       fallback_used: false,
       would_suppress: true,
     });
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(responseForDecision({
+      action: 'suppress_reaction',
+      reason: 'reaction',
+    })));
+    const reactionClassifier = new OpenAiMessageResponseClassifier({
+      apiKey: 'test-key',
+      model: 'gpt-5.6-luna',
+      mode: 'enforce',
+      promptLoader,
+    });
+    const reaction = await reactionClassifier.classify({
+      inboundText: '🤗🌷',
+      plan: createEmptyPlan({
+        planId: 'classifier-emoji-only-reaction',
+        channel: 'terminal_whatsapp',
+        externalUserId: '51991347878',
+      }),
+      messages: [],
+      contextSource: 'agent_api',
+    });
+
+    expect(reaction.trace).toMatchObject({
+      action: 'suppress_reaction',
+      reason: 'reaction',
+      has_prior_outbound_message: false,
+      fallback_used: false,
+      would_suppress: true,
+    });
   });
 
-  it('never suppresses a reply while an RSVP decision is pending', async () => {
+  it('forces replies while an RSVP decision or a human-help offer is pending', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(responseForDecision({
       action: 'suppress_acknowledgement',
       reason: 'acknowledgement',
@@ -297,17 +463,60 @@ describe('OpenAiMessageResponseClassifier', () => {
       selection_attempts: 0,
     };
 
-    const response = await classifier.classify({
+    const rsvp = await classifier.classify({
       inboundText: 'Sí, asistiré',
       plan,
       messages: [],
       contextSource: 'agent_api',
     });
 
-    expect(response.trace).toMatchObject({
+    expect(rsvp.trace).toMatchObject({
       action: 'respond',
       would_suppress: false,
       fallback_used: true,
+    });
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(responseForDecision({
+      action: 'suppress_acknowledgement',
+      reason: 'acknowledgement',
+      conversation_health: 'progressing',
+      health_reason: 'normal_progress',
+      human_help_response: 'decline',
+    })));
+    const helpClassifier = new OpenAiMessageResponseClassifier({
+      apiKey: 'test-key',
+      model: 'gpt-5.6-luna',
+      mode: 'enforce',
+      promptLoader,
+    });
+    const helpPlan = createEmptyPlan({
+      planId: 'classifier-help-offer',
+      channel: 'terminal_whatsapp',
+      externalUserId: '51991347878',
+    });
+    helpPlan.conversation_health.help_offer_status = 'offered';
+
+    const help = await helpClassifier.classify({
+      inboundText: 'Prefiero continuar por aquí',
+      plan: helpPlan,
+      messages: [{
+        id: 1,
+        direction: 'outbound',
+        source: 'agent',
+        body: '¿Quieres que te pase con una persona del equipo?',
+        status: 'sent',
+        sentAt: null,
+        createdAt: null,
+      }],
+      contextSource: 'agent_api',
+    });
+
+    expect(help.trace).toMatchObject({
+      action: 'respond',
+      reason: 'help_offer_response_requires_reply',
+      human_help_response: 'decline',
+      fallback_used: true,
+      would_suppress: false,
     });
   });
 
@@ -331,7 +540,7 @@ describe('OpenAiMessageResponseClassifier', () => {
     );
   });
 
-  it('passes a typed campaign RSVP decision to structured extraction before RSVP state exists', async () => {
+  it('forces actionable campaign replies through extraction from typed campaign evidence', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(responseForDecision({
       action: 'suppress_acknowledgement',
       reason: 'acknowledgement',
@@ -370,6 +579,44 @@ describe('OpenAiMessageResponseClassifier', () => {
       reason: 'campaign_action_requires_extraction',
       classifier_profile: 'campaign_reply',
       campaign_reply_kind: 'rsvp_decision',
+      would_suppress: false,
+      fallback_used: true,
+    });
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(responseForDecision({
+      action: 'suppress_acknowledgement',
+      reason: 'acknowledgement',
+      campaign_reply_kind: 'question_or_request',
+    })));
+    const questionClassifier = new OpenAiMessageResponseClassifier({
+      apiKey: 'test-key',
+      model: 'gpt-5.6-luna',
+      mode: 'enforce',
+      promptLoader,
+    });
+    const question = await questionClassifier.classify({
+      inboundText: 'Gracias. ¿Cómo configuro el seguimiento?',
+      plan: createEmptyPlan({
+        planId: 'classifier-campaign-question',
+        channel: 'whatsapp',
+        externalUserId: '51995983277',
+      }),
+      messages: [{
+        id: 1,
+        direction: 'outbound',
+        source: 'admin_campaign',
+        body: 'Puedes agendar una llamada y configuramos el seguimiento contigo.',
+        status: 'sent',
+        sentAt: null,
+        createdAt: null,
+      }],
+      contextSource: 'agent_api',
+    });
+
+    expect(question.trace).toMatchObject({
+      action: 'respond',
+      reason: 'campaign_action_requires_extraction',
+      campaign_reply_kind: 'question_or_request',
       would_suppress: false,
       fallback_used: true,
     });
@@ -437,61 +684,21 @@ describe('OpenAiMessageResponseClassifier', () => {
     expect(response.openAiCall?.requestMetrics.instructionBytes).toBeLessThan(4_000);
   });
 
-  it('forces campaign questions through extraction from typed campaign evidence', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(responseForDecision({
-      action: 'suppress_acknowledgement',
-      reason: 'acknowledgement',
-      campaign_reply_kind: 'question_or_request',
-    })));
-    const classifier = new OpenAiMessageResponseClassifier({
-      apiKey: 'test-key',
-      model: 'gpt-5.6-luna',
-      mode: 'enforce',
-      promptLoader,
-    });
-
-    const response = await classifier.classify({
-      inboundText: 'Gracias. ¿Cómo configuro el seguimiento?',
-      plan: createEmptyPlan({
-        planId: 'classifier-campaign-question',
-        channel: 'whatsapp',
-        externalUserId: '51995983277',
-      }),
-      messages: [{
-        id: 1,
-        direction: 'outbound',
-        source: 'admin_campaign',
-        body: 'Puedes agendar una llamada y configuramos el seguimiento contigo.',
-        status: 'sent',
-        sentAt: null,
-        createdAt: null,
-      }],
-      contextSource: 'agent_api',
-    });
-
-    expect(response.trace).toMatchObject({
-      action: 'respond',
-      reason: 'campaign_action_requires_extraction',
-      campaign_reply_kind: 'question_or_request',
-      would_suppress: false,
-      fallback_used: true,
-    });
-  });
-
-  it('uses the general profile when an agent message is newer than an older campaign', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(responseForDecision({
+  it('selects the campaign or general profile by newest campaign evidence', async () => {
+    // A newer agent message over an older campaign uses the general profile.
+    const generalFetch = vi.fn().mockResolvedValue(responseForDecision({
       action: 'suppress_acknowledgement',
       reason: 'acknowledgement',
     }));
-    vi.stubGlobal('fetch', fetchMock);
-    const classifier = new OpenAiMessageResponseClassifier({
+    vi.stubGlobal('fetch', generalFetch);
+    const generalClassifier = new OpenAiMessageResponseClassifier({
       apiKey: 'test-key',
       model: 'gpt-5.6-luna',
       mode: 'enforce',
       promptLoader,
     });
 
-    const response = await classifier.classify({
+    const general = await generalClassifier.classify({
       inboundText: 'Gracias',
       plan: createEmptyPlan({
         planId: 'classifier-old-campaign',
@@ -521,33 +728,32 @@ describe('OpenAiMessageResponseClassifier', () => {
       contextSource: 'agent_api',
     });
 
-    expect(response.trace).toMatchObject({
+    expect(general.trace).toMatchObject({
       action: 'suppress_acknowledgement',
       classifier_profile: 'general',
       campaign_reply_kind: 'not_applicable',
       would_suppress: true,
       fallback_used: false,
     });
-    expect(response.trace.prompt_file_paths).toEqual([
+    expect(general.trace.prompt_file_paths).toEqual([
       'nodes/deteccion_intencion/response_classifier.txt',
     ]);
-  });
 
-  it('keeps typed campaign classification when a later reminder refreshes the campaign', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(responseForDecision({
+    // A later reminder refreshing the campaign keeps typed campaign classification.
+    const campaignFetch = vi.fn().mockResolvedValue(responseForDecision({
       action: 'respond',
       reason: 'requires_response',
       campaign_reply_kind: 'rsvp_decision',
     }));
-    vi.stubGlobal('fetch', fetchMock);
-    const classifier = new OpenAiMessageResponseClassifier({
+    vi.stubGlobal('fetch', campaignFetch);
+    const campaignClassifier = new OpenAiMessageResponseClassifier({
       apiKey: 'test-key',
       model: 'gpt-5.6-luna',
       mode: 'enforce',
       promptLoader,
     });
 
-    const response = await classifier.classify({
+    const campaign = await campaignClassifier.classify({
       inboundText: 'Gracias, confirmo asistencia',
       plan: createEmptyPlan({
         planId: 'classifier-refreshed-campaign',
@@ -586,13 +792,13 @@ describe('OpenAiMessageResponseClassifier', () => {
       contextSource: 'agent_api',
     });
 
-    expect(response.trace).toMatchObject({
+    expect(campaign.trace).toMatchObject({
       action: 'respond',
       classifier_profile: 'campaign_reply',
       campaign_reply_kind: 'rsvp_decision',
       would_suppress: false,
     });
-    const calls = fetchMock.mock.calls as unknown as Array<[string, { body?: unknown }]>;
+    const calls = campaignFetch.mock.calls as unknown as Array<[string, { body?: unknown }]>;
     const request = JSON.parse(String(calls[0]?.[1]?.body)) as {
       input: Array<{ content: string }>;
     };
@@ -605,38 +811,8 @@ describe('OpenAiMessageResponseClassifier', () => {
     });
   });
 
-  it('suppresses an emoji-only reaction even when outbound history is unavailable', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(responseForDecision({
-      action: 'suppress_reaction',
-      reason: 'reaction',
-    })));
-    const classifier = new OpenAiMessageResponseClassifier({
-      apiKey: 'test-key',
-      model: 'gpt-5.6-luna',
-      mode: 'enforce',
-      promptLoader,
-    });
-    const response = await classifier.classify({
-      inboundText: '🤗🌷',
-      plan: createEmptyPlan({
-        planId: 'classifier-emoji-only-reaction',
-        channel: 'terminal_whatsapp',
-        externalUserId: '51991347878',
-      }),
-      messages: [],
-      contextSource: 'agent_api',
-    });
-
-    expect(response.trace).toMatchObject({
-      action: 'suppress_reaction',
-      reason: 'reaction',
-      has_prior_outbound_message: false,
-      fallback_used: false,
-      would_suppress: true,
-    });
-  });
-
-  it('normalizes high-confidence current-sender corporate reception evidence to suppression', async () => {
+  it('resolves automated suppression by confidence and sender scope', async () => {
+    // High-confidence current-sender corporate reception normalizes to suppression.
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(responseForDecision({
       action: 'respond',
       reason: 'requires_response',
@@ -644,13 +820,13 @@ describe('OpenAiMessageResponseClassifier', () => {
       automation_pattern: 'generic_corporate_reception',
       automation_scope: 'current_sender',
     })));
-    const classifier = new OpenAiMessageResponseClassifier({
+    const receptionClassifier = new OpenAiMessageResponseClassifier({
       apiKey: 'test-key',
       model: 'gpt-5.6-luna',
       mode: 'enforce',
       promptLoader,
     });
-    const response = await classifier.classify({
+    const reception = await receptionClassifier.classify({
       inboundText: 'Gracias por comunicarte con GoCleaning. ¿Cómo podemos ayudarte?',
       plan: createEmptyPlan({
         planId: 'classifier-generic-corporate-reception',
@@ -669,7 +845,7 @@ describe('OpenAiMessageResponseClassifier', () => {
       contextSource: 'agent_api',
     });
 
-    expect(response.trace).toMatchObject({
+    expect(reception.trace).toMatchObject({
       action: 'suppress_automated_response',
       reason: 'automated_response',
       automation_confidence: 'high',
@@ -678,9 +854,8 @@ describe('OpenAiMessageResponseClassifier', () => {
       fallback_used: true,
       would_suppress: true,
     });
-  });
 
-  it('does not suppress high-confidence automation quoted by a human', async () => {
+    // Quoted or discussed automation stays a reply.
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(responseForDecision({
       action: 'respond',
       reason: 'requires_response',
@@ -694,7 +869,7 @@ describe('OpenAiMessageResponseClassifier', () => {
       mode: 'enforce',
       promptLoader,
     });
-    const response = await classifier.classify({
+    const quoted = await classifier.classify({
       inboundText: 'Me enviaron el menú del proveedor. ¿Qué opción elijo?',
       plan: createEmptyPlan({
         planId: 'classifier-quoted-automation',
@@ -705,7 +880,7 @@ describe('OpenAiMessageResponseClassifier', () => {
       contextSource: 'agent_api',
     });
 
-    expect(response.trace).toMatchObject({
+    expect(quoted.trace).toMatchObject({
       action: 'respond',
       automation_confidence: 'high',
       automation_pattern: 'interactive_menu',
@@ -713,21 +888,19 @@ describe('OpenAiMessageResponseClassifier', () => {
       fallback_used: false,
       would_suppress: false,
     });
-  });
 
-  it('rejects automated suppression without explicit high confidence', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(responseForDecision({
       action: 'suppress_automated_response',
       reason: 'automated_response',
       automation_confidence: 'uncertain',
     })));
-    const classifier = new OpenAiMessageResponseClassifier({
+    const uncertainClassifier = new OpenAiMessageResponseClassifier({
       apiKey: 'test-key',
       model: 'gpt-5.6-luna',
       mode: 'enforce',
       promptLoader,
     });
-    const response = await classifier.classify({
+    const uncertain = await uncertainClassifier.classify({
       inboundText: 'Gracias por escribir. En breve te respondemos.',
       plan: createEmptyPlan({
         planId: 'classifier-automation-confidence',
@@ -746,201 +919,13 @@ describe('OpenAiMessageResponseClassifier', () => {
       contextSource: 'agent_api',
     });
 
-    expect(response.trace).toMatchObject({
+    expect(uncertain.trace).toMatchObject({
       action: 'respond',
       reason: 'automation_confidence_insufficient',
       automation_confidence: 'uncertain',
       fallback_used: true,
       would_suppress: false,
     });
-  });
-
-  it('accepts a high-confidence automated-response suppression with outbound context', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(responseForDecision({
-      action: 'suppress_automated_response',
-      reason: 'automated_response',
-    })));
-    const classifier = new OpenAiMessageResponseClassifier({
-      apiKey: 'test-key',
-      model: 'gpt-5.6-luna',
-      mode: 'enforce',
-      promptLoader,
-    });
-    const response = await classifier.classify({
-      inboundText: 'Gracias por comunicarte. Elige una opción para continuar.',
-      plan: createEmptyPlan({
-        planId: 'classifier-automated-response',
-        channel: 'terminal_whatsapp',
-        externalUserId: '51991347878',
-      }),
-      messages: [{
-        id: 1,
-        direction: 'outbound',
-        source: 'agent',
-        body: 'Hola, ¿en qué podemos ayudarte?',
-        status: 'sent',
-        sentAt: null,
-        createdAt: null,
-      }],
-      contextSource: 'agent_api',
-    });
-
-    expect(response.trace).toMatchObject({
-      action: 'suppress_automated_response',
-      reason: 'automated_response',
-      would_suppress: true,
-      has_prior_outbound_message: true,
-      fallback_used: false,
-    });
-  });
-
-  it('passes only the latest five history messages to the model', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(responseForDecision({
-      action: 'respond',
-      reason: 'requires_response',
-    }));
-    vi.stubGlobal('fetch', fetchMock);
-    const classifier = new OpenAiMessageResponseClassifier({
-      apiKey: 'test-key',
-      model: 'gpt-5.6-luna',
-      mode: 'enforce',
-      promptLoader,
-    });
-    await classifier.classify({
-      inboundText: 'Necesito ayuda con mi evento.',
-      plan: createEmptyPlan({
-        planId: 'classifier-last-five',
-        channel: 'terminal_whatsapp',
-        externalUserId: '51991347878',
-      }),
-      messages: Array.from({ length: 7 }, (_, index) => ({
-        id: index + 1,
-        direction: index % 2 === 0 ? 'outbound' as const : 'inbound' as const,
-        source: 'agent',
-        body: `message-${index + 1}`,
-        status: 'sent',
-        sentAt: null,
-        createdAt: null,
-      })),
-      contextSource: 'agent_api',
-    });
-
-    const calls = fetchMock.mock.calls as unknown as Array<[string, { body?: unknown }]>;
-    const request = JSON.parse(String(calls[0]?.[1]?.body)) as {
-      input: Array<{ content: string }>;
-    };
-    const classifierInput = JSON.parse(request.input[1]?.content ?? '{}') as {
-      recent_messages: Array<{ body: string }>;
-    };
-    expect(classifierInput.recent_messages.map((message) => message.body)).toEqual([
-      'message-3',
-      'message-4',
-      'message-5',
-      'message-6',
-      'message-7',
-    ]);
-  });
-
-  it('forces a reply while a human-help offer is awaiting an answer', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(responseForDecision({
-      action: 'suppress_acknowledgement',
-      reason: 'acknowledgement',
-      conversation_health: 'progressing',
-      health_reason: 'normal_progress',
-      human_help_response: 'decline',
-    })));
-    const classifier = new OpenAiMessageResponseClassifier({
-      apiKey: 'test-key',
-      model: 'gpt-5.6-luna',
-      mode: 'enforce',
-      promptLoader,
-    });
-    const plan = createEmptyPlan({
-      planId: 'classifier-help-offer',
-      channel: 'terminal_whatsapp',
-      externalUserId: '51991347878',
-    });
-    plan.conversation_health.help_offer_status = 'offered';
-
-    const response = await classifier.classify({
-      inboundText: 'Prefiero continuar por aquí',
-      plan,
-      messages: [{
-        id: 1,
-        direction: 'outbound',
-        source: 'agent',
-        body: '¿Quieres que te pase con una persona del equipo?',
-        status: 'sent',
-        sentAt: null,
-        createdAt: null,
-      }],
-      contextSource: 'agent_api',
-    });
-
-    expect(response.trace).toMatchObject({
-      action: 'respond',
-      reason: 'help_offer_response_requires_reply',
-      human_help_response: 'decline',
-      fallback_used: true,
-      would_suppress: false,
-    });
-  });
-
-  it('fails open with an explicit unavailable decision on incomplete output', async () => {
-    // Enabled reasoning shares the output budget with the structured
-    // schema: an incomplete response must stay an explicit failure path
-    // (respond + classifier_unavailable), never a fabricated decision.
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
-      id: 'resp_incomplete',
-      object: 'response',
-      created_at: 1,
-      status: 'incomplete',
-      model: 'gpt-5.6-luna',
-      output: [],
-      usage: {
-        input_tokens: 12,
-        output_tokens: 5,
-        total_tokens: 17,
-        input_tokens_details: { cached_tokens: 0, cache_write_tokens: 0 },
-        output_tokens_details: { reasoning_tokens: 5 },
-      },
-      incomplete_details: { reason: 'max_output_tokens' },
-      parallel_tool_calls: true,
-      store: true,
-      temperature: 1,
-      top_p: 1,
-      truncation: 'disabled',
-    }), {
-      status: 200,
-      headers: {
-        'content-type': 'application/json',
-        'x-request-id': 'req_incomplete',
-      },
-    })));
-    const classifier = new OpenAiMessageResponseClassifier({
-      apiKey: 'test-key',
-      model: 'gpt-5.6-luna',
-      mode: 'enforce',
-      promptLoader,
-    });
-    const response = await classifier.classify({
-      inboundText: 'Gracias',
-      plan: createEmptyPlan({
-        planId: 'classifier-incomplete',
-        channel: 'terminal_whatsapp',
-        externalUserId: '51991347878',
-      }),
-      messages: [],
-      contextSource: 'agent_api',
-    });
-
-    expect(response.trace).toMatchObject({
-      action: 'respond',
-      reason: 'classifier_unavailable',
-      fallback_used: true,
-      would_suppress: false,
-    });
-    expect(response.tokenUsage).toBeNull();
   });
 
   it('keeps the labelled corpus balanced for automated responses and lookalikes', () => {

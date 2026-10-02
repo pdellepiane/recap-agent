@@ -440,6 +440,7 @@ export type ModelVisibleHistoryEntry = {
   source: string | null;
   body: string;
   sent_at: string | null;
+  event_id?: number;
   /**
    * Present only on provenance-bound campaign entries so the reply keeps
    * reference identity and delivery certainty when the operational note is
@@ -457,6 +458,7 @@ export function buildModelVisibleConversationHistory(
     source: message.source,
     body: truncateMessageBody(message.body),
     sent_at: message.sentAt ?? message.createdAt,
+    ...(message.eventId ? { event_id: message.eventId } : {}),
     ...(isProvenanceBoundCampaignMessage(message)
       ? {
         message_id: message.id,
@@ -504,6 +506,7 @@ export type ExtractorHistoryEntry = {
   source: string | null;
   body: string;
   sent_at: string | null;
+  event_id?: number;
   /**
    * Present only on provenance-bound campaign entries so the separate
    * campaign projection can reference them by ID instead of repeating
@@ -524,6 +527,7 @@ function extractorHistoryEntries(
     source: message.source,
     body: message.body.slice(0, extractorHistoryBodyBytes),
     sent_at: message.sentAt ?? message.createdAt,
+    ...(message.eventId ? { event_id: message.eventId } : {}),
     ...(isProvenanceBoundCampaignMessage(message)
       ? {
         message_id: message.id,

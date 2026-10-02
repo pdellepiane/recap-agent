@@ -75,7 +75,7 @@ describe('S02 simulated effects fail closed', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('OTP is one-shot across invocations sharing run/case state', async () => {
+  it('OTP request and verify are one-shot and unknown scenarios fail hard', async () => {
     denyNetwork();
     const store = new InMemoryEvalFixtureStateStore();
     const first = await FixtureAgentConversationGateway.create('s02-otp-nondelivery', undefined, {
@@ -94,20 +94,15 @@ describe('S02 simulated effects fail closed', () => {
     expect(resend.status).toBe('failed');
     expect(first.getFixtureCallCount('otp.request')).toBe(1);
     expect(await store.count('run-otp', 'case-otp', 'otp.request')).toBe(2);
-  });
-
-  it('OTP verify is one-shot and unknown scenario is hard failure', async () => {
-    denyNetwork();
-    const store = new InMemoryEvalFixtureStateStore();
-    const gateway = await FixtureAgentConversationGateway.create('s02-otp-number-words', undefined, {
+    const verifier = await FixtureAgentConversationGateway.create('s02-otp-number-words', undefined, {
       runId: 'run-v',
       caseId: 'case-v',
       stateStore: store,
     });
-    const first = await gateway.verifyUserLoginCode('a@example.invalid', '123456');
-    expect(first.status).toBe('authenticated');
-    const second = await gateway.verifyUserLoginCode('a@example.invalid', '123456');
-    expect(second.status).toBe('failed');
+    const verified = await verifier.verifyUserLoginCode('a@example.invalid', '123456');
+    expect(verified.status).toBe('authenticated');
+    const replayed = await verifier.verifyUserLoginCode('a@example.invalid', '123456');
+    expect(replayed.status).toBe('failed');
     const unknown = await FixtureAgentConversationGateway.create('missing-xyz');
     const failed = await unknown.requestUserLoginCode('a@example.invalid');
     expect(failed.status).toBe('unavailable');
@@ -189,36 +184,33 @@ describe('S02 simulated effects fail closed', () => {
     expect(id).toBe('fixture-rsvp.write-s02-rsvp-reversal-run-1-1');
   });
 
-  it('rsvp isolation teardown with unknown prior performs no write', async () => {
-    const guestRsvp = vi.fn(async () => ({ status: 'responded' as const, action: 'attending' as const, willAttend: true, guestId: 1, eventName: null, eventDate: null }));
-    const context = await setupRsvpIsolationWithGateway({
+  it('rsvp isolation seam skips unknown priors and restores explicit ones without network', async () => {
+    const unknownWrite = vi.fn(async () => ({ status: 'responded' as const, action: 'attending' as const, willAttend: true, guestId: 1, eventName: null, eventDate: null }));
+    const unknownContext = await setupRsvpIsolationWithGateway({
       setup: { guestId: 1, eventName: 'E', phone: '+51900000001', targetState: 'attending' },
-    }, { guestRsvp } as unknown as { guestRsvp: (input: unknown) => Promise<unknown> } as never);
-    expect(guestRsvp).toHaveBeenCalledTimes(1);
-    expect(context?.priorState).toBeNull();
-    guestRsvp.mockClear();
+    }, { guestRsvp: unknownWrite } as unknown as { guestRsvp: (input: unknown) => Promise<unknown> } as never);
+    expect(unknownWrite).toHaveBeenCalledTimes(1);
+    expect(unknownContext?.priorState).toBeNull();
+    unknownWrite.mockClear();
     await teardownRsvpIsolationWithGateway({
       setup: { guestId: 1, eventName: 'E', phone: '+51900000001', targetState: 'attending' },
       teardown: { guestId: 1, eventName: 'E', phone: '+51900000001', restore: true },
-    }, context, { guestRsvp } as unknown as { guestRsvp: (input: unknown) => Promise<unknown> } as never);
-    expect(guestRsvp).not.toHaveBeenCalled();
-  });
-
-  it('rsvp isolation seam restores explicit prior without network', async () => {
+    }, unknownContext, { guestRsvp: unknownWrite } as unknown as { guestRsvp: (input: unknown) => Promise<unknown> } as never);
+    expect(unknownWrite).not.toHaveBeenCalled();
     // O1 verified-setup contract: a write must confirm the requested
     // attendance, so the double answers each call honestly — attending for
     // the setup write, declining for the restore write.
-    const guestRsvp = vi.fn(async (input: { action?: string }) => (input.action === 'attending'
+    const restoreWrite = vi.fn(async (input: { action?: string }) => (input.action === 'attending'
       ? { status: 'responded' as const, action: 'attending' as const, willAttend: true, guestId: 2, eventName: null, eventDate: null }
       : { status: 'responded' as const, action: 'declining' as const, willAttend: false, guestId: 2, eventName: null, eventDate: null }));
-    const context = await setupRsvpIsolationWithGateway({
+    const restoreContext = await setupRsvpIsolationWithGateway({
       setup: { guestId: 2, eventName: 'E', phone: '+51900000002', targetState: 'attending', priorState: 'declining' },
-    }, { guestRsvp } as unknown as { guestRsvp: (input: unknown) => Promise<unknown> } as never);
-    expect(context?.priorState).toBe('declining');
+    }, { guestRsvp: restoreWrite } as unknown as { guestRsvp: (input: unknown) => Promise<unknown> } as never);
+    expect(restoreContext?.priorState).toBe('declining');
     await teardownRsvpIsolationWithGateway({
       setup: { guestId: 2, eventName: 'E', phone: '+51900000002', targetState: 'attending', priorState: 'declining' },
       teardown: { guestId: 2, eventName: 'E', phone: '+51900000002', restore: true },
-    }, context, { guestRsvp } as unknown as { guestRsvp: (input: unknown) => Promise<unknown> } as never);
-    expect(guestRsvp).toHaveBeenCalledTimes(2);
+    }, restoreContext, { guestRsvp: restoreWrite } as unknown as { guestRsvp: (input: unknown) => Promise<unknown> } as never);
+    expect(restoreWrite).toHaveBeenCalledTimes(2);
   });
 });

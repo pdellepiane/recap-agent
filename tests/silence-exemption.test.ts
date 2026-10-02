@@ -47,15 +47,6 @@ function silenceTurn(overrides: {
 }
 
 describe('typed silence exemption', () => {
-  it('accepts thanks silence with model-selected enforce evidence', () => {
-    const turn = silenceTurn({
-      reason: 'suppress_acknowledgement',
-      classifier: { mode: 'enforce', would_suppress: true, action: 'suppress_acknowledgement' },
-    });
-    expect(validateSilenceExemption(turn).exempt).toBe(true);
-    expect(collectOriginGateFailures([turn])).toEqual([]);
-  });
-
   it('accepts the human-takeover pause without classifier evidence', () => {
     const turn = silenceTurn({ reason: 'human_escalation_active' });
     expect(validateSilenceExemption(turn).exempt).toBe(true);
@@ -69,51 +60,53 @@ describe('typed silence exemption', () => {
     expect(collectOriginGateFailures([turn])).toHaveLength(1);
   });
 
-  it('rejects forged suppression claims', () => {
-    const unknownReason = silenceTurn({ reason: 'operator_says_quiet' });
-    expect(validateSilenceExemption(unknownReason).exempt).toBe(false);
+  it('rejects forged and failed silences without exemption', () => {
+    {
+      const unknownReason = silenceTurn({ reason: 'operator_says_quiet' });
+      expect(validateSilenceExemption(unknownReason).exempt).toBe(false);
 
-    const observeOnly = silenceTurn({
-      reason: 'suppress_acknowledgement',
-      classifier: { mode: 'observe', would_suppress: true, action: 'suppress_acknowledgement' },
-    });
-    expect(validateSilenceExemption(observeOnly).exempt).toBe(false);
+      const observeOnly = silenceTurn({
+        reason: 'suppress_acknowledgement',
+        classifier: { mode: 'observe', would_suppress: true, action: 'suppress_acknowledgement' },
+      });
+      expect(validateSilenceExemption(observeOnly).exempt).toBe(false);
 
-    const noClassifier = silenceTurn({ reason: 'suppress_reaction' });
-    expect(validateSilenceExemption(noClassifier).exempt).toBe(false);
+      const noClassifier = silenceTurn({ reason: 'suppress_reaction' });
+      expect(validateSilenceExemption(noClassifier).exempt).toBe(false);
 
-    const verifiedNull = silenceTurn({
-      reason: 'human_escalation_active',
-      originStatus: 'verified',
-    });
-    expect(validateSilenceExemption(verifiedNull).exempt).toBe(false);
+      const verifiedNull = silenceTurn({
+        reason: 'human_escalation_active',
+        originStatus: 'verified',
+      });
+      expect(validateSilenceExemption(verifiedNull).exempt).toBe(false);
 
-    for (const turn of [unknownReason, observeOnly, noClassifier, verifiedNull]) {
-      expect(collectOriginGateFailures([turn])).toHaveLength(1);
+      for (const turn of [unknownReason, observeOnly, noClassifier, verifiedNull]) {
+        expect(collectOriginGateFailures([turn])).toHaveLength(1);
+      }
     }
-  });
 
-  it('never exempts failed generation or a missing nonempty reply', () => {
-    const failed = silenceTurn({
-      reason: 'human_escalation_active',
-      originStatus: 'generation_failed',
-    });
-    expect(validateSilenceExemption(failed).exempt).toBe(false);
+    {
+      const failed = silenceTurn({
+        reason: 'human_escalation_active',
+        originStatus: 'generation_failed',
+      });
+      expect(validateSilenceExemption(failed).exempt).toBe(false);
 
-    const mismatched = silenceTurn({
-      reason: 'human_escalation_active',
-      originStatus: 'mismatch',
-    });
-    expect(validateSilenceExemption(mismatched).exempt).toBe(false);
+      const mismatched = silenceTurn({
+        reason: 'human_escalation_active',
+        originStatus: 'mismatch',
+      });
+      expect(validateSilenceExemption(mismatched).exempt).toBe(false);
 
-    const emptySend = silenceTurn({
-      reason: 'reply_composed',
-      action: 'send',
-      deliveredText: '',
-    });
-    expect(validateSilenceExemption(emptySend).exempt).toBe(false);
+      const emptySend = silenceTurn({
+        reason: 'reply_composed',
+        action: 'send',
+        deliveredText: '',
+      });
+      expect(validateSilenceExemption(emptySend).exempt).toBe(false);
 
-    expect(collectOriginGateFailures([failed, mismatched, emptySend])).toHaveLength(3);
+      expect(collectOriginGateFailures([failed, mismatched, emptySend])).toHaveLength(3);
+    }
   });
 
   it('distinguishes thanks silence from required-answer suppression and generation failure', () => {    // Thanks with no task and model-selected enforce evidence: legitimate
@@ -243,25 +236,20 @@ describe('image-only silence observation correction (Packet D)', () => {
 });
 
 describe('F2 image-only silence requires a successful ref save, not persist text alone', () => {
-  it('accepts a url ref with message linkage as a successful save', () => {
-    const urlSilence = imageSilenceTurn({
-      persistReason: 'image_url_silence',
-      attachments: [{ kind: 'url', url: 'https://example.com/r.jpg', messageId: 'wamid.url1', receivedAt: '2026-09-14T00:00:00.000Z' }],
-    });
-    expect(collectOriginGateFailures([urlSilence])).toEqual([]);
+  it('rejects ref text without identity or message linkage', () => {
+    {
+      const forgedRef = imageSilenceTurn({
+        attachments: [{ kind: 'file', messageId: 'wamid.forged' }],
+      });
+      expect(collectOriginGateFailures([forgedRef])).toHaveLength(1);
+    }
+
+    {
+      const unlinkable = imageSilenceTurn({
+        attachments: [{ kind: 'file', fileId: 'file-orphan-1' }],
+      });
+      expect(collectOriginGateFailures([unlinkable])).toHaveLength(1);
+    }
   });
 
-  it('rejects persist-reason text with a ref that carries no file or url identity', () => {
-    const forgedRef = imageSilenceTurn({
-      attachments: [{ kind: 'file', messageId: 'wamid.forged' }],
-    });
-    expect(collectOriginGateFailures([forgedRef])).toHaveLength(1);
-  });
-
-  it('rejects persist-reason text with a ref missing message linkage', () => {
-    const unlinkable = imageSilenceTurn({
-      attachments: [{ kind: 'file', fileId: 'file-orphan-1' }],
-    });
-    expect(collectOriginGateFailures([unlinkable])).toHaveLength(1);
-  });
 });

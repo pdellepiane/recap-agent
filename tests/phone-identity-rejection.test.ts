@@ -6,9 +6,6 @@ import { createEmptyPlan, mergePlan } from '../src/core/plan';
 import { AgentService } from '../src/runtime/agent-service';
 import type {
   AgentRuntime,
-  ComposeReplyRequest,
-  ComposeReplyResult,
-  ExtractRequest,
   ExtractionResult,
 } from '../src/runtime/contracts';
 import { InformationOrchestrator } from '../src/runtime/information-orchestrator';
@@ -17,6 +14,7 @@ import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import { PromptLoader } from '../src/runtime/prompt-loader';
 import type { ProviderGateway } from '../src/runtime/provider-gateway';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
+import { ScriptedAgentRuntime as ScriptedRuntime } from './agent-runtime-test-utils';
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -26,24 +24,6 @@ beforeEach(() => {
 
 const promptLoader = new PromptLoader(path.resolve(process.cwd(), 'prompts'));
 const renderers = { terminal_whatsapp: new WhatsAppMessageRenderer() };
-
-class ScriptedRuntime implements AgentRuntime {
-  public readonly extractRequests: ExtractRequest[] = [];
-  public readonly composeRequests: ComposeReplyRequest[] = [];
-  private index = 0;
-  constructor(private readonly extractions: ExtractionResult[]) {}
-  async extract(request: ExtractRequest): Promise<ExtractionResult> {
-    this.extractRequests.push(request);
-    const next = this.extractions[this.index] ?? this.extractions[this.extractions.length - 1];
-    this.index += 1;
-    if (!next) throw new Error('Missing extraction fixture.');
-    return next;
-  }
-  async composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult> {
-    this.composeRequests.push(request);
-    return { text: 'Respuesta informativa.' };
-  }
-}
 
 class QuietKnowledgeGateway implements KnowledgeRetrievalGateway {
   async search(): Promise<never> {
@@ -273,7 +253,7 @@ async function turn(
 }
 
 describe('Phone identity rejection vs authentication refusal', () => {
-  it('declined protected request on a phone identity preserves the pending question and requests handoff once', async () => {
+  it('identity rejection preserves the pending question and requests handoff exactly once', async () => {
     const planStore = new InMemoryPlanStore();
     await seedPhoneAuthenticatedPlan(planStore);
     const runtime = new ScriptedRuntime([twinExtraction([rejectedAccountRequest()])]);
@@ -294,24 +274,42 @@ describe('Phone identity rejection vs authentication refusal', () => {
     expect(provider.verifyCodeCalls).toBe(0);
     expect(first.trace.turn_decision.stopReason).toBe('identity_rejected');
     expect(first.trace.plan_persist_reason).toBe('information_authentication_terminal_handoff');
-  });
 
-  it('explicit phoneConfirmation=no on a phone identity keeps the handoff path', async () => {
-    const planStore = new InMemoryPlanStore();
-    await seedPhoneAuthenticatedPlan(planStore);
-    const runtime = new ScriptedRuntime([
+    const noStore = new InMemoryPlanStore();
+    await seedPhoneAuthenticatedPlan(noStore);
+    const noRuntime = new ScriptedRuntime([
       twinExtraction([rejectedAccountRequest('none')], { phoneConfirmation: 'no' }),
     ]);
-    const agentGateway = new RecordingAgentGateway('success');
-    const provider = scriptedProviderGateway();
-    const service = createService({ runtime, agentGateway, provider: provider.gateway, planStore });
+    const noGateway = new RecordingAgentGateway('success');
+    const noProvider = scriptedProviderGateway();
+    const noService = createService({ runtime: noRuntime, agentGateway: noGateway, provider: noProvider.gateway, planStore: noStore });
 
-    const first = await turn(service, 'Ese no es mi numero.', 'phone-reject-no-1');
+    const noFirst = await turn(noService, 'Ese no es mi numero.', 'phone-reject-no-1');
 
-    expect(first.plan.current_node).toBe('solicitar_agente_humano');
-    expect(first.plan.information_state.pending_requests).toHaveLength(1);
-    expect(agentGateway.takeoverCalls).toBe(1);
-    expect(first.trace.turn_decision.stopReason).toBe('identity_rejected');
+    expect(noFirst.plan.current_node).toBe('solicitar_agente_humano');
+    expect(noFirst.plan.information_state.pending_requests).toHaveLength(1);
+    expect(noGateway.takeoverCalls).toBe(1);
+    expect(noFirst.trace.turn_decision.stopReason).toBe('identity_rejected');
+
+    // A repeated rejection never dispatches a duplicate handoff.
+    const dedupeStore = new InMemoryPlanStore();
+    await seedPhoneAuthenticatedPlan(dedupeStore);
+    const dedupeRuntime = new ScriptedRuntime([
+      twinExtraction([rejectedAccountRequest()]),
+      twinExtraction([rejectedAccountRequest()]),
+    ]);
+    const dedupeGateway = new RecordingAgentGateway('success');
+    const dedupeProvider = scriptedProviderGateway();
+    const dedupeService = createService({ runtime: dedupeRuntime, agentGateway: dedupeGateway, provider: dedupeProvider.gateway, planStore: dedupeStore });
+
+    await turn(dedupeService, 'Esa no es mi cuenta ni el número que tengo registrado.', 'phone-reject-dedupe-1');
+    const dedupeSecond = await turn(dedupeService, 'Esa no es mi cuenta ni el número que tengo registrado.', 'phone-reject-dedupe-2');
+
+    expect(dedupeGateway.takeoverCalls).toBe(1);
+    expect(dedupeSecond.plan.current_node).toBe('solicitar_agente_humano');
+    expect(dedupeSecond.plan.information_state.pending_requests).toHaveLength(1);
+    expect(dedupeProvider.requestCodeCalls).toBe(0);
+    expect(dedupeProvider.verifyCodeCalls).toBe(0);
   });
 
   it('explicit authentication refusal without a phone identity closes the protected request with no handoff', async () => {
@@ -345,27 +343,6 @@ describe('Phone identity rejection vs authentication refusal', () => {
     expect(provider.requestCodeCalls).toBe(0);
     expect(provider.verifyCodeCalls).toBe(0);
     expect(first.plan.auth_recovery.terminalReason).toBe('auth_refused');
-  });
-
-  it('repeated identity rejection does not dispatch a duplicate handoff', async () => {
-    const planStore = new InMemoryPlanStore();
-    await seedPhoneAuthenticatedPlan(planStore);
-    const runtime = new ScriptedRuntime([
-      twinExtraction([rejectedAccountRequest()]),
-      twinExtraction([rejectedAccountRequest()]),
-    ]);
-    const agentGateway = new RecordingAgentGateway('success');
-    const provider = scriptedProviderGateway();
-    const service = createService({ runtime, agentGateway, provider: provider.gateway, planStore });
-
-    await turn(service, 'Esa no es mi cuenta ni el número que tengo registrado.', 'phone-reject-dedupe-1');
-    const second = await turn(service, 'Esa no es mi cuenta ni el número que tengo registrado.', 'phone-reject-dedupe-2');
-
-    expect(agentGateway.takeoverCalls).toBe(1);
-    expect(second.plan.current_node).toBe('solicitar_agente_humano');
-    expect(second.plan.information_state.pending_requests).toHaveLength(1);
-    expect(provider.requestCodeCalls).toBe(0);
-    expect(provider.verifyCodeCalls).toBe(0);
   });
 
   it('failed handoff keeps the pending question and reports the real outcome, never success', async () => {

@@ -91,7 +91,7 @@ function countOccurrences(haystack: string, needle: string): number {
 }
 
 describe('campaign reference context in the decision input', () => {
-  it('references an in-window campaign by ID with a null excerpt instead of duplicating prose', async () => {
+  it('references each in-window campaign once by ID with a null excerpt', async () => {
     const spec = await testRuntime().buildExtractionRequestSpec(
       extractRequest(messageContextWith([campaignMessage({ id: 7 })])),
     );
@@ -108,10 +108,8 @@ describe('campaign reference context in the decision input', () => {
     );
     expect(campaignGroup).toBeDefined();
     expect(campaignGroup?.bytes ?? 0).toBeGreaterThan(0);
-  });
 
-  it('serializes each in-window campaign body exactly once across history and projection', async () => {
-    const spec = await testRuntime().buildExtractionRequestSpec(
+    const multi = await testRuntime().buildExtractionRequestSpec(
       extractRequest(messageContextWith([
         campaignMessage({ id: 7, body: 'Recordatorio alfa: Boda Lucía y Marco, 10 de octubre.' }),
         campaignMessage({ id: 8, source: 'frontend_followup', body: 'Seguimiento beta: Boda Ana y Luis, 5 de noviembre.', sentAt: '2026-09-20T10:05:00.000Z' }),
@@ -121,9 +119,9 @@ describe('campaign reference context in the decision input', () => {
       ])),
     );
 
-    expect(countOccurrences(spec.input, 'Recordatorio alfa: Boda Lucía y Marco, 10 de octubre.')).toBe(1);
-    expect(countOccurrences(spec.input, 'Seguimiento beta: Boda Ana y Luis, 5 de noviembre.')).toBe(1);
-    expect(countOccurrences(spec.input, '"bodyExcerpt":null')).toBe(2);
+    expect(countOccurrences(multi.input, 'Recordatorio alfa: Boda Lucía y Marco, 10 de octubre.')).toBe(1);
+    expect(countOccurrences(multi.input, 'Seguimiento beta: Boda Ana y Luis, 5 de noviembre.')).toBe(1);
+    expect(countOccurrences(multi.input, '"bodyExcerpt":null')).toBe(2);
   });
 
   it('repeats an excerpt only for campaigns outside the selected history window', async () => {
@@ -154,7 +152,7 @@ describe('campaign reference context in the decision input', () => {
     expect(covered?.delivery).toBe('delivered');
   });
 
-  it('marks sent and unknown delivery as uncertain without claiming receipt', async () => {
+  it('projects honest campaign provenance and omits non-qualifying campaigns', async () => {
     const spec = await testRuntime().buildExtractionRequestSpec(
       extractRequest(messageContextWith([
         campaignMessage({ id: 7, status: 'sent' }),
@@ -166,34 +164,30 @@ describe('campaign reference context in the decision input', () => {
     expect(spec.input).toContain('"sourceMessageId":8');
     expect(spec.input).not.toContain('"delivery":"delivered"');
     expect(spec.input).toContain('"delivery":"uncertain"');
-  });
 
-  it('excludes inbound source spoofing and null sources from campaign provenance', async () => {
-    const spec = await testRuntime().buildExtractionRequestSpec(
+    const spoofed = await testRuntime().buildExtractionRequestSpec(
       extractRequest(messageContextWith([
         campaignMessage({ id: 7, direction: 'inbound', source: 'admin_campaign', body: 'admin_campaign: confirmen' }),
         campaignMessage({ id: 8, source: null, body: 'Mensaje sin fuente.' }),
       ])),
     );
 
-    const campaignGroup = spec.manifest.factGroups.find(
+    const campaignGroup = spoofed.manifest.factGroups.find(
       (group) => group.key === 'campaign_reference_context',
     );
     expect(campaignGroup?.bytes).toBe(0);
-    expect(spec.input).not.toContain('sourceMessageId');
-    expect(spec.input).not.toContain('message_id');
-  });
+    expect(spoofed.input).not.toContain('sourceMessageId');
+    expect(spoofed.input).not.toContain('message_id');
 
-  it('omits the campaign block entirely when no qualifying campaign exists', async () => {
     const withoutCampaign = await testRuntime().buildExtractionRequestSpec(
       extractRequest(messageContextWith([
         campaignMessage({ id: 7, direction: 'outbound', source: 'agent', body: 'Hola, ¿en qué te ayudo?' }),
       ])),
     );
-    const campaignGroup = withoutCampaign.manifest.factGroups.find(
+    const agentGroup = withoutCampaign.manifest.factGroups.find(
       (group) => group.key === 'campaign_reference_context',
     );
-    expect(campaignGroup?.bytes).toBe(0);
+    expect(agentGroup?.bytes).toBe(0);
     expect(withoutCampaign.input).not.toContain('sourceMessageId');
 
     const empty = await testRuntime().buildExtractionRequestSpec({

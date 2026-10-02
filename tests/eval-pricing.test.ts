@@ -3,7 +3,13 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { estimateTurnCost, pricingConfigSchema } from '../src/evals/pricing';
+import {
+  estimateTurnCost,
+  priceJudgeUsage,
+  priceTurnFromTrace,
+  pricingConfigSchema,
+  roundUsd,
+} from '../src/evals/pricing';
 
 describe('evaluation pricing', () => {
   it('prices cached, cache-write, and uncached input separately', () => {
@@ -203,5 +209,118 @@ describe('evaluation pricing', () => {
       .toBeCloseTo(optimized.acceptance.costSavingsRateVersusLegacy, 8);
     expect(1 - averageCost / optimized.acceptance.lunaModelOnlyUsdPerFullTurn)
       .toBeCloseTo(optimized.acceptance.costSavingsRateVersusLunaModelOnly, 8);
+  });
+});
+
+describe('trace-based exact turn pricing', () => {
+  const pricing = pricingConfigSchema.parse({
+    version: 'test-trace',
+    effectiveDate: '2026-09-25',
+    sources: ['https://example.com'],
+    models: {
+      'model-a': {
+        inputPerMillionUsd: 1,
+        cachedInputPerMillionUsd: 0.1,
+        outputPerMillionUsd: 2,
+      },
+      'model-b': {
+        inputPerMillionUsd: 0.5,
+        cachedInputPerMillionUsd: 0.05,
+        outputPerMillionUsd: 1,
+      },
+    },
+    lambda: { requestUsd: 0.0000002, gbSecondUsd: 0.000016, memoryGb: 1 },
+  });
+
+  it('prices each stage at its recorded model with cached input split out', () => {
+    const cost = priceTurnFromTrace({
+      latencyMs: 2_000,
+      trace: {
+        token_usage: {
+          classifier: null,
+          extraction: { input_tokens: 1_000, output_tokens: 100, cached_input_tokens: 200 },
+          reply: { input_tokens: 500, output_tokens: 50 },
+        },
+        openai_calls: {
+          classifier: null,
+          extraction: { model: 'model-a' },
+          reply: { model: 'model-b' },
+        },
+      },
+    }, pricing);
+    // extraction: (800x1 + 200x0.1 + 100x2)/1e6 = 0.00102
+    // reply: (500x0.5 + 50x1)/1e6 = 0.0003
+    expect(cost.openaiUsd).toBeCloseTo(0.00132, 12);
+    // lambda: 0.0000002 + 2x0.000016 = 0.0000322
+    expect(cost.lambdaUsd).toBeCloseTo(0.0000322, 12);
+    expect(cost.totalUsd).toBeCloseTo(0.0013522, 12);
+    expect(cost.unpricedStages).toEqual([]);
+    expect(cost.unpricedModels).toEqual([]);
+  });
+
+  it('inventories unpriced models and stages instead of zeroing silently', () => {
+    const missingModel = priceTurnFromTrace({
+      latencyMs: 1_000,
+      trace: {
+        token_usage: {
+          extraction: { input_tokens: 100, output_tokens: 10 },
+          reply: null,
+        },
+        openai_calls: { extraction: { model: 'ghost-model' }, reply: null },
+      },
+    }, pricing);
+    expect(missingModel.openaiUsd).toBe(0);
+    expect(missingModel.lambdaUsd).toBeGreaterThan(0);
+    expect(missingModel.unpricedModels).toEqual(['ghost-model']);
+    expect(missingModel.unpricedStages).toEqual([]);
+    const missingStage = priceTurnFromTrace({
+      latencyMs: 1_000,
+      trace: {
+        token_usage: {
+          extraction: { input_tokens: 100, output_tokens: 10 },
+          reply: null,
+        },
+      },
+    }, pricing);
+    expect(missingStage.openaiUsd).toBe(0);
+    expect(missingStage.unpricedStages).toEqual(['extraction']);
+    expect(missingStage.unpricedModels).toEqual([]);
+  });
+});
+
+describe('judge usage pricing', () => {
+  const pricing = pricingConfigSchema.parse({
+    version: 'test-judge',
+    effectiveDate: '2026-09-25',
+    sources: ['https://example.com'],
+    models: {
+      'model-a': {
+        inputPerMillionUsd: 1,
+        cachedInputPerMillionUsd: 0.1,
+        outputPerMillionUsd: 2,
+      },
+    },
+    lambda: { requestUsd: 0.0000002, gbSecondUsd: 0.000016, memoryGb: 1 },
+  });
+
+  it('prices measured judge usage and marks unknown judge models unpriced', () => {
+    const priced = priceJudgeUsage(
+      'model-a',
+      { inputTokens: 1_000, outputTokens: 50, cachedInputTokens: 100 },
+      pricing,
+    );
+    // (900x1 + 100x0.1 + 50x2)/1e6 = 0.00101
+    expect(priced.unpriced).toBe(false);
+    expect(priced.usd).toBeCloseTo(0.00101, 12);
+    expect(priceJudgeUsage(
+      'ghost',
+      { inputTokens: 10, outputTokens: 1, cachedInputTokens: 0 },
+      pricing,
+    )).toEqual({ usd: 0, unpriced: true });
+  });
+
+  it('rounds presentation dollars to six decimals', () => {
+    expect(roundUsd(0.00123456789)).toBeCloseTo(0.001235, 9);
+    expect(roundUsd(0)).toBe(0);
   });
 });

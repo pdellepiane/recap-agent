@@ -47,21 +47,18 @@ function closeTurn(): EvalTurnResult {
 }
 
 describe('F4 judge context carries finish_plan close evidence', () => {
-  it('projects verified close facts so the judge cannot deny recorded executions', () => {
+  it('projects recorded close executions and reports their absence', () => {
     const context = buildSemanticJudgeContext([closeTurn()], undefined);
     expect(context).toContain('finish_plan');
     expect(context).toContain('success');
     expect(context).toContain('2026-10-18');
     expect(context).toContain('101');
     expect(context).toContain('202');
-  });
-
-  it('reports no close execution when finish_plan never ran', () => {
     const turn = closeTurn();
     (turn.trace as unknown as { finish_plan_summary: null }).finish_plan_summary = null;
     turn.trace.tools_called = [];
-    const context = buildSemanticJudgeContext([turn], undefined);
-    expect(context).toContain('cierre=ninguno');
+    const absent = buildSemanticJudgeContext([turn], undefined);
+    expect(absent).toContain('cierre=ninguno');
   });
 
   it('keeps future close facts out of the selected candidate packet', () => {

@@ -2,13 +2,7 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import type {
-  AgentRuntime,
-  ComposeReplyRequest,
-  ComposeReplyResult,
-  ExtractRequest,
-  ExtractionResult,
-} from '../src/runtime/contracts';
+import type { ExtractionResult } from '../src/runtime/contracts';
 import { NoopAgentConversationGateway } from '../src/runtime/agent-conversation-gateway';
 import { AgentService } from '../src/runtime/agent-service';
 import { buildRuntimeCapabilityManifest } from '../src/runtime/capability-manifest';
@@ -17,20 +11,11 @@ import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import { PromptLoader } from '../src/runtime/prompt-loader';
 import { createEmptyPlan, mergePlan } from '../src/core/plan';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
+import { ScriptedAgentRuntime, nodeReply } from './agent-runtime-test-utils';
 
-class ScriptedRuntime implements AgentRuntime {
-  readonly composeRequests: ComposeReplyRequest[] = [];
-
-  constructor(private readonly extraction: ExtractionResult) {}
-
-  async extract(request: ExtractRequest): Promise<ExtractionResult> {
-    void request;
-    return this.extraction;
-  }
-
-  async composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult> {
-    this.composeRequests.push(request);
-    return { text: `reply:${request.currentNode}` };
+class ScriptedRuntime extends ScriptedAgentRuntime {
+  constructor(extraction: ExtractionResult) {
+    super([extraction], nodeReply());
   }
 }
 
@@ -224,97 +209,86 @@ describe('packet C deferred closure: resolved records never reopen as selection'
     return { service, runtime };
   }
 
-  it('retomar_plan with selected photo and deferred catering never becomes provider_selection_ambiguous', async () => {
-    const planStore = new InMemoryPlanStore();
-    await planStore.save({ plan: seedSelectedPlusDeferred(), reason: 'seed' });
-    const { service, runtime } = guardService(planStore, baseExtraction({ actionIntent: 'retomar_plan' }));
-    const response = await service.handleTurn({
-      channel: 'whatsapp',
-      externalUserId: 'defer-close-guard-user',
-      text: 'quiero retomar mi plan',
-      messageId: 'defer-close-guard-1',
-      receivedAt: new Date().toISOString(),
-    });
-    expect(response.trace.next_node).not.toBe('aclarar_pedir_faltante');
-    expect(response.trace.turn_decision?.stopReason ?? null).not.toBe('provider_selection_ambiguous');
-    const composed = runtime.composeRequests[0]?.extraction;
+  it('retomar_plan and bare ambiguous turns never reopen resolved records as selection', async () => {
+    async function guardTurn(extraction: ExtractionResult, text: string, messageId: string) {
+      const planStore = new InMemoryPlanStore();
+      await planStore.save({ plan: seedSelectedPlusDeferred(), reason: 'seed' });
+      const { service, runtime } = guardService(planStore, extraction);
+      const response = await service.handleTurn({
+        channel: 'whatsapp',
+        externalUserId: 'defer-close-guard-user',
+        text,
+        messageId,
+        receivedAt: new Date().toISOString(),
+      });
+      return { response, runtime };
+    }
+
+    const resumed = await guardTurn(
+      baseExtraction({ actionIntent: 'retomar_plan' }), 'quiero retomar mi plan', 'defer-close-guard-1',
+    );
+    expect(resumed.response.trace.next_node).not.toBe('aclarar_pedir_faltante');
+    expect(resumed.response.trace.turn_decision?.stopReason ?? null).not.toBe('provider_selection_ambiguous');
+    const composed = resumed.runtime.composeRequests[0]?.extraction;
     expect(composed?.ambiguity?.status).toBe('clear');
     expect((composed?.ambiguity?.interpretations ?? []).join(' ')).not.toContain('provider:shortlisted');
-    expect(response.plan.provider_needs.find((need) => need.category === 'Fotografía y video')?.selected_provider_ids).toEqual([90]);
-    expect(response.plan.provider_needs.find((need) => need.category === 'Catering')?.status).toBe('deferred');
-  });
+    expect(resumed.response.plan.provider_needs.find((need) => need.category === 'Fotografía y video')?.selected_provider_ids).toEqual([90]);
+    expect(resumed.response.plan.provider_needs.find((need) => need.category === 'Catering')?.status).toBe('deferred');
 
-  it('a bare ambiguous turn with selected photo and deferred catering injects no shortlist alternatives', async () => {
-    const planStore = new InMemoryPlanStore();
-    await planStore.save({ plan: seedSelectedPlusDeferred(), reason: 'seed' });
-    const { service, runtime } = guardService(planStore, baseExtraction({
+    const bare = await guardTurn(baseExtraction({
       actionIntent: null,
       ambiguity: { status: 'ambiguous', clarificationQuestion: null, interpretations: ['algo sin resolver'] },
-    }));
-    const response = await service.handleTurn({
-      channel: 'whatsapp',
-      externalUserId: 'defer-close-guard-user',
-      text: 'mmm, no sé',
-      messageId: 'defer-close-guard-2',
-      receivedAt: new Date().toISOString(),
-    });
-    expect(response.trace.turn_decision?.stopReason ?? null).not.toBe('provider_selection_ambiguous');
-    const interpretations = runtime.composeRequests[0]?.extraction.ambiguity?.interpretations ?? [];
+    }), 'mmm, no sé', 'defer-close-guard-2');
+    expect(bare.response.trace.turn_decision?.stopReason ?? null).not.toBe('provider_selection_ambiguous');
+    const interpretations = bare.runtime.composeRequests[0]?.extraction.ambiguity?.interpretations ?? [];
     expect(interpretations.join(' ')).not.toContain('provider:shortlisted');
-    expect(response.plan.provider_needs.find((need) => need.category === 'Fotografía y video')?.selected_provider_ids).toEqual([90]);
-    expect(response.plan.provider_needs.find((need) => need.category === 'Catering')?.status).toBe('deferred');
+    expect(bare.response.plan.provider_needs.find((need) => need.category === 'Fotografía y video')?.selected_provider_ids).toEqual([90]);
+    expect(bare.response.plan.provider_needs.find((need) => need.category === 'Catering')?.status).toBe('deferred');
   });
 
-  it('ahora cerremos el plan with a conflicting pause mark continues the close flow', async () => {
-    const planStore = new InMemoryPlanStore();
-    await planStore.save({ plan: seedSelectedPlusDeferred(), reason: 'seed' });
+  it('pause marks dissolve: close wins with close intent, turns continue normally without', async () => {
+    async function pauseTurn(extraction: ExtractionResult, text: string, messageId: string) {
+      const planStore = new InMemoryPlanStore();
+      await planStore.save({ plan: seedSelectedPlusDeferred(), reason: 'seed' });
+      const { service, runtime } = guardService(planStore, extraction);
+      const response = await service.handleTurn({
+        channel: 'whatsapp',
+        externalUserId: 'defer-close-guard-user',
+        text,
+        messageId,
+        receivedAt: new Date().toISOString(),
+      });
+      return { response, runtime };
+    }
+
     // Live token_seeded_selection_defer_close shape: the extractor emits an
     // explicit close together with a conflicting pause mark. The close must
     // win; the pause mark dissolves and persisted state is only inspected,
     // never recited as a forced provider list.
-    const { service, runtime } = guardService(planStore, baseExtraction({
+    const conflicted = await pauseTurn(baseExtraction({
       actionIntent: 'cerrar',
       pauseRequested: true,
       requestedOperation: 'provider.quote.write',
       closeAction: { type: 'confirm_close', category: null, reason: null },
-    }));
-    const response = await service.handleTurn({
-      channel: 'whatsapp',
-      externalUserId: 'defer-close-guard-user',
-      text: 'ahora cerremos el plan',
-      messageId: 'defer-close-pause-conflict',
-      receivedAt: new Date().toISOString(),
-    });
-    expect(response.trace.next_node).toBe('crear_lead_cerrar');
-    expect(response.trace.next_node).not.toBe('guardar_cerrar_temporalmente');
-    expect(runtime.composeRequests).toHaveLength(1);
-    const composed = runtime.composeRequests[0];
+    }), 'ahora cerremos el plan', 'defer-close-pause-conflict');
+    expect(conflicted.response.trace.next_node).toBe('crear_lead_cerrar');
+    expect(conflicted.response.trace.next_node).not.toBe('guardar_cerrar_temporalmente');
+    expect(conflicted.runtime.composeRequests).toHaveLength(1);
+    const composed = conflicted.runtime.composeRequests[0];
     expect(composed?.providerResults.map((entry) => entry.id)).toEqual([90]);
-    expect(response.plan.provider_needs.find((need) => need.category === 'Fotografía y video')?.selected_provider_ids).toEqual([90]);
-    expect(response.plan.provider_needs.find((need) => need.category === 'Catering')?.status).toBe('deferred');
-  });
+    expect(conflicted.response.plan.provider_needs.find((need) => need.category === 'Fotografía y video')?.selected_provider_ids).toEqual([90]);
+    expect(conflicted.response.plan.provider_needs.find((need) => need.category === 'Catering')?.status).toBe('deferred');
 
-  it('a pause mark without close intent enters no explicit pause state', async () => {
-    const planStore = new InMemoryPlanStore();
-    await planStore.save({ plan: seedSelectedPlusDeferred(), reason: 'seed' });
     // No explicit pause state exists: pausing is the user not writing. A
-    // pause mark dissolves and the turn continues normal handling instead
-    // of entering guardar_cerrar_temporalmente.
-    const { service, runtime } = guardService(planStore, baseExtraction({
+    // lone pause mark dissolves and the turn continues normal handling.
+    const paused = await pauseTurn(baseExtraction({
       actionIntent: 'pausar',
       pauseRequested: true,
-    }));
-    const response = await service.handleTurn({
-      channel: 'whatsapp',
-      externalUserId: 'defer-close-guard-user',
-      text: 'guardo el avance por ahora',
-      messageId: 'defer-close-pause-only',
-      receivedAt: new Date().toISOString(),
-    });
-    expect(response.trace.next_node).not.toBe('guardar_cerrar_temporalmente');
-    expect(response.outbound.delivery.action).toBe('send');
-    expect(runtime.composeRequests.length).toBeGreaterThan(0);
-    expect(response.plan.provider_needs.find((need) => need.category === 'Fotografía y video')?.selected_provider_ids).toEqual([90]);
-    expect(response.plan.provider_needs.find((need) => need.category === 'Catering')?.status).toBe('deferred');
+    }), 'guardo el avance por ahora', 'defer-close-pause-only');
+    expect(paused.response.trace.next_node).not.toBe('guardar_cerrar_temporalmente');
+    expect(paused.response.outbound.delivery.action).toBe('send');
+    expect(paused.runtime.composeRequests.length).toBeGreaterThan(0);
+    expect(paused.response.plan.provider_needs.find((need) => need.category === 'Fotografía y video')?.selected_provider_ids).toEqual([90]);
+    expect(paused.response.plan.provider_needs.find((need) => need.category === 'Catering')?.status).toBe('deferred');
   });
 });

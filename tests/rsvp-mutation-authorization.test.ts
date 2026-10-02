@@ -16,55 +16,61 @@ import type {
 import { AgentService } from '../src/runtime/agent-service';
 import type {
   AgentRuntime,
-  ComposeReplyRequest,
-  ComposeReplyResult,
-  ExtractRequest,
   ExtractionResult,
 } from '../src/runtime/contracts';
 import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import { PromptLoader } from '../src/runtime/prompt-loader';
 import type { ProviderGateway, UserEventLookupResult } from '../src/runtime/provider-gateway';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
+import { QueuedAgentRuntime, echoErrorMessage } from './agent-runtime-test-utils';
 
 describe('RSVP mutation authorization (awaiting_action vs awaiting_event_selection)', () => {
   it('awaiting_action without current-turn decision reports declining and offers one change without mutating', async () => {
-    const runtime = new RsvpRuntime([rsvpExtraction({ action: null })]);
-    const gateway = new RsvpGateway([]);
-    const store = new InMemoryPlanStore();
-    await store.save({
-      reason: 'seed-awaiting-action',
-      plan: mergePlan(
-        createEmptyPlan({ planId: 'plan-auth-1', channel: 'whatsapp', externalUserId: 'user-rsvp' }),
-        {
-          contact_phone: '51973296571',
-          contact_phone_extension: '+51',
-          contact_phone_number: '973296571',
-          current_node: 'responder_invitacion',
-          rsvp_state: {
-            status: 'awaiting_action',
-            pending_action: 'attending',
-            candidates: [{ guest_id: 41, event_name: 'Matrimonio de Ana y Luis', event_date: '2026-09-12' }],
-            requested_at: '2026-08-17T15:00:00.000Z',
-            selection_attempts: 0,
+    // PASS 2: covers both a null action and a stale plan_state-sourced
+    // action (neither is a current-turn decision, so neither mutates).
+    const scenarios = [
+      { extraction: rsvpExtraction({ action: null }), text: 'Como figura mi asistencia a Matrimonio de Ana y Luis?' },
+      { extraction: rsvpExtraction({ action: 'attending', decisionSource: 'plan_state' }), text: 'Quiero responder mi invitación.' },
+    ];
+    for (const [index, scenario] of scenarios.entries()) {
+      const runtime = new RsvpRuntime([scenario.extraction]);
+      const gateway = new RsvpGateway([]);
+      const store = new InMemoryPlanStore();
+      await store.save({
+        reason: 'seed-awaiting-action',
+        plan: mergePlan(
+          createEmptyPlan({ planId: `plan-auth-1-${index}`, channel: 'whatsapp', externalUserId: 'user-rsvp' }),
+          {
+            contact_phone: '51973296571',
+            contact_phone_extension: '+51',
+            contact_phone_number: '973296571',
+            current_node: 'responder_invitacion',
+            rsvp_state: {
+              status: 'awaiting_action',
+              pending_action: 'attending',
+              candidates: [{ guest_id: 41, event_name: 'Matrimonio de Ana y Luis', event_date: '2026-09-12' }],
+              requested_at: '2026-08-17T15:00:00.000Z',
+              selection_attempts: 0,
+            },
           },
-        },
-      ),
-    });
-    const service = createService(runtime, gateway, store, [
-      rsvpLookupInvitation({ guestId: 41, eventName: 'Matrimonio de Ana y Luis', hasResponded: true, willAttend: false }),
-    ]);
+        ),
+      });
+      const service = createService(runtime, gateway, store, [
+        rsvpLookupInvitation({ guestId: 41, eventName: 'Matrimonio de Ana y Luis', hasResponded: true, willAttend: false }),
+      ]);
 
-    const result = await service.handleTurn(inbound('Como figura mi asistencia a Matrimonio de Ana y Luis?'));
+      const result = await service.handleTurn(inbound(scenario.text));
 
-    expect(gateway.inputs).toEqual([]);
-    expect(result.trace.tools_called).not.toContain('guest_rsvp');
-    expect(result.trace.tools_called).toContain('lookup_rsvp_invitations');
-    // P3 (P2 intended change): a pre-existing awaiting_action does not
-    // survive a read-only turn; the declining state is still reported and
-    // the one-change offer travels in prose via offer_action.
-    expect(result.plan.rsvp_state.status).toBe('none');
-    expect(result.plan.rsvp_state.pending_action).toBeNull();
-    expect(runtime.composeRequests[0]?.errorMessage).toContain('"invitation_state":"declining"');
+      expect(gateway.inputs).toEqual([]);
+      expect(result.trace.tools_called).not.toContain('guest_rsvp');
+      expect(result.trace.tools_called).toContain('lookup_rsvp_invitations');
+      // P3 (P2 intended change): a pre-existing awaiting_action does not
+      // survive a read-only turn; the declining state is still reported and
+      // the one-change offer travels in prose via offer_action.
+      expect(result.plan.rsvp_state.status).toBe('none');
+      expect(result.plan.rsvp_state.pending_action).toBeNull();
+      expect(runtime.composeRequests[0]?.errorMessage).toContain('"invitation_state":"declining"');
+    }
   });
 
   it('awaiting_event_selection without current-turn action but stored pending_action still executes selection continuation', async () => {
@@ -186,96 +192,20 @@ describe('RSVP mutation authorization (awaiting_action vs awaiting_event_selecti
     expect(result.plan.rsvp_state.status).toBe('none');
   });
 
-  it('typed decision_source plan_state with rsvpAction does NOT mutate in awaiting_action (offer preserved)', async () => {
-    const runtime = new RsvpRuntime([rsvpExtraction({ action: 'attending', decisionSource: 'plan_state' })]);
-    const gateway = new RsvpGateway([]);
-    const store = new InMemoryPlanStore();
-    await store.save({
-      reason: 'seed-plan-state-no-mutation',
-      plan: mergePlan(
-        createEmptyPlan({ planId: 'plan-auth-5', channel: 'whatsapp', externalUserId: 'user-rsvp' }),
-        {
-          contact_phone: '51973296571',
-          contact_phone_extension: '+51',
-          contact_phone_number: '973296571',
-          current_node: 'responder_invitacion',
-          rsvp_state: {
-            status: 'awaiting_action',
-            pending_action: 'attending',
-            candidates: [{ guest_id: 41, event_name: 'Matrimonio de Ana y Luis', event_date: '2026-09-12' }],
-            requested_at: '2026-08-17T15:00:00.000Z',
-            selection_attempts: 0,
-          },
-        },
-      ),
-    });
-    const service = createService(runtime, gateway, store, [
-      rsvpLookupInvitation({ guestId: 41, eventName: 'Matrimonio de Ana y Luis', hasResponded: true, willAttend: false }),
-    ]);
+  // PASS 2: merged the plan_state-sourced action scenario into the
+  // awaiting_action without current-turn decision test above (same seed,
+  // same declining report, same no-mutation assertions).
 
-    const result = await service.handleTurn(inbound('Quiero responder mi invitación.'));
-
-    expect(gateway.inputs).toEqual([]);
-    expect(result.trace.tools_called).not.toContain('guest_rsvp');
-    expect(result.trace.tools_called).toContain('lookup_rsvp_invitations');
-    // P3 (P2 intended change): a plan_state replay is not a current-turn
-    // decision, so a pre-existing awaiting_action does not survive; the
-    // declining state is still reported and the one-change offer travels in
-    // prose via offer_action.
-    expect(result.plan.rsvp_state.status).toBe('none');
-    expect(result.plan.rsvp_state.pending_action).toBeNull();
-    expect(runtime.composeRequests[0]?.errorMessage).toContain('"invitation_state":"declining"');
-  });
-
-  it('bare affirmative Si with decision_source current_message still mutates after offer (continuation)', async () => {
-    const runtime = new RsvpRuntime([rsvpExtraction({ action: 'attending', decisionSource: 'current_message' })]);
-    const gateway = new RsvpGateway([
-      { status: 'responded', action: 'attending', willAttend: true, guestId: 41, eventName: 'Matrimonio de Ana y Luis', eventDate: '2026-09-12' },
-    ]);
-    const store = new InMemoryPlanStore();
-    await store.save({
-      reason: 'seed-bare-si-current-message',
-      plan: mergePlan(
-        createEmptyPlan({ planId: 'plan-auth-6', channel: 'whatsapp', externalUserId: 'user-rsvp' }),
-        {
-          contact_phone: '51973296571',
-          contact_phone_extension: '+51',
-          contact_phone_number: '973296571',
-          current_node: 'responder_invitacion',
-          rsvp_state: {
-            status: 'awaiting_action',
-            pending_action: 'attending',
-            candidates: [{ guest_id: 41, event_name: 'Matrimonio de Ana y Luis', event_date: '2026-09-12' }],
-            requested_at: '2026-08-17T15:00:00.000Z',
-            selection_attempts: 0,
-          },
-        },
-      ),
-    });
-    const service = createService(runtime, gateway, store, [
-      rsvpLookupInvitation({ guestId: 41, eventName: 'Matrimonio de Ana y Luis', hasResponded: true, willAttend: false }),
-    ]);
-
-    const result = await service.handleTurn(inbound('Si'));
-
-    expect(gateway.inputs).toHaveLength(1);
-    expect(gateway.inputs[0]).toMatchObject({ action: 'attending', guest_id: 41 });
-    expect(result.plan.rsvp_state.status).toBe('none');
-  });
+  // PASS 2: removed the bare-Si continuation block (identical stubbed
+  // extraction, seed, and assertions as the current-turn explicit action
+  // test above; the raw text differs but extraction is stubbed so the text
+  // cannot change behavior); keeper is the current-turn explicit action in
+  // awaiting_action test in this file.
 });
 
-class RsvpRuntime implements AgentRuntime {
-  readonly composeRequests: ComposeReplyRequest[] = [];
-  constructor(private readonly extractions: ExtractionResult[]) {}
-  async extract(request: ExtractRequest): Promise<ExtractionResult> {
-    void request;
-    const e = this.extractions.shift();
-    if (!e) throw new Error('No extraction queued');
-    return e;
-  }
-  async composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult> {
-    this.composeRequests.push(request);
-    return { text: request.errorMessage ?? 'respuesta' };
+class RsvpRuntime extends QueuedAgentRuntime {
+  constructor(extractions: ExtractionResult[]) {
+    super(extractions, echoErrorMessage('respuesta'));
   }
 }
 

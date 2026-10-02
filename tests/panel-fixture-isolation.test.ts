@@ -4,16 +4,15 @@ import { classifyEvalCaseLane } from '../src/evals/runner';
 import { FixtureAgentConversationGateway } from '../src/runtime/eval-fixture-gateway';
 
 const ids = [
-  'live_behavior.purchase_delia_status_by_phone',
-  'live_behavior.rsvp_declined_state_offers_one_change',
   'live_behavior.rsvp_host_set_declining_consistent',
-  'live_behavior.rsvp_missing_action_requires_explicit_decision',
-  'live_behavior.rsvp_paolo_mariana_resolved_single',
-  'live_feedback.token_seeded_selection_defer_close',
+  'live_behavior.rsvp_confirmed_state_is_reported',
 ];
 
 describe('previously blocked panel cases use isolated backend worlds', () => {
-  it('requires fixture execution and no external RSVP setup for all six cases', async () => {
+  // 2026-09-30 condensation: the declined-state and missing-action threads
+  // merged into s11_rsvp_durability_confirms_once, which performs a real
+  // durability write and therefore uses RSVP setup by design.
+  it('requires fixture execution and no external RSVP setup for all four cases', async () => {
     const catalog = await new EvalLoader('evals').loadCatalog();
     for (const id of ids) {
       const currentCase = catalog.cases.find((entry) => entry.id === id);

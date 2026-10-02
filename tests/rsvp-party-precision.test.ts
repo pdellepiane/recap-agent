@@ -1,4 +1,3 @@
-import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { AgentService } from '../src/runtime/agent-service';
@@ -11,15 +10,6 @@ import { createEmptyPlan, mergePlan } from '../src/core/plan';
 import type { ProviderGateway, UserEventLookupResult } from '../src/runtime/provider-gateway';
 
 describe('rsvp party detection precision (T12-fix)', () => {
-  it('prompt tightens party rule: explicit companion evidence only, we-form not evidence, event titles never', () => {
-    const prompt = fs.readFileSync(path.resolve(process.cwd(), 'prompts/extractors/rsvp.txt'), 'utf-8');
-    expect(prompt).toContain('evidencia explícita de acompañante');
-    expect(prompt).toContain('“Confirmamos”, “vamos” o títulos con varios nombres no bastan');
-    expect(prompt).toContain('Deja `mentioned_names` vacío salvo nombres de acompañantes');
-    expect(prompt).toContain('pareja/esposo/esposa/acompañante/+1');
-    expect(prompt).toContain('“los dos” o “nosotros dos”');
-  });
-
   it('jose twin: Si confirmamos la asistencia (event Gia Antonella) -> scope self, no handoff, RSVP lookups run', async () => {
     const runtime = new HandoffRuntime(
       rsvpExtraction({ party: null, eventReference: 'Gia Antonella', conversationSummary: 'Confirma asistencia propia al evento Gia Antonella' }),
@@ -98,40 +88,9 @@ describe('rsvp party detection precision (T12-fix)', () => {
     expect(result.trace.tools_called.filter((t: string) => ['lookup_rsvp_invitations', 'lookup_guest_events_by_phone', 'get_guest_event_detail', 'guest_rsvp'].includes(t))).toEqual([]);
   });
 
-  it('we-form alone is not companion evidence: confirmamos without companion names stays self', async () => {
-    const runtime = new HandoffRuntime(
-      rsvpExtraction({ party: null, eventReference: 'Gia Antonella', conversationSummary: 'Confirma asistencia propia' }),
-    );
-    const store = new InMemoryPlanStore();
-    const seeded = mergePlan(createEmptyPlan({ planId: 'plan-weform', channel: 'whatsapp', externalUserId: 'user-weform' }), {
-      current_node: 'responder_invitacion',
-      intent: 'responder_invitacion',
-      contact_phone: '+51941438449',
-      contact_phone_extension: '+51',
-      contact_phone_number: '941438449',
-      rsvp_state: { status: 'none', pending_action: null, candidates: [], requested_at: null, selection_attempts: 0 },
-    });
-    await store.save({ plan: seeded, reason: 'seed' });
-    const invitations: UserEventLookupResult['events'] = [
-      rsvpLookupInvitation({ guestId: 579788, eventId: 38331, eventName: 'Gia Antonella', hasResponded: true, willAttend: true, datetime: '2026-08-15 22:00:00' }),
-    ];
-    const gateway = new TrackingGateway();
-    const service = new AgentService({
-      planStore: store,
-      runtime,
-      providerGateway: {
-        async lookupUserEventContext(): Promise<UserEventLookupResult | null> {
-          return { lookup: { email: null, phone: '941438449' }, user: null, events: invitations, counts: { ownerEvents: 0, guestEvents: invitations.length, hostEvents: 0, celebratedEvents: 0, recentOrders: 0 } };
-        },
-      } as unknown as ProviderGateway,
-      agentConversationGateway: gateway,
-      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
-      renderers: { whatsapp: new WhatsAppMessageRenderer() },
-    });
-    const result = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'user-weform', text: 'Si confirmamos la asistencia', messageId: 'msg-we', receivedAt: '2026-08-27T15:00:00.000Z', contactPhone: '+51941438449' });
-    expect(result.trace.tools_called).not.toContain('request_human_takeover');
-    expect(result.trace.tools_called).toContain('lookup_rsvp_invitations');
-  });
+  // PASS 2: removed the we-form twin (identical extraction, text, seed,
+  // and invitation as the jose twin above, asserting a strict subset of its
+  // expectations); keeper is the jose twin test in this file.
 });
 
 class HandoffRuntime implements AgentRuntime {

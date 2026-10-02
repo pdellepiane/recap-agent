@@ -3,15 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { selectStarterProviderCategories } from '../src/runtime/agent-service';
 
 describe('starter provider category selection', () => {
-  it('preserves a single explicit provider need without adding event defaults', () => {
+  it('preserves explicit provider needs without adding event defaults', () => {
     expect(selectStarterProviderCategories({
       eventType: 'baby_shower',
       explicitCategories: ['Locales'],
       maxNeeds: 5,
     })).toEqual(['Locales']);
-  });
-
-  it('preserves a compact explicit multi-need request', () => {
     expect(selectStarterProviderCategories({
       eventType: 'boda',
       explicitCategories: ['Catering', 'Música', 'Fotografía y video'],

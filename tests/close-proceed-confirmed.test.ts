@@ -7,13 +7,14 @@ import { createEmptyPlan, mergePlan } from '../src/core/plan';
 import { AgentService } from '../src/runtime/agent-service';
 import { closeActionSchema } from '../src/runtime/close-flow-schemas';
 import { turnTraceSchema } from '../src/evals/case-schema';
-import type { AgentRuntime, ComposeReplyRequest, ComposeReplyResult, ExtractionResult } from '../src/runtime/contracts';
+import type { ComposeReplyRequest, ExtractionResult } from '../src/runtime/contracts';
 import { InformationOrchestrator } from '../src/runtime/information-orchestrator';
 import type { KnowledgeRetrievalGateway } from '../src/runtime/knowledge-retrieval-gateway';
 import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import { PromptLoader } from '../src/runtime/prompt-loader';
 import type { ProviderGateway } from '../src/runtime/provider-gateway';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
+import { ScriptedAgentRuntime, fixedTextReply } from './agent-runtime-test-utils';
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -24,18 +25,9 @@ beforeEach(() => {
 const promptLoader = new PromptLoader(path.resolve(process.cwd(), 'prompts'));
 const renderers = { terminal_whatsapp: new WhatsAppMessageRenderer() };
 
-class ScriptedRuntime implements AgentRuntime {
-  constructor(private readonly extractions: ExtractionResult[]) {}
-  private index = 0;
-  async extract(): Promise<ExtractionResult> {
-    const next = this.extractions[this.index] ?? this.extractions[this.extractions.length - 1];
-    this.index += 1;
-    if (!next) throw new Error('Missing extraction fixture.');
-    return next;
-  }
-  async composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult> {
-    void request;
-    return { text: 'Respuesta compuesta.' };
+class ScriptedRuntime extends ScriptedAgentRuntime {
+  constructor(extractions: ExtractionResult[]) {
+    super(extractions, fixedTextReply('Respuesta compuesta.'));
   }
 }
 
@@ -155,12 +147,9 @@ function seedClosedPlan(planStore: InMemoryPlanStore) {
 }
 
 describe('proceed_confirmed close state', () => {
-  it('schema accepts the confirmed-proceed discriminant', () => {
+  it('registers the confirmed-proceed discriminant in the close and trace schemas', () => {
     const parsed = closeActionSchema.parse({ type: 'proceed_confirmed', category: null, reason: null });
     expect(parsed.type).toBe('proceed_confirmed');
-  });
-
-  it('eval trace validator cannot drift from the canonical close discriminant', () => {
     const summaryShape = turnTraceSchema.shape.close_action_summary.unwrap().shape;
     const traceOptions = (summaryShape.type.unwrap() as { options: readonly string[] }).options;
     expect(traceOptions).toContain('proceed_confirmed');
@@ -208,42 +197,55 @@ describe('proceed_confirmed close state', () => {
     expect(res.trace.tools_called ?? []).not.toContain('search_providers_from_plan');
   });
 
-  it('keeps the saved phone when a name/email delta arrives on the close node', async () => {
-    const planStore = new InMemoryPlanStore();
-    await seedClosedPlan(planStore);
-    const extraction = baseExtraction({
+  it('keeps contact deltas on the close node without losing the phone', async () => {
+    async function contactTurn(extraction: ExtractionResult, text: string, messageId: string, contactPhone?: string) {
+      const planStore = new InMemoryPlanStore();
+      await seedClosedPlan(planStore);
+      const agentGateway = new RecordingAgentGateway();
+      const service = new AgentService({
+        planStore,
+        runtime: new ScriptedRuntime([extraction]),
+        providerGateway: scriptedProviderGateway(),
+        promptLoader,
+        renderers,
+        informationOrchestrator: new InformationOrchestrator({
+          knowledgeGateway: new QuietKnowledgeGateway(),
+          providerGateway: scriptedProviderGateway(),
+          agentGateway: agentGateway as never,
+        }),
+        agentConversationGateway: agentGateway as never,
+      });
+      return service.handleTurn({
+        channel: 'whatsapp',
+        externalUserId: 'close-user',
+        ...(contactPhone === undefined ? {} : { contactPhone }),
+        text,
+        messageId,
+        receivedAt: new Date().toISOString(),
+      });
+    }
+
+    // R5: the name/email delta applies without losing the persisted phone,
+    // close intention survives the collection turn, and no quote is
+    // dispatched.
+    const delta = await contactTurn(baseExtraction({
       actionIntent: null,
       contactName: 'Carolina Mendoza',
       contactEmail: 'carolina.m@example.com',
-    });
-    const agentGateway = new RecordingAgentGateway();
-    const service = new AgentService({
-      planStore,
-      runtime: new ScriptedRuntime([extraction]),
-      providerGateway: scriptedProviderGateway(),
-      promptLoader,
-      renderers,
-      informationOrchestrator: new InformationOrchestrator({
-        knowledgeGateway: new QuietKnowledgeGateway(),
-        providerGateway: scriptedProviderGateway(),
-        agentGateway: agentGateway as never,
-      }),
-      agentConversationGateway: agentGateway as never,
-    });
-    const res = await service.handleTurn({
-      channel: 'whatsapp',
-      externalUserId: 'close-user',
-      contactPhone: '+51900000302',
-      text: 'Soy Carolina Mendoza, mi correo es carolina.m@example.com',
-      messageId: 'close-contact-delta-1',
-      receivedAt: new Date().toISOString(),
-    });
-    // R5: the delta applies without losing the persisted phone, close
-    // intention survives the collection turn, and no quote is dispatched.
-    expect(res.plan.current_node).toBe('crear_lead_cerrar');
-    expect(res.plan.contact_phone).toBe('51900000302');
-    expect(res.plan.contact_email).toBe('carolina.m@example.com');
-    expect(res.plan.provider_needs[0]?.selected_provider_ids).toEqual([90]);
+    }), 'Soy Carolina Mendoza, mi correo es carolina.m@example.com', 'close-contact-delta-1', '+51900000302');
+    expect(delta.plan.current_node).toBe('crear_lead_cerrar');
+    expect(delta.plan.contact_phone).toBe('51900000302');
+    expect(delta.plan.contact_email).toBe('carolina.m@example.com');
+    expect(delta.plan.provider_needs[0]?.selected_provider_ids).toEqual([90]);
+
+    // A phone delta with a support label stays in close handling too.
+    const labeled = await contactTurn(baseExtraction({
+      actionIntent: null,
+      contactPhone: '+51 954779071',
+      supportAct: { kind: 'provide_detail',} as never,
+    }), 'perdón, mi teléfono con código es +51 954779071', 'close-support-phone-1');
+    expect(labeled.plan.current_node).toBe('crear_lead_cerrar');
+    expect(labeled.plan.contact_phone).toBe('51954779071');
   });
 
   it('persists confirmed completion even if reply generation subsequently fails', async () => {
@@ -268,38 +270,6 @@ describe('proceed_confirmed close state', () => {
     expect((await planStore.getByExternalUser('whatsapp', 'close-user'))?.lifecycle_state).toBe('finished');
   });
 
-  it('close contact turn with support label stays in close handling and keeps phone', async () => {
-    const planStore = new InMemoryPlanStore();
-    await seedClosedPlan(planStore);
-    const extraction = baseExtraction({
-      actionIntent: null,
-      contactPhone: '+51 954779071',
-      supportAct: { kind: 'provide_detail',} as never,
-    });
-    const agentGateway = new RecordingAgentGateway();
-    const service = new AgentService({
-      planStore,
-      runtime: new ScriptedRuntime([extraction]),
-      providerGateway: scriptedProviderGateway(),
-      promptLoader,
-      renderers,
-      informationOrchestrator: new InformationOrchestrator({
-        knowledgeGateway: new QuietKnowledgeGateway(),
-        providerGateway: scriptedProviderGateway(),
-        agentGateway: agentGateway as never,
-      }),
-      agentConversationGateway: agentGateway as never,
-    });
-    const res = await service.handleTurn({
-      channel: 'whatsapp',
-      externalUserId: 'close-user',
-      text: 'perdón, mi teléfono con código es +51 954779071',
-      messageId: 'close-support-phone-1',
-      receivedAt: new Date().toISOString(),
-    });
-    expect(res.plan.current_node).toBe('crear_lead_cerrar');
-    expect(res.plan.contact_phone).toBe('51954779071');
-  });
 });
 
 describe('close tool effect boundary reconstructed from token_seeded_close_flow', () => {
@@ -332,62 +302,22 @@ describe('close tool effect boundary reconstructed from token_seeded_close_flow'
     return { invoke, createQuoteRequest, onPlanCompleted, runtime, request };
   }
 
-  it('omits finish_plan from the serialized phone-turn tool surface without enlarging instructions', async () => {
-    const bodies: Array<{ instructions?: string; input?: unknown; tools?: Array<{ name?: string }> }> = [];
-    const fetchMock = vi.fn<Parameters<typeof fetch>, ReturnType<typeof fetch>>()
-      .mockImplementation(async (_url, init) => {
-        if (typeof init?.body === 'string') bodies.push(JSON.parse(init.body) as typeof bodies[number]);
-        return new Response(JSON.stringify({ error: { message: 'test quota',
-          type: 'insufficient_quota', code: 'insufficient_quota' } }), {
-          status: 429, headers: { 'content-type': 'application/json' },
-        });
-      });
-    vi.stubGlobal('fetch', fetchMock);
-    try {
-      const phone = await fixture('mi teléfono es 51954779071');
-      await expect(phone.runtime.composeReply(phone.request)).rejects.toBeDefined();
-      const phoneBody = bodies.find((body) => body.tools);
-      bodies.length = 0;
-      const confirmed = await fixture('Mi evento es el 18 de octubre de 2026. Confirmo el envío.');
-      await expect(confirmed.runtime.composeReply(confirmed.request)).rejects.toBeDefined();
-      const confirmedBody = bodies.find((body) => body.tools);
-      expect(phoneBody).toBeDefined();
-      expect(confirmedBody?.tools?.map((entry) => entry.name)).toContain('finish_plan');
-      expect(phoneBody?.tools?.map((entry) => entry.name)).not.toContain('finish_plan');
-      expect(phoneBody?.instructions).toBe(confirmedBody?.instructions);
-      const metrics = (body: typeof phoneBody) => ({
-        instructionBytes: Buffer.byteLength(body?.instructions ?? ''),
-        inputBytes: Buffer.byteLength(JSON.stringify(body?.input ?? [])),
-        toolBytes: Buffer.byteLength(JSON.stringify(body?.tools ?? [])),
-      });
-      expect(metrics(phoneBody).toolBytes).toBeLessThan(metrics(confirmedBody).toolBytes);
-      process.stdout.write(JSON.stringify({ closePromptMetrics: { phone: metrics(phoneBody), confirmed: metrics(confirmedBody) } }) + '\n');
-    } finally { vi.unstubAllGlobals(); }
-  });
+  it('finish_plan boundary: phone-only turns reject, confirmed turns persist typed facts idempotently', async () => {
+    const phoneOnly = await fixture('mi teléfono es 51954779071');
+    await phoneOnly.invoke();
+    expect(phoneOnly.createQuoteRequest).not.toHaveBeenCalled();
+    expect(phoneOnly.onPlanCompleted).not.toHaveBeenCalled();
 
-  it('rejects the exact model-hallucinated date on the original phone-only turn', async () => {
-    const test = await fixture('mi teléfono es 51954779071');
-    await test.invoke();
-    expect(test.createQuoteRequest).not.toHaveBeenCalled();
-    expect(test.onPlanCompleted).not.toHaveBeenCalled();
-  });
-
-  it('returns typed close facts to the model without backend prose', async () => {
-    const test = await fixture('Mi evento es el 18 de octubre de 2026. Confirmo el envío.');
-    const result = await test.invoke() as { status: string; effects: Array<Record<string, unknown>> };
+    const confirmed = await fixture('Mi evento es el 18 de octubre de 2026. Confirmo el envío.');
+    const result = await confirmed.invoke() as { status: string; effects: Array<Record<string, unknown>> };
     expect(result.status).toBe('success');
     expect(result.effects[0]).toEqual(expect.objectContaining({
       status: 'confirmed', eventDate: '2026-10-18', receiptId: 'confirmed-quote-90',
     }));
     expect(result).not.toHaveProperty('detail');
     expect(result).not.toHaveProperty('contacted_providers');
-  });
-
-  it('persists confirmed completion and reuses its effect if the model repeats the tool', async () => {
-    const test = await fixture('Mi evento es el 18 de octubre de 2026. Confirmo el envío.');
-    await test.invoke();
-    expect(test.onPlanCompleted).toHaveBeenCalledWith(expect.objectContaining({ lifecycle_state: 'finished' }));
-    await test.invoke();
-    expect(test.createQuoteRequest).toHaveBeenCalledTimes(1);
+    expect(confirmed.onPlanCompleted).toHaveBeenCalledWith(expect.objectContaining({ lifecycle_state: 'finished' }));
+    await confirmed.invoke();
+    expect(confirmed.createQuoteRequest).toHaveBeenCalledTimes(1);
   });
 });

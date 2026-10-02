@@ -671,11 +671,11 @@ describe('complete authorized customer context in serialized model requests', ()
     });
     expect(snapshot.readMetrics?.peakConcurrency).toBeGreaterThan(1);
     expect(snapshot.readMetrics?.peakConcurrency).toBeLessThanOrEqual(4);
-    expect(snapshot.readMetrics?.totalReads).toBe(12);
+    expect(snapshot.readMetrics?.totalReads).toBe(13);
     expect(snapshot.purchasesCarts.paginationExhausted).toBeNull();
     expect(snapshot.invitationsEvents.paginationExhausted).toBeNull();
     expect(snapshot.purchasesCarts.completeness).toBeNull();
-    expect(snapshot.invitationsEvents.completeness).toBeNull();
+    expect(snapshot.invitationsEvents.completeness).toBe('partial');
 
     const bytes = {
       extractionInstructions: Buffer.byteLength(extractSpec.instructions, 'utf8'),

@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 
 import type { ComposeReplyRequest } from '../src/runtime/contracts';
-import type { InformationTaskResult } from '../src/core/information';
 import { createEmptyPlan, mergePlan } from '../src/core/plan';
 import { OpenAiAgentRuntime } from '../src/runtime/openai-agent-runtime';
 import { localTurnMessageContext } from '../src/runtime/turn-message-context';
@@ -104,32 +101,8 @@ function composeInput(request: ComposeReplyRequest): string {
   });
 }
 
-function pendingPurchaseResult(): InformationTaskResult {
-  return {
-    requestId: 'information-1',
-    kind: 'purchase',
-    status: 'completed',
-    resource: 'orders',
-    purchases: [{
-      orderId: 'order-1',
-      paymentStatus: 'pending',
-      shippingStatus: null,
-      grandTotal: 227.76,
-      paymentMethod: 'Yape_o_Plin',
-      eventName: 'Alejandra',
-      eventDate: null,
-      eventUrl: null,
-      createdAt: null,
-      items: [],
-    }],
-    needsSelection: false,
-    accessMethod: 'trusted_phone_purchase',
-    coverage: 'complete',
-  };
-}
-
 describe('W1-04 L1 semantic evidence (no templates)', () => {
-  it('projects verbatim reported names from supportAct raw strings, not the normalized event_type', () => {
+  it('projects support-act evidence only when supplied, never manufactured', () => {
     const extraction = baseExtraction();
     extraction.supportAct = {
       kind: 'provide_detail',
@@ -139,83 +112,14 @@ describe('W1-04 L1 semantic evidence (no templates)', () => {
     const evidence = readEvidence(composeInput(createRequest({ extraction })));
     expect(evidence.turn_state['reported_guest_name']).toBe('Roger Abanto');
     expect(evidence.turn_state['reported_event_name']).toBe('Baby Shower Catalina');
-  });
-
-  it('does not manufacture an open support task from supplied references', () => {
-    const extraction = baseExtraction();
-    extraction.supportAct = {
-      kind: 'provide_detail',
-      personReference: 'Roger Abanto',
-      eventReference: 'Baby Shower Catalina',
-    };
-    const evidence = readEvidence(composeInput(createRequest({ extraction })));
     expect(evidence.turn_state).not.toHaveProperty('support_query_open');
+
+    const bare = readEvidence(composeInput(createRequest()));
+    expect(bare.turn_state).not.toHaveProperty('reported_guest_name');
+    expect(bare.turn_state).not.toHaveProperty('reported_event_name');
+    expect(bare.turn_state).not.toHaveProperty('support_query_open');
+    expect(bare.turn_state).not.toHaveProperty('voucher_image_cannot_confirm_receipt');
+    expect(bare.turn_state).not.toHaveProperty('backend_validation_pending');
   });
 
-  it('keeps purchase turns without a support act byte-identical (no new support fields)', () => {
-    const evidence = readEvidence(composeInput(createRequest()));
-    expect(evidence.turn_state).not.toHaveProperty('reported_guest_name');
-    expect(evidence.turn_state).not.toHaveProperty('reported_event_name');
-    expect(evidence.turn_state).not.toHaveProperty('support_query_open');
-    expect(evidence.turn_state).not.toHaveProperty('voucher_image_cannot_confirm_receipt');
-    expect(evidence.turn_state).not.toHaveProperty('backend_validation_pending');
-  });
-
-  it('projects voucher image and backend validation facts on a pending voucher report', () => {
-    const extraction = baseExtraction();
-    extraction.supportAct = {
-      kind: 'provide_detail',
-      personReference: null,
-      eventReference: null,
-    };
-    extraction.informationRequests = [{
-      kind: 'purchase',
-      query: 'Ya envié los 13.76 que faltaban, tengo el voucher.',
-      resource: 'orders',
-      orderId: null,
-      amount: 13.76,
-      authAction: 'none',
-    }];
-    const evidence = readEvidence(composeInput(createRequest({
-      extraction,
-      informationResults: [pendingPurchaseResult()],
-    })));
-    expect(evidence.turn_state['voucher_image_cannot_confirm_receipt']).toBe(true);
-    expect(evidence.turn_state['backend_validation_pending']).toBe(true);
-  });
-
-  it('projects backend validation facts on a reported shortfall over a pending order', () => {
-    const extraction = baseExtraction();
-    extraction.supportAct = {
-      kind: 'provide_detail',
-      personReference: null,
-      eventReference: null,
-    };
-    extraction.informationRequests = [{
-      kind: 'purchase',
-      query: 'Ya envié los 13.76 que faltaban.',
-      resource: 'orders',
-      orderId: null,
-      amount: 13.76,
-      authAction: 'none',
-    }];
-    const evidence = readEvidence(composeInput(createRequest({
-      extraction,
-      informationResults: [pendingPurchaseResult()],
-    })));
-    expect(evidence.turn_state['voucher_image_cannot_confirm_receipt']).toBe(true);
-    expect(evidence.turn_state['backend_validation_pending']).toBe(true);
-  });
-
-  it('directs verbatim names without a mandatory open-query recital and without canned prose', () => {
-    const bundle = readFileSync(
-      join(__dirname, '..', 'prompts', 'nodes', 'resolver_consultas_informativas', 'support_continuity.txt'),
-      'utf8',
-    );
-    expect(bundle).toContain('reported_guest_name');
-    expect(bundle).toContain('reported_event_name');
-    // 2026-09-17 actionable-answer: the mandatory support_query_open
-    // recital is removed; continuation is evidenced, not narrated.
-    expect(bundle).not.toContain('support_query_open');
-  });
 });

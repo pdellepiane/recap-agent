@@ -113,15 +113,30 @@ function makeCase(overrides: Partial<EvalCase>): EvalCase {
 }
 
 describe('S13 grading alignment', () => {
-  it('marks verified tool calls as structural facts the judge cannot override', () => {
-    const ctx = buildSemanticJudgeContext(
+  it('frames structural facts, note provenance, and disclosure rules for judges', () => {
+    const toolCtx = buildSemanticJudgeContext(
       [makeTurn({ tools: ['verify_user_login_code'] })],
       0,
       makeCase({ notes: [] }),
     );
-    expect(ctx).toContain('verify_user_login_code');
-    expect(ctx).toMatch(/verificad|estructural/i);
-    expect(ctx).toMatch(/no debe|no puede|prevalec/i);
+    expect(toolCtx).toContain('verify_user_login_code');
+    expect(toolCtx).toMatch(/verificad|estructural/i);
+    expect(toolCtx).toMatch(/no debe|no puede|prevalec/i);
+    const noteCtx = buildSemanticJudgeContext(
+      [makeTurn({})],
+      0,
+      makeCase({ notes: ['alguna nota del autor'] }),
+    );
+    expect(noteCtx).toContain('alguna nota del autor');
+    expect(noteCtx).toMatch(/procedencia/i);
+    expect(noteCtx).toMatch(/mundo congelado|frozen/i);
+    const disclosureCtx = buildSemanticJudgeContext(
+      [makeTurn({})],
+      0,
+      makeCase({ notes: [] }),
+    );
+    expect(disclosureCtx).toMatch(/referencia.*cliente|transaction reference/i);
+    expect(disclosureCtx).toMatch(/omit|omitid/i);
   });
 
   it('scopes fixture history to the case subject instead of dumping all subjects', () => {
@@ -140,27 +155,6 @@ describe('S13 grading alignment', () => {
     });
     const ctx = buildSemanticJudgeContext(turns, 0, currentCase);
     expect(ctx).not.toContain('Hola Sonia Maribel');
-  });
-
-  it('labels notes with provenance and frozen-world precedence', () => {
-    const ctx = buildSemanticJudgeContext(
-      [makeTurn({})],
-      0,
-      makeCase({ notes: ['alguna nota del autor'] }),
-    );
-    expect(ctx).toContain('alguna nota del autor');
-    expect(ctx).toMatch(/procedencia/i);
-    expect(ctx).toMatch(/mundo congelado|frozen/i);
-  });
-
-  it('states the customer-reference minimum-disclosure rule for judges', () => {
-    const ctx = buildSemanticJudgeContext(
-      [makeTurn({})],
-      0,
-      makeCase({ notes: [] }),
-    );
-    expect(ctx).toMatch(/referencia.*cliente|transaction reference/i);
-    expect(ctx).toMatch(/omit|omitid/i);
   });
 
   it('discloses a customer reference only when authorized and explicitly supplied', () => {

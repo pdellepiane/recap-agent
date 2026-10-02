@@ -58,127 +58,129 @@ describe('eval scheduler concurrency bounds', () => {
     expect(MAX_SNAPSHOT_QUEUE).toBe(8);
   });
 
-  it('runs at most four cases concurrently and assembles manifest order', async () => {
-    let active = 0;
-    let maxActive = 0;
-    const gates = Array.from({ length: 6 }, () => deferred<void>());
-    const jobs = gates.map((gate, index) =>
-      stringJob(index, 'parallel', async () => {
-        active += 1;
-        maxActive = Math.max(maxActive, active);
-        await gate.promise;
-        active -= 1;
-        return `snapshot-${index}`;
-      }),
-    );
-    const outcomePromise = runBoundedPipeline({
-      jobs,
-      caseConcurrency: 4,
-      judgeConcurrency: 2,
-      drainMs: 1000,
-    });
-    // Let admissions settle without wall-clock sleeps: flush microtasks.
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(maxActive).toBeLessThanOrEqual(4);
-    // Overlapping completion in reverse manifest order.
-    for (let index = gates.length - 1; index >= 0; index -= 1) {
-      gates[index]?.resolve();
+  it('bounds case, external-lane, and judge concurrency with order retained', async () => {
+    {
+      let active = 0;
+      let maxActive = 0;
+      const gates = Array.from({ length: 6 }, () => deferred<void>());
+      const jobs = gates.map((gate, index) =>
+        stringJob(index, 'parallel', async () => {
+          active += 1;
+          maxActive = Math.max(maxActive, active);
+          await gate.promise;
+          active -= 1;
+          return `snapshot-${index}`;
+        }),
+      );
+      const outcomePromise = runBoundedPipeline({
+        jobs,
+        caseConcurrency: 4,
+        judgeConcurrency: 2,
+        drainMs: 1000,
+      });
+      // Let admissions settle without wall-clock sleeps: flush microtasks.
       await Promise.resolve();
-    }
-    const outcome = await outcomePromise;
-    expect(outcome.observedMaxCases).toBeLessThanOrEqual(4);
-    expect(outcome.observedMaxCases).toBeGreaterThan(1);
-    expect(outcome.results.map((result, index) =>
-      result.status === 'ok' ? result.value : `error-${index}`,
-    )).toEqual([
-      'final:snapshot-0',
-      'final:snapshot-1',
-      'final:snapshot-2',
-      'final:snapshot-3',
-      'final:snapshot-4',
-      'final:snapshot-5',
-    ]);
-    expect(outcome.stopReason).toBeNull();
-  });
-
-  it('serializes the single external lane while fixture jobs overlap', async () => {
-    let externalActive = 0;
-    let maxExternal = 0;
-    let totalActive = 0;
-    let maxTotal = 0;
-    const gates = Array.from({ length: 5 }, () => deferred<void>());
-    const lanes: Array<'parallel' | 'external'> = ['parallel', 'external', 'parallel', 'external', 'parallel'];
-    const jobs = gates.map((gate, index) =>
-      stringJob(index, lanes[index], async () => {
-        totalActive += 1;
-        maxTotal = Math.max(maxTotal, totalActive);
-        if (lanes[index] === 'external') {
-          externalActive += 1;
-          maxExternal = Math.max(maxExternal, externalActive);
-        }
-        await gate.promise;
-        if (lanes[index] === 'external') {
-          externalActive -= 1;
-        }
-        totalActive -= 1;
-        return `snapshot-${index}`;
-      }),
-    );
-    const outcomePromise = runBoundedPipeline({
-      jobs,
-      caseConcurrency: 4,
-      judgeConcurrency: 2,
-      drainMs: 1000,
-    });
-    await Promise.resolve();
-    await Promise.resolve();
-    for (const gate of gates) {
-      gate.resolve();
-    }
-    const outcome = await outcomePromise;
-    expect(maxExternal).toBe(1);
-    expect(outcome.observedMaxExternal).toBe(1);
-    expect(maxTotal).toBeLessThanOrEqual(4);
-    expect(outcome.results.every((result) => result.status === 'ok')).toBe(true);
-  });
-
-  it('limits judge API requests to two in flight with order retained', async () => {
-    let judgeActive = 0;
-    let maxJudge = 0;
-    const release = deferred<void>();
-    const jobs = Array.from({ length: 5 }, (_, index) =>
-      stringJob(index, 'parallel', async () => `snapshot-${index}`, async (snapshot) => {
-        judgeActive += 1;
-        maxJudge = Math.max(maxJudge, judgeActive);
-        await release.promise;
-        judgeActive -= 1;
-        return `final:${snapshot}`;
-      }),
-    );
-    const outcomePromise = runBoundedPipeline({
-      jobs,
-      caseConcurrency: 4,
-      judgeConcurrency: 2,
-      drainMs: 1000,
-    });
-    // Wait until both judge slots are occupied (event-driven, no sleeps).
-    for (let spin = 0; spin < 1000 && maxJudge < 2; spin += 1) {
       await Promise.resolve();
+      expect(maxActive).toBeLessThanOrEqual(4);
+      // Overlapping completion in reverse manifest order.
+      for (let index = gates.length - 1; index >= 0; index -= 1) {
+        gates[index]?.resolve();
+        await Promise.resolve();
+      }
+      const outcome = await outcomePromise;
+      expect(outcome.observedMaxCases).toBeLessThanOrEqual(4);
+      expect(outcome.observedMaxCases).toBeGreaterThan(1);
+      expect(outcome.results.map((result, index) =>
+        result.status === 'ok' ? result.value : `error-${index}`,
+      )).toEqual([
+        'final:snapshot-0',
+        'final:snapshot-1',
+        'final:snapshot-2',
+        'final:snapshot-3',
+        'final:snapshot-4',
+        'final:snapshot-5',
+      ]);
+      expect(outcome.stopReason).toBeNull();
     }
-    expect(maxJudge).toBe(2);
-    release.resolve();
-    const outcome = await outcomePromise;
-    expect(outcome.observedMaxJudges).toBe(2);
-    expect(outcome.results.map((result) =>
-      result.status === 'ok' ? result.value : 'error',
-    )).toEqual([
-      'final:snapshot-0',
-      'final:snapshot-1',
-      'final:snapshot-2',
-      'final:snapshot-3',
-      'final:snapshot-4',
-    ]);
+
+    {
+      let externalActive = 0;
+      let maxExternal = 0;
+      let totalActive = 0;
+      let maxTotal = 0;
+      const gates = Array.from({ length: 5 }, () => deferred<void>());
+      const lanes: Array<'parallel' | 'external'> = ['parallel', 'external', 'parallel', 'external', 'parallel'];
+      const jobs = gates.map((gate, index) =>
+        stringJob(index, lanes[index], async () => {
+          totalActive += 1;
+          maxTotal = Math.max(maxTotal, totalActive);
+          if (lanes[index] === 'external') {
+            externalActive += 1;
+            maxExternal = Math.max(maxExternal, externalActive);
+          }
+          await gate.promise;
+          if (lanes[index] === 'external') {
+            externalActive -= 1;
+          }
+          totalActive -= 1;
+          return `snapshot-${index}`;
+        }),
+      );
+      const outcomePromise = runBoundedPipeline({
+        jobs,
+        caseConcurrency: 4,
+        judgeConcurrency: 2,
+        drainMs: 1000,
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+      for (const gate of gates) {
+        gate.resolve();
+      }
+      const outcome = await outcomePromise;
+      expect(maxExternal).toBe(1);
+      expect(outcome.observedMaxExternal).toBe(1);
+      expect(maxTotal).toBeLessThanOrEqual(4);
+      expect(outcome.results.every((result) => result.status === 'ok')).toBe(true);
+    }
+
+    {
+      let judgeActive = 0;
+      let maxJudge = 0;
+      const release = deferred<void>();
+      const jobs = Array.from({ length: 5 }, (_, index) =>
+        stringJob(index, 'parallel', async () => `snapshot-${index}`, async (snapshot) => {
+          judgeActive += 1;
+          maxJudge = Math.max(maxJudge, judgeActive);
+          await release.promise;
+          judgeActive -= 1;
+          return `final:${snapshot}`;
+        }),
+      );
+      const outcomePromise = runBoundedPipeline({
+        jobs,
+        caseConcurrency: 4,
+        judgeConcurrency: 2,
+        drainMs: 1000,
+      });
+      // Wait until both judge slots are occupied (event-driven, no sleeps).
+      for (let spin = 0; spin < 1000 && maxJudge < 2; spin += 1) {
+        await Promise.resolve();
+      }
+      expect(maxJudge).toBe(2);
+      release.resolve();
+      const outcome = await outcomePromise;
+      expect(outcome.observedMaxJudges).toBe(2);
+      expect(outcome.results.map((result) =>
+        result.status === 'ok' ? result.value : 'error',
+      )).toEqual([
+        'final:snapshot-0',
+        'final:snapshot-1',
+        'final:snapshot-2',
+        'final:snapshot-3',
+        'final:snapshot-4',
+      ]);
+    }
   });
 
   it('applies snapshot-queue backpressure and releases case slots before judging', async () => {
@@ -310,76 +312,79 @@ describe('eval scheduler lifecycle and cleanup', () => {
     expect(setupTornDown).toBe(0);
   });
 
-  it('stops admissions on a mid-run SIGINT and drains in-flight work', async () => {
-    const stopSignal = { stopped: false, reason: null as SchedulerStopReason };
-    let teardownAttempts = 0;
-    const outcome = await runBoundedPipeline({
-      jobs: [
-        stringJob(0, 'parallel', async () => {
-          try {
-            // SIGINT lands while this case runs: admissions stop, this
-            // execution still finishes, teardown is still attempted.
-            stopSignal.stopped = true;
-            stopSignal.reason = 'sigint';
-            return 'snapshot-0';
-          } finally {
-            teardownAttempts += 1;
-          }
-        }),
-        stringJob(1, 'parallel', async () => 'snapshot-1'),
-        stringJob(2, 'parallel', async () => 'snapshot-2'),
-      ],
-      caseConcurrency: 1,
-      judgeConcurrency: 1,
-      drainMs: 1000,
-      stopSignal,
-    });
-    expect(outcome.stopReason).toBe('sigint');
-    expect(teardownAttempts).toBe(1);
-    expect(outcome.results[0]).toEqual({ status: 'ok', value: 'final:snapshot-0' });
-    expect(outcome.results[1]).toEqual({
-      status: 'error',
-      error: 'incomplete: SIGINT stopped admissions before this case started',
-    });
-    expect(outcome.results[2]).toEqual({
-      status: 'error',
-      error: 'incomplete: SIGINT stopped admissions before this case started',
-    });
+  it('stops admissions on SIGINT, pre-stop, and deadline without hanging work', async () => {
+    {
+      const stopSignal = { stopped: false, reason: null as SchedulerStopReason };
+      let teardownAttempts = 0;
+      const outcome = await runBoundedPipeline({
+        jobs: [
+          stringJob(0, 'parallel', async () => {
+            try {
+              // SIGINT lands while this case runs: admissions stop, this
+              // execution still finishes, teardown is still attempted.
+              stopSignal.stopped = true;
+              stopSignal.reason = 'sigint';
+              return 'snapshot-0';
+            } finally {
+              teardownAttempts += 1;
+            }
+          }),
+          stringJob(1, 'parallel', async () => 'snapshot-1'),
+          stringJob(2, 'parallel', async () => 'snapshot-2'),
+        ],
+        caseConcurrency: 1,
+        judgeConcurrency: 1,
+        drainMs: 1000,
+        stopSignal,
+      });
+      expect(outcome.stopReason).toBe('sigint');
+      expect(teardownAttempts).toBe(1);
+      expect(outcome.results[0]).toEqual({ status: 'ok', value: 'final:snapshot-0' });
+      expect(outcome.results[1]).toEqual({
+        status: 'error',
+        error: 'incomplete: SIGINT stopped admissions before this case started',
+      });
+      expect(outcome.results[2]).toEqual({
+        status: 'error',
+        error: 'incomplete: SIGINT stopped admissions before this case started',
+      });
+    }
+
+    {
+      const stopSignal = { stopped: true, reason: 'sigint' as SchedulerStopReason };
+      const outcome = await runBoundedPipeline({
+        jobs: [
+          stringJob(0, 'parallel', async () => 'snapshot-0'),
+          stringJob(1, 'parallel', async () => 'snapshot-1'),
+        ],
+        caseConcurrency: 4,
+        judgeConcurrency: 2,
+        drainMs: 1000,
+        stopSignal,
+      });
+      expect(outcome.stopReason).toBe('sigint');
+      expect(outcome.results).toEqual([
+        { status: 'error', error: 'incomplete: SIGINT stopped admissions before this case started' },
+        { status: 'error', error: 'incomplete: SIGINT stopped admissions before this case started' },
+      ]);
+    }
+
+    {
+      const stopSignal = { stopped: true, reason: 'deadline' as SchedulerStopReason };
+      const outcome = await runBoundedPipeline({
+        jobs: [stringJob(0, 'parallel', async () => 'snapshot-0')],
+        caseConcurrency: 4,
+        judgeConcurrency: 2,
+        drainMs: 100,
+        stopSignal,
+      });
+      expect(outcome.stopReason).toBe('deadline');
+      expect(outcome.results).toEqual([
+        { status: 'error', error: 'incomplete: suite deadline stopped admissions before this case started' },
+      ]);
+    }
   });
 
-  it('marks unadmitted jobs on a pre-stop without hanging admitted work', async () => {
-    const stopSignal = { stopped: true, reason: 'sigint' as SchedulerStopReason };
-    const outcome = await runBoundedPipeline({
-      jobs: [
-        stringJob(0, 'parallel', async () => 'snapshot-0'),
-        stringJob(1, 'parallel', async () => 'snapshot-1'),
-      ],
-      caseConcurrency: 4,
-      judgeConcurrency: 2,
-      drainMs: 1000,
-      stopSignal,
-    });
-    expect(outcome.stopReason).toBe('sigint');
-    expect(outcome.results).toEqual([
-      { status: 'error', error: 'incomplete: SIGINT stopped admissions before this case started' },
-      { status: 'error', error: 'incomplete: SIGINT stopped admissions before this case started' },
-    ]);
-  });
-
-  it('marks unadmitted jobs on deadline expiry', async () => {
-    const stopSignal = { stopped: true, reason: 'deadline' as SchedulerStopReason };
-    const outcome = await runBoundedPipeline({
-      jobs: [stringJob(0, 'parallel', async () => 'snapshot-0')],
-      caseConcurrency: 4,
-      judgeConcurrency: 2,
-      drainMs: 100,
-      stopSignal,
-    });
-    expect(outcome.stopReason).toBe('deadline');
-    expect(outcome.results).toEqual([
-      { status: 'error', error: 'incomplete: suite deadline stopped admissions before this case started' },
-    ]);
-  });
 });
 
 describe('eval scheduler primitives', () => {
@@ -469,4 +474,54 @@ describe('eval scheduler primitives', () => {
     expect(leftovers).toEqual([]);
     await fs.rm(dir, { recursive: true, force: true });
   });
+});
+
+describe('eval scheduler settle hook', () => {
+  it('fires the settle hook once per job with execution outcome', async () => {
+    {
+      const events: Array<{ jobIndex: number; caseId: string; executed: boolean; status: string }> = [];
+      const jobs = [
+        stringJob(0, 'parallel', async () => 'snapshot-0'),
+        stringJob(1, 'parallel', async () => { throw new Error('boom-execute'); }),
+        stringJob(2, 'parallel', async () => 'snapshot-2', async () => { throw new Error('boom-judge'); }),
+      ];
+      const outcome = await runBoundedPipeline({
+        jobs,
+        caseConcurrency: 4,
+        judgeConcurrency: 2,
+        drainMs: 1000,
+        onJobSettled: (event) => {
+          events.push({
+            jobIndex: event.jobIndex,
+            caseId: event.caseId,
+            executed: event.executed,
+            status: event.outcome.status,
+          });
+        },
+      });
+      expect(outcome.results.map((result) => result.status)).toEqual(['ok', 'error', 'error']);
+      expect(events).toHaveLength(3);
+      expect(events.map((event) => event.jobIndex).sort()).toEqual([0, 1, 2]);
+      expect(events.every((event) => event.executed)).toBe(true);
+      expect(events.find((event) => event.jobIndex === 0))
+        .toMatchObject({ caseId: 'case-0', status: 'ok' });
+    }
+
+    {
+      const events: Array<{ jobIndex: number; executed: boolean }> = [];
+      const outcome = await runBoundedPipeline({
+        jobs: [stringJob(0, 'parallel', async () => 'snapshot-0')],
+        caseConcurrency: 1,
+        judgeConcurrency: 1,
+        drainMs: 1000,
+        stopSignal: { stopped: true, reason: 'sigint' },
+        onJobSettled: (event) => {
+          events.push({ jobIndex: event.jobIndex, executed: event.executed });
+        },
+      });
+      expect(outcome.results[0]?.status).toBe('error');
+      expect(events).toEqual([{ jobIndex: 0, executed: false }]);
+    }
+  });
+
 });

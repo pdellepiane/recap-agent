@@ -166,7 +166,7 @@ function fact(overrides: Partial<ProjectedPurchaseFact> = {}): ProjectedPurchase
 }
 
 describe('O5 typed purchase adapter: values come only from typed facts', () => {
-  it('projects typed live-lookup values with the verifiable hash', () => {
+  it('projects live-lookup values from typed facts; missing and bridge reads report unknown without demanding data', () => {
     const lines = buildLivePurchaseFactLines([makeTurn(typedFactEvidence())]);
     const text = lines.join('\n');
     expect(text).toContain('evidencia_compra turno 0');
@@ -177,24 +177,17 @@ describe('O5 typed purchase adapter: values come only from typed facts', () => {
     expect(text).toContain('Transferencia');
     expect(text).toContain('pending');
     expect(text).toContain(FACT_HASH);
-  });
-
-  it('never decodes the retired filename/score bridge into values', () => {
-    const lines = buildLivePurchaseFactLines([makeTurn(legacyBridgeEvidence())]);
-    const text = lines.join('\n');
-    expect(text).toContain('evidencia_compra turno 0');
-    expect(text).toContain('completed_with_results');
-    expect(text).not.toContain('Baby Shower Catalina');
-    expect(text).not.toContain('3173.81');
-    expect(text).toContain('evidencia_compra_datos=no_disponibles');
-  });
-
-  it('reports a missing backend read as unknown without demanding a named datum', () => {
-    const lines = buildLivePurchaseFactLines([makeTurn(null)]);
-    expect(lines.join('\n')).toContain('evidencia_compra=ninguna');
-    const bridgeless = buildLivePurchaseFactLines([makeTurn(legacyBridgeEvidence())]).join('\n');
-    expect(bridgeless).toContain('desconocido');
-    expect(bridgeless).not.toMatch(/debe .* (monto|dato|valor|codigo)/iu);
+    const bridgeLines = buildLivePurchaseFactLines([makeTurn(legacyBridgeEvidence())]);
+    const bridgeText = bridgeLines.join('\n');
+    expect(bridgeText).toContain('evidencia_compra turno 0');
+    expect(bridgeText).toContain('completed_with_results');
+    expect(bridgeText).not.toContain('Baby Shower Catalina');
+    expect(bridgeText).not.toContain('3173.81');
+    expect(bridgeText).toContain('evidencia_compra_datos=no_disponibles');
+    const missing = buildLivePurchaseFactLines([makeTurn(null)]);
+    expect(missing.join('\n')).toContain('evidencia_compra=ninguna');
+    expect(bridgeText).toContain('desconocido');
+    expect(bridgeText).not.toMatch(/debe .* (monto|dato|valor|codigo)/iu);
   });
 
   it('shares one formatter across fixture and live provenances', () => {
@@ -239,7 +232,7 @@ describe('O5 typed purchase adapter: values come only from typed facts', () => {
     expect(facts[0]?.eventLabel).not.toBe(mutated[0]?.eventLabel);
   });
 
-  it('carries responder-visible dedication, shipment and item facts to the judge', () => {
+  it('projects dedication, shipment and items for live and fixture provenances through the same adapter', () => {
     const lines = buildLivePurchaseFactLines([makeTurn([
       {
         fileId: '',
@@ -272,17 +265,11 @@ describe('O5 typed purchase adapter: values come only from typed facts', () => {
     expect(text).toContain('Sábanas x1 monto=150 total_fila=150 (physical)');
     expect(text).toContain('Aporte luna de miel x1 monto=80 total_fila=80 (host_credit)');
     expect(text).toContain('estado_envio=desconocido');
-  });
-
-  it('omits dedication and items the responder never received', () => {
-    const lines = buildLivePurchaseFactLines([makeTurn(typedFactEvidence())]);
-    const text = lines.join('\n');
-    expect(text).toContain('dedicatoria=[ausente]');
-    expect(text).toContain('articulos=[ninguno]');
-    expect(text).toContain('estado_envio=desconocido');
-  });
-
-  it('projects fixture-world dedication, shipment and items through the same adapter', () => {
+    const absentLines = buildLivePurchaseFactLines([makeTurn(typedFactEvidence())]);
+    const absentText = absentLines.join('\n');
+    expect(absentText).toContain('dedicatoria=[ausente]');
+    expect(absentText).toContain('articulos=[ninguno]');
+    expect(absentText).toContain('estado_envio=desconocido');
     const world: FixturePurchaseWorld = {
       guestOrders: {
         '+51900001303': {
@@ -326,14 +313,14 @@ describe('O5 typed purchase adapter: values come only from typed facts', () => {
     };
     const records = buildFixturePurchaseRecords(world, ['+51900001303']);
     expect(records).toHaveLength(2);
-    const lines = buildFixturePurchaseFactLines('s13-test', records);
-    const text = lines.join('\n');
-    expect(text).toContain('proyeccion_compra visible para el candidato');
-    expect(text).toContain('Evento de prueba A');
-    expect(text).toContain('120.5');
-    expect(text).toContain('referencia_cliente=ausente');
-    expect(text).toContain('Felicidades');
-    expect(text).toContain('Aporte luna de miel x1 monto=80 total_fila=80 (host_credit)');
+    const fixtureLines = buildFixturePurchaseFactLines('s13-test', records);
+    const fixtureText = fixtureLines.join('\n');
+    expect(fixtureText).toContain('proyeccion_compra visible para el candidato');
+    expect(fixtureText).toContain('Evento de prueba A');
+    expect(fixtureText).toContain('120.5');
+    expect(fixtureText).toContain('referencia_cliente=ausente');
+    expect(fixtureText).toContain('Felicidades');
+    expect(fixtureText).toContain('Aporte luna de miel x1 monto=80 total_fila=80 (host_credit)');
   });
 });
 

@@ -61,23 +61,20 @@ describe('close submission evidence', () => {
     });
   });
 
-  it('rejects invocation-shaped output without actual effects', () => {
+  it('rejects invocation-shaped, unconfirmed, and malformed outcomes', () => {
+    // Invocation-shaped output without actual effects.
     expect(parseFinishPlanTurnOutcome(JSON.stringify({
       status: 'success',
       eventDate: '2026-10-18',
       contacted_providers: [{ providerId: 101, category: 'Catering', success: true }],
     }))).toBeUndefined();
-  });
-
-  it('rejects a success status when its effects are not confirmed', () => {
+    // A success status whose effects are not confirmed.
     expect(parseFinishPlanTurnOutcome(JSON.stringify({
       status: 'success',
       eventDate: '2026-10-18',
       effects: [{ ...effect, status: 'failed', receiptId: null }],
     }))).toBeUndefined();
-  });
-
-  it('rejects malformed receipts and invalid dates', () => {
+    // Malformed receipts and invalid dates.
     expect(parseFinishPlanTurnOutcome(JSON.stringify({
       status: 'success', eventDate: '2026-10-18', effects: [{ ...effect, attemptCount: 0 }],
     }))).toBeUndefined();

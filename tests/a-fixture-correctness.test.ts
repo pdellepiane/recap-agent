@@ -92,55 +92,50 @@ function makeTurn(turnIndex: number, tools: string[], status: string): EvalTurnR
 }
 
 describe('A1/A2/A3 fixture correctness', () => {
-  it('offline truth table: success replays success with zero real writes', async () => {
+  it('offline truth table: handoff scenarios replay typed outcomes with zero real writes', async () => {
     denyNetwork();
-    const store = new InMemoryEvalFixtureStateStore();
-    const gateway = await FixtureAgentConversationGateway.create('s06-identity-rejection-success', undefined, {
-      runId: 'run-a1', caseId: 'case-success', stateStore: store,
+    // Success replays success.
+    const successStore = new InMemoryEvalFixtureStateStore();
+    const successGateway = await FixtureAgentConversationGateway.create('s06-identity-rejection-success', undefined, {
+      runId: 'run-a1', caseId: 'case-success', stateStore: successStore,
     });
-    const first = await gateway.requestHumanTakeover('+51900000901');
-    expect(first.status).toBe('success');
-    const second = await gateway.requestHumanTakeover('+51900000901');
-    expect(second.status).toBe('success');
-    expect(await store.count('run-a1', 'case-success', 'handoff.write')).toBe(2);
+    const successFirst = await successGateway.requestHumanTakeover('+51900000901');
+    expect(successFirst.status).toBe('success');
+    const successSecond = await successGateway.requestHumanTakeover('+51900000901');
+    expect(successSecond.status).toBe('success');
+    expect(await successStore.count('run-a1', 'case-success', 'handoff.write')).toBe(2);
     expect(vi.mocked(globalThis.fetch)).not.toHaveBeenCalled();
-  });
-
-  it('offline truth table: rejected replays failed with typed outcome', async () => {
-    denyNetwork();
-    const store = new InMemoryEvalFixtureStateStore();
-    const gateway = await FixtureAgentConversationGateway.create('s06-otp-handoff-failed', undefined, {
-      runId: 'run-a2', caseId: 'case-failed', stateStore: store,
+    // Rejected replays failed with a typed outcome.
+    const failedStore = new InMemoryEvalFixtureStateStore();
+    const failedGateway = await FixtureAgentConversationGateway.create('s06-otp-handoff-failed', undefined, {
+      runId: 'run-a2', caseId: 'case-failed', stateStore: failedStore,
     });
-    const first = await gateway.requestHumanTakeover('+51900000905');
-    expect(first.status).toBe('failed');
-    if (first.status === 'failed') expect(first.outcome).toBe('failed');
-    const second = await gateway.requestHumanTakeover('+51900000905');
-    expect(second.status).toBe('failed');
-    if (second.status === 'failed') expect(second.outcome).toBe('failed');
-    const receipts = await store.list('run-a2', 'case-failed', 'handoff.write');
-    expect(receipts).toHaveLength(2);
-    expect(receipts[1]?.replayed).toBe(true);
-    expect(receipts[0]?.resultStatus).toBe('failed');
-    expect(receipts[1]?.resultStatus).toBe('failed');
-    expect(applyHandoffResult({ dedupeKey: 'k', inboundId: 'i', phone: 'p', gatewayStatus: resolveHandoffGatewayStatus(first) }).outcome).toBe('handoff_failed');
-  });
-
-  it('offline truth table: unknown replays unknown with typed outcome', async () => {
-    denyNetwork();
-    const store = new InMemoryEvalFixtureStateStore();
-    const gateway = await FixtureAgentConversationGateway.create('s06-otp-handoff-unknown', undefined, {
-      runId: 'run-a3', caseId: 'case-unknown', stateStore: store,
+    const failedFirst = await failedGateway.requestHumanTakeover('+51900000905');
+    expect(failedFirst.status).toBe('failed');
+    if (failedFirst.status === 'failed') expect(failedFirst.outcome).toBe('failed');
+    const failedSecond = await failedGateway.requestHumanTakeover('+51900000905');
+    expect(failedSecond.status).toBe('failed');
+    if (failedSecond.status === 'failed') expect(failedSecond.outcome).toBe('failed');
+    const failedReceipts = await failedStore.list('run-a2', 'case-failed', 'handoff.write');
+    expect(failedReceipts).toHaveLength(2);
+    expect(failedReceipts[1]?.replayed).toBe(true);
+    expect(failedReceipts[0]?.resultStatus).toBe('failed');
+    expect(failedReceipts[1]?.resultStatus).toBe('failed');
+    expect(applyHandoffResult({ dedupeKey: 'k', inboundId: 'i', phone: 'p', gatewayStatus: resolveHandoffGatewayStatus(failedFirst) }).outcome).toBe('handoff_failed');
+    // Unknown replays unknown with a typed outcome.
+    const unknownStore = new InMemoryEvalFixtureStateStore();
+    const unknownGateway = await FixtureAgentConversationGateway.create('s06-otp-handoff-unknown', undefined, {
+      runId: 'run-a3', caseId: 'case-unknown', stateStore: unknownStore,
     });
-    const first = await gateway.requestHumanTakeover('+51900000906');
-    expect(first.status).toBe('failed');
-    if (first.status === 'failed') expect(first.outcome).toBe('unknown');
-    const second = await gateway.requestHumanTakeover('+51900000906');
-    expect(second.status).toBe('failed');
-    if (second.status === 'failed') expect(second.outcome).toBe('unknown');
-    const receipts = await store.list('run-a3', 'case-unknown', 'handoff.write');
-    expect(receipts.map((r) => r.resultStatus)).toEqual(['unknown', 'unknown']);
-    expect(applyHandoffResult({ dedupeKey: 'k', inboundId: 'i', phone: 'p', gatewayStatus: resolveHandoffGatewayStatus(first) }).outcome).toBe('outcome_unknown');
+    const unknownFirst = await unknownGateway.requestHumanTakeover('+51900000906');
+    expect(unknownFirst.status).toBe('failed');
+    if (unknownFirst.status === 'failed') expect(unknownFirst.outcome).toBe('unknown');
+    const unknownSecond = await unknownGateway.requestHumanTakeover('+51900000906');
+    expect(unknownSecond.status).toBe('failed');
+    if (unknownSecond.status === 'failed') expect(unknownSecond.outcome).toBe('unknown');
+    const unknownReceipts = await unknownStore.list('run-a3', 'case-unknown', 'handoff.write');
+    expect(unknownReceipts.map((r) => r.resultStatus)).toEqual(['unknown', 'unknown']);
+    expect(applyHandoffResult({ dedupeKey: 'k', inboundId: 'i', phone: 'p', gatewayStatus: resolveHandoffGatewayStatus(unknownFirst) }).outcome).toBe('outcome_unknown');
   });
 
   it('disabled manifest blocks dispatch with typed disabledOperations', async () => {
@@ -213,14 +208,16 @@ describe('A1/A2/A3 fixture correctness', () => {
       fixtureEffects: buildFixtureEffectSummariesFromReceipts(await store.list('run-a5', 'case-handoff')),
     });
     expect(evaluateFixtureEffectCountForTesting({ turns, operation: 'handoff.write', turnIndex: 0, expectedAttempts: 1, expectedSuccesses: 1, expectedReplays: 0 }).passed).toBe(true);
-    expect(evaluateFixtureEffectCountForTesting({ turns, operation: 'handoff.write', turnIndex: 1, expectedAttempts: 1, expectedSuccesses: 1, expectedReplays: 0 }).passed).toBe(true);
+    // Turn-indexed expectations compare per-turn deltas: turn 1 added no
+    // receipt, so it reads zero despite the cumulative boundary of one.
+    expect(evaluateFixtureEffectCountForTesting({ turns, operation: 'handoff.write', turnIndex: 1, expectedAttempts: 0, expectedSuccesses: 0, expectedReplays: 0 }).passed).toBe(true);
     expect(evaluateFixtureEffectCountForTesting({ turns, operation: 'handoff.write', turnIndex: 0, expectedAttempts: 2, expectedSuccesses: 2, expectedReplays: 0 }).passed).toBe(false);
-    expect(evaluateFixtureEffectCountForTesting({ turns, operation: 'handoff.write', turnIndex: 2, expectedAttempts: 2, expectedSuccesses: 2, expectedReplays: 0 }).passed).toBe(true);
+    // The later write lands after the turn 0/1 boundary: turn 2 reads its
+    // own delta of one, never the cumulative two.
+    expect(evaluateFixtureEffectCountForTesting({ turns, operation: 'handoff.write', turnIndex: 2, expectedAttempts: 1, expectedSuccesses: 1, expectedReplays: 0 }).passed).toBe(true);
     expect(evaluateFixtureEffectCountForTesting({ turns, operation: 'handoff.write', turnIndex: 2, expectedAttempts: 2, expectedSuccesses: 1, expectedReplays: 0 }).passed).toBe(false);
-  });
-
-  it('fixture_effect_count missing receipt fails instead of zero', async () => {
-    const t0 = makeTurn(0, [], 'none');
-    expect(evaluateFixtureEffectCountForTesting({ turns: [t0], operation: 'handoff.write', expectedAttempts: 1, expectedSuccesses: 1, expectedReplays: 0 }).passed).toBe(false);
+    // A missing receipt fails instead of passing as zero.
+    const missing = makeTurn(0, [], 'none');
+    expect(evaluateFixtureEffectCountForTesting({ turns: [missing], operation: 'handoff.write', expectedAttempts: 1, expectedSuccesses: 1, expectedReplays: 0 }).passed).toBe(false);
   });
 });

@@ -100,6 +100,7 @@ import type {
   ExtractionResult,
   ModelOriginReceipt,
   RsvpPhoneReplyEvidence,
+  RsvpReplyInvitation,
   ToolUsage,
 } from './contracts';
 import type { TokenUsage } from './contracts';
@@ -117,7 +118,7 @@ import {
   type AuthRecoveryTerminalReason,
   type InformationAuthRecoveryState,
 } from './information-auth-state-machine';
-import { normalizeExtractedOrderReference } from '../core/order-reference';
+import { normalizeExtractedOrderReference, parseOrderReference } from '../core/order-reference';
 import { deriveDynamicAgentPolicy } from './dynamic-agent-policy';
 import { eventMatches } from './event-matching';
 import {
@@ -150,7 +151,7 @@ import type {
   ProviderQueryIntent,
   ProviderReference,
 } from './extraction-schemas';
-import { parseInternationalPhone, splitInternationalPhone } from './phone';
+import { parseInternationalPhone, splitInternationalPhone, splitStoredInternationalPhone } from './phone';
 import type { PromptLoader } from './prompt-loader';
 import type { ProviderGateway } from './provider-gateway';
 import type { StructuredMessage } from './structured-message';
@@ -251,6 +252,7 @@ export type HandleTurnResponse = {
 export type CompletedRsvpCarryover = {
   evidence: ComposeReplyRequest['rsvpPhoneEvidence'];
   outcome: string;
+  companionOutcome?: ComposeReplyRequest['rsvpCompanionOutcome'];
   handoffOutcome?: SupportHandoffReplyOutcome;
 };
 
@@ -357,6 +359,8 @@ type RsvpInvitation = {
   eventName: string | null;
   eventDate: string | null;
   state: RsvpInvitationState;
+  stateSource?: 'guest_record' | 'trusted_phone_event' | 'phone_enriched_event' | 'verified_fresh_read';
+  detailReadStatus?: 'success' | 'failed' | 'unavailable' | 'not_requested';
   accessMethod:
     | 'guest_record'
     | 'trusted_phone_event'
@@ -1256,6 +1260,7 @@ export class AgentService {
       const preparedCustomerContext = await this.prepareCustomerContextForTurn({
         plan: existingPlan,
         contactPhone: inbound.contactPhone,
+        messageContext,
       });
       const extractionStartedAt = Date.now();
       const rawExtractionResult = await this.dependencies.runtime.extract({
@@ -1454,6 +1459,7 @@ export class AgentService {
     const preparedCustomerContext = await this.prepareCustomerContextForTurn({
       plan: workingPlan,
       contactPhone: inbound.contactPhone,
+      messageContext,
     });
     const extractionStartedAt = Date.now();
     const rawExtractionResult = await this.dependencies.runtime.extract({
@@ -2621,7 +2627,8 @@ export class AgentService {
       faqWork,
       customerWork,
       identityAccessGrounded: hasValidUserAuthToken(plan) ||
-        splitInternationalPhone(args.contactPhone ?? plan.contact_phone ?? null) !== null,
+        (splitInternationalPhone(args.contactPhone) ??
+          splitStoredInternationalPhone(plan.contact_phone ?? null)) !== null,
       protectedTaskRequested: hasExtractedProtected || hasPendingProtected,
     };
     const capabilitySignals: CustomerCapabilitySignals = {
@@ -2787,9 +2794,11 @@ export class AgentService {
       (args.extraction.rsvpCandidateGuestId ?? null) !== null;
     const action = validatedRsvpAction
       ?? (!isReadOnlyStateQuery && hasCurrentRsvpSignal && pendingState.status === 'awaiting_event_selection' ? pendingState.pending_action : null);
+    // A fresh self decision does not resolve a previously ambiguous companion
+    // target. Only an event-selection continuation inherits that decision.
     const plusOneResponse = extractedPlusOneResponse === 'yes' || extractedPlusOneResponse === 'no'
       ? extractedPlusOneResponse
-      : !isReadOnlyStateQuery && hasCurrentRsvpSignal && pendingState.status === 'awaiting_event_selection'
+      : validatedRsvpAction === null && !isReadOnlyStateQuery && hasCurrentRsvpSignal && pendingState.status === 'awaiting_event_selection'
         ? pendingState.pending_plus_one_response ?? null
         : null;
     let result: AgentGuestRsvpResult | null = null;
@@ -2800,6 +2809,7 @@ export class AgentService {
     // receipt with verification provenance exists in the outcome). Read-only
     // state answers attempt nothing, so they never claim completed work.
     let rsvpMutationAttempted = false;
+    let companionOutcome: ComposeReplyRequest['rsvpCompanionOutcome'] = null;
 
     const handoffParty = args.extraction.rsvpParty;
     const hasExplicitSingleCompanionEvidence = handoffParty?.companion_count === 'one' || (
@@ -2992,7 +3002,6 @@ export class AgentService {
           args.gateway,
           args.toolUsage,
           args.timingMs,
-          args.extraction.rsvpEventReference ?? null,
         )
       : null;
     let replyPhoneEvidence = phoneEvidence;
@@ -3241,6 +3250,17 @@ export class AgentService {
         });
         args.timingMs.rsvp_execution += Date.now() - executionStartedAt;
         rsvpMutationAttempted = true;
+        if (verification.plusOneEcho) {
+          const echo = verification.plusOneEcho;
+          const ineligible = echo.saved === false && echo.reason === 'not_eligible';
+          companionOutcome = {
+            saved: echo.saved,
+            response: echo.response,
+            reason: this.sanitizeRsvpEchoReason(echo.reason),
+            eligibility: ineligible ? 'ineligible' : 'unknown',
+            retryAppropriate: echo.saved === false ? false : null,
+          };
+        }
         // Replay integrity: the trace reports only calls performed in THIS
         // invocation. A replayed historical receipt carries historical
         // write/read counts but performed nothing now; logging them would
@@ -3371,7 +3391,7 @@ export class AgentService {
       return this.handleInformationFlow({
         ...args, workingPlan: planToSave, extraction: replyExtraction,
         preparedCustomerContext: replyCustomerContext ?? undefined,
-        completedRsvp: { evidence: rsvpPhoneEvidence, outcome: operationalNote },
+        completedRsvp: { evidence: rsvpPhoneEvidence, outcome: operationalNote, companionOutcome },
       });
     }
     const composeStartedAt = Date.now();
@@ -3398,6 +3418,7 @@ export class AgentService {
       // so no completed-effect receipt is claimed; the current-state evidence
       // above stays the reply basis.
       rsvpWorkCompleted: rsvpMutationAttempted,
+      ...(companionOutcome ? { rsvpCompanionOutcome: companionOutcome } : {}),
     });
     args.timingMs.compose_reply += Date.now() - composeStartedAt;
     args.tokenUsage.reply = reply.tokenUsage ?? null;
@@ -3530,7 +3551,6 @@ export class AgentService {
     gateway: AgentConversationGateway,
     toolUsage: ToolUsage,
     timingMs: TurnTiming,
-    eventReference: string | null,
   ): Promise<RsvpPhoneEvidence | null> {
     if (!this.capabilityManifest['rsvp.state.read'].available) {
       return null;
@@ -3567,67 +3587,52 @@ export class AgentService {
       const associatedSummaries = guestEvents?.status === 'success'
         ? guestEvents.events
         : [];
-      // I1 enrichment is unique-compatible-match over the validated inferred
-      // target. The reference arrives from the existing extraction
-      // (eventHint/rsvpEventReference): an explicit current reference or a
-      // model-grounded inference from campaign/conversation context — never a
-      // second runtime selector. It resolves against the summaries and
-      // enriches only its unique match; zero or multiple matches enrich
-      // nothing (never the first hit, never a sole unrelated event, never a
-      // recency pick). Without a reference a single summary may enrich;
-      // several stay bare for disambiguation. Bounded: at most one detail
-      // read, never every event.
-      const normalizedReference = this.normalizeSelectionText(eventReference ?? '');
-      const referenceMatches = normalizedReference.length > 0
-        ? associatedSummaries.filter((event) => {
-            return this.normalizedTextContainsAlias(this.normalizeSelectionText(event.name), normalizedReference) ||
-              this.normalizedTextContainsAlias(normalizedReference, this.normalizeSelectionText(event.name)) ||
-              this.normalizeSelectionText(event.slug) === normalizedReference;
-          })
-        : [];
-      const selectedAssociatedEvent = normalizedReference.length > 0
-        ? referenceMatches.length === 1 ? referenceMatches[0] ?? null : null
-        : associatedSummaries.length === 1
-          ? associatedSummaries[0] ?? null
-          : null;
-      let enrichedDetail: Awaited<
-        ReturnType<NonNullable<AgentConversationGateway['getEventDetail']>>
-      > | null = null;
-      let enrichedDetailFailed = false;
-      if (selectedAssociatedEvent && gateway.getEventDetail) {
-        toolUsage.called.push('get_guest_event_detail');
-        toolUsage.inputs.push({
-          tool: 'get_guest_event_detail',
-          input: JSON.stringify({
-            event_id: selectedAssociatedEvent.eventId,
-            trusted_phone_present: true,
-          }),
-        });
-        try {
-          enrichedDetail = await gateway.getEventDetail({
-            eventId: selectedAssociatedEvent.eventId,
-            phone,
+      // Every authorized phone-linked summary is read. Selection may resolve
+      // one event for an effect, but it cannot decide which attendance facts
+      // the reply receives. Keep each read status beside its own event.
+      type DetailResult = Awaited<ReturnType<NonNullable<AgentConversationGateway['getEventDetail']>>>;
+      const detailByEventId = new Map<number, {
+        result: DetailResult | null;
+        status: 'success' | 'failed' | 'unavailable';
+      }>();
+      // Limit concurrent requests, not the number of records. Every summary
+      // gets its own read outcome even when one request fails.
+      for (let offset = 0; offset < associatedSummaries.length; offset += 4) {
+        const batch = associatedSummaries.slice(offset, offset + 4);
+        const results = await Promise.all(batch.map(async (summary) => {
+          if (!gateway.getEventDetail) {
+            return { summary, result: null, status: 'unavailable' as const };
+          }
+          try {
+            const result = await gateway.getEventDetail({ eventId: summary.eventId, phone });
+            return {
+              summary,
+              result,
+              status: result.status === 'success' ? 'success' as const :
+                result.status === 'failed' ? 'failed' as const : 'unavailable' as const,
+            };
+          } catch {
+            return { summary, result: null, status: 'failed' as const };
+          }
+        }));
+        for (const { summary, result, status } of results) {
+          detailByEventId.set(summary.eventId, { result, status });
+          if (!gateway.getEventDetail) continue;
+          toolUsage.called.push('get_guest_event_detail');
+          toolUsage.inputs.push({
+            tool: 'get_guest_event_detail',
+            input: JSON.stringify({ event_id: summary.eventId, trusted_phone_present: true }),
           });
-          enrichedDetailFailed = enrichedDetail.status === 'failed';
-        } catch {
-          enrichedDetailFailed = true;
+          toolUsage.outputs.push({
+            tool: 'get_guest_event_detail',
+            output: JSON.stringify({
+              event_id: summary.eventId,
+              status,
+              attendance_present: result?.status === 'success' && result.event.attendance != null,
+              purchase_count: result?.status === 'success' ? result.event.purchases?.length ?? 0 : 0,
+            }),
+          });
         }
-        toolUsage.outputs.push({
-          tool: 'get_guest_event_detail',
-          output: JSON.stringify({
-            status: enrichedDetail?.status ?? 'failed',
-            attendance_present:
-              enrichedDetail?.status === 'success' &&
-              enrichedDetail.event.attendance !== null &&
-              enrichedDetail.event.attendance !== undefined,
-            purchase_count:
-              enrichedDetail?.status === 'success'
-                ? enrichedDetail.event.purchases?.length ?? 0
-                : 0,
-          }),
-        });
-      } else if (selectedAssociatedEvent) {
-        enrichedDetailFailed = true;
       }
       const authoritativeInvitations: RsvpInvitation[] = userContext?.events
         .filter((event) => event.relation === 'guest' && event.guestId !== null)
@@ -3640,14 +3645,17 @@ export class AgentService {
             event.guestStatus?.hasResponded ?? null,
             event.guestStatus?.willAttend ?? null,
           ),
+          stateSource: 'guest_record' as const,
+          detailReadStatus: detailByEventId.get(event.eventId ?? -1)?.status ?? 'not_requested' as const,
           accessMethod: 'guest_record' as const,
         })) ?? [];
       const associatedEvents: RsvpInvitation[] = associatedSummaries
         .map((event) => {
+          const detail = detailByEventId.get(event.eventId);
           const enrichedEvent =
-            enrichedDetail?.status === 'success' &&
-            enrichedDetail.event.eventId === event.eventId
-              ? enrichedDetail.event
+            detail?.result?.status === 'success' &&
+            detail.result.event.eventId === event.eventId
+              ? detail.result.event
               : null;
           const attendance =
             enrichedEvent?.attendance ?? null;
@@ -3662,6 +3670,10 @@ export class AgentService {
                   attendance.willAttend,
                 )
               : 'unknown' as const,
+            stateSource: attendance
+              ? 'phone_enriched_event' as const
+              : 'trusted_phone_event' as const,
+            detailReadStatus: detail?.status ?? 'unavailable' as const,
             accessMethod: attendance
               ? 'phone_enriched_event' as const
               : 'trusted_phone_event' as const,
@@ -3677,7 +3689,7 @@ export class AgentService {
         userContextOutcome.status === 'rejected' ||
         guestEventsOutcome.status === 'rejected' ||
         guestEvents?.status === 'failed' ||
-        enrichedDetailFailed;
+        [...detailByEventId.values()].some((detail) => detail.status !== 'success');
       if (invitations.length === 0 && sourceFailed) {
         toolUsage.outputs.push({
           tool: 'lookup_rsvp_invitations',
@@ -3719,7 +3731,9 @@ export class AgentService {
         });
       }
       return {
-        coverage: sourceFailed ? 'partial' : 'complete',
+        coverage: sourceFailed || invitations.some((invitation) => invitation.state === 'unknown')
+          ? 'partial'
+          : 'complete',
         resolution,
         invitations,
       };
@@ -3745,17 +3759,17 @@ export class AgentService {
     return normalizedName.length > 0;
   }
 
-  private toRsvpReplyEvent(invitation: RsvpInvitation): {
-    event_name: string | null;
-    event_date: string | null;
-    invitation_record: 'available' | 'unavailable';
-    rsvp_state: 'pending' | 'attending' | 'declining' | 'unavailable';
-  } {
+  private toRsvpReplyEvent(invitation: RsvpInvitation): RsvpReplyInvitation {
     return {
+      event_id: invitation.eventId,
+      guest_id: invitation.guestId,
       event_name: invitation.eventName,
       event_date: invitation.eventDate,
       invitation_record: invitation.guestId === null ? 'unavailable' : 'available',
       rsvp_state: invitation.state === 'unknown' ? 'unavailable' : invitation.state,
+      state_read_status: invitation.state === 'unknown' ? 'missing' : 'known',
+      state_source: invitation.stateSource ?? invitation.accessMethod,
+      detail_read_status: invitation.detailReadStatus ?? 'not_requested',
     };
   }
 
@@ -3828,6 +3842,9 @@ export class AgentService {
             ...associatedEvent,
             accessMethod: authoritativeEvent.accessMethod,
             state: authoritativeDecided ? authoritativeEvent.state : associatedEvent.state,
+            stateSource: authoritativeDecided
+              ? authoritativeEvent.stateSource ?? authoritativeEvent.accessMethod
+              : associatedEvent.stateSource ?? associatedEvent.accessMethod,
             guestId: associatedEvent.guestId ?? authoritativeEvent.guestId,
             eventName: associatedEvent.eventName ?? authoritativeEvent.eventName,
             eventDate: associatedEvent.eventDate ?? authoritativeEvent.eventDate,
@@ -3903,6 +3920,11 @@ export class AgentService {
         coverage: evidence.coverage,
         resolution: evidence.resolution,
         event: this.toRsvpReplyEvent(target),
+        other_invitations: sortedInvitations
+          .filter((invitation) => invitation !== target && !(
+            this.sameRsvpEvent(invitation, target) && this.sameRsvpGuest(invitation, target)
+          ))
+          .map((invitation) => this.toRsvpReplyEvent(invitation)),
       };
       logAuthObservabilityEvent('info', 'rsvp_projection_state', {
         state: projection.state,
@@ -3937,6 +3959,7 @@ export class AgentService {
         coverage: evidence.coverage,
         resolution: evidence.resolution,
         event: this.toRsvpReplyEvent(only),
+        other_invitations: [],
       };
       // I1: an unresolved explicit reference must not resolve into this
       // unrelated single invitation. Present it as the selection candidate
@@ -4005,6 +4028,7 @@ export class AgentService {
       rsvpPhoneEvidence: carryover.evidence,
       errorMessage: carryover.outcome,
       rsvpWorkCompleted: true,
+      ...(carryover.companionOutcome ? { rsvpCompanionOutcome: carryover.companionOutcome } : {}),
       ...(carryover.handoffOutcome != null && request.handoffOutcome == null
         ? { handoffOutcome: carryover.handoffOutcome }
         : {}),
@@ -4043,7 +4067,7 @@ export class AgentService {
       invitations: evidence.invitations.map((invitation) =>
         invitation.guestId === verifiedGuestId &&
         invitation.eventId !== null && invitation.eventId === verifiedEventId
-          ? { ...invitation, state: verifiedState }
+          ? { ...invitation, state: verifiedState, stateSource: 'verified_fresh_read', detailReadStatus: 'success' }
           : invitation),
     };
   }
@@ -4170,6 +4194,10 @@ export class AgentService {
               saved: verification.plusOneEcho.saved,
               response: verification.plusOneEcho.response,
               reason: this.sanitizeRsvpEchoReason(verification.plusOneEcho.reason),
+              ...(verification.plusOneEcho.saved === false &&
+                verification.plusOneEcho.reason === 'not_eligible'
+                ? { eligibility: 'ineligible' as const, retry_appropriate: false as const }
+                : {}),
             }
           : null,
         ...(verification.plusOneEcho?.saved === false
@@ -4251,11 +4279,18 @@ export class AgentService {
     const hasExplicitReference = reference.length > 0;
     const extractedGuestId = args.extractedGuestId ?? null;
     if (hasExplicitReference) {
-      let matches = args.invitations.filter((invitation) => {
-        const name = this.normalizeSelectionText(invitation.eventName ?? '');
-        return this.normalizedTextContainsAlias(name, reference)
-          || this.normalizedTextContainsAlias(reference, name);
-      });
+      // An extracted numeric event reference is an entity ID, not a name
+      // alias. Bind it only to the authorized invitation's exact event ID.
+      const numericEventId = /^[1-9]\d*$/u.test(reference) && Number.isSafeInteger(Number(reference))
+        ? Number(reference)
+        : null;
+      let matches = numericEventId !== null
+        ? args.invitations.filter((invitation) => invitation.eventId === numericEventId)
+        : args.invitations.filter((invitation) => {
+            const name = this.normalizeSelectionText(invitation.eventName ?? '');
+            return this.normalizedTextContainsAlias(name, reference)
+              || this.normalizedTextContainsAlias(reference, name);
+          });
       if (extractedGuestId !== null) {
         if (!args.invitations.some((invitation) => invitation.guestId === extractedGuestId)) {
           return null;
@@ -6851,6 +6886,7 @@ export class AgentService {
   private async prepareCustomerContextForTurn(args: {
     plan: PlanSnapshot;
     contactPhone: string | null | undefined;
+    messageContext?: TurnMessageContext;
   }): Promise<PreparedCustomerContext> {
     const deadlineMs = Date.now() + CUSTOMER_CONTEXT_READ_BUDGET_MS;
     const persistedInformationRefusal = args.plan.information_state.pending_requests.some(
@@ -6863,7 +6899,7 @@ export class AgentService {
     const trustedPhone = authStateForbidsProfile
       ? null
       : splitInternationalPhone(args.contactPhone) ??
-        splitInternationalPhone(args.plan.contact_phone ?? null);
+        splitStoredInternationalPhone(args.plan.contact_phone ?? null);
     const authentication = !authStateForbidsProfile && hasValidUserAuthToken(args.plan) &&
       typeof args.plan.user_auth.token === 'string' &&
       typeof args.plan.user_auth.email === 'string'
@@ -6886,7 +6922,8 @@ export class AgentService {
         }
         : null;
     const currentContext: CurrentContextEvidence = {
-      relevantEventIds: [],
+      relevantEventIds: args.messageContext?.recentMessages.flatMap((message) =>
+        message.eventId ? [message.eventId] : []) ?? [],
       relevantOrderIds: [],
       pendingQuestion: args.plan.open_questions[0] ??
         args.plan.owner_pending_question ?? null,
@@ -7071,7 +7108,10 @@ export class AgentService {
     });
     let requests = this.mergeInformationRequests(
       planWithContact.information_state.pending_requests,
-      args.extraction.informationRequests,
+      this.carryStandaloneCustomerReference(
+        args.inbound.text,
+        args.extraction.informationRequests,
+      ),
     );
     const lastCompletedRequest =
       planWithContact.information_state.last_completed_request;
@@ -7260,6 +7300,16 @@ export class AgentService {
     const effectiveRecovery = this.effectiveAuthRecovery(planForInformation);
     const hasProtectedWork = this.hasProtectedInformationWork(requests);
     const inboundCode = this.extractUserLoginCode(args.inbound.text);
+    // Pending work is context, not a fresh instruction to execute it. An
+    // empty extraction delta (recall, thanks) composes from delivered history
+    // without replaying an old OTP action after a failed information read.
+    const readOnlyContinuation = effectiveRecovery.terminalReason === null &&
+      args.extraction.actionIntent === null &&
+      this.hasNoConfirmationDelta(args.extraction) &&
+      args.extraction.reportedEventRole == null &&
+      args.extraction.rsvpParty == null &&
+      (args.extraction.imageReference == null || args.extraction.imageReference.status === 'none') &&
+      inboundCode === null && this.extractEmailFromText(args.inbound.text) === null;
 
     // One-shot OTP recovery (F1): the first non-delivery report or resend
     // request on an active challenge terminates the episode. The typed
@@ -7275,7 +7325,7 @@ export class AgentService {
         otpNonDeliveryReports: planForInformation.user_auth.otp_non_delivery_reports,
       },
     );
-    if (otpTerminalContinuation !== null) {
+    if (otpTerminalContinuation !== null && !readOnlyContinuation) {
       const terminalPlan = mergePlan(
         this.persistTerminalRecovery(planForInformation, otpTerminalContinuation),
         {
@@ -7296,7 +7346,7 @@ export class AgentService {
 
     // An email-change request on a challenged episode ends recovery instead
     // of collecting alternative addresses.
-    if (protectedAuthAction === 'change_email' && effectiveRecovery.sendAttempted) {
+    if (protectedAuthAction === 'change_email' && effectiveRecovery.sendAttempted && !readOnlyContinuation) {
       return await this.escalateInformationAuthentication({
         ...args,
         plan: this.persistTerminalRecovery(planForInformation, 'email_change_requested'),
@@ -7317,7 +7367,7 @@ export class AgentService {
       });
     }
 
-    if (hasActionConflict) {
+    if (hasActionConflict || readOnlyContinuation) {
       // The profile remains available; no conflicting read or write is run
       // until the model resolves the user's mixed request.
       operationalNote = null;
@@ -7392,7 +7442,7 @@ export class AgentService {
               : args.extraction.phoneConfirmation === 'no'
                 ? null
                 : splitInternationalPhone(args.inbound.contactPhone) ??
-                  splitInternationalPhone(planForInformation.contact_phone ?? null),
+                  splitStoredInternationalPhone(planForInformation.contact_phone ?? null),
             preparedCustomerContext: preparedCustomerContext?.snapshot,
             deadlineMs: preparedCustomerContext?.deadlineMs ?? Date.now() + CUSTOMER_CONTEXT_READ_BUDGET_MS,
           });
@@ -8156,6 +8206,24 @@ export class AgentService {
         operationalNote: `Host withdrawal policy ${policy ? 'available' : 'unavailable'}; individual status unsupported; handoff ${handoff?.status ?? 'not_required'}.`,
       }),
     };
+  }
+
+  /**
+   * Preserve a standalone customer reference only after the model has
+   * classified the turn as a purchase request. The reference is an identity
+   * constraint, never a deterministic intent router. A model-supplied ID
+   * stays authoritative when present; this fills only an omitted selector.
+   */
+  private carryStandaloneCustomerReference(
+    userMessage: string,
+    extracted: ExtractedInformationRequest[],
+  ): ExtractedInformationRequest[] {
+    if (!extracted.some((request) => request.kind === 'purchase')) return extracted;
+    const parsed = parseOrderReference(userMessage.trim());
+    if (parsed?.kind !== 'customer_transaction') return extracted;
+    return extracted.map((request) => request.kind === 'purchase' && !request.orderId
+      ? { ...request, orderId: parsed.transactionNumber }
+      : request);
   }
 
   private mergeInformationRequests(
@@ -11616,7 +11684,7 @@ export class AgentService {
       inferredPhone ??
       normalizedChannelPhone ??
       plan.contact_phone;
-    const nextPhoneParts = splitInternationalPhone(nextPhone);
+    const nextPhoneParts = splitStoredInternationalPhone(nextPhone);
     const phoneValidationError =
       normalizedExtractorPhone || inferredPhone || normalizedChannelPhone
         ? null
@@ -13458,7 +13526,7 @@ export class AgentService {
       return 'El teléfono está incompleto o tiene demasiados dígitos; envíalo con código de país, por ejemplo +51 954779067.';
     }
     if (parsed.reason === 'unsupported_country_code') {
-      return 'El teléfono debe incluir un código de país compatible, por ejemplo +51, +52 o +1.';
+      return 'El teléfono usa un código de país sin asignar; envíalo en formato internacional, por ejemplo +51 954779067.';
     }
     return 'El teléfono no parece válido; envíalo con código de país, por ejemplo +51 954779067.';
   }
@@ -13547,6 +13615,7 @@ export class AgentService {
         const text = applyDocumentedTransportTransforms(renderer.render({
           message: structuredMessage,
           providerResults,
+          citationUrl: modelOrigin?.citationUrl ?? null,
         }));
         const outputOrigin = modelOrigin === null
           ? missingOutputOrigin(text)
@@ -13706,6 +13775,7 @@ export class AgentService {
         message: origin.modelMessage,
         providerFields: origin.providerFields ?? [],
         channel,
+        citationUrl: origin.citationUrl,
       });
     } catch (error) {
       if (error instanceof ReferenceRenderError) {

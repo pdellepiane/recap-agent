@@ -39,7 +39,7 @@ function message(
 }
 
 describe('turn message context', () => {
-  it('deduplicates the current inbound message by native message id', () => {
+  it('deduplicates the current inbound message by native id and preserves ambiguity without it', () => {
     const context = buildTurnMessageContext({
       inbound: inbound(),
       messages: [
@@ -55,10 +55,8 @@ describe('turn message context', () => {
     });
 
     expect(context.recentMessages.map((item) => item.id)).toEqual([1]);
-  });
 
-  it('preserves ambiguity when the endpoint omits the native id', () => {
-    const context = buildTurnMessageContext({
+    const ambiguous = buildTurnMessageContext({
       inbound: inbound(),
       messages: [
         message(1, {
@@ -68,12 +66,12 @@ describe('turn message context', () => {
       ],
     });
 
-    expect(context.historyStatus).toBe('available');
-    expect(context.recentMessages.map((item) => item.id)).toEqual([1]);
-    expect(context.excludedCurrentMessageCount).toBe(0);
+    expect(ambiguous.historyStatus).toBe('available');
+    expect(ambiguous.recentMessages.map((item) => item.id)).toEqual([1]);
+    expect(ambiguous.excludedCurrentMessageCount).toBe(0);
   });
 
-  it('caps recent history and preserves a visible campaign entry anchor', () => {
+  it('caps recent history and anchors the newest visible campaign entry', () => {
     const messages = Array.from(
       { length: recentConversationMessageLimit + 2 },
       (_, index) => message(index + 1),
@@ -94,10 +92,8 @@ describe('turn message context', () => {
       id: 3,
       source: 'admin_campaign',
     });
-  });
 
-  it('uses the newest campaign as the entry anchor when several are visible', () => {
-    const context = buildTurnMessageContext({
+    const newest = buildTurnMessageContext({
       inbound: inbound({ text: 'Sí, asistiré' }),
       messages: [
         message(1, {
@@ -114,7 +110,7 @@ describe('turn message context', () => {
       ],
     });
 
-    expect(context.entryMessage).toMatchObject({
+    expect(newest.entryMessage).toMatchObject({
       id: 3,
       body: 'Campaña más reciente.',
     });
@@ -131,13 +127,14 @@ describe('turn message context', () => {
     expect(visible[0]?.body).toContain('…');
   });
 
-  it('retains an older campaign reference when a newer ordinary message follows', () => {
+  it('retains campaign references with identity and delivery in both history projections', () => {
     const context = buildTurnMessageContext({
       inbound: inbound({ text: '¿A qué hora es?' }),
       messages: [
         message(1, {
           direction: 'outbound',
           source: 'admin_campaign',
+          eventId: 40034,
           body: 'Recordatorio: Boda Lucía y Marco.',
           status: 'delivered',
           sentAt: '2026-07-31T09:40:00.000Z',
@@ -152,6 +149,8 @@ describe('turn message context', () => {
       ],
     });
 
+    // The older campaign survives the newer ordinary message as a
+    // provenance-bound reference.
     const campaigns = selectProvenanceBoundCampaignMessages(context.recentMessages);
     expect(campaigns).toHaveLength(1);
     expect(campaigns[0]).toMatchObject({
@@ -159,38 +158,16 @@ describe('turn message context', () => {
       source: 'admin_campaign',
       delivery: 'delivered',
     });
-  });
-
-  it('attaches identity and delivery only to campaign entries in both history projections', () => {
-    const context = buildTurnMessageContext({
-      inbound: inbound({ text: '¿A qué hora es?' }),
-      messages: [
-        message(1, {
-          direction: 'outbound',
-          source: 'admin_campaign',
-          body: 'Recordatorio: Boda Lucía y Marco.',
-          status: 'delivered',
-          sentAt: '2026-07-31T09:40:00.000Z',
-        }),
-        message(2, {
-          direction: 'outbound',
-          source: 'agent',
-          body: 'Hola, ¿en qué te ayudo?',
-          status: 'delivered',
-          sentAt: '2026-07-31T09:45:00.000Z',
-        }),
-      ],
-    });
 
     const extractorEntries = buildExtractorConversationHistory(context);
     expect(extractorEntries).toHaveLength(2);
-    expect(extractorEntries[0]).toMatchObject({ message_id: 1, delivery: 'delivered' });
+    expect(extractorEntries[0]).toMatchObject({ message_id: 1, event_id: 40034, delivery: 'delivered' });
     expect('message_id' in (extractorEntries[1] ?? {})).toBe(false);
     expect('delivery' in (extractorEntries[1] ?? {})).toBe(false);
 
     const modelEntries = buildModelVisibleConversationHistory(context);
     expect(modelEntries).toHaveLength(2);
-    expect(modelEntries[0]).toMatchObject({ message_id: 1, delivery: 'delivered' });
+    expect(modelEntries[0]).toMatchObject({ message_id: 1, event_id: 40034, delivery: 'delivered' });
     expect('message_id' in (modelEntries[1] ?? {})).toBe(false);
     expect('delivery' in (modelEntries[1] ?? {})).toBe(false);
   });

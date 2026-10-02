@@ -93,6 +93,9 @@ export type AppConfig = {
     enabled: boolean;
     maxResults: number;
     scoreThreshold: number;
+    fullArticleMinScore: number;
+    fullArticleMaxFiles: number;
+    fullArticleMaxChars: number;
   };
   features: AgentFeatureFlags;
 };
@@ -171,6 +174,9 @@ const environmentSchema = z.object({
   KB_ENABLED: z.enum(['true', 'false']).default('true'),
   KB_MAX_RESULTS: z.coerce.number().int().min(1).max(50).default(6),
   KB_SCORE_THRESHOLD: z.coerce.number().min(0).max(1).default(0),
+  KB_FULL_ARTICLE_MIN_SCORE: z.coerce.number().min(0).max(1).default(0.85),
+  KB_FULL_ARTICLE_MAX_FILES: z.coerce.number().int().min(1).max(3).default(2),
+  KB_FULL_ARTICLE_MAX_CHARS: z.coerce.number().int().min(1000).max(50000).default(10000),
   AGENT_FEATURE_PROVIDER_PLANNING: z.enum(['true', 'false']).default('true'),
   AGENT_FEATURE_PROVIDER_SEARCH: z.enum(['true', 'false']).default('true'),
   AGENT_FEATURE_PROVIDER_QUOTE_REQUESTS: z.enum(['true', 'false']).default('true'),
@@ -270,6 +276,9 @@ export function getConfig(): AppConfig {
       enabled: environment.KB_ENABLED === 'true',
       maxResults: environment.KB_MAX_RESULTS,
       scoreThreshold: environment.KB_SCORE_THRESHOLD,
+      fullArticleMinScore: environment.KB_FULL_ARTICLE_MIN_SCORE,
+      fullArticleMaxFiles: environment.KB_FULL_ARTICLE_MAX_FILES,
+      fullArticleMaxChars: environment.KB_FULL_ARTICLE_MAX_CHARS,
     },
     features: {
       providerPlanning: environment.AGENT_FEATURE_PROVIDER_PLANNING === 'true',

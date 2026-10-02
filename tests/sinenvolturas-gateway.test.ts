@@ -11,85 +11,87 @@ describe('SinEnvolturasGateway strict search mapping', () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
 
-  it('maps keyword searches to the allowlisted filtered params', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      async json() {
-        return {
-          status: true,
-          errors: null,
-          error: '',
-          data: {
-            data: [
-              {
-                id: 21,
-                slug: 'foto-uno',
-                translations: [{ title: 'Foto Uno' }],
-              },
-            ],
-          },
-        };
-      },
-    });
-    vi.stubGlobal('fetch', fetchMock);
+  it('maps searches to the allowlisted filtered params', async () => {
+    {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        async json() {
+          return {
+            status: true,
+            errors: null,
+            error: '',
+            data: {
+              data: [
+                {
+                  id: 21,
+                  slug: 'foto-uno',
+                  translations: [{ title: 'Foto Uno' }],
+                },
+              ],
+            },
+          };
+        },
+      });
+      vi.stubGlobal('fetch', fetchMock);
 
-    const gateway = new SinEnvolturasGateway({
-      baseUrl: 'https://api.example.test/vendor',
-      persistedSearchLimit: 5,
-      summarySearchWordLimit: 10,
-    });
+      const gateway = new SinEnvolturasGateway({
+        baseUrl: 'https://api.example.test/vendor',
+        persistedSearchLimit: 5,
+        summarySearchWordLimit: 10,
+      });
 
-    const result = await gateway.searchProvidersByKeyword({
-      keyword: 'fotografia documental',
-      page: 2,
-    });
+      const result = await gateway.searchProvidersByKeyword({
+        keyword: 'fotografia documental',
+        page: 2,
+      });
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledWith(
-      'https://api.example.test/vendor/filtered?search=fotografia+documental&page=2',
-    );
-    expect(result.providers[0]?.id).toBe(21);
-  });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://api.example.test/vendor/filtered?search=fotografia+documental&page=2',
+      );
+      expect(result.providers[0]?.id).toBe(21);
+    }
 
-  it('maps category-location searches to the allowlisted filtered params', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      async json() {
-        return {
-          status: true,
-          errors: null,
-          error: '',
-          data: {
-            data: [
-              {
-                id: 35,
-                slug: 'edo-sushi-bar',
-                translations: [{ title: 'EDO Sushi Bar' }],
-              },
-            ],
-          },
-        };
-      },
-    });
-    vi.stubGlobal('fetch', fetchMock);
+    {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        async json() {
+          return {
+            status: true,
+            errors: null,
+            error: '',
+            data: {
+              data: [
+                {
+                  id: 35,
+                  slug: 'edo-sushi-bar',
+                  translations: [{ title: 'EDO Sushi Bar' }],
+                },
+              ],
+            },
+          };
+        },
+      });
+      vi.stubGlobal('fetch', fetchMock);
 
-    const gateway = new SinEnvolturasGateway({
-      baseUrl: 'https://api.example.test/vendor',
-      persistedSearchLimit: 5,
-      summarySearchWordLimit: 10,
-    });
+      const gateway = new SinEnvolturasGateway({
+        baseUrl: 'https://api.example.test/vendor',
+        persistedSearchLimit: 5,
+        summarySearchWordLimit: 10,
+      });
 
-    const result = await gateway.searchProvidersByCategoryLocation({
-      category: 'Catering',
-      location: 'Lima',
-      page: 1,
-    });
+      const result = await gateway.searchProvidersByCategoryLocation({
+        category: 'Catering',
+        location: 'Lima',
+        page: 1,
+      });
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledWith(
-      'https://api.example.test/vendor/filtered?search=Catering+Lima&page=1',
-    );
-    expect(result.providers[0]?.id).toBe(35);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://api.example.test/vendor/filtered?search=Catering+Lima&page=1',
+      );
+      expect(result.providers[0]?.id).toBe(35);
+    }
   });
 
   it('looks up user event context by email through the guest service endpoint', async () => {
@@ -151,7 +153,7 @@ describe('SinEnvolturasGateway strict search mapping', () => {
     expect(event?.eventId).toBe(205);
     expect(event?.name).toBe('Cumpleaños de Ana');
     expect(event?.url).toBe('https://sinenvolturas.com/cumple-ana-2026');
-    expect(event?.place).toBe('Perú');
+    expect(event?.place).toBeNull(); // A country alone is not a venue.
     expect(event?.datetime).toBe('2026-06-15T19:00:00Z');
     expect(event?.guestStatus?.willAttend).toBe(true);
     expect(event?.guestStatus?.hasResponded).toBe(true);
@@ -176,187 +178,222 @@ describe('SinEnvolturasGateway strict search mapping', () => {
     expect(JSON.stringify(result?.events)).not.toContain('Guest name, not an event');
   });
 
-  it('looks up user event context by phone through the guest service endpoint', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      async json() {
-        return {
-          status: true,
-          errors: null,
-          error: null,
-          data: {
-            user: { id: 42, phone_number: '987654321', full_phone: '+51 987654321' },
-            events: [],
-            recent_orders: [],
-            guest_in_events: [],
-            host_in_events: [],
-            celebrated_in: [],
-            subscriptions: [],
-            summary: {},
-          },
-        };
-      },
-    });
-    vi.stubGlobal('fetch', fetchMock);
-
-    const gateway = new SinEnvolturasGateway({
-      baseUrl: 'https://api.example.test/vendor',
-      guestServiceBaseUrl: 'https://api.example.test/guest-service',
-      persistedSearchLimit: 5,
-      summarySearchWordLimit: 10,
-    });
-
-    const result = await gateway.lookupUserEventContext({
-      email: null,
-      phone: '987654321',
-    });
-
-    expect(fetchMock).toHaveBeenCalledWith(
-      'https://api.example.test/guest-service/user-lookup?phone=987654321',
-    );
-    expect(result?.lookup).toEqual({ email: null, phone: '987654321' });
-    expect(result?.user?.fullPhone).toBe('+51 987654321');
-  });
-
-  it('maps a missing phone-level user record to no event context', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
-      status: false,
-      data: [],
-      errors: null,
-      error: 'User not found',
-    }), {
-      status: 404,
-      headers: { 'content-type': 'application/json' },
-    }));
-    vi.stubGlobal('fetch', fetchMock);
-    const gateway = new SinEnvolturasGateway({
-      baseUrl: 'https://api.example.test/vendor',
-      guestServiceBaseUrl: 'https://api.example.test/guest-service',
-      persistedSearchLimit: 5,
-      summarySearchWordLimit: 10,
-    });
-
-    await expect(gateway.lookupUserEventContext({
-      email: null,
-      phone: '2025550100',
-    })).resolves.toBeNull();
-  });
-
-  it('requests guest login codes through the auth endpoint', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      headers: {
-        get(name: string) {
-          return name === 'x-request-id' ? 'auth-request-1' : null;
+  it('looks up phone user context and maps a missing record to null', async () => {
+    {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        async json() {
+          return {
+            status: true,
+            errors: null,
+            error: null,
+            data: {
+              user: { id: 42, phone_number: '987654321', full_phone: '+51 987654321' },
+              events: [],
+              recent_orders: [],
+              guest_in_events: [],
+              host_in_events: [],
+              celebrated_in: [],
+              subscriptions: [],
+              summary: {},
+            },
+          };
         },
-      },
-      async json() {
-        return {
-          status: true,
-          errors: null,
-          error: null,
-          data: {},
-        };
-      },
-    });
-    vi.stubGlobal('fetch', fetchMock);
+      });
+      vi.stubGlobal('fetch', fetchMock);
 
-    const gateway = new SinEnvolturasGateway({
-      baseUrl: 'https://api.example.test/vendor',
-      userAuthBaseUrl: 'https://api.example.test/user',
-      persistedSearchLimit: 5,
-      summarySearchWordLimit: 10,
-    });
+      const gateway = new SinEnvolturasGateway({
+        baseUrl: 'https://api.example.test/vendor',
+        guestServiceBaseUrl: 'https://api.example.test/guest-service',
+        persistedSearchLimit: 5,
+        summarySearchWordLimit: 10,
+      });
 
-    const result = await gateway.requestUserLoginCode('maria@example.com');
+      const result = await gateway.lookupUserEventContext({
+        email: null,
+        phone: '987654321',
+      });
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      'https://api.example.test/user/request-login-code',
-      {
-        method: 'POST',
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://api.example.test/guest-service/user-lookup?phone=987654321',
+      );
+      expect(result?.lookup).toEqual({ email: null, phone: '987654321' });
+      expect(result?.user?.fullPhone).toBe('+51 987654321');
+    }
+
+    {
+      const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+        status: false,
+        data: [],
+        errors: null,
+        error: 'User not found',
+      }), {
+        status: 404,
+        headers: { 'content-type': 'application/json' },
+      }));
+      vi.stubGlobal('fetch', fetchMock);
+      const gateway = new SinEnvolturasGateway({
+        baseUrl: 'https://api.example.test/vendor',
+        guestServiceBaseUrl: 'https://api.example.test/guest-service',
+        persistedSearchLimit: 5,
+        summarySearchWordLimit: 10,
+      });
+
+      await expect(gateway.lookupUserEventContext({
+        email: null,
+        phone: '2025550100',
+      })).resolves.toBeNull();
+    }
+  });
+
+  it('requests guest login codes with typed missing-email failures', async () => {
+    {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
         headers: {
-          'content-type': 'application/json',
+          get(name: string) {
+            return name === 'x-request-id' ? 'auth-request-1' : null;
+          },
         },
-        body: JSON.stringify({ email: 'maria@example.com' }),
-      },
-    );
-    expect(result).toEqual({
-      status: 'sent',
-      httpStatus: 200,
-      requestId: 'auth-request-1',
-    });
+        async json() {
+          return {
+            status: true,
+            errors: null,
+            error: null,
+            data: {},
+          };
+        },
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const gateway = new SinEnvolturasGateway({
+        baseUrl: 'https://api.example.test/vendor',
+        userAuthBaseUrl: 'https://api.example.test/user',
+        persistedSearchLimit: 5,
+        summarySearchWordLimit: 10,
+      });
+
+      const result = await gateway.requestUserLoginCode('maria@example.com');
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://api.example.test/user/request-login-code',
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({ email: 'maria@example.com' }),
+        },
+      );
+      expect(result).toEqual({
+        status: 'sent',
+        httpStatus: 200,
+        requestId: 'auth-request-1',
+      });
+    }
+
+    {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        async json() {
+          return {
+            status: false,
+            error: 'email not found',
+            errors: null,
+            data: null,
+          };
+        },
+      }));
+
+      const gateway = new SinEnvolturasGateway({
+        baseUrl: 'https://api.example.test/vendor',
+        userAuthBaseUrl: 'https://api.example.test/user',
+        persistedSearchLimit: 5,
+        summarySearchWordLimit: 10,
+      });
+
+      await expect(gateway.requestUserLoginCode('missing@example.com')).resolves.toEqual({
+        status: 'email_not_found',
+        error: 'email not found',
+        httpStatus: 404,
+        requestId: null,
+      });
+    }
   });
 
-  it('maps missing guest emails without treating them as code challenges', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: false,
-      status: 404,
-      async json() {
-        return {
-          status: false,
-          error: 'email not found',
-          errors: null,
-          data: null,
-        };
-      },
-    }));
-
-    const gateway = new SinEnvolturasGateway({
-      baseUrl: 'https://api.example.test/vendor',
-      userAuthBaseUrl: 'https://api.example.test/user',
-      persistedSearchLimit: 5,
-      summarySearchWordLimit: 10,
-    });
-
-    await expect(gateway.requestUserLoginCode('missing@example.com')).resolves.toEqual({
-      status: 'email_not_found',
-      error: 'email not found',
-      httpStatus: 404,
-      requestId: null,
-    });
-  });
-
-  it('verifies guest login codes and extracts nested credential token metadata', async () => {
-    const before = Date.now();
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      async json() {
-        return {
-          status: true,
-          error: null,
-          errors: null,
-          data: {
-            user: {
-              credentials: {
-                access_token: 'token-123',
-                token_type: 'bearer',
-                expires_in: 1784213372,
+  it('verifies guest login codes with typed invalid-code failures', async () => {
+    {
+      const before = Date.now();
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        async json() {
+          return {
+            status: true,
+            error: null,
+            errors: null,
+            data: {
+              user: {
+                credentials: {
+                  access_token: 'token-123',
+                  token_type: 'bearer',
+                  expires_in: 1784213372,
+                },
               },
             },
-          },
-        };
-      },
-    }));
+          };
+        },
+      }));
 
-    const gateway = new SinEnvolturasGateway({
-      baseUrl: 'https://api.example.test/vendor',
-      userAuthBaseUrl: 'https://api.example.test/user',
-      persistedSearchLimit: 5,
-      summarySearchWordLimit: 10,
-    });
+      const gateway = new SinEnvolturasGateway({
+        baseUrl: 'https://api.example.test/vendor',
+        userAuthBaseUrl: 'https://api.example.test/user',
+        persistedSearchLimit: 5,
+        summarySearchWordLimit: 10,
+      });
 
-    const result = await gateway.verifyUserLoginCode('maria@example.com', '123456');
+      const result = await gateway.verifyUserLoginCode('maria@example.com', '123456');
 
-    expect(result.status).toBe('authenticated');
-    if (result.status === 'authenticated') {
-      expect(result.token).toBe('token-123');
-      expect(result.httpStatus).toBe(200);
-      expect(result.requestId).toBeNull();
-      const expiresAt = Date.parse(result.tokenExpiresAt);
-      expect(expiresAt).toBeGreaterThanOrEqual(before + 24 * 60 * 60 * 1000 - 1000);
-      expect(expiresAt).toBeLessThanOrEqual(Date.now() + 24 * 60 * 60 * 1000 + 1000);
+      expect(result.status).toBe('authenticated');
+      if (result.status === 'authenticated') {
+        expect(result.token).toBe('token-123');
+        expect(result.httpStatus).toBe(200);
+        expect(result.requestId).toBeNull();
+        const expiresAt = Date.parse(result.tokenExpiresAt);
+        expect(expiresAt).toBeGreaterThanOrEqual(before + 24 * 60 * 60 * 1000 - 1000);
+        expect(expiresAt).toBeLessThanOrEqual(Date.now() + 24 * 60 * 60 * 1000 + 1000);
+      }
+    }
+
+    {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        async json() {
+          return {
+            status: false,
+            error: 'Invalid or expired code',
+            errors: null,
+            data: null,
+          };
+        },
+      }));
+
+      const gateway = new SinEnvolturasGateway({
+        baseUrl: 'https://api.example.test/vendor',
+        userAuthBaseUrl: 'https://api.example.test/user',
+        persistedSearchLimit: 5,
+        summarySearchWordLimit: 10,
+      });
+
+      await expect(gateway.verifyUserLoginCode('maria@example.com', '000000')).resolves.toEqual({
+        status: 'invalid_code',
+        error: 'Invalid or expired code',
+        httpStatus: 400,
+        requestId: null,
+      });
     }
   });
 
@@ -413,35 +450,6 @@ describe('SinEnvolturasGateway strict search mapping', () => {
     expect(logs).not.toContain('123456');
     expect(logs).not.toContain('user-token-secret');
     expect(logs).not.toContain('secret-cookie');
-  });
-
-  it('maps invalid guest login codes', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: false,
-      status: 400,
-      async json() {
-        return {
-          status: false,
-          error: 'Invalid or expired code',
-          errors: null,
-          data: null,
-        };
-      },
-    }));
-
-    const gateway = new SinEnvolturasGateway({
-      baseUrl: 'https://api.example.test/vendor',
-      userAuthBaseUrl: 'https://api.example.test/user',
-      persistedSearchLimit: 5,
-      summarySearchWordLimit: 10,
-    });
-
-    await expect(gateway.verifyUserLoginCode('maria@example.com', '000000')).resolves.toEqual({
-      status: 'invalid_code',
-      error: 'Invalid or expired code',
-      httpStatus: 400,
-      requestId: null,
-    });
   });
 
   it('distinguishes OTP rate limits and service outages from invalid codes', async () => {
@@ -583,303 +591,306 @@ describe('SinEnvolturasGateway strict search mapping', () => {
     expect(result.providers[0]?.location).toBe('Perú');
   });
 
-  it('hybrid search deduplicates API and vector candidates while preserving enriched metadata', async () => {
-    const responses = new Map<string, unknown>([
-      [
-        'https://api.example.test/vendor/filtered?search=Fotograf%C3%ADa%20y%20video&page=1',
-        {
-          status: true,
-          errors: null,
-          error: '',
-          data: {
-            data: [
-              {
-                id: 1,
-                slug: 'foto-api',
-                translations: [{ title: 'Foto API' }],
-                category: { translations: [{ name: 'Fotografía' }] },
-                city: { name: 'Lima' },
-                country: { name: 'Perú' },
-              },
-            ],
+  it('hybrid search dedupes candidates and filters cross-country results', async () => {
+    {
+      const responses = new Map<string, unknown>([
+        [
+          'https://api.example.test/vendor/filtered?search=Fotograf%C3%ADa%20y%20video&page=1',
+          {
+            status: true,
+            errors: null,
+            error: '',
+            data: {
+              data: [
+                {
+                  id: 1,
+                  slug: 'foto-api',
+                  translations: [{ title: 'Foto API' }],
+                  category: { translations: [{ name: 'Fotografía' }] },
+                  city: { name: 'Lima' },
+                  country: { name: 'Perú' },
+                },
+              ],
+            },
           },
-        },
-      ],
-      [
-        'https://api.example.test/vendor/relevant',
-        {
-          status: true,
-          errors: null,
-          error: '',
-          data: [],
-        },
-      ],
-      [
-        'https://api.example.test/vendor/2',
-        {
-          status: true,
-          errors: null,
-          error: '',
-          data: {
-            id: 2,
-            slug: 'foto-vector',
-            translations: [{ title: 'Foto Vector' }],
-            category: { translations: [{ name: 'Fotografía' }] },
-            city: { name: 'Lima' },
-            country: { name: 'Perú' },
-            info_translations: [
-              {
-                title: 'Acerca del proveedor',
-                description: 'Fotografía documental natural para bodas íntimas.',
-                language: { locale: 'es' },
-              },
-              {
-                title: 'Cobertura y entrega',
-                description: '<p>Incluye video completo y sesión preboda.</p>',
-                language: { locale: 'es' },
-              },
-            ],
+        ],
+        [
+          'https://api.example.test/vendor/relevant',
+          {
+            status: true,
+            errors: null,
+            error: '',
+            data: [],
           },
-        },
-      ],
-    ]);
-    const fetchMock = vi.fn().mockImplementation((url: string) => {
-      const body = responses.get(url);
-      if (!body) {
+        ],
+        [
+          'https://api.example.test/vendor/2',
+          {
+            status: true,
+            errors: null,
+            error: '',
+            data: {
+              id: 2,
+              slug: 'foto-vector',
+              translations: [{ title: 'Foto Vector' }],
+              category: { translations: [{ name: 'Fotografía' }] },
+              city: { name: 'Lima' },
+              country: { name: 'Perú' },
+              info_translations: [
+                {
+                  title: 'Acerca del proveedor',
+                  description: 'Fotografía documental natural para bodas íntimas.',
+                  language: { locale: 'es' },
+                },
+                {
+                  title: 'Cobertura y entrega',
+                  description: '<p>Incluye video completo y sesión preboda.</p>',
+                  language: { locale: 'es' },
+                },
+              ],
+            },
+          },
+        ],
+      ]);
+      const fetchMock = vi.fn().mockImplementation((url: string) => {
+        const body = responses.get(url);
+        if (!body) {
+          return Promise.resolve({
+            ok: true,
+            async json() {
+              return {
+                status: true,
+                errors: null,
+                error: '',
+                data: { data: [] },
+              };
+            },
+          });
+        }
         return Promise.resolve({
           ok: true,
           async json() {
-            return {
-              status: true,
-              errors: null,
-              error: '',
-              data: { data: [] },
-            };
+            return body;
           },
         });
-      }
-      return Promise.resolve({
-        ok: true,
-        async json() {
-          return body;
-        },
       });
-    });
-    vi.stubGlobal('fetch', fetchMock);
+      vi.stubGlobal('fetch', fetchMock);
 
-    const vectorSearch = {
-      async search(): Promise<ProviderVectorSearchResult[]> {
-        return [
+      const vectorSearch = {
+        async search(): Promise<ProviderVectorSearchResult[]> {
+          return [
+            {
+              providerId: 2,
+              score: 0.91,
+              matchedText: 'Fotografía documental natural para bodas íntimas.',
+              attributes: { provider_id: 2 },
+              filename: '2-foto-vector.md',
+            },
+          ];
+        },
+        async searchQueryIntent(): Promise<ProviderVectorSearchResult[]> {
+          return [];
+        },
+      };
+      const gateway = new SinEnvolturasGateway({
+        baseUrl: 'https://api.example.test/vendor',
+        persistedSearchLimit: 5,
+        summarySearchWordLimit: 10,
+        searchMode: 'hybrid',
+        vectorSearchGateway: vectorSearch,
+      });
+      const plan = mergePlan(
+        createEmptyPlan({
+          planId: 'plan-hybrid',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-1',
+        }),
+        {
+          event_type: 'boda',
+          active_need_category: 'Fotografía y video',
+          vendor_category: 'Fotografía y video',
+          location: 'Lima',
+          conversation_summary: 'Busco foto documental natural.',
+        },
+      );
+
+      const result = await gateway.searchProviders(plan);
+
+      expect(result.providers.map((provider) => provider.id)).toEqual([1, 2]);
+      expect(result.providers[0]?.retrievalSource).toBe('api');
+      expect(result.providers[1]?.retrievalSource).toBe('vector');
+      expect(result.providers[1]?.descriptionSnippet).toContain('Fotografía documental');
+      expect(result.providers[1]?.providerNotes).toContain(
+        'Cobertura y entrega: Incluye video completo y sesión preboda.',
+      );
+    }
+
+    {
+      const responses = new Map<string, unknown>([
+        [
+          'https://api.example.test/vendor/filtered?search=Fotograf%C3%ADa%20y%20video&page=1',
           {
-            providerId: 2,
-            score: 0.91,
-            matchedText: 'Fotografía documental natural para bodas íntimas.',
-            attributes: { provider_id: 2 },
-            filename: '2-foto-vector.md',
+            status: true,
+            errors: null,
+            error: '',
+            data: {
+              data: [
+                {
+                  id: 132,
+                  slug: 'carlos-romero-films',
+                  translations: [{ title: 'Carlos Romero Films' }],
+                  category: { translations: [{ name: 'Fotografía y video' }] },
+                  city: { name: 'Lima' },
+                  country: { name: 'Perú' },
+                },
+              ],
+            },
           },
-        ];
-      },
-      async searchQueryIntent(): Promise<ProviderVectorSearchResult[]> {
-        return [];
-      },
-    };
-    const gateway = new SinEnvolturasGateway({
-      baseUrl: 'https://api.example.test/vendor',
-      persistedSearchLimit: 5,
-      summarySearchWordLimit: 10,
-      searchMode: 'hybrid',
-      vectorSearchGateway: vectorSearch,
-    });
-    const plan = mergePlan(
-      createEmptyPlan({
-        planId: 'plan-hybrid',
-        channel: 'terminal_whatsapp',
-        externalUserId: 'user-1',
-      }),
-      {
-        event_type: 'boda',
-        active_need_category: 'Fotografía y video',
-        vendor_category: 'Fotografía y video',
-        location: 'Lima',
-        conversation_summary: 'Busco foto documental natural.',
-      },
-    );
-
-    const result = await gateway.searchProviders(plan);
-
-    expect(result.providers.map((provider) => provider.id)).toEqual([1, 2]);
-    expect(result.providers[0]?.retrievalSource).toBe('api');
-    expect(result.providers[1]?.retrievalSource).toBe('vector');
-    expect(result.providers[1]?.descriptionSnippet).toContain('Fotografía documental');
-    expect(result.providers[1]?.providerNotes).toContain(
-      'Cobertura y entrega: Incluye video completo y sesión preboda.',
-    );
-  });
-
-  it('filters cross-country hybrid vector results when Peru providers are available', async () => {
-    const responses = new Map<string, unknown>([
-      [
-        'https://api.example.test/vendor/filtered?search=Fotograf%C3%ADa%20y%20video&page=1',
-        {
-          status: true,
-          errors: null,
-          error: '',
-          data: {
-            data: [
-              {
-                id: 132,
-                slug: 'carlos-romero-films',
-                translations: [{ title: 'Carlos Romero Films' }],
-                category: { translations: [{ name: 'Fotografía y video' }] },
-                city: { name: 'Lima' },
-                country: { name: 'Perú' },
-              },
-            ],
+        ],
+        [
+          'https://api.example.test/vendor/relevant',
+          {
+            status: true,
+            errors: null,
+            error: '',
+            data: [],
           },
-        },
-      ],
-      [
-        'https://api.example.test/vendor/relevant',
-        {
-          status: true,
-          errors: null,
-          error: '',
-          data: [],
-        },
-      ],
-      [
-        'https://api.example.test/vendor/142',
-        {
-          status: true,
-          errors: null,
-          error: '',
-          data: {
-            id: 142,
-            slug: 'agalux-studio',
-            translations: [{ title: 'Agalux Studio' }],
-            category: { translations: [{ name: 'Fotografía y video' }] },
-            city: { name: 'Lima' },
-            country: { name: 'Perú' },
+        ],
+        [
+          'https://api.example.test/vendor/142',
+          {
+            status: true,
+            errors: null,
+            error: '',
+            data: {
+              id: 142,
+              slug: 'agalux-studio',
+              translations: [{ title: 'Agalux Studio' }],
+              category: { translations: [{ name: 'Fotografía y video' }] },
+              city: { name: 'Lima' },
+              country: { name: 'Perú' },
+            },
           },
-        },
-      ],
-      [
-        'https://api.example.test/vendor/164',
-        {
-          status: true,
-          errors: null,
-          error: '',
-          data: {
-            id: 164,
-            slug: 'on-weddings',
-            translations: [{ title: 'On Weddings' }],
-            category: { translations: [{ name: 'Fotografía y video' }] },
-            city: { name: 'León' },
-            country: { name: 'México' },
+        ],
+        [
+          'https://api.example.test/vendor/164',
+          {
+            status: true,
+            errors: null,
+            error: '',
+            data: {
+              id: 164,
+              slug: 'on-weddings',
+              translations: [{ title: 'On Weddings' }],
+              category: { translations: [{ name: 'Fotografía y video' }] },
+              city: { name: 'León' },
+              country: { name: 'México' },
+            },
           },
-        },
-      ],
-      [
-        'https://api.example.test/vendor/173',
-        {
-          status: true,
-          errors: null,
-          error: '',
-          data: {
-            id: 173,
-            slug: 'llum-studio',
-            translations: [{ title: 'LLUM Studio' }],
-            category: { translations: [{ name: 'Fotografía y video' }] },
-            city: { name: 'Santiago de Querétaro' },
-            country: { name: 'México' },
+        ],
+        [
+          'https://api.example.test/vendor/173',
+          {
+            status: true,
+            errors: null,
+            error: '',
+            data: {
+              id: 173,
+              slug: 'llum-studio',
+              translations: [{ title: 'LLUM Studio' }],
+              category: { translations: [{ name: 'Fotografía y video' }] },
+              city: { name: 'Santiago de Querétaro' },
+              country: { name: 'México' },
+            },
           },
-        },
-      ],
-    ]);
-    const fetchMock = vi.fn().mockImplementation((url: string) => {
-      const body = responses.get(url);
-      if (!body) {
+        ],
+      ]);
+      const fetchMock = vi.fn().mockImplementation((url: string) => {
+        const body = responses.get(url);
+        if (!body) {
+          return Promise.resolve({
+            ok: true,
+            async json() {
+              return {
+                status: true,
+                errors: null,
+                error: '',
+                data: { data: [] },
+              };
+            },
+          });
+        }
         return Promise.resolve({
           ok: true,
           async json() {
-            return {
-              status: true,
-              errors: null,
-              error: '',
-              data: { data: [] },
-            };
+            return body;
           },
         });
-      }
-      return Promise.resolve({
-        ok: true,
-        async json() {
-          return body;
-        },
       });
-    });
-    vi.stubGlobal('fetch', fetchMock);
+      vi.stubGlobal('fetch', fetchMock);
 
-    const vectorSearch = {
-      async search(): Promise<ProviderVectorSearchResult[]> {
-        return [
-          {
-            providerId: 164,
-            score: 0.98,
-            matchedText: 'Fotografía para bodas destino.',
-            attributes: { provider_id: 164, country_key: 'mexico' },
-            filename: '164-on-weddings.md',
-          },
-          {
-            providerId: 173,
-            score: 0.96,
-            matchedText: 'Fotografía editorial de boda.',
-            attributes: { provider_id: 173, country_key: 'mexico' },
-            filename: '173-llum-studio.md',
-          },
-          {
-            providerId: 142,
-            score: 0.8,
-            matchedText: 'Fotografía de bodas en Lima.',
-            attributes: { provider_id: 142, country_key: 'peru' },
-            filename: '142-agalux-studio.md',
-          },
-        ];
-      },
-      async searchQueryIntent(): Promise<ProviderVectorSearchResult[]> {
-        return [];
-      },
-    };
-    const gateway = new SinEnvolturasGateway({
-      baseUrl: 'https://api.example.test/vendor',
-      persistedSearchLimit: 5,
-      summarySearchWordLimit: 10,
-      searchMode: 'hybrid',
-      vectorSearchGateway: vectorSearch,
-    });
-    const plan = mergePlan(
-      createEmptyPlan({
-        planId: 'plan-lurin-locality',
-        channel: 'terminal_whatsapp',
-        externalUserId: 'user-lurin',
-      }),
-      {
-        event_type: 'boda',
-        active_need_category: 'Fotografía y video',
-        vendor_category: 'Fotografía y video',
-        location: 'Lurín, Lima, Perú',
-        conversation_summary: 'Boda en Lurín; busca fotografía y video.',
-      },
-    );
+      const vectorSearch = {
+        async search(): Promise<ProviderVectorSearchResult[]> {
+          return [
+            {
+              providerId: 164,
+              score: 0.98,
+              matchedText: 'Fotografía para bodas destino.',
+              attributes: { provider_id: 164, country_key: 'mexico' },
+              filename: '164-on-weddings.md',
+            },
+            {
+              providerId: 173,
+              score: 0.96,
+              matchedText: 'Fotografía editorial de boda.',
+              attributes: { provider_id: 173, country_key: 'mexico' },
+              filename: '173-llum-studio.md',
+            },
+            {
+              providerId: 142,
+              score: 0.8,
+              matchedText: 'Fotografía de bodas en Lima.',
+              attributes: { provider_id: 142, country_key: 'peru' },
+              filename: '142-agalux-studio.md',
+            },
+          ];
+        },
+        async searchQueryIntent(): Promise<ProviderVectorSearchResult[]> {
+          return [];
+        },
+      };
+      const gateway = new SinEnvolturasGateway({
+        baseUrl: 'https://api.example.test/vendor',
+        persistedSearchLimit: 5,
+        summarySearchWordLimit: 10,
+        searchMode: 'hybrid',
+        vectorSearchGateway: vectorSearch,
+      });
+      const plan = mergePlan(
+        createEmptyPlan({
+          planId: 'plan-lurin-locality',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-lurin',
+        }),
+        {
+          event_type: 'boda',
+          active_need_category: 'Fotografía y video',
+          vendor_category: 'Fotografía y video',
+          location: 'Lurín, Lima, Perú',
+          conversation_summary: 'Boda en Lurín; busca fotografía y video.',
+        },
+      );
 
-    const result = await gateway.searchProviders(plan);
+      const result = await gateway.searchProviders(plan);
 
-    expect(result.providers.map((provider) => provider.id)).toEqual([132, 142]);
-    expect(result.providers.map((provider) => provider.location)).toEqual([
-      'Lima, Perú',
-      'Lima, Perú',
-    ]);
-    expect(result.providers.map((provider) => provider.id)).not.toContain(164);
-    expect(result.providers.map((provider) => provider.id)).not.toContain(173);
+      expect(result.providers.map((provider) => provider.id)).toEqual([132, 142]);
+      expect(result.providers.map((provider) => provider.location)).toEqual([
+        'Lima, Perú',
+        'Lima, Perú',
+      ]);
+      expect(result.providers.map((provider) => provider.id)).not.toContain(164);
+      expect(result.providers.map((provider) => provider.id)).not.toContain(173);
+    }
   });
+
 });

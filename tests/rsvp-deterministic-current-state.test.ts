@@ -2,11 +2,12 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { AgentService } from '../src/runtime/agent-service';
 import type { AgentConversationGateway, AgentGuestEventsResult, AgentGuestRsvpResult } from '../src/runtime/agent-conversation-gateway';
-import type { AgentRuntime, ComposeReplyRequest, ComposeReplyResult, ExtractionResult } from '../src/runtime/contracts';
+import type { ExtractionResult } from '../src/runtime/contracts';
 import { PromptLoader } from '../src/runtime/prompt-loader';
 import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
 import type { ProviderGateway, UserEventLookupResult } from '../src/runtime/provider-gateway';
+import { QueuedAgentRuntime, type StubComposeFn } from './agent-runtime-test-utils';
 
 describe('RSVP model output and typed current state', () => {
   it('passes current-state evidence to the model and preserves both model paragraphs', async () => {
@@ -56,6 +57,10 @@ describe('RSVP model output and typed current state', () => {
     expect(result.plan.rsvp_state).toMatchObject({ status: 'none', pending_action: null });
     expect(result.outbound.text).toContain('MODELO_OFERTA');
     expect(runtime.composeRequests[0]?.errorMessage).toContain('"invitation_state":"declining"');
+    // PASS 2: folded the declining-offer prose assertion in here (same
+    // read-only declining scenario previously pinned from the
+    // offer-fragment file).
+    expect(runtime.composeRequests[0]?.errorMessage).toContain('"offer_action":true');
   });
 
   it('does not prepend or replace a generated RSVP response', async () => {
@@ -70,32 +75,44 @@ describe('RSVP model output and typed current state', () => {
     }).handleTurn({ channel: 'whatsapp', externalUserId: 'user-rsvp', text: 'Confirmo', messageId: 'msg-3', receivedAt: '2026-08-27T15:00:00.000Z', contactPhone: '+51973296571' });
     expect(result.outbound.text).toContain('SENTINEL_RSVP_REPLY');
     expect(result.outbound.text).not.toContain('Listo,');
+
+    // PASS 2: folded the attending-state wording case in here (model
+    // paragraphs preserved verbatim, no state fragment prepended).
+    const attendingRuntime = new RsvpRuntime([rsvpExtraction({ action: null })], 'MODEL_ATTENDING_STATE', 'MODEL_SECOND_PARAGRAPH');
+    const invitations = [rsvpLookupInvitation({ guestId: 584352, eventId: 38331, eventName: 'Otra celebración prueba', hasResponded: true, willAttend: true, datetime: '2026-08-19 05:00:00' })];
+    const attendingResult = await new AgentService({
+      planStore: new InMemoryPlanStore(),
+      runtime: attendingRuntime,
+      providerGateway: { async lookupUserEventContext(): Promise<UserEventLookupResult | null> { return { lookup: { email: null, phone: '973296571' }, user: null, events: invitations, counts: { ownerEvents: 0, guestEvents: 1, hostEvents: 0, celebratedEvents: 0, recentOrders: 0 } }; } } as unknown as ProviderGateway,
+      agentConversationGateway: new RsvpGateway(),
+      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
+      renderers: { whatsapp: new WhatsAppMessageRenderer() },
+    }).handleTurn({ channel: 'whatsapp', externalUserId: 'user-attending', text: '¿Mi asistencia ya está confirmada?', messageId: 'msg-attending', receivedAt: '2026-08-27T15:00:00.000Z', contactPhone: '+51973296571' });
+    expect(attendingResult.outbound.text).toContain('MODEL_ATTENDING_STATE');
+    expect(attendingResult.outbound.text).toContain('MODEL_SECOND_PARAGRAPH');
+    expect(attendingResult.outbound.text).not.toContain('Gracias, tu asistencia');
   });
 });
 
-class RsvpRuntime implements AgentRuntime {
-  readonly composeRequests: ComposeReplyRequest[] = [];
-  constructor(private readonly extractions: ExtractionResult[], private readonly p1?: string, private readonly p2?: string) {}
-  async extract(): Promise<ExtractionResult> {
-    const e = this.extractions.shift();
-    if (!e) throw new Error('No extraction queued');
-    return e;
-  }
-  async composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult> {
-    this.composeRequests.push(request);
-    const para1 = this.p1 ?? 'Tu asistencia para Otra celebración prueba el 19/08/2026 está pendiente. Modelo.';
-    const para2 = this.p2 ?? 'Fecha cruda 19/08/2026 no debe aparecer.';
-    // If custom tissue provided, use it; else default
-    const paragraphs = this.p1
-      ? [this.p1, ...(this.p2 ? [this.p2] : [])]
-      : [para1, para2];
-    return {
-      text: '',
-      structuredMessage: {
-        type: 'generic',
-        paragraphs_es: paragraphs,
-      },
-    };
+const tissueReply = (p1?: string, p2?: string): StubComposeFn => () => {
+  const para1 = p1 ?? 'Tu asistencia para Otra celebración prueba el 19/08/2026 está pendiente. Modelo.';
+  const para2 = p2 ?? 'Fecha cruda 19/08/2026 no debe aparecer.';
+  // If custom tissue provided, use it; else default
+  const paragraphs = p1
+    ? [p1, ...(p2 ? [p2] : [])]
+    : [para1, para2];
+  return {
+    text: '',
+    structuredMessage: {
+      type: 'generic',
+      paragraphs_es: paragraphs,
+    },
+  };
+};
+
+class RsvpRuntime extends QueuedAgentRuntime {
+  constructor(extractions: ExtractionResult[], p1?: string, p2?: string) {
+    super(extractions, tissueReply(p1, p2));
   }
 }
 

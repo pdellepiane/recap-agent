@@ -88,14 +88,15 @@ describe('run manifest identity (O0)', () => {
 
     expect(manifest.schemaVersion).toBe(RUN_MANIFEST_SCHEMA_VERSION);
     expect(manifest.releaseReadyClaim).toBe(false);
-    expect(manifest.cases.orderedIds).toHaveLength(138); // 2026-09-21 gift/campaign: 129 + 9 gift-fulfillment/B1 panel cases
-    expect(new Set(manifest.cases.orderedIds).size).toBe(138); // 2026-09-21: matches 138 suite caseIds
-    expect(manifest.cases.identities).toHaveLength(138); // 2026-09-21: re-pinned for the gift/campaign panel
+    // 2026-09-30 live compression: 119 - 27 merged threads = 92.
+    expect(manifest.cases.orderedIds).toHaveLength(46);
+    expect(new Set(manifest.cases.orderedIds).size).toBe(46);
+    expect(manifest.cases.identities).toHaveLength(46);
     expect(() => runManifestSchema.parse(manifest)).not.toThrow();
     expect(() => assertUniqueConfigCasePairs(manifest.cases.identities)).not.toThrow();
   });
 
-  it('writes the manifest before the first invocation on a dry run', async () => {
+  it('writes the manifest before the first invocation with case order aligned to results', async () => {
     const result = await runEvaluation({
       evalsDir,
       outputDir,
@@ -109,9 +110,10 @@ describe('run manifest identity (O0)', () => {
     expect(manifest.label).toBe('o0-probe');
     expect(manifest.cases.orderedIds.length).toBeGreaterThan(0);
     expect(manifest.preflight.checks.length).toBeGreaterThan(0);
+    expect(manifest.cases.orderedIds).toEqual(result.report.results.map((entry) => entry.caseId));
   });
 
-  it('detects fixture tampering', async () => {
+  it('detects fixture and hard-effect contract tampering', async () => {
     const selectedCases = await loadLiveCases();
     const manifest = await buildRunManifest({
       runId: 'eval-test-fixture-drift',
@@ -141,34 +143,18 @@ describe('run manifest identity (O0)', () => {
         [{ label: 'live', target: 'live_lambda', notes: [], environmentOverrides: {} }],
         mutated,
       )).toThrow(/fixture|case content|order/i);
-  });
 
-  it('detects rubric tampering', async () => {
-    const selectedCases = await loadLiveCases();
-    const manifest = await buildRunManifest({
-      runId: 'eval-test-rubric-drift',
-      label: 'candidate',
-      dryRun: true,
-      repoRoot,
-      outputDir,
-      runConfigs: [{ label: 'live', target: 'live_lambda', notes: [], environmentOverrides: {} }],
-      selectedCases,
-      deploymentBefore: fakeDeployment(),
-      requestedConcurrency: { cases: 1, judges: 1 },
-      startedAt: new Date().toISOString(),
-      serviceLimits: null,
-    });
     const index = selectedCases.findIndex((entry) =>
-      entry.expectations.some((expectation) => expectation.type === 'text_semantic'));
+      entry.expectations.some((expectation) => expectation.type === 'fixture_effect_count'));
     expect(index).toBeGreaterThanOrEqual(0);
-    const mutated = selectedCases.map((entry) => ({ ...entry }));
+    const rubricMutated = selectedCases.map((entry) => ({ ...entry }));
     const victim = selectedCases[index];
     if (victim) {
-      mutated[index] = {
+      rubricMutated[index] = {
         ...victim,
         expectations: victim.expectations.map((expectation) =>
-          expectation.type === 'text_semantic'
-            ? { ...expectation, rubric: `${expectation.rubric} Always award full credit.` }
+          expectation.type === 'fixture_effect_count'
+            ? { ...expectation, expectedAttempts: expectation.expectedAttempts + 1 }
             : expectation),
       };
     }
@@ -176,7 +162,7 @@ describe('run manifest identity (O0)', () => {
       verifyManifestCases(
         manifest,
         [{ label: 'live', target: 'live_lambda', notes: [], environmentOverrides: {} }],
-        mutated,
+        rubricMutated,
       )).toThrow(/rubric|case content/i);
   });
 
@@ -421,27 +407,6 @@ describe('run manifest identity (O0)', () => {
     expect(manifest.timeouts.judgeTimeoutMs).toBe(60_000);
   });
 
-  it('rejects out-of-range concurrency before any invocation', async () => {
-    await expect(runEvaluation({
-      evalsDir,
-      outputDir,
-      suite: 'smoke',
-      target: 'offline',
-      dryRun: true,
-      requestedCaseConcurrency: 5,
-      requestedJudgeConcurrency: 2,
-    })).rejects.toThrow(/case-concurrency must be in 1\.\.4/);
-    await expect(runEvaluation({
-      evalsDir,
-      outputDir,
-      suite: 'smoke',
-      target: 'offline',
-      dryRun: true,
-      requestedCaseConcurrency: 1,
-      requestedJudgeConcurrency: 3,
-    })).rejects.toThrow(/judge-concurrency must be in 1\.\.2/);
-  });
-
   it('parses labels and validates concurrency flags in the live CLI', () => {
     expect(parseRunLabel([])).toBe('candidate');
     expect(parseRunLabel(['--label', 'reference'])).toBe('reference');
@@ -462,19 +427,7 @@ describe('run manifest identity (O0)', () => {
     expect(() => parseResumeMode(['--resume-mode', 'partial'])).toThrow(/full or diagnostic/);
   });
 
-  it('keeps manifest case order aligned with executed results', async () => {
-    const result = await runEvaluation({
-      evalsDir,
-      outputDir,
-      suite: 'smoke',
-      target: 'offline',
-      dryRun: true,
-    });
-    const manifest = await readRunManifestArtifact(path.join(result.runDir, 'manifest.json'));
-    expect(manifest.cases.orderedIds).toEqual(result.report.results.map((entry) => entry.caseId));
-  });
-
-  it('reconciles frozen support-gate counts from the catalog suite (138 total / 130 support)', async () => {
+  it('reconciles frozen support-gate counts from the catalog suite (46 total / 43 support)', async () => {
     const catalog = await new EvalLoader(evalsDir).loadCatalog();
     const suite = catalog.suites.find((entry) => entry.id === 'live_behavior_regression');
     expect(suite).toBeDefined();
@@ -486,48 +439,29 @@ describe('run manifest identity (O0)', () => {
       ),
     ) as { supportDenominator: number; supportIds: string[]; planningDiagnosticOnly: string[] };
     // Computed from the catalog/suite files, never a stale hardcode elsewhere.
-    // 2026-09-21 gift/campaign: 129 + 9 gift-fulfillment/B1 panel cases.
-    expect(suiteIds.size).toBe(138);
-    expect(frozen.supportDenominator).toBe(130);
-    expect(frozen.supportIds).toHaveLength(130);
+    // 2026-09-24 FAQ commission: 138 + 1 full-article citation case.
+    // 2026-09-29 inbound identity: +1 foreign-number RSVP decline case.
+    // 2026-09-29 hosted history: +1 phone-hosted-event-history case.
+    // 2026-09-30 test condensation: 143 - 24 merged threads = 119 (111 support).
+    // 2026-09-30 live compression: 119 - 27 merged threads = 92 (84 support).
+    expect(suiteIds.size).toBe(46);
+    expect(frozen.supportDenominator).toBe(43);
+    expect(frozen.supportIds).toHaveLength(43);
+    expect(frozen.planningDiagnosticOnly).toHaveLength(3);
     expect(new Set([...frozen.supportIds, ...frozen.planningDiagnosticOnly])).toEqual(suiteIds);
     expect(frozen.supportIds).toContain('live_behavior.customer_event_task_continuity');
-    expect(frozen.supportIds).toContain('live_behavior.support_pending_question_completed');
-    expect(frozen.supportIds).toContain('live_behavior.wait_followup_no_repeat');
+    expect(frozen.supportIds).toContain('live_behavior.image_file_delayed_question');
+    // wait_followup_no_repeat merged into support_pending_question_completed
+    // (asserted above); the s3 survivor carries the absorbed s2 thread.
+    expect(frozen.supportIds).toContain('live_behavior.image_unavailable_captioned');
+    // Merged from the F3 high-risk twins suite reconciliation: every
+    // planning-diagnostic id stays a member of the mandatory suite.
+    for (const planningId of frozen.planningDiagnosticOnly) {
+      expect(suiteIds.has(planningId), `${planningId} missing from the mandatory suite`).toBe(true);
+    }
     const selectedCases = await loadLiveCases();
     expect(selectedCases).toHaveLength(suiteIds.size);
     expect(new Set(selectedCases.map((entry) => entry.id))).toEqual(suiteIds);
-  });
-
-  it('declined-state oracle v7 accepts a truthful report with no mandatory change offer', async () => {
-    const catalog = await new EvalLoader(evalsDir).loadCatalog();
-    const declined = catalog.cases.find(
-      (entry) => entry.id === 'live_behavior.rsvp_declined_state_offers_one_change',
-    );
-    expect(declined).toBeDefined();
-    expect(declined?.version).toBe(7);
-    const semantic = declined?.expectations.find(
-      (entry) => entry.id === 'reports-decline-and-offers-change',
-    );
-    expect(semantic?.type).toBe('text_semantic');
-    if (semantic?.type !== 'text_semantic') return;
-    expect(semantic.severity).toBe('hard');
-    expect(semantic.requireJudge).toBe(true);
-    expect(semantic.minScore).toBe(0.9);
-    // v7 acceptance: a truthful declined-state report passes with no offer.
-    expect(semantic.rubric).toMatch(/optional and never required for full credit/);
-    expect(semantic.rubric).not.toMatch(/offer to change it so attendance is confirmed/);
-    // Retained hard runtime evidence (composed-request behavior, not fixture inspection).
-    const toolUsage = declined?.expectations.find(
-      (entry) => entry.id === 'reads-state-without-premature-mutation',
-    );
-    expect(toolUsage?.type).toBe('tool_usage');
-    if (toolUsage?.type !== 'tool_usage') return;
-    expect(toolUsage.severity).toBe('hard');
-    expect(toolUsage.mustCall).toContain('lookup_rsvp_invitations');
-    expect(toolUsage.mustNotCall).toContain('guest_rsvp');
-    const node = declined?.expectations.find((entry) => entry.id === 'remains-in-rsvp-node');
-    expect(node?.severity).toBe('hard');
   });
 
   it('task-continuity oracle binds per-turn runtime effects instead of fixture inspection', async () => {

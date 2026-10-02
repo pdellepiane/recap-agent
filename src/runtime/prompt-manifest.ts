@@ -369,6 +369,7 @@ export const nodePromptManifest: Record<DecisionNode, NodePromptConfig> = {
  */
 export const instructionModuleIds = [
   'shared_invariants',
+  'reply_customer_context_fields',
   'extraction_cross_domain',
   'extraction_information',
   'extraction_rsvp',
@@ -378,9 +379,17 @@ export const instructionModuleIds = [
   'extraction_close_pause',
   'reply_planning_owner',
   'reply_purchase_facts',
+  'reply_purchase_partial_failure',
+  'reply_customer_reference_matched',
+  'reply_customer_reference_unavailable',
   'reply_venue_facts',
   'reply_rsvp_facts',
+  'reply_rsvp_lookup_failed',
+  'reply_rsvp_candidate_states',
+  'reply_rsvp_companion_rejected',
   'reply_faq_policy',
+  'reply_faq_commission',
+  'reply_host_withdrawal_policy',
   'reply_handoff_outcome',
   'reply_auth_limitation',
   'reply_image_context',
@@ -399,6 +408,8 @@ export type InstructionModuleTask =
   | 'venue'
   | 'rsvp'
   | 'faq_policy'
+  | 'faq_commission'
+  | 'host_withdrawal_policy'
   | 'handoff'
   | 'auth'
   | 'image'
@@ -421,11 +432,21 @@ export const instructionModuleRegistry: Record<InstructionModuleId, InstructionM
     // inventory only. Production reply loads exactly this one reply-core
     // file (identity, Spanish, model-written response, factual grounding,
     // no claimed action before a verified receipt, no internal names).
-    files: ['shared/reply_core.txt', 'shared/customer_context_fields.txt'],
+    files: ['shared/reply_core.txt'],
     stages: ['reply'],
     owners: ['planning', 'faq', 'customer_assistance', 'unknown'],
     tasks: ['purchase', 'venue', 'rsvp', 'faq_policy', 'handoff', 'auth', 'image', 'planning'],
     consumer: 'openai-agent-runtime composeReply (every reply call)',
+  },
+  reply_customer_context_fields: {
+    // Record-field semantics (order/payment/shipping/credit meaning) load
+    // only on turns that project customer records. Pure FAQ, handoff, auth
+    // and image turns never carry this purchase-heavy guidance.
+    files: ['shared/customer_context_fields.txt'],
+    stages: ['reply'],
+    owners: ['planning', 'faq', 'customer_assistance', 'unknown'],
+    tasks: ['purchase', 'venue', 'rsvp'],
+    consumer: 'openai-agent-runtime composeReply (record-field semantics on record-bearing turns only)',
   },
   extraction_cross_domain: {
     files: ['extractors/base_system.txt', 'extractors/capability_boundary.txt', 'shared/customer_context_fields.txt'],
@@ -495,6 +516,27 @@ export const instructionModuleRegistry: Record<InstructionModuleId, InstructionM
     tasks: ['purchase'],
     consumer: 'openai-agent-runtime composeReply (purchase evidence, no prose)',
   },
+  reply_purchase_partial_failure: {
+    files: ['nodes/resolver_consultas_informativas/purchase_partial_failure.txt'],
+    stages: ['reply'],
+    owners: ['customer_assistance', 'unknown'],
+    tasks: ['purchase'],
+    consumer: 'openai-agent-runtime composeReply (failed purchase source only)',
+  },
+  reply_customer_reference_matched: {
+    files: ['nodes/resolver_consultas_informativas/customer_reference_matched.txt'],
+    stages: ['reply'],
+    owners: ['customer_assistance', 'unknown'],
+    tasks: ['purchase'],
+    consumer: 'openai-agent-runtime composeReply (validated matched customer reference only)',
+  },
+  reply_customer_reference_unavailable: {
+    files: ['nodes/resolver_consultas_informativas/customer_reference_unavailable.txt'],
+    stages: ['reply'],
+    owners: ['customer_assistance', 'unknown'],
+    tasks: ['purchase'],
+    consumer: 'openai-agent-runtime composeReply (validated unavailable customer reference only)',
+  },
   reply_venue_facts: {
     files: [],
     stages: ['reply'],
@@ -509,12 +551,47 @@ export const instructionModuleRegistry: Record<InstructionModuleId, InstructionM
     tasks: ['rsvp'],
     consumer: 'openai-agent-runtime composeReply (RSVP evidence, no prose)',
   },
+  reply_rsvp_lookup_failed: {
+    files: ['nodes/responder_invitacion/lookup_failed.txt'],
+    stages: ['reply'],
+    owners: ['customer_assistance', 'unknown'],
+    tasks: ['rsvp'],
+    consumer: 'openai-agent-runtime composeReply (failed invitation lookup only)',
+  },
+  reply_rsvp_candidate_states: {
+    files: ['nodes/responder_invitacion/candidate_states.txt'],
+    stages: ['reply'],
+    owners: ['customer_assistance', 'unknown'],
+    tasks: ['rsvp'],
+    consumer: 'openai-agent-runtime composeReply (known candidate RSVP states only)',
+  },
+  reply_rsvp_companion_rejected: {
+    files: ['nodes/responder_invitacion/companion_rejected.txt'],
+    stages: ['reply'],
+    owners: ['customer_assistance', 'unknown'],
+    tasks: ['rsvp'],
+    consumer: 'openai-agent-runtime composeReply (rejected companion receipt only)',
+  },
   reply_faq_policy: {
     files: ['nodes/resolver_consultas_informativas/payment_disclosure.txt'],
     stages: ['reply'],
     owners: ['faq', 'customer_assistance', 'unknown'],
     tasks: ['faq_policy'],
     consumer: 'knowledge retrieval projection (source-backed policy facts only)',
+  },
+  reply_faq_commission: {
+    files: ['nodes/resolver_consultas_informativas/commission.txt'],
+    stages: ['reply'],
+    owners: ['faq', 'customer_assistance', 'unknown'],
+    tasks: ['faq_commission'],
+    consumer: 'openai-agent-runtime composeReply (verified commission FAQ source only)',
+  },
+  reply_host_withdrawal_policy: {
+    files: ['nodes/resolver_consultas_informativas/host_withdrawal_policy.txt'],
+    stages: ['reply'],
+    owners: ['faq', 'customer_assistance', 'unknown'],
+    tasks: ['host_withdrawal_policy'],
+    consumer: 'openai-agent-runtime composeReply (completed typed host-withdrawal policy only)',
   },
   reply_handoff_outcome: {
     files: [

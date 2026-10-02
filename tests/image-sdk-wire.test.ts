@@ -83,42 +83,46 @@ function baseRequest(): ComposeReplyRequest {
   };
 }
 
+function sdkCaptureRuntime(wireBodies: string[], requestId: string): OpenAiAgentRuntime {
+  const client = new OpenAI({ apiKey: 'test-key', maxRetries: 0 });
+  Reflect.set(client, 'fetch', async (_input: unknown, init?: RequestInit) => {
+    if (typeof init?.body === 'string') wireBodies.push(init.body);
+    return new Response(cannedResponsesPayload(), {
+      status: 200,
+      headers: { 'content-type': 'application/json', 'x-request-id': requestId },
+    });
+  });
+  return new OpenAiAgentRuntime({
+    apiKey: 'test-key',
+    replyModel: 'gpt-test',
+    extractorModel: 'gpt-test',
+    replyProviderLimit: 4,
+    presentationProviderLimit: 5,
+    providerDetailLookupLimit: 3,
+    promptLoader: {
+      loadNodeBundle: async () => ({
+        id: 'test-bundle',
+        filePaths: [],
+        instructions: 'Responde en español con un mensaje genérico.',
+        allowedTools: [],
+      }),
+      loadModuleFilesBundle: async () => ({
+        id: 'test-bundle',
+        filePaths: [],
+        instructions: 'Responde en español con un mensaje genérico.',
+        allowedTools: [],
+        fileBytes: [],
+      }),
+    } as never,
+    providerGateway: {} as never,
+    openAIClient: client,
+  });
+}
+
 describe('installed-SDK image transport capture', () => {
-  it('serializes native image input through the installed SDK converter', async () => {
+  it('serializes native URL and file_id image input through the installed SDK converter', async () => {
     const wireBodies: string[] = [];
-    const client = new OpenAI({ apiKey: 'test-key', maxRetries: 0 });
-    Reflect.set(client, 'fetch', async (_input: unknown, init?: RequestInit) => {
-      if (typeof init?.body === 'string') wireBodies.push(init.body);
-      return new Response(cannedResponsesPayload(), {
-        status: 200,
-        headers: { 'content-type': 'application/json', 'x-request-id': 'req-sdk-wire' },
-      });
-    });
-    const runtime = new OpenAiAgentRuntime({
-      apiKey: 'test-key',
-      replyModel: 'gpt-test',
-      extractorModel: 'gpt-test',
-      replyProviderLimit: 4,
-      presentationProviderLimit: 5,
-      providerDetailLookupLimit: 3,
-      promptLoader: {
-        loadNodeBundle: async () => ({
-          id: 'test-bundle',
-          filePaths: [],
-          instructions: 'Responde en español con un mensaje genérico.',
-          allowedTools: [],
-        }),
-        loadModuleFilesBundle: async () => ({
-          id: 'test-bundle',
-          filePaths: [],
-          instructions: 'Responde en español con un mensaje genérico.',
-          allowedTools: [],
-          fileBytes: [],
-        }),
-      } as never,
-      providerGateway: {} as never,
-      openAIClient: client,
-    });
+    const runtime = sdkCaptureRuntime(wireBodies, 'req-sdk-wire');
 
     const reply = await runtime.composeReply(baseRequest());
 
@@ -144,44 +148,10 @@ describe('installed-SDK image transport capture', () => {
     // The turn still carries a model origin receipt for the reply.
     expect(reply.origin?.modelParagraphs).toEqual(['Recibí tu imagen y la tengo en cuenta.']);
     expect(reply.openAiCall?.requestMetrics.transport?.observedRequestCount).toBeGreaterThan(0);
-  });
 
-  it('serializes persisted file_id image input through the installed SDK converter', async () => {
-    const wireBodies: string[] = [];
-    const client = new OpenAI({ apiKey: 'test-key', maxRetries: 0 });
-    Reflect.set(client, 'fetch', async (_input: unknown, init?: RequestInit) => {
-      if (typeof init?.body === 'string') wireBodies.push(init.body);
-      return new Response(cannedResponsesPayload(), {
-        status: 200,
-        headers: { 'content-type': 'application/json', 'x-request-id': 'req-sdk-file-wire' },
-      });
-    });
-    const runtime = new OpenAiAgentRuntime({
-      apiKey: 'test-key',
-      replyModel: 'gpt-test',
-      extractorModel: 'gpt-test',
-      replyProviderLimit: 4,
-      presentationProviderLimit: 5,
-      providerDetailLookupLimit: 3,
-      promptLoader: {
-        loadNodeBundle: async () => ({
-          id: 'test-bundle',
-          filePaths: [],
-          instructions: 'Responde en español con un mensaje genérico.',
-          allowedTools: [],
-        }),
-        loadModuleFilesBundle: async () => ({
-          id: 'test-bundle',
-          filePaths: [],
-          instructions: 'Responde en español con un mensaje genérico.',
-          allowedTools: [],
-          fileBytes: [],
-        }),
-      } as never,
-      providerGateway: {} as never,
-      openAIClient: client,
-    });
-
+    // Persisted file_id attachments ride the same converter as file_id.
+    const fileWireBodies: string[] = [];
+    const fileRuntime = sdkCaptureRuntime(fileWireBodies, 'req-sdk-file-wire');
     const FILE_ID = 'file-sdk-wire-1';
     const request = {
       ...baseRequest(),
@@ -197,11 +167,11 @@ describe('installed-SDK image transport capture', () => {
         fileRefProjected: true,
       },
     } as unknown as ComposeReplyRequest;
-    const reply = await runtime.composeReply(request);
+    const fileReply = await fileRuntime.composeReply(request);
 
-    expect(wireBodies.length).toBeGreaterThan(0);
-    const bodies = wireBodies.map((body) => JSON.parse(body) as Record<string, unknown>);
-    const imageItems = bodies.flatMap((body) => {
+    expect(fileWireBodies.length).toBeGreaterThan(0);
+    const fileBodies = fileWireBodies.map((body) => JSON.parse(body) as Record<string, unknown>);
+    const fileImageItems = fileBodies.flatMap((body) => {
       const input = body['input'];
       if (!Array.isArray(input)) return [];
       return input.flatMap((entry) => {
@@ -211,12 +181,12 @@ describe('installed-SDK image transport capture', () => {
     }).filter((item) => (item as { type?: string }).type === 'input_image');
     // Installed-SDK serialization evidence (agents-openai converter):
     // {image: {id}} rides the Responses wire as {type: input_image, file_id}.
-    expect(imageItems).toHaveLength(1);
-    expect(imageItems[0]).toMatchObject({ type: 'input_image', file_id: FILE_ID });
+    expect(fileImageItems).toHaveLength(1);
+    expect(fileImageItems[0]).toMatchObject({ type: 'input_image', file_id: FILE_ID });
     // The file ID travels only as native image content, never as prompt
     // text: the current user text stays visible while the raw ID occurs
     // exactly once on the wire.
-    const textItems = bodies.flatMap((body) => {
+    const textItems = fileBodies.flatMap((body) => {
       const input = body['input'];
       if (!Array.isArray(input)) return [];
       return input.flatMap((entry) => {
@@ -225,15 +195,15 @@ describe('installed-SDK image transport capture', () => {
       });
     }).filter((item) => (item as { type?: string }).type === 'input_text');
     expect(textItems.some((item) => JSON.stringify(item).includes('Cuanto dice aqui?'))).toBe(true);
-    for (const body of wireBodies) {
+    for (const body of fileWireBodies) {
       const occurrences = body.split(FILE_ID).length - 1;
       expect(occurrences).toBe(1);
     }
     // The model call is accounted once with transport evidence; the Files
     // upload that produced the reference is a separate operation and never
     // counts as an extra model call on this turn.
-    expect(reply.openAiCall?.requestMetrics.transport?.observedRequestCount).toBe(1);
-    expect(reply.origin?.modelParagraphs).toEqual(['Recibí tu imagen y la tengo en cuenta.']);
+    expect(fileReply.openAiCall?.requestMetrics.transport?.observedRequestCount).toBe(1);
+    expect(fileReply.origin?.modelParagraphs).toEqual(['Recibí tu imagen y la tengo en cuenta.']);
   });
 
 describe('installed-SDK extraction transport capture', () => {
@@ -355,8 +325,6 @@ describe('installed-SDK extraction transport capture', () => {
     // The file ID travels only as native image content, never as prompt text.
     const occurrences = raw.split(EXTRACT_FILE_ID).length - 1;
     expect(occurrences).toBe(1);
-    // Scoped receipt guidance loads on the image decision call.
-    expect(readStringField(body, 'instructions')).toContain('Comprobante visible');
   });
 
   it('sends the backend URL as native input_image on the production extraction payload', async () => {

@@ -233,24 +233,22 @@ function replyRequest(args: {
 }
 
 describe('Packet B model input and continuity', () => {
-  it('fresh purchase reply omits support continuity and planning modules', async () => {
-    const spec = await testRuntime().buildReplyRequestSpec(replyRequest({
+  it('loads support continuity only once the prior answer exists', async () => {
+    const fresh = await testRuntime().buildReplyRequestSpec(replyRequest({
       plan: supportPlan(),
       extraction: purchaseExtraction(),
       informationResults: [luisResult()],
       withProfile: true,
     }));
-    const ids = spec.modules.map((module) => module.id);
-    expect(ids).toContain('shared_invariants');
-    expect(ids).not.toContain('reply_support_continuity');
-    expect(ids).not.toContain('reply_planning_owner');
-    expect(ids).not.toContain('reply_gift_fulfillment');
+    const freshIds = fresh.modules.map((module) => module.id);
+    expect(freshIds).toContain('shared_invariants');
+    expect(freshIds).not.toContain('reply_support_continuity');
+    expect(freshIds).not.toContain('reply_planning_owner');
+    expect(freshIds).not.toContain('reply_gift_fulfillment');
     // Stable static cache prefix: shared invariants first.
-    expect(ids[0]).toBe('shared_invariants');
-    expect(spec.scopedTools).toEqual([]);
-  });
+    expect(freshIds[0]).toBe('shared_invariants');
+    expect(fresh.scopedTools).toEqual([]);
 
-  it('continued support turn loads continuity once the prior answer exists', async () => {
     const continued = supportPlan({
       last_outbound_context: {
         message_id: 'wamid.prior',
@@ -303,7 +301,7 @@ describe('Packet B model input and continuity', () => {
     expect(spec.input).toContain('preparing');
   });
 
-  it('profile turn passes the canonical record once with coverage, never duplicated', async () => {
+  it('profile turn passes the canonical record once without stale support names', async () => {
     const spec = await testRuntime().buildReplyRequestSpec(replyRequest({
       plan: supportPlan(),
       extraction: purchaseExtraction(),
@@ -320,15 +318,7 @@ describe('Packet B model input and continuity', () => {
     expect(spec.instructions).toContain('payment.amount');
     // No computed remaining balance anywhere in the serialized input.
     expect(spec.input).not.toMatch(/remaining":\s*[0-9]/);
-  });
-
-  it('topic change does not impose old support names on a fresh purchase turn', async () => {
-    const spec = await testRuntime().buildReplyRequestSpec(replyRequest({
-      plan: supportPlan(),
-      extraction: purchaseExtraction(),
-      informationResults: [luisResult()],
-      withProfile: true,
-    }));
+    // A topic change imposes no old support names on the fresh turn.
     expect(spec.input).not.toContain('reported_guest_name');
     expect(spec.input).not.toContain('reported_event_name');
     expect(spec.input).not.toContain('Roger Abanto');
@@ -406,7 +396,7 @@ describe('Packet B model input and continuity', () => {
           fileId: 'file-receipt-149',
           messageId: 'wamid.file-t0',
           receivedAt: '2026-09-22T00:00:00.000Z',
-          expiresAt: '2026-10-01T00:00:00.000Z',
+          expiresAt: '2099-10-01T00:00:00.000Z',
           mimeType: 'image/png',
           byteLength: 54636,
           contentDigest: '0'.repeat(64),
@@ -448,17 +438,6 @@ describe('Packet B model input and continuity', () => {
       { fileId: 'file-receipt-149', messageId: 'wamid.file-t0' },
     ]);
     expect(composeRequests[0]?.imageEvidence).toMatchObject({ status: 'available', source: 'file' });
-  });
-
-  it('pins the targeted-panel follow-up prompt requirements', async () => {
-    const { default: fs } = await import('node:fs');
-    const info = fs.readFileSync('prompts/extractors/information.txt', 'utf8');
-    const fields = fs.readFileSync('prompts/shared/customer_context_fields.txt', 'utf8');
-    expect(info).not.toContain('resource');
-    expect(info).not.toContain('aspects');
-    expect(info).toContain('monto reportado explícitamente');
-    expect(fields).toContain('no lo calcules ni conviertas null en cero');
-    expect(fields).toContain('Una tarjeta física tiene su propio estado');
   });
 
   it('four candidates survive the reply projection without slicing', async () => {

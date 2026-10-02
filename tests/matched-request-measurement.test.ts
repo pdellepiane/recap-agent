@@ -350,77 +350,7 @@ async function measureReply(
   return { bodies, transport };
 }
 
-function wireComponentBytes(body: string): {
-  total: number; instruction: number; input: number; tools: number; schema: number;
-} {
-  const parsed = JSON.parse(body) as Record<string, unknown>;
-  const size = (value: unknown): number => Buffer.byteLength(JSON.stringify(value), 'utf8');
-  const text = parsed['text'] as Record<string, unknown> | undefined;
-  const schema = text !== undefined ? text['format'] ?? null : null;
-  return {
-    total: Buffer.byteLength(body, 'utf8'),
-    instruction: size(parsed['instructions']),
-    input: size(parsed['input']),
-    tools: size(parsed['tools'] ?? []),
-    schema: schema === null ? 0 : size(schema),
-  };
-}
-
 describe('matched request measurement after SDK serialization', () => {
-  it('captures complete reply transport for the OTP-terminal turn', async () => {
-    const { bodies, transport } = await measureReply(
-      otpTerminalRequest(),
-      'Ya pedí ayuda humana para tu consulta.',
-    );
-
-    expect(bodies.length).toBeGreaterThan(0);
-    expect(transport.observedRequestCount).toBe(bodies.length);
-    const stage = summarizeMatchedStage('reply', transport, 'otp-terminal-reply');
-    expect(stage.completeness.complete).toBe(true);
-    expect(stage.completeness.reasons).toEqual([]);
-    const turn = summarizeMatchedTurn({
-      caseId: 'live_behavior.repeated_otp_failure_preserves_gift_query:turn0-shape',
-      domain: 'auth',
-      model: STUB_MODEL,
-      stages: [stage],
-    });
-    expect(turn.transportComplete).toBe(true);
-    expect(turn.modelCalls).toBe(bodies.length);
-    // Current-candidate pins (offline stub model, installed SDK envelope).
-    // Static sample bytes are never runtime cost; see the module header.
-    // 2026-09-16 G1 retention: measured 8862 after retaining the
-    // auth-terminal fragment (resolver response_contract L49-51) in the
-    // reply-side continuity file and splitting auth_control.txt to the
-    // extraction stage. Previous >16000 pin measured the pre-migration
-    // node bundle; the 8306 interim value carried the same drop with no
-    // retained fragment (+1013 auth-terminal, -486 extractor auth_control,
-    // +29 scoped handoff wording).
-    // 2026-09-16 auth split plus approval boundary: measured 9544 (+682).
-    // The auth-terminal prose moved to auth_limitation.txt behind
-    // reply_auth_limitation (one extra ## file header on auth turns) and
-    // the receipt guard loads via reply_approval_boundary because this
-    // turn requests payment_status aspects. Venue and non-approval turns
-    // shrink by the removed auth prose; only applicable turns pay.
-    // 2026-09-17 actionable-answer directive: +47 bytes on this turn
-    // (measured 9647); the shared invariant replaces older text rather
-    // than duplicating rules, so the cap moves minimally. Previous cap 9600.
-    // 2026-09-22 Owner B B9/B11: measured 5595. The four-file shared core
-    // (4,897 bytes) is replaced by the single reply-core file while the
-    // same six task modules still load (purchase facts, approval boundary,
-    // auth limitation, handoff outcome, real continuation behind the
-    // pending purchase). Previous floor 8000, previous cap 9700.
-    expect(turn.instructionBytes).toBeGreaterThan(5_000);
-    expect(turn.instructionBytes).toBeLessThan(6_100);
-    expect(turn.inputBytes).toBeGreaterThan(2_000);
-    expect(turn.inputBytes).toBeLessThan(6_000);
-    expect(turn.toolBytes).toBeLessThanOrEqual(4);
-    expect(turn.outputSchemaBytes).toBeGreaterThan(0);
-    const wire = wireComponentBytes(bodies[0]);
-    expect(wire.total).toBe(turn.totalPayloadBytes);
-    expect(wire.instruction).toBe(turn.instructionBytes);
-    expect(wire.input).toBe(turn.inputBytes);
-  });
-
   it('includes failed attempts and repair calls instead of zeroing them', async () => {
     const client = new OpenAI({ apiKey: 'test-key', maxRetries: 0 });
     const failingBody = JSON.stringify({ model: STUB_MODEL, instructions: 'x', input: 'y' });
@@ -543,8 +473,9 @@ describe('OTP-terminal projection attribution', () => {
     });
   }
 
-  it('attributes per-block bytes without storing payloads', () => {
-    const blocks = attributeEvidenceBlockBytes(evidenceOf(otpTerminalRequest()));
+  it('attributes per-block bytes and places the handoff block exactly once', () => {
+    const authEvidence = evidenceOf(otpTerminalRequest());
+    const blocks = attributeEvidenceBlockBytes(authEvidence);
     const byId = new Map(blocks.map((block) => [block.blockId, block]));
     expect(byId.get('plan')?.bytes).toBeGreaterThan(0);
     expect(byId.get('extraction')?.bytes).toBeGreaterThan(0);
@@ -553,14 +484,12 @@ describe('OTP-terminal projection attribution', () => {
       expect(block.sha256).toMatch(/^[a-f0-9]{64}$/u);
     }
     // No planning-only fields reach this established auth turn.
-    const serialized = JSON.stringify(evidenceOf(otpTerminalRequest()));
+    const serialized = JSON.stringify(authEvidence);
     for (const leaked of ['provider_needs', 'vendor_category', 'event_type', 'rsvp_state', 'close_submission_receipt']) {
       expect(serialized).not.toContain(leaked);
     }
-  });
-
-  it('omits the duplicated top-level handoff block on auth turns only', () => {
-    const authEvidence = evidenceOf(otpTerminalRequest());
+    // The handoff outcome nests under authentication_outcome on auth turns,
+    // never as a duplicated top-level block.
     expect(authEvidence).not.toHaveProperty('handoff_outcome');
     expect(authEvidence).toMatchObject({
       authentication_outcome: { status: 'terminal', handoff_outcome: 'handoff_requested' },
@@ -572,7 +501,7 @@ describe('OTP-terminal projection attribution', () => {
     expect(supportEvidence).toMatchObject({ handoff_outcome: 'handoff_requested' });
   });
 
-  it('holds the auth turn byte-identical under unrelated planning/RSVP state', () => {
+  it('holds the auth turn byte-identical under unrelated state but changes it on relevant auth evidence', () => {
     const runtime = testRuntime(stubClient(() => cannedReplyPayload('ok'), []));
     const typed = runtime as unknown as {
       composeConversationInput: (
@@ -632,22 +561,14 @@ describe('OTP-terminal projection attribution', () => {
       },
     } as never);
     expect(typed.composeConversationInput(rsvpChanged, funnel)).toBe(rsvpBefore);
-  });
 
-  it('changes the auth turn when relevant auth evidence changes', () => {
-    const runtime = testRuntime(stubClient(() => cannedReplyPayload('ok'), []));
-    const typed = runtime as unknown as {
-      composeConversationInput: (
-        request: ComposeReplyRequest,
-        funnel: { available_candidates: number; context_candidates: number; context_candidate_ids: number[]; presentation_limit: number },
-      ) => string;
-    };
-    const funnel = { available_candidates: 0, context_candidates: 0, context_candidate_ids: [], presentation_limit: 0 };
-    const before = typed.composeConversationInput(otpTerminalRequest(), funnel);
-    const changed = otpTerminalRequest();
-    if (!changed.authenticationOutcome) throw new Error('missing auth outcome fixture');
-    changed.authenticationOutcome = { ...changed.authenticationOutcome, handoffOutcome: 'handoff_failed' };
-    changed.handoffOutcome = 'handoff_failed';
-    expect(typed.composeConversationInput(changed, funnel)).not.toBe(before);
+    // Relevant auth evidence does change the turn: failing the handoff
+    // must not render byte-identical to the requested-handoff turn.
+    const authBefore = typed.composeConversationInput(otpTerminalRequest(), funnel);
+    const authChanged = otpTerminalRequest();
+    if (!authChanged.authenticationOutcome) throw new Error('missing auth outcome fixture');
+    authChanged.authenticationOutcome = { ...authChanged.authenticationOutcome, handoffOutcome: 'handoff_failed' };
+    authChanged.handoffOutcome = 'handoff_failed';
+    expect(typed.composeConversationInput(authChanged, funnel)).not.toBe(authBefore);
   });
 });

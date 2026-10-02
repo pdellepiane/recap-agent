@@ -85,11 +85,16 @@ describe('Lambda turn coordination boundary', () => {
 
     expect(response.statusCode).toBe(503);
     expect(response.headers).toMatchObject({ 'retry-after': '2' });
-    expect(JSON.parse(response.body ?? '{}')).toEqual({
+    // Busy rejections still carry tracking ids; correlation derives from the
+    // native message id already on the request.
+    const payload = JSON.parse(response.body ?? '{}') as { request_id?: unknown };
+    expect(payload).toMatchObject({
       error: 'Conversation is busy. Retry this request.',
       code: 'conversation_busy',
       retryable: true,
+      correlation_id: 'message-1',
     });
+    expect(typeof payload.request_id).toBe('string');
     expect(coordinatorMocks.constructor).toHaveBeenCalledOnce();
     expect(coordinatorMocks.acquire).toHaveBeenCalledOnce();
     // Failed acquisition never enters runtime work: no plan read or save.

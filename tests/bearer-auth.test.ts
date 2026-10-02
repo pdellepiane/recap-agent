@@ -7,7 +7,7 @@ import {
 } from '../src/lambda/bearer-auth';
 
 describe('Lambda channel bearer authentication', () => {
-  it('reads the standard Authorization header case-insensitively', () => {
+  it('reads the Authorization header case-insensitively with optional whitespace', () => {
     const authorization = readBearerAuthorization({
       Authorization: '  Bearer channel-secret  ',
     });
@@ -16,9 +16,6 @@ describe('Lambda channel bearer authentication', () => {
       token: 'channel-secret',
     });
     expect(bearerTokenMatchesAny(authorization.token, ['channel-secret'])).toBe(true);
-  });
-
-  it('accepts a case-insensitive Bearer scheme', () => {
     expect(readBearerAuthorization({ authorization: 'bearer channel-secret' })).toEqual({
       authorizationHeaderPresent: true,
       token: 'channel-secret',

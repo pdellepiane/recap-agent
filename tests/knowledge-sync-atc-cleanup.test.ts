@@ -52,6 +52,7 @@ describe('ATC supplemental FAQ knowledge sync cleanup', () => {
         { id: 'vsf-old-atc', attributes: { batch_id: 'kb-atc-old', source: atcSource } },
         { id: 'vsf-old-faq', attributes: { batch_id: 'kb-faq-old', source: 'recap-agent-knowledge-sync' } },
         { id: 'vsf-unscoped', attributes: { batch_id: 'legacy-faq-old' } },
+        { id: 'vsf-helper', attributes: { source: 'recap-agent-faq-helper', document_id: 'durable' } },
       ]),
     );
     openAiClientMock.vectorStores.files.delete.mockResolvedValue({ deleted: true });
@@ -71,6 +72,18 @@ describe('ATC supplemental FAQ knowledge sync cleanup', () => {
     expect(openAiClientMock.vectorStores.files.delete).toHaveBeenCalledWith('vsf-old-atc', {
       vector_store_id: 'vs_kb_test',
     });
+  });
+
+  it('preserves helper uploads during the original FAQ resync cleanup', async () => {
+    openAiClientMock.vectorStores.files.list.mockReturnValue(asyncFileList([
+      { id: 'old-tawk', attributes: { source: 'recap-agent-knowledge-sync', batch_id: 'old' } },
+      { id: 'new-tawk', attributes: { source: 'recap-agent-knowledge-sync', batch_id: 'current' } },
+      { id: 'helper', attributes: { source: 'recap-agent-faq-helper', document_id: 'durable' } },
+    ]));
+    const uploader = new OpenAiKnowledgeUploader({ baseUrl: 'https://sinenvolturas.tawk.help', outputDir: 'dist/knowledge-base', openAiApiKey: 'test-key', vectorStoreName: 'FAQ', vectorStoreId: 'vs_test' });
+    await uploader.cleanupOldBatches('vs_test', 'current');
+    expect(openAiClientMock.vectorStores.files.delete).toHaveBeenCalledTimes(1);
+    expect(openAiClientMock.vectorStores.files.delete).toHaveBeenCalledWith('old-tawk', { vector_store_id: 'vs_test' });
   });
 
   it('adds ATC source-scoping attributes to new supplemental uploads', async () => {

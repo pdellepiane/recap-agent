@@ -110,50 +110,40 @@ function hostPolicyResult(): InformationTaskResult {
 }
 
 describe('W1-07 structured completeness (evidence only)', () => {
-  it('projects host-withdrawal policy hours, unverifiable status and handoff for an individual-status request', () => {
-    const extraction = baseExtraction();
-    extraction.informationRequests = [{
-      kind: 'faq',
-      query: 'Hice un retiro de dinero de mi evento y aun no lo recibo.',
-      hostWithdrawal: 'individual_status',
-      eventHint: 'Diana y Fernando',
-    }];
-    const evidence = readEvidence(composeInput(createRequest({
-      extraction,
-      informationResults: [hostPolicyResult()],
-    })));
-    expect(evidence.turn_state['host_withdrawal_policy_hours']).toBe(72);
-    expect(evidence.turn_state['host_withdrawal_status_unverifiable']).toBe(true);
-    expect(evidence.turn_state['host_withdrawal_handoff_requested']).toBe(true);
-  });
+  it('projects host-withdrawal evidence by request kind and policy availability', () => {
+    function withdrawalEvidence(query: string, hostWithdrawal: 'individual_status' | 'policy_only', withPolicy: boolean, eventHint?: string) {
+      const extraction = baseExtraction();
+      const request: { kind: 'faq'; query: string; hostWithdrawal: 'individual_status' | 'policy_only'; eventHint?: string } = {
+        kind: 'faq',
+        query,
+        hostWithdrawal,
+      };
+      if (eventHint !== undefined) {
+        request.eventHint = eventHint;
+      }
+      extraction.informationRequests = [request];
+      return readEvidence(composeInput(createRequest({
+        extraction,
+        ...(withPolicy ? { informationResults: [hostPolicyResult()] } : {}),
+      })));
+    }
 
-  it('projects only policy hours for a general host-withdrawal policy question without handoff', () => {
-    const extraction = baseExtraction();
-    extraction.informationRequests = [{
-      kind: 'faq',
-      query: 'Cuanto demora un retiro de fondos?',
-      hostWithdrawal: 'policy_only',
-    }];
-    const evidence = readEvidence(composeInput(createRequest({
-      extraction,
-      informationResults: [hostPolicyResult()],
-    })));
-    expect(evidence.turn_state['host_withdrawal_policy_hours']).toBe(72);
-    expect(evidence.turn_state).not.toHaveProperty('host_withdrawal_status_unverifiable');
-    expect(evidence.turn_state).not.toHaveProperty('host_withdrawal_handoff_requested');
-  });
+    const individual = withdrawalEvidence(
+      'Hice un retiro de dinero de mi evento y aun no lo recibo.', 'individual_status', true, 'Diana y Fernando',
+    );
+    expect(individual.turn_state['host_withdrawal_policy_hours']).toBe(72);
+    expect(individual.turn_state['host_withdrawal_status_unverifiable']).toBe(true);
+    expect(individual.turn_state['host_withdrawal_handoff_requested']).toBe(true);
 
-  it('keeps handoff and unverifiable status when the policy result is unavailable', () => {
-    const extraction = baseExtraction();
-    extraction.informationRequests = [{
-      kind: 'faq',
-      query: 'No recibi mi retiro.',
-      hostWithdrawal: 'individual_status',
-    }];
-    const evidence = readEvidence(composeInput(createRequest({ extraction })));
-    expect(evidence.turn_state).not.toHaveProperty('host_withdrawal_policy_hours');
-    expect(evidence.turn_state['host_withdrawal_status_unverifiable']).toBe(true);
-    expect(evidence.turn_state['host_withdrawal_handoff_requested']).toBe(true);
+    const policy = withdrawalEvidence('Cuanto demora un retiro de fondos?', 'policy_only', true);
+    expect(policy.turn_state['host_withdrawal_policy_hours']).toBe(72);
+    expect(policy.turn_state).not.toHaveProperty('host_withdrawal_status_unverifiable');
+    expect(policy.turn_state).not.toHaveProperty('host_withdrawal_handoff_requested');
+
+    const unavailable = withdrawalEvidence('No recibi mi retiro.', 'individual_status', false);
+    expect(unavailable.turn_state).not.toHaveProperty('host_withdrawal_policy_hours');
+    expect(unavailable.turn_state['host_withdrawal_status_unverifiable']).toBe(true);
+    expect(unavailable.turn_state['host_withdrawal_handoff_requested']).toBe(true);
   });
 
   it('keeps unrelated purchase turns byte-identical (no host-withdrawal keys)', () => {

@@ -644,10 +644,29 @@ export type ProjectSafePlanOptions = {
  * can never escape through the diagnostic plan or persisted artifacts. The
  * private original text is hashed before this policy runs; never hash the
  * output of this function as raw model-output provenance.
+ *
+ * `preserveUrlPrefixes` exempts known-public documentation URLs (help-center
+ * article links the runtime cites deterministically) from the URL scrub so
+ * live oracles can verify citation targets. The free-text pass still runs
+ * first, so tokens, codes, emails and phone patterns are scrubbed even
+ * inside a preserved URL; only the documented public prefix survives.
  */
-export function redactPublicResponseText(value: string): string {
+export function redactPublicResponseText(
+  value: string,
+  options?: { preserveUrlPrefixes?: readonly string[] },
+): string {
+  const prefixes = options?.preserveUrlPrefixes ?? [];
+  // The public commission calculator is an exact diagnostics assertion target.
+  // Keep query strings, alternate paths and lookalike hosts under redaction.
+  const publicCalculatorUrl = 'https://sinenvolturas.com/coste-del-servicio';
   return redactArtifactText(value)
-    .replace(/https?:\/\/[^\s"'<>]+/giu, '[redacted-url]')
+    .replace(/https?:\/\/[^\s"'<>]+/giu, (match) => {
+      const suffix = match.match(/[.,;:!?)]+$/u)?.[0] ?? '';
+      const url = match.slice(0, match.length - suffix.length);
+      return url === publicCalculatorUrl || prefixes.some((prefix) => url.startsWith(prefix))
+        ? match
+        : `[redacted-url]${suffix}`;
+    })
     .replace(/\bwww\.[^\s"'<>]+/giu, '[redacted-url]')
     .replace(/\bfile-[A-Za-z0-9_-]{3,}\b/gu, '[redacted-file]')
     .replace(/\bsynth-[a-z0-9-]{8,}\b/giu, '[redacted-reference]')

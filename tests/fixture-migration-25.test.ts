@@ -9,38 +9,31 @@ import { FixtureProviderGateway } from '../src/runtime/fixture-provider-gateway'
 import type { FixtureData } from '../src/runtime/eval-fixture-gateway';
 
 /**
- * 2026-09-15 test-repair S1 fixture migration: the 25 fixtureless
+ * 2026-09-15 test-repair S1 fixture migration: the fixtureless
  * live_behavior_regression cases resolved from the inspected catalog
  * (load the suite, never hardcode the count) each run against a small
  * faithful synthetic world. No rubric text, thresholds, seeds, or
  * assertions change here; only backendFixture linkage fields.
+ * 22 cases since the 2026-09-30 condensation merged 3 into carriers.
+ * 15 cases since the 2026-09-30 live compression merged 7 into carriers
+ * (4 removed outright, 3 kept as per-thread pins below).
  */
 const CASE_TO_SCENARIO: Readonly<Record<string, string>> = {
-  'live_feedback.token_seeded_contact_correction': 'token-contact-correction-close',
-  'live_feedback.token_fresh_multifront_stays_multi_need': 'token-multifront-fresh',
-  'live_behavior.spanish_only_mixed_language_request': 'spanish-only-catering',
-  'live_behavior.rsvp_cristian_phone_enriched_confirmation': 'rsvp-cristian-michelle-jorge',
   'live_behavior.accountless_guest_event_uses_phone_without_otp': 'guest-julisabeth-andres',
-  'live_behavior.accountless_event_answer_precedes_remaining_private_auth': 'guest-julisabeth-andres',
-  'live_behavior.payment_destination_requires_pending_purchase': 'plan-no-purchase-empty',
-  'live_behavior.nonphysical_purchase_omits_shipping': 'plan-no-purchase-empty',
+  // (nonphysical_purchase_omits_shipping merged into payment_destination carrier above)
   'live_behavior.ambiguous_confirmation_clarifies': 'plan-ambiguous-confirmation',
-  'live_behavior.provider_reference_cheaper_option': 'provider-cheaper-option',
   'live_behavior.provider_reference_miraflores_option': 'provider-miraflores-option',
-  'live.faq_from_recommendation_node': 'faq-recommendation-node',
   'live_behavior.phone_confirmation_unclear_requires_yes_or_no': 'phone-confirmation-unclear',
   'live_behavior.authentication_refusal_closes_protected_query': 'auth-refusal-closed',
-  'live_behavior.rsvp_trusted_phone_reports_no_pending': 'rsvp-trusted-phone-empty',
-  'live_behavior.rsvp_jose_campaign_invitation_not_reported_missing': 'rsvp-jose-gia-antonella',
-  'live_behavior.rsvp_cinthya_campaign_invitation_not_reported_missing': 'guest-julisabeth-andres',
   'live_behavior.rsvp_ambiguous_event_requires_grounded_selection': 'rsvp-trusted-phone-empty',
-  'live_behavior.rsvp_confirmed_state_is_reported': 'rsvp-confirmed-otra-celebracion',
-  'live_behavior.wedding_planner_location_completes_search': 'plan-wedding-planner-lima',
   'live_behavior.reset_plan_discards_stored_context': 'plan-reset-clean',
-  'live_behavior.jose_campaign_greeting_then_acknowledgement': 'continuity-jose-acknowledgement',
-  'live_behavior.ambiguous_confirmation_adversarial_selection': 'plan-ambiguous-confirmation',
-  'live_behavior.owner_planning_to_faq_single_transfer': 'plan-owner-faq-transfer',
-  'live_behavior.s4-injected-renderer-prose-fails': 'provider-miraflores-option',
+  // (ambiguous_confirmation_adversarial_selection merged into ambiguous_confirmation_clarifies above)
+  // 2026-09-30 live compression: rsvp_trusted_phone_reports_no_pending and
+  // s4-injected-renderer-prose-fails merged into rsvp_ambiguous_event and
+  // provider_reference_miraflores (same scenarios, mapped above);
+  // rsvp_cinthya_campaign and owner_planning_to_faq merged into
+  // rsvp_jose_campaign and image_conversation_continuity with their per-turn
+  // scenarios intact (pinned below).
 };
 
 const CASE_IDS = Object.keys(CASE_TO_SCENARIO);
@@ -53,10 +46,10 @@ async function loadFixtureJson(scenario: string): Promise<FixtureData> {
   return JSON.parse(content) as FixtureData;
 }
 
-describe('S1 fixture migration linkage for the 25 catalog-resolved cases', () => {
+describe('S1 fixture migration linkage for the 7 retained catalog cases', () => {
   it('attaches exactly the mapped fixture scenario and no real-backend isolation hooks', async () => {
     const catalog = await new EvalLoader('evals').loadCatalog();
-    expect(CASE_IDS).toHaveLength(25);
+    expect(CASE_IDS).toHaveLength(7);
     for (const id of CASE_IDS) {
       const currentCase = catalog.cases.find((entry) => entry.id === id);
       expect(currentCase, id).toBeDefined();
@@ -67,6 +60,62 @@ describe('S1 fixture migration linkage for the 25 catalog-resolved cases', () =>
         expect(scenario, `${id} turn ${index}`).toBe(CASE_TO_SCENARIO[id]);
       }
       expect(currentCase.rsvpIsolation, id).toBeUndefined();
+    }
+  });
+
+  it('keeps absorbed per-turn scenarios on the merged survivors', async () => {
+    const catalog = await new EvalLoader('evals').loadCatalog();
+    const byId = new Map(catalog.cases.map((entry) => [entry.id, entry]));
+    const threads: Array<{ survivor: string; turns: number[]; scenario: string }> = [
+      {
+        survivor: 'live_behavior.rsvp_cristian_phone_enriched_confirmation',
+        turns: [0, 1, 2],
+        scenario: 'rsvp-cristian-michelle-jorge',
+      },
+      {
+        survivor: 'live_behavior.rsvp_cristian_phone_enriched_confirmation',
+        turns: [3, 4, 5],
+        scenario: 'rsvp-plus-one-not-eligible',
+      },
+      {
+        survivor: 'live_behavior.rsvp_confirmed_state_is_reported',
+        turns: [0, 1, 2],
+        scenario: 'rsvp-confirmed-otra-celebracion',
+      },
+      {
+        survivor: 'live_behavior.rsvp_confirmed_state_is_reported',
+        turns: [3, 4, 5],
+        scenario: 'rsvp-resolved-attending',
+      },
+    ];
+    for (const { survivor, turns, scenario } of threads) {
+      const currentCase = byId.get(survivor);
+      expect(currentCase, survivor).toBeDefined();
+      for (const turn of turns) {
+        expect(
+          currentCase?.inputs[turn]?.backendFixture?.scenario,
+          `${survivor} turn ${turn}`,
+        ).toBe(scenario);
+      }
+      expect(currentCase?.rsvpIsolation, survivor).toBeUndefined();
+    }
+    // The unmapped survivor worlds keep serving reads with zero network.
+    const fetch = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Unexpected network'));
+    try {
+      for (const scenario of [
+        'rsvp-jose-gia-antonella',
+        'rsvp-confirmed-otra-celebracion',
+        'rsvp-plus-one-not-eligible',
+        'rsvp-resolved-attending',
+        'plan-owner-faq-transfer',
+      ]) {
+        const gateway = await FixtureAgentConversationGateway.create(scenario);
+        const probe = await gateway.getRecentMessages('51900000000');
+        expect(probe.status, scenario).not.toBe('failed');
+      }
+      expect(fetch).not.toHaveBeenCalled();
+    } finally {
+      fetch.mockRestore();
     }
   });
 
@@ -97,7 +146,10 @@ describe('S1 migrated fixture worlds serve their case reads with zero network', 
     const fetch = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Unexpected network'));
     try {
       const scenarios = [...new Set(Object.values(CASE_TO_SCENARIO))];
-      expect(scenarios).toHaveLength(19);
+      // 2026-09-30 live compression: jose, cristian, and confirmed leave
+      // the uniform map (their absorbed turns keep distinct scenarios,
+      // pinned above); guest-julisabeth-andres stays via accountless.
+      expect(scenarios).toHaveLength(7);
       for (const scenario of scenarios) {
         const gateway = await FixtureAgentConversationGateway.create(scenario);
         const probe = await gateway.getRecentMessages('51900000000');

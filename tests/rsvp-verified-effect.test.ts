@@ -15,9 +15,6 @@ import type {
 import { AgentService } from '../src/runtime/agent-service';
 import type {
   AgentRuntime,
-  ComposeReplyRequest,
-  ComposeReplyResult,
-  ExtractRequest,
   ExtractionResult,
 } from '../src/runtime/contracts';
 import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
@@ -26,8 +23,10 @@ import { PromptLoader } from '../src/runtime/prompt-loader';
 import type { ProviderGateway, UserEventLookupResult } from '../src/runtime/provider-gateway';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
 import { InMemoryRsvpEffectStore } from '../src/runtime/rsvp-effect-executor';
+import { FixtureAgentConversationGateway } from '../src/runtime/eval-fixture-gateway';
 import type { CurrentContextEvidence, IdentityEvidence } from '../src/runtime/customer-context';
 import { unavailableCustomerContext } from './customer-context-test-utils';
+import { QueuedAgentRuntime, sentinelReply } from './agent-runtime-test-utils';
 
 /**
  * Packet B service-level twins: the actual AgentService.handleTurn path with
@@ -70,6 +69,17 @@ describe('RSVP verified effect twins', () => {
     expect(receipt?.outcome?.observed).toMatchObject({ guestId: 41, eventId: 205, attendance: 'attending', source: 'fresh_read' });
     expect(receipt?.outcome?.successClaimAllowed).toBe(true);
     expect(receipt?.outcome?.writeCount).toBe(1);
+    // PASS 2: folded the applied-effect spec serialization assertions in
+    // here (same verified write now also pins its distinct this-turn
+    // receipt evidence in the serialized model input).
+    expect(runtime.composeRequests[0]?.rsvpWorkCompleted).toBe(true);
+    expect(note).toContain('"effect_applied":true');
+    const request = runtime.composeRequests[0];
+    if (!request) throw new Error('Missing compose request.');
+    const spec = await specRuntime().buildReplyRequestSpec(request);
+    expect(spec.input).toContain('rsvp_completed_effect');
+    expect(spec.input).toContain('"effect_applied": true');
+    expect(spec.input).toContain('"gateway_status": "responded"');
   });
 
   it('(b) wrong guest returned is rejected without trusting the echo', async () => {
@@ -149,6 +159,8 @@ describe('RSVP verified effect twins', () => {
     expect(note).toContain('"verification_status":"verified"');
     expect(note).toContain('"requested_attendance_change_verified":true');
     expect(note).toContain('"saved":false');
+    expect(note).toContain('"eligibility":"ineligible"');
+    expect(note).toContain('"retry_appropriate":false');
     expect(note).toContain('"verification":"unavailable"');
     expect(runtime.composeRequests[0]?.rsvpPhoneEvidence).toMatchObject({
       event: { rsvp_state: 'attending' },
@@ -180,12 +192,24 @@ describe('RSVP verified effect twins', () => {
     );
     const service = twinService(runtime, gateway, store);
 
-    await service.handleTurn(twinInbound('Confirmo y vendrá mi acompañante', 'wamid-twin-companion-saved'));
+    const result = await service.handleTurn(twinInbound('Confirmo y vendrá mi acompañante', 'wamid-twin-companion-saved'));
 
     expect(gateway.writes).toHaveLength(1);
     expect(gateway.reads).toBe(1);
+    // PASS 2: folded the single-companion write assertions in here (one
+    // attending write carrying plus_one_response, no human escalation).
+    expect(gateway.writes[0]).toMatchObject({
+      phone_extension: '+51',
+      phone_number: '973296571',
+      action: 'attending',
+      guest_id: 41,
+      plus_one_response: 'yes',
+    });
+    expect(result.trace.tools_called).not.toContain('request_human_takeover');
+    expect(result.outbound.text).toBe('TWIN_MODEL_SENTINEL');
     const note = runtime.composeRequests[0]?.errorMessage ?? '';
     expect(note).toContain('"companion":{"echo":{"saved":true,"response":"yes","reason":null}}');
+    expect(note).toContain('"response":"yes"');
     expect(note).not.toContain('"confirmed":false');
     expect(note).not.toContain('"verification":"unavailable"');
     const receipt = await store.loadByMessage('whatsapp#user-rsvp-twin', 'wamid-twin-companion-saved');
@@ -547,26 +571,9 @@ describe('RSVP verified effect twins', () => {
   });
 });
 
-class TwinRuntime implements AgentRuntime {
-  readonly composeRequests: ComposeReplyRequest[] = [];
-
-  constructor(private readonly extractions: ExtractionResult[]) {}
-
-  async extract(request: ExtractRequest): Promise<ExtractionResult> {
-    void request;
-    const extraction = this.extractions.shift();
-    if (!extraction) {
-      throw new Error('No twin extraction queued.');
-    }
-    return extraction;
-  }
-
-  async composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult> {
-    this.composeRequests.push(request);
-    return {
-      text: 'TWIN_MODEL_SENTINEL',
-      structuredMessage: { type: 'generic', paragraphs_es: ['TWIN_MODEL_SENTINEL'] },
-    };
+class TwinRuntime extends QueuedAgentRuntime {
+  constructor(extractions: ExtractionResult[]) {
+    super(extractions, sentinelReply('TWIN_MODEL_SENTINEL'), 'No twin extraction queued.');
   }
 }
 
@@ -683,6 +690,8 @@ function readDetail(args: { guestId?: number; willAttend?: boolean | null }): Ag
 
 function twinExtraction(args: {
   action: 'attending' | 'declining' | null;
+  eventReference?: string | null;
+  candidateGuestId?: number | null;
   party?: {
     scope: 'self' | 'self_and_others';
     mentioned_names: string[];
@@ -696,8 +705,8 @@ function twinExtraction(args: {
     informationRequests: args.informationRequests ?? [],
     rsvpAction: args.action,
     rsvpDecisionSource: 'current_message',
-    rsvpCandidateGuestId: null,
-    rsvpEventReference: null,
+    rsvpCandidateGuestId: args.candidateGuestId ?? null,
+    rsvpEventReference: args.eventReference ?? null,
     rsvpParty: args.party ?? null,
     intentConfidence: 0.98,
     ambiguity: { status: 'clear', clarificationQuestion: null, interpretations: [] },
@@ -806,6 +815,19 @@ function twinInbound(text: string, messageId: string) {
   };
 }
 
+function specRuntime(): OpenAiAgentRuntime {
+  return new OpenAiAgentRuntime({
+    apiKey: 'test-key',
+    replyModel: 'gpt-test',
+    extractorModel: 'gpt-test',
+    replyProviderLimit: 4,
+    presentationProviderLimit: 5,
+    providerDetailLookupLimit: 3,
+    promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
+    providerGateway: {} as never,
+  });
+}
+
 /**
  * Lane C: existing attendance versus this-turn effect. A confirmed-state turn
  * that performs no mutation must serialize current-state evidence with no
@@ -873,18 +895,117 @@ describe('RSVP existing-state versus this-turn-effect evidence', () => {
     });
   }
 
-  function specRuntime(): OpenAiAgentRuntime {
-    return new OpenAiAgentRuntime({
-      apiKey: 'test-key',
-      replyModel: 'gpt-test',
-      extractorModel: 'gpt-test',
-      replyProviderLimit: 4,
-      presentationProviderLimit: 5,
-      providerDetailLookupLimit: 3,
-      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
-      providerGateway: {} as never,
+  it('serializes a rejected companion receipt and its scoped instruction', async () => {
+    const runtime = new TwinRuntime([twinExtraction({
+      action: 'attending',
+      party: {
+        scope: 'self_and_others', mentioned_names: ['María'],
+        companion_count: 'one', plus_one_response: 'yes',
+      },
+    })]);
+    const gateway = new TwinGateway(
+      [responded({
+        action: 'attending', willAttend: null,
+        plusOne: {
+          saved: false, response: 'yes',
+          reason: 'El evento no permite acompañantes adicionales para este invitado.',
+        },
+      })],
+      [readDetail({ willAttend: null })],
+    );
+    await twinService(runtime, gateway, new InMemoryRsvpEffectStore()).handleTurn(
+      twinInbound('Quiero llevar a María', 'wamid-companion-rejected'),
+    );
+    const request = runtime.composeRequests[0];
+    expect(request?.rsvpCompanionOutcome).toMatchObject({
+      saved: false, response: 'yes', retryAppropriate: false,
+      reason: 'El evento no permite acompañantes adicionales para este invitado.',
     });
-  }
+    if (!request) throw new Error('Missing compose request.');
+    const spec = await specRuntime().buildReplyRequestSpec(request);
+    expect(spec.input).toContain('"saved": false');
+    expect(spec.input).toContain('"retry_appropriate": false');
+    expect(spec.input).toContain('El evento no permite acompañantes adicionales para este invitado.');
+    expect(spec.filePaths).toContain('nodes/responder_invitacion/companion_rejected.txt');
+    expect(spec.instructions).toContain('ofrece apoyo humano');
+    const withoutRejection = await specRuntime().buildReplyRequestSpec({
+      ...request,
+      rsvpCompanionOutcome: { ...request.rsvpCompanionOutcome!, saved: true },
+    });
+    expect(withoutRejection.filePaths).not.toContain('nodes/responder_invitacion/companion_rejected.txt');
+    const instructionDelta = Buffer.byteLength(spec.instructions, 'utf8') -
+      Buffer.byteLength(withoutRejection.instructions, 'utf8');
+    expect(instructionDelta).toBeGreaterThan(0);
+    expect(instructionDelta).toBeLessThan(500);
+  });
+
+  it('keeps the exact frozen companion rejection when attendance echo is absent', async () => {
+    for (const action of ['attending', null] as const) {
+      const gateway = await FixtureAgentConversationGateway.create('rsvp-plus-one-not-eligible');
+      const runtime = new TwinRuntime([twinExtraction({
+        action,
+        eventReference: '7001',
+        candidateGuestId: 70001,
+        party: {
+          scope: 'self_and_others', mentioned_names: [],
+          companion_count: 'one', plus_one_response: 'yes',
+        },
+      })]);
+      const service = new AgentService({
+      planStore: new InMemoryPlanStore(),
+      runtime,
+      providerGateway: {
+        async lookupUserEventContext(): Promise<UserEventLookupResult | null> {
+          return {
+            lookup: { email: null, phone: '942633292' }, user: null, events: [],
+            counts: { ownerEvents: 0, guestEvents: 0, hostEvents: 0, celebratedEvents: 0, recentOrders: 0 },
+          };
+        },
+      } as unknown as ProviderGateway,
+      agentConversationGateway: gateway,
+      rsvpEffectStore: new InMemoryRsvpEffectStore(),
+      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
+      renderers: { whatsapp: new WhatsAppMessageRenderer() },
+      });
+      await service.handleTurn({
+        ...twinInbound('Quiero llevar a mi acompañante a Michelle & Jorge', `wamid-fixture-companion-${action}`),
+        contactPhone: '+51942633292',
+      });
+      const request = runtime.composeRequests[0];
+      expect(request?.rsvpCompanionOutcome).toMatchObject({
+        saved: false,
+        reason: 'El evento no permite acompañantes adicionales para este invitado.',
+        retryAppropriate: false,
+      });
+      expect(request?.rsvpWorkCompleted).toBe(true);
+      if (!request) throw new Error('Missing compose request.');
+      const spec = await specRuntime().buildReplyRequestSpec(request);
+      expect(spec.filePaths).toContain('nodes/responder_invitacion/companion_rejected.txt');
+      expect(spec.input).toContain('"saved": false');
+      expect(spec.input).toContain(`"attendance_change_requested": ${action !== null}`);
+      expect(spec.input).toContain('El evento no permite acompañantes adicionales para este invitado.');
+      expect(spec.input).not.toContain('"requested_attendance_change_verified": true');
+    }
+  });
+
+  it('does not bind an unmatched numeric event ID to the only available invitation', async () => {
+    const runtime = new TwinRuntime([twinExtraction({
+      action: null,
+      eventReference: '9999',
+      candidateGuestId: 41,
+      party: {
+        scope: 'self_and_others', mentioned_names: [],
+        companion_count: 'one', plus_one_response: 'yes',
+      },
+    })]);
+    const gateway = new TwinGateway([], []);
+    await twinService(runtime, gateway, new InMemoryRsvpEffectStore()).handleTurn(
+      twinInbound('Quiero llevar a mi acompañante', 'wamid-wrong-event-id'),
+    );
+    expect(gateway.writes).toHaveLength(0);
+    expect(runtime.composeRequests[0]?.rsvpWorkCompleted).toBe(false);
+    expect(runtime.composeRequests[0]?.rsvpCompanionOutcome).toBeUndefined();
+  });
 
   it('existing confirmed attendance without a write claims no completed work and no effect receipt', async () => {
     const store = new InMemoryRsvpEffectStore();
@@ -917,33 +1038,9 @@ describe('RSVP existing-state versus this-turn-effect evidence', () => {
     expect(spec.input).not.toContain('rsvp_completed_effect');
   });
 
-  it('a fresh verified write keeps its applied-effect receipt as distinct this-turn evidence', async () => {
-    const store = new InMemoryRsvpEffectStore();
-    const runtime = new TwinRuntime([twinExtraction({ action: 'attending' })]);
-    const gateway = new TwinGateway(
-      [responded({ action: 'attending', willAttend: true })],
-      [readDetail({ willAttend: true })],
-    );
-    const service = twinService(runtime, gateway, store);
-
-    const result = await service.handleTurn(twinInbound('Confirmo mi asistencia', 'wamid-twin-fresh'));
-
-    expect(gateway.writes).toHaveLength(1);
-    expect(runtime.composeRequests).toHaveLength(1);
-    const request = runtime.composeRequests[0];
-    expect(request?.rsvpWorkCompleted).toBe(true);
-    const note = request?.errorMessage ?? '';
-    expect(note).toContain('"verification_status":"verified"');
-    expect(note).toContain('"effect_applied":true');
-    expect(result.outbound.text).toBe('TWIN_MODEL_SENTINEL');
-
-    if (!request) throw new Error('Missing compose request.');
-    const spec = await specRuntime().buildReplyRequestSpec(request);
-    expect(spec.input).toContain('rsvp_completed_effect');
-    expect(spec.input).toContain('"effect_applied": true');
-    expect(spec.input).toContain('"gateway_status": "responded"');
-  });
-
+  // PASS 2: merged the fresh-write applied-effect assertions into twin
+  // (a) above (identical verified-write setup; the spec serialization pins
+  // now live alongside the receipt pins in one stronger test).
   it('an attempted write the backend reports as already responded stays unapplied existing state', async () => {
     const store = new InMemoryRsvpEffectStore();
     const runtime = new TwinRuntime([twinExtraction({ action: 'attending' })]);

@@ -1019,61 +1019,100 @@ describe('AgentService', () => {
     expect(response.trace.tools_called).toEqual([]);
   });
 
-  it('routes FAQ questions to the information resolver from every saved active node', async () => {
-    for (const node of decisionNodes) {
-      const runtime = new FaqRuntime();
-      const planStore = new InMemoryPlanStore();
-      const gateway = new FakeGateway();
-      const service = new AgentService({
-        planStore,
-        runtime,
-        providerGateway: gateway,
-        promptLoader,
-        renderers,
-      });
-      const externalUserId = `faq-from-${node}`;
-      await planStore.save({
-        plan: mergePlan(
-          createEmptyPlan({
-            planId: `plan-${node}`,
-            channel: 'terminal_whatsapp',
-            externalUserId,
-          }),
-          {
-            current_node: node,
-            intent: 'buscar_proveedores',
-            event_type: 'boda',
-            vendor_category: 'Fotografía y video',
-            active_need_category: 'Fotografía y video',
-            location: 'Lima',
-            guest_range: '51-100',
-          },
-        ),
-        reason: 'seed-faq-node',
-      });
+  it('routes information questions to the resolver from every saved active node', async () => {
+    const runFromEveryNode = async (args: {
+      createRuntime: () => FakeRuntime;
+      userPrefix: string;
+      userSuffix: string;
+      planPrefix: string;
+      seedReason: string;
+      text: string;
+      messagePrefix: string;
+      withContactEmail: boolean;
+      expectRouteKind: boolean;
+    }) => {
+      for (const node of decisionNodes) {
+        const runtime = args.createRuntime();
+        const planStore = new InMemoryPlanStore();
+        const gateway = new FakeGateway();
+        const service = new AgentService({
+          planStore,
+          runtime,
+          providerGateway: gateway,
+          promptLoader,
+          renderers,
+        });
+        const externalUserId = `${args.userPrefix}${node}${args.userSuffix}`;
+        await planStore.save({
+          plan: mergePlan(
+            createEmptyPlan({
+              planId: `${args.planPrefix}${node}`,
+              channel: 'terminal_whatsapp',
+              externalUserId,
+            }),
+            {
+              current_node: node,
+              intent: 'buscar_proveedores',
+              event_type: 'boda',
+              vendor_category: 'Fotografía y video',
+              active_need_category: 'Fotografía y video',
+              location: 'Lima',
+              guest_range: '51-100',
+              ...(args.withContactEmail ? { contact_email: externalUserId } : {}),
+            },
+          ),
+          reason: args.seedReason,
+        });
 
-      const response = await service.handleTurn({
-        channel: 'terminal_whatsapp',
-        externalUserId,
-        text: '¿Cuánto cobra Sin Envolturas por los regalos?',
-        messageId: `msg-${node}`,
-        receivedAt: new Date().toISOString(),
-      });
+        const response = await service.handleTurn({
+          channel: 'terminal_whatsapp',
+          externalUserId,
+          text: args.text,
+          messageId: `${args.messagePrefix}${node}`,
+          receivedAt: new Date().toISOString(),
+        });
 
-      expect(response.plan.current_node, node).toBe('resolver_consultas_informativas');
-      expect(response.trace.next_node, node).toBe('resolver_consultas_informativas');
-      expect(response.trace.intent, node).toBeNull();
-      expect(runtime.composeRequests.at(-1)?.currentNode, node).toBe(
-        'resolver_consultas_informativas',
-      );
-      expect(gateway.searchCalls, node).toBe(0);
-      expect(response.trace.tools_called, node).not.toContain(
-        'search_providers_from_plan',
-      );
-      expect(response.trace.plan_persist_reason, node).toBe(
-        'resolver_consultas_informativas',
-      );
-    }
+        expect(response.plan.current_node, node).toBe('resolver_consultas_informativas');
+        expect(response.trace.next_node, node).toBe('resolver_consultas_informativas');
+        expect(response.trace.intent, node).toBeNull();
+        if (args.expectRouteKind) {
+          expect(response.trace.turn_decision.routeKind, node).toBe('information_batch');
+        }
+        expect(runtime.composeRequests.at(-1)?.currentNode, node).toBe(
+          'resolver_consultas_informativas',
+        );
+        expect(gateway.searchCalls, node).toBe(0);
+        expect(response.trace.tools_called, node).not.toContain(
+          'search_providers_from_plan',
+        );
+        expect(response.trace.plan_persist_reason, node).toBe(
+          'resolver_consultas_informativas',
+        );
+      }
+    };
+
+    await runFromEveryNode({
+      createRuntime: () => new FaqRuntime(),
+      userPrefix: 'faq-from-',
+      userSuffix: '',
+      planPrefix: 'plan-',
+      seedReason: 'seed-faq-node',
+      text: '¿Cuánto cobra Sin Envolturas por los regalos?',
+      messagePrefix: 'msg-',
+      withContactEmail: false,
+      expectRouteKind: false,
+    });
+    await runFromEveryNode({
+      createRuntime: () => new InvitedEventRuntime(),
+      userPrefix: 'invited-event-from-',
+      userSuffix: '@example.com',
+      planPrefix: 'plan-invited-',
+      seedReason: 'seed-invited-event-node',
+      text: '¿A qué hora es el evento al que estoy invitado?',
+      messagePrefix: 'msg-invited-',
+      withContactEmail: true,
+      expectRouteKind: true,
+    });
   });
 
   it('projects structured FAQ ambiguity without rewriting the model response', async () => {
@@ -1108,82 +1147,23 @@ describe('AgentService', () => {
     expect(response.trace.extraction_summary.ambiguity_interpretation_count).toBe(2);
   });
 
-  it('routes associated-event questions to the information resolver from every saved active node', async () => {
-    for (const node of decisionNodes) {
-      const runtime = new InvitedEventRuntime();
-      const planStore = new InMemoryPlanStore();
-      const gateway = new FakeGateway();
-      const service = new AgentService({
-        planStore,
-        runtime,
-        providerGateway: gateway,
-        promptLoader,
-        renderers,
-      });
-      const externalUserId = `invited-event-from-${node}@example.com`;
-      await planStore.save({
-        plan: mergePlan(
-          createEmptyPlan({
-            planId: `plan-invited-${node}`,
-            channel: 'terminal_whatsapp',
-            externalUserId,
-          }),
-          {
-            current_node: node,
-            intent: 'buscar_proveedores',
-            event_type: 'boda',
-            vendor_category: 'Fotografía y video',
-            active_need_category: 'Fotografía y video',
-            location: 'Lima',
-            guest_range: '51-100',
-            contact_email: externalUserId,
-          },
-        ),
-        reason: 'seed-invited-event-node',
-      });
-
-      const response = await service.handleTurn({
-        channel: 'terminal_whatsapp',
-        externalUserId,
-        text: '¿A qué hora es el evento al que estoy invitado?',
-        messageId: `msg-invited-${node}`,
-        receivedAt: new Date().toISOString(),
-      });
-
-      expect(response.plan.current_node, node).toBe('resolver_consultas_informativas');
-      expect(response.trace.next_node, node).toBe('resolver_consultas_informativas');
-      expect(response.trace.intent, node).toBeNull();
-      expect(response.trace.turn_decision.routeKind, node).toBe('information_batch');
-      expect(runtime.composeRequests.at(-1)?.currentNode, node).toBe(
-        'resolver_consultas_informativas',
-      );
-      expect(gateway.searchCalls, node).toBe(0);
-      expect(response.trace.tools_called, node).not.toContain(
-        'search_providers_from_plan',
-      );
-      expect(response.trace.plan_persist_reason, node).toBe(
-        'resolver_consultas_informativas',
-      );
-    }
-  });
-
-  it('hands off unknown user auth emails without asking for a code', async () => {
-    const runtime = new InvitedEventRuntime();
-    const planStore = new InMemoryPlanStore();
-    const gateway = new AuthScenarioGateway();
-    gateway.requestCodeResult = {
+  it('requests one login code for known emails and hands off unknown ones', async () => {
+    const missingRuntime = new InvitedEventRuntime();
+    const missingStore = new InMemoryPlanStore();
+    const missingGateway = new AuthScenarioGateway();
+    missingGateway.requestCodeResult = {
       status: 'email_not_found',
       error: 'email not found',
     };
-    const service = new AgentService({
-      planStore,
-      runtime,
-      providerGateway: gateway,
+    const missingService = new AgentService({
+      planStore: missingStore,
+      runtime: missingRuntime,
+      providerGateway: missingGateway,
       promptLoader,
       renderers,
     });
 
-    const response = await service.handleTurn({
+    const missing = await missingService.handleTurn({
       channel: 'terminal_whatsapp',
       externalUserId: 'missing@example.com',
       text: '¿A qué hora es mi evento?',
@@ -1191,14 +1171,14 @@ describe('AgentService', () => {
       receivedAt: new Date().toISOString(),
     });
 
-    expect(response.plan.current_node).toBe('solicitar_agente_humano');
-    expect(response.plan.user_auth.status).toBe('email_not_found');
-    expect(gateway.requestCodeCalls).toBe(1);
-    expect(gateway.verifyCodeCalls).toBe(0);
-    expect(gateway.authenticatedLookupCalls).toBe(0);
-    expect(response.trace.tools_called).toContain('request_user_login_code');
-    expect(response.trace.tools_called).not.toContain('verify_user_login_code');
-    expect(response.trace.authentication_execution_summary).toEqual([
+    expect(missing.plan.current_node).toBe('solicitar_agente_humano');
+    expect(missing.plan.user_auth.status).toBe('email_not_found');
+    expect(missingGateway.requestCodeCalls).toBe(1);
+    expect(missingGateway.verifyCodeCalls).toBe(0);
+    expect(missingGateway.authenticatedLookupCalls).toBe(0);
+    expect(missing.trace.tools_called).toContain('request_user_login_code');
+    expect(missing.trace.tools_called).not.toContain('verify_user_login_code');
+    expect(missing.trace.authentication_execution_summary).toEqual([
       {
         operation: 'request_user_login_code',
         status: 'email_not_found',
@@ -1210,9 +1190,7 @@ describe('AgentService', () => {
         request_id: null,
       },
     ]);
-  });
 
-  it('requests one login code for known user auth emails', async () => {
     const runtime = new InvitedEventRuntime();
     const planStore = new InMemoryPlanStore();
     const gateway = new AuthScenarioGateway();
@@ -1250,19 +1228,19 @@ describe('AgentService', () => {
     ).toEqual(createInformationAuthGuidance('otp_sent', 'maria@example.com'));
   });
 
-  it('removes only unambiguous spaces next to the at sign in guest emails', async () => {
-    const runtime = new InvitedEventRuntime();
-    const planStore = new InMemoryPlanStore();
-    const gateway = new AuthScenarioGateway();
-    const service = new AgentService({
-      planStore,
-      runtime,
-      providerGateway: gateway,
+  it('normalizes only unambiguous guest emails without inventing characters', async () => {
+    const spacedRuntime = new InvitedEventRuntime();
+    const spacedStore = new InMemoryPlanStore();
+    const spacedGateway = new AuthScenarioGateway();
+    const spacedService = new AgentService({
+      planStore: spacedStore,
+      runtime: spacedRuntime,
+      providerGateway: spacedGateway,
       promptLoader,
       renderers,
     });
 
-    const response = await service.handleTurn({
+    const spaced = await spacedService.handleTurn({
       channel: 'terminal_whatsapp',
       externalUserId: '+51999999999',
       text: 'Quiero consultar mi evento. Mi correo es leonardo @gmail.com',
@@ -1270,11 +1248,11 @@ describe('AgentService', () => {
       receivedAt: new Date().toISOString(),
     });
 
-    expect(gateway.lastRequestedEmail).toBe('leonardo@gmail.com');
-    expect(response.plan.contact_email).toBe('leonardo@gmail.com');
-    expect(response.plan.user_auth.email).toBe('leonardo@gmail.com');
+    expect(spacedGateway.lastRequestedEmail).toBe('leonardo@gmail.com');
+    expect(spaced.plan.contact_email).toBe('leonardo@gmail.com');
+    expect(spaced.plan.user_auth.email).toBe('leonardo@gmail.com');
     expect(
-      runtime.composeRequests
+      spacedRuntime.composeRequests
         .at(-1)
         ?.informationResults?.some(
           (result) =>
@@ -1283,9 +1261,7 @@ describe('AgentService', () => {
             result.guidance.email === 'leonardo@gmail.com',
         ),
     ).toBe(true);
-  });
 
-  it('does not invent missing characters in malformed guest emails', async () => {
     const runtime = new InvitedEventRuntime();
     const planStore = new InMemoryPlanStore();
     const gateway = new AuthScenarioGateway();
@@ -1443,19 +1419,9 @@ describe('AgentService', () => {
     expect(gateway.verifyCodeCalls).toBe(1);
     expect(gateway.authenticatedLookupCalls).toBe(1);
     expect(gateway.lastLookupEmail).toBe('maria@example.com');
-    const associatedEventResult = runtime.composeRequests
-      .at(-1)
-      ?.informationResults?.find(
-        (result) =>
-          result.kind === 'associated_event' &&
-          result.status === 'completed',
-      );
-    expect(
-      associatedEventResult?.kind === 'associated_event' &&
-        associatedEventResult.status === 'completed'
-        ? associatedEventResult.result.events[0]?.name
-        : null,
-    ).toBe('Cumpleaños de Ana');
+    expect(runtime.composeRequests.at(-1)?.customerContext?.invitations).toContainEqual(
+      expect.objectContaining({ name: 'Cumpleaños de Ana' }),
+    );
   });
 
   it('reuses a valid user auth token on follow-up without sending another code', async () => {
@@ -1573,7 +1539,7 @@ describe('AgentService', () => {
     expect(response.plan.user_auth.token).toBeNull();
   });
 
-  it('clears a failing user auth token and asks for re-authentication without requesting a code twice', async () => {
+  it('keeps account records unavailable after a failed lookup without requesting another login code', async () => {
     const runtime = new InvitedEventRuntime();
     const planStore = new InMemoryPlanStore();
     const gateway = new AuthScenarioGateway();
@@ -1610,7 +1576,7 @@ describe('AgentService', () => {
       reason: 'seed-expired-token',
     });
 
-    const response = await service.handleTurn({
+    await service.handleTurn({
       channel: 'terminal_whatsapp',
       externalUserId: 'maria@example.com',
       text: '¿y la hora?',
@@ -1620,26 +1586,8 @@ describe('AgentService', () => {
 
     expect(gateway.authenticatedLookupCalls).toBe(1);
     expect(gateway.requestCodeCalls).toBe(0);
-    expect(response.plan.user_auth.status).toBe('none');
-    expect(response.plan.user_auth.token).toBeNull();
-    expect(
-      runtime.composeRequests
-        .at(-1)
-        ?.informationResults?.some(
-          (result) =>
-            result.kind === 'associated_event' &&
-            result.status === 'completed',
-        ),
-    ).toBe(false);
-    expect(
-      runtime.composeRequests
-        .at(-1)
-        ?.informationResults?.some(
-          (result) =>
-            result.status === 'failed' &&
-            result.failureKind === 'unauthorized',
-        ),
-    ).toBe(true);
+    expect(runtime.composeRequests.at(-1)?.customerContext?.invitations ?? []).toEqual([]);
+    expect(JSON.stringify(runtime.composeRequests.at(-1)?.customerContext)).toContain('unavailable');
   });
 
   it('keeps pending event follow-ups in the information resolver when extraction also finds a provider action', async () => {
@@ -2356,270 +2304,272 @@ describe('AgentService', () => {
     expect(runtime.composeRequests.at(-1)?.missingFields).toContain('budget_or_guest_range');
   });
 
-  it('broadens the active shortlist when the user asks for more options', async () => {
-    class BroadenRuntime extends FakeRuntime {
-      override async extract(): Promise<ExtractionResult> {
-        return {
-          actionIntent: 'refinar_busqueda',
-          informationRequests: [],
-          intentConfidence: 0.94,
-          eventType: 'boda',
-          vendorCategory: 'Fotografía y video',
-          vendorCategories: ['Fotografía y video'],
-          activeNeedCategory: 'Fotografía y video',
+  it('broadens the active shortlist and records when no more options exist', async () => {
+    {
+      class BroadenRuntime extends FakeRuntime {
+        override async extract(): Promise<ExtractionResult> {
+          return {
+            actionIntent: 'refinar_busqueda',
+            informationRequests: [],
+            intentConfidence: 0.94,
+            eventType: 'boda',
+            vendorCategory: 'Fotografía y video',
+            vendorCategories: ['Fotografía y video'],
+            activeNeedCategory: 'Fotografía y video',
+            location: 'Lima',
+            budgetSignal: null,
+            guestRange: '51-100',
+            preferences: [],
+            hardConstraints: [],
+            assumptions: [],
+            conversationSummary: 'El usuario quiere ver más fotógrafos en Lima.',
+            selectedProviderHints: [],
+            pauseRequested: false,
+            contactName: null,
+            contactEmail: null,
+            contactPhone: null,
+            providerFitCriteria: testProviderFitCriteria,
+          };
+        }
+      }
+
+      class BroadenGateway extends FakeGateway {
+        public readonly categoryLocationCalls: CategoryLocationProviderSearchInput[] = [];
+
+        override async searchProvidersByCategoryLocation(
+          input: CategoryLocationProviderSearchInput,
+        ): Promise<ProviderGatewaySearchResult> {
+          this.categoryLocationCalls.push(input);
+          expect(input.category).toBe('Fotografía y video');
+
+          if (input.location === 'Lima' && input.page === 1) {
+            return {
+              providers: [
+                {
+                  id: 1,
+                  title: 'Foto Uno',
+                  category: 'Fotografía y video',
+                  location: 'Lima',
+                  priceLevel: 'mid',
+                  reason: 'coincide con el plan',
+                  serviceHighlights: [],
+                  termsHighlights: [],
+                },
+              ],
+            };
+          }
+
+          if (input.location === 'Lima' && input.page === 2) {
+            return {
+              providers: [
+                {
+                  id: 2,
+                  title: 'Foto Dos',
+                  category: 'Fotografía y video',
+                  location: 'Lima',
+                  priceLevel: 'high',
+                  reason: 'más opciones en la misma categoría',
+                  serviceHighlights: [],
+                  termsHighlights: [],
+                },
+              ],
+            };
+          }
+
+          return {
+            providers: [],
+          };
+        }
+      }
+
+      const runtime = new BroadenRuntime();
+      const planStore = new InMemoryPlanStore();
+      const gateway = new BroadenGateway();
+      const service = new AgentService({
+        planStore,
+        runtime,
+        providerGateway: gateway,
+        promptLoader,
+        renderers,
+      });
+
+      const seededPlan = mergePlan(
+        createEmptyPlan({
+          planId: 'plan-broaden',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-broaden',
+        }),
+        {
+          current_node: 'recomendar',
+          event_type: 'boda',
           location: 'Lima',
-          budgetSignal: null,
-          guestRange: '51-100',
-          preferences: [],
-          hardConstraints: [],
-          assumptions: [],
-          conversationSummary: 'El usuario quiere ver más fotógrafos en Lima.',
-          selectedProviderHints: [],
-          pauseRequested: false,
-          contactName: null,
-          contactEmail: null,
-          contactPhone: null,
-          providerFitCriteria: testProviderFitCriteria,
-        };
-      }
-    }
+          guest_range: '51-100',
+          active_need_category: 'Fotografía y video',
+          vendor_category: 'Fotografía y video',
+          provider_needs: [
+            {
+              category: 'Fotografía y video',
+              status: 'shortlisted',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [1],
+              recommended_providers: [
+                {
+                  id: 1,
+                  title: 'Foto Uno',
+                  category: 'Fotografía y video',
+                  location: 'Lima',
+                  priceLevel: 'mid',
+                  reason: 'coincide con el plan',
+                  serviceHighlights: [],
+                  termsHighlights: [],
+                },
+              ],
+              selected_provider_ids: [],
+              selected_provider_hints: [],
+            },
+          ],
+        },
+      );
 
-    class BroadenGateway extends FakeGateway {
-      public readonly categoryLocationCalls: CategoryLocationProviderSearchInput[] = [];
+      await planStore.save({
+        plan: seededPlan,
+        reason: 'seed',
+      });
 
-      override async searchProvidersByCategoryLocation(
-        input: CategoryLocationProviderSearchInput,
-      ): Promise<ProviderGatewaySearchResult> {
-        this.categoryLocationCalls.push(input);
-        expect(input.category).toBe('Fotografía y video');
-
-        if (input.location === 'Lima' && input.page === 1) {
-          return {
-            providers: [
-              {
-                id: 1,
-                title: 'Foto Uno',
-                category: 'Fotografía y video',
-                location: 'Lima',
-                priceLevel: 'mid',
-                reason: 'coincide con el plan',
-                serviceHighlights: [],
-                termsHighlights: [],
-              },
-            ],
-          };
-        }
-
-        if (input.location === 'Lima' && input.page === 2) {
-          return {
-            providers: [
-              {
-                id: 2,
-                title: 'Foto Dos',
-                category: 'Fotografía y video',
-                location: 'Lima',
-                priceLevel: 'high',
-                reason: 'más opciones en la misma categoría',
-                serviceHighlights: [],
-                termsHighlights: [],
-              },
-            ],
-          };
-        }
-
-        return {
-          providers: [],
-        };
-      }
-    }
-
-    const runtime = new BroadenRuntime();
-    const planStore = new InMemoryPlanStore();
-    const gateway = new BroadenGateway();
-    const service = new AgentService({
-      planStore,
-      runtime,
-      providerGateway: gateway,
-      promptLoader,
-      renderers,
-    });
-
-    const seededPlan = mergePlan(
-      createEmptyPlan({
-        planId: 'plan-broaden',
+      const response = await service.handleTurn({
         channel: 'terminal_whatsapp',
         externalUserId: 'user-broaden',
-      }),
-      {
-        current_node: 'recomendar',
-        event_type: 'boda',
-        location: 'Lima',
-        guest_range: '51-100',
-        active_need_category: 'Fotografía y video',
-        vendor_category: 'Fotografía y video',
-        provider_needs: [
-          {
-            category: 'Fotografía y video',
-            status: 'shortlisted',
+        text: 'busca más',
+        messageId: 'msg-broaden',
+        receivedAt: new Date().toISOString(),
+      });
+
+      expect(response.plan.current_node).toBe('recomendar');
+      expect(getActiveNeed(response.plan)?.recommended_provider_ids).toEqual([2]);
+      expect(response.trace.tools_called).toContain('search_providers_by_category_location');
+      expect(response.trace.tools_called).not.toContain('search_providers_from_plan');
+      expect(gateway.categoryLocationCalls).toEqual([
+        { category: 'Fotografía y video', location: 'Lima', page: 1 },
+        { category: 'Fotografía y video', location: 'Lima', page: 2 },
+        { category: 'Fotografía y video', location: 'Lima', page: 3 },
+        { category: 'Fotografía y video', location: null, page: 1 },
+      ]);
+    }
+
+    {
+      class BroadenRuntime extends FakeRuntime {
+        override async extract(): Promise<ExtractionResult> {
+          return {
+            actionIntent: 'refinar_busqueda',
+            informationRequests: [],
+            intentConfidence: 0.94,
+            eventType: 'boda',
+            vendorCategory: 'Fotografía y video',
+            vendorCategories: ['Fotografía y video'],
+            activeNeedCategory: 'Fotografía y video',
+            location: 'Lima',
+            budgetSignal: null,
+            guestRange: '51-100',
             preferences: [],
-            hard_constraints: [],
-            missing_fields: [],
-            recommended_provider_ids: [1],
-            recommended_providers: [
-              {
-                id: 1,
-                title: 'Foto Uno',
-                category: 'Fotografía y video',
-                location: 'Lima',
-                priceLevel: 'mid',
-                reason: 'coincide con el plan',
-                serviceHighlights: [],
-                termsHighlights: [],
-              },
-            ],
-            selected_provider_ids: [],
-            selected_provider_hints: [],
-          },
-        ],
-      },
-    );
+            hardConstraints: [],
+            assumptions: [],
+            conversationSummary: 'El usuario quiere ver más fotógrafos en Lima.',
+            selectedProviderHints: [],
+            pauseRequested: false,
+            contactName: null,
+            contactEmail: null,
+            contactPhone: null,
+            providerFitCriteria: testProviderFitCriteria,
+          };
+        }
+      }
 
-    await planStore.save({
-      plan: seededPlan,
-      reason: 'seed',
-    });
+      class EmptyBroadenGateway extends FakeGateway {
+        public readonly categoryLocationCalls: CategoryLocationProviderSearchInput[] = [];
 
-    const response = await service.handleTurn({
-      channel: 'terminal_whatsapp',
-      externalUserId: 'user-broaden',
-      text: 'busca más',
-      messageId: 'msg-broaden',
-      receivedAt: new Date().toISOString(),
-    });
+        override async searchProvidersByCategoryLocation(
+          input: CategoryLocationProviderSearchInput,
+        ): Promise<ProviderGatewaySearchResult> {
+          this.categoryLocationCalls.push(input);
+          return { providers: [] };
+        }
+      }
 
-    expect(response.plan.current_node).toBe('recomendar');
-    expect(getActiveNeed(response.plan)?.recommended_provider_ids).toEqual([2]);
-    expect(response.trace.tools_called).toContain('search_providers_by_category_location');
-    expect(response.trace.tools_called).not.toContain('search_providers_from_plan');
-    expect(gateway.categoryLocationCalls).toEqual([
-      { category: 'Fotografía y video', location: 'Lima', page: 1 },
-      { category: 'Fotografía y video', location: 'Lima', page: 2 },
-      { category: 'Fotografía y video', location: 'Lima', page: 3 },
-      { category: 'Fotografía y video', location: null, page: 1 },
-    ]);
-  });
+      const runtime = new BroadenRuntime();
+      const planStore = new InMemoryPlanStore();
+      const gateway = new EmptyBroadenGateway();
+      const service = new AgentService({
+        planStore,
+        runtime,
+        providerGateway: gateway,
+        promptLoader,
+        renderers,
+      });
 
-  it('keeps the current shortlist and records that there are no more options when broadened search is empty', async () => {
-    class BroadenRuntime extends FakeRuntime {
-      override async extract(): Promise<ExtractionResult> {
-        return {
-          actionIntent: 'refinar_busqueda',
-          informationRequests: [],
-          intentConfidence: 0.94,
-          eventType: 'boda',
-          vendorCategory: 'Fotografía y video',
-          vendorCategories: ['Fotografía y video'],
-          activeNeedCategory: 'Fotografía y video',
+      const seededPlan = mergePlan(
+        createEmptyPlan({
+          planId: 'plan-broaden-empty',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-broaden-empty',
+        }),
+        {
+          current_node: 'recomendar',
+          event_type: 'boda',
           location: 'Lima',
-          budgetSignal: null,
-          guestRange: '51-100',
-          preferences: [],
-          hardConstraints: [],
-          assumptions: [],
-          conversationSummary: 'El usuario quiere ver más fotógrafos en Lima.',
-          selectedProviderHints: [],
-          pauseRequested: false,
-          contactName: null,
-          contactEmail: null,
-          contactPhone: null,
-          providerFitCriteria: testProviderFitCriteria,
-        };
-      }
-    }
+          guest_range: '51-100',
+          active_need_category: 'Fotografía y video',
+          vendor_category: 'Fotografía y video',
+          provider_needs: [
+            {
+              category: 'Fotografía y video',
+              status: 'shortlisted',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [1],
+              recommended_providers: [
+                {
+                  id: 1,
+                  title: 'Foto Uno',
+                  category: 'Fotografía y video',
+                  location: 'Lima',
+                  priceLevel: 'mid',
+                  reason: 'coincide con el plan',
+                  serviceHighlights: [],
+                  termsHighlights: [],
+                },
+              ],
+              selected_provider_ids: [],
+              selected_provider_hints: [],
+            },
+          ],
+        },
+      );
 
-    class EmptyBroadenGateway extends FakeGateway {
-      public readonly categoryLocationCalls: CategoryLocationProviderSearchInput[] = [];
+      await planStore.save({
+        plan: seededPlan,
+        reason: 'seed',
+      });
 
-      override async searchProvidersByCategoryLocation(
-        input: CategoryLocationProviderSearchInput,
-      ): Promise<ProviderGatewaySearchResult> {
-        this.categoryLocationCalls.push(input);
-        return { providers: [] };
-      }
-    }
-
-    const runtime = new BroadenRuntime();
-    const planStore = new InMemoryPlanStore();
-    const gateway = new EmptyBroadenGateway();
-    const service = new AgentService({
-      planStore,
-      runtime,
-      providerGateway: gateway,
-      promptLoader,
-      renderers,
-    });
-
-    const seededPlan = mergePlan(
-      createEmptyPlan({
-        planId: 'plan-broaden-empty',
+      const response = await service.handleTurn({
         channel: 'terminal_whatsapp',
         externalUserId: 'user-broaden-empty',
-      }),
-      {
-        current_node: 'recomendar',
-        event_type: 'boda',
-        location: 'Lima',
-        guest_range: '51-100',
-        active_need_category: 'Fotografía y video',
-        vendor_category: 'Fotografía y video',
-        provider_needs: [
-          {
-            category: 'Fotografía y video',
-            status: 'shortlisted',
-            preferences: [],
-            hard_constraints: [],
-            missing_fields: [],
-            recommended_provider_ids: [1],
-            recommended_providers: [
-              {
-                id: 1,
-                title: 'Foto Uno',
-                category: 'Fotografía y video',
-                location: 'Lima',
-                priceLevel: 'mid',
-                reason: 'coincide con el plan',
-                serviceHighlights: [],
-                termsHighlights: [],
-              },
-            ],
-            selected_provider_ids: [],
-            selected_provider_hints: [],
-          },
-        ],
-      },
-    );
+        text: 'busca más',
+        messageId: 'msg-broaden-empty',
+        receivedAt: new Date().toISOString(),
+      });
 
-    await planStore.save({
-      plan: seededPlan,
-      reason: 'seed',
-    });
-
-    const response = await service.handleTurn({
-      channel: 'terminal_whatsapp',
-      externalUserId: 'user-broaden-empty',
-      text: 'busca más',
-      messageId: 'msg-broaden-empty',
-      receivedAt: new Date().toISOString(),
-    });
-
-    expect(getActiveNeed(response.plan)?.recommended_provider_ids).toEqual([1]);
-    expect(runtime.composeRequests.at(-1)?.errorMessage).toBe(
-      'No encontré más opciones distintas con los criterios actuales.',
-    );
-    expect(gateway.categoryLocationCalls).toEqual([
-      { category: 'Fotografía y video', location: 'Lima', page: 1 },
-      { category: 'Fotografía y video', location: null, page: 1 },
-    ]);
+      expect(getActiveNeed(response.plan)?.recommended_provider_ids).toEqual([1]);
+      expect(runtime.composeRequests.at(-1)?.errorMessage).toBe(
+        'No encontré más opciones distintas con los criterios actuales.',
+      );
+      expect(gateway.categoryLocationCalls).toEqual([
+        { category: 'Fotografía y video', location: 'Lima', page: 1 },
+        { category: 'Fotografía y video', location: null, page: 1 },
+      ]);
+    }
   });
 
   it('falls back to category-wide search when location-scoped pages add no unseen providers', async () => {
@@ -2902,498 +2852,500 @@ describe('AgentService', () => {
     expect(gateway.categoryLocationCalls).toEqual([]);
   });
 
-  it('keeps a prior provider selection while opening a different active need in the same turn', async () => {
-    class MixedTurnRuntime extends FakeRuntime {
-      override async extract(): Promise<ExtractionResult> {
-        return {
-          actionIntent: 'confirmar_proveedor',
-          informationRequests: [],
-          intentConfidence: 0.96,
-          eventType: 'boda',
-          vendorCategory: 'Catering',
-          vendorCategories: ['Fotografía y video', 'Catering'],
-          activeNeedCategory: 'Catering',
-          location: 'Lima',
-          budgetSignal: null,
-          guestRange: '51-100',
-          preferences: [],
-          hardConstraints: [],
-          assumptions: [],
-          conversationSummary:
-            'El usuario quiere tomar a Carlos para fotografía y ahora necesita catering.',
-          selectedProviderHints: ['Carlos'],
-          pauseRequested: false,
-          contactName: null,
-          contactEmail: null,
-          contactPhone: null,
-          providerFitCriteria: testProviderFitCriteria,
-        };
+  it('selects a prior provider while opening another need in the same turn', async () => {
+    {
+      class MixedTurnRuntime extends FakeRuntime {
+        override async extract(): Promise<ExtractionResult> {
+          return {
+            actionIntent: 'confirmar_proveedor',
+            informationRequests: [],
+            intentConfidence: 0.96,
+            eventType: 'boda',
+            vendorCategory: 'Catering',
+            vendorCategories: ['Fotografía y video', 'Catering'],
+            activeNeedCategory: 'Catering',
+            location: 'Lima',
+            budgetSignal: null,
+            guestRange: '51-100',
+            preferences: [],
+            hardConstraints: [],
+            assumptions: [],
+            conversationSummary:
+              'El usuario quiere tomar a Carlos para fotografía y ahora necesita catering.',
+            selectedProviderHints: ['Carlos'],
+            pauseRequested: false,
+            contactName: null,
+            contactEmail: null,
+            contactPhone: null,
+            providerFitCriteria: testProviderFitCriteria,
+          };
+        }
       }
+
+      class MixedTurnGateway extends FakeGateway {
+        override async searchProviders(
+          plan: PersistedPlan,
+        ): Promise<ProviderGatewaySearchResult> {
+          this.searchCalls += 1;
+
+          if (plan.vendor_category === 'Catering') {
+            return {
+              providers: [
+                {
+                  id: 109,
+                  title: 'EDO Sushi Bar',
+                  category: 'Catering',
+                  location: 'Lima',
+                  priceLevel: 'high',
+                  reason: 'coincide con el plan',
+                  serviceHighlights: [],
+                  termsHighlights: [],
+                },
+              ],
+            };
+          }
+
+          return await super.searchProviders(plan);
+        }
+
+        override async getProviderDetail(providerId: number): Promise<ProviderDetail | null> {
+          if (providerId === 109) {
+            return {
+              id: 109,
+              title: 'EDO Sushi Bar',
+              slug: 'edo-sushi-bar',
+              category: 'Catering',
+              location: 'Lima',
+              priceLevel: 'high',
+              rating: '4.7',
+              reason: 'coincide con el plan',
+              detailUrl: 'https://sinenvolturas.com/proveedores/edo-sushi-bar',
+              websiteUrl: 'https://www.edosushibar.com/catering',
+              minPrice: '1200.00',
+              maxPrice: null,
+              promoBadge: '10% Off',
+              promoSummary: '10% de descuento en catering.',
+              descriptionSnippet: 'Catering especializado en sushi.',
+              serviceHighlights: ['Catering para eventos'],
+              termsHighlights: ['Pedidos de 300 piezas a más'],
+              description: 'Catering especializado en sushi.',
+              eventTypes: ['boda'],
+              raw: {},
+            };
+          }
+
+          if (providerId === 90) {
+            return {
+              id: 90,
+              title: 'Carlos Schult',
+              slug: 'carlos-schult',
+              category: 'Fotografía y video',
+              location: 'Lima',
+              priceLevel: null,
+              rating: '4.9',
+              reason: 'coincide con el plan',
+              detailUrl: 'https://sinenvolturas.com/proveedores/carlos-schult',
+              websiteUrl: 'https://carlos.example.com',
+              minPrice: null,
+              maxPrice: null,
+              promoBadge: 'Gratis',
+              promoSummary: 'Sesión pre boda incluida.',
+              descriptionSnippet: 'Fotografía para matrimonios.',
+              serviceHighlights: ['Sesión pre boda', 'Cobertura de matrimonios'],
+              termsHighlights: ['Sujeto a disponibilidad'],
+              description: 'Fotografía para matrimonios.',
+              eventTypes: ['boda'],
+              raw: {},
+            };
+          }
+
+          return await super.getProviderDetail(providerId);
+        }
+      }
+
+      const runtime = new MixedTurnRuntime();
+      const planStore = new InMemoryPlanStore();
+      const gateway = new MixedTurnGateway();
+      const service = new AgentService({
+        planStore,
+        runtime,
+        providerGateway: gateway,
+        promptLoader,
+        renderers,
+      });
+
+      const seededPlan = mergePlan(
+        createEmptyPlan({
+          planId: 'plan-mixed-turn',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-5',
+        }),
+        {
+          current_node: 'recomendar',
+          event_type: 'boda',
+          location: 'Lima',
+          guest_range: '51-100',
+          active_need_category: 'Fotografía y video',
+          vendor_category: 'Fotografía y video',
+          provider_needs: [
+            {
+              category: 'Fotografía y video',
+              status: 'shortlisted',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [90],
+              recommended_providers: [
+                {
+                  id: 90,
+                  title: 'Carlos Schult',
+                  slug: 'carlos-schult',
+                  category: 'Fotografía y video',
+                  location: 'Lima',
+                  priceLevel: null,
+                  rating: '4.9',
+                  reason: 'coincide con el plan',
+                  detailUrl: 'https://sinenvolturas.com/proveedores/carlos-schult',
+                  websiteUrl: 'https://carlos.example.com',
+                  minPrice: null,
+                  maxPrice: null,
+                  promoBadge: 'Gratis',
+                  promoSummary: 'Sesión pre boda incluida.',
+                  descriptionSnippet: 'Fotografía para matrimonios.',
+                  serviceHighlights: ['Sesión pre boda', 'Cobertura de matrimonios'],
+                  termsHighlights: ['Sujeto a disponibilidad'],
+                },
+              ],
+              selected_provider_ids: [],
+              selected_provider_hints: [],
+            },
+          ],
+        },
+      );
+
+      await planStore.save({
+        plan: seededPlan,
+        reason: 'seed',
+      });
+
+      const response = await service.handleTurn({
+        channel: 'terminal_whatsapp',
+        externalUserId: 'user-5',
+        text: 'quiero utilizar los servicios de carlos, tambien necesito catering',
+        messageId: 'msg-5',
+        receivedAt: new Date().toISOString(),
+      });
+
+      const photographyNeed = response.plan.provider_needs.find(
+        (need) => need.category === 'Fotografía y video',
+      );
+      const cateringNeed = response.plan.provider_needs.find(
+        (need) => need.category === 'Catering',
+      );
+
+      expect(response.plan.current_node).toBe('recomendar');
+      expect(response.plan.active_need_category).toBe('Catering');
+      expect(photographyNeed?.selected_provider_ids).toEqual([90]);
+      expect(photographyNeed?.status).toBe('selected');
+      expect(cateringNeed?.recommended_provider_ids).toEqual([109]);
+      expect(gateway.searchCalls).toBe(1);
     }
 
-    class MixedTurnGateway extends FakeGateway {
-      override async searchProviders(
-        plan: PersistedPlan,
-      ): Promise<ProviderGatewaySearchResult> {
-        this.searchCalls += 1;
+    {
+      class NumericNameSelectionRuntime extends FakeRuntime {
+        override async extract(): Promise<ExtractionResult> {
+          return {
+            actionIntent: 'confirmar_proveedor',
+            informationRequests: [],
+            intentConfidence: 0.96,
+            eventType: 'boda',
+            vendorCategory: 'Música',
+            vendorCategories: ['Música'],
+            activeNeedCategory: 'Música',
+            location: 'Lima',
+            budgetSignal: null,
+            guestRange: '21-50',
+            preferences: [],
+            hardConstraints: [],
+            assumptions: [],
+            conversationSummary:
+              'El usuario eligió 4Foodies para catering y ahora necesita música.',
+            selectedProviderHints: ['4Foodies'],
+            pauseRequested: false,
+            contactName: null,
+            contactEmail: null,
+            contactPhone: null,
+            providerFitCriteria: testProviderFitCriteria,
+          };
+        }
+      }
 
-        if (plan.vendor_category === 'Catering') {
+      class MusicGateway extends FakeGateway {
+        override async searchProviders(
+          plan: PersistedPlan,
+        ): Promise<ProviderGatewaySearchResult> {
+          this.searchCalls += 1;
+          expect(plan.vendor_category).toBe('Música');
           return {
             providers: [
               {
-                id: 109,
-                title: 'EDO Sushi Bar',
-                category: 'Catering',
-                location: 'Lima',
+                id: 115,
+                title: 'Dj Naoki',
+                category: 'Música',
+                location: 'Perú',
                 priceLevel: 'high',
                 reason: 'coincide con el plan',
-                serviceHighlights: [],
+                serviceHighlights: ['Servicio de DJ para bodas'],
                 termsHighlights: [],
               },
             ],
           };
         }
-
-        return await super.searchProviders(plan);
       }
 
-      override async getProviderDetail(providerId: number): Promise<ProviderDetail | null> {
-        if (providerId === 109) {
-          return {
-            id: 109,
-            title: 'EDO Sushi Bar',
-            slug: 'edo-sushi-bar',
-            category: 'Catering',
-            location: 'Lima',
-            priceLevel: 'high',
-            rating: '4.7',
-            reason: 'coincide con el plan',
-            detailUrl: 'https://sinenvolturas.com/proveedores/edo-sushi-bar',
-            websiteUrl: 'https://www.edosushibar.com/catering',
-            minPrice: '1200.00',
-            maxPrice: null,
-            promoBadge: '10% Off',
-            promoSummary: '10% de descuento en catering.',
-            descriptionSnippet: 'Catering especializado en sushi.',
-            serviceHighlights: ['Catering para eventos'],
-            termsHighlights: ['Pedidos de 300 piezas a más'],
-            description: 'Catering especializado en sushi.',
-            eventTypes: ['boda'],
-            raw: {},
-          };
-        }
+      const runtime = new NumericNameSelectionRuntime();
+      const planStore = new InMemoryPlanStore();
+      const gateway = new MusicGateway();
+      const service = new AgentService({
+        planStore,
+        runtime,
+        providerGateway: gateway,
+        promptLoader,
+        renderers,
+      });
 
-        if (providerId === 90) {
-          return {
-            id: 90,
-            title: 'Carlos Schult',
-            slug: 'carlos-schult',
-            category: 'Fotografía y video',
-            location: 'Lima',
-            priceLevel: null,
-            rating: '4.9',
-            reason: 'coincide con el plan',
-            detailUrl: 'https://sinenvolturas.com/proveedores/carlos-schult',
-            websiteUrl: 'https://carlos.example.com',
-            minPrice: null,
-            maxPrice: null,
-            promoBadge: 'Gratis',
-            promoSummary: 'Sesión pre boda incluida.',
-            descriptionSnippet: 'Fotografía para matrimonios.',
-            serviceHighlights: ['Sesión pre boda', 'Cobertura de matrimonios'],
-            termsHighlights: ['Sujeto a disponibilidad'],
-            description: 'Fotografía para matrimonios.',
-            eventTypes: ['boda'],
-            raw: {},
-          };
-        }
-
-        return await super.getProviderDetail(providerId);
-      }
-    }
-
-    const runtime = new MixedTurnRuntime();
-    const planStore = new InMemoryPlanStore();
-    const gateway = new MixedTurnGateway();
-    const service = new AgentService({
-      planStore,
-      runtime,
-      providerGateway: gateway,
-      promptLoader,
-      renderers,
-    });
-
-    const seededPlan = mergePlan(
-      createEmptyPlan({
-        planId: 'plan-mixed-turn',
-        channel: 'terminal_whatsapp',
-        externalUserId: 'user-5',
-      }),
-      {
-        current_node: 'recomendar',
-        event_type: 'boda',
-        location: 'Lima',
-        guest_range: '51-100',
-        active_need_category: 'Fotografía y video',
-        vendor_category: 'Fotografía y video',
-        provider_needs: [
-          {
-            category: 'Fotografía y video',
-            status: 'shortlisted',
-            preferences: [],
-            hard_constraints: [],
-            missing_fields: [],
-            recommended_provider_ids: [90],
-            recommended_providers: [
-              {
-                id: 90,
-                title: 'Carlos Schult',
-                slug: 'carlos-schult',
-                category: 'Fotografía y video',
-                location: 'Lima',
-                priceLevel: null,
-                rating: '4.9',
-                reason: 'coincide con el plan',
-                detailUrl: 'https://sinenvolturas.com/proveedores/carlos-schult',
-                websiteUrl: 'https://carlos.example.com',
-                minPrice: null,
-                maxPrice: null,
-                promoBadge: 'Gratis',
-                promoSummary: 'Sesión pre boda incluida.',
-                descriptionSnippet: 'Fotografía para matrimonios.',
-                serviceHighlights: ['Sesión pre boda', 'Cobertura de matrimonios'],
-                termsHighlights: ['Sujeto a disponibilidad'],
-              },
-            ],
-            selected_provider_ids: [],
-            selected_provider_hints: [],
-          },
-        ],
-      },
-    );
-
-    await planStore.save({
-      plan: seededPlan,
-      reason: 'seed',
-    });
-
-    const response = await service.handleTurn({
-      channel: 'terminal_whatsapp',
-      externalUserId: 'user-5',
-      text: 'quiero utilizar los servicios de carlos, tambien necesito catering',
-      messageId: 'msg-5',
-      receivedAt: new Date().toISOString(),
-    });
-
-    const photographyNeed = response.plan.provider_needs.find(
-      (need) => need.category === 'Fotografía y video',
-    );
-    const cateringNeed = response.plan.provider_needs.find(
-      (need) => need.category === 'Catering',
-    );
-
-    expect(response.plan.current_node).toBe('recomendar');
-    expect(response.plan.active_need_category).toBe('Catering');
-    expect(photographyNeed?.selected_provider_ids).toEqual([90]);
-    expect(photographyNeed?.status).toBe('selected');
-    expect(cateringNeed?.recommended_provider_ids).toEqual([109]);
-    expect(gateway.searchCalls).toBe(1);
-  });
-
-  it('selects a provider whose name starts with a number while opening another need', async () => {
-    class NumericNameSelectionRuntime extends FakeRuntime {
-      override async extract(): Promise<ExtractionResult> {
-        return {
-          actionIntent: 'confirmar_proveedor',
-          informationRequests: [],
-          intentConfidence: 0.96,
-          eventType: 'boda',
-          vendorCategory: 'Música',
-          vendorCategories: ['Música'],
-          activeNeedCategory: 'Música',
+      const seededPlan = mergePlan(
+        createEmptyPlan({
+          planId: 'plan-numeric-provider',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-numeric-provider',
+        }),
+        {
+          current_node: 'recomendar',
+          event_type: 'boda',
           location: 'Lima',
-          budgetSignal: null,
-          guestRange: '21-50',
-          preferences: [],
-          hardConstraints: [],
-          assumptions: [],
-          conversationSummary:
-            'El usuario eligió 4Foodies para catering y ahora necesita música.',
-          selectedProviderHints: ['4Foodies'],
-          pauseRequested: false,
-          contactName: null,
-          contactEmail: null,
-          contactPhone: null,
-          providerFitCriteria: testProviderFitCriteria,
-        };
-      }
-    }
-
-    class MusicGateway extends FakeGateway {
-      override async searchProviders(
-        plan: PersistedPlan,
-      ): Promise<ProviderGatewaySearchResult> {
-        this.searchCalls += 1;
-        expect(plan.vendor_category).toBe('Música');
-        return {
-          providers: [
+          guest_range: '21-50',
+          active_need_category: 'Catering',
+          vendor_category: 'Catering',
+          provider_needs: [
             {
-              id: 115,
-              title: 'Dj Naoki',
-              category: 'Música',
-              location: 'Perú',
-              priceLevel: 'high',
-              reason: 'coincide con el plan',
-              serviceHighlights: ['Servicio de DJ para bodas'],
-              termsHighlights: [],
+              category: 'Catering',
+              status: 'shortlisted',
+              preferences: ['tablas de queso'],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [136],
+              recommended_providers: [
+                {
+                  id: 136,
+                  title: '4Foodies',
+                  slug: '4foodies',
+                  category: 'Catering',
+                  location: 'Lima',
+                  priceLevel: 'high',
+                  rating: '0.0',
+                  reason: 'coincide con el plan',
+                  detailUrl: 'https://sinenvolturas.com/proveedores/4foodies',
+                  websiteUrl: 'https://www.4foodies.pe',
+                  minPrice: null,
+                  maxPrice: null,
+                  promoBadge: '10% Off',
+                  promoSummary: '10% de descuento.',
+                  descriptionSnippet: 'Tablas de quesos para eventos.',
+                  serviceHighlights: ['Tablas de quesos'],
+                  termsHighlights: [],
+                },
+              ],
+              selected_provider_ids: [],
+              selected_provider_hints: [],
             },
           ],
-        };
-      }
-    }
+        },
+      );
 
-    const runtime = new NumericNameSelectionRuntime();
-    const planStore = new InMemoryPlanStore();
-    const gateway = new MusicGateway();
-    const service = new AgentService({
-      planStore,
-      runtime,
-      providerGateway: gateway,
-      promptLoader,
-      renderers,
-    });
+      await planStore.save({
+        plan: seededPlan,
+        reason: 'seed',
+      });
 
-    const seededPlan = mergePlan(
-      createEmptyPlan({
-        planId: 'plan-numeric-provider',
+      const response = await service.handleTurn({
         channel: 'terminal_whatsapp',
         externalUserId: 'user-numeric-provider',
-      }),
-      {
-        current_node: 'recomendar',
-        event_type: 'boda',
-        location: 'Lima',
-        guest_range: '21-50',
-        active_need_category: 'Catering',
-        vendor_category: 'Catering',
-        provider_needs: [
-          {
-            category: 'Catering',
-            status: 'shortlisted',
-            preferences: ['tablas de queso'],
-            hard_constraints: [],
-            missing_fields: [],
-            recommended_provider_ids: [136],
-            recommended_providers: [
+        text: 'quiero la opcion de 4Foodies. necesito musica tambien',
+        messageId: 'msg-numeric-provider',
+        receivedAt: new Date().toISOString(),
+      });
+
+      const cateringNeed = response.plan.provider_needs.find(
+        (need) => need.category === 'Catering',
+      );
+      const musicNeed = response.plan.provider_needs.find(
+        (need) => need.category === 'Música',
+      );
+
+      expect(response.plan.current_node).toBe('recomendar');
+      expect(response.plan.active_need_category).toBe('Música');
+      expect(cateringNeed?.status).toBe('selected');
+      expect(cateringNeed?.selected_provider_ids).toEqual([136]);
+      expect(musicNeed?.status).toBe('shortlisted');
+      expect(musicNeed?.selected_provider_hints).toEqual([]);
+      expect(gateway.searchCalls).toBe(1);
+    }
+
+    {
+      class DescriptiveSelectionRuntime extends FakeRuntime {
+        override async extract(): Promise<ExtractionResult> {
+          return {
+            actionIntent: 'confirmar_proveedor',
+            informationRequests: [],
+            intentConfidence: 0.93,
+            eventType: 'boda',
+            vendorCategory: 'Música',
+            vendorCategories: ['Música'],
+            activeNeedCategory: 'Música',
+            location: 'Lima',
+            budgetSignal: null,
+            guestRange: '21-50',
+            preferences: [],
+            hardConstraints: [],
+            assumptions: [],
+            conversationSummary:
+              'El usuario eligió el catering de tablas de queso y ahora necesita música.',
+            selectedProviderHints: ['4Foodies'],
+            pauseRequested: false,
+            contactName: null,
+            contactEmail: null,
+            contactPhone: null,
+            providerFitCriteria: testProviderFitCriteria,
+          };
+        }
+      }
+
+      class MusicGateway extends FakeGateway {
+        override async searchProviders(): Promise<ProviderGatewaySearchResult> {
+          this.searchCalls += 1;
+          return {
+            providers: [
               {
-                id: 136,
-                title: '4Foodies',
-                slug: '4foodies',
-                category: 'Catering',
-                location: 'Lima',
+                id: 115,
+                title: 'Dj Naoki',
+                category: 'Música',
+                location: 'Perú',
                 priceLevel: 'high',
-                rating: '0.0',
                 reason: 'coincide con el plan',
-                detailUrl: 'https://sinenvolturas.com/proveedores/4foodies',
-                websiteUrl: 'https://www.4foodies.pe',
-                minPrice: null,
-                maxPrice: null,
-                promoBadge: '10% Off',
-                promoSummary: '10% de descuento.',
-                descriptionSnippet: 'Tablas de quesos para eventos.',
-                serviceHighlights: ['Tablas de quesos'],
+                serviceHighlights: ['Servicio de DJ para bodas'],
                 termsHighlights: [],
               },
             ],
-            selected_provider_ids: [],
-            selected_provider_hints: [],
-          },
-        ],
-      },
-    );
-
-    await planStore.save({
-      plan: seededPlan,
-      reason: 'seed',
-    });
-
-    const response = await service.handleTurn({
-      channel: 'terminal_whatsapp',
-      externalUserId: 'user-numeric-provider',
-      text: 'quiero la opcion de 4Foodies. necesito musica tambien',
-      messageId: 'msg-numeric-provider',
-      receivedAt: new Date().toISOString(),
-    });
-
-    const cateringNeed = response.plan.provider_needs.find(
-      (need) => need.category === 'Catering',
-    );
-    const musicNeed = response.plan.provider_needs.find(
-      (need) => need.category === 'Música',
-    );
-
-    expect(response.plan.current_node).toBe('recomendar');
-    expect(response.plan.active_need_category).toBe('Música');
-    expect(cateringNeed?.status).toBe('selected');
-    expect(cateringNeed?.selected_provider_ids).toEqual([136]);
-    expect(musicNeed?.status).toBe('shortlisted');
-    expect(musicNeed?.selected_provider_hints).toEqual([]);
-    expect(gateway.searchCalls).toBe(1);
-  });
-
-  it('selects a prior provider from extractor-resolved hint when opening another need', async () => {
-    class DescriptiveSelectionRuntime extends FakeRuntime {
-      override async extract(): Promise<ExtractionResult> {
-        return {
-          actionIntent: 'confirmar_proveedor',
-          informationRequests: [],
-          intentConfidence: 0.93,
-          eventType: 'boda',
-          vendorCategory: 'Música',
-          vendorCategories: ['Música'],
-          activeNeedCategory: 'Música',
-          location: 'Lima',
-          budgetSignal: null,
-          guestRange: '21-50',
-          preferences: [],
-          hardConstraints: [],
-          assumptions: [],
-          conversationSummary:
-            'El usuario eligió el catering de tablas de queso y ahora necesita música.',
-          selectedProviderHints: ['4Foodies'],
-          pauseRequested: false,
-          contactName: null,
-          contactEmail: null,
-          contactPhone: null,
-          providerFitCriteria: testProviderFitCriteria,
-        };
+          };
+        }
       }
-    }
 
-    class MusicGateway extends FakeGateway {
-      override async searchProviders(): Promise<ProviderGatewaySearchResult> {
-        this.searchCalls += 1;
-        return {
-          providers: [
+      const runtime = new DescriptiveSelectionRuntime();
+      const planStore = new InMemoryPlanStore();
+      const gateway = new MusicGateway();
+      const service = new AgentService({
+        planStore,
+        runtime,
+        providerGateway: gateway,
+        promptLoader,
+        renderers,
+      });
+
+      const seededPlan = mergePlan(
+        createEmptyPlan({
+          planId: 'plan-descriptive-provider',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-descriptive-provider',
+        }),
+        {
+          current_node: 'recomendar',
+          event_type: 'boda',
+          location: 'Lima',
+          guest_range: '21-50',
+          active_need_category: 'Catering',
+          vendor_category: 'Catering',
+          provider_needs: [
             {
-              id: 115,
-              title: 'Dj Naoki',
-              category: 'Música',
-              location: 'Perú',
-              priceLevel: 'high',
-              reason: 'coincide con el plan',
-              serviceHighlights: ['Servicio de DJ para bodas'],
-              termsHighlights: [],
+              category: 'Catering',
+              status: 'shortlisted',
+              preferences: ['tablas de queso'],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [109, 136],
+              recommended_providers: [
+                {
+                  id: 109,
+                  title: 'Edo Sushi Bar',
+                  slug: 'edo-sushi-bar',
+                  category: 'Catering',
+                  location: 'Lima',
+                  priceLevel: 'high',
+                  rating: '5.0',
+                  reason: 'coincide con el plan',
+                  detailUrl: 'https://sinenvolturas.com/proveedores/edo-sushi-bar',
+                  websiteUrl: null,
+                  minPrice: '1200.00',
+                  maxPrice: null,
+                  promoBadge: '10% Off',
+                  promoSummary: '10% de descuento.',
+                  descriptionSnippet: 'Catering de sushi para eventos.',
+                  serviceHighlights: ['Catering de sushi'],
+                  termsHighlights: [],
+                },
+                {
+                  id: 136,
+                  title: '4Foodies',
+                  slug: '4foodies',
+                  category: 'Catering',
+                  location: 'Lima',
+                  priceLevel: 'high',
+                  rating: '0.0',
+                  reason: 'coincide con el plan',
+                  detailUrl: 'https://sinenvolturas.com/proveedores/4foodies',
+                  websiteUrl: 'https://www.4foodies.pe',
+                  minPrice: null,
+                  maxPrice: null,
+                  promoBadge: '10% Off',
+                  promoSummary: '10% de descuento.',
+                  descriptionSnippet: 'Tablas de quesos para eventos.',
+                  serviceHighlights: ['Tablas de quesos', 'Mesas gastronómicas'],
+                  termsHighlights: [],
+                },
+              ],
+              selected_provider_ids: [],
+              selected_provider_hints: [],
             },
           ],
-        };
-      }
-    }
+        },
+      );
 
-    const runtime = new DescriptiveSelectionRuntime();
-    const planStore = new InMemoryPlanStore();
-    const gateway = new MusicGateway();
-    const service = new AgentService({
-      planStore,
-      runtime,
-      providerGateway: gateway,
-      promptLoader,
-      renderers,
-    });
+      await planStore.save({
+        plan: seededPlan,
+        reason: 'seed',
+      });
 
-    const seededPlan = mergePlan(
-      createEmptyPlan({
-        planId: 'plan-descriptive-provider',
+      const response = await service.handleTurn({
         channel: 'terminal_whatsapp',
         externalUserId: 'user-descriptive-provider',
-      }),
-      {
-        current_node: 'recomendar',
-        event_type: 'boda',
-        location: 'Lima',
-        guest_range: '21-50',
-        active_need_category: 'Catering',
-        vendor_category: 'Catering',
-        provider_needs: [
-          {
-            category: 'Catering',
-            status: 'shortlisted',
-            preferences: ['tablas de queso'],
-            hard_constraints: [],
-            missing_fields: [],
-            recommended_provider_ids: [109, 136],
-            recommended_providers: [
-              {
-                id: 109,
-                title: 'Edo Sushi Bar',
-                slug: 'edo-sushi-bar',
-                category: 'Catering',
-                location: 'Lima',
-                priceLevel: 'high',
-                rating: '5.0',
-                reason: 'coincide con el plan',
-                detailUrl: 'https://sinenvolturas.com/proveedores/edo-sushi-bar',
-                websiteUrl: null,
-                minPrice: '1200.00',
-                maxPrice: null,
-                promoBadge: '10% Off',
-                promoSummary: '10% de descuento.',
-                descriptionSnippet: 'Catering de sushi para eventos.',
-                serviceHighlights: ['Catering de sushi'],
-                termsHighlights: [],
-              },
-              {
-                id: 136,
-                title: '4Foodies',
-                slug: '4foodies',
-                category: 'Catering',
-                location: 'Lima',
-                priceLevel: 'high',
-                rating: '0.0',
-                reason: 'coincide con el plan',
-                detailUrl: 'https://sinenvolturas.com/proveedores/4foodies',
-                websiteUrl: 'https://www.4foodies.pe',
-                minPrice: null,
-                maxPrice: null,
-                promoBadge: '10% Off',
-                promoSummary: '10% de descuento.',
-                descriptionSnippet: 'Tablas de quesos para eventos.',
-                serviceHighlights: ['Tablas de quesos', 'Mesas gastronómicas'],
-                termsHighlights: [],
-              },
-            ],
-            selected_provider_ids: [],
-            selected_provider_hints: [],
-          },
-        ],
-      },
-    );
+        text: 'dame la de tablas de queso y tambien necesito musica',
+        messageId: 'msg-descriptive-provider',
+        receivedAt: new Date().toISOString(),
+      });
 
-    await planStore.save({
-      plan: seededPlan,
-      reason: 'seed',
-    });
+      const cateringNeed = response.plan.provider_needs.find(
+        (need) => need.category === 'Catering',
+      );
+      const musicNeed = response.plan.provider_needs.find(
+        (need) => need.category === 'Música',
+      );
 
-    const response = await service.handleTurn({
-      channel: 'terminal_whatsapp',
-      externalUserId: 'user-descriptive-provider',
-      text: 'dame la de tablas de queso y tambien necesito musica',
-      messageId: 'msg-descriptive-provider',
-      receivedAt: new Date().toISOString(),
-    });
-
-    const cateringNeed = response.plan.provider_needs.find(
-      (need) => need.category === 'Catering',
-    );
-    const musicNeed = response.plan.provider_needs.find(
-      (need) => need.category === 'Música',
-    );
-
-    expect(response.plan.active_need_category).toBe('Música');
-    expect(cateringNeed?.status).toBe('selected');
-    expect(cateringNeed?.selected_provider_ids).toEqual([136]);
-    expect(musicNeed?.status).toBe('shortlisted');
-    expect(gateway.searchCalls).toBe(1);
+      expect(response.plan.active_need_category).toBe('Música');
+      expect(cateringNeed?.status).toBe('selected');
+      expect(cateringNeed?.selected_provider_ids).toEqual([136]);
+      expect(musicNeed?.status).toBe('shortlisted');
+      expect(gateway.searchCalls).toBe(1);
+    }
   });
 
   it('does not match short provider aliases inside unrelated words', async () => {
@@ -3520,130 +3472,216 @@ describe('AgentService', () => {
     expect(gateway.searchCalls).toBe(0);
   });
 
-  it('resolves ordinal words against the active shortlist without searching again', async () => {
-    class OrdinalSelectionRuntime extends FakeRuntime {
-      override async extract(): Promise<ExtractionResult> {
-        return {
-          actionIntent: 'confirmar_proveedor',
-          informationRequests: [],
-          intentConfidence: 0.95,
-          eventType: 'boda',
-          vendorCategory: 'Música',
-          vendorCategories: ['Música'],
-          activeNeedCategory: 'Música',
-          location: 'Lima',
-          budgetSignal: null,
-          guestRange: '21-50',
-          preferences: [],
-          hardConstraints: [],
-          assumptions: [],
-          conversationSummary: 'El usuario eligió la primera opción de música.',
-          selectedProviderHints: ['primera opción'],
-          pauseRequested: false,
-          contactName: null,
-          contactEmail: null,
-          contactPhone: null,
-          providerFitCriteria: testProviderFitCriteria,
-        };
+  it('resolves ordinal selections against the active shortlist without searching again', async () => {
+    {
+      class OrdinalSelectionRuntime extends FakeRuntime {
+        override async extract(): Promise<ExtractionResult> {
+          return {
+            actionIntent: 'confirmar_proveedor',
+            informationRequests: [],
+            intentConfidence: 0.95,
+            eventType: 'boda',
+            vendorCategory: 'Música',
+            vendorCategories: ['Música'],
+            activeNeedCategory: 'Música',
+            location: 'Lima',
+            budgetSignal: null,
+            guestRange: '21-50',
+            preferences: [],
+            hardConstraints: [],
+            assumptions: [],
+            conversationSummary: 'El usuario eligió la primera opción de música.',
+            selectedProviderHints: ['primera opción'],
+            pauseRequested: false,
+            contactName: null,
+            contactEmail: null,
+            contactPhone: null,
+            providerFitCriteria: testProviderFitCriteria,
+          };
+        }
       }
-    }
 
-    const runtime = new OrdinalSelectionRuntime();
-    const planStore = new InMemoryPlanStore();
-    const gateway = new FakeGateway();
-    const service = new AgentService({
-      planStore,
-      runtime,
-      providerGateway: gateway,
-      promptLoader,
-      renderers,
-    });
+      const runtime = new OrdinalSelectionRuntime();
+      const planStore = new InMemoryPlanStore();
+      const gateway = new FakeGateway();
+      const service = new AgentService({
+        planStore,
+        runtime,
+        providerGateway: gateway,
+        promptLoader,
+        renderers,
+      });
 
-    const seededPlan = mergePlan(
-      createEmptyPlan({
-        planId: 'plan-ordinal-provider',
+      const seededPlan = mergePlan(
+        createEmptyPlan({
+          planId: 'plan-ordinal-provider',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-ordinal-provider',
+        }),
+        {
+          current_node: 'recomendar',
+          event_type: 'boda',
+          location: 'Lima',
+          guest_range: '21-50',
+          active_need_category: 'Música',
+          vendor_category: 'Música',
+          provider_needs: [
+            {
+              category: 'Música',
+              status: 'shortlisted',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [115, 119],
+              recommended_providers: [
+                {
+                  id: 115,
+                  title: 'Dj Naoki',
+                  slug: 'dj-naoki',
+                  category: 'Música',
+                  location: 'Perú',
+                  priceLevel: 'high',
+                  rating: '0.0',
+                  reason: 'coincide con el plan',
+                  detailUrl: 'https://sinenvolturas.com/proveedores/dj-naoki',
+                  websiteUrl: null,
+                  minPrice: null,
+                  maxPrice: null,
+                  promoBadge: '15% Off',
+                  promoSummary: '15% de descuento.',
+                  descriptionSnippet: 'DJ para bodas.',
+                  serviceHighlights: ['Servicio de DJ para bodas'],
+                  termsHighlights: [],
+                },
+                {
+                  id: 119,
+                  title: 'Dj Siles',
+                  slug: 'dj-siles',
+                  category: 'Música',
+                  location: 'Perú',
+                  priceLevel: 'mid',
+                  rating: '0.0',
+                  reason: 'coincide con el plan',
+                  detailUrl: 'https://sinenvolturas.com/proveedores/dj-siles',
+                  websiteUrl: null,
+                  minPrice: null,
+                  maxPrice: null,
+                  promoBadge: '15% Off',
+                  promoSummary: '15% de descuento.',
+                  descriptionSnippet: 'DJ y sonido para eventos.',
+                  serviceHighlights: ['Alquiler de equipos de sonido'],
+                  termsHighlights: [],
+                },
+              ],
+              selected_provider_ids: [],
+              selected_provider_hints: [],
+            },
+          ],
+        },
+      );
+
+      await planStore.save({
+        plan: seededPlan,
+        reason: 'seed',
+      });
+
+      const response = await service.handleTurn({
         channel: 'terminal_whatsapp',
         externalUserId: 'user-ordinal-provider',
-      }),
-      {
-        current_node: 'recomendar',
-        event_type: 'boda',
-        location: 'Lima',
-        guest_range: '21-50',
-        active_need_category: 'Música',
-        vendor_category: 'Música',
-        provider_needs: [
-          {
-            category: 'Música',
-            status: 'shortlisted',
+        text: 'dame la primera opcion',
+        messageId: 'msg-ordinal-provider',
+        receivedAt: new Date().toISOString(),
+      });
+
+      expect(response.plan.current_node).toBe('seguir_refinando_guardar_plan');
+      expect(response.plan.selected_provider_ids).toEqual([115]);
+      expect(getActiveNeed(response.plan)?.status).toBe('selected');
+      expect(gateway.searchCalls).toBe(0);
+    }
+
+    {
+      class MultiOrdinalRuntime extends FakeRuntime {
+        override async extract(): Promise<ExtractionResult> {
+          return {
+            actionIntent: 'confirmar_proveedor',
+            informationRequests: [],
+            intentConfidence: 0.97,
+            eventType: 'boda',
+            vendorCategory: 'Catering',
+            vendorCategories: ['Catering'],
+            activeNeedCategory: 'Catering',
+            location: 'Lima',
+            budgetSignal: null,
+            guestRange: '51-100',
             preferences: [],
-            hard_constraints: [],
-            missing_fields: [],
-            recommended_provider_ids: [115, 119],
-            recommended_providers: [
-              {
-                id: 115,
-                title: 'Dj Naoki',
-                slug: 'dj-naoki',
-                category: 'Música',
-                location: 'Perú',
-                priceLevel: 'high',
-                rating: '0.0',
-                reason: 'coincide con el plan',
-                detailUrl: 'https://sinenvolturas.com/proveedores/dj-naoki',
-                websiteUrl: null,
-                minPrice: null,
-                maxPrice: null,
-                promoBadge: '15% Off',
-                promoSummary: '15% de descuento.',
-                descriptionSnippet: 'DJ para bodas.',
-                serviceHighlights: ['Servicio de DJ para bodas'],
-                termsHighlights: [],
-              },
-              {
-                id: 119,
-                title: 'Dj Siles',
-                slug: 'dj-siles',
-                category: 'Música',
-                location: 'Perú',
-                priceLevel: 'mid',
-                rating: '0.0',
-                reason: 'coincide con el plan',
-                detailUrl: 'https://sinenvolturas.com/proveedores/dj-siles',
-                websiteUrl: null,
-                minPrice: null,
-                maxPrice: null,
-                promoBadge: '15% Off',
-                promoSummary: '15% de descuento.',
-                descriptionSnippet: 'DJ y sonido para eventos.',
-                serviceHighlights: ['Alquiler de equipos de sonido'],
-                termsHighlights: [],
-              },
-            ],
-            selected_provider_ids: [],
-            selected_provider_hints: [],
-          },
-        ],
-      },
-    );
+            hardConstraints: [],
+            assumptions: [],
+            conversationSummary: 'El usuario eligió la primera y la tercera opción.',
+            selectedProviderHints: ['primera y tercera'],
+            pauseRequested: false,
+            contactName: null,
+            contactEmail: null,
+            contactPhone: null,
+            providerFitCriteria: testProviderFitCriteria,
+          };
+        }
+      }
 
-    await planStore.save({
-      plan: seededPlan,
-      reason: 'seed',
-    });
+      const runtime = new MultiOrdinalRuntime();
+      const planStore = new InMemoryPlanStore();
+      const gateway = new FakeGateway();
+      const service = new AgentService({
+        planStore,
+        runtime,
+        providerGateway: gateway,
+        promptLoader,
+        renderers,
+      });
+      const seededPlan = mergePlan(
+        createEmptyPlan({
+          planId: 'plan-multi-ordinal',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-multi-ordinal',
+        }),
+        {
+          current_node: 'recomendar',
+          event_type: 'boda',
+          location: 'Lima',
+          guest_range: '51-100',
+          active_need_category: 'Catering',
+          vendor_category: 'Catering',
+          provider_needs: [
+            {
+              category: 'Catering',
+              status: 'shortlisted',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [101, 102, 103],
+              recommended_providers: [
+                { id: 101, title: 'EDO', category: 'Catering', location: 'Lima', priceLevel: 'mid', reason: null, serviceHighlights: [], termsHighlights: [] },
+                { id: 102, title: 'Mesa Central', category: 'Catering', location: 'Lima', priceLevel: 'mid', reason: null, serviceHighlights: [], termsHighlights: [] },
+                { id: 103, title: 'Dulcefina', category: 'Catering', location: 'Lima', priceLevel: 'mid', reason: null, serviceHighlights: [], termsHighlights: [] },
+              ],
+              selected_provider_ids: [],
+              selected_provider_hints: [],
+            },
+          ],
+        },
+      );
+      await planStore.save({ plan: seededPlan, reason: 'seed' });
 
-    const response = await service.handleTurn({
-      channel: 'terminal_whatsapp',
-      externalUserId: 'user-ordinal-provider',
-      text: 'dame la primera opcion',
-      messageId: 'msg-ordinal-provider',
-      receivedAt: new Date().toISOString(),
-    });
+      const response = await service.handleTurn({
+        channel: 'terminal_whatsapp',
+        externalUserId: 'user-multi-ordinal',
+        text: 'me quedo con la primera y la tercera',
+        messageId: 'msg-multi-ordinal',
+        receivedAt: new Date().toISOString(),
+      });
 
-    expect(response.plan.current_node).toBe('seguir_refinando_guardar_plan');
-    expect(response.plan.selected_provider_ids).toEqual([115]);
-    expect(getActiveNeed(response.plan)?.status).toBe('selected');
-    expect(gateway.searchCalls).toBe(0);
+      expect(response.plan.selected_provider_ids).toEqual([101, 103]);
+      expect(gateway.searchCalls).toBe(0);
+    }
   });
 
   it('keeps broad planning in entrevista when the event is known but no provider need is active yet', async () => {
@@ -3852,170 +3890,172 @@ describe('AgentService', () => {
     expect(response.plan.guest_range).toBe('51-100');
   });
 
-  it('resets a finished plan when the user starts a new planning request', async () => {
-    const runtime = new FakeRuntime();
-    const planStore = new InMemoryPlanStore();
-    const gateway = new FakeGateway();
-    const service = new AgentService({
-      planStore,
-      runtime,
-      providerGateway: gateway,
-      promptLoader,
-      renderers,
-    });
+  it('resets plans on new requests and structured reset extraction', async () => {
+    {
+      const runtime = new FakeRuntime();
+      const planStore = new InMemoryPlanStore();
+      const gateway = new FakeGateway();
+      const service = new AgentService({
+        planStore,
+        runtime,
+        providerGateway: gateway,
+        promptLoader,
+        renderers,
+      });
 
-    const finishedPlan = mergePlan(
-      createEmptyPlan({
-        planId: 'plan-done',
+      const finishedPlan = mergePlan(
+        createEmptyPlan({
+          planId: 'plan-done',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-finished',
+        }),
+        {
+          current_node: 'necesidad_cubierta',
+          lifecycle_state: 'finished',
+          contact_name: 'Ada',
+          contact_email: 'ada@example.com',
+          conversation_summary: 'Cierre confirmado.',
+        },
+      );
+
+      await planStore.save({ plan: finishedPlan, reason: 'seed' });
+
+      const response = await service.handleTurn({
         channel: 'terminal_whatsapp',
         externalUserId: 'user-finished',
-      }),
-      {
-        current_node: 'necesidad_cubierta',
-        lifecycle_state: 'finished',
-        contact_name: 'Ada',
-        contact_email: 'ada@example.com',
-        conversation_summary: 'Cierre confirmado.',
-      },
-    );
+        text: 'Quiero otra boda',
+        messageId: 'msg-done',
+        receivedAt: new Date().toISOString(),
+      });
 
-    await planStore.save({ plan: finishedPlan, reason: 'seed' });
-
-    const response = await service.handleTurn({
-      channel: 'terminal_whatsapp',
-      externalUserId: 'user-finished',
-      text: 'Quiero otra boda',
-      messageId: 'msg-done',
-      receivedAt: new Date().toISOString(),
-    });
-
-    expect(runtime.composeRequests).toHaveLength(1);
-    expect(gateway.searchCalls).toBe(1);
-    expect(response.outbound.text).not.toContain('24 horas');
-    expect(response.outbound.text).not.toContain('enfriamiento');
-    expect(response.plan.lifecycle_state).toBe('active');
-  });
-
-  it('discards every planning field when structured extraction requests a reset', async () => {
-    class ResetRuntime extends FakeRuntime {
-      override async extract(request: ExtractRequest): Promise<ExtractionResult> {
-        this.extractRequests.push(request);
-        return {
-          actionIntent: 'reset_plan',
-          informationRequests: [],
-          intentConfidence: 0.99,
-          eventType: null,
-          vendorCategory: null,
-          vendorCategories: [],
-          activeNeedCategory: null,
-          location: null,
-          budgetSignal: null,
-          guestRange: null,
-          preferences: [],
-          hardConstraints: [],
-          assumptions: [],
-          conversationSummary: 'La persona desea comenzar de nuevo.',
-          selectedProviderHints: [],
-          selectedProviderReferences: [],
-          pauseRequested: false,
-          contactName: null,
-          contactEmail: null,
-          contactPhone: null,
-          providerFitCriteria: null,
-          providerQueryIntents: [],
-          providerPlanOperations: [],
-          providerExplanationRequest: null,
-          providerDetailRequest: null,
-        };
-      }
+      expect(runtime.composeRequests).toHaveLength(1);
+      expect(gateway.searchCalls).toBe(1);
+      expect(response.outbound.text).not.toContain('24 horas');
+      expect(response.outbound.text).not.toContain('enfriamiento');
+      expect(response.plan.lifecycle_state).toBe('active');
     }
 
-    const runtime = new ResetRuntime();
-    const planStore = new InMemoryPlanStore();
-    const gateway = new FakeGateway();
-    const service = new AgentService({
-      planStore,
-      runtime,
-      providerGateway: gateway,
-      promptLoader,
-      renderers,
-    });
-    const previous = mergePlan(createEmptyPlan({
-      planId: 'reported-whatsapp-plan',
-      channel: 'whatsapp',
-      externalUserId: 'whatsapp:+51900000001',
-    }), {
-      current_node: 'recomendar',
-      event_type: 'boda',
-      vendor_category: 'Wedding planners',
-      active_need_category: 'Wedding planners',
-      location: 'Lima, Perú',
-      guest_range: '101-200',
-      contact_name: 'Nombre anterior',
-      contact_email: 'anterior@example.com',
-      contact_phone: '51900000001',
-      preferences: ['servicio integral'],
-      provider_needs: [{
-        category: 'Wedding planners',
-        status: 'selected',
+    {
+      class ResetRuntime extends FakeRuntime {
+        override async extract(request: ExtractRequest): Promise<ExtractionResult> {
+          this.extractRequests.push(request);
+          return {
+            actionIntent: 'reset_plan',
+            informationRequests: [],
+            intentConfidence: 0.99,
+            eventType: null,
+            vendorCategory: null,
+            vendorCategories: [],
+            activeNeedCategory: null,
+            location: null,
+            budgetSignal: null,
+            guestRange: null,
+            preferences: [],
+            hardConstraints: [],
+            assumptions: [],
+            conversationSummary: 'La persona desea comenzar de nuevo.',
+            selectedProviderHints: [],
+            selectedProviderReferences: [],
+            pauseRequested: false,
+            contactName: null,
+            contactEmail: null,
+            contactPhone: null,
+            providerFitCriteria: null,
+            providerQueryIntents: [],
+            providerPlanOperations: [],
+            providerExplanationRequest: null,
+            providerDetailRequest: null,
+          };
+        }
+      }
+
+      const runtime = new ResetRuntime();
+      const planStore = new InMemoryPlanStore();
+      const gateway = new FakeGateway();
+      const service = new AgentService({
+        planStore,
+        runtime,
+        providerGateway: gateway,
+        promptLoader,
+        renderers,
+      });
+      const previous = mergePlan(createEmptyPlan({
+        planId: 'reported-whatsapp-plan',
+        channel: 'whatsapp',
+        externalUserId: 'whatsapp:+51900000001',
+      }), {
+        current_node: 'recomendar',
+        event_type: 'boda',
+        vendor_category: 'Wedding planners',
+        active_need_category: 'Wedding planners',
+        location: 'Lima, Perú',
+        guest_range: '101-200',
+        contact_name: 'Nombre anterior',
+        contact_email: 'anterior@example.com',
+        contact_phone: '51900000001',
         preferences: ['servicio integral'],
-        hard_constraints: [],
-        missing_fields: [],
-        recommended_provider_ids: [43],
-        recommended_providers: [{
-          id: 43,
-          title: 'Carla Muñoz',
+        provider_needs: [{
           category: 'Wedding planners',
-          location: 'Lima',
-          priceLevel: null,
-          reason: 'Selección anterior',
-          serviceHighlights: [],
-          termsHighlights: [],
+          status: 'selected',
+          preferences: ['servicio integral'],
+          hard_constraints: [],
+          missing_fields: [],
+          recommended_provider_ids: [43],
+          recommended_providers: [{
+            id: 43,
+            title: 'Carla Muñoz',
+            category: 'Wedding planners',
+            location: 'Lima',
+            priceLevel: null,
+            reason: 'Selección anterior',
+            serviceHighlights: [],
+            termsHighlights: [],
+          }],
+          selected_provider_ids: [43],
+          selected_provider_hints: ['Carla Muñoz'],
         }],
+        recommended_provider_ids: [43],
         selected_provider_ids: [43],
-        selected_provider_hints: ['Carla Muñoz'],
-      }],
-      recommended_provider_ids: [43],
-      selected_provider_ids: [43],
-      conversation_summary: 'Plan anterior de boda en Lima.',
-      last_user_goal: 'confirmar_proveedor',
-    });
-    await planStore.save({ plan: previous, reason: 'seed' });
+        conversation_summary: 'Plan anterior de boda en Lima.',
+        last_user_goal: 'confirmar_proveedor',
+      });
+      await planStore.save({ plan: previous, reason: 'seed' });
 
-    const response = await service.handleTurn({
-      channel: 'whatsapp',
-      externalUserId: 'whatsapp:+51900000001',
-      text: 'No no, quisiera empezar de nuevo, ¿podemos?',
-      messageId: 'wamid.reported-reset',
-      receivedAt: '2026-08-20T21:55:00.000Z',
-    });
+      const response = await service.handleTurn({
+        channel: 'whatsapp',
+        externalUserId: 'whatsapp:+51900000001',
+        text: 'No no, quisiera empezar de nuevo, ¿podemos?',
+        messageId: 'wamid.reported-reset',
+        receivedAt: '2026-08-20T21:55:00.000Z',
+      });
 
-    expect(response.plan.plan_id).not.toBe(previous.plan_id);
-    expect(response.plan).toMatchObject({
-      current_node: 'reset_plan',
-      lifecycle_state: 'active',
-      event_type: null,
-      vendor_category: null,
-      active_need_category: null,
-      location: null,
-      guest_range: null,
-      contact_name: null,
-      contact_email: null,
-      contact_phone: null,
-      preferences: [],
-      provider_needs: [],
-      recommended_provider_ids: [],
-      selected_provider_ids: [],
-    });
-    expect(response.trace.route_kind).toBe('reset_plan');
-    expect(response.trace.state_machine_invariant_status).toBe('valid');
-    expect(response.trace.plan_persisted).toBe(true);
-    expect(response.trace.plan_persist_reason).toBe('reset_plan');
-    expect(response.trace.prompt_bundle_id).toMatch(/^stub-compiler:shared_invariants\+reply_planning_owner$/u);
-    expect(response.trace.prompt_file_paths).toContain('shared/domain_scope.txt');
-    expect(response.trace.prompt_file_paths).not.toContain('nodes/reset_plan/system.txt');
-    expect(gateway.searchCalls).toBe(0);
-    expect(runtime.composeRequests).toHaveLength(1);
+      expect(response.plan.plan_id).not.toBe(previous.plan_id);
+      expect(response.plan).toMatchObject({
+        current_node: 'reset_plan',
+        lifecycle_state: 'active',
+        event_type: null,
+        vendor_category: null,
+        active_need_category: null,
+        location: null,
+        guest_range: null,
+        contact_name: null,
+        contact_email: null,
+        contact_phone: null,
+        preferences: [],
+        provider_needs: [],
+        recommended_provider_ids: [],
+        selected_provider_ids: [],
+      });
+      expect(response.trace.route_kind).toBe('reset_plan');
+      expect(response.trace.state_machine_invariant_status).toBe('valid');
+      expect(response.trace.plan_persisted).toBe(true);
+      expect(response.trace.plan_persist_reason).toBe('reset_plan');
+      expect(response.trace.prompt_bundle_id).toMatch(/^stub-compiler:shared_invariants\+reply_planning_owner$/u);
+      expect(response.trace.prompt_file_paths).toContain('shared/domain_scope.txt');
+      expect(response.trace.prompt_file_paths).not.toContain('nodes/reset_plan/system.txt');
+      expect(gateway.searchCalls).toBe(0);
+      expect(runtime.composeRequests).toHaveLength(1);
+    }
   });
 
   it('persists finished plans without a TTL when runtime marks plan as finished', async () => {
@@ -4097,212 +4137,313 @@ describe('AgentService', () => {
     );
   });
 
-  it('rejects an invalid phone immediately and does not persist it', async () => {
-    class InvalidPhoneRuntime extends FakeRuntime {
-      override async extract(request: ExtractRequest): Promise<ExtractionResult> {
-        if (request.userMessage.includes('967')) {
-          return {
-            actionIntent: 'cerrar',
-            informationRequests: [],
-            intentConfidence: 0.95,
-            eventType: 'boda',
-            vendorCategory: 'Fotografía y video',
-            vendorCategories: ['Fotografía y video'],
-            activeNeedCategory: 'Fotografía y video',
-            location: 'Lima',
-            budgetSignal: null,
-            guestRange: '51-100',
-            preferences: [],
-            hardConstraints: [],
-            assumptions: [],
-            conversationSummary: 'El usuario quiere cerrar y dio un teléfono inválido.',
-            selectedProviderHints: [],
-            pauseRequested: false,
-            contactName: 'Carolina',
-            contactEmail: 'carolina@example.com',
-            contactPhone: '967',
-          };
+  it('rejects invalid contact details immediately and does not persist them', async () => {
+    {
+      class InvalidPhoneRuntime extends FakeRuntime {
+        override async extract(request: ExtractRequest): Promise<ExtractionResult> {
+          if (request.userMessage.includes('967')) {
+            return {
+              actionIntent: 'cerrar',
+              informationRequests: [],
+              intentConfidence: 0.95,
+              eventType: 'boda',
+              vendorCategory: 'Fotografía y video',
+              vendorCategories: ['Fotografía y video'],
+              activeNeedCategory: 'Fotografía y video',
+              location: 'Lima',
+              budgetSignal: null,
+              guestRange: '51-100',
+              preferences: [],
+              hardConstraints: [],
+              assumptions: [],
+              conversationSummary: 'El usuario quiere cerrar y dio un teléfono inválido.',
+              selectedProviderHints: [],
+              pauseRequested: false,
+              contactName: 'Carolina',
+              contactEmail: 'carolina@example.com',
+              contactPhone: '967',
+            };
+          }
+
+          return await super.extract(request);
         }
-
-        return await super.extract(request);
       }
-    }
 
-    const runtime = new InvalidPhoneRuntime();
-    const planStore = new RecordingPlanStore();
-    const service = new AgentService({
-      planStore,
-      runtime,
-      providerGateway: new FakeGateway(),
-      promptLoader,
-      renderers,
-    });
+      const runtime = new InvalidPhoneRuntime();
+      const planStore = new RecordingPlanStore();
+      const service = new AgentService({
+        planStore,
+        runtime,
+        providerGateway: new FakeGateway(),
+        promptLoader,
+        renderers,
+      });
 
-    const seededPlan = mergePlan(
-      createEmptyPlan({
-        planId: 'plan-invalid-phone',
+      const seededPlan = mergePlan(
+        createEmptyPlan({
+          planId: 'plan-invalid-phone',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-invalid-phone',
+        }),
+        {
+          current_node: 'crear_lead_cerrar',
+          event_type: 'boda',
+          location: 'Lima',
+          guest_range: '51-100',
+          active_need_category: 'Fotografía y video',
+          vendor_category: 'Fotografía y video',
+          contact_name: 'Carolina',
+          contact_email: 'carolina@example.com',
+          contact_phone: null,
+          provider_needs: [
+            {
+              category: 'Fotografía y video',
+              status: 'shortlisted',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [1],
+              recommended_providers: [
+                {
+                  id: 1,
+                  title: 'Foto Uno',
+                  category: 'Fotografía y video',
+                  location: 'Lima',
+                  priceLevel: 'mid',
+                  reason: 'coincide con el plan',
+                  serviceHighlights: [],
+                  termsHighlights: [],
+                },
+              ],
+              selected_provider_ids: [1],
+              selected_provider_hints: [],
+            },
+          ],
+        },
+      );
+
+      await planStore.save({ plan: seededPlan, reason: 'seed' });
+
+      const response = await service.handleTurn({
         channel: 'terminal_whatsapp',
         externalUserId: 'user-invalid-phone',
-      }),
-      {
-        current_node: 'crear_lead_cerrar',
-        event_type: 'boda',
-        location: 'Lima',
-        guest_range: '51-100',
-        active_need_category: 'Fotografía y video',
-        vendor_category: 'Fotografía y video',
-        contact_name: 'Carolina',
-        contact_email: 'carolina@example.com',
-        contact_phone: null,
-        provider_needs: [
-          {
-            category: 'Fotografía y video',
-            status: 'shortlisted',
-            preferences: [],
-            hard_constraints: [],
-            missing_fields: [],
-            recommended_provider_ids: [1],
-            recommended_providers: [
-              {
-                id: 1,
-                title: 'Foto Uno',
-                category: 'Fotografía y video',
-                location: 'Lima',
-                priceLevel: 'mid',
-                reason: 'coincide con el plan',
-                serviceHighlights: [],
-                termsHighlights: [],
-              },
-            ],
-            selected_provider_ids: [1],
-            selected_provider_hints: [],
-          },
-        ],
-      },
-    );
+        text: 'mi teléfono es 967',
+        messageId: 'msg-invalid-phone',
+        receivedAt: new Date().toISOString(),
+      });
 
-    await planStore.save({ plan: seededPlan, reason: 'seed' });
-
-    const response = await service.handleTurn({
-      channel: 'terminal_whatsapp',
-      externalUserId: 'user-invalid-phone',
-      text: 'mi teléfono es 967',
-      messageId: 'msg-invalid-phone',
-      receivedAt: new Date().toISOString(),
-    });
-
-    expect(response.plan.contact_phone).toBeNull();
-    expect(response.plan.contact_name).toBe('Carolina');
-    expect(response.plan.contact_email).toBe('carolina@example.com');
-    expect(response.trace.operational_note).toContain('teléfono');
-    expect(response.trace.extraction_summary.contact_validation_error).toContain('teléfono');
-    expect(response.trace.plan_summary.contact_validation_error).toContain('teléfono');
-  });
-
-  it('rejects an invalid email immediately and does not persist it', async () => {
-    class InvalidEmailRuntime extends FakeRuntime {
-      override async extract(request: ExtractRequest): Promise<ExtractionResult> {
-        if (request.userMessage.includes('carolina.gmail.com')) {
-          return {
-            actionIntent: 'cerrar',
-            informationRequests: [],
-            intentConfidence: 0.95,
-            eventType: 'boda',
-            vendorCategory: 'Fotografía y video',
-            vendorCategories: ['Fotografía y video'],
-            activeNeedCategory: 'Fotografía y video',
-            location: 'Lima',
-            budgetSignal: null,
-            guestRange: '51-100',
-            preferences: [],
-            hardConstraints: [],
-            assumptions: [],
-            conversationSummary: 'El usuario quiere cerrar y dio un email inválido.',
-            selectedProviderHints: [],
-            pauseRequested: false,
-            contactName: 'Carolina',
-            contactEmail: 'carolina.gmail.com',
-            contactPhone: null,
-          providerFitCriteria: testProviderFitCriteria,
-          };
-        }
-
-        return await super.extract(request);
-      }
+      expect(response.plan.contact_phone).toBeNull();
+      expect(response.plan.contact_name).toBe('Carolina');
+      expect(response.plan.contact_email).toBe('carolina@example.com');
+      expect(response.trace.operational_note).toContain('teléfono');
+      expect(response.trace.extraction_summary.contact_validation_error).toContain('teléfono');
+      expect(response.trace.plan_summary.contact_validation_error).toContain('teléfono');
     }
 
-    const runtime = new InvalidEmailRuntime();
-    const planStore = new RecordingPlanStore();
-    const service = new AgentService({
-      planStore,
-      runtime,
-      providerGateway: new FakeGateway(),
-      promptLoader,
-      renderers,
-    });
+    {
+      class InvalidEmailRuntime extends FakeRuntime {
+        override async extract(request: ExtractRequest): Promise<ExtractionResult> {
+          if (request.userMessage.includes('carolina.gmail.com')) {
+            return {
+              actionIntent: 'cerrar',
+              informationRequests: [],
+              intentConfidence: 0.95,
+              eventType: 'boda',
+              vendorCategory: 'Fotografía y video',
+              vendorCategories: ['Fotografía y video'],
+              activeNeedCategory: 'Fotografía y video',
+              location: 'Lima',
+              budgetSignal: null,
+              guestRange: '51-100',
+              preferences: [],
+              hardConstraints: [],
+              assumptions: [],
+              conversationSummary: 'El usuario quiere cerrar y dio un email inválido.',
+              selectedProviderHints: [],
+              pauseRequested: false,
+              contactName: 'Carolina',
+              contactEmail: 'carolina.gmail.com',
+              contactPhone: null,
+            providerFitCriteria: testProviderFitCriteria,
+            };
+          }
 
-    const seededPlan = mergePlan(
-      createEmptyPlan({
-        planId: 'plan-invalid-email',
+          return await super.extract(request);
+        }
+      }
+
+      const runtime = new InvalidEmailRuntime();
+      const planStore = new RecordingPlanStore();
+      const service = new AgentService({
+        planStore,
+        runtime,
+        providerGateway: new FakeGateway(),
+        promptLoader,
+        renderers,
+      });
+
+      const seededPlan = mergePlan(
+        createEmptyPlan({
+          planId: 'plan-invalid-email',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-invalid-email',
+        }),
+        {
+          current_node: 'crear_lead_cerrar',
+          event_type: 'boda',
+          location: 'Lima',
+          guest_range: '51-100',
+          active_need_category: 'Fotografía y video',
+          vendor_category: 'Fotografía y video',
+          contact_name: 'Carolina',
+          contact_email: null,
+          contact_phone: null,
+          provider_needs: [
+            {
+              category: 'Fotografía y video',
+              status: 'shortlisted',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [1],
+              recommended_providers: [
+                {
+                  id: 1,
+                  title: 'Foto Uno',
+                  category: 'Fotografía y video',
+                  location: 'Lima',
+                  priceLevel: 'mid',
+                  reason: 'coincide con el plan',
+                  serviceHighlights: [],
+                  termsHighlights: [],
+                },
+              ],
+              selected_provider_ids: [1],
+              selected_provider_hints: [],
+            },
+          ],
+        },
+      );
+
+      await planStore.save({ plan: seededPlan, reason: 'seed' });
+
+      const response = await service.handleTurn({
         channel: 'terminal_whatsapp',
         externalUserId: 'user-invalid-email',
-      }),
-      {
-        current_node: 'crear_lead_cerrar',
-        event_type: 'boda',
-        location: 'Lima',
-        guest_range: '51-100',
-        active_need_category: 'Fotografía y video',
-        vendor_category: 'Fotografía y video',
-        contact_name: 'Carolina',
-        contact_email: null,
-        contact_phone: null,
-        provider_needs: [
-          {
-            category: 'Fotografía y video',
-            status: 'shortlisted',
-            preferences: [],
-            hard_constraints: [],
-            missing_fields: [],
-            recommended_provider_ids: [1],
-            recommended_providers: [
-              {
-                id: 1,
-                title: 'Foto Uno',
-                category: 'Fotografía y video',
-                location: 'Lima',
-                priceLevel: 'mid',
-                reason: 'coincide con el plan',
-                serviceHighlights: [],
-                termsHighlights: [],
-              },
-            ],
-            selected_provider_ids: [1],
-            selected_provider_hints: [],
-          },
-        ],
-      },
-    );
+        text: 'mi correo es carolina.gmail.com',
+        messageId: 'msg-invalid-email',
+        receivedAt: new Date().toISOString(),
+      });
 
-    await planStore.save({ plan: seededPlan, reason: 'seed' });
+      expect(response.plan.contact_email).toBeNull();
+      expect(response.plan.contact_name).toBe('Carolina');
+      expect(response.trace.operational_note).toContain('correo');
+    }
 
-    const response = await service.handleTurn({
-      channel: 'terminal_whatsapp',
-      externalUserId: 'user-invalid-email',
-      text: 'mi correo es carolina.gmail.com',
-      messageId: 'msg-invalid-email',
-      receivedAt: new Date().toISOString(),
-    });
+    {
+      class StandalonePhoneRuntime extends FakeRuntime {
+        override async extract(request: ExtractRequest): Promise<ExtractionResult> {
+          if (request.userMessage.includes('954779071')) {
+            return {
+              actionIntent: 'cerrar',
+              informationRequests: [],
+              intentConfidence: 0.95,
+              eventType: 'boda',
+              vendorCategory: 'Fotografía y video',
+              vendorCategories: ['Fotografía y video'],
+              activeNeedCategory: 'Fotografía y video',
+              location: 'Lima',
+              budgetSignal: null,
+              guestRange: '51-100',
+              preferences: [],
+              hardConstraints: [],
+              assumptions: [],
+              conversationSummary: 'El usuario quiere cerrar y dio su teléfono.',
+              selectedProviderHints: [],
+              pauseRequested: false,
+              contactName: null,
+              contactEmail: null,
+              contactPhone: null,
+            providerFitCriteria: testProviderFitCriteria,
+            };
+          }
 
-    expect(response.plan.contact_email).toBeNull();
-    expect(response.plan.contact_name).toBe('Carolina');
-    expect(response.trace.operational_note).toContain('correo');
-  });
+          return await super.extract(request);
+        }
+      }
 
-  it('rejects a local phone correction without country code', async () => {
-    class StandalonePhoneRuntime extends FakeRuntime {
-      override async extract(request: ExtractRequest): Promise<ExtractionResult> {
-        if (request.userMessage.includes('954779071')) {
+      const runtime = new StandalonePhoneRuntime();
+      const planStore = new RecordingPlanStore();
+      const service = new AgentService({
+        planStore,
+        runtime,
+        providerGateway: new FakeGateway(),
+        promptLoader,
+        renderers,
+      });
+
+      const seededPlan = mergePlan(
+        createEmptyPlan({
+          planId: 'plan-standalone-phone',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-standalone-phone',
+        }),
+        {
+          current_node: 'crear_lead_cerrar',
+          event_type: 'boda',
+          location: 'Lima',
+          guest_range: '51-100',
+          active_need_category: 'Fotografía y video',
+          vendor_category: 'Fotografía y video',
+          contact_name: 'Carolina',
+          contact_email: 'carolina@example.com',
+          contact_phone: null,
+          provider_needs: [
+            {
+              category: 'Fotografía y video',
+              status: 'shortlisted',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [1],
+              recommended_providers: [
+                {
+                  id: 1,
+                  title: 'Foto Uno',
+                  category: 'Fotografía y video',
+                  location: 'Lima',
+                  priceLevel: 'mid',
+                  reason: 'coincide con el plan',
+                  serviceHighlights: [],
+                  termsHighlights: [],
+                },
+              ],
+              selected_provider_ids: [1],
+              selected_provider_hints: [],
+            },
+          ],
+        },
+      );
+
+      await planStore.save({ plan: seededPlan, reason: 'seed' });
+
+      const response = await service.handleTurn({
+        channel: 'terminal_whatsapp',
+        externalUserId: 'user-standalone-phone',
+        text: 'mi telefono es 954779071',
+        messageId: 'msg-standalone-phone',
+        receivedAt: new Date().toISOString(),
+      });
+
+      expect(response.plan.contact_phone).toBeNull();
+      expect(response.plan.contact_name).toBe('Carolina');
+      expect(response.plan.contact_email).toBe('carolina@example.com');
+      expect(response.trace.operational_note).toContain('código de país');
+    }
+
+    {
+      class IncompleteInternationalPhoneRuntime extends FakeRuntime {
+        override async extract(): Promise<ExtractionResult> {
           return {
             actionIntent: 'cerrar',
             informationRequests: [],
@@ -4317,182 +4458,83 @@ describe('AgentService', () => {
             preferences: [],
             hardConstraints: [],
             assumptions: [],
-            conversationSummary: 'El usuario quiere cerrar y dio su teléfono.',
+            conversationSummary: 'El usuario quiere cerrar y dio un teléfono incompleto.',
             selectedProviderHints: [],
             pauseRequested: false,
-            contactName: null,
-            contactEmail: null,
-            contactPhone: null,
-          providerFitCriteria: testProviderFitCriteria,
+            contactName: 'Gabriela',
+            contactEmail: 'gabriela@example.com',
+            contactPhone: '+51 95477906',
+            providerFitCriteria: testProviderFitCriteria,
           };
         }
-
-        return await super.extract(request);
       }
-    }
 
-    const runtime = new StandalonePhoneRuntime();
-    const planStore = new RecordingPlanStore();
-    const service = new AgentService({
-      planStore,
-      runtime,
-      providerGateway: new FakeGateway(),
-      promptLoader,
-      renderers,
-    });
+      const runtime = new IncompleteInternationalPhoneRuntime();
+      const planStore = new RecordingPlanStore();
+      const service = new AgentService({
+        planStore,
+        runtime,
+        providerGateway: new FakeGateway(),
+        promptLoader,
+        renderers,
+      });
 
-    const seededPlan = mergePlan(
-      createEmptyPlan({
-        planId: 'plan-standalone-phone',
-        channel: 'terminal_whatsapp',
-        externalUserId: 'user-standalone-phone',
-      }),
-      {
-        current_node: 'crear_lead_cerrar',
-        event_type: 'boda',
-        location: 'Lima',
-        guest_range: '51-100',
-        active_need_category: 'Fotografía y video',
-        vendor_category: 'Fotografía y video',
-        contact_name: 'Carolina',
-        contact_email: 'carolina@example.com',
-        contact_phone: null,
-        provider_needs: [
-          {
-            category: 'Fotografía y video',
-            status: 'shortlisted',
-            preferences: [],
-            hard_constraints: [],
-            missing_fields: [],
-            recommended_provider_ids: [1],
-            recommended_providers: [
-              {
-                id: 1,
-                title: 'Foto Uno',
-                category: 'Fotografía y video',
-                location: 'Lima',
-                priceLevel: 'mid',
-                reason: 'coincide con el plan',
-                serviceHighlights: [],
-                termsHighlights: [],
-              },
-            ],
-            selected_provider_ids: [1],
-            selected_provider_hints: [],
-          },
-        ],
-      },
-    );
-
-    await planStore.save({ plan: seededPlan, reason: 'seed' });
-
-    const response = await service.handleTurn({
-      channel: 'terminal_whatsapp',
-      externalUserId: 'user-standalone-phone',
-      text: 'mi telefono es 954779071',
-      messageId: 'msg-standalone-phone',
-      receivedAt: new Date().toISOString(),
-    });
-
-    expect(response.plan.contact_phone).toBeNull();
-    expect(response.plan.contact_name).toBe('Carolina');
-    expect(response.plan.contact_email).toBe('carolina@example.com');
-    expect(response.trace.operational_note).toContain('código de país');
-  });
-
-  it('rejects the incomplete Peru phone from the close-flow logs', async () => {
-    class IncompleteInternationalPhoneRuntime extends FakeRuntime {
-      override async extract(): Promise<ExtractionResult> {
-        return {
-          actionIntent: 'cerrar',
-          informationRequests: [],
-          intentConfidence: 0.95,
-          eventType: 'boda',
-          vendorCategory: 'Fotografía y video',
-          vendorCategories: ['Fotografía y video'],
-          activeNeedCategory: 'Fotografía y video',
+      const seededPlan = mergePlan(
+        createEmptyPlan({
+          planId: 'plan-incomplete-pe-phone',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-incomplete-pe-phone',
+        }),
+        {
+          current_node: 'crear_lead_cerrar',
+          event_type: 'boda',
           location: 'Lima',
-          budgetSignal: null,
-          guestRange: '51-100',
-          preferences: [],
-          hardConstraints: [],
-          assumptions: [],
-          conversationSummary: 'El usuario quiere cerrar y dio un teléfono incompleto.',
-          selectedProviderHints: [],
-          pauseRequested: false,
-          contactName: 'Gabriela',
-          contactEmail: 'gabriela@example.com',
-          contactPhone: '+51 95477906',
-          providerFitCriteria: testProviderFitCriteria,
-        };
-      }
-    }
+          guest_range: '51-100',
+          active_need_category: 'Fotografía y video',
+          vendor_category: 'Fotografía y video',
+          contact_name: 'Gabriela',
+          contact_email: 'gabriela@example.com',
+          contact_phone: null,
+          provider_needs: [
+            {
+              category: 'Fotografía y video',
+              status: 'selected',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [1],
+              recommended_providers: [
+                {
+                  id: 1,
+                  title: 'Foto Uno',
+                  category: 'Fotografía y video',
+                  location: 'Lima',
+                  priceLevel: 'mid',
+                  reason: 'coincide con el plan',
+                  serviceHighlights: [],
+                  termsHighlights: [],
+                },
+              ],
+              selected_provider_ids: [1],
+              selected_provider_hints: [],
+            },
+          ],
+        },
+      );
+      await planStore.save({ plan: seededPlan, reason: 'seed' });
 
-    const runtime = new IncompleteInternationalPhoneRuntime();
-    const planStore = new RecordingPlanStore();
-    const service = new AgentService({
-      planStore,
-      runtime,
-      providerGateway: new FakeGateway(),
-      promptLoader,
-      renderers,
-    });
-
-    const seededPlan = mergePlan(
-      createEmptyPlan({
-        planId: 'plan-incomplete-pe-phone',
+      const response = await service.handleTurn({
         channel: 'terminal_whatsapp',
         externalUserId: 'user-incomplete-pe-phone',
-      }),
-      {
-        current_node: 'crear_lead_cerrar',
-        event_type: 'boda',
-        location: 'Lima',
-        guest_range: '51-100',
-        active_need_category: 'Fotografía y video',
-        vendor_category: 'Fotografía y video',
-        contact_name: 'Gabriela',
-        contact_email: 'gabriela@example.com',
-        contact_phone: null,
-        provider_needs: [
-          {
-            category: 'Fotografía y video',
-            status: 'selected',
-            preferences: [],
-            hard_constraints: [],
-            missing_fields: [],
-            recommended_provider_ids: [1],
-            recommended_providers: [
-              {
-                id: 1,
-                title: 'Foto Uno',
-                category: 'Fotografía y video',
-                location: 'Lima',
-                priceLevel: 'mid',
-                reason: 'coincide con el plan',
-                serviceHighlights: [],
-                termsHighlights: [],
-              },
-            ],
-            selected_provider_ids: [1],
-            selected_provider_hints: [],
-          },
-        ],
-      },
-    );
-    await planStore.save({ plan: seededPlan, reason: 'seed' });
+        text: 'mi teelfono es entonces +51 95477906',
+        messageId: 'msg-incomplete-pe-phone',
+        receivedAt: new Date().toISOString(),
+      });
 
-    const response = await service.handleTurn({
-      channel: 'terminal_whatsapp',
-      externalUserId: 'user-incomplete-pe-phone',
-      text: 'mi teelfono es entonces +51 95477906',
-      messageId: 'msg-incomplete-pe-phone',
-      receivedAt: new Date().toISOString(),
-    });
-
-    expect(response.plan.contact_phone).toBeNull();
-    expect(response.trace.operational_note).toContain('incompleto');
-    expect(response.trace.tools_called).not.toContain('finish_plan');
+      expect(response.plan.contact_phone).toBeNull();
+      expect(response.trace.operational_note).toContain('incompleto');
+      expect(response.trace.tools_called).not.toContain('finish_plan');
+    }
   });
 
   it('seeds contact phone from webhook payload and skips asking for it', async () => {
@@ -4529,188 +4571,106 @@ describe('AgentService', () => {
     expect(response.trace.operational_note).toBeNull();
   });
 
-  it('splits Peruvian phone numbers correctly in finish_plan', async () => {
-    class FinishGateway extends FakeGateway {
-      public lastQuoteRequest: QuoteRequestInput | null = null;
+  it('splits international phone numbers correctly in finish_plan', async () => {
+    {
+      class FinishGateway extends FakeGateway {
+        public lastQuoteRequest: QuoteRequestInput | null = null;
 
-      override async createQuoteRequest(
-        input: QuoteRequestInput,
-      ): Promise<Record<string, unknown>> {
-        this.lastQuoteRequest = input;
-        return { ok: true, input };
+        override async createQuoteRequest(
+          input: QuoteRequestInput,
+        ): Promise<Record<string, unknown>> {
+          this.lastQuoteRequest = input;
+          return { ok: true, input };
+        }
       }
+
+      const gateway = new FinishGateway();
+      const plan = mergePlan(
+        createEmptyPlan({
+          planId: 'plan-finish-pe',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-finish-pe',
+        }),
+        {
+          contact_name: 'Carolina',
+          contact_email: 'carolina@example.com',
+          contact_phone: '51954779071',
+          provider_needs: [
+            {
+              category: 'Fotografía y video',
+              status: 'selected',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [1],
+              recommended_providers: [],
+              selected_provider_ids: [1],
+              selected_provider_hints: [],
+            },
+          ],
+        },
+      );
+
+      const result = await executeFinishPlanTool({
+        plan: plan as unknown as PersistedPlan,
+        providerGateway: gateway,
+        eventDate: '2026-10-18',
+      });
+
+      expect(result.status).toBe('success');
+      expect(gateway.lastQuoteRequest?.phone).toBe('954779071');
+      expect(gateway.lastQuoteRequest?.phoneExtension).toBe('+51');
     }
 
-    const gateway = new FinishGateway();
-    const plan = mergePlan(
-      createEmptyPlan({
-        planId: 'plan-finish-pe',
-        channel: 'terminal_whatsapp',
-        externalUserId: 'user-finish-pe',
-      }),
-      {
-        contact_name: 'Carolina',
-        contact_email: 'carolina@example.com',
-        contact_phone: '51954779071',
-        provider_needs: [
-          {
-            category: 'Fotografía y video',
-            status: 'selected',
-            preferences: [],
-            hard_constraints: [],
-            missing_fields: [],
-            recommended_provider_ids: [1],
-            recommended_providers: [],
-            selected_provider_ids: [1],
-            selected_provider_hints: [],
-          },
-        ],
-      },
-    );
+    {
+      class FinishGateway extends FakeGateway {
+        public lastQuoteRequest: QuoteRequestInput | null = null;
 
-    const result = await executeFinishPlanTool({
-      plan: plan as unknown as PersistedPlan,
-      providerGateway: gateway,
-      eventDate: '2026-10-18',
-    });
-
-    expect(result.status).toBe('success');
-    expect(gateway.lastQuoteRequest?.phone).toBe('954779071');
-    expect(gateway.lastQuoteRequest?.phoneExtension).toBe('+51');
-  });
-
-  it('splits Mexican phone numbers correctly in finish_plan', async () => {
-    class FinishGateway extends FakeGateway {
-      public lastQuoteRequest: QuoteRequestInput | null = null;
-
-      override async createQuoteRequest(
-        input: QuoteRequestInput,
-      ): Promise<Record<string, unknown>> {
-        this.lastQuoteRequest = input;
-        return { ok: true, input };
+        override async createQuoteRequest(
+          input: QuoteRequestInput,
+        ): Promise<Record<string, unknown>> {
+          this.lastQuoteRequest = input;
+          return { ok: true, input };
+        }
       }
+
+      const gateway = new FinishGateway();
+      const plan = mergePlan(
+        createEmptyPlan({
+          planId: 'plan-finish-mx',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-finish-mx',
+        }),
+        {
+          contact_name: 'Carlos',
+          contact_email: 'carlos@example.com',
+          contact_phone: '525512345678',
+          provider_needs: [
+            {
+              category: 'Fotografía y video',
+              status: 'selected',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [1],
+              recommended_providers: [],
+              selected_provider_ids: [1],
+              selected_provider_hints: [],
+            },
+          ],
+        },
+      );
+
+      const result = await executeFinishPlanTool({
+        plan: plan as unknown as PersistedPlan,
+        providerGateway: gateway,
+        eventDate: '2026-10-18',
+      });
+
+      expect(result.status).toBe('success');
+      expect(gateway.lastQuoteRequest?.phone).toBe('5512345678');
+      expect(gateway.lastQuoteRequest?.phoneExtension).toBe('+52');
     }
-
-    const gateway = new FinishGateway();
-    const plan = mergePlan(
-      createEmptyPlan({
-        planId: 'plan-finish-mx',
-        channel: 'terminal_whatsapp',
-        externalUserId: 'user-finish-mx',
-      }),
-      {
-        contact_name: 'Carlos',
-        contact_email: 'carlos@example.com',
-        contact_phone: '525512345678',
-        provider_needs: [
-          {
-            category: 'Fotografía y video',
-            status: 'selected',
-            preferences: [],
-            hard_constraints: [],
-            missing_fields: [],
-            recommended_provider_ids: [1],
-            recommended_providers: [],
-            selected_provider_ids: [1],
-            selected_provider_hints: [],
-          },
-        ],
-      },
-    );
-
-    const result = await executeFinishPlanTool({
-      plan: plan as unknown as PersistedPlan,
-      providerGateway: gateway,
-      eventDate: '2026-10-18',
-    });
-
-    expect(result.status).toBe('success');
-    expect(gateway.lastQuoteRequest?.phone).toBe('5512345678');
-    expect(gateway.lastQuoteRequest?.phoneExtension).toBe('+52');
-  });
-
-  it('selects multiple providers by ordinal from the active shortlist', async () => {
-    class MultiOrdinalRuntime extends FakeRuntime {
-      override async extract(): Promise<ExtractionResult> {
-        return {
-          actionIntent: 'confirmar_proveedor',
-          informationRequests: [],
-          intentConfidence: 0.97,
-          eventType: 'boda',
-          vendorCategory: 'Catering',
-          vendorCategories: ['Catering'],
-          activeNeedCategory: 'Catering',
-          location: 'Lima',
-          budgetSignal: null,
-          guestRange: '51-100',
-          preferences: [],
-          hardConstraints: [],
-          assumptions: [],
-          conversationSummary: 'El usuario eligió la primera y la tercera opción.',
-          selectedProviderHints: ['primera y tercera'],
-          pauseRequested: false,
-          contactName: null,
-          contactEmail: null,
-          contactPhone: null,
-          providerFitCriteria: testProviderFitCriteria,
-        };
-      }
-    }
-
-    const runtime = new MultiOrdinalRuntime();
-    const planStore = new InMemoryPlanStore();
-    const gateway = new FakeGateway();
-    const service = new AgentService({
-      planStore,
-      runtime,
-      providerGateway: gateway,
-      promptLoader,
-      renderers,
-    });
-    const seededPlan = mergePlan(
-      createEmptyPlan({
-        planId: 'plan-multi-ordinal',
-        channel: 'terminal_whatsapp',
-        externalUserId: 'user-multi-ordinal',
-      }),
-      {
-        current_node: 'recomendar',
-        event_type: 'boda',
-        location: 'Lima',
-        guest_range: '51-100',
-        active_need_category: 'Catering',
-        vendor_category: 'Catering',
-        provider_needs: [
-          {
-            category: 'Catering',
-            status: 'shortlisted',
-            preferences: [],
-            hard_constraints: [],
-            missing_fields: [],
-            recommended_provider_ids: [101, 102, 103],
-            recommended_providers: [
-              { id: 101, title: 'EDO', category: 'Catering', location: 'Lima', priceLevel: 'mid', reason: null, serviceHighlights: [], termsHighlights: [] },
-              { id: 102, title: 'Mesa Central', category: 'Catering', location: 'Lima', priceLevel: 'mid', reason: null, serviceHighlights: [], termsHighlights: [] },
-              { id: 103, title: 'Dulcefina', category: 'Catering', location: 'Lima', priceLevel: 'mid', reason: null, serviceHighlights: [], termsHighlights: [] },
-            ],
-            selected_provider_ids: [],
-            selected_provider_hints: [],
-          },
-        ],
-      },
-    );
-    await planStore.save({ plan: seededPlan, reason: 'seed' });
-
-    const response = await service.handleTurn({
-      channel: 'terminal_whatsapp',
-      externalUserId: 'user-multi-ordinal',
-      text: 'me quedo con la primera y la tercera',
-      messageId: 'msg-multi-ordinal',
-      receivedAt: new Date().toISOString(),
-    });
-
-    expect(response.plan.selected_provider_ids).toEqual([101, 103]);
-    expect(gateway.searchCalls).toBe(0);
   });
 
   it('selects multiple providers by name and continues to a new need via secondary intent', async () => {
@@ -5033,150 +4993,152 @@ describe('AgentService', () => {
     expect(response.plan.provider_needs.find((need) => need.category === 'Música')?.recommended_provider_ids).toEqual([401]);
   });
 
-  it('does not search structured query intents until global location is known', async () => {
-    class MissingLocationRuntime extends FakeRuntime {
-      override async extract(): Promise<ExtractionResult> {
-        return {
-          actionIntent: 'buscar_proveedores',
-          informationRequests: [],
-          intentConfidence: 0.96,
-          eventType: 'cumpleanos',
-          vendorCategory: 'Música',
-          vendorCategories: ['Música'],
-          activeNeedCategory: 'Música',
-          location: null,
-          budgetSignal: null,
-          guestRange: '21-50',
-          preferences: ['DJ'],
-          hardConstraints: [],
-          assumptions: [],
-          conversationSummary: 'Cumpleaños de 30 personas con DJ; falta ubicación.',
-          selectedProviderHints: [],
-          pauseRequested: false,
-          contactName: null,
-          contactEmail: null,
-          contactPhone: null,
-          providerFitCriteria: {
-            ...testProviderFitCriteria,
+  it('does not search until global location is known', async () => {
+    {
+      class MissingLocationRuntime extends FakeRuntime {
+        override async extract(): Promise<ExtractionResult> {
+          return {
+            actionIntent: 'buscar_proveedores',
+            informationRequests: [],
+            intentConfidence: 0.96,
             eventType: 'cumpleanos',
-            needCategory: 'Música',
+            vendorCategory: 'Música',
+            vendorCategories: ['Música'],
+            activeNeedCategory: 'Música',
             location: null,
-          },
-          providerQueryIntents: [
-            {
-              category: 'Música',
-              label: 'DJ para cumpleaños',
-              priority: 1,
-              queries: [
-                providerNeedQuery(
-                  'Música',
-                  'DJ para cumpleaños',
-                  ['DJ para cumpleaños de 30 personas'],
-                  ['DJ'],
-                ),
-              ],
-              preferences: ['DJ'],
-              hardConstraints: [],
-              missingFields: ['location'],
-              retrievalReady: true,
-              fitCriteria: {
-                ...testProviderFitCriteria,
-                eventType: 'cumpleanos',
-                needCategory: 'Música',
-                location: null,
-              },
+            budgetSignal: null,
+            guestRange: '21-50',
+            preferences: ['DJ'],
+            hardConstraints: [],
+            assumptions: [],
+            conversationSummary: 'Cumpleaños de 30 personas con DJ; falta ubicación.',
+            selectedProviderHints: [],
+            pauseRequested: false,
+            contactName: null,
+            contactEmail: null,
+            contactPhone: null,
+            providerFitCriteria: {
+              ...testProviderFitCriteria,
+              eventType: 'cumpleanos',
+              needCategory: 'Música',
+              location: null,
             },
-          ],
-          providerPlanOperations: [],
-          providerExplanationRequest: null,
-          providerDetailRequest: null,
-        };
+            providerQueryIntents: [
+              {
+                category: 'Música',
+                label: 'DJ para cumpleaños',
+                priority: 1,
+                queries: [
+                  providerNeedQuery(
+                    'Música',
+                    'DJ para cumpleaños',
+                    ['DJ para cumpleaños de 30 personas'],
+                    ['DJ'],
+                  ),
+                ],
+                preferences: ['DJ'],
+                hardConstraints: [],
+                missingFields: ['location'],
+                retrievalReady: true,
+                fitCriteria: {
+                  ...testProviderFitCriteria,
+                  eventType: 'cumpleanos',
+                  needCategory: 'Música',
+                  location: null,
+                },
+              },
+            ],
+            providerPlanOperations: [],
+            providerExplanationRequest: null,
+            providerDetailRequest: null,
+          };
+        }
       }
+
+      const gateway = new FakeGateway();
+      const service = new AgentService({
+        planStore: new InMemoryPlanStore(),
+        runtime: new MissingLocationRuntime(),
+        providerGateway: gateway,
+        promptLoader,
+        renderers,
+      });
+
+      const response = await service.handleTurn({
+        channel: 'terminal_whatsapp',
+        externalUserId: 'user-missing-location-query-intent',
+        text: 'Quiero DJ para un cumpleaños de 30 personas.',
+        messageId: 'msg-missing-location-query-intent',
+        receivedAt: new Date().toISOString(),
+      });
+
+      expect(response.plan.current_node).toBe('aclarar_pedir_faltante');
+      expect(response.plan.location).toBeNull();
+      expect(response.trace.search_ready).toBe(false);
+      expect(response.trace.missing_fields).toContain('location');
+      expect(response.trace.tools_called).not.toContain('search_providers_by_query_intent');
+      expect(gateway.searchCalls).toBe(0);
     }
 
-    const gateway = new FakeGateway();
-    const service = new AgentService({
-      planStore: new InMemoryPlanStore(),
-      runtime: new MissingLocationRuntime(),
-      providerGateway: gateway,
-      promptLoader,
-      renderers,
-    });
-
-    const response = await service.handleTurn({
-      channel: 'terminal_whatsapp',
-      externalUserId: 'user-missing-location-query-intent',
-      text: 'Quiero DJ para un cumpleaños de 30 personas.',
-      messageId: 'msg-missing-location-query-intent',
-      receivedAt: new Date().toISOString(),
-    });
-
-    expect(response.plan.current_node).toBe('aclarar_pedir_faltante');
-    expect(response.plan.location).toBeNull();
-    expect(response.trace.search_ready).toBe(false);
-    expect(response.trace.missing_fields).toContain('location');
-    expect(response.trace.tools_called).not.toContain('search_providers_by_query_intent');
-    expect(gateway.searchCalls).toBe(0);
-  });
-
-  it('does not let a focused need bypass missing global location', async () => {
-    class MissingLocationFocusedNeedRuntime extends FakeRuntime {
-      override async extract(): Promise<ExtractionResult> {
-        return {
-          actionIntent: 'buscar_proveedores',
-          informationRequests: [],
-          intentConfidence: 0.96,
-          eventType: 'boda',
-          vendorCategory: 'Catering',
-          vendorCategories: ['Catering'],
-          activeNeedCategory: 'Catering',
-          location: null,
-          budgetSignal: 'medio',
-          guestRange: '51-100',
-          preferences: [],
-          hardConstraints: [],
-          assumptions: [],
-          conversationSummary: 'Boda con catering y presupuesto; falta ubicación.',
-          selectedProviderHints: [],
-          pauseRequested: false,
-          contactName: null,
-          contactEmail: null,
-          contactPhone: null,
-          providerFitCriteria: {
-            ...testProviderFitCriteria,
-            needCategory: 'Catering',
+    {
+      class MissingLocationFocusedNeedRuntime extends FakeRuntime {
+        override async extract(): Promise<ExtractionResult> {
+          return {
+            actionIntent: 'buscar_proveedores',
+            informationRequests: [],
+            intentConfidence: 0.96,
+            eventType: 'boda',
+            vendorCategory: 'Catering',
+            vendorCategories: ['Catering'],
+            activeNeedCategory: 'Catering',
             location: null,
-          },
-          providerQueryIntents: [],
-          providerPlanOperations: [],
-          providerExplanationRequest: null,
-          providerDetailRequest: null,
-        };
+            budgetSignal: 'medio',
+            guestRange: '51-100',
+            preferences: [],
+            hardConstraints: [],
+            assumptions: [],
+            conversationSummary: 'Boda con catering y presupuesto; falta ubicación.',
+            selectedProviderHints: [],
+            pauseRequested: false,
+            contactName: null,
+            contactEmail: null,
+            contactPhone: null,
+            providerFitCriteria: {
+              ...testProviderFitCriteria,
+              needCategory: 'Catering',
+              location: null,
+            },
+            providerQueryIntents: [],
+            providerPlanOperations: [],
+            providerExplanationRequest: null,
+            providerDetailRequest: null,
+          };
+        }
       }
+
+      const gateway = new FakeGateway();
+      const service = new AgentService({
+        planStore: new InMemoryPlanStore(),
+        runtime: new MissingLocationFocusedNeedRuntime(),
+        providerGateway: gateway,
+        promptLoader,
+        renderers,
+      });
+
+      const response = await service.handleTurn({
+        channel: 'terminal_whatsapp',
+        externalUserId: 'user-missing-location-focused-need',
+        text: 'Necesito catering para una boda de 80 personas con presupuesto medio.',
+        messageId: 'msg-missing-location-focused-need',
+        receivedAt: new Date().toISOString(),
+      });
+
+      expect(response.plan.current_node).toBe('aclarar_pedir_faltante');
+      expect(response.trace.search_ready).toBe(false);
+      expect(response.trace.missing_fields).toContain('location');
+      expect(response.trace.tools_called).not.toContain('search_providers_from_plan');
+      expect(gateway.searchCalls).toBe(0);
     }
-
-    const gateway = new FakeGateway();
-    const service = new AgentService({
-      planStore: new InMemoryPlanStore(),
-      runtime: new MissingLocationFocusedNeedRuntime(),
-      providerGateway: gateway,
-      promptLoader,
-      renderers,
-    });
-
-    const response = await service.handleTurn({
-      channel: 'terminal_whatsapp',
-      externalUserId: 'user-missing-location-focused-need',
-      text: 'Necesito catering para una boda de 80 personas con presupuesto medio.',
-      messageId: 'msg-missing-location-focused-need',
-      receivedAt: new Date().toISOString(),
-    });
-
-    expect(response.plan.current_node).toBe('aclarar_pedir_faltante');
-    expect(response.trace.search_ready).toBe(false);
-    expect(response.trace.missing_fields).toContain('location');
-    expect(response.trace.tools_called).not.toContain('search_providers_from_plan');
-    expect(gateway.searchCalls).toBe(0);
   });
 
   it('preserves a combined clarification when location and scale are both missing', async () => {
@@ -6609,126 +6571,128 @@ describe('AgentService', () => {
     ]);
   });
 
-  it('applies event-type provider priorities during normal plan projection', async () => {
-    class BirthdayRuntime extends FakeRuntime {
-      override async extract(): Promise<ExtractionResult> {
-        return {
-          actionIntent: 'buscar_proveedores',
-          informationRequests: [],
-          intentConfidence: 0.9,
-          eventType: 'cumpleanos',
-          vendorCategory: null,
-          vendorCategories: [
-            'Wedding planners',
-            'Catering',
-            'Locales',
-            'Música',
-            'Fotografía y video',
-            'Hogar y deco',
-            'Licores',
-          ],
-          activeNeedCategory: null,
-          location: 'Lima',
-          budgetSignal: '$$',
-          guestRange: '21-50',
-          preferences: ['divertido'],
-          hardConstraints: [],
-          assumptions: [],
-          conversationSummary: 'Cumpleaños en Lima para 40 personas.',
-          selectedProviderHints: [],
-          pauseRequested: false,
-          contactName: null,
-          contactEmail: null,
-          contactPhone: null,
-          providerFitCriteria: testProviderFitCriteria,
-          providerQueryIntents: [],
-          providerPlanOperations: [],
-          providerExplanationRequest: null,
-          providerDetailRequest: null,
-        };
+  it('applies event-type provider priorities except for explicit requests', async () => {
+    {
+      class BirthdayRuntime extends FakeRuntime {
+        override async extract(): Promise<ExtractionResult> {
+          return {
+            actionIntent: 'buscar_proveedores',
+            informationRequests: [],
+            intentConfidence: 0.9,
+            eventType: 'cumpleanos',
+            vendorCategory: null,
+            vendorCategories: [
+              'Wedding planners',
+              'Catering',
+              'Locales',
+              'Música',
+              'Fotografía y video',
+              'Hogar y deco',
+              'Licores',
+            ],
+            activeNeedCategory: null,
+            location: 'Lima',
+            budgetSignal: '$$',
+            guestRange: '21-50',
+            preferences: ['divertido'],
+            hardConstraints: [],
+            assumptions: [],
+            conversationSummary: 'Cumpleaños en Lima para 40 personas.',
+            selectedProviderHints: [],
+            pauseRequested: false,
+            contactName: null,
+            contactEmail: null,
+            contactPhone: null,
+            providerFitCriteria: testProviderFitCriteria,
+            providerQueryIntents: [],
+            providerPlanOperations: [],
+            providerExplanationRequest: null,
+            providerDetailRequest: null,
+          };
+        }
       }
+
+      const service = new AgentService({
+        planStore: new InMemoryPlanStore(),
+        runtime: new BirthdayRuntime(),
+        providerGateway: new FakeGateway(),
+        promptLoader,
+        renderers,
+      });
+
+      const response = await service.handleTurn({
+        channel: 'terminal_whatsapp',
+        externalUserId: 'user-birthday-normal-priority',
+        text: 'quiero planear un cumpleaños para 40 personas en Lima',
+        messageId: 'msg-birthday-normal-priority',
+        receivedAt: new Date().toISOString(),
+      });
+
+      expect(response.plan.provider_needs.map((need) => need.category)).toEqual([
+        'Locales',
+        'Catering',
+        'Música',
+        'Fotografía y video',
+        'Hogar y deco',
+      ]);
+      expect(response.plan.provider_needs.map((need) => need.category)).not.toContain(
+        'Wedding planners',
+      );
     }
 
-    const service = new AgentService({
-      planStore: new InMemoryPlanStore(),
-      runtime: new BirthdayRuntime(),
-      providerGateway: new FakeGateway(),
-      promptLoader,
-      renderers,
-    });
-
-    const response = await service.handleTurn({
-      channel: 'terminal_whatsapp',
-      externalUserId: 'user-birthday-normal-priority',
-      text: 'quiero planear un cumpleaños para 40 personas en Lima',
-      messageId: 'msg-birthday-normal-priority',
-      receivedAt: new Date().toISOString(),
-    });
-
-    expect(response.plan.provider_needs.map((need) => need.category)).toEqual([
-      'Locales',
-      'Catering',
-      'Música',
-      'Fotografía y video',
-      'Hogar y deco',
-    ]);
-    expect(response.plan.provider_needs.map((need) => need.category)).not.toContain(
-      'Wedding planners',
-    );
-  });
-
-  it('keeps off-priority categories when the user explicitly asks for them', async () => {
-    class ExplicitBirthdayPlannerRuntime extends FakeRuntime {
-      override async extract(): Promise<ExtractionResult> {
-        return {
-          actionIntent: 'buscar_proveedores',
-          informationRequests: [],
-          intentConfidence: 0.92,
-          eventType: 'cumpleanos',
-          vendorCategory: 'Wedding planners',
-          vendorCategories: ['Wedding planners', 'Catering', 'Locales'],
-          activeNeedCategory: 'Wedding planners',
-          location: 'Lima',
-          budgetSignal: '$$',
-          guestRange: '21-50',
-          preferences: ['organizado'],
-          hardConstraints: [],
-          assumptions: [],
-          conversationSummary: 'Cumpleaños en Lima con pedido explícito de wedding planner.',
-          selectedProviderHints: [],
-          pauseRequested: false,
-          contactName: null,
-          contactEmail: null,
-          contactPhone: null,
-          providerFitCriteria: testProviderFitCriteria,
-          providerQueryIntents: [],
-          providerPlanOperations: [],
-          providerExplanationRequest: null,
-          providerDetailRequest: null,
-        };
+    {
+      class ExplicitBirthdayPlannerRuntime extends FakeRuntime {
+        override async extract(): Promise<ExtractionResult> {
+          return {
+            actionIntent: 'buscar_proveedores',
+            informationRequests: [],
+            intentConfidence: 0.92,
+            eventType: 'cumpleanos',
+            vendorCategory: 'Wedding planners',
+            vendorCategories: ['Wedding planners', 'Catering', 'Locales'],
+            activeNeedCategory: 'Wedding planners',
+            location: 'Lima',
+            budgetSignal: '$$',
+            guestRange: '21-50',
+            preferences: ['organizado'],
+            hardConstraints: [],
+            assumptions: [],
+            conversationSummary: 'Cumpleaños en Lima con pedido explícito de wedding planner.',
+            selectedProviderHints: [],
+            pauseRequested: false,
+            contactName: null,
+            contactEmail: null,
+            contactPhone: null,
+            providerFitCriteria: testProviderFitCriteria,
+            providerQueryIntents: [],
+            providerPlanOperations: [],
+            providerExplanationRequest: null,
+            providerDetailRequest: null,
+          };
+        }
       }
+
+      const service = new AgentService({
+        planStore: new InMemoryPlanStore(),
+        runtime: new ExplicitBirthdayPlannerRuntime(),
+        providerGateway: new FakeGateway(),
+        promptLoader,
+        renderers,
+      });
+
+      const response = await service.handleTurn({
+        channel: 'terminal_whatsapp',
+        externalUserId: 'user-explicit-birthday-planner',
+        text: 'quiero un wedding planner para un cumpleaños en Lima',
+        messageId: 'msg-explicit-birthday-planner',
+        receivedAt: new Date().toISOString(),
+      });
+
+      expect(response.plan.active_need_category).toBe('Wedding planners');
+      expect(response.plan.provider_needs.map((need) => need.category)).toContain(
+        'Wedding planners',
+      );
     }
-
-    const service = new AgentService({
-      planStore: new InMemoryPlanStore(),
-      runtime: new ExplicitBirthdayPlannerRuntime(),
-      providerGateway: new FakeGateway(),
-      promptLoader,
-      renderers,
-    });
-
-    const response = await service.handleTurn({
-      channel: 'terminal_whatsapp',
-      externalUserId: 'user-explicit-birthday-planner',
-      text: 'quiero un wedding planner para un cumpleaños en Lima',
-      messageId: 'msg-explicit-birthday-planner',
-      receivedAt: new Date().toISOString(),
-    });
-
-    expect(response.plan.active_need_category).toBe('Wedding planners');
-    expect(response.plan.provider_needs.map((need) => need.category)).toContain(
-      'Wedding planners',
-    );
   });
 
   it('advances to the next stored shortlist after selecting providers', async () => {
@@ -7566,231 +7530,233 @@ describe('AgentService', () => {
     expect(response.trace.tools_called).not.toContain('search_providers_from_plan');
   });
 
-  it('keeps phone-extension clarification in close flow without provider search', async () => {
-    class ExtensionClarificationRuntime extends FakeRuntime {
-      override async extract(): Promise<ExtractionResult> {
-        return {
-          actionIntent: 'buscar_proveedores',
-          informationRequests: [],
-          intentConfidence: 0.81,
-          eventType: null,
-          vendorCategory: 'Catering',
-          vendorCategories: ['Catering'],
-          activeNeedCategory: 'Catering',
-          location: null,
-          budgetSignal: null,
-          guestRange: null,
-          preferences: [],
-          hardConstraints: [],
-          assumptions: [],
-          conversationSummary: 'El usuario pregunta qué es el código de extensión telefónica.',
-          selectedProviderHints: [],
-          selectedProviderReferences: [],
-          pauseRequested: false,
-          contactName: null,
-          contactEmail: null,
-          contactPhone: null,
-          providerFitCriteria: testProviderFitCriteria,
-          closeAction: {
-            type: 'clarify',
-            reason: 'Aclara que el código de país es el prefijo del teléfono y pide solo el teléfono completo.',
+  it('keeps phone handling in close flow without provider search', async () => {
+    {
+      class ExtensionClarificationRuntime extends FakeRuntime {
+        override async extract(): Promise<ExtractionResult> {
+          return {
+            actionIntent: 'buscar_proveedores',
+            informationRequests: [],
+            intentConfidence: 0.81,
+            eventType: null,
+            vendorCategory: 'Catering',
+            vendorCategories: ['Catering'],
+            activeNeedCategory: 'Catering',
+            location: null,
+            budgetSignal: null,
+            guestRange: null,
+            preferences: [],
+            hardConstraints: [],
+            assumptions: [],
+            conversationSummary: 'El usuario pregunta qué es el código de extensión telefónica.',
+            selectedProviderHints: [],
+            selectedProviderReferences: [],
+            pauseRequested: false,
+            contactName: null,
+            contactEmail: null,
+            contactPhone: null,
+            providerFitCriteria: testProviderFitCriteria,
+            closeAction: {
+              type: 'clarify',
+              reason: 'Aclara que el código de país es el prefijo del teléfono y pide solo el teléfono completo.',
+            },
+            providerQueryIntents: [],
+            providerPlanOperations: [],
+            providerExplanationRequest: null,
+            providerDetailRequest: null,
+          };
+        }
+      }
+
+      const planStore = new InMemoryPlanStore();
+      await planStore.save({
+        reason: 'seed',
+        plan: mergePlan(
+          createEmptyPlan({
+            planId: 'plan-extension-clarification',
+            channel: 'terminal_whatsapp',
+            externalUserId: 'user-extension-clarification',
+          }),
+          {
+            current_node: 'crear_lead_cerrar',
+            event_type: 'boda',
+            location: 'Lima',
+            guest_range: '51-100',
+            active_need_category: 'Catering',
+            contact_name: 'Gabriela',
+            contact_email: 'gabriela@example.com',
+            contact_phone: null,
+            provider_needs: [
+              {
+                category: 'Fotografía y video',
+                status: 'selected',
+                preferences: [],
+                hard_constraints: [],
+                missing_fields: [],
+                recommended_provider_ids: [168],
+                recommended_providers: [
+                  { id: 168, title: 'Filomena', category: 'Fotografía y video', location: 'Lima', priceLevel: 'mid', reason: null, serviceHighlights: [], termsHighlights: [] },
+                ],
+                selected_provider_ids: [168],
+                selected_provider_hints: ['Filomena'],
+              },
+              {
+                category: 'Catering',
+                status: 'shortlisted',
+                preferences: [],
+                hard_constraints: [],
+                missing_fields: [],
+                recommended_provider_ids: [302],
+                recommended_providers: [
+                  { id: 302, title: 'Kisu', category: 'Catering', location: 'Lima', priceLevel: 'mid', reason: null, serviceHighlights: [], termsHighlights: [] },
+                ],
+                selected_provider_ids: [],
+                selected_provider_hints: [],
+              },
+            ],
           },
-          providerQueryIntents: [],
-          providerPlanOperations: [],
-          providerExplanationRequest: null,
-          providerDetailRequest: null,
-        };
-      }
+        ),
+      });
+
+      const gateway = new FakeGateway();
+      const service = new AgentService({
+        planStore,
+        runtime: new ExtensionClarificationRuntime(),
+        providerGateway: gateway,
+        promptLoader,
+        renderers,
+      });
+
+      const response = await service.handleTurn({
+        channel: 'terminal_whatsapp',
+        externalUserId: 'user-extension-clarification',
+        text: 'que es un codigo de extension',
+        messageId: 'msg-extension-clarification',
+        receivedAt: new Date().toISOString(),
+      });
+
+      expect(response.plan.current_node).toBe('crear_lead_cerrar');
+      expect(response.trace.operational_note).toContain('código de país');
+      expect(gateway.searchCalls).toBe(0);
+      expect(response.trace.tools_called).not.toContain('search_providers_from_plan');
     }
 
-    const planStore = new InMemoryPlanStore();
-    await planStore.save({
-      reason: 'seed',
-      plan: mergePlan(
-        createEmptyPlan({
-          planId: 'plan-extension-clarification',
-          channel: 'terminal_whatsapp',
-          externalUserId: 'user-extension-clarification',
-        }),
-        {
-          current_node: 'crear_lead_cerrar',
-          event_type: 'boda',
-          location: 'Lima',
-          guest_range: '51-100',
-          active_need_category: 'Catering',
-          contact_name: 'Gabriela',
-          contact_email: 'gabriela@example.com',
-          contact_phone: null,
-          provider_needs: [
-            {
-              category: 'Fotografía y video',
-              status: 'selected',
-              preferences: [],
-              hard_constraints: [],
-              missing_fields: [],
-              recommended_provider_ids: [168],
-              recommended_providers: [
-                { id: 168, title: 'Filomena', category: 'Fotografía y video', location: 'Lima', priceLevel: 'mid', reason: null, serviceHighlights: [], termsHighlights: [] },
-              ],
-              selected_provider_ids: [168],
-              selected_provider_hints: ['Filomena'],
-            },
-            {
-              category: 'Catering',
-              status: 'shortlisted',
-              preferences: [],
-              hard_constraints: [],
-              missing_fields: [],
-              recommended_provider_ids: [302],
-              recommended_providers: [
-                { id: 302, title: 'Kisu', category: 'Catering', location: 'Lima', priceLevel: 'mid', reason: null, serviceHighlights: [], termsHighlights: [] },
-              ],
-              selected_provider_ids: [],
-              selected_provider_hints: [],
-            },
-          ],
-        },
-      ),
-    });
-
-    const gateway = new FakeGateway();
-    const service = new AgentService({
-      planStore,
-      runtime: new ExtensionClarificationRuntime(),
-      providerGateway: gateway,
-      promptLoader,
-      renderers,
-    });
-
-    const response = await service.handleTurn({
-      channel: 'terminal_whatsapp',
-      externalUserId: 'user-extension-clarification',
-      text: 'que es un codigo de extension',
-      messageId: 'msg-extension-clarification',
-      receivedAt: new Date().toISOString(),
-    });
-
-    expect(response.plan.current_node).toBe('crear_lead_cerrar');
-    expect(response.trace.operational_note).toContain('código de país');
-    expect(gateway.searchCalls).toBe(0);
-    expect(response.trace.tools_called).not.toContain('search_providers_from_plan');
-  });
-
-  it('keeps invalid standalone phone corrections in close flow without provider search', async () => {
-    class InvalidClosePhoneRuntime extends FakeRuntime {
-      override async extract(): Promise<ExtractionResult> {
-        return {
-          actionIntent: null,
-          informationRequests: [],
-          intentConfidence: 0.72,
-          eventType: null,
-          vendorCategory: null,
-          vendorCategories: [],
-          activeNeedCategory: null,
-          location: null,
-          budgetSignal: null,
-          guestRange: null,
-          preferences: [],
-          hardConstraints: [],
-          assumptions: [],
-          conversationSummary: 'El usuario envía un teléfono incompleto durante el cierre.',
-          selectedProviderHints: ['Kisu'],
-          selectedProviderReferences: [
-            {
-              providerId: 302,
-              providerTitle: 'Kisu',
-              category: 'Catering',
-              hint: null,
-            },
-          ],
-          pauseRequested: false,
-          contactName: null,
-          contactEmail: null,
-          contactPhone: null,
-          providerFitCriteria: testProviderFitCriteria,
-          closeAction: null,
-          providerQueryIntents: [],
-          providerPlanOperations: [],
-          providerExplanationRequest: null,
-          providerDetailRequest: null,
-        };
+    {
+      class InvalidClosePhoneRuntime extends FakeRuntime {
+        override async extract(): Promise<ExtractionResult> {
+          return {
+            actionIntent: null,
+            informationRequests: [],
+            intentConfidence: 0.72,
+            eventType: null,
+            vendorCategory: null,
+            vendorCategories: [],
+            activeNeedCategory: null,
+            location: null,
+            budgetSignal: null,
+            guestRange: null,
+            preferences: [],
+            hardConstraints: [],
+            assumptions: [],
+            conversationSummary: 'El usuario envía un teléfono incompleto durante el cierre.',
+            selectedProviderHints: ['Kisu'],
+            selectedProviderReferences: [
+              {
+                providerId: 302,
+                providerTitle: 'Kisu',
+                category: 'Catering',
+                hint: null,
+              },
+            ],
+            pauseRequested: false,
+            contactName: null,
+            contactEmail: null,
+            contactPhone: null,
+            providerFitCriteria: testProviderFitCriteria,
+            closeAction: null,
+            providerQueryIntents: [],
+            providerPlanOperations: [],
+            providerExplanationRequest: null,
+            providerDetailRequest: null,
+          };
+        }
       }
+
+      const planStore = new InMemoryPlanStore();
+      await planStore.save({
+        reason: 'seed',
+        plan: mergePlan(
+          createEmptyPlan({
+            planId: 'plan-invalid-close-phone',
+            channel: 'terminal_whatsapp',
+            externalUserId: 'user-invalid-close-phone',
+          }),
+          {
+            current_node: 'crear_lead_cerrar',
+            event_type: 'boda',
+            location: 'Lima',
+            guest_range: '51-100',
+            contact_name: 'Gabriela',
+            contact_email: 'gabriela@example.com',
+            contact_phone: null,
+            provider_needs: [
+              {
+                category: 'Fotografía y video',
+                status: 'selected',
+                preferences: [],
+                hard_constraints: [],
+                missing_fields: [],
+                recommended_provider_ids: [168],
+                recommended_providers: [
+                  { id: 168, title: 'Filomena', category: 'Fotografía y video', location: 'Lima', priceLevel: 'mid', reason: null, serviceHighlights: [], termsHighlights: [] },
+                ],
+                selected_provider_ids: [168],
+                selected_provider_hints: ['Filomena'],
+              },
+              {
+                category: 'Catering',
+                status: 'shortlisted',
+                preferences: [],
+                hard_constraints: [],
+                missing_fields: [],
+                recommended_provider_ids: [302],
+                recommended_providers: [
+                  { id: 302, title: 'Kisu', category: 'Catering', location: 'Lima', priceLevel: 'mid', reason: null, serviceHighlights: [], termsHighlights: [] },
+                ],
+                selected_provider_ids: [],
+                selected_provider_hints: [],
+              },
+            ],
+          },
+        ),
+      });
+
+      const gateway = new FakeGateway();
+      const service = new AgentService({
+        planStore,
+        runtime: new InvalidClosePhoneRuntime(),
+        providerGateway: gateway,
+        promptLoader,
+        renderers,
+      });
+
+      const response = await service.handleTurn({
+        channel: 'terminal_whatsapp',
+        externalUserId: 'user-invalid-close-phone',
+        text: 'mi teléfono es 967',
+        messageId: 'msg-invalid-close-phone',
+        receivedAt: new Date().toISOString(),
+      });
+
+      expect(response.plan.current_node).toBe('crear_lead_cerrar');
+      expect(response.plan.contact_phone).toBeNull();
+      expect(
+        response.plan.provider_needs.find((need) => need.category === 'Catering')?.selected_provider_ids,
+      ).toEqual([]);
+      expect(response.trace.contact_validation_summary.status).toBe('invalid');
+      expect(gateway.searchCalls).toBe(0);
+      expect(response.trace.tools_called).not.toContain('search_providers_from_plan');
     }
-
-    const planStore = new InMemoryPlanStore();
-    await planStore.save({
-      reason: 'seed',
-      plan: mergePlan(
-        createEmptyPlan({
-          planId: 'plan-invalid-close-phone',
-          channel: 'terminal_whatsapp',
-          externalUserId: 'user-invalid-close-phone',
-        }),
-        {
-          current_node: 'crear_lead_cerrar',
-          event_type: 'boda',
-          location: 'Lima',
-          guest_range: '51-100',
-          contact_name: 'Gabriela',
-          contact_email: 'gabriela@example.com',
-          contact_phone: null,
-          provider_needs: [
-            {
-              category: 'Fotografía y video',
-              status: 'selected',
-              preferences: [],
-              hard_constraints: [],
-              missing_fields: [],
-              recommended_provider_ids: [168],
-              recommended_providers: [
-                { id: 168, title: 'Filomena', category: 'Fotografía y video', location: 'Lima', priceLevel: 'mid', reason: null, serviceHighlights: [], termsHighlights: [] },
-              ],
-              selected_provider_ids: [168],
-              selected_provider_hints: ['Filomena'],
-            },
-            {
-              category: 'Catering',
-              status: 'shortlisted',
-              preferences: [],
-              hard_constraints: [],
-              missing_fields: [],
-              recommended_provider_ids: [302],
-              recommended_providers: [
-                { id: 302, title: 'Kisu', category: 'Catering', location: 'Lima', priceLevel: 'mid', reason: null, serviceHighlights: [], termsHighlights: [] },
-              ],
-              selected_provider_ids: [],
-              selected_provider_hints: [],
-            },
-          ],
-        },
-      ),
-    });
-
-    const gateway = new FakeGateway();
-    const service = new AgentService({
-      planStore,
-      runtime: new InvalidClosePhoneRuntime(),
-      providerGateway: gateway,
-      promptLoader,
-      renderers,
-    });
-
-    const response = await service.handleTurn({
-      channel: 'terminal_whatsapp',
-      externalUserId: 'user-invalid-close-phone',
-      text: 'mi teléfono es 967',
-      messageId: 'msg-invalid-close-phone',
-      receivedAt: new Date().toISOString(),
-    });
-
-    expect(response.plan.current_node).toBe('crear_lead_cerrar');
-    expect(response.plan.contact_phone).toBeNull();
-    expect(
-      response.plan.provider_needs.find((need) => need.category === 'Catering')?.selected_provider_ids,
-    ).toEqual([]);
-    expect(response.trace.contact_validation_summary.status).toBe('invalid');
-    expect(gateway.searchCalls).toBe(0);
-    expect(response.trace.tools_called).not.toContain('search_providers_from_plan');
   });
 
   it('preserves selected providers when the same external user resumes to contact them', async () => {
@@ -8482,103 +8448,105 @@ describe('AgentService', () => {
     expect(runtime.composeRequests.at(-1)?.handoffOutcome).toBe('handoff_skipped_unavailable');
   });
 
-  it('keeps escalated conversations soft-paused without extracting or searching again', async () => {
-    const runtime = new HumanEscalationRuntime();
-    const planStore = new InMemoryPlanStore();
-    await planStore.save({
-      reason: 'seed',
-      plan: mergePlan(
-        createEmptyPlan({
-          planId: 'plan-escalated',
-          channel: 'terminal_whatsapp',
-          externalUserId: 'user-escalated',
-        }),
-        {
-          current_node: 'solicitar_agente_humano',
-          intent: 'solicitar_humano',
-          human_escalation: {
-            status: 'requested',
-            requested_at: new Date(Date.now() - 60_000).toISOString(),
-            phone_number: '51987654321',
-            last_error: 'Agent API human takeover is not configured.',
+  it('keeps escalated conversations frozen regardless of elapsed time', async () => {
+    {
+      const runtime = new HumanEscalationRuntime();
+      const planStore = new InMemoryPlanStore();
+      await planStore.save({
+        reason: 'seed',
+        plan: mergePlan(
+          createEmptyPlan({
+            planId: 'plan-escalated',
+            channel: 'terminal_whatsapp',
+            externalUserId: 'user-escalated',
+          }),
+          {
+            current_node: 'solicitar_agente_humano',
+            intent: 'solicitar_humano',
+            human_escalation: {
+              status: 'requested',
+              requested_at: new Date(Date.now() - 60_000).toISOString(),
+              phone_number: '51987654321',
+              last_error: 'Agent API human takeover is not configured.',
+            },
           },
-        },
-      ),
-    });
+        ),
+      });
 
-    const response = await new AgentService({
-      planStore,
-      runtime,
-      providerGateway: new FakeGateway(),
-      promptLoader,
-      renderers,
-    }).handleTurn({
-      channel: 'terminal_whatsapp',
-      externalUserId: 'user-escalated',
-      text: 'sigues ahi?',
-      messageId: 'msg-escalated-follow-up',
-      receivedAt: new Date().toISOString(),
-      contactPhone: '+51 987654321',
-    });
+      const response = await new AgentService({
+        planStore,
+        runtime,
+        providerGateway: new FakeGateway(),
+        promptLoader,
+        renderers,
+      }).handleTurn({
+        channel: 'terminal_whatsapp',
+        externalUserId: 'user-escalated',
+        text: 'sigues ahi?',
+        messageId: 'msg-escalated-follow-up',
+        receivedAt: new Date().toISOString(),
+        contactPhone: '+51 987654321',
+      });
 
-    expect(runtime.extractCalls).toBe(0);
-    expect(response.plan.current_node).toBe('solicitar_agente_humano');
-    expect(response.trace.route_kind).toBe('human_escalation');
-    expect(response.trace.tools_called).toEqual([]);
-    expect(response.trace.provider_results).toHaveLength(0);
-    expect(response.outbound.text).toBeNull();
-    expect(response.outbound.delivery).toEqual({
-      action: 'suppress',
-      reason: 'human_escalation_active',
-    });
-  });
+      expect(runtime.extractCalls).toBe(0);
+      expect(response.plan.current_node).toBe('solicitar_agente_humano');
+      expect(response.trace.route_kind).toBe('human_escalation');
+      expect(response.trace.tools_called).toEqual([]);
+      expect(response.trace.provider_results).toHaveLength(0);
+      expect(response.outbound.text).toBeNull();
+      expect(response.outbound.delivery).toEqual({
+        action: 'suppress',
+        reason: 'human_escalation_active',
+      });
+    }
 
-  it('does not resume escalated conversations based on elapsed time', async () => {
-    const runtime = new FakeRuntime();
-    const planStore = new InMemoryPlanStore();
-    await planStore.save({
-      reason: 'seed-expired-escalation',
-      plan: mergePlan(
-        createEmptyPlan({
-          planId: 'plan-expired-escalation',
-          channel: 'terminal_whatsapp',
-          externalUserId: 'user-expired-escalation',
-        }),
-        {
-          current_node: 'solicitar_agente_humano',
-          intent: 'solicitar_humano',
-          human_escalation: {
-            status: 'requested',
-            requested_at: new Date(Date.now() - (13 * 60 * 60 * 1_000)).toISOString(),
-            phone_number: '51987654321',
-            last_error: null,
+    {
+      const runtime = new FakeRuntime();
+      const planStore = new InMemoryPlanStore();
+      await planStore.save({
+        reason: 'seed-expired-escalation',
+        plan: mergePlan(
+          createEmptyPlan({
+            planId: 'plan-expired-escalation',
+            channel: 'terminal_whatsapp',
+            externalUserId: 'user-expired-escalation',
+          }),
+          {
+            current_node: 'solicitar_agente_humano',
+            intent: 'solicitar_humano',
+            human_escalation: {
+              status: 'requested',
+              requested_at: new Date(Date.now() - (13 * 60 * 60 * 1_000)).toISOString(),
+              phone_number: '51987654321',
+              last_error: null,
+            },
           },
-        },
-      ),
-    });
+        ),
+      });
 
-    const response = await new AgentService({
-      planStore,
-      runtime,
-      providerGateway: new FakeGateway(),
-      promptLoader,
-      renderers,
-    }).handleTurn({
-      channel: 'terminal_whatsapp',
-      externalUserId: 'user-expired-escalation',
-      text: 'Quiero retomar la planificación',
-      messageId: 'msg-expired-escalation',
-      receivedAt: new Date().toISOString(),
-      contactPhone: '+51 987654321',
-    });
+      const response = await new AgentService({
+        planStore,
+        runtime,
+        providerGateway: new FakeGateway(),
+        promptLoader,
+        renderers,
+      }).handleTurn({
+        channel: 'terminal_whatsapp',
+        externalUserId: 'user-expired-escalation',
+        text: 'Quiero retomar la planificación',
+        messageId: 'msg-expired-escalation',
+        receivedAt: new Date().toISOString(),
+        contactPhone: '+51 987654321',
+      });
 
-    expect(runtime.composeRequests).toHaveLength(0);
-    expect(response.plan.human_escalation.status).toBe('requested');
-    expect(response.trace.tools_called).not.toContain('expire_human_escalation_window');
-    expect(response.outbound.delivery).toEqual({
-      action: 'suppress',
-      reason: 'human_escalation_active',
-    });
+      expect(runtime.composeRequests).toHaveLength(0);
+      expect(response.plan.human_escalation.status).toBe('requested');
+      expect(response.trace.tools_called).not.toContain('expire_human_escalation_window');
+      expect(response.outbound.delivery).toEqual({
+        action: 'suppress',
+        reason: 'human_escalation_active',
+      });
+    }
   });
 
   it('observes automated-response suppression while retaining the full reply flow', async () => {
@@ -8875,118 +8843,120 @@ describe('AgentService', () => {
     expect(runtime.composeRequests).toHaveLength(0);
   });
 
-  it('fails open to the normal flow when external conversation history fails', async () => {
-    class CountingRuntime extends FakeRuntime {
-      public extractCalls = 0;
+  it('handles unavailable and empty conversation history without stalling', async () => {
+    {
+      class CountingRuntime extends FakeRuntime {
+        public extractCalls = 0;
 
-      override async extract(request: ExtractRequest): Promise<ExtractionResult> {
-        this.extractCalls += 1;
-        return await super.extract(request);
+        override async extract(request: ExtractRequest): Promise<ExtractionResult> {
+          this.extractCalls += 1;
+          return await super.extract(request);
+        }
       }
+
+      class FailingHistoryGateway implements AgentConversationGateway {
+        public readonly operations: string[] = [];
+
+        async logMessage(): Promise<AgentGatewayResult> {
+          this.operations.push('log:inbound');
+          return { status: 'success', message: 'Message logged.' };
+        }
+
+        async getRecentMessages(): Promise<Exclude<AgentGatewayResult, { status: 'success' }>> {
+          this.operations.push('get');
+          return {
+            status: 'failed',
+            error: 'Conversation history is unavailable.',
+            retryable: true,
+          };
+        }
+
+        async requestHumanTakeover(): Promise<AgentGatewayResult> {
+          return { status: 'success', message: 'Human takeover requested.' };
+        }
+
+        async authByPhone(): Promise<{
+          status: 'failed';
+          error: string;
+          retryable: boolean;
+        }> {
+          return { status: 'failed', error: 'not configured in test', retryable: false };
+        }
+
+        async updatePhone(): Promise<{ status: 'success' }> {
+          return { status: 'success' };
+        }
+      }
+
+      const runtime = new CountingRuntime();
+      const classifier = new FakeResponseClassifier('enforce', 'respond');
+      const gateway = new FailingHistoryGateway();
+      const response = await new AgentService({
+        planStore: new InMemoryPlanStore(),
+        runtime,
+        providerGateway: new FakeGateway(),
+        agentConversationGateway: gateway,
+        responseClassifier: classifier,
+        promptLoader,
+        renderers,
+      }).handleTurn({
+        channel: 'terminal_whatsapp',
+        externalUserId: 'history-failure-user',
+        text: 'Necesito ayuda con un evento.',
+        messageId: 'history-failure-message',
+        receivedAt: '2026-07-21T10:00:00.000Z',
+        contactPhone: '+51 900000403',
+      });
+
+      expect(gateway.operations).toEqual(['get', 'log:inbound']);
+      expect(classifier.calls).toHaveLength(0);
+      expect(runtime.extractCalls).toBe(1);
+      expect(runtime.composeRequests).toHaveLength(1);
+      expect(runtime.extractRequests[0]?.messageContext).toMatchObject({
+        historyStatus: 'unavailable',
+        contextSource: 'local_plan',
+        recentMessages: [],
+      });
+      expect(runtime.composeRequests[0]?.messageContext).toEqual(
+        runtime.extractRequests[0]?.messageContext,
+      );
+      expect(response.trace.response_classifier).toMatchObject({
+        action: 'respond',
+        reason: 'conversation_context_unavailable',
+        would_suppress: false,
+        fallback_used: true,
+      });
+      expect(response.trace.token_usage.classifier).toBeNull();
+      expect(response.outbound.text).not.toBeNull();
+      expect(response.outbound.delivery.action).toBe('send');
     }
 
-    class FailingHistoryGateway implements AgentConversationGateway {
-      public readonly operations: string[] = [];
+    {
+      const runtime = new FakeRuntime();
+      const classifier = new FakeResponseClassifier('enforce', 'respond');
+      const gateway = new TrackingAgentConversationGateway([]);
+      const response = await new AgentService({
+        planStore: new InMemoryPlanStore(),
+        runtime,
+        providerGateway: new FakeGateway(),
+        agentConversationGateway: gateway,
+        responseClassifier: classifier,
+        promptLoader,
+        renderers,
+      }).handleTurn({
+        channel: 'terminal_whatsapp',
+        externalUserId: 'empty-history-user',
+        text: 'Hola, necesito ayuda con mi boda.',
+        messageId: 'empty-history-message',
+        receivedAt: '2026-07-21T10:00:00.000Z',
+        contactPhone: '+51 900000404',
+      });
 
-      async logMessage(): Promise<AgentGatewayResult> {
-        this.operations.push('log:inbound');
-        return { status: 'success', message: 'Message logged.' };
-      }
-
-      async getRecentMessages(): Promise<Exclude<AgentGatewayResult, { status: 'success' }>> {
-        this.operations.push('get');
-        return {
-          status: 'failed',
-          error: 'Conversation history is unavailable.',
-          retryable: true,
-        };
-      }
-
-      async requestHumanTakeover(): Promise<AgentGatewayResult> {
-        return { status: 'success', message: 'Human takeover requested.' };
-      }
-
-      async authByPhone(): Promise<{
-        status: 'failed';
-        error: string;
-        retryable: boolean;
-      }> {
-        return { status: 'failed', error: 'not configured in test', retryable: false };
-      }
-
-      async updatePhone(): Promise<{ status: 'success' }> {
-        return { status: 'success' };
-      }
+      expect(classifier.calls).toHaveLength(1);
+      expect(classifier.calls[0]?.messages).toEqual([]);
+      expect(runtime.composeRequests).toHaveLength(1);
+      expect(response.outbound.delivery.action).toBe('send');
     }
-
-    const runtime = new CountingRuntime();
-    const classifier = new FakeResponseClassifier('enforce', 'respond');
-    const gateway = new FailingHistoryGateway();
-    const response = await new AgentService({
-      planStore: new InMemoryPlanStore(),
-      runtime,
-      providerGateway: new FakeGateway(),
-      agentConversationGateway: gateway,
-      responseClassifier: classifier,
-      promptLoader,
-      renderers,
-    }).handleTurn({
-      channel: 'terminal_whatsapp',
-      externalUserId: 'history-failure-user',
-      text: 'Necesito ayuda con un evento.',
-      messageId: 'history-failure-message',
-      receivedAt: '2026-07-21T10:00:00.000Z',
-      contactPhone: '+51 900000403',
-    });
-
-    expect(gateway.operations).toEqual(['get', 'log:inbound']);
-    expect(classifier.calls).toHaveLength(0);
-    expect(runtime.extractCalls).toBe(1);
-    expect(runtime.composeRequests).toHaveLength(1);
-    expect(runtime.extractRequests[0]?.messageContext).toMatchObject({
-      historyStatus: 'unavailable',
-      contextSource: 'local_plan',
-      recentMessages: [],
-    });
-    expect(runtime.composeRequests[0]?.messageContext).toEqual(
-      runtime.extractRequests[0]?.messageContext,
-    );
-    expect(response.trace.response_classifier).toMatchObject({
-      action: 'respond',
-      reason: 'conversation_context_unavailable',
-      would_suppress: false,
-      fallback_used: true,
-    });
-    expect(response.trace.token_usage.classifier).toBeNull();
-    expect(response.outbound.text).not.toBeNull();
-    expect(response.outbound.delivery.action).toBe('send');
-  });
-
-  it('treats successful empty history as a valid first contact', async () => {
-    const runtime = new FakeRuntime();
-    const classifier = new FakeResponseClassifier('enforce', 'respond');
-    const gateway = new TrackingAgentConversationGateway([]);
-    const response = await new AgentService({
-      planStore: new InMemoryPlanStore(),
-      runtime,
-      providerGateway: new FakeGateway(),
-      agentConversationGateway: gateway,
-      responseClassifier: classifier,
-      promptLoader,
-      renderers,
-    }).handleTurn({
-      channel: 'terminal_whatsapp',
-      externalUserId: 'empty-history-user',
-      text: 'Hola, necesito ayuda con mi boda.',
-      messageId: 'empty-history-message',
-      receivedAt: '2026-07-21T10:00:00.000Z',
-      contactPhone: '+51 900000404',
-    });
-
-    expect(classifier.calls).toHaveLength(1);
-    expect(classifier.calls[0]?.messages).toEqual([]);
-    expect(runtime.composeRequests).toHaveLength(1);
-    expect(response.outbound.delivery.action).toBe('send');
   });
 
   it('offers human help after a second consecutive stalled turn and bypasses normal agent work', async () => {

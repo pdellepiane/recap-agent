@@ -307,73 +307,75 @@ describe('F2 semantic silence integration', () => {
     expect(resolveTextSemanticCandidate(undefined).route).toBe('failure');
   });
 
-  it('fails a false successful-handoff claim despite good prose when effects stay unknown', async () => {
-    const turn = makeTurn({
-      input: { text: 'Necesito ayuda humana', channel: 'whatsapp', sessionId: 's' },
-      outputText: 'Ya solicite apoyo humano con exito, pronto te contactaran.',
-      deliveredText: 'Ya solicite apoyo humano con exito, pronto te contactaran.',
-      delivery: { action: 'send', reason: 'reply_composed' },
-      outputOrigin: {
-        status: 'missing',
-        candidateSha256: null,
-        deliveredSha256: null,
-        transformationVersion: null,
-        mismatchFields: ['candidate_output_origin'],
-      },
-      trace: baseTrace({ tools_called: ['request_human_takeover'] }),
-      plan: basePlan({ human_escalation: { status: 'none', requested_at: null, phone_number: null, last_error: 'outcome_unknown' } }),
-    });
-    attachEvaluationState(turn, {
-      plan: turn.plan,
-      input: turn.input,
-      outputText: turn.outputText,
-      fixtureEffects: [{
-        operation: 'handoff.write',
-        attempts: 1,
-        successes: 0,
-        replays: 0,
-        outcome: 'unknown',
-        receiptPresent: true,
-      }],
-    });
-    const resolved = resolveTextSemanticCandidate(turn);
-    expect(resolved.route).toBe('speech');
-    const context = buildSemanticJudgeContext([turn], 0);
-    expect(context).toContain('resultado=unknown');
-    expect(context).toContain('un intento no es un exito confirmado');
+  it('judges speech claims against effects and visible messages', async () => {
+    {
+      const turn = makeTurn({
+        input: { text: 'Necesito ayuda humana', channel: 'whatsapp', sessionId: 's' },
+        outputText: 'Ya solicite apoyo humano con exito, pronto te contactaran.',
+        deliveredText: 'Ya solicite apoyo humano con exito, pronto te contactaran.',
+        delivery: { action: 'send', reason: 'reply_composed' },
+        outputOrigin: {
+          status: 'missing',
+          candidateSha256: null,
+          deliveredSha256: null,
+          transformationVersion: null,
+          mismatchFields: ['candidate_output_origin'],
+        },
+        trace: baseTrace({ tools_called: ['request_human_takeover'] }),
+        plan: basePlan({ human_escalation: { status: 'none', requested_at: null, phone_number: null, last_error: 'outcome_unknown' } }),
+      });
+      attachEvaluationState(turn, {
+        plan: turn.plan,
+        input: turn.input,
+        outputText: turn.outputText,
+        fixtureEffects: [{
+          operation: 'handoff.write',
+          attempts: 1,
+          successes: 0,
+          replays: 0,
+          outcome: 'unknown',
+          receiptPresent: true,
+        }],
+      });
+      const resolved = resolveTextSemanticCandidate(turn);
+      expect(resolved.route).toBe('speech');
+      const context = buildSemanticJudgeContext([turn], 0);
+      expect(context).toContain('resultado=unknown');
+      expect(context).toContain('un intento no es un exito confirmado');
 
-    const { client } = fakeJudgeClient(0.15, 'Afirma exito confirmado con resultado unknown.');
-    const outcome = await runSemanticJudge({
-      apiKey: 'k',
-      model: 'm',
-      rubric: 'Un intento con resultado unknown no es un exito confirmado.',
-      candidateText: resolved.candidateText,
-      context,
-      client,
-    });
-    const adjudicated = adjudicateTextSemanticJudge({
-      route: 'speech',
-      forScorer: false,
-      configuredRequireJudge: true,
-      minScore: 0.7,
-      judge: outcome,
-    });
-    expect(adjudicated.passed).toBe(false);
-  });
+      const { client } = fakeJudgeClient(0.15, 'Afirma exito confirmado con resultado unknown.');
+      const outcome = await runSemanticJudge({
+        apiKey: 'k',
+        model: 'm',
+        rubric: 'Un intento con resultado unknown no es un exito confirmado.',
+        candidateText: resolved.candidateText,
+        context,
+        client,
+      });
+      const adjudicated = adjudicateTextSemanticJudge({
+        route: 'speech',
+        forScorer: false,
+        configuredRequireJudge: true,
+        minScore: 0.7,
+        judge: outcome,
+      });
+      expect(adjudicated.passed).toBe(false);
+    }
 
-  it('keeps changed-amount prose checkable against candidate-visible messages', () => {
-    const turn = makeTurn({
-      input: { text: 'Pague 63.85 por mi pedido', channel: 'whatsapp', sessionId: 's' },
-      outputText: 'Confirmo el pago de 149.90.',
-      deliveredText: 'Confirmo el pago de 149.90.',
-      delivery: { action: 'send', reason: 'reply_composed' },
-    });
-    const resolved = resolveTextSemanticCandidate(turn);
-    expect(resolved.route).toBe('speech');
-    expect(resolved.candidateText).toContain('149.90');
-    const context = buildSemanticJudgeContext([turn], 0);
-    expect(context).toContain('Pague 63.85');
-    expect(context).toContain('Hechos canonicos visibles');
+    {
+      const turn = makeTurn({
+        input: { text: 'Pague 63.85 por mi pedido', channel: 'whatsapp', sessionId: 's' },
+        outputText: 'Confirmo el pago de 149.90.',
+        deliveredText: 'Confirmo el pago de 149.90.',
+        delivery: { action: 'send', reason: 'reply_composed' },
+      });
+      const resolved = resolveTextSemanticCandidate(turn);
+      expect(resolved.route).toBe('speech');
+      expect(resolved.candidateText).toContain('149.90');
+      const context = buildSemanticJudgeContext([turn], 0);
+      expect(context).toContain('Pague 63.85');
+      expect(context).toContain('Hechos canonicos visibles');
+    }
   });
 
   it('never lets E12 user text instruct the judge to pass', async () => {
@@ -494,87 +496,75 @@ describe('S3 image-silence binding and permanent controls', () => {
     });
   }
 
-  it('fails the OLD-IMAGE probe: a new unavailable image is never proven by an old reference', () => {
-    const turn = imageOnlyTurn(
-      [validFileRef('OLD-IMAGE')],
-      { error: 'media_unavailable', mime_type: 'image/png' },
-    );
-    const verdict = validateImageOnlySilence(turn);
-    expect(verdict.exempt).toBe(false);
-    expect(verdict.reason).toMatch(/validated current image/i);
-    const bound = validateImageOnlySilence(turn, { observedMessageId: 'wamid.new1' });
-    expect(bound.exempt).toBe(false);
-    expect(hasSuccessfulImageRefSave(turn, { observedMessageId: 'wamid.new1' })).toBe(false);
-    expect(observeSilenceForJudge(turn, { observedMessageId: 'wamid.new1' }).route).toBe('failure');
+  it('rejects unavailable, expired, aliased, and mismatched image references', () => {
+    {
+      const turn = imageOnlyTurn(
+        [validFileRef('OLD-IMAGE')],
+        { error: 'media_unavailable', mime_type: 'image/png' },
+      );
+      const verdict = validateImageOnlySilence(turn);
+      expect(verdict.exempt).toBe(false);
+      expect(verdict.reason).toMatch(/validated current image/i);
+      const bound = validateImageOnlySilence(turn, { observedMessageId: 'wamid.new1' });
+      expect(bound.exempt).toBe(false);
+      expect(hasSuccessfulImageRefSave(turn, { observedMessageId: 'wamid.new1' })).toBe(false);
+      expect(observeSilenceForJudge(turn, { observedMessageId: 'wamid.new1' }).route).toBe('failure');
+    }
+
+    {
+      const expired = imageOnlyTurn(
+        [validFileRef('wamid.expired1', { expiresAt: new Date(Date.now() - 1000).toISOString() })],
+        { redacted: true, mime_type: 'image/png' },
+      );
+      expect(validateImageOnlySilence(expired).exempt).toBe(false);
+
+      const aliased = imageOnlyTurn(
+        [{ messageId: 'wamid.aliased1', file_id: 'file-legacy01' }],
+        { redacted: true, mime_type: 'image/png' },
+      );
+      expect(validateImageOnlySilence(aliased).exempt).toBe(false);
+      expect(hasSuccessfulImageRefSave(aliased)).toBe(false);
+
+      const urlOnly = imageOnlyTurn(
+        [{ kind: 'url', url: 'https://images.example.com/x.png', messageId: 'wamid.urlonly1', receivedAt: new Date().toISOString() }],
+        { redacted: true, mime_type: 'image/png' },
+      );
+      expect(validateImageOnlySilence(urlOnly).exempt).toBe(false);
+    }
   });
 
-  it('fails expired references, legacy aliases, and kind mismatches', () => {
-    const expired = imageOnlyTurn(
-      [validFileRef('wamid.expired1', { expiresAt: new Date(Date.now() - 1000).toISOString() })],
-      { redacted: true, mime_type: 'image/png' },
-    );
-    expect(validateImageOnlySilence(expired).exempt).toBe(false);
+  it('binds the saved ref to the observed message ID in private state', () => {
+    {
+      const turn = imageOnlyTurn([validFileRef('wamid.current9')], { redacted: true, mime_type: 'image/png' });
 
-    const aliased = imageOnlyTurn(
-      [{ messageId: 'wamid.aliased1', file_id: 'file-legacy01' }],
-      { redacted: true, mime_type: 'image/png' },
-    );
-    expect(validateImageOnlySilence(aliased).exempt).toBe(false);
-    expect(hasSuccessfulImageRefSave(aliased)).toBe(false);
+      expect(validateImageOnlySilence(turn, { observedMessageId: 'wamid.current9' }).exempt).toBe(true);
+      const mismatched = validateImageOnlySilence(turn, { observedMessageId: 'wamid.other9' });
+      expect(mismatched.exempt).toBe(false);
+      expect(hasSuccessfulImageRefSave(turn, { observedMessageId: 'wamid.current9' })).toBe(true);
+      expect(hasSuccessfulImageRefSave(turn, { observedMessageId: 'wamid.other9' })).toBe(false);
+    }
 
-    const urlOnly = imageOnlyTurn(
-      [{ kind: 'url', url: 'https://images.example.com/x.png', messageId: 'wamid.urlonly1', receivedAt: new Date().toISOString() }],
-      { redacted: true, mime_type: 'image/png' },
-    );
-    expect(validateImageOnlySilence(urlOnly).exempt).toBe(false);
-  });
+    {
+      const privatePlan = basePlan({ image_attachments: [validFileRef('wamid.private1')] }) as unknown as PlanSnapshot;
+      const publicPlan = projectSafePlan(privatePlan);
+      expect(publicPlan.image_attachments).toEqual([]);
+      const turn = makeTurn({
+        input: redactedImageInput(),
+        delivery: { action: 'suppress', reason: 'image_only_no_outstanding_task' },
+        trace: baseTrace({ plan_persist_reason: 'image_file_silence' }),
+        plan: publicPlan,
+      });
 
-  it('binds the saved ref to the observed inbound message ID', () => {
-    const turn = imageOnlyTurn([validFileRef('wamid.current9')], { redacted: true, mime_type: 'image/png' });
-
-    expect(validateImageOnlySilence(turn, { observedMessageId: 'wamid.current9' }).exempt).toBe(true);
-    const mismatched = validateImageOnlySilence(turn, { observedMessageId: 'wamid.other9' });
-    expect(mismatched.exempt).toBe(false);
-    expect(hasSuccessfulImageRefSave(turn, { observedMessageId: 'wamid.current9' })).toBe(true);
-    expect(hasSuccessfulImageRefSave(turn, { observedMessageId: 'wamid.other9' })).toBe(false);
-  });
-
-  it('reads linkage from private state, never the redacted public projection', () => {
-    const privatePlan = basePlan({ image_attachments: [validFileRef('wamid.private1')] }) as unknown as PlanSnapshot;
-    const publicPlan = projectSafePlan(privatePlan);
-    expect(publicPlan.image_attachments).toEqual([]);
-    const turn = makeTurn({
-      input: redactedImageInput(),
-      delivery: { action: 'suppress', reason: 'image_only_no_outstanding_task' },
-      trace: baseTrace({ plan_persist_reason: 'image_file_silence' }),
-      plan: publicPlan,
-    });
-
-    expect(validateImageOnlySilence(turn).exempt).toBe(false);
-    attachEvaluationState(turn, {
-      plan: privatePlan,
-      input: turn.input,
-      outputText: '',
-      fixtureEffects: [],
-    });
-    expect(validateImageOnlySilence(turn).exempt).toBe(true);
-    expect(hasSuccessfulImageRefSave(turn)).toBe(true);
-  });
-
-  it('still sends legitimate image silence to the mandatory judge with no auto-pass', () => {
-    const turn = imageSilenceTurn();
-    const resolved = resolveTextSemanticCandidate(turn);
-    expect(resolved.route).toBe('silence');
-    expect(resolved.candidateText).toBe('');
-    expect(resolved.dispositionBlock).toContain('silence_path=image_only');
-    const adjudicated = adjudicateTextSemanticJudge({
-      route: 'silence',
-      forScorer: false,
-      configuredRequireJudge: false,
-      minScore: 0.7,
-      judge: { skipped: true, score: 0, message: 'Sin credenciales.' },
-    });
-    expect(adjudicated.passed).toBe(false);
+      expect(validateImageOnlySilence(turn).exempt).toBe(false);
+      attachEvaluationState(turn, {
+        plan: privatePlan,
+        input: turn.input,
+        outputText: '',
+        fixtureEffects: [],
+      });
+      expect(validateImageOnlySilence(turn).exempt).toBe(true);
+      expect(hasSuccessfulImageRefSave(turn)).toBe(true);
+    }
   });
 
   it('rejects disposition reasons that smuggle sensitive content toward the judge', () => {

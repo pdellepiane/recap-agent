@@ -16,8 +16,20 @@ describe('T6 deterministic twins', () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
 
-  it('keeps active pending order and active cart distinct for Alex same-event', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, {
+  function ordersGateway(payload: unknown): HttpAgentConversationGateway {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, payload)));
+    return new HttpAgentConversationGateway({
+      baseUrl: 'https://api.example.test/api/agent',
+      apiKey: 'k',
+      timeoutMs: 1000,
+      maxRetries: 0,
+      messageLoggingEnabled: false,
+    });
+  }
+
+  it('parses order partitions and carts faithfully across account shapes', async () => {
+    // Alex same-event: active pending order and active cart stay distinct.
+    const alex = await ordersGateway({
       status: true,
       data: {
         pending_orders: [{
@@ -45,30 +57,20 @@ describe('T6 deterministic twins', () => {
       },
       errors: null,
       error: null,
-    }));
-    vi.stubGlobal('fetch', fetchMock);
-    const gateway = new HttpAgentConversationGateway({
-      baseUrl: 'https://api.example.test/api/agent',
-      apiKey: 'k',
-      timeoutMs: 1000,
-      maxRetries: 0,
-      messageLoggingEnabled: false,
-    });
-    const result = await gateway.getGuestOrdersByPhone({ phone_extension: '+51', phone_number: '982340340' });
-    expect(result.status).toBe('success');
-    if (result.status !== 'success') throw new Error('expected success');
-    expect(result.orderPartitions!.pending).toHaveLength(1);
-    expect(result.carts!).toHaveLength(1);
-    expect(result.orderPartitions!.pending[0].orderId).toBe('ORD-PENDING-ALEX');
-    expect(result.carts![0].cartId).toBe('CART-ALEX');
-    expect(result.carts![0].status).toBe('active');
-    expect(result.carts![0].wasAbandoned).toBe(false);
+    }).getGuestOrdersByPhone({ phone_extension: '+51', phone_number: '982340340' });
+    expect(alex.status).toBe('success');
+    if (alex.status !== 'success') throw new Error('expected success');
+    expect(alex.orderPartitions!.pending).toHaveLength(1);
+    expect(alex.carts!).toHaveLength(1);
+    expect(alex.orderPartitions!.pending[0].orderId).toBe('ORD-PENDING-ALEX');
+    expect(alex.carts![0].cartId).toBe('CART-ALEX');
+    expect(alex.carts![0].status).toBe('active');
+    expect(alex.carts![0].wasAbandoned).toBe(false);
     // ensure purchases do not flatten cart into order
-    expect(result.purchases).toHaveLength(1);
-  });
+    expect(alex.purchases).toHaveLength(1);
 
-  it('recognizes cart-only abandoned coverage for Sonia without purchase_not_found', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, {
+    // Sonia: cart-only abandoned coverage without purchase_not_found.
+    const sonia = await ordersGateway({
       status: true,
       data: {
         pending_orders: [],
@@ -87,26 +89,16 @@ describe('T6 deterministic twins', () => {
       },
       errors: null,
       error: null,
-    }));
-    vi.stubGlobal('fetch', fetchMock);
-    const gateway = new HttpAgentConversationGateway({
-      baseUrl: 'https://api.example.test/api/agent',
-      apiKey: 'k',
-      timeoutMs: 1000,
-      maxRetries: 0,
-      messageLoggingEnabled: false,
-    });
-    const result = await gateway.getGuestOrdersByPhone({ phone_extension: '+51', phone_number: '965765765' });
-    expect(result.status).toBe('success');
-    if (result.status !== 'success') throw new Error('expected success');
-    expect(result.orderPartitions!.pending).toHaveLength(0);
-    expect(result.orderPartitions!.completed).toHaveLength(0);
-    expect(result.carts![0].wasAbandoned).toBe(true);
-    expect(result.carts![0].eventName).toBe('Carlos and Adriana');
-  });
+    }).getGuestOrdersByPhone({ phone_extension: '+51', phone_number: '965765765' });
+    expect(sonia.status).toBe('success');
+    if (sonia.status !== 'success') throw new Error('expected success');
+    expect(sonia.orderPartitions!.pending).toHaveLength(0);
+    expect(sonia.orderPartitions!.completed).toHaveLength(0);
+    expect(sonia.carts![0].wasAbandoned).toBe(true);
+    expect(sonia.carts![0].eventName).toBe('Carlos and Adriana');
 
-  it('parses current pending Isa and Lu over historical declined AMORCITOS', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, {
+    // Isa and Lu: current pending over historical declined AMORCITOS.
+    const isalu = await ordersGateway({
       status: true,
       data: {
         pending_orders: [{
@@ -141,29 +133,19 @@ describe('T6 deterministic twins', () => {
       },
       errors: null,
       error: null,
-    }));
-    vi.stubGlobal('fetch', fetchMock);
-    const gateway = new HttpAgentConversationGateway({
-      baseUrl: 'https://api.example.test/api/agent',
-      apiKey: 'k',
-      timeoutMs: 1000,
-      maxRetries: 0,
-      messageLoggingEnabled: false,
-    });
-    const result = await gateway.getGuestOrdersByPhone({ phone_extension: '+51', phone_number: '987554554' });
-    expect(result.status).toBe('success');
-    if (result.status !== 'success') throw new Error('expected success');
-    expect(result.orderPartitions!.pending[0].eventName).toBe('Isa and Lu');
-    expect(result.orderPartitions!.completed[0].eventName).toBe('AMORCITOS_WEDDING');
-    expect(result.carts![0].eventName).toBe('Isa and Lu');
+    }).getGuestOrdersByPhone({ phone_extension: '+51', phone_number: '987554554' });
+    expect(isalu.status).toBe('success');
+    if (isalu.status !== 'success') throw new Error('expected success');
+    expect(isalu.orderPartitions!.pending[0].eventName).toBe('Isa and Lu');
+    expect(isalu.orderPartitions!.completed[0].eventName).toBe('AMORCITOS_WEDDING');
+    expect(isalu.carts![0].eventName).toBe('Isa and Lu');
     // currency null preserved
-    expect(result.orderPartitions!.pending[0].currency).toBeNull();
+    expect(isalu.orderPartitions!.pending[0].currency).toBeNull();
     // Server-provided timestamp is preserved byte-for-byte.
-    expect(result.orderPartitions!.pending[0].createdAt).toBe('2026-08-28 14:00:00');
-  });
+    expect(isalu.orderPartitions!.pending[0].createdAt).toBe('2026-08-28 14:00:00');
 
-  it('keeps pending Alejandratotal without inventing currency for Luis', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, {
+    // Alejandra: pending total without inventing currency.
+    const alejandra = await ordersGateway({
       status: true,
       data: {
         pending_orders: [{
@@ -191,25 +173,15 @@ describe('T6 deterministic twins', () => {
       },
       errors: null,
       error: null,
-    }));
-    vi.stubGlobal('fetch', fetchMock);
-    const gateway = new HttpAgentConversationGateway({
-      baseUrl: 'https://api.example.test/api/agent',
-      apiKey: 'k',
-      timeoutMs: 1000,
-      maxRetries: 0,
-      messageLoggingEnabled: false,
-    });
-    const result = await gateway.getGuestOrdersByPhone({ phone_extension: '+51', phone_number: '938389389' });
-    expect(result.status).toBe('success');
-    if (result.status !== 'success') throw new Error('expected success');
-    expect(result.orderPartitions!.pending[0].grandTotal).toBe(227.76);
-    expect(result.orderPartitions!.pending[0].currency).toBeNull();
-    expect(result.orderPartitions!.pending[0].paymentMethod).toBe('Yape');
-  });
+    }).getGuestOrdersByPhone({ phone_extension: '+51', phone_number: '938389389' });
+    expect(alejandra.status).toBe('success');
+    if (alejandra.status !== 'success') throw new Error('expected success');
+    expect(alejandra.orderPartitions!.pending[0].grandTotal).toBe(227.76);
+    expect(alejandra.orderPartitions!.pending[0].currency).toBeNull();
+    expect(alejandra.orderPartitions!.pending[0].paymentMethod).toBe('Yape');
 
-  it('selects current pending Samuel Josue over historical approved Josue y Paola', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, {
+    // Samuel Josue: current pending over historical approved Josue y Paola.
+    const samuel = await ordersGateway({
       status: true,
       data: {
         pending_orders: [{
@@ -232,20 +204,11 @@ describe('T6 deterministic twins', () => {
       },
       errors: null,
       error: null,
-    }));
-    vi.stubGlobal('fetch', fetchMock);
-    const gateway = new HttpAgentConversationGateway({
-      baseUrl: 'https://api.example.test/api/agent',
-      apiKey: 'k',
-      timeoutMs: 1000,
-      maxRetries: 0,
-      messageLoggingEnabled: false,
-    });
-    const result = await gateway.getGuestOrdersByPhone({ phone_extension: '+51', phone_number: '981056171' });
-    expect(result.status).toBe('success');
-    if (result.status !== 'success') throw new Error('expected success');
-    expect(result.orderPartitions!.pending[0].eventName).toBe('Samuel Josue');
-    expect(result.orderPartitions!.completed[0].eventName).toBe('Josue y Paola');
+    }).getGuestOrdersByPhone({ phone_extension: '+51', phone_number: '981056171' });
+    expect(samuel.status).toBe('success');
+    if (samuel.status !== 'success') throw new Error('expected success');
+    expect(samuel.orderPartitions!.pending[0].eventName).toBe('Samuel Josue');
+    expect(samuel.orderPartitions!.completed[0].eventName).toBe('Josue y Paola');
   });
 
   it('preserves offset-less paidAt supplied by the server', async () => {
@@ -286,50 +249,28 @@ describe('T6 deterministic twins', () => {
     expect(result.purchases[0].payment?.paidAt).toBe('2026-08-30 21:31:27');
   });
 
-  it('registers single plus_one yes with saved true', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, {
+  it('parses RSVP mutation outcomes honestly', async () => {
+    await expect(ordersGateway({
       status: true,
       data: { plus_one: { saved: true, response: 'yes', reason: null }, guest_id: 481 },
       errors: null,
       error: null,
-    }));
-    vi.stubGlobal('fetch', fetchMock);
-    const gateway = new HttpAgentConversationGateway({
-      baseUrl: 'https://api.example.test/api/agent',
-      apiKey: 'k',
-      timeoutMs: 1000,
-      maxRetries: 0,
-      messageLoggingEnabled: false,
-    });
-    await expect(gateway.guestRsvp({ phone_extension: '+51', phone_number: '942633292', guest_id: 481, plus_one_response: 'yes' })).resolves.toEqual(expect.objectContaining({
+    }).guestRsvp({ phone_extension: '+51', phone_number: '942633292', guest_id: 481, plus_one_response: 'yes' })).resolves.toEqual(expect.objectContaining({
       status: 'responded',
       plusOne: { saved: true, response: 'yes', reason: null },
     }));
-  });
 
-  it('reports saved false honestly without false success for not eligible', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, {
+    await expect(ordersGateway({
       status: true,
       data: { plus_one: { saved: false, response: 'yes', reason: 'not_eligible' } },
       errors: null,
       error: null,
-    }));
-    vi.stubGlobal('fetch', fetchMock);
-    const gateway = new HttpAgentConversationGateway({
-      baseUrl: 'https://api.example.test/api/agent',
-      apiKey: 'k',
-      timeoutMs: 1000,
-      maxRetries: 0,
-      messageLoggingEnabled: false,
-    });
-    await expect(gateway.guestRsvp({ phone_extension: '+51', phone_number: '942633292', guest_id: 481, plus_one_response: 'yes' })).resolves.toEqual(expect.objectContaining({
+    }).guestRsvp({ phone_extension: '+51', phone_number: '942633292', guest_id: 481, plus_one_response: 'yes' })).resolves.toEqual(expect.objectContaining({
       status: 'responded',
       plusOne: { saved: false, response: 'yes', reason: 'not_eligible' },
     }));
-  });
 
-  it('returns combined attending plus plus_one yes in one mutation', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, {
+    const combined = await ordersGateway({
       status: true,
       data: {
         rsvp: { guest_id: 481, will_attend: true, event_name: 'Michelle & Jorge' },
@@ -337,38 +278,18 @@ describe('T6 deterministic twins', () => {
       },
       errors: null,
       error: null,
-    }));
-    vi.stubGlobal('fetch', fetchMock);
-    const gateway = new HttpAgentConversationGateway({
-      baseUrl: 'https://api.example.test/api/agent',
-      apiKey: 'k',
-      timeoutMs: 1000,
-      maxRetries: 0,
-      messageLoggingEnabled: false,
-    });
-    const result = await gateway.guestRsvp({ phone_extension: '+51', phone_number: '942633292', action: 'attending', guest_id: 481, plus_one_response: 'yes' });
-    expect(result.status).toBe('responded');
-    if (result.status !== 'responded') throw new Error('expected responded');
-    expect(result.willAttend).toBe(true);
-    expect(result.plusOne?.saved).toBe(true);
-  });
+    }).guestRsvp({ phone_extension: '+51', phone_number: '942633292', action: 'attending', guest_id: 481, plus_one_response: 'yes' });
+    expect(combined.status).toBe('responded');
+    if (combined.status !== 'responded') throw new Error('expected responded');
+    expect(combined.willAttend).toBe(true);
+    expect(combined.plusOne?.saved).toBe(true);
 
-  it('requires event selection when multiple pending invitations exist for plus_one', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, {
+    await expect(ordersGateway({
       status: true,
       data: { pending_guests: [{ guest_id: 481, event_name: 'Evento A' }, { guest_id: 482, event_name: 'Evento B' }] },
       code: 'multiple_pending',
       error: 'Hay varias invitaciones pendientes.',
-    }));
-    vi.stubGlobal('fetch', fetchMock);
-    const gateway = new HttpAgentConversationGateway({
-      baseUrl: 'https://api.example.test/api/agent',
-      apiKey: 'k',
-      timeoutMs: 1000,
-      maxRetries: 0,
-      messageLoggingEnabled: false,
-    });
-    await expect(gateway.guestRsvp({ phone_extension: '+51', phone_number: '941438999', action: 'attending' })).resolves.toEqual(expect.objectContaining({
+    }).guestRsvp({ phone_extension: '+51', phone_number: '941438999', action: 'attending' })).resolves.toEqual(expect.objectContaining({
       status: 'multiple_pending',
     }));
   });

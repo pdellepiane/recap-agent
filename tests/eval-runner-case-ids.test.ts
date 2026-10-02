@@ -9,19 +9,18 @@ describe('eval runner caseIds filtering', () => {
   const evalsDir = path.resolve(process.cwd(), 'evals');
   const outputDir = path.resolve(process.cwd(), '.eval-runs-test');
 
-  it('returns all cases when no filter is set', async () => {
-    const result = await runEvaluation({
+  // Catalog-loading test: needs headroom under full-suite parallel load (trips the 5s default).
+  it('selects cases by caseIds: single, multiple, unknown, and empty filters', { timeout: 30_000 }, async () => {
+    const unfiltered = await runEvaluation({
       evalsDir,
       outputDir,
       suite: 'smoke',
       target: 'offline',
       dryRun: true,
     });
-    expect(result.report.totalCases).toBe(3);
-  });
+    expect(unfiltered.report.totalCases).toBe(3);
 
-  it('filters by single caseIds entry', async () => {
-    const result = await runEvaluation({
+    const single = await runEvaluation({
       evalsDir,
       outputDir,
       suite: 'smoke',
@@ -29,12 +28,10 @@ describe('eval runner caseIds filtering', () => {
       dryRun: true,
       caseIds: ['selection.choose_edo_from_shortlist'],
     });
-    expect(result.report.totalCases).toBe(1);
-    expect(result.report.results[0]?.caseId).toBe('selection.choose_edo_from_shortlist');
-  });
+    expect(single.report.totalCases).toBe(1);
+    expect(single.report.results[0]?.caseId).toBe('selection.choose_edo_from_shortlist');
 
-  it('filters by repeatable multiple caseIds', async () => {
-    const result = await runEvaluation({
+    const multiple = await runEvaluation({
       evalsDir,
       outputDir,
       suite: 'smoke',
@@ -42,13 +39,11 @@ describe('eval runner caseIds filtering', () => {
       dryRun: true,
       caseIds: ['selection.choose_edo_from_shortlist', 'domain.guest_range_boundary_100'],
     });
-    expect(result.report.totalCases).toBe(2);
-    const ids = result.report.results.map((entry) => entry.caseId).sort();
+    expect(multiple.report.totalCases).toBe(2);
+    const ids = multiple.report.results.map((entry) => entry.caseId).sort();
     expect(ids).toEqual(['domain.guest_range_boundary_100', 'selection.choose_edo_from_shortlist']);
-  });
 
-  it('returns zero cases for unknown caseId (exit contract)', async () => {
-    const result = await runEvaluation({
+    const unknown = await runEvaluation({
       evalsDir,
       outputDir,
       suite: 'live_behavior_regression',
@@ -56,16 +51,26 @@ describe('eval runner caseIds filtering', () => {
       dryRun: true,
       caseIds: ['does_not_exist_unknown_case'],
     });
-    expect(result.report.totalCases).toBe(0);
+    expect(unknown.report.totalCases).toBe(0);
     // The CLI exit contract treats totalCases===0 as failure (exit 1).
     // This test proves the runner contract that enables that gate.
-    const shouldFail = result.report.totalCases === 0;
+    const shouldFail = unknown.report.totalCases === 0;
     expect(shouldFail).toBe(true);
+
+    const empty = await runEvaluation({
+      evalsDir,
+      outputDir,
+      suite: 'smoke',
+      target: 'offline',
+      dryRun: true,
+      caseIds: [],
+    });
+    expect(empty.report.totalCases).toBe(3);
   });
 
-  it('intersects caseIds with suite (case not in suite yields filtered intersection)', async () => {
+  it('intersects caseIds with the suite, dropping outside-suite cases', async () => {
     // One id belongs to smoke, one belongs to live_behavior_regression but not smoke.
-    const result = await runEvaluation({
+    const partial = await runEvaluation({
       evalsDir,
       outputDir,
       suite: 'smoke',
@@ -73,12 +78,10 @@ describe('eval runner caseIds filtering', () => {
       dryRun: true,
       caseIds: ['selection.choose_edo_from_shortlist', 'live_behavior.rsvp_cristian_phone_enriched_confirmation'],
     });
-    expect(result.report.totalCases).toBe(1);
-    expect(result.report.results[0]?.caseId).toBe('selection.choose_edo_from_shortlist');
-  });
+    expect(partial.report.totalCases).toBe(1);
+    expect(partial.report.results[0]?.caseId).toBe('selection.choose_edo_from_shortlist');
 
-  it('returns zero when caseIds contains only outside-suite cases', async () => {
-    const result = await runEvaluation({
+    const outside = await runEvaluation({
       evalsDir,
       outputDir,
       suite: 'smoke',
@@ -86,11 +89,11 @@ describe('eval runner caseIds filtering', () => {
       dryRun: true,
       caseIds: ['live_behavior.rsvp_cristian_phone_enriched_confirmation'],
     });
-    expect(result.report.totalCases).toBe(0);
+    expect(outside.report.totalCases).toBe(0);
   });
 
-  it('preserves existing single caseId behavior', async () => {
-    const result = await runEvaluation({
+  it('preserves single caseId behavior and intersects it with caseIds', async () => {
+    const single = await runEvaluation({
       evalsDir,
       outputDir,
       suite: 'smoke',
@@ -98,11 +101,9 @@ describe('eval runner caseIds filtering', () => {
       dryRun: true,
       caseId: 'selection.choose_edo_from_shortlist',
     });
-    expect(result.report.totalCases).toBe(1);
-  });
+    expect(single.report.totalCases).toBe(1);
 
-  it('caseId and caseIds intersect when both are set', async () => {
-    const result = await runEvaluation({
+    const both = await runEvaluation({
       evalsDir,
       outputDir,
       suite: 'smoke',
@@ -111,19 +112,7 @@ describe('eval runner caseIds filtering', () => {
       caseId: 'selection.choose_edo_from_shortlist',
       caseIds: ['selection.choose_edo_from_shortlist', 'domain.guest_range_boundary_100'],
     });
-    expect(result.report.totalCases).toBe(1);
-  });
-
-  it('empty caseIds behaves like no filter (full suite)', async () => {
-    const result = await runEvaluation({
-      evalsDir,
-      outputDir,
-      suite: 'smoke',
-      target: 'offline',
-      dryRun: true,
-      caseIds: [],
-    });
-    expect(result.report.totalCases).toBe(3);
+    expect(both.report.totalCases).toBe(1);
   });
 
   it('selects the complete current manifest when unfiltered, never a hardcoded count', async () => {

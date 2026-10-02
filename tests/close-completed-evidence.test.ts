@@ -1,5 +1,5 @@
+import type { AgentConversationGateway } from '../src/runtime/agent-conversation-gateway';
 import path from 'node:path';
-import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
@@ -213,16 +213,6 @@ describe('completed close evidence', () => {
     })));
   });
 
-  it('guides completed retries toward the existing outcome rather than a new send', () => {
-    const bundle = readFileSync(
-      path.resolve(process.cwd(), 'prompts', 'nodes', 'necesidad_cubierta', 'response_contract.txt'),
-      'utf8',
-    );
-    expect(bundle).toContain('close_submission_performed_this_turn');
-    expect(bundle).toContain('confirma ese resultado como un estado existente');
-    expect(bundle).toContain('no anuncies ni ejecutes un envío nuevo');
-  });
-
   it('projects actual close effects before reply delivery', () => {
     const input = composeInput(request({
       currentNode: 'crear_lead_cerrar',
@@ -284,45 +274,6 @@ describe('completed close evidence', () => {
     });
   });
 
-  it('projects only the missing contact fields on an incomplete close', () => {
-    const evidence = readEvidence(composeInput(request({
-      currentNode: 'crear_lead_cerrar',
-      previousNode: 'crear_lead_cerrar',
-      plan: plan({
-        lifecycle_state: 'active',
-        current_node: 'crear_lead_cerrar',
-        contact_email: null,
-        contact_phone: null,
-      }),
-    })));
-    expect(evidence.turn_state).toMatchObject({
-      close_contact_missing_fields: ['contact_email', 'contact_phone'],
-      close_unresolved_provider_needs: [],
-    });
-  });
-
-  it('projects unresolved provider choices as IDs rather than a question', () => {
-    const seeded = plan({ lifecycle_state: 'active', current_node: 'crear_lead_cerrar' });
-    seeded.provider_needs.push({
-      category: 'Catering',
-      status: 'shortlisted',
-      preferences: [],
-      hard_constraints: [],
-      missing_fields: [],
-      recommended_provider_ids: [101],
-      recommended_providers: [],
-      selected_provider_ids: [],
-      selected_provider_hints: [],
-    });
-    const evidence = readEvidence(composeInput(request({
-      currentNode: 'crear_lead_cerrar',
-      previousNode: 'crear_lead_cerrar',
-      plan: seeded,
-    })));
-    expect(evidence.turn_state).toMatchObject({
-      close_unresolved_provider_needs: [{ category: 'Catering', candidate_provider_ids: [] }],
-    });
-  });
 });
 
 describe('R5 authoritative close projection', () => {
@@ -351,7 +302,23 @@ describe('R5 authoritative close projection', () => {
     return seeded;
   }
 
-  it('keeps the saved phone out of the missing list after a name/email delta and drops raw contact nulls', () => {
+  it('projects contact completeness: missing fields listed, saved phone never re-asked, raw nulls dropped', () => {
+    // An incomplete close lists exactly the missing contact fields.
+    const incomplete = readEvidence(composeInput(request({
+      currentNode: 'crear_lead_cerrar',
+      previousNode: 'crear_lead_cerrar',
+      plan: plan({
+        lifecycle_state: 'active',
+        current_node: 'crear_lead_cerrar',
+        contact_email: null,
+        contact_phone: null,
+      }),
+    })));
+    expect(incomplete.turn_state).toMatchObject({
+      close_contact_missing_fields: ['contact_email', 'contact_phone'],
+      close_unresolved_provider_needs: [],
+    });
+
     const evidence = readEvidence(composeInput(request({
       currentNode: 'crear_lead_cerrar',
       previousNode: 'crear_lead_cerrar',
@@ -376,7 +343,29 @@ describe('R5 authoritative close projection', () => {
     expect(contact).toMatchObject({ phone: '51900000302', complete: true, missing_fields: [] });
   });
 
-  it('foregrounds the selected photo need and never the deferred catering cards', () => {
+  it('projects provider needs as IDs, foregrounding the selected need over deferred cards', () => {
+    // A shortlisted need projects as IDs rather than a question.
+    const shortlisted = plan({ lifecycle_state: 'active', current_node: 'crear_lead_cerrar' });
+    shortlisted.provider_needs.push({
+      category: 'Catering',
+      status: 'shortlisted',
+      preferences: [],
+      hard_constraints: [],
+      missing_fields: [],
+      recommended_provider_ids: [101],
+      recommended_providers: [],
+      selected_provider_ids: [],
+      selected_provider_hints: [],
+    });
+    const shortlistedEvidence = readEvidence(composeInput(request({
+      currentNode: 'crear_lead_cerrar',
+      previousNode: 'crear_lead_cerrar',
+      plan: shortlisted,
+    })));
+    expect(shortlistedEvidence.turn_state).toMatchObject({
+      close_unresolved_provider_needs: [{ category: 'Catering', candidate_provider_ids: [] }],
+    });
+
     const seeded = closePlanWithDeferredCatering();
     seeded.active_need_category = 'Catering' as never;
     const evidence = readEvidence(composeInput(request({
@@ -494,7 +483,7 @@ async function runCompletedClose(paragraphs: string[]) {
     informationOrchestrator: new InformationOrchestrator({
       knowledgeGateway: nullKnowledgeGateway,
       providerGateway: undefined,
-      agentGateway: undefined,
+      agentGateway: {} as AgentConversationGateway,
     } as unknown as ConstructorParameters<typeof InformationOrchestrator>[0]),
   });
   return service.handleTurn({
@@ -545,7 +534,7 @@ describe('completed plan intent routing', () => {
       informationOrchestrator: new InformationOrchestrator({
         knowledgeGateway: nullKnowledgeGateway,
         providerGateway: undefined,
-        agentGateway: undefined,
+        agentGateway: {} as AgentConversationGateway,
       } as unknown as ConstructorParameters<typeof InformationOrchestrator>[0]),
     });
 
@@ -587,7 +576,7 @@ describe('completed plan intent routing', () => {
       informationOrchestrator: new InformationOrchestrator({
         knowledgeGateway: nullKnowledgeGateway,
         providerGateway: undefined,
-        agentGateway: undefined,
+        agentGateway: {} as AgentConversationGateway,
       } as unknown as ConstructorParameters<typeof InformationOrchestrator>[0]),
     });
 

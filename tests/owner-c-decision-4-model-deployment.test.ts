@@ -75,10 +75,9 @@ describe('Owner C decision 4 model/deployment contracts', () => {
     vi.unstubAllGlobals();
   });
 
-  it('targets gpt-6-luna for the application and pins the first comparison judge to gpt-5.6-luna', () => {
+  it('targets gpt-6-luna for the application and the default judge', () => {
     expect(DEFAULT_GPT_TEXT_MODEL).toBe('gpt-6-luna');
-    expect(DEFAULT_EVAL_JUDGE_MODEL).toBe('gpt-5.6-luna');
-    expect(DEFAULT_EVAL_JUDGE_MODEL).not.toBe(DEFAULT_GPT_TEXT_MODEL);
+    expect(DEFAULT_EVAL_JUDGE_MODEL).toBe('gpt-6-luna');
   });
 
   it('resolves reply, extractor, and classifier models independently', () => {
@@ -116,16 +115,13 @@ describe('Owner C decision 4 model/deployment contracts', () => {
     expect(handler).toContain('model: config.openAi.models.responseClassifier');
   });
 
-  it('keeps low reasoning and low verbosity for gpt-6-luna extractor and reply settings', () => {
+  it('keeps low reasoning and verbosity for known families without touching unknown ones', () => {
     expect(buildSettingsFor('gpt-6-luna')).toMatchObject({
       promptCacheOptions: { mode: 'implicit', ttl: '30m' },
       reasoning: { effort: 'low' },
       text: { verbosity: 'low' },
       store: true,
     });
-  });
-
-  it('preserves low reasoning for the gpt-5 family without touching unknown families', () => {
     expect(buildSettingsFor('gpt-5.6-luna')).toMatchObject({
       reasoning: { effort: 'low' },
       text: { verbosity: 'low' },
@@ -174,10 +170,10 @@ describe('Owner C decision 4 model/deployment contracts', () => {
     expect(models.reply).toBe('gpt-6-luna');
     expect(models.extractor).toBe('gpt-6-luna');
     expect(models.classifier).toBe('gpt-6-luna');
-    expect(models.judgeModels).toEqual(['gpt-5.6-luna']);
+    expect(models.judgeModels).toEqual(['gpt-6-luna']);
   });
 
-  it('defaults all three CloudFormation model parameters to gpt-6-luna', () => {
+  it('defaults all three model parameters to gpt-6-luna in CloudFormation and development deployment', () => {
     const template = fs.readFileSync(
       path.resolve(process.cwd(), 'infra/cloudformation/stack.yaml'),
       'utf8',
@@ -186,9 +182,7 @@ describe('Owner C decision 4 model/deployment contracts', () => {
       expect(template).toContain(`${parameter}:\n    Type: String\n    Default: gpt-6-luna`);
     }
     expect(template).not.toContain('Default: gpt-5.6-luna');
-  });
 
-  it('defaults all three development deployment model settings to gpt-6-luna', () => {
     const deploy = fs.readFileSync(
       path.resolve(process.cwd(), 'scripts/deploy.mjs'),
       'utf8',

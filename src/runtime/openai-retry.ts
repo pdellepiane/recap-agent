@@ -167,14 +167,6 @@ function collectStringFields(
   return out;
 }
 
-function findStringField(
-  value: unknown,
-  keys: readonly string[],
-  seen = new Set<object>(),
-): string | undefined {
-  return collectStringFields(value, keys, seen)[0];
-}
-
 function findNumberField(
   value: unknown,
   keys: readonly string[],

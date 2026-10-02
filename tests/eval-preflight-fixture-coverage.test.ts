@@ -56,7 +56,7 @@ afterEach(() => {
 });
 
 describe('§2 live_behavior_regression fixture-coverage preflight', () => {
-  it('rejects a fixture-declaring case with a turn missing its scenario, naming case and turn', () => {
+  it('rejects incomplete, unknown, or non-isolated fixture coverage with names', () => {
     const incomplete = makeCase({
       id: 'coverage-missing-turn',
       backendFixture: { scenario: 's11-rsvp-durability-declining' },
@@ -68,9 +68,7 @@ describe('§2 live_behavior_regression fixture-coverage preflight', () => {
     expect(() => assertLiveRegressionFixtureCoverage([incomplete])).toThrow(
       /coverage-missing-turn.*turn 1.*no fixture scenario/,
     );
-  });
 
-  it('rejects an unknown exercised tool, naming case and operation', () => {
     const unknownTool = makeCase({
       id: 'coverage-unknown-tool',
       backendFixture: { scenario: 's11-rsvp-durability-declining' },
@@ -89,9 +87,7 @@ describe('§2 live_behavior_regression fixture-coverage preflight', () => {
     );
     // Unknown tools fail closed to the external lane, never parallel.
     expect(classifyEvalCaseLane(unknownTool).lane).toBe('external');
-  });
 
-  it('rejects a fully turn-scoped case that is not fixture-isolated, naming case and operations', () => {
     const literalIdentity = makeCase({
       id: 'coverage-literal-identity',
       backendFixture: { scenario: 's11-rsvp-durability-declining' },
@@ -115,9 +111,20 @@ describe('§2 live_behavior_regression fixture-coverage preflight', () => {
     expect(() => assertLiveRegressionFixtureCoverage([literalIdentity])).toThrow(
       /coverage-literal-identity.*not fully fixture-isolated.*guestRsvp/,
     );
+
+    // No coordinator host value satisfies missing coverage.
+    const hostIndependent = makeCase({
+      id: 'coverage-host-independent',
+      backendFixture: { scenario: 's11-rsvp-durability-declining' },
+      inputs: [{ text: 'sin escenario' }],
+    });
+    vi.stubEnv('EVAL_COORDINATOR_HOST', os.hostname());
+    expect(() => assertLiveRegressionFixtureCoverage([hostIndependent])).toThrow(/coverage-host-independent/);
+    vi.stubEnv('EVAL_COORDINATOR_HOST', '');
+    expect(() => assertLiveRegressionFixtureCoverage([hostIndependent])).toThrow(/coverage-host-independent/);
   });
 
-  it('allows real-backend integration checks with no fixture intent', () => {
+  it('allows covered, real-backend, and out-of-scope cases', () => {
     const realBackend = makeCase({
       id: 'coverage-real-backend',
       rsvpIsolation: {
@@ -137,14 +144,10 @@ describe('§2 live_behavior_regression fixture-coverage preflight', () => {
     });
     expect(() => assertLiveRegressionFixtureCoverage([realBackend])).not.toThrow();
     expect(classifyEvalCaseLane(realBackend).lane).toBe('external');
-  });
 
-  it('allows a fully fixture-covered case', () => {
     expect(() => assertLiveRegressionFixtureCoverage([scopedCase('coverage-complete')])).not.toThrow();
     expect(classifyEvalCaseLane(scopedCase('coverage-complete')).lane).toBe('parallel');
-  });
 
-  it('ignores suites and targets outside live_behavior_regression/live_lambda', () => {
     const offlinePartial = makeCase({
       id: 'coverage-offline-partial',
       suite: 'other_suite',
@@ -153,18 +156,6 @@ describe('§2 live_behavior_regression fixture-coverage preflight', () => {
       inputs: [{ text: 'sin escenario' }],
     });
     expect(() => assertLiveRegressionFixtureCoverage([offlinePartial])).not.toThrow();
-  });
-
-  it('is never satisfied by EVAL_COORDINATOR_HOST, set or unset', () => {
-    const incomplete = makeCase({
-      id: 'coverage-host-independent',
-      backendFixture: { scenario: 's11-rsvp-durability-declining' },
-      inputs: [{ text: 'sin escenario' }],
-    });
-    vi.stubEnv('EVAL_COORDINATOR_HOST', os.hostname());
-    expect(() => assertLiveRegressionFixtureCoverage([incomplete])).toThrow(/coverage-host-independent/);
-    vi.stubEnv('EVAL_COORDINATOR_HOST', '');
-    expect(() => assertLiveRegressionFixtureCoverage([incomplete])).toThrow(/coverage-host-independent/);
   });
 
   it('rejects incomplete coverage on a dry run before any remote call', async () => {

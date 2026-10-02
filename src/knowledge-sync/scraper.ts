@@ -113,14 +113,11 @@ export class TawkHelpScraper {
     const breadcrumbLink = root.querySelector('.category-crumb.last-path a span:not(.mobile-divider)');
     const category = breadcrumbLink?.text.trim() ?? 'General';
 
-    const contentBlocks = root.querySelectorAll('.paragraph-block');
+    const container = root.querySelector('#article-wrapper') ?? root;
     const paragraphs: string[] = [];
 
-    for (const block of contentBlocks) {
-      const text = this.extractText(block);
-      if (text.trim()) {
-        paragraphs.push(text.trim());
-      }
+    for (const child of container.childNodes) {
+      this.collectBlockContent(child, paragraphs);
     }
 
     const updatedText = root.querySelector('.time')?.text.trim() ?? null;
@@ -132,6 +129,39 @@ export class TawkHelpScraper {
       content: paragraphs.join('\n\n'),
       updatedAt: updatedText,
     };
+  }
+
+  /**
+   * Collect article paragraphs in document order. Paragraph blocks emit as
+   * text; tables outside paragraph blocks (Tawk renders them in bare
+   * overflow containers) emit as Markdown. Tables nested inside a paragraph
+   * block are handled by extractText instead, so collection never descends
+   * past an emitted boundary and content cannot duplicate.
+   */
+  private collectBlockContent(
+    node: ReturnType<typeof parse>['childNodes'][number],
+    paragraphs: string[],
+  ): void {
+    if (Number(node.nodeType) !== 1) return;
+    const element = node as unknown as ReturnType<typeof parse>;
+    const classes = (element.getAttribute?.('class') ?? '').split(/\s+/u);
+    if (classes.includes('paragraph-block')) {
+      const text = this.extractText(element);
+      if (text.trim()) {
+        paragraphs.push(text.trim());
+      }
+      return;
+    }
+    if (element.tagName?.toLowerCase() === 'table') {
+      const table = this.extractTable(element);
+      if (table.trim()) {
+        paragraphs.push(table.trim());
+      }
+      return;
+    }
+    for (const child of element.childNodes) {
+      this.collectBlockContent(child, paragraphs);
+    }
   }
 
   private extractText(node: ReturnType<typeof parse>): string {
@@ -156,17 +186,72 @@ export class TawkHelpScraper {
           if (liText.trim()) {
             texts.push(`- ${liText.trim()}`);
           }
+        } else if (tag === 'table') {
+          const table = this.extractTable(element);
+          if (table) {
+            texts.push(table);
+          }
+        } else if (tag === 'a') {
+          texts.push(this.extractLink(element));
         } else {
           texts.push(this.extractText(element));
         }
 
-        if (tag === 'p' || tag === 'div' || tag === 'li' || /^h[1-6]$/.test(tag ?? '')) {
+        if (tag === 'p' || tag === 'div' || tag === 'li' || tag === 'table' || /^h[1-6]$/.test(tag ?? '')) {
           texts.push('\n');
         }
       }
     }
 
     return texts.join('').replace(/\n{3,}/g, '\n\n');
+  }
+
+  /**
+   * Render a help-center table as compact Markdown. The first row becomes the
+   * header (Tawk tables carry no th markup); multi-line cells flatten with a
+   * semicolon separator so the table stays one row per line. Pipes escape so
+   * cell content cannot break the table layout.
+   */
+  private extractTable(element: ReturnType<typeof parse>): string {
+    const rows = element.querySelectorAll('tr');
+    const lines: string[] = [];
+    for (const [index, row] of rows.entries()) {
+      const cells = row.querySelectorAll('th,td').map((cell) =>
+        this.extractText(cell)
+          .split('\n')
+          .map((line) => line.trim())
+          .filter((line) => line.length > 0)
+          .join('; ')
+          .replace(/\|/gu, '\\|')
+          .trim(),
+      );
+      if (cells.length === 0) continue;
+      lines.push(`| ${cells.join(' | ')} |`);
+      if (index === 0) {
+        lines.push(`| ${cells.map(() => '---').join(' | ')} |`);
+      }
+    }
+    return lines.length > 0 ? `\n${lines.join('\n')}\n` : '';
+  }
+
+  /**
+   * Preserve article links as Markdown so synced content keeps calculator and
+   * reference URLs. Relative hrefs resolve against the help-center base URL;
+   * javascript and empty hrefs degrade to plain text.
+   */
+  private extractLink(element: ReturnType<typeof parse>): string {
+    const text = this.extractText(element).replace(/\s+/gu, ' ').trim();
+    const href = element.getAttribute?.('href')?.trim() ?? '';
+    if (text.length === 0) return '';
+    if (!href || href.toLowerCase().startsWith('javascript:') || href.startsWith('#')) {
+      return text;
+    }
+    try {
+      const absolute = new URL(href, this.baseUrl).toString();
+      return `[${text}](${absolute})`;
+    } catch {
+      return text;
+    }
   }
 
   private async fetchHtml(path: string): Promise<string> {

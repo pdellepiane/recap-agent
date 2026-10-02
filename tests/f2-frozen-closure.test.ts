@@ -10,25 +10,10 @@ import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
 import { createEmptyPlan, mergePlan } from '../src/core/plan';
 
 describe('F2c frozen concise and suppression guard', () => {
-  it('single status query without amount skips mutable disclosure', () => {
-    const asksExplicitAmount = false;
-    const purchasesLength = 1;
-    const isSingleStatusQuery = purchasesLength === 1 && !asksExplicitAmount;
-    expect(isSingleStatusQuery).toBe(true);
-  });
-
-  it('rsvp lane never suppresses acknowledgement', () => {
-    const plan = { rsvp_state: { status: 'none' }, current_node: 'responder_invitacion' };
-    const validSuppression = plan.rsvp_state.status === 'none' && plan.current_node !== 'responder_invitacion';
-    expect(validSuppression).toBe(false);
-  });
-
-  it('non-rsvp lane may still suppress when stateless', () => {
-    const plan = { rsvp_state: { status: 'none' }, current_node: 'contacto_inicial' };
-    const validSuppression = plan.rsvp_state.status === 'none' && plan.current_node !== 'responder_invitacion';
-    expect(validSuppression).toBe(true);
-  });
-
+  // PASS 2: removed three vacuous blocks that asserted inline expressions
+  // over local literals/objects with zero source imports exercised (no
+  // validSuppression rule exists in src/); the rsvp-lane acknowledgement
+  // behavior is pinned service-level by the post-rsvp thanks test below.
   it('post-rsvp thanks in rsvp lane acknowledges once without restarting rsvp', async () => {
     const emptyExtraction: ExtractionResult = {
       actionIntent: null,
@@ -149,7 +134,6 @@ describe('F2c frozen concise and suppression guard', () => {
       }),
       reason: 'seed',
     });
-    const lookups: Array<'two' | 'one'> = ['two', 'one'];
     const gateway = {
       rsvpCalls: 0,
       async logMessage(input: unknown): Promise<{ status: 'skipped'; reason: 'disabled'; message: string }> { void input; return { status: 'skipped', reason: 'disabled', message: 'Disabled.' }; },
@@ -178,10 +162,7 @@ describe('F2c frozen concise and suppression guard', () => {
       } as unknown as AgentRuntime,
       providerGateway: {
         async lookupUserEventContext() {
-          const mode = lookups.shift() ?? 'one';
-          const events = mode === 'two'
-            ? [invitation(41, 'Matrimonio de Ana y Luis'), invitation(42, 'Cumpleaños de Marta')]
-            : [invitation(41, 'Matrimonio de Ana y Luis')];
+          const events = [invitation(41, 'Matrimonio de Ana y Luis'), invitation(42, 'Cumpleaños de Marta')];
           return {
             lookup: { email: null, phone: '9000004780' },
             user: null,

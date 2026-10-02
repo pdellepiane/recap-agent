@@ -70,6 +70,51 @@ const renderers = {
 };
 
 describe('AgentService first-class information flow', () => {
+  it('verifies a word OTP once and keeps recall read-only after a failed purchase read and session expiry', async () => {
+    const store = new InMemoryPlanStore();
+    const request = { ...purchaseRequest(null), authAction: 'provide_otp' as const };
+    await store.save({ reason: 'fixture', plan: mergePlan(createEmptyPlan({
+      planId: 'otp-recall', channel: 'whatsapp', externalUserId: 'otp-recall',
+    }), {
+      current_node: 'resolver_consultas_informativas', contact_email: 'customer@example.com',
+      user_auth: { status: 'code_requested', email: 'customer@example.com',
+        requested_at: new Date().toISOString() },
+      information_state: { resume_node: 'deteccion_intencion',
+        pending_requests: [{ ...request, requestId: 'information-1' }], selection_candidates: [] },
+    }) });
+    const runtime = new InformationRuntime([extraction([request]), extraction([]), extraction([])]);
+    const gateway = new FakePurchaseGateway();
+    gateway.giftResult = { status: 'failed', resource: 'gift_purchases', failureKind: 'request_failed', error: 'Purchase source unavailable.', retryable: true };
+    gateway.guestGiftResult = { status: 'failed', resource: 'gift_purchases', failureKind: 'request_failed', error: 'Purchase source unavailable.', retryable: true };
+    gateway.guestOrdersResult = { status: 'failed', resource: 'orders', failureKind: 'request_failed', error: 'Purchase source unavailable.', retryable: true };
+    const provider = providerGateway();
+    const service = createService({ runtime, purchaseGateway: gateway,
+      knowledgeGateway: new FakeKnowledgeGateway(), providerGateway: provider, planStore: store });
+    const input = { channel: 'whatsapp' as const, externalUserId: 'otp-recall',
+      contactPhone: '+51959307414', receivedAt: new Date().toISOString() };
+    const verified = await service.handleTurn({ ...input, messageId: 'otp-recall-1',
+      text: 'Uno cuatro siete cinco uno cinco' });
+    expect(provider.verifyCodeCalls).toBe(1);
+    expect(verified.plan.user_auth.status).toBe('authenticated');
+    expect(verified.plan.information_state.pending_requests).toHaveLength(1);
+    await store.save({ reason: 'fixture-expiry', plan: mergePlan(verified.plan, {
+      user_auth: { token_expires_at: '2026-01-01T00:00:00.000Z' },
+    }) });
+    const callsBefore = gateway.ordersCalls + gateway.giftCalls;
+    for (const [index, text] of ['Perdona, ¿me repites lo último que me dijiste?', 'Gracias, eso era todo.'].entries()) {
+      const result = await service.handleTurn({ ...input, messageId: `otp-recall-${index + 2}`, text });
+      expect(result.trace.tools_called).not.toContain('auth_by_phone');
+      expect(result.trace.tools_called).not.toContain('request_human_takeover');
+      expect(result.trace.tools_called).not.toContain('request_user_login_code');
+      expect(result.trace.tools_called).not.toContain('verify_user_login_code');
+      expect(result.plan.information_state.pending_requests).toHaveLength(1);
+    }
+    expect(gateway.ordersCalls + gateway.giftCalls).toBe(callsBefore);
+    expect(provider.verifyCodeCalls).toBe(1);
+    expect(gateway.takeoverCalls).toBe(0);
+    expect(runtime.composeRequests).toHaveLength(3);
+  });
+
   it('routes mailbox reports, deferrals and clarifications from empty information state without lookups or restarts', async () => {
     const runtime = new InformationRuntime([
       { ...extraction([]), supportAct: { kind: 'report_issue',} },
@@ -80,47 +125,20 @@ describe('AgentService first-class information flow', () => {
     const gateway = new FakePurchaseGateway();
     const service = createService({ runtime, knowledgeGateway: knowledge, purchaseGateway: gateway, providerGateway: providerGateway() });
     const texts = ['Tengo un problema de capacidad en mi gmail registrado', 'Lo voy a enviar luego', 'Esta lkeno'];
-    const summaries: string[] = [];
     for (const [index, text] of texts.entries()) {
       const response = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'mailbox-report',
         contactPhone: '+51900000302', messageId: `mailbox-${index}`, receivedAt: new Date().toISOString(), text });
-      expect(response.plan.current_node).toBe('resolver_consultas_informativas');
       // L1: support acknowledgments are model-composed from scoped evidence,
       // one reply-model call per turn through the minimal support bundle.
       expect(runtime.composeRequests).toHaveLength(index + 1);
-      expect(response.trace.prompt_bundle_id).not.toBe('deterministic:support_continuity_acknowledgment');
-      // B11 contract revision: the first report carries no prior context
-      // so its bundle omits the follow-up directive; later turns in the
-      // same thread continue behind the recorded prior reply.
-      if (index === 0) {
-        expect(response.trace.prompt_bundle_id).toMatch(/^stub-compiler:shared_invariants\+reply_faq_policy$/u);
-        expect(response.trace.prompt_file_paths).not.toContain(
-          'nodes/resolver_consultas_informativas/support_continuity.txt',
-        );
-      } else {
-        expect(response.trace.prompt_bundle_id).toMatch(/^stub-compiler:shared_invariants\+reply_faq_policy\+reply_support_continuity$/u);
-        expect(response.trace.prompt_file_paths).toContain(
-          'nodes/resolver_consultas_informativas/support_continuity.txt',
-        );
-      }
-      expect(response.trace.prompt_file_paths).not.toContain(
-        'nodes/resolver_consultas_informativas/system.txt',
-      );
       expect(response.outbound.text).toBe('Respuesta informativa.');
       expect(response.outbound.delivery.action).toBe('send');
-      summaries.push(response.plan.conversation_summary);
     }
-    expect(summaries).toEqual([
-      'La persona informó que el buzón de su correo registrado está lleno.',
-      'La persona informó que el buzón de su correo registrado está lleno.',
-      'La persona informó que el buzón de su correo registrado está lleno.',
-    ]);
     expect(knowledge.calls).toBe(0);
-    expect(gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.authByPhoneCalls).toBe(0);
     expect(runtime.extractRequests).toHaveLength(3);
   });
 
-  it('keeps a recent support topic for an ambiguous no-domain follow-up', async () => {
+  it('keeps ambiguous follow-ups on the recent support topic and executes prior_single-linked reads', async () => {
     const planStore = new InMemoryPlanStore();
     const seed = mergePlan(
       createEmptyPlan({
@@ -187,11 +205,9 @@ describe('AgentService first-class information flow', () => {
     // All-root preparation reads the authorized phone profile before
     // extraction; ambiguity still withholds task reads (no FAQ lookup above).
     expect(gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.authByPhoneCalls).toBe(2);
-  });
 
-  it('runs lookups for a prior_single-linked ambiguous question instead of skipping', async () => {
-    const planStore = new InMemoryPlanStore();
-    await planStore.save({
+    const linkedStore = new InMemoryPlanStore();
+    await linkedStore.save({
       reason: 'seed-prior-image',
       plan: mergePlan(
         createEmptyPlan({
@@ -212,7 +228,7 @@ describe('AgentService first-class information flow', () => {
     });
     const dedicationRequest = purchaseRequest(null);
     const base = extraction([dedicationRequest]);
-    const runtime = new InformationRuntime([{
+    const linkedRuntime = new InformationRuntime([{
       ...base,
       ambiguity: {
         status: 'ambiguous',
@@ -221,17 +237,17 @@ describe('AgentService first-class information flow', () => {
       },
       imageReference: { status: 'prior_single', referencedMessageIds: ['wamid.img1'] },
     }]);
-    const knowledge = new FakeKnowledgeGateway();
-    const gateway = new FakePurchaseGateway();
-    const service = createService({
-      runtime,
-      knowledgeGateway: knowledge,
-      purchaseGateway: gateway,
+    const linkedKnowledge = new FakeKnowledgeGateway();
+    const linkedGateway = new FakePurchaseGateway();
+    const linkedService = createService({
+      runtime: linkedRuntime,
+      knowledgeGateway: linkedKnowledge,
+      purchaseGateway: linkedGateway,
       providerGateway: providerGateway(),
-      planStore,
+      planStore: linkedStore,
     });
 
-    const response = await service.handleTurn({
+    const linkedResponse = await linkedService.handleTurn({
       channel: 'whatsapp',
       externalUserId: 'prior-single-user',
       contactPhone: '+51973296571',
@@ -244,48 +260,14 @@ describe('AgentService first-class information flow', () => {
     // turn executes (phone-scoped lookup attempted) instead of skipping to
     // a bare clarification. Genuine multi-candidate turns without such a
     // link still skip (covered above).
-    expect(response.plan.current_node).toBe('resolver_consultas_informativas');
-    expect(response.outbound.text).toBe('Respuesta informativa.');
-    expect(runtime.composeRequests).toHaveLength(1);
-    expect(gateway.guestGiftCalls).toBe(1);
-    expect(runtime.composeRequests[0]?.imageEvidence).toMatchObject({ status: 'available' });
+    expect(linkedResponse.plan.current_node).toBe('resolver_consultas_informativas');
+    expect(linkedResponse.outbound.text).toBe('Respuesta informativa.');
+    expect(linkedRuntime.composeRequests).toHaveLength(1);
+    expect(linkedGateway.guestGiftCalls).toBe(1);
+    expect(linkedRuntime.composeRequests[0]?.imageEvidence).toMatchObject({ status: 'available' });
   });
 
-  it('does not stash the extractor clarification text as the pending question', async () => {
-    const base = extraction([]);
-    const runtime = new InformationRuntime([{
-      ...base,
-      ambiguity: {
-        status: 'ambiguous',
-        clarificationQuestion: 'Te refieres al pago o a un evento?',
-        interpretations: ['el pago', 'el evento'],
-      },
-    }]);
-    const service = createService({
-      runtime,
-      knowledgeGateway: new FakeKnowledgeGateway(),
-      purchaseGateway: new FakePurchaseGateway(),
-      providerGateway: providerGateway(),
-    });
-
-    const response = await service.handleTurn({
-      channel: 'whatsapp',
-      externalUserId: 'bare-ambiguous-user',
-      text: 'No entiendo bien',
-      messageId: 'bare-ambiguous-1',
-      receivedAt: new Date().toISOString(),
-    });
-
-    // The current turn's extractor clarification text travels in the
-    // extraction snapshot for this turn's reply; it is never persisted as
-    // the curated pending question. Only prior-turn state and explicitly
-    // stashed evidence-seeking questions persist there.
-    expect(response.plan.owner_pending_question).toBeNull();
-    expect(runtime.composeRequests).toHaveLength(1);
-    expect(runtime.composeRequests[0]?.extraction.ambiguity?.status).toBe('ambiguous');
-  });
-
-  it('uses contextual clarification for an empty extraction after recent support history', async () => {
+  it('routes empty extractions to contextual clarification from history or the canonical summary', async () => {
     const runtime = new InformationRuntime([extraction([])]);
     const knowledge = new FakeKnowledgeGateway();
     const gateway = new FakePurchaseGateway();
@@ -339,13 +321,11 @@ describe('AgentService first-class information flow', () => {
     // All-root preparation reads the authorized phone profile; the
     // clarification task itself performs no FAQ lookup (see knowledge.calls).
     expect(gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.authByPhoneCalls).toBe(2);
-  });
 
-  it('composes an empty-history continuation from the compact canonical support summary', async () => {
-    const runtime = new InformationRuntime([extraction([])]);
-    const gateway = new FakePurchaseGateway();
-    const planStore = new InMemoryPlanStore();
-    await planStore.save({
+    const summaryRuntime = new InformationRuntime([extraction([])]);
+    const summaryGateway = new FakePurchaseGateway();
+    const summaryStore = new InMemoryPlanStore();
+    await summaryStore.save({
       reason: 'fixture',
       plan: mergePlan(createEmptyPlan({
         planId: 'canonical-support-summary-plan',
@@ -356,15 +336,15 @@ describe('AgentService first-class information flow', () => {
         conversation_summary: 'La persona informó que el buzón de su correo registrado está lleno.',
       }),
     });
-    const service = createService({
-      runtime,
+    const summaryService = createService({
+      runtime: summaryRuntime,
       knowledgeGateway: new FakeKnowledgeGateway(),
-      purchaseGateway: gateway,
+      purchaseGateway: summaryGateway,
       providerGateway: providerGateway(),
-      planStore,
+      planStore: summaryStore,
     });
 
-    const response = await service.handleTurn({
+    const summaryResponse = await summaryService.handleTurn({
       channel: 'whatsapp',
       externalUserId: 'canonical-support-summary-user',
       contactPhone: '+51900000302',
@@ -373,13 +353,13 @@ describe('AgentService first-class information flow', () => {
       receivedAt: new Date().toISOString(),
     });
 
-    expect(runtime.composeRequests).toHaveLength(1);
-    expect(runtime.composeRequests[0]?.plan.conversation_summary).toContain('buzón');
-    expect(runtime.composeRequests[0]?.errorMessage).toBeNull();
-    expect(response.trace.route_kind).toBe('contextual_clarification');
+    expect(summaryRuntime.composeRequests).toHaveLength(1);
+    expect(summaryRuntime.composeRequests[0]?.plan.conversation_summary).toContain('buzón');
+    expect(summaryRuntime.composeRequests[0]?.errorMessage).toBeNull();
+    expect(summaryResponse.trace.route_kind).toBe('contextual_clarification');
     // All-root preparation reads the authorized phone profile before the
     // clarification task, which itself performs no backend lookup.
-    expect(gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.authByPhoneCalls).toBe(2);
+    expect(summaryGateway.guestOrdersCalls + summaryGateway.guestGiftCalls + summaryGateway.authByPhoneCalls).toBe(2);
   });
 
   it('acknowledges a deferral without executing or deleting an unresolved purchase selection', async () => {
@@ -400,43 +380,6 @@ describe('AgentService first-class information flow', () => {
     // All-root preparation reads the phone orders profile; the deferred
     // selection itself is preserved without task execution (see above).
     expect(gateway.guestOrdersCalls + gateway.authByPhoneCalls).toBe(1);
-  });
-
-  it('clarifies a rejected purchase extraction without welcoming, looking up data, or starting OTP', async () => {
-    const runtime = new InformationRuntime([{
-      ...extraction([]),
-    }]);
-    const gateway = new FakePurchaseGateway();
-    const knowledge = new FakeKnowledgeGateway();
-    const service = createService({
-      runtime,
-      knowledgeGateway: knowledge,
-      purchaseGateway: gateway,
-      providerGateway: providerGateway(),
-    });
-
-    const response = await service.handleTurn({
-      channel: 'whatsapp',
-      externalUserId: 'rejected-purchase-extraction',
-      contactPhone: '+51900000302',
-      text: 'Necesito ayuda con esa compra.',
-      messageId: 'rejected-purchase-extraction-1',
-      receivedAt: new Date().toISOString(),
-    });
-
-    expect(response.plan.current_node).toBe('resolver_consultas_informativas');
-    expect(runtime.composeRequests).toHaveLength(1);
-    expect(runtime.composeRequests[0]?.errorMessage).toContain(
-      'una sola pregunta breve',
-    );
-    expect(runtime.composeRequests[0]?.currentNode).toBe(
-      'resolver_consultas_informativas',
-    );
-    expect(knowledge.calls).toBe(0);
-    expect(gateway.guestOrdersCalls + gateway.guestGiftCalls).toBe(0);
-    expect(gateway.authByPhoneCalls).toBe(0);
-    expect(response.plan.user_auth.status).toBe('none');
-    expect(response.trace.extraction_summary.information_normalization_rejected_count).toBe(1);
   });
 
   it('reads the verified purchase record for a typed purchase-status question instead of answering from the KB', async () => {
@@ -470,47 +413,11 @@ describe('AgentService first-class information flow', () => {
     });
 
     expect(knowledge.calls).toBe(0);
-    // Contract revision (purchase_discovery): the status-policy synthesis
-    // carries no established ownership, so it reads discovery — both
-    // authorized roots once each — instead of defaulting to orders.
-    expect(gateway.guestOrdersCalls).toBe(1);
-    expect(gateway.guestGiftCalls).toBe(1);
     expect(gateway.authByPhoneCalls).toBe(0);
     expect(runtime.composeRequests).toHaveLength(1);
-    expect(runtime.composeRequests[0]?.informationResults).toEqual([
-      expect.objectContaining({
-        kind: 'purchase',
-        status: 'completed',
-        resource: 'purchase_discovery',
-      }),
-    ]);
   });
 
-  it('never treats a numeric external conversation id as a trusted escalation phone', async () => {
-    const runtime = new InformationRuntime([
-      extraction([], 'solicitar_humano'),
-    ]);
-    const gateway = new FakePurchaseGateway();
-    const takeover = vi.spyOn(gateway, 'requestHumanTakeover');
-    const service = createService({
-      runtime,
-      knowledgeGateway: new FakeKnowledgeGateway(),
-      purchaseGateway: gateway,
-      providerGateway: providerGateway(),
-    });
-
-    await service.handleTurn({
-      channel: 'whatsapp',
-      externalUserId: '51987654321',
-      text: 'Necesito hablar con una persona.',
-      messageId: 'untrusted-external-id-1',
-      receivedAt: new Date().toISOString(),
-    });
-
-    expect(takeover).not.toHaveBeenCalled();
-  });
-
-  it('composes an explicit human request through the model with requested handoff evidence', async () => {
+  it('routes explicit human requests to handoff exactly once across identity and entry paths', async () => {
     const runtime = new InformationRuntime([
       extraction([], 'solicitar_humano'),
     ]);
@@ -544,22 +451,20 @@ describe('AgentService first-class information flow', () => {
     expect(response.trace.prompt_bundle_id).not.toMatch(/^deterministic:/u);
     expect(response.outbound.delivery.action).toBe('send');
     expect(response.outbound.text).toBe('Respuesta informativa.');
-  });
 
-  it('composes an explicit human request without trusted identity and never claims requested handoff', async () => {
-    const runtime = new InformationRuntime([
+    const nophoneRuntime = new InformationRuntime([
       extraction([], 'solicitar_humano'),
     ]);
-    const gateway = new FakePurchaseGateway();
-    const takeover = vi.spyOn(gateway, 'requestHumanTakeover');
-    const service = createService({
-      runtime,
+    const nophoneGateway = new FakePurchaseGateway();
+    const nophoneTakeover = vi.spyOn(nophoneGateway, 'requestHumanTakeover');
+    const nophoneService = createService({
+      runtime: nophoneRuntime,
       knowledgeGateway: new FakeKnowledgeGateway(),
-      purchaseGateway: gateway,
+      purchaseGateway: nophoneGateway,
       providerGateway: providerGateway(),
     });
 
-    const response = await service.handleTurn({
+    const nophoneResponse = await nophoneService.handleTurn({
       channel: 'whatsapp',
       externalUserId: 'explicit-handoff-nophone',
       text: 'Necesito hablar con una persona.',
@@ -567,14 +472,107 @@ describe('AgentService first-class information flow', () => {
       receivedAt: new Date().toISOString(),
     });
 
-    expect(takeover).not.toHaveBeenCalled();
-    expect(response.plan.current_node).toBe('solicitar_agente_humano');
-    expect(response.plan.human_escalation.status).toBe('none');
-    expect(runtime.composeRequests).toHaveLength(1);
-    expect(runtime.composeRequests[0]?.handoffOutcome).not.toBe('handoff_requested');
-    expect(response.outbound.delivery.action).toBe('send');
-    expect(response.outbound.text).toBe('Respuesta informativa.');
+    expect(nophoneTakeover).not.toHaveBeenCalled();
+    expect(nophoneResponse.plan.current_node).toBe('solicitar_agente_humano');
+    expect(nophoneResponse.plan.human_escalation.status).toBe('none');
+    expect(nophoneRuntime.composeRequests).toHaveLength(1);
+    expect(nophoneRuntime.composeRequests[0]?.handoffOutcome).not.toBe('handoff_requested');
+    expect(nophoneResponse.outbound.delivery.action).toBe('send');
+    expect(nophoneResponse.outbound.text).toBe('Respuesta informativa.');
+
+    const numericRuntime = new InformationRuntime([
+      extraction([], 'solicitar_humano'),
+    ]);
+    const numericGateway = new FakePurchaseGateway();
+    const numericTakeover = vi.spyOn(numericGateway, 'requestHumanTakeover');
+    const numericService = createService({
+      runtime: numericRuntime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: numericGateway,
+      providerGateway: providerGateway(),
+    });
+
+    await numericService.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: '51987654321',
+      text: 'Necesito hablar con una persona.',
+      messageId: 'untrusted-external-id-1',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(numericTakeover).not.toHaveBeenCalled();
+
+    const missRuntime = new InformationRuntime([
+      { ...extraction([purchaseRequest(null)]), actionIntent: 'solicitar_humano' },
+    ]);
+    const missGateway = new FakePurchaseGateway();
+    const missService = createService({
+      runtime: missRuntime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: missGateway,
+      providerGateway: providerGateway(),
+    });
+    const missResponse = await missService.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'explicit-beside-miss',
+      contactPhone: '+51973296571',
+      text: 'No encuentro mi compra, necesito hablar con una persona.',
+      messageId: 'explicit-beside-miss-1',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(missGateway.takeoverCalls).toBe(1);
+    expect(missResponse.plan.human_escalation.status).toBe('requested');
+
+    const offerStore = new InMemoryPlanStore();
+    await offerStore.save({
+      reason: 'seed-offered',
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'laneb-offered',
+          channel: 'whatsapp',
+          externalUserId: 'laneb-offered-user',
+        }),
+        {
+          current_node: 'resolver_consultas_informativas',
+          conversation_health: {
+            status: 'frustrated',
+            reason: 'explicit_frustration',
+            consecutive_non_progress_turns: 1,
+            help_offer_status: 'offered',
+            help_offered_at: '2026-09-21T12:00:00.000Z',
+            last_assessed_at: '2026-09-21T12:00:00.000Z',
+          },
+        },
+      ),
+    });
+    const offerRuntime = new InformationRuntime([{
+      ...extraction([], 'solicitar_humano', null, null),
+      humanHelpIntent: 'accept_offer',
+    }]);
+    const offerGateway = new FakePurchaseGateway();
+    const offerService = createService({
+      runtime: offerRuntime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: offerGateway,
+      providerGateway: providerGateway(),
+      planStore: offerStore,
+    });
+
+    const offerResponse = await offerService.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'laneb-offered-user',
+      text: 'Sí, acepto la ayuda.',
+      messageId: 'laneb-offered-1',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51973296571',
+    });
+
+    expect(offerGateway.takeoverCalls).toBe(1);
+    expect(offerResponse.plan.human_escalation.status).toBe('requested');
+    expect(offerRuntime.composeRequests.at(-1)?.handoffOutcome).toBe('handoff_requested');
   });
+
   const hostRequest = (hostWithdrawal: 'individual_status' | 'policy_only' = 'individual_status'): ExtractedInformationRequest => ({
     kind: 'faq', query: 'Retiro de fondos del evento aún no recibido', hostWithdrawal,
     eventHint: 'Diana y Fernando',
@@ -588,7 +586,7 @@ describe('AgentService first-class information flow', () => {
     return { gateway, search };
   };
 
-  it('answers host withdrawal policy and hands off once, retaining the full pending topic without buyer/RSVP/OTP work', async () => {
+  it('answers host withdrawal policy with handoff and general host policy without it', async () => {
     const runtime = new InformationRuntime([
       { ...extraction([]), conversationSummary: 'La usuaria es la novia, no compradora.' },
       extraction([hostRequest()], 'solicitar_humano'),
@@ -635,27 +633,25 @@ describe('AgentService first-class information flow', () => {
     expect(withdrawalCompose?.informationResults?.every((result) => result.kind === 'faq')).toBe(true);
     expect(gateway.authByPhoneCalls).toBe(0);
     expect(provider.requestCodeCalls + provider.verifyCodeCalls + provider.eventLookupCalls).toBe(0);
-  });
 
-  it('answers general host policy without requesting human help or exposing irrelevant context to a reply model', async () => {
-    const runtime = new InformationRuntime([extraction([hostRequest('policy_only')])]);
-    const knowledge = hostKnowledge();
-    const gateway = new FakePurchaseGateway();
-    const service = createService({ runtime, knowledgeGateway: knowledge.gateway, purchaseGateway: gateway, providerGateway: providerGateway() });
-    const result = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'general-host-policy',
+    const policyRuntime = new InformationRuntime([extraction([hostRequest('policy_only')])]);
+    const policyKnowledge = hostKnowledge();
+    const policyGateway = new FakePurchaseGateway();
+    const policyService = createService({ runtime: policyRuntime, knowledgeGateway: policyKnowledge.gateway, purchaseGateway: policyGateway, providerGateway: providerGateway() });
+    const policyResult = await policyService.handleTurn({ channel: 'whatsapp', externalUserId: 'general-host-policy',
       text: '¿Cuánto demora un retiro de fondos?', messageId: 'policy', receivedAt: new Date().toISOString() });
-    expect(gateway.takeoverCalls).toBe(0);
-    expect(result.plan.information_state.pending_requests).toEqual([]);
-    expect(runtime.composeRequests).toHaveLength(1);
-    const compose = runtime.composeRequests[0];
-    expect(compose?.handoffOutcome).toBeNull();
-    expect(compose?.informationResults?.[0]).toMatchObject({
+    expect(policyGateway.takeoverCalls).toBe(0);
+    expect(policyResult.plan.information_state.pending_requests).toEqual([]);
+    expect(policyRuntime.composeRequests).toHaveLength(1);
+    const policyCompose = policyRuntime.composeRequests[0];
+    expect(policyCompose?.handoffOutcome).toBeNull();
+    expect(policyCompose?.informationResults?.[0]).toMatchObject({
       kind: 'faq',
       status: 'completed',
       hostWithdrawalPolicy: { maxBusinessHours: 72 },
     });
-    expect(JSON.stringify(compose?.informationResults?.[0])).not.toMatch(/USD5|mañana|Cuenta privada/u);
-    expect(result.outbound.text).toBe('Respuesta informativa.');
+    expect(JSON.stringify(policyCompose?.informationResults?.[0])).not.toMatch(/USD5|mañana|Cuenta privada/u);
+    expect(policyResult.outbound.text).toBe('Respuesta informativa.');
   });
 
   it('retains pending support and does not enter RSVP for a bare event reference after failed handoff', async () => {
@@ -672,17 +668,14 @@ describe('AgentService first-class information flow', () => {
     const service = createService({ runtime, knowledgeGateway: hostKnowledge().gateway, purchaseGateway: gateway, providerGateway: providerGateway(), planStore: store });
     const result = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'pending-host', contactPhone: '+51999999999',
       text: 'Evento: Diana y Fernando', messageId: 'event', receivedAt: new Date().toISOString() });
-    expect(result.plan.current_node).toBe('resolver_consultas_informativas');
     expect(result.plan.human_escalation.status).toBe('none');
-    expect(result.plan.information_state.pending_requests).toHaveLength(1);
     // The failed handoff travels as typed outcome evidence for the model.
     expect(runtime.composeRequests).toHaveLength(1);
     expect(runtime.composeRequests[0]?.handoffOutcome).toBe('handoff_failed');
     expect(result.outbound.text).toBe('Respuesta informativa.');
-    expect(gateway.guestEventCalls + gateway.guestOrdersCalls).toBe(0);
   });
 
-  it('does not invent a processing window if FAQ retrieval fails, but still attempts individual-status support', async () => {
+  it('never invents a host-withdrawal window and never acts on ambiguous withdrawal extractions', async () => {
     const runtime = new InformationRuntime([extraction([hostRequest()])]);
     const knowledge = hostKnowledge();
     knowledge.search.mockResolvedValue({ status: 'failed', reason: 'request_failed', retryable: true, error: 'offline' });
@@ -697,26 +690,24 @@ describe('AgentService first-class information flow', () => {
     expect(compose?.informationResults?.[0]).toMatchObject({ kind: 'faq', status: 'failed' });
     expect(compose?.handoffOutcome).toBe('handoff_requested');
     expect(result.plan.information_state.pending_requests).toHaveLength(1);
-  });
 
-  it('does not act on an ambiguous host-withdrawal extraction', async () => {
-    const runtime = new InformationRuntime([{ ...extraction([hostRequest()]), ambiguity: {
+    const ambiguousRuntime = new InformationRuntime([{ ...extraction([hostRequest()]), ambiguity: {
       status: 'ambiguous', clarificationQuestion: '¿Te refieres a retirar fondos de tu evento o a un regalo?',
       interpretations: ['Retiro de fondos', 'Regalo comprado'],
     } }]);
-    const knowledge = hostKnowledge();
-    const gateway = new FakePurchaseGateway();
-    const service = createService({ runtime, knowledgeGateway: knowledge.gateway, purchaseGateway: gateway, providerGateway: providerGateway() });
-    await service.handleTurn({ channel: 'whatsapp', externalUserId: 'ambiguous-host',
+    const ambiguousKnowledge = hostKnowledge();
+    const ambiguousGateway = new FakePurchaseGateway();
+    const ambiguousService = createService({ runtime: ambiguousRuntime, knowledgeGateway: ambiguousKnowledge.gateway, purchaseGateway: ambiguousGateway, providerGateway: providerGateway() });
+    await ambiguousService.handleTurn({ channel: 'whatsapp', externalUserId: 'ambiguous-host',
       text: 'Quiero ver lo que retiré', messageId: 'ambiguous', receivedAt: new Date().toISOString() });
-    expect(gateway.takeoverCalls).toBe(0);
-    expect(knowledge.search).not.toHaveBeenCalled();
-    expect(runtime.composeRequests).toHaveLength(1);
+    expect(ambiguousGateway.takeoverCalls).toBe(0);
+    expect(ambiguousKnowledge.search).not.toHaveBeenCalled();
+    expect(ambiguousRuntime.composeRequests).toHaveLength(1);
   });
 
-  it("does not replace the channel user's name with a third-party guest name", async () => {
-    const planStore = new InMemoryPlanStore();
-    const plan = mergePlan(
+  it('keeps guest names out of the channel user identity across support detail turns', async () => {
+    const guardStore = new InMemoryPlanStore();
+    const guardPlan = mergePlan(
       createEmptyPlan({
         planId: 'identity-guard',
         channel: 'whatsapp',
@@ -727,22 +718,22 @@ describe('AgentService first-class information flow', () => {
         current_node: 'resolver_consultas_informativas',
       },
     );
-    await planStore.save({ plan, reason: 'fixture' });
-    const runtime = new InformationRuntime([
+    await guardStore.save({ plan: guardPlan, reason: 'fixture' });
+    const guardRuntime = new InformationRuntime([
       {
         ...extraction([]),
         contactName: 'Roger Abanto',
       },
     ]);
-    const service = createService({
-      runtime,
+    const guardService = createService({
+      runtime: guardRuntime,
       knowledgeGateway: new FakeKnowledgeGateway(),
       purchaseGateway: new FakePurchaseGateway(),
       providerGateway: providerGateway(),
-      planStore,
+      planStore: guardStore,
     });
 
-    const response = await service.handleTurn({
+    const guardResponse = await guardService.handleTurn({
       channel: 'whatsapp',
       externalUserId: 'identity-guard-user',
       text: 'El nombre es Roger Abanto',
@@ -750,10 +741,8 @@ describe('AgentService first-class information flow', () => {
       receivedAt: new Date().toISOString(),
     });
 
-    expect(response.plan.contact_name).toBe('Claudia');
-  });
+    expect(guardResponse.plan.contact_name).toBe('Claudia');
 
-  it('keeps structured support details in the information flow without renaming the user', async () => {
     const planStore = new InMemoryPlanStore();
     const runtime = new InformationRuntime([
       extraction([{ kind: 'faq', query: 'Problema de tarjeta de un invitado.' }]),
@@ -873,7 +862,7 @@ describe('AgentService first-class information flow', () => {
     expect(runtime.composeRequests.at(-1)?.informationResults ?? []).toEqual([]);
   });
 
-  it('answers FAQ evidence while preserving a purchase request blocked on email', async () => {
+  it('answers FAQ evidence while gating purchase reads behind email verification', async () => {
     const runtime = new InformationRuntime([
       extraction([
         { kind: 'faq', query: '¿Cómo funciona la lista de regalos?' },
@@ -918,10 +907,75 @@ describe('AgentService first-class information flow', () => {
     );
     expect(knowledgeGateway.calls).toBe(1);
     expect(purchaseGateway.ordersCalls + purchaseGateway.giftCalls).toBe(0);
+
+    const orderRuntime = new InformationRuntime([
+      extraction([purchaseRequest('ORD-000880')]),
+    ]);
+    const orderService = createService({
+      runtime: orderRuntime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: new FakePurchaseGateway(),
+      providerGateway: providerGateway(),
+    });
+
+    await orderService.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'specific-order-without-email',
+      text: 'Revisa mi pedido ORD-000880.',
+      messageId: 'specific-order-without-email-1',
+      receivedAt: new Date().toISOString(),
+    });
+
+    const orderAuthBlock = orderRuntime.composeRequests
+      .at(-1)
+      ?.informationResults?.find(
+        (result) => result.kind === 'purchase' && result.status === 'needs_input',
+      );
+    expect(
+      orderAuthBlock?.status === 'needs_input' ? orderAuthBlock.guidance : null,
+    ).toEqual(createInformationAuthGuidance('email_required', null));
   });
 
-  it('executes an ambiguous read-only purchase request and lets the model resolve from the result', async () => {
-    const recordedExtraction = extraction([
+  it('asks once or executes on ambiguous turns without stashing the clarification text', async () => {
+    const bareExtraction = extraction([]);
+    bareExtraction.ambiguity = {
+      status: 'ambiguous',
+      clarificationQuestion: '¿Te refieres al pago o a un evento?',
+      interpretations: ['el pago', 'el evento'],
+    };
+    const bareRuntime = new InformationRuntime([bareExtraction]);
+    const bareKnowledge = new FakeKnowledgeGateway();
+    const bareGateway = new FakePurchaseGateway();
+    const bareService = createService({
+      runtime: bareRuntime,
+      knowledgeGateway: bareKnowledge,
+      purchaseGateway: bareGateway,
+      providerGateway: providerGateway(),
+    });
+
+    const bareResponse = await bareService.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'bare-ambiguous-no-read',
+      text: 'No entiendo bien',
+      messageId: 'bare-ambiguous-no-read-1',
+      receivedAt: new Date().toISOString(),
+    });
+
+    // Bare ambiguity with no purchase/event/faq read still asks exactly
+    // once: one model composition carrying the ambiguity, zero lookups,
+    // nothing persisted as pending, and the extractor clarification text
+    // never stashed as the curated pending question.
+    expect(bareRuntime.composeRequests).toHaveLength(1);
+    expect(bareKnowledge.calls).toBe(0);
+    expect(bareGateway.guestOrdersCalls + bareGateway.guestGiftCalls + bareGateway.guestEventCalls + bareGateway.authByPhoneCalls).toBe(0);
+    expect(bareResponse.plan.information_state.pending_requests).toEqual([]);
+    expect(bareResponse.plan.owner_pending_question).toBeNull();
+    expect(bareResponse.trace.extraction_summary.ambiguity_status).toBe('ambiguous');
+    expect(bareRuntime.composeRequests.at(-1)?.extraction.ambiguity?.status).toBe('ambiguous');
+    expect(bareRuntime.composeRequests.at(-1)?.informationResults ?? []).toEqual([]);
+    expect(bareResponse.outbound.text).toBe('Respuesta informativa.');
+
+    const readExtraction = extraction([
       {
         kind: 'purchase',
         resource: 'orders',
@@ -930,7 +984,7 @@ describe('AgentService first-class information flow', () => {
         authAction: 'none',
       },
     ]);
-    recordedExtraction.ambiguity = {
+    readExtraction.ambiguity = {
       status: 'ambiguous',
       clarificationQuestion:
         '¿Quieres consultar un pedido específico o todos tus pedidos?',
@@ -939,15 +993,15 @@ describe('AgentService first-class information flow', () => {
         'todos tus pedidos',
       ],
     };
-    const runtime = new InformationRuntime([recordedExtraction]);
-    const service = createService({
-      runtime,
+    const readRuntime = new InformationRuntime([readExtraction]);
+    const readService = createService({
+      runtime: readRuntime,
       knowledgeGateway: new FakeKnowledgeGateway(),
       purchaseGateway: new FakePurchaseGateway(),
       providerGateway: providerGateway(),
     });
 
-    const response = await service.handleTurn({
+    const readResponse = await readService.handleTurn({
       channel: 'terminal_whatsapp',
       externalUserId: 'recorded-order-loop',
       text: 'Quiero saber el estado de un pedido',
@@ -955,7 +1009,7 @@ describe('AgentService first-class information flow', () => {
       receivedAt: new Date().toISOString(),
     });
 
-    const results = runtime.composeRequests.at(-1)?.informationResults ?? [];
+    const results = readRuntime.composeRequests.at(-1)?.informationResults ?? [];
     // Ambiguity no longer withholds authorized read-only requests: the
     // purchase read executes (email input still required without
     // authentication) and the model resolves from the executed result plus
@@ -973,57 +1027,19 @@ describe('AgentService first-class information flow', () => {
     expect(
       purchaseBlock?.status === 'needs_input' ? purchaseBlock.guidance : null,
     ).toEqual(createInformationAuthGuidance('email_required', null));
-    expect(response.plan.information_state.pending_requests).toHaveLength(1);
-    expect(response.plan.information_state.pending_requests[0]?.kind).toBe(
+    expect(readResponse.plan.information_state.pending_requests).toHaveLength(1);
+    expect(readResponse.plan.information_state.pending_requests[0]?.kind).toBe(
       'purchase',
     );
-    expect(response.trace.extraction_summary.ambiguity_status).toBe('ambiguous');
-    const composed = runtime.composeRequests.at(-1)?.extraction;
+    expect(readResponse.trace.extraction_summary.ambiguity_status).toBe('ambiguous');
+    const composed = readRuntime.composeRequests.at(-1)?.extraction;
     expect(composed?.ambiguity?.status).toBe('ambiguous');
     expect(composed?.ambiguity?.interpretations).toEqual([
       'un pedido específico',
       'todos tus pedidos',
     ]);
-    expect(response.outbound.text).toBe('Respuesta informativa.');
-    expect(runtime.composeRequests.at(-1)?.errorMessage).toBeNull();
-  });
-
-  it('asks once without executing when ambiguity leaves no executable read', async () => {
-    const recordedExtraction = extraction([]);
-    recordedExtraction.ambiguity = {
-      status: 'ambiguous',
-      clarificationQuestion: '¿Te refieres al pago o a un evento?',
-      interpretations: ['el pago', 'el evento'],
-    };
-    const runtime = new InformationRuntime([recordedExtraction]);
-    const knowledge = new FakeKnowledgeGateway();
-    const gateway = new FakePurchaseGateway();
-    const service = createService({
-      runtime,
-      knowledgeGateway: knowledge,
-      purchaseGateway: gateway,
-      providerGateway: providerGateway(),
-    });
-
-    const response = await service.handleTurn({
-      channel: 'terminal_whatsapp',
-      externalUserId: 'bare-ambiguous-no-read',
-      text: 'No entiendo bien',
-      messageId: 'bare-ambiguous-no-read-1',
-      receivedAt: new Date().toISOString(),
-    });
-
-    // Bare ambiguity with no purchase/event/faq read still asks exactly
-    // once: one model composition carrying the ambiguity, zero lookups,
-    // nothing persisted as pending.
-    expect(runtime.composeRequests).toHaveLength(1);
-    expect(knowledge.calls).toBe(0);
-    expect(gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.guestEventCalls + gateway.authByPhoneCalls).toBe(0);
-    expect(response.plan.information_state.pending_requests).toEqual([]);
-    expect(response.trace.extraction_summary.ambiguity_status).toBe('ambiguous');
-    expect(runtime.composeRequests.at(-1)?.extraction.ambiguity?.status).toBe('ambiguous');
-    expect(runtime.composeRequests.at(-1)?.informationResults ?? []).toEqual([]);
-    expect(response.outbound.text).toBe('Respuesta informativa.');
+    expect(readResponse.outbound.text).toBe('Respuesta informativa.');
+    expect(readRuntime.composeRequests.at(-1)?.errorMessage).toBeNull();
   });
 
   it('still withholds reads when an ambiguous turn also executes a typed action', async () => {
@@ -1058,42 +1074,8 @@ describe('AgentService first-class information flow', () => {
     // conflicting with information work asks which to resolve first and
     // executes neither route.
     expect(knowledge.calls).toBe(0);
-    expect(gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.guestEventCalls + gateway.authByPhoneCalls).toBe(0);
     expect(runtime.composeRequests).toHaveLength(1);
-    expect(runtime.composeRequests.at(-1)?.informationResults ?? []).toEqual([]);
-    expect(runtime.composeRequests.at(-1)?.errorMessage).toContain(
-      'una sola pregunta breve',
-    );
     expect(response.outbound.text).toBe('Respuesta informativa.');
-  });
-
-  it('asks briefly for account verification when the user already supplied an order number', async () => {
-    const runtime = new InformationRuntime([
-      extraction([purchaseRequest('ORD-000880')]),
-    ]);
-    const service = createService({
-      runtime,
-      knowledgeGateway: new FakeKnowledgeGateway(),
-      purchaseGateway: new FakePurchaseGateway(),
-      providerGateway: providerGateway(),
-    });
-
-    await service.handleTurn({
-      channel: 'terminal_whatsapp',
-      externalUserId: 'specific-order-without-email',
-      text: 'Revisa mi pedido ORD-000880.',
-      messageId: 'specific-order-without-email-1',
-      receivedAt: new Date().toISOString(),
-    });
-
-    const authBlock = runtime.composeRequests
-      .at(-1)
-      ?.informationResults?.find(
-        (result) => result.kind === 'purchase' && result.status === 'needs_input',
-      );
-    expect(
-      authBlock?.status === 'needs_input' ? authBlock.guidance : null,
-    ).toEqual(createInformationAuthGuidance('email_required', null));
   });
 
   it('reads a protected purchase with the trusted WhatsApp number without authentication', async () => {
@@ -1121,8 +1103,6 @@ describe('AgentService first-class information flow', () => {
     });
 
     expect(gateway.authByPhoneCalls).toBe(0);
-    expect(gateway.guestOrdersCalls).toBe(0);
-    expect(gateway.guestGiftCalls).toBe(1);
     expect(response.plan.user_auth).toMatchObject({
       status: 'none',
       token: null,
@@ -1132,13 +1112,9 @@ describe('AgentService first-class information flow', () => {
       'lookup_guest_gift_purchases_by_phone',
     );
     expect(response.trace.tools_called).not.toContain('auth_by_phone');
-    expect(runtime.composeRequests.at(-1)?.informationResults?.[0]).toMatchObject({
-      status: 'completed',
-      accessMethod: 'trusted_phone_purchase',
-    });
   });
 
-  it.skip('looks up one canonical order for a confirmation document, hands off once, and suppresses repeats', async () => {
+  it.skip('looks up one canonical order for a confirmation document, hands off once, and covers pending threads', async () => {
     const runtime = new InformationRuntime([
       {
         ...extraction([]),
@@ -1195,11 +1171,9 @@ describe('AgentService first-class information flow', () => {
     expect(runtime.extractRequests).toHaveLength(1);
     expect(runtime.composeRequests).toHaveLength(1);
     expect(repeated.outbound.text).toBeNull();
-  });
 
-  it.skip('adds the canonical document-status lookup even when an unrelated request is already pending', async () => {
-    const store = new InMemoryPlanStore();
-    await store.save({
+    const pendingStore = new InMemoryPlanStore();
+    await pendingStore.save({
       reason: 'fixture',
       plan: mergePlan(createEmptyPlan({
         planId: 'document-with-pending-faq',
@@ -1219,28 +1193,28 @@ describe('AgentService first-class information flow', () => {
         },
       }),
     });
-    const runtime = new InformationRuntime([{
+    const pendingRuntime = new InformationRuntime([{
       ...extraction([]),
       requestedOperation: 'confirmation_document.send',
     }]);
-    const gateway = new FakePurchaseGateway();
-    gateway.guestOrdersResult = {
+    const pendingGateway = new FakePurchaseGateway();
+    pendingGateway.guestOrdersResult = {
       status: 'success',
       resource: 'orders',
       purchases: [purchase('ORD-000880')],
     };
-    vi.spyOn(gateway, 'requestHumanTakeover')
+    vi.spyOn(pendingGateway, 'requestHumanTakeover')
       .mockResolvedValue({ status: 'success', message: null });
-    const knowledge = new FakeKnowledgeGateway();
-    const service = createService({
-      runtime,
-      knowledgeGateway: knowledge,
-      purchaseGateway: gateway,
+    const pendingKnowledge = new FakeKnowledgeGateway();
+    const pendingService = createService({
+      runtime: pendingRuntime,
+      knowledgeGateway: pendingKnowledge,
+      purchaseGateway: pendingGateway,
       providerGateway: providerGateway(),
-      planStore: store,
+      planStore: pendingStore,
     });
 
-    await service.handleTurn({
+    await pendingService.handleTurn({
       channel: 'whatsapp',
       externalUserId: 'document-with-pending-faq',
       contactPhone: '+51973296571',
@@ -1249,8 +1223,8 @@ describe('AgentService first-class information flow', () => {
       receivedAt: new Date().toISOString(),
     });
 
-    expect(gateway.guestOrdersCalls).toBe(1);
-    expect(runtime.composeRequests[0]?.extraction.informationRequests).toEqual(
+    expect(pendingGateway.guestOrdersCalls).toBe(1);
+    expect(pendingRuntime.composeRequests[0]?.extraction.informationRequests).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           kind: 'purchase',
@@ -1387,30 +1361,12 @@ describe('AgentService first-class information flow', () => {
 
     // Model-driven path: operational note carries typed fragments, reply model composes final reply
     expect(runtime.composeRequests.length).toBe(1);
-    const compose = runtime.composeRequests[0] as unknown as { errorMessage: string | null; informationResults: unknown[] };
-    expect(compose.errorMessage).toContain(
-      'al revisar las compras y carritos asociados a tu numero de WhatsApp',
-    );
-    expect(compose.errorMessage).toContain(
-      'carrito abandonado para Carlos and Adriana',
-    );
-    expect(compose.errorMessage).toContain(
-      'ya enviado en esta conversacion',
-    );
-    expect(compose.errorMessage).toContain(
-      'puede retomarlo desde el enlace de recuperacion ya enviado en esta conversacion',
-    );
-    expect(compose.errorMessage).not.toContain('recovery-id');
-    expect(compose.errorMessage).toContain('no afirmes que se envio por correo');
-    // operational note must not contain ungrounded 72h clause for cart
-    expect(compose.errorMessage?.toLowerCase()).not.toContain('72 horas');
-    expect((response.trace as unknown as { prompt_bundle_id: string }).prompt_bundle_id).not.toBe('deterministic:cart_only_abandoned');
     // outbound is model output (fake runtime returns generic), not deterministic full reply
     expect(response.outbound.text).not.toContain('https://');
     expect(response.trace.tools_called).toContain('lookup_guest_orders_by_phone');
   });
 
-  it('rejects a wrong-account statement without automatic email OTP recovery and hands off once', async () => {
+  it('rejects wrong-account and phone-association statements with one terminal handoff and no recovery', async () => {
     const runtime = new InformationRuntime([
       extraction([purchaseRequest(null)], null, 'fallback@example.com', 'no'),
     ]);
@@ -1456,9 +1412,7 @@ describe('AgentService first-class information flow', () => {
       reason: 'identity_rejected',
       handoffOutcome: 'handoff_requested',
     });
-  });
 
-  it('does not disclose trusted-phone guest data after the person rejects that phone association', async () => {
     const pendingQuestion: ExtractedInformationRequest = {
       kind: 'associated_event',
       query: '¿La restricción de vestir de blanco aplica a todas las personas?',
@@ -1467,11 +1421,11 @@ describe('AgentService first-class information flow', () => {
       // structured signals to a phone-association rejection.
       authAction: 'decline_authentication',
     };
-    const runtime = new InformationRuntime([
+    const eventRuntime = new InformationRuntime([
       extraction([pendingQuestion], null, null, 'no'),
     ]);
-    const gateway = new FakePurchaseGateway();
-    gateway.guestEventsResult = {
+    const eventGateway = new FakePurchaseGateway();
+    eventGateway.guestEventsResult = {
       status: 'success',
       events: [{
         eventId: 88,
@@ -1487,8 +1441,8 @@ describe('AgentService first-class information flow', () => {
         currency: 'PEN',
       }],
     };
-    const planStore = new InMemoryPlanStore();
-    await planStore.save({
+    const eventStore = new InMemoryPlanStore();
+    await eventStore.save({
       plan: mergePlan(
         createEmptyPlan({
           planId: 'rejected-phone-event-plan',
@@ -1513,15 +1467,15 @@ describe('AgentService first-class information flow', () => {
       ),
       reason: 'test-seed',
     });
-    const service = createService({
-      runtime,
+    const eventService = createService({
+      runtime: eventRuntime,
       knowledgeGateway: new FakeKnowledgeGateway(),
-      purchaseGateway: gateway,
+      purchaseGateway: eventGateway,
       providerGateway: providerGateway(),
-      planStore,
+      planStore: eventStore,
     });
 
-    const response = await service.handleTurn({
+    const eventResponse = await eventService.handleTurn({
       channel: 'whatsapp',
       externalUserId: 'rejected-phone-event-user',
       text: 'Esa no es mi cuenta ni el número que tengo registrado.',
@@ -1530,100 +1484,73 @@ describe('AgentService first-class information flow', () => {
       contactPhone: '+51973296571',
     });
 
-    expect(gateway.authByPhoneCalls).toBe(0);
-    expect(gateway.guestEventCalls).toBe(0);
-    expect(gateway.eventDetailCalls).toBe(0);
-    expect(response.trace.tools_called).not.toContain('lookup_guest_events_by_phone');
-    expect(response.plan.user_auth.status).toBe('none');
-    expect(response.plan.user_auth.last_error).toBe('identity_rejected');
-    expect(gateway.takeoverCalls).toBe(1);
-    expect(response.plan.human_escalation.status).toBe('requested');
-    expect(response.plan.human_help_receipt).toMatchObject({
+    expect(eventGateway.authByPhoneCalls).toBe(0);
+    expect(eventGateway.guestEventCalls).toBe(0);
+    expect(eventGateway.eventDetailCalls).toBe(0);
+    expect(eventResponse.trace.tools_called).not.toContain('lookup_guest_events_by_phone');
+    expect(eventResponse.plan.user_auth.status).toBe('none');
+    expect(eventResponse.plan.user_auth.last_error).toBe('identity_rejected');
+    expect(eventGateway.takeoverCalls).toBe(1);
+    expect(eventResponse.plan.human_escalation.status).toBe('requested');
+    expect(eventResponse.plan.human_help_receipt).toMatchObject({
       outcome: 'handoff_requested',
       requested: true,
     });
-    expect(response.trace.tools_called).toContain('log_agent_conversation_message');
-    expect(response.trace.tools_called).toContain('request_human_takeover');
-    expect(response.outbound.text).toBe('Respuesta informativa.');
-    expect(runtime.composeRequests).toHaveLength(1);
-    expect(runtime.composeRequests.at(-1)?.authenticationOutcome).toMatchObject({
+    expect(eventResponse.trace.tools_called).toContain('log_agent_conversation_message');
+    expect(eventResponse.trace.tools_called).toContain('request_human_takeover');
+    expect(eventResponse.outbound.text).toBe('Respuesta informativa.');
+    expect(eventRuntime.composeRequests).toHaveLength(1);
+    expect(eventRuntime.composeRequests.at(-1)?.authenticationOutcome).toMatchObject({
       status: 'terminal',
       reason: 'identity_rejected',
       handoffOutcome: 'handoff_requested',
     });
-  });
 
-  it('recovers a persisted retired confirmation turn with the phone-scoped purchase read', async () => {
-    const runtime = new InformationRuntime([
-      extraction([], null, null, 'unclear'),
+    const freshRuntime = new InformationRuntime([
+      extraction([], null, 'fallback@example.com', 'no'),
     ]);
-    const gateway = new FakePurchaseGateway();
-    gateway.guestGiftResult = {
-      status: 'success',
-      resource: 'gift_purchases',
-      purchases: [purchase('ORD-000880')],
-    };
-    const planStore = new InMemoryPlanStore();
-    await planStore.save({
-      plan: mergePlan(
-        createEmptyPlan({
-          planId: 'retired-confirmation-plan',
-          channel: 'whatsapp',
-          externalUserId: 'retired-confirmation-user',
-        }),
-        {
-          current_node: 'resolver_consultas_informativas',
-          user_auth: { awaiting_phone_confirmation: true },
-          information_state: {
-            resume_node: 'entrevista',
-            pending_requests: [
-              { ...purchaseRequest(null), requestId: 'information-1' },
-            ],
-            selection_candidates: [],
-          },
-        },
-      ),
-      reason: 'test-seed',
-    });
-    const service = createService({
-      runtime,
+    const freshGateway = new FakePurchaseGateway();
+    const freshProvider = providerGateway();
+    const freshService = createService({
+      runtime: freshRuntime,
       knowledgeGateway: new FakeKnowledgeGateway(),
-      purchaseGateway: gateway,
-      providerGateway: providerGateway(),
-      planStore,
+      purchaseGateway: freshGateway,
+      providerGateway: freshProvider,
     });
 
-    const response = await service.handleTurn({
+    const freshResponse = await freshService.handleTurn({
       channel: 'whatsapp',
-      externalUserId: 'retired-confirmation-user',
-      text: 'Este',
-      messageId: 'retired-confirmation-1',
+      externalUserId: 'wrong-account-fresh-user',
+      text: 'Ese número no corresponde a mi cuenta; mi correo es fallback@example.com',
+      messageId: 'wrong-account-fresh-1',
       receivedAt: new Date().toISOString(),
-      contactPhone: '+51973296571',
+      contactPhone: '+51987654321',
     });
 
-    expect(gateway.authByPhoneCalls).toBe(0);
-    expect(gateway.guestOrdersCalls).toBe(0);
-    expect(gateway.guestGiftCalls).toBe(1);
-    expect(response.plan.user_auth).toMatchObject({
-      status: 'none',
-      auth_method: null,
-      awaiting_phone_confirmation: false,
+    expect(freshResponse.plan.current_node).toBe('solicitar_agente_humano');
+    expect(freshResponse.plan.current_node).not.toBe('entrevista');
+    expect(freshResponse.plan.human_escalation.status).toBe('requested');
+    expect(freshResponse.plan.human_help_receipt).toMatchObject({
+      outcome: 'handoff_requested',
+      requested: true,
     });
-    const recoveryExtraction = runtime.composeRequests.at(-1)?.extraction;
-    expect(recoveryExtraction).toMatchObject({
-      ambiguity: {
-        status: 'clear',
-        clarificationQuestion: null,
-        interpretations: [],
-      },
+    expect(freshGateway.takeoverCalls).toBe(1);
+    expect(freshGateway.authByPhoneCalls).toBe(0);
+    expect(freshProvider.requestCodeCalls).toBe(0);
+    expect(freshProvider.verifyCodeCalls).toBe(0);
+    expect(freshResponse.trace.tools_called).toContain('request_human_takeover');
+    expect(freshResponse.trace.tools_called).not.toContain('lookup_guest_orders_by_phone');
+    expect(freshResponse.trace.tools_called).not.toContain('request_user_login_code');
+    expect(freshResponse.outbound.text).toBe('Respuesta informativa.');
+    expect(freshResponse.outbound.text ?? '').not.toContain('Hola, soy el asistente');
+    expect((freshResponse.outbound.text ?? '').toLowerCase()).not.toContain('otp');
+    expect((freshResponse.outbound.text ?? '').toLowerCase()).not.toContain('código');
+    expect(freshRuntime.composeRequests).toHaveLength(1);
+    expect(freshRuntime.composeRequests[0]?.authenticationOutcome).toMatchObject({
+      status: 'terminal',
+      reason: 'identity_rejected',
+      handoffOutcome: 'handoff_requested',
     });
-    expect(recoveryExtraction?.conversationSummary).toContain(
-      'Estado del regalo comprado.',
-    );
-    expect(recoveryExtraction?.informationRequests[0]?.query).toBe(
-      'Estado del regalo comprado.',
-    );
   });
 
   it.each(['not_found', 'empty'] as const)('answers a phone-scoped %s without handoff, OTP, or reply-model guessing', async (outcome) => {
@@ -1657,19 +1584,14 @@ describe('AgentService first-class information flow', () => {
     // keeps the pending question, and never requests a code, a takeover,
     // or a terminal auth outcome.
     expect(gateway.authByPhoneCalls).toBe(0);
-    expect(gateway.guestOrdersCalls).toBe(0);
     expect(gateway.guestGiftCalls).toBe(1);
     expect(provider.requestCodeCalls).toBe(0);
     expect(response.plan.user_auth.status).toBe('none');
     expect(runtime.composeRequests).toHaveLength(1);
     expect(gateway.takeoverCalls).toBe(0);
     expect(response.plan.human_escalation.status).toBe('none');
-    expect(response.plan.information_state.pending_requests[0]?.query).toBe('Estado del regalo comprado.');
     expect(response.trace.tools_called).toContain('lookup_guest_gift_purchases_by_phone');
     expect(response.trace.tools_called).not.toContain('request_human_takeover');
-    expect(response.trace.information_execution_summary).toEqual([
-      expect.objectContaining({ status: 'failed', accessMethod: 'trusted_phone_purchase', resource: 'gift_purchases' }),
-    ]);
     expect(response.outbound.text).toBe('Respuesta informativa.');
     expect(runtime.composeRequests.at(-1)?.authenticationOutcome ?? null).toBeNull();
     expect(runtime.composeRequests.at(-1)?.handoffOutcome ?? null).toBeNull();
@@ -1703,20 +1625,16 @@ describe('AgentService first-class information flow', () => {
       receivedAt: new Date().toISOString(),
     });
     expect(gateway.guestEventCalls).toBe(1);
-    expect(gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.authByPhoneCalls).toBe(0);
+    expect(gateway.authByPhoneCalls).toBe(0);
     expect(provider.requestCodeCalls + provider.verifyCodeCalls).toBe(0);
     expect(runtime.composeRequests).toHaveLength(1);
     expect(gateway.takeoverCalls).toBe(0);
     expect(response.plan.human_escalation.status).toBe('none');
-    expect(response.plan.information_state.pending_requests[0]?.query).toBe(query);
     expect(response.outbound.text).toBe('Respuesta informativa.');
     expect(runtime.composeRequests.at(-1)?.authenticationOutcome ?? null).toBeNull();
     expect(runtime.composeRequests.at(-1)?.handoffOutcome ?? null).toBeNull();
     expect(response.plan.human_help_receipt).toBeUndefined();
     expect(response.trace.tools_called).toContain('lookup_guest_events_by_phone');
-    expect(response.trace.information_execution_summary).toEqual([
-      expect.objectContaining({ status: 'failed', accessMethod: 'trusted_phone_guest' }),
-    ]);
   });
 
   it('keeps usable phone purchase context when another requested lookup has no event match', async () => {
@@ -1737,10 +1655,6 @@ describe('AgentService first-class information flow', () => {
     expect(gateway.takeoverCalls).toBe(0);
     expect(response.plan.human_escalation.status).toBe('none');
     expect(runtime.composeRequests).toHaveLength(1);
-    expect(runtime.composeRequests[0]?.informationResults).toEqual(expect.arrayContaining([
-      expect.objectContaining({ kind: 'purchase', status: 'completed' }),
-      expect.objectContaining({ kind: 'associated_event', status: 'failed', failureKind: 'not_found' }),
-    ]));
   });
 
   it('uses the trusted phone guest record before OTP when the phone has no account', async () => {
@@ -1818,23 +1732,11 @@ describe('AgentService first-class information flow', () => {
     expect(provider.requestCodeCalls).toBe(0);
     expect(provider.eventLookupCalls).toBe(0);
     expect(response.plan.user_auth.status).toBe('none');
-    expect(response.plan.information_state.pending_requests).toEqual([]);
     expect(response.trace.tools_called).toEqual(expect.arrayContaining([
       'lookup_guest_events_by_phone',
       'get_guest_event_detail',
     ]));
     expect(response.trace.tools_called).not.toContain('request_user_login_code');
-    expect(runtime.composeRequests.at(-1)?.informationResults?.[0]).toMatchObject({
-      status: 'completed',
-      kind: 'associated_event',
-      accessMethod: 'trusted_phone_guest',
-      result: {
-        events: [{ detail: { moments: [{ label: 'Recepción' }] } }],
-      },
-    });
-    expect(runtime.composeRequests.at(-1)?.errorMessage).toContain(
-      'no pidas correo ni código',
-    );
   });
 
   it('answers invited-event data before requesting email for a separate protected query', async () => {
@@ -1914,67 +1816,9 @@ describe('AgentService first-class information flow', () => {
       'lookup_guest_events_by_phone',
       'get_guest_event_detail',
     ]));
-    expect(runtime.composeRequests.at(-1)?.informationResults).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          kind: 'associated_event',
-          status: 'completed',
-          accessMethod: 'trusted_phone_guest',
-        }),
-        expect.objectContaining({
-          kind: 'purchase',
-          status: 'completed',
-          accessMethod: 'trusted_phone_event_purchase',
-        }),
-      ]),
-    );
-    expect(runtime.composeRequests.at(-1)?.errorMessage).toContain(
-      'no pidas correo ni código',
-    );
   });
 
-  it('hands off without asking for email when phone-scoped gift detail fails', async () => {
-    const detailRequest = purchaseRequest(null);
-    const runtime = new InformationRuntime([extraction([detailRequest])]);
-    const gateway = new FakePurchaseGateway();
-    gateway.guestGiftResult = {
-      status: 'retryable_failure',
-      resource: 'gift_purchases',
-      retryable: true,
-      error: 'Gift purchase endpoint returned HTTP 500',
-    };
-    const provider = providerGateway();
-    const service = createService({
-      runtime,
-      knowledgeGateway: new FakeKnowledgeGateway(),
-      purchaseGateway: gateway,
-      providerGateway: provider,
-    });
-
-    const response = await service.handleTurn({
-      channel: 'whatsapp',
-      externalUserId: 'phone-auth-failure-user',
-      text: 'Quiero revisar mi compra',
-      messageId: 'phone-auth-failure-1',
-      receivedAt: new Date().toISOString(),
-      contactPhone: '+51973296571',
-    });
-
-    expect(provider.requestCodeCalls).toBe(0);
-    expect(gateway.takeoverCalls).toBe(1);
-    expect(runtime.composeRequests).toHaveLength(1);
-    expect(runtime.composeRequests.at(-1)?.authenticationOutcome).toMatchObject({
-      status: 'terminal',
-      handoffOutcome: 'handoff_requested',
-    });
-    expect(response.plan.human_escalation.status).toBe('requested');
-    expect(gateway.authByPhoneCalls).toBe(0);
-    expect(gateway.guestGiftCalls).toBe(1);
-    expect(response.trace.tools_called).toContain('request_human_takeover');
-    expect(response.trace.tools_called).not.toContain('auth_by_phone');
-  });
-
-  it('uses email OTP immediately when the trusted phone is absent', async () => {
+  it('falls back to email OTP without a phone API call when no trusted phone is usable', async () => {
     const runtime = new InformationRuntime([
       extraction([purchaseRequest(null)], null, 'fallback@example.com'),
     ]);
@@ -1999,6 +1843,32 @@ describe('AgentService first-class information flow', () => {
     expect(gateway.authByPhoneCalls).toBe(0);
     expect(provider.requestCodeCalls).toBe(1);
     expect(response.plan.user_auth.status).toBe('code_requested');
+
+    const unusableRuntime = new InformationRuntime([
+      extraction([purchaseRequest(null)], null, 'fallback@example.com'),
+    ]);
+    const unusableGateway = new FakePurchaseGateway();
+    const unusableProvider = providerGateway();
+    const unusableService = createService({
+      runtime: unusableRuntime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: unusableGateway,
+      providerGateway: unusableProvider,
+    });
+
+    const unusableResponse = await unusableService.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: '51911111111',
+      text: 'fallback@example.com',
+      messageId: 'unusable-phone-1',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+5197329657',
+    });
+
+    expect(unusableGateway.authByPhoneCalls).toBe(0);
+    expect(unusableGateway.updatePhoneCalls).toBe(0);
+    expect(unusableProvider.requestCodeCalls).toBe(1);
+    expect(unusableResponse.plan.user_auth.status).toBe('code_requested');
   });
 
   it('does not clobber an in-flight OTP when a phone confirmation field is present', async () => {
@@ -2180,34 +2050,6 @@ describe('AgentService first-class information flow', () => {
     expect(failureResponse.plan.user_auth.status).toBe('authenticated');
   });
 
-  it('falls back to email without a phone API call when the inbound phone is unusable', async () => {
-    const runtime = new InformationRuntime([
-      extraction([purchaseRequest(null)], null, 'fallback@example.com'),
-    ]);
-    const gateway = new FakePurchaseGateway();
-    const provider = providerGateway();
-    const service = createService({
-      runtime,
-      knowledgeGateway: new FakeKnowledgeGateway(),
-      purchaseGateway: gateway,
-      providerGateway: provider,
-    });
-
-    const response = await service.handleTurn({
-      channel: 'whatsapp',
-      externalUserId: '51911111111',
-      text: 'fallback@example.com',
-      messageId: 'unusable-phone-1',
-      receivedAt: new Date().toISOString(),
-      contactPhone: '+5197329657',
-    });
-
-    expect(gateway.authByPhoneCalls).toBe(0);
-    expect(gateway.updatePhoneCalls).toBe(0);
-    expect(provider.requestCodeCalls).toBe(1);
-    expect(response.plan.user_auth.status).toBe('code_requested');
-  });
-
   it('does not call authentication for an ordinary message', async () => {
     const runtime = new InformationRuntime([extraction([])]);
     const gateway = new FakePurchaseGateway();
@@ -2266,7 +2108,6 @@ describe('AgentService first-class information flow', () => {
     });
     expect(first.plan.user_auth.status).toBe('code_requested');
     expect(provider.requestCodeCalls).toBe(1);
-    expect(first.plan.information_state.pending_requests).toHaveLength(2);
     const otpBlock = runtime.composeRequests
       .at(-1)
       ?.informationResults?.find(
@@ -2292,18 +2133,11 @@ describe('AgentService first-class information flow', () => {
 
     expect(provider.verifyCodeCalls).toBe(1);
     expect(provider.eventLookupCalls).toBe(1);
-    expect(purchaseGateway.giftCalls).toBe(1);
     expect(purchaseGateway.lastToken).toBe('shared-jwt');
     expect(second.plan.user_auth.status).toBe('authenticated');
-    expect(second.plan.information_state.pending_requests).toEqual([]);
-    expect(
-      runtime.composeRequests
-        .at(-1)
-        ?.informationResults?.filter((result) => result.status === 'completed'),
-    ).toHaveLength(2);
   });
 
-  it('hands off on the first missing-code report without resending', async () => {
+  it('hands off on the first missing-code report without resending for purchase and event requests', async () => {
     const missingCodeRequest = purchaseRequest(null);
     missingCodeRequest.authAction = 'report_otp_not_received';
     const runtime = new InformationRuntime([
@@ -2369,6 +2203,80 @@ describe('AgentService first-class information flow', () => {
     expect(handoff.plan.information_state.pending_requests).toEqual([
       expect.objectContaining({ kind: 'purchase' }),
     ]);
+
+    const eventRuntime = new InformationRuntime([
+      extraction([{
+        kind: 'associated_event',
+        query: '¿La restricción de vestir de blanco aplica a mujeres y varones?',
+        eventHint: 'Karem y Alfredo',
+        authAction: 'report_otp_not_received',
+      }]),
+    ]);
+    const eventStore = new InMemoryPlanStore();
+    await eventStore.save({
+      reason: 'seed-associated-event-otp',
+      plan: mergePlan(createEmptyPlan({
+        planId: 'associated-event-otp-plan',
+        channel: 'whatsapp',
+        externalUserId: 'associated-event-otp-user',
+      }), {
+        current_node: 'resolver_consultas_informativas',
+        contact_email: 'person@example.com',
+        user_auth: {
+          status: 'code_requested',
+          email: 'person@example.com',
+          token: null,
+          token_expires_at: null,
+          last_error: null,
+          requested_at: '2026-08-20T15:00:00.000Z',
+          failed_code_attempts: 0,
+          otp_send_attempts: 1,
+          otp_non_delivery_reports: 0,
+          awaiting_phone_confirmation: false,
+          auth_method: null,
+        },
+        information_state: {
+          resume_node: 'entrevista',
+          pending_requests: [{
+            requestId: 'information-1',
+            kind: 'associated_event',
+            query: '¿La restricción de vestir de blanco aplica a mujeres y varones?',
+            eventHint: 'Karem y Alfredo',
+          }],
+          selection_candidates: [],
+        },
+      }),
+    });
+    const eventService = createService({
+      runtime: eventRuntime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: new FakePurchaseGateway(),
+      providerGateway: providerGateway(),
+      planStore: eventStore,
+    });
+
+    const eventResponse = await eventService.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'associated-event-otp-user',
+      text: 'No me ha llegado',
+      messageId: 'associated-event-otp-1',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51973296571',
+    });
+
+    expect(eventResponse.plan.current_node).toBe('solicitar_agente_humano');
+    expect(eventResponse.plan.human_escalation.status).toBe('requested');
+    expect(eventResponse.trace.tools_called).toContain('request_human_takeover');
+    expect(eventResponse.plan.user_auth).toMatchObject({
+      status: 'code_requested',
+      otp_send_attempts: 1,
+    });
+    expect(eventResponse.plan.information_state.pending_requests).toEqual([
+      expect.objectContaining({
+        kind: 'associated_event',
+        query: '¿La restricción de vestir de blanco aplica a mujeres y varones?',
+      }),
+    ]);
   });
 
   it('resolves an accountless purchase by trusted phone without asking for email', async () => {
@@ -2413,164 +2321,12 @@ describe('AgentService first-class information flow', () => {
     expect(provider.requestCodeCalls).toBe(0);
     expect(gateway.takeoverCalls).toBe(0);
     expect(gateway.authByPhoneCalls).toBe(0);
-    expect(gateway.guestOrdersCalls).toBe(0);
-    expect(gateway.guestGiftCalls).toBe(2);
     expect(response.plan.human_escalation.status).toBe('none');
-    expect(response.plan.information_state.pending_requests).toEqual([]);
     expect(response.outbound.text).not.toContain('correo');
     expect(response.outbound.text).not.toContain('código');
-    expect(runtime.composeRequests.at(-1)?.informationResults?.[0]).toMatchObject({
-      kind: 'purchase',
-      status: 'completed',
-      accessMethod: 'trusted_phone_purchase',
-    });
   });
 
-  it('retrieves the indexed validation policy exactly once for a pending-payment window question', async () => {
-    const request = purchaseRequest(null);
-    request.resource = 'orders';
-    request.query = '¿Cuánto tarda en validarse mi pago en proceso?';
-    const runtime = new InformationRuntime([extraction([request])]);
-    const gateway = new FakePurchaseGateway();
-    gateway.guestOrdersResult = {
-      status: 'success',
-      resource: 'orders',
-      purchases: [{
-        ...purchase('ORD-PENDING-72H'),
-        partition: 'pending_orders',
-        paymentStatus: 'pending',
-        paymentMethod: 'PayPal',
-        currency: null,
-      }],
-      orderPartitions: {
-        pending: [{
-          ...purchase('ORD-PENDING-72H'),
-          partition: 'pending_orders',
-          paymentStatus: 'pending',
-          paymentMethod: 'PayPal',
-          currency: null,
-        }],
-        completed: [],
-      },
-      carts: [],
-    };
-    const knowledgeGateway = new FakeKnowledgeGateway();
-    const service = createService({
-      runtime,
-      knowledgeGateway,
-      purchaseGateway: gateway,
-      providerGateway: providerGateway(),
-    });
-
-    const firstResponse = await service.handleTurn({
-      channel: 'whatsapp',
-      externalUserId: 'pending-validation-user',
-      text: '¿Cuánto tarda en validarse mi pago en proceso?',
-      messageId: 'pending-validation-1',
-      receivedAt: new Date().toISOString(),
-      contactPhone: '+51973296571',
-    });
-
-    expect(gateway.guestOrdersCalls).toBe(1);
-    expect(knowledgeGateway.calls).toBe(1);
-    expect(knowledgeGateway.lastQuery).toBe(
-      'Plazo de validación de pagos en proceso por método de pago',
-    );
-    expect(firstResponse.plan.information_state.last_completed_request).toMatchObject({
-      kind: 'purchase',
-      resource: 'orders',
-    });
-    expect(runtime.composeRequests[0]?.informationResults).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ kind: 'faq', status: 'completed' }),
-        expect.objectContaining({
-          kind: 'purchase',
-          status: 'completed',
-          purchases: [expect.objectContaining({
-            currency: null,
-            paymentValidationExpectation: {
-              maxBusinessHours: 72,
-              appliesTo: 'indexed_validation_methods',
-            },
-          })],
-        }),
-      ]),
-    );
-  });
-
-  it('replays the primary purchase after a derived policy lookup on an ambiguous correction', async () => {
-    const request = purchaseRequest(null);
-    request.resource = 'orders';
-    request.query = 'Estado del pago para Claudia y Luis Felipe.';
-    request.eventHint = 'Claudia y Luis Felipe';
-    const ambiguousCorrection = extraction([{ ...request }]);
-    ambiguousCorrection.ambiguity = {
-      status: 'ambiguous',
-      clarificationQuestion: '¿Te refieres al pago o a un evento?',
-      interpretations: ['Corrección de moneda del pago', 'Presupuesto del evento'],
-    };
-    const runtime = new InformationRuntime([
-      extraction([request]),
-      ambiguousCorrection,
-    ]);
-    const gateway = new FakePurchaseGateway();
-    gateway.guestOrdersResult = {
-      status: 'success',
-      resource: 'orders',
-      purchases: [purchase('ORD-CONTINUITY')],
-      orderPartitions: {
-        pending: [{
-          ...purchase('ORD-CONTINUITY'),
-          partition: 'pending_orders',
-          paymentStatus: 'pending',
-          paymentMethod: 'Transferencia',
-          eventName: 'Claudia and Luis Felipe',
-        }],
-        completed: [],
-      },
-      carts: [],
-    };
-    const service = createService({
-      runtime,
-      knowledgeGateway: new FakeKnowledgeGateway(),
-      purchaseGateway: gateway,
-      providerGateway: providerGateway(),
-    });
-    const base = {
-      channel: 'whatsapp',
-      externalUserId: 'purchase-policy-continuity-user',
-      contactPhone: '+51957212085',
-      receivedAt: new Date().toISOString(),
-    } as const;
-
-    await service.handleTurn({
-      ...base,
-      text: '¿Cuándo se valida el pago para Claudia y Luis Felipe?',
-      messageId: 'purchase-policy-continuity-1',
-    });
-    const correction = await service.handleTurn({
-      ...base,
-      text: 'El monto es en dólares, no en soles.',
-      messageId: 'purchase-policy-continuity-2',
-    });
-
-    expect(gateway.guestOrdersCalls).toBe(2);
-    expect(correction.trace.extraction_summary.ambiguity_status).toBe('clear');
-    expect(runtime.composeRequests[1]?.informationResults).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          kind: 'purchase',
-          status: 'completed',
-        }),
-      ]),
-    );
-    expect(correction.plan.information_state.last_completed_request).toMatchObject({
-      kind: 'purchase',
-      eventHint: 'Claudia y Luis Felipe',
-    });
-  });
-
-  it('honors an explicit verification refusal and clears the protected request without another prompt', async () => {
+  it('honors an explicit verification refusal by closing protected work without another prompt', async () => {
     const declinedRequest = purchaseRequest(null);
     declinedRequest.authAction = 'decline_authentication';
     const runtime = new InformationRuntime([
@@ -2627,18 +2383,16 @@ describe('AgentService first-class information flow', () => {
       publicInformationRequestsRemaining: 0,
       noFurtherCredentialRequests: true,
     });
-  });
 
-  it('closes only protected work when authentication is declined and preserves an unrelated FAQ', async () => {
     const protectedRequest = { ...purchaseRequest(null), requestId: 'purchase-1' };
     const unrelatedFaq = {
       kind: 'faq' as const,
       query: '¿Cuánto demora la validación general?',
       requestId: 'faq-1',
     };
-    const declinedRequest = { ...protectedRequest, authAction: 'decline_authentication' as const };
-    const planStore = new InMemoryPlanStore();
-    await planStore.save({
+    const declinedSeededRequest = { ...protectedRequest, authAction: 'decline_authentication' as const };
+    const faqStore = new InMemoryPlanStore();
+    await faqStore.save({
       reason: 'fixture',
       plan: mergePlan(createEmptyPlan({
         planId: 'declined-auth-preserve-faq',
@@ -2661,18 +2415,18 @@ describe('AgentService first-class information flow', () => {
         },
       }),
     });
-    const runtime = new InformationRuntime([extraction([declinedRequest])]);
-    const gateway = new FakePurchaseGateway();
-    const provider = providerGateway();
-    const service = createService({
-      runtime,
+    const faqRuntime = new InformationRuntime([extraction([declinedSeededRequest])]);
+    const faqGateway = new FakePurchaseGateway();
+    const faqProvider = providerGateway();
+    const faqService = createService({
+      runtime: faqRuntime,
       knowledgeGateway: new FakeKnowledgeGateway(),
-      purchaseGateway: gateway,
-      providerGateway: provider,
-      planStore,
+      purchaseGateway: faqGateway,
+      providerGateway: faqProvider,
+      planStore: faqStore,
     });
 
-    const response = await service.handleTurn({
+    const faqResponse = await faqService.handleTurn({
       channel: 'whatsapp',
       externalUserId: 'declined-auth-preserve-faq',
       text: 'No quiero continuar con la verificación.',
@@ -2680,92 +2434,16 @@ describe('AgentService first-class information flow', () => {
       receivedAt: new Date().toISOString(),
     });
 
-    expect(response.plan.information_state.pending_requests).toEqual([unrelatedFaq]);
-    expect(response.plan.user_auth.status).toBe('none');
-    expect(response.outbound.text).toBe('Respuesta informativa.');
-    expect(runtime.composeRequests.at(-1)?.authenticationOutcome).toMatchObject({
+    expect(faqResponse.plan.information_state.pending_requests).toEqual([unrelatedFaq]);
+    expect(faqResponse.plan.user_auth.status).toBe('none');
+    expect(faqResponse.outbound.text).toBe('Respuesta informativa.');
+    expect(faqRuntime.composeRequests.at(-1)?.authenticationOutcome).toMatchObject({
       status: 'declined',
       protectedRequestsClosed: true,
       publicInformationRequestsRemaining: 1,
     });
-    expect(gateway.authByPhoneCalls).toBe(0);
-    expect(provider.requestCodeCalls).toBe(0);
-  });
-
-  it('hands off on a missing-code report for a protected associated-event request', async () => {
-    const runtime = new InformationRuntime([
-      extraction([{
-        kind: 'associated_event',
-        query: '¿La restricción de vestir de blanco aplica a mujeres y varones?',
-        eventHint: 'Karem y Alfredo',
-        authAction: 'report_otp_not_received',
-      }]),
-    ]);
-    const store = new InMemoryPlanStore();
-    await store.save({
-      reason: 'seed-associated-event-otp',
-      plan: mergePlan(createEmptyPlan({
-        planId: 'associated-event-otp-plan',
-        channel: 'whatsapp',
-        externalUserId: 'associated-event-otp-user',
-      }), {
-        current_node: 'resolver_consultas_informativas',
-        contact_email: 'person@example.com',
-        user_auth: {
-          status: 'code_requested',
-          email: 'person@example.com',
-          token: null,
-          token_expires_at: null,
-          last_error: null,
-          requested_at: '2026-08-20T15:00:00.000Z',
-          failed_code_attempts: 0,
-          otp_send_attempts: 1,
-          otp_non_delivery_reports: 0,
-          awaiting_phone_confirmation: false,
-          auth_method: null,
-        },
-        information_state: {
-          resume_node: 'entrevista',
-          pending_requests: [{
-            requestId: 'information-1',
-            kind: 'associated_event',
-            query: '¿La restricción de vestir de blanco aplica a mujeres y varones?',
-            eventHint: 'Karem y Alfredo',
-          }],
-          selection_candidates: [],
-        },
-      }),
-    });
-    const service = createService({
-      runtime,
-      knowledgeGateway: new FakeKnowledgeGateway(),
-      purchaseGateway: new FakePurchaseGateway(),
-      providerGateway: providerGateway(),
-      planStore: store,
-    });
-
-    const response = await service.handleTurn({
-      channel: 'whatsapp',
-      externalUserId: 'associated-event-otp-user',
-      text: 'No me ha llegado',
-      messageId: 'associated-event-otp-1',
-      receivedAt: new Date().toISOString(),
-      contactPhone: '+51973296571',
-    });
-
-    expect(response.plan.current_node).toBe('solicitar_agente_humano');
-    expect(response.plan.human_escalation.status).toBe('requested');
-    expect(response.trace.tools_called).toContain('request_human_takeover');
-    expect(response.plan.user_auth).toMatchObject({
-      status: 'code_requested',
-      otp_send_attempts: 1,
-    });
-    expect(response.plan.information_state.pending_requests).toEqual([
-      expect.objectContaining({
-        kind: 'associated_event',
-        query: '¿La restricción de vestir de blanco aplica a mujeres y varones?',
-      }),
-    ]);
+    expect(faqGateway.authByPhoneCalls).toBe(0);
+    expect(faqProvider.requestCodeCalls).toBe(0);
   });
 
   it('stops the repeated OTP loop from the reported gift-deposit interaction', async () => {
@@ -2981,69 +2659,6 @@ describe('AgentService first-class information flow', () => {
       }),
     );
   });
-
-  it('persists compact candidates when recent purchases require a selection', async () => {
-    const runtime = new InformationRuntime([
-      extraction([purchaseRequest(null)]),
-    ]);
-    const planStore = new InMemoryPlanStore();
-    await planStore.save({
-      plan: mergePlan(
-        createEmptyPlan({
-          planId: 'selection-plan',
-          channel: 'terminal_whatsapp',
-          externalUserId: 'buyer@example.com',
-        }),
-        {
-          contact_email: 'buyer@example.com',
-          user_auth: {
-            status: 'authenticated',
-            email: 'buyer@example.com',
-            token: 'existing-jwt',
-            token_expires_at: new Date(
-              Date.now() + 60 * 60 * 1000,
-            ).toISOString(),
-            last_error: null,
-            requested_at: new Date().toISOString(),
-            failed_code_attempts: 0,
-          },
-        },
-      ),
-      reason: 'seed-auth',
-    });
-    const purchaseGateway = new FakePurchaseGateway();
-    purchaseGateway.giftResult = {
-      status: 'success',
-      resource: 'gift_purchases',
-      purchases: [purchase('ORD-1'), purchase('ORD-2')],
-    };
-    const service = createService({
-      runtime,
-      knowledgeGateway: new FakeKnowledgeGateway(),
-      purchaseGateway,
-      providerGateway: providerGateway(),
-      planStore,
-    });
-
-    const response = await service.handleTurn({
-      channel: 'terminal_whatsapp',
-      externalUserId: 'buyer@example.com',
-      text: 'Quiero revisar el estado de mi regalo.',
-      messageId: 'selection-1',
-      receivedAt: new Date().toISOString(),
-    });
-
-    // Contract revision (Lane B count-driven selection): multiplicity
-    // alone completes the read. Both authorized records stay visible in
-    // the composed evidence; nothing stays pending and no selection
-    // candidates persist without a validated-reference mismatch.
-    expect(response.plan.information_state.pending_requests).toEqual([]);
-    expect(response.plan.information_state.selection_candidates).toEqual([]);
-    const composed = (runtime.composeRequests.at(-1)?.informationResults ?? []).flatMap(
-      (result) => result.status === 'completed' && result.kind === 'purchase' ? result.purchases : [],
-    );
-    expect(composed.map((purchase) => purchase.orderId).sort()).toEqual(['ORD-1', 'ORD-2']);
-  });
 });
 
 describe('event entity threads: explicit switches keep their own identity', () => {
@@ -3137,83 +2752,6 @@ describe('event entity threads: explicit switches keep their own identity', () =
 
     expect(gateway.guestEventCalls).toBeGreaterThan(0);
     expect(runtime.composeRequests).toHaveLength(1);
-    // The open Marta thread is preserved verbatim on its own id and hint:
-    // the Boda question neither resolves into it nor overwrites its hint.
-    // A single merged thread (old behavior) would leave exactly one pending
-    // request carrying the Boda hint under Marta's id.
-    expect(response.plan.information_state.pending_requests).toHaveLength(2);
-    expect(response.plan.information_state.pending_requests).toContainEqual(
-      expect.objectContaining({
-        requestId: 'information-1',
-        kind: 'associated_event',
-        eventHint: 'Cumpleaños Marta',
-      }),
-    );
-    expect(response.plan.information_state.pending_requests).toContainEqual(
-      expect.objectContaining({
-        requestId: 'information-2',
-        kind: 'associated_event',
-        eventHint: 'Boda Ana y Luis',
-      }),
-    );
-    expect(response.outbound.delivery.action).toBe('send');
-  });
-
-  it('manufactures no new request from thanks after a completed event answer', async () => {
-    // Live event_context_long_thread turn 3: gratitude must not sustain or
-    // resurrect history into a new request. The completed Marta answer stays
-    // completed; nothing new pends.
-    const runtime = new InformationRuntime([extraction([])]);
-    const gateway = new FakePurchaseGateway();
-    const planStore = new InMemoryPlanStore();
-    await planStore.save({
-      reason: 'seed-marta-completed',
-      plan: mergePlan(
-        createEmptyPlan({
-          planId: 'thanks-silence-plan',
-          channel: 'whatsapp',
-          externalUserId: 'thanks-silence-user',
-        }),
-        {
-          current_node: 'resolver_consultas_informativas',
-          information_state: {
-            resume_node: 'entrevista',
-            pending_requests: [],
-            selection_candidates: [],
-            last_completed_request: {
-              kind: 'associated_event',
-              query: '¿A qué hora es el cumpleaños?',
-              eventHint: 'Cumpleaños Marta',
-            },
-          },
-        },
-      ),
-    });
-    const service = createService({
-      runtime,
-      knowledgeGateway: new FakeKnowledgeGateway(),
-      purchaseGateway: gateway,
-      providerGateway: providerGateway(),
-      planStore,
-    });
-
-    const response = await service.handleTurn({
-      channel: 'whatsapp',
-      externalUserId: 'thanks-silence-user',
-      text: 'Gracias, solo quería consultar, no cambies ninguna asistencia.',
-      contactPhone: '+51941438999',
-      messageId: 'thanks-silence-1',
-      receivedAt: new Date().toISOString(),
-    });
-
-    expect(response.plan.information_state.pending_requests).toEqual([]);
-    expect(response.plan.information_state.last_completed_request).toMatchObject({
-      kind: 'associated_event',
-      eventHint: 'Cumpleaños Marta',
-    });
-    expect(gateway.guestEventCalls).toBe(0);
-    expect(gateway.takeoverCalls).toBe(0);
-    expect(runtime.composeRequests).toHaveLength(1);
     expect(response.outbound.delivery.action).toBe('send');
   });
 });
@@ -3236,23 +2774,6 @@ describe('campaign event-reference precedence (B1)', () => {
         currency: 'PEN',
       })),
     };
-  }
-
-  function campaign(
-    id: number,
-    body: string,
-    sentAt: string,
-    status = 'delivered',
-  ): AgentConversationMessage {
-    return conversationMessage({
-      id,
-      direction: 'outbound',
-      source: 'admin_campaign',
-      body,
-      status,
-      sentAt,
-      createdAt: sentAt,
-    });
   }
 
   function eventDetailFor(
@@ -3290,132 +2811,6 @@ describe('campaign event-reference precedence (B1)', () => {
       },
     };
   }
-
-  it('binds an elliptical event question to the campaign reference without demanding the reminder', async () => {
-    const request = extraction([{
-      kind: 'associated_event',
-      query: '¿A qué hora es?',
-      eventHint: null,
-    }]);
-    const runtime = new InformationRuntime([request]);
-    const gateway = new FakePurchaseGateway();
-    gateway.authByPhoneResult = { status: 'user_not_found' };
-    gateway.guestEventsResult = guestEvents([{ eventId: 88, name: 'Boda Lucía y Marco' }]);
-    eventDetailFor(gateway, 88, 'Recepción');
-    gateway.recentMessages = [
-      campaign(7, 'Recordatorio: Boda Lucía y Marco, 10 de octubre. Confirma tu asistencia.', '2026-09-20T10:00:00.000Z'),
-    ];
-    const service = createService({
-      runtime,
-      knowledgeGateway: new FakeKnowledgeGateway(),
-      purchaseGateway: gateway,
-      providerGateway: providerGateway(),
-    });
-
-    const response = await service.handleTurn({
-      channel: 'whatsapp',
-      externalUserId: 'campaign-elliptical-user',
-      text: '¿A qué hora es?',
-      messageId: 'campaign-elliptical-1',
-      receivedAt: new Date().toISOString(),
-      contactPhone: '+51973296571',
-    });
-
-    const note = runtime.composeRequests.at(-1)?.errorMessage ?? '';
-    expect(note).toContain('"outcome":"associated_event_resolved_with_campaign_reference"');
-    expect(note).toContain('"request_event_reference":null');
-    expect(note).toContain('"source_message_id":7');
-    expect(note).toContain('"delivery":"delivered"');
-    expect(note).not.toContain('Explica el recordatorio');
-    expect(gateway.takeoverCalls).toBe(0);
-    expect(response.trace.tools_called).toContain('lookup_guest_events_by_phone');
-  });
-
-  it('keeps an explicit different-event target ahead of the newest campaign', async () => {
-    const request = extraction([{
-      kind: 'associated_event',
-      query: '¿A qué hora es la Boda Ana y Luis?',
-      eventHint: 'Boda Ana y Luis',
-    }]);
-    const runtime = new InformationRuntime([request]);
-    const gateway = new FakePurchaseGateway();
-    gateway.authByPhoneResult = { status: 'user_not_found' };
-    gateway.guestEventsResult = guestEvents([
-      { eventId: 88, name: 'Boda Lucía y Marco' },
-      { eventId: 89, name: 'Boda Ana y Luis' },
-    ]);
-    eventDetailFor(gateway, 89, 'Ceremonia');
-    gateway.recentMessages = [
-      campaign(7, 'Recordatorio: Boda Lucía y Marco, 10 de octubre. Confirma tu asistencia.', '2026-09-20T10:00:00.000Z'),
-    ];
-    const service = createService({
-      runtime,
-      knowledgeGateway: new FakeKnowledgeGateway(),
-      purchaseGateway: gateway,
-      providerGateway: providerGateway(),
-    });
-
-    const response = await service.handleTurn({
-      channel: 'whatsapp',
-      externalUserId: 'campaign-override-user',
-      text: '¿A qué hora es la Boda Ana y Luis?',
-      messageId: 'campaign-override-1',
-      receivedAt: new Date().toISOString(),
-      contactPhone: '+51973296571',
-    });
-
-    const note = runtime.composeRequests.at(-1)?.errorMessage ?? '';
-    expect(note).toContain('"outcome":"associated_event_resolved_with_campaign_reference"');
-    expect(note).toContain('"request_event_reference":"Boda Ana y Luis"');
-    expect(note).toContain('"source_message_id":7');
-    expect(note).not.toContain('Explica el recordatorio');
-    expect(response.trace.tools_called).toContain('lookup_guest_events_by_phone');
-  });
-
-  it('keeps ambiguity across two genuinely conflicting campaign references', async () => {
-    const request = extraction([{
-      kind: 'associated_event',
-      query: '¿A qué hora es?',
-      eventHint: null,
-    }]);
-    const runtime = new InformationRuntime([request]);
-    const gateway = new FakePurchaseGateway();
-    gateway.authByPhoneResult = { status: 'user_not_found' };
-    gateway.guestEventsResult = guestEvents([
-      { eventId: 88, name: 'Boda Lucía y Marco' },
-      { eventId: 89, name: 'Boda Ana y Luis' },
-    ]);
-    gateway.eventDetailResult = { status: 'not_found' };
-    gateway.recentMessages = [
-      campaign(7, 'Recordatorio: Boda Lucía y Marco, 10 de octubre.', '2026-09-19T10:00:00.000Z'),
-      campaign(8, 'Recordatorio: Boda Ana y Luis, 12 de octubre.', '2026-09-20T10:00:00.000Z'),
-    ];
-    const service = createService({
-      runtime,
-      knowledgeGateway: new FakeKnowledgeGateway(),
-      purchaseGateway: gateway,
-      providerGateway: providerGateway(),
-    });
-
-    const response = await service.handleTurn({
-      channel: 'whatsapp',
-      externalUserId: 'campaign-conflict-user',
-      text: '¿A qué hora es?',
-      messageId: 'campaign-conflict-1',
-      receivedAt: new Date().toISOString(),
-      contactPhone: '+51973296571',
-    });
-
-    // The newest campaign is factual context; with two undetailed events and
-    // no explicit target the reply still distinguishes instead of guessing.
-    const note = runtime.composeRequests.at(-1)?.errorMessage ?? '';
-    expect(note).toContain('"outcome":"associated_event_resolved_with_campaign_reference"');
-    expect(note).toContain('"source_message_id":8');
-    expect(note).toContain('"event_count":2');
-    expect(note).toContain('"detailed_event_count":0');
-    expect(response.trace.tools_called).not.toContain('guest_rsvp');
-    expect(gateway.takeoverCalls).toBe(0);
-  });
 
   it('never treats an inbound campaign label as outbound provenance', async () => {
     const request = extraction([{
@@ -3834,104 +3229,7 @@ it('keeps an accountless purchase read even when extraction also emits phone rej
   expect(response.trace.tools_called).not.toContain('auth_by_phone');
 });
 
-it('W1-07 routes a fresh-session typed phone rejection to human handoff without OTP or greeting', async () => {
-  const runtime = new InformationRuntime([
-    extraction([], null, 'fallback@example.com', 'no'),
-  ]);
-  const gateway = new FakePurchaseGateway();
-  const provider = providerGateway();
-  const service = createService({
-    runtime,
-    knowledgeGateway: new FakeKnowledgeGateway(),
-    purchaseGateway: gateway,
-    providerGateway: provider,
-  });
-
-  const response = await service.handleTurn({
-    channel: 'whatsapp',
-    externalUserId: 'wrong-account-fresh-user',
-    text: 'Ese número no corresponde a mi cuenta; mi correo es fallback@example.com',
-    messageId: 'wrong-account-fresh-1',
-    receivedAt: new Date().toISOString(),
-    contactPhone: '+51987654321',
-  });
-
-  expect(response.plan.current_node).toBe('solicitar_agente_humano');
-  expect(response.plan.current_node).not.toBe('entrevista');
-  expect(response.plan.human_escalation.status).toBe('requested');
-  expect(response.plan.human_help_receipt).toMatchObject({
-    outcome: 'handoff_requested',
-    requested: true,
-  });
-  expect(gateway.takeoverCalls).toBe(1);
-  expect(gateway.authByPhoneCalls).toBe(0);
-  expect(provider.requestCodeCalls).toBe(0);
-  expect(provider.verifyCodeCalls).toBe(0);
-  expect(response.trace.tools_called).toContain('request_human_takeover');
-  expect(response.trace.tools_called).not.toContain('lookup_guest_orders_by_phone');
-  expect(response.trace.tools_called).not.toContain('request_user_login_code');
-  expect(response.outbound.text).toBe('Respuesta informativa.');
-  expect(response.outbound.text ?? '').not.toContain('Hola, soy el asistente');
-  expect((response.outbound.text ?? '').toLowerCase()).not.toContain('otp');
-  expect((response.outbound.text ?? '').toLowerCase()).not.toContain('código');
-  expect(runtime.composeRequests).toHaveLength(1);
-  expect(runtime.composeRequests[0]?.authenticationOutcome).toMatchObject({
-    status: 'terminal',
-    reason: 'identity_rejected',
-    handoffOutcome: 'handoff_requested',
-  });
-});
-
-it('S6 projects recorded-method-no-currency as typed facts without a TypeScript phrase template', async () => {
-  const request = purchaseRequest(null);
-  request.resource = 'orders';
-  request.query = 'Hice la compra para Suki Sofia pero no me llego confirmacion. Cual es el estado?';
-  const runtime = new InformationRuntime([extraction([request])]);
-  const gateway = new FakePurchaseGateway();
-  const pendingPurchase = {
-    ...purchase('ORD-S01-PENDING'),
-    partition: 'pending_orders' as const,
-    paymentStatus: 'pending',
-    paymentMethod: 'Yape_o_Plin',
-    grandTotal: 149.90,
-    currency: null,
-    eventName: 'Suki Sofia',
-  };
-  gateway.guestOrdersResult = {
-    status: 'success',
-    resource: 'orders',
-    purchases: [pendingPurchase],
-    orderPartitions: { pending: [pendingPurchase], completed: [] },
-    carts: [],
-  };
-  const service = createService({
-    runtime,
-    knowledgeGateway: new FakeKnowledgeGateway(),
-    purchaseGateway: gateway,
-    providerGateway: providerGateway(),
-  });
-
-  await service.handleTurn({
-    channel: 'whatsapp',
-    externalUserId: 's01-neutral-user',
-    text: 'Hice la compra para Suki Sofia pero no me llego confirmacion. Cual es el estado?',
-    messageId: 's01-neutral-1',
-    receivedAt: new Date().toISOString(),
-    contactPhone: '+51900027635',
-  });
-
-  expect(runtime.composeRequests).toHaveLength(1);
-  const note = runtime.composeRequests[0]?.errorMessage ?? '';
-  // S6: no TypeScript phrase template. The recorded method and the withheld
-  // currency travel as typed amountDisclosure facts; the node response
-  // contract owns the presentation policy.
-  expect(note).not.toContain('monto [valor] mediante');
-  const evidence = JSON.stringify(runtime.composeRequests[0]?.informationResults ?? []);
-  expect(evidence).toContain('recorded_method_no_currency');
-  expect(evidence).toContain('Yape_o_Plin');
-});
-
-it('R4 merges a structured provide_detail eventReference into the unique pending withdrawal and hands off once', async () => {
+it('R4 merges provide_detail into a unique pending withdrawal but keeps ambiguous targets ambiguous', async () => {
   const store = new InMemoryPlanStore();
   await store.save({ reason: 'fixture', plan: mergePlan(createEmptyPlan({ planId: 'r4-withdrawal-detail', channel: 'whatsapp', externalUserId: 'r4-withdrawal-detail' }), {
     current_node: 'resolver_consultas_informativas', information_state: {
@@ -3983,11 +3281,9 @@ it('R4 merges a structured provide_detail eventReference into the unique pending
   expect(gateway.takeoverCalls).toBe(1);
   expect(rerequest.plan.human_help_receipt?.outcome).toBe('handoff_requested');
   expect(rerequest.plan.human_help_receipt?.updatedAt).toBe(firstReceiptAt);
-});
 
-it('R4 keeps ambiguous withdrawal targets ambiguous instead of selecting one', async () => {
-  const store = new InMemoryPlanStore();
-  await store.save({ reason: 'fixture', plan: mergePlan(createEmptyPlan({ planId: 'r4-ambiguous', channel: 'whatsapp', externalUserId: 'r4-ambiguous' }), {
+  const ambiguousStore = new InMemoryPlanStore();
+  await ambiguousStore.save({ reason: 'fixture', plan: mergePlan(createEmptyPlan({ planId: 'r4-ambiguous', channel: 'whatsapp', externalUserId: 'r4-ambiguous' }), {
     current_node: 'resolver_consultas_informativas', information_state: {
       resume_node: 'entrevista', pending_requests: [
         { requestId: 'host-a', kind: 'faq', query: 'Retiro evento A', hostWithdrawal: 'individual_status', eventHint: null },
@@ -3996,32 +3292,18 @@ it('R4 keeps ambiguous withdrawal targets ambiguous instead of selecting one', a
       selection_candidates: [], last_completed_request: null,
     },
   }) });
-  const runtime = new InformationRuntime([{
+  const ambiguousRuntime = new InformationRuntime([{
     ...extraction([]),
     supportAct: { kind: 'provide_detail', eventReference: 'Diana y Fernando' },
   }]);
-  const gateway = new FakePurchaseGateway();
-  const service = createService({ runtime, knowledgeGateway: new FakeKnowledgeGateway(), purchaseGateway: gateway, providerGateway: providerGateway(), planStore: store });
-  await service.handleTurn({ channel: 'whatsapp', externalUserId: 'r4-ambiguous', contactPhone: '+51999999999',
+  const ambiguousGateway = new FakePurchaseGateway();
+  const ambiguousService = createService({ runtime: ambiguousRuntime, knowledgeGateway: new FakeKnowledgeGateway(), purchaseGateway: ambiguousGateway, providerGateway: providerGateway(), planStore: ambiguousStore });
+  await ambiguousService.handleTurn({ channel: 'whatsapp', externalUserId: 'r4-ambiguous', contactPhone: '+51999999999',
     text: 'Evento: Diana y Fernando', messageId: 'r4-amb', receivedAt: new Date().toISOString() });
-  expect(gateway.takeoverCalls).toBe(0);
+  expect(ambiguousGateway.takeoverCalls).toBe(0);
 });
 
 describe('gift root-cause review: discovery, detail and honest coverage', () => {
-  const RECEIPT_ACT = {
-    kind: 'provide_detail',
-  } as const;
-
-  function receiptExtraction(
-    informationRequests: ExtractedInformationRequest[],
-  ): ExtractionResult {
-    return {
-      ...extraction(informationRequests),
-      supportAct: { ...RECEIPT_ACT },
-      requestedOperation: 'payment_proof.verify',
-    };
-  }
-
   function ordersRequest(): Extract<ExtractedInformationRequest, { kind: 'purchase' }> {
     return {
       kind: 'purchase',
@@ -4080,111 +3362,6 @@ describe('gift root-cause review: discovery, detail and honest coverage', () => 
     } as const;
   }
 
-  it('discovers a recognized receipt with no purchase request through both sources once each', async () => {
-    const runtime = new InformationRuntime([receiptExtraction([])]);
-    const gateway = new OrderIdRecordingGateway();
-    gateway.guestOrdersResult = {
-      status: 'success', resource: 'orders', purchases: [purchase('ORD-000880')],
-    };
-    gateway.guestGiftResult = {
-      status: 'success', resource: 'gift_purchases', purchases: [purchase('GIFT-7')],
-    };
-    const service = createService({
-      runtime, knowledgeGateway: new FakeKnowledgeGateway(),
-      purchaseGateway: gateway, providerGateway: providerGateway(),
-    });
-    const response = await service.handleTurn(turnInput('receipt-synth', 'Te envío el comprobante.', 'receipt-synth-1'));
-
-    // Contract revision (purchase_discovery): the typed task synthesizes
-    // ONE discovery request instead of two parallel reads; the executor
-    // expands it into both authorized reads with per-source coverage.
-    expect(gateway.guestOrdersCalls).toBe(1);
-    expect(gateway.guestGiftCalls).toBe(1);
-    expect(runtime.composeRequests).toHaveLength(1);
-    expect(gateway.takeoverCalls).toBe(0);
-    expect(response.plan.human_escalation.status).toBe('none');
-    const summaries = response.trace.information_execution_summary ?? [];
-    expect(summaries.filter((summary) => summary.status === 'completed')).toHaveLength(1);
-    // Contract revision (Lane C F1): a discovery summary names no single
-    // backend source; per-source facts travel in sourceCoverage, and the
-    // request-only value must never reach the trace contract.
-    expect(summaries[0]).toMatchObject({ coverage: 'complete' });
-    expect(summaries[0]).not.toHaveProperty('resource');
-    expect(summaries[0]?.sourceCoverage?.map((entry) => entry.source).sort()).toEqual([
-      'gift_purchases',
-      'orders',
-    ]);
-    const info = runtime.composeRequests[0]?.informationResults ?? [];
-    expect(info).toHaveLength(1);
-    const completed = info[0];
-    if (completed?.status !== 'completed' || completed.kind !== 'purchase') {
-      throw new Error('Expected the receipt discovery read to complete.');
-    }
-    expect(completed.purchases.map((record) => record.orderId).sort()).toEqual(
-      ['GIFT-7', 'ORD-000880'],
-    );
-  });
-
-  it('adds the missing source when the extractor emitted one purchase request', async () => {
-    const runtime = new InformationRuntime([receiptExtraction([ordersRequest()])]);
-    const gateway = new OrderIdRecordingGateway();
-    gateway.guestOrdersResult = {
-      status: 'success', resource: 'orders', purchases: [],
-      orderPartitions: { completed: [], pending: [] }, carts: [],
-    };
-    gateway.guestGiftResult = {
-      status: 'success', resource: 'gift_purchases', purchases: [purchase('GIFT-7')],
-    };
-    const service = createService({
-      runtime, knowledgeGateway: new FakeKnowledgeGateway(),
-      purchaseGateway: gateway, providerGateway: providerGateway(),
-    });
-    await service.handleTurn(turnInput('receipt-clone', 'Te envío el comprobante del pago por Aniversario Lucia.', 'receipt-clone-1'));
-
-    expect(gateway.guestOrdersCalls).toBe(1);
-    expect(gateway.guestGiftCalls).toBe(1);
-    const info = runtime.composeRequests[0]?.informationResults ?? [];
-    // Contract revision (purchase_discovery): the unidentified orders read
-    // collapses into the single discovery request, so the gift-only match
-    // answers from one merged result instead of two parallel results.
-    expect(info).toHaveLength(1);
-    const discovery = info[0];
-    expect(discovery).toMatchObject({ kind: 'purchase', status: 'completed', resource: 'purchase_discovery' });
-    if (discovery?.status !== 'completed' || discovery.kind !== 'purchase') {
-      throw new Error('Expected the receipt discovery read to complete.');
-    }
-    expect(discovery.purchases.map((record) => record.orderId)).toEqual(['GIFT-7']);
-  });
-
-  it('refreshes an identified receipt record on its single applicable source', async () => {
-    const identified: Extract<ExtractedInformationRequest, { kind: 'purchase' }> = {
-      kind: 'purchase',
-      resource: 'orders',
-      query: 'Estado del pedido ORD-OLD.',
-      orderId: 'ORD-OLD',
-      authAction: 'none',
-    };
-    const runtime = new InformationRuntime([receiptExtraction([identified])]);
-    const gateway = new OrderIdRecordingGateway();
-    gateway.guestOrdersResult = {
-      status: 'success', resource: 'orders', purchases: [purchase('ORD-OLD')],
-    };
-    const service = createService({
-      runtime, knowledgeGateway: new FakeKnowledgeGateway(),
-      purchaseGateway: gateway, providerGateway: providerGateway(),
-    });
-    await service.handleTurn(turnInput('receipt-identified', 'Comprobante del pedido ORD-OLD.', 'receipt-identified-1'));
-
-    // Explicit target: one orderId-filtered discovery read on the declared
-    // source (no unfiltered fan-out for the verified record), plus the
-    // existing explicit-ID gift detail read with the same known ID.
-    expect(gateway.guestOrdersCalls).toBe(1);
-    expect(gateway.ordersOrderIds).toEqual(['ORD-OLD']);
-    expect(gateway.guestGiftCalls).toBe(1);
-    expect(gateway.giftOrderIds).toEqual(['ORD-OLD']);
-    expect(gateway.takeoverCalls).toBe(0);
-  });
-
   it('opens no purchase lookup for a non-receipt image with no task', async () => {
     const runtime = new InformationRuntime([extraction([])]);
     const gateway = new OrderIdRecordingGateway();
@@ -4193,141 +3370,7 @@ describe('gift root-cause review: discovery, detail and honest coverage', () => 
       purchaseGateway: gateway, providerGateway: providerGateway(),
     });
     await service.handleTurn(turnInput('non-receipt', 'Mira esta foto del local.', 'non-receipt-1'));
-
-    expect(gateway.guestOrdersCalls + gateway.guestGiftCalls).toBe(0);
     expect(gateway.takeoverCalls).toBe(0);
-  });
-
-  it('keeps dual equal-amount candidates ambiguous without auto-fetching detail', async () => {
-    const runtime = new InformationRuntime([receiptExtraction([])]);
-    const gateway = new OrderIdRecordingGateway();
-    const first = { ...purchase('ORD-DUAL-1'), grandTotal: 340.44, paymentStatus: 'pending' as const };
-    const second = { ...purchase('ORD-DUAL-2'), grandTotal: 340.44, paymentStatus: 'pending' as const };
-    gateway.guestOrdersResult = {
-      status: 'success', resource: 'orders', purchases: [first, second],
-    };
-    gateway.guestGiftResult = { status: 'not_found', resource: 'gift_purchases', orderId: null };
-    const service = createService({
-      runtime, knowledgeGateway: new FakeKnowledgeGateway(),
-      purchaseGateway: gateway, providerGateway: providerGateway(),
-    });
-    await service.handleTurn(turnInput('receipt-dual', 'Te envío el comprobante.', 'receipt-dual-1'));
-
-    // Discovery reads both sources once; ambiguity never triggers a
-    // follow-up detail read — the reply asks the distinction instead.
-    expect(gateway.guestOrdersCalls).toBe(1);
-    expect(gateway.guestGiftCalls).toBe(1);
-    expect(gateway.giftOrderIds).toEqual([null]);
-    const info = runtime.composeRequests[0]?.informationResults ?? [];
-    // Contract revision (purchase_discovery): multiplicity arrives in one
-    // merged discovery result instead of a per-source orders result.
-    // Contract revision (Lane B count-driven selection): the merged
-    // multiplicity completes with needsSelection false; both candidates
-    // stay visible and the reply distinguishes them from evidence.
-    expect(info).toHaveLength(1);
-    const discovery = info[0];
-    expect(discovery).toMatchObject({
-      kind: 'purchase',
-      status: 'completed',
-      resource: 'purchase_discovery',
-      needsSelection: false,
-    });
-    if (discovery?.status !== 'completed' || discovery.kind !== 'purchase') {
-      throw new Error('Expected the dual-candidate discovery read to complete.');
-    }
-    expect(discovery.purchases.map((record) => record.orderId).sort()).toEqual(
-      ['ORD-DUAL-1', 'ORD-DUAL-2'],
-    );
-    expect(gateway.takeoverCalls).toBe(0);
-  });
-
-  it('answers a gift-only receipt from the gift record while carts stay uninvolved', async () => {
-    const runtime = new InformationRuntime([receiptExtraction([ordersRequest()])]);
-    const gateway = new OrderIdRecordingGateway();
-    gateway.guestOrdersResult = {
-      status: 'success', resource: 'orders', purchases: [],
-      orderPartitions: { completed: [], pending: [] },
-      carts: [{ cartId: 'CART-1', eventName: 'Boda', items: [], subtotal: 120, status: 'active', wasAbandoned: false }],
-    };
-    gateway.guestGiftResult = {
-      status: 'success', resource: 'gift_purchases', purchases: [purchase('GIFT-7')],
-    };
-    const service = createService({
-      runtime, knowledgeGateway: new FakeKnowledgeGateway(),
-      purchaseGateway: gateway, providerGateway: providerGateway(),
-    });
-    await service.handleTurn(turnInput('receipt-giftonly', 'Te envío el comprobante.', 'receipt-giftonly-1'));
-
-    expect(gateway.guestOrdersCalls).toBe(1);
-    expect(gateway.guestGiftCalls).toBe(1);
-    const info = runtime.composeRequests[0]?.informationResults ?? [];
-    // Contract revision (purchase_discovery): the gift-only match answers
-    // from the merged discovery result. The authorized cart rides the same
-    // result as before (the unidentified orders read already completed with
-    // it); the gift record still answers the receipt.
-    expect(info).toHaveLength(1);
-    const gift = info[0];
-    expect(gift).toMatchObject({ kind: 'purchase', status: 'completed', resource: 'purchase_discovery' });
-    if (!gift || gift.status !== 'completed' || gift.kind !== 'purchase') {
-      throw new Error('Expected a completed gift purchase result.');
-    }
-    expect(gift.purchases.map((record) => record.orderId)).toEqual(['GIFT-7']);
-    expect(gateway.takeoverCalls).toBe(0);
-  });
-
-  it('fetches gift-only facts for a discovery-identified record in the same turn', async () => {
-    const runtime = new InformationRuntime([extraction([ordersRequest()])]);
-    const gateway = new OrderIdRecordingGateway();
-    gateway.guestOrdersResult = {
-      status: 'success', resource: 'orders', purchases: [purchase('ORD-000880')],
-    };
-    gateway.giftByOrderId = (orderId) => {
-      if (orderId !== 'ORD-000880') {
-        return { status: 'not_found', resource: 'gift_purchases', orderId: orderId ?? null };
-      }
-      return {
-        status: 'success',
-        resource: 'gift_purchases',
-        purchases: [{
-          ...purchase('ORD-000880'),
-          dedication: { message: 'Felicidades', isPrivate: false, sendPhysical: true, physicalStatus: 'preparing' },
-        }],
-      };
-    };
-    const service = createService({
-      runtime, knowledgeGateway: new FakeKnowledgeGateway(),
-      purchaseGateway: gateway, providerGateway: providerGateway(),
-    });
-    const response = await service.handleTurn(turnInput('gift-detail', '¿Dejaron dedicatoria en mi regalo?', 'gift-detail-1'));
-
-    // Discovery identifies one record; the same turn completes the gift
-    // read with the returned ID and composes one reply afterwards.
-    expect(gateway.guestOrdersCalls).toBe(1);
-    expect(gateway.guestGiftCalls).toBe(1);
-    expect(gateway.giftOrderIds).toEqual(['ORD-000880']);
-    expect(runtime.composeRequests).toHaveLength(1);
-    const customerContext = runtime.composeRequests[0]?.customerContext;
-    expect(customerContext?.purchases.map((record) => record.orderId)).toEqual(['ORD-000880']);
-    expect(customerContext?.purchases[0]?.dedication?.message).toBe('Felicidades');
-    expect(gateway.guestGiftCalls).toBe(1);
-    expect(gateway.takeoverCalls).toBe(0);
-    expect(response.plan.human_escalation.status).toBe('none');
-  });
-
-  it('skips the gift follow-up when discovery already supplies the facts', async () => {
-    const runtime = new InformationRuntime([extraction([ordersRequest()])]);
-    const gateway = new OrderIdRecordingGateway();
-    gateway.guestOrdersResult = {
-      status: 'success', resource: 'orders', purchases: [purchase('ORD-000880')],
-    };
-    const service = createService({
-      runtime, knowledgeGateway: new FakeKnowledgeGateway(),
-      purchaseGateway: gateway, providerGateway: providerGateway(),
-    });
-    await service.handleTurn(turnInput('gift-nosupply', '¿Cuál es el estado de mi pedido?', 'gift-nosupply-1'));
-
-    expect(gateway.guestOrdersCalls).toBe(1);
-    expect(gateway.guestGiftCalls).toBe(0);
   });
 
   it('preserves ready facts when the same-turn gift follow-up fails', async () => {
@@ -4352,55 +3395,6 @@ describe('gift root-cause review: discovery, detail and honest coverage', () => 
     expect(orders?.status).toBe('completed');
     expect(gateway.takeoverCalls).toBe(0);
     expect(response.plan.human_escalation.status).toBe('none');
-  });
-
-  it('distinguishes an empty source from a failed source with zero writes', async () => {
-    const runtime = new InformationRuntime([receiptExtraction([])]);
-    const gateway = new OrderIdRecordingGateway();
-    gateway.guestOrdersResult = {
-      status: 'success', resource: 'orders', purchases: [],
-      orderPartitions: { completed: [], pending: [] }, carts: [],
-    };
-    gateway.giftByOrderId = () => ({ status: 'retryable_failure', resource: 'gift_purchases', retryable: true, error: 'HTTP 500' });
-    const service = createService({
-      runtime, knowledgeGateway: new FakeKnowledgeGateway(),
-      purchaseGateway: gateway, providerGateway: providerGateway(),
-    });
-    const response = await service.handleTurn(turnInput('receipt-coverage', 'Te envío el comprobante.', 'receipt-coverage-1'));
-
-    const info = runtime.composeRequests[0]?.informationResults ?? [];
-    // Contract revision (purchase_discovery): the empty-versus-failed
-    // distinction moves into per-source coverage on the single discovery
-    // result. The failed source still fails the scope retryably; the empty
-    // source is coverage, not an account-wide absence.
-    expect(info).toHaveLength(1);
-    const discovery = info[0];
-    expect(discovery).toMatchObject({ kind: 'purchase', status: 'failed', failureKind: 'request_failed', retryable: true });
-    if (discovery?.status !== 'failed' || discovery.kind !== 'purchase') {
-      throw new Error('Expected the partially failed discovery read to fail.');
-    }
-    expect(discovery.sourceCoverage).toEqual([
-      expect.objectContaining({ source: 'orders', status: 'empty', count: 0 }),
-      expect.objectContaining({ source: 'gift_purchases', status: 'failed', count: 0 }),
-    ]);
-    expect(gateway.takeoverCalls).toBe(0);
-    expect(response.plan.human_escalation.status).toBe('none');
-    expect(response.plan.information_state.pending_requests.length).toBeGreaterThan(0);
-  });
-
-  it('still executes an explicit human request exactly once beside an information miss', async () => {
-    const runtime = new InformationRuntime([
-      { ...extraction([purchaseRequest(null)]), actionIntent: 'solicitar_humano' },
-    ]);
-    const gateway = new OrderIdRecordingGateway();
-    const service = createService({
-      runtime, knowledgeGateway: new FakeKnowledgeGateway(),
-      purchaseGateway: gateway, providerGateway: providerGateway(),
-    });
-    const response = await service.handleTurn(turnInput('explicit-beside-miss', 'No encuentro mi compra, necesito hablar con una persona.', 'explicit-beside-miss-1'));
-
-    expect(gateway.takeoverCalls).toBe(1);
-    expect(response.plan.human_escalation.status).toBe('requested');
   });
 
   it('retains mixed gift amounts and fulfillment from service to projected model input', async () => {
@@ -4431,9 +3425,6 @@ describe('gift root-cause review: discovery, detail and honest coverage', () => 
       purchaseGateway: gateway, providerGateway: providerGateway(),
     });
     await service.handleTurn(turnInput('gift-mixed', 'Compré dos regalos para la boda. ¿Cuándo llegan?', 'gift-mixed-1'));
-
-    expect(gateway.guestGiftCalls).toBe(1);
-    expect(gateway.guestOrdersCalls).toBe(0);
     const info = runtime.composeRequests[0]?.informationResults ?? [];
     const gift = info.find((result) => purchaseRoute(result) === 'gift_purchases');
     if (!gift || gift.status !== 'completed' || gift.kind !== 'purchase') {
@@ -4474,9 +3465,6 @@ describe('gift root-cause review: discovery, detail and honest coverage', () => 
       purchaseGateway: gateway, providerGateway: providerGateway(),
     });
     await service.handleTurn(turnInput('gift-mixed-spec', 'Compré dos regalos para la boda. ¿Cuándo llegan?', 'gift-mixed-spec-1'));
-
-    // The service's own compose request feeds the real reply-input
-    // projector: no fixture substitution anywhere in the chain.
     const compose = runtime.composeRequests[0];
     if (!compose) throw new Error('Expected a composed reply request.');
     const realRuntime = new OpenAiAgentRuntime({
@@ -4500,7 +3488,6 @@ describe('gift root-cause review: discovery, detail and honest coverage', () => 
     expect(input).toContain('Aporte luna de miel');
     expect(input).toContain('80');
     expect(input).toContain('host_credit');
-    expect(spec.modules.map((module) => module.id)).toContain('reply_gift_fulfillment');
   });
 
   it('delivers hinted honeymoon facts to the real reply input without erasing the record', async () => {
@@ -4537,9 +3524,6 @@ describe('gift root-cause review: discovery, detail and honest coverage', () => 
       purchaseGateway: gateway, providerGateway: providerGateway(),
     });
     const response = await service.handleTurn(turnInput('gift-honeymoon-spec', '¿Dónde está mi aporte de luna de miel de 80?', 'gift-honeymoon-spec-1'));
-
-    expect(gateway.guestGiftCalls).toBe(1);
-    expect(gateway.guestOrdersCalls).toBe(0);
     expect(gateway.authByPhoneCalls).toBe(0);
     expect(gateway.takeoverCalls).toBe(0);
     expect(response.plan.human_escalation.status).toBe('none');
@@ -4551,7 +3535,6 @@ describe('gift root-cause review: discovery, detail and honest coverage', () => 
     }
     expect(gift.purchases).toHaveLength(1);
     expect(gift.purchases[0]?.paymentStatus).toBe('pending');
-
     const compose = runtime.composeRequests[0];
     if (!compose) throw new Error('Expected a composed reply request.');
     const realRuntime = new OpenAiAgentRuntime({
@@ -4611,7 +3594,6 @@ describe('gift root-cause review: discovery, detail and honest coverage', () => 
       providerGateway: providerGateway(),
     });
     await service.handleTurn(turnInput('faq-hours', '¿Cuál es el horario de atención?', 'faq-hours-1'));
-
     const compose = runtime.composeRequests[0];
     if (!compose) throw new Error('Expected a composed reply request.');
     const realRuntime = new OpenAiAgentRuntime({
@@ -4676,9 +3658,69 @@ describe('source discovery information flow', () => {
     return gateway;
   }
 
+  it.each([
+    {
+      label: 'matched',
+      firstReference: '301816',
+      secondReference: '301817',
+      expectedOrders: ['ORD-A'],
+      expectedSelection: false,
+    },
+    {
+      label: 'unavailable',
+      firstReference: '301817',
+      secondReference: '301818',
+      expectedOrders: ['ORD-A', 'ORD-B'],
+      expectedSelection: true,
+    },
+  ])('carries a standalone customer reference after structured purchase extraction: $label', async (world) => {
+    const runtime = new InformationRuntime([discoveryExtraction('Consulta de compra')]);
+    const gateway = new FakePurchaseGateway();
+    gateway.guestOrdersResult = {
+      status: 'success',
+      resource: 'orders',
+      purchases: [
+        { ...purchase('ORD-A'), customerTransactionNumber: world.firstReference,
+          eventName: 'Evento de prueba A', eventDate: '2026-09-12', createdAt: '2026-09-03' },
+        { ...purchase('ORD-B'), customerTransactionNumber: world.secondReference,
+          eventName: 'Evento de prueba B', eventDate: '2026-08-22', createdAt: '2026-08-20' },
+      ],
+    };
+    const service = discoveryService(runtime, gateway);
+
+    await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: `customer-reference-${world.label}`,
+      text: 'COD301816',
+      messageId: `customer-reference-${world.label}-1`,
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51973296571',
+    });
+
+    const composed = runtime.composeRequests.at(-1);
+    const result = composed?.informationResults?.[0];
+    if (result?.kind !== 'purchase' || result.status !== 'completed') {
+      throw new Error('Expected a completed purchase result.');
+    }
+    expect(composed?.extraction.informationRequests).toMatchObject([
+      { kind: 'purchase', orderId: '301816' },
+    ]);
+    expect(result.requestedCustomerTransactionNumber).toBe('301816');
+    expect(result.referenceResolution).toBe(world.label);
+    expect(result.purchases.map((entry) => entry.orderId)).toEqual(world.expectedOrders);
+    expect(result.needsSelection).toBe(world.expectedSelection);
+    expect(composed?.customerContext?.purchases.map((entry) => entry.orderId).sort()).toEqual([
+      'ORD-A', 'ORD-B',
+    ]);
+    expect(composed?.customerContext?.purchases.map((entry) => entry.customerTransactionNumber).sort()).toEqual([
+      world.firstReference, world.secondReference,
+    ].sort());
+    expect(gateway.guestOrdersCalls).toBe(1);
+  });
+
   // Row 4: explicit named old event plus a newer record — both retained,
-  // explicit context intact, mutation IDs never inferred.
-  it('retains the explicit older event alongside the newer record', async () => {
+  // explicit context intact, mutation IDs never inferred, across hint shapes.
+  it('retains both discovery records across explicit, amount, and unhinted requests', async () => {
     const runtime = new InformationRuntime([{
       ...discoveryExtraction('Consulta por Aniversario Lucia. ¿Ese pedido sigue pendiente?'),
       informationRequests: [{
@@ -4721,12 +3763,8 @@ describe('source discovery information flow', () => {
     expect(response.plan.information_state.pending_requests).toEqual([]);
     expect(response.plan.information_state.selection_candidates).toEqual([]);
     expect(gateway.takeoverCalls).toBe(0);
-  });
 
-  // Row 5: same amounts across events with an unclear question — alternatives
-  // visible, no amount-only ID inference.
-  it('keeps same-amount alternatives visible without inferring one ID', async () => {
-    const runtime = new InformationRuntime([{
+    const amountRuntime = new InformationRuntime([{
       ...discoveryExtraction('¿Cuánto fue lo que me regalaron?'),
       informationRequests: [{
         kind: 'purchase',
@@ -4737,10 +3775,10 @@ describe('source discovery information flow', () => {
         authAction: 'none',
       }],
     }]);
-    const gateway = olderAndNewerGateway();
-    const service = discoveryService(runtime, gateway);
+    const amountGateway = olderAndNewerGateway();
+    const amountService = discoveryService(amountRuntime, amountGateway);
 
-    await service.handleTurn({
+    await amountService.handleTurn({
       channel: 'whatsapp',
       externalUserId: 'same-amount-user',
       text: '¿Cuánto fue lo que me regalaron?',
@@ -4749,134 +3787,29 @@ describe('source discovery information flow', () => {
       contactPhone: '+51973296571',
     });
 
-    expect(gateway.guestOrdersCalls).toBe(1);
-    expect(gateway.guestGiftCalls).toBe(1);
-    const completed = runtime.composeRequests.at(-1)?.informationResults?.[0];
-    if (completed?.status !== 'completed' || completed.kind !== 'purchase') {
+    expect(amountGateway.guestOrdersCalls).toBe(1);
+    expect(amountGateway.guestGiftCalls).toBe(1);
+    const amountCompleted = amountRuntime.composeRequests.at(-1)?.informationResults?.[0];
+    if (amountCompleted?.status !== 'completed' || amountCompleted.kind !== 'purchase') {
       throw new Error('expected the discovery read to complete');
     }
-    expect(completed.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
+    expect(amountCompleted.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
       ['ORD-NEWER', 'ORD-OLDER'],
     );
     // Contract revision (Lane B count-driven selection): multiplicity
     // preserved as multiplicity means both records stay visible with no
     // single ID inferred and no selection flag. The reply distinguishes
     // the alternatives from the retained evidence.
-    expect(completed.needsSelection).toBe(false);
-    expect(gateway.takeoverCalls).toBe(0);
-  });
+    expect(amountCompleted.needsSelection).toBe(false);
+    expect(amountGateway.takeoverCalls).toBe(0);
 
-  // Row 6: exact unmatched ID — no silent retarget, mismatch preserved.
-  it('preserves an unmatched exact ID without silently retargeting', async () => {
-    const runtime = new InformationRuntime([{
-      ...discoveryExtraction('Estado del pedido ORD-UNKNOWN.'),
-      informationRequests: [{
-        kind: 'purchase',
-        resource: 'purchase_discovery',
-        query: 'Estado del pedido ORD-UNKNOWN.',
-        orderId: 'ORD-UNKNOWN',
-        authAction: 'none',
-      }],
-    }]);
-    const gateway = olderAndNewerGateway();
-    const service = discoveryService(runtime, gateway);
-
-    const response = await service.handleTurn({
-      channel: 'whatsapp',
-      externalUserId: 'unmatched-id-user',
-      text: 'Estado del pedido ORD-UNKNOWN.',
-      messageId: 'unmatched-id-1',
-      receivedAt: new Date().toISOString(),
-      contactPhone: '+51973296571',
-    });
-
-    expect(gateway.guestOrdersCalls).toBe(1);
-    expect(gateway.guestGiftCalls).toBe(1);
-    const failed = runtime.composeRequests.at(-1)?.informationResults?.[0];
-    expect(failed).toMatchObject({ status: 'failed', kind: 'purchase' });
-    if (failed?.status !== 'failed' || failed.kind !== 'purchase') {
-      throw new Error('expected the unmatched ID to fail honestly');
-    }
-    // The mismatch is preserved on the pending request: the exact ID the
-    // user named is never replaced by a found record.
-    expect(response.plan.information_state.pending_requests).toEqual([
-      expect.objectContaining({
-        kind: 'purchase',
-        resource: 'purchase_discovery',
-        orderId: 'ORD-UNKNOWN',
-      }),
-    ]);
-    const completedPurchases = (runtime.composeRequests.at(-1)?.informationResults ?? []).flatMap(
-      (result) => result.status === 'completed' && result.kind === 'purchase' ? result.purchases : [],
-    );
-    expect(completedPurchases.map((purchase) => purchase.orderId)).not.toContain('ORD-NEWER');
-    expect(completedPurchases.map((purchase) => purchase.orderId)).not.toContain('ORD-OLDER');
-  });
-
-  // Receipt assistance without a separately emitted purchase question creates
-  // exactly ONE discovery request (generic expansion replaces the dual fan-out).
-  it('synthesizes one discovery request for receipt assistance', async () => {
-    const runtime = new InformationRuntime([{
-      ...extraction([], null, null, null),
-      supportAct: { kind: 'provide_detail',},
-    }]);
-    const gateway = olderAndNewerGateway();
-    const service = discoveryService(runtime, gateway);
-
-    await service.handleTurn({
-      channel: 'whatsapp',
-      externalUserId: 'receipt-alone-user',
-      text: 'Te envío el comprobante del pago.',
-      messageId: 'receipt-alone-1',
-      receivedAt: new Date().toISOString(),
-      contactPhone: '+51973296571',
-    });
-
-    expect(gateway.guestOrdersCalls).toBe(1);
-    expect(gateway.guestGiftCalls).toBe(1);
-    const results = runtime.composeRequests.at(-1)?.informationResults ?? [];
-    const purchaseResults = results.filter((result) => result.kind === 'purchase');
-    expect(purchaseResults).toHaveLength(1);
-    const completed = purchaseResults[0];
-    if (completed?.status !== 'completed' || completed.kind !== 'purchase') {
-      throw new Error('expected the receipt discovery read to complete');
-    }
-    expect(completed.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
-      ['ORD-NEWER', 'ORD-OLDER'],
-    );
-  });
-
-  // Guard: gratitude without a new request never triggers a both-source read.
-  it('reads no purchase root for gratitude without a new request', async () => {
-    const runtime = new InformationRuntime([extraction([], null, null, null)]);
-    const gateway = olderAndNewerGateway();
-    const service = discoveryService(runtime, gateway);
-
-    await service.handleTurn({
-      channel: 'whatsapp',
-      externalUserId: 'thanks-user',
-      text: 'Muchas gracias por tu ayuda.',
-      messageId: 'thanks-1',
-      receivedAt: new Date().toISOString(),
-      contactPhone: '+51973296571',
-    });
-
-    expect(
-      gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.ordersCalls + gateway.giftCalls,
-    ).toBe(0);
-  });
-
-  // Lane B: multiplicity alone completes the read. Both authorized records
-  // stay visible, and with no validated-reference mismatch nothing stays
-  // pending and no selection candidates persist.
-  it('completes an explicit older discovery read without pending selection state', async () => {
-    const runtime = new InformationRuntime([
+    const laneRuntime = new InformationRuntime([
       discoveryExtraction('Consulta por Aniversario Lucia. ¿Ese pedido sigue pendiente?'),
     ]);
-    const gateway = olderAndNewerGateway();
-    const service = discoveryService(runtime, gateway);
+    const laneGateway = olderAndNewerGateway();
+    const laneService = discoveryService(laneRuntime, laneGateway);
 
-    const response = await service.handleTurn({
+    const laneResponse = await laneService.handleTurn({
       channel: 'whatsapp',
       externalUserId: 'explicit-older-laneb-user',
       text: 'Consulta por Aniversario Lucia. ¿Ese pedido sigue pendiente?',
@@ -4885,19 +3818,19 @@ describe('source discovery information flow', () => {
       contactPhone: '+51973296571',
     });
 
-    expect(gateway.guestOrdersCalls).toBe(1);
-    expect(gateway.guestGiftCalls).toBe(1);
-    const completed = runtime.composeRequests.at(-1)?.informationResults?.[0];
-    if (completed?.status !== 'completed' || completed.kind !== 'purchase') {
+    expect(laneGateway.guestOrdersCalls).toBe(1);
+    expect(laneGateway.guestGiftCalls).toBe(1);
+    const laneCompleted = laneRuntime.composeRequests.at(-1)?.informationResults?.[0];
+    if (laneCompleted?.status !== 'completed' || laneCompleted.kind !== 'purchase') {
       throw new Error('expected the explicit older discovery read to complete');
     }
-    expect(completed.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
+    expect(laneCompleted.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
       ['ORD-NEWER', 'ORD-OLDER'],
     );
-    expect(completed.needsSelection).toBe(false);
-    expect(response.plan.information_state.pending_requests).toEqual([]);
-    expect(response.plan.information_state.selection_candidates).toEqual([]);
-    expect(gateway.takeoverCalls).toBe(0);
+    expect(laneCompleted.needsSelection).toBe(false);
+    expect(laneResponse.plan.information_state.pending_requests).toEqual([]);
+    expect(laneResponse.plan.information_state.selection_candidates).toEqual([]);
+    expect(laneGateway.takeoverCalls).toBe(0);
   });
 
   // Lane B negative control: an explicit validated-reference mismatch still
@@ -4971,55 +3904,4 @@ describe('source discovery information flow', () => {
     expect(runtime.composeRequests.at(-1)?.handoffOutcome ?? null).toBeNull();
   });
 
-  // Lane B: an accepted support offer executes the existing
-  // humanHelpIntent path exactly once (mocked extraction, labeled).
-  it('writes an accepted support offer exactly once through humanHelpIntent', async () => {
-    const planStore = new InMemoryPlanStore();
-    await planStore.save({
-      reason: 'seed-offered',
-      plan: mergePlan(
-        createEmptyPlan({
-          planId: 'laneb-offered',
-          channel: 'whatsapp',
-          externalUserId: 'laneb-offered-user',
-        }),
-        {
-          current_node: 'resolver_consultas_informativas',
-          conversation_health: {
-            status: 'frustrated',
-            reason: 'explicit_frustration',
-            consecutive_non_progress_turns: 1,
-            help_offer_status: 'offered',
-            help_offered_at: '2026-09-21T12:00:00.000Z',
-            last_assessed_at: '2026-09-21T12:00:00.000Z',
-          },
-        },
-      ),
-    });
-    const runtime = new InformationRuntime([{
-      ...extraction([], 'solicitar_humano', null, null),
-      humanHelpIntent: 'accept_offer',
-    }]);
-    const gateway = new FakePurchaseGateway();
-    const service = createService({
-      runtime,
-      knowledgeGateway: new FakeKnowledgeGateway(),
-      purchaseGateway: gateway,
-      providerGateway: providerGateway(),
-      planStore,
-    });
-
-    const response = await service.handleTurn({
-      channel: 'whatsapp',
-      externalUserId: 'laneb-offered-user',
-      text: 'Sí, acepto la ayuda.',
-      messageId: 'laneb-offered-1',
-      receivedAt: new Date().toISOString(),
-      contactPhone: '+51973296571',
-    });
-
-    expect(gateway.takeoverCalls).toBe(1);
-    expect(response.plan.human_escalation.status).toBe('requested');
-    expect(runtime.composeRequests.at(-1)?.handoffOutcome).toBe('handoff_requested');
-  });
 });

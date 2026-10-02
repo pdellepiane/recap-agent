@@ -4,7 +4,7 @@ import { projectSafeTrace } from '../src/runtime/artifact-redaction';
 import { buildFinishPlanSummary, buildProviderQuoteReceipts } from '../src/runtime/finish-plan-debug';
 
 describe('F4 trace unredact', () => {
-  it('projects finish_plan allowlist without leaking contact or raw errors', () => {
+  it('projects the finish_plan allowlist and omits everything else', () => {
     const trace = {
       trace_id: 't1',
       plan_id: 'p1',
@@ -38,16 +38,13 @@ describe('F4 trace unredact', () => {
     expect(String(outputs[0]?.output)).not.toContain('explicitly captured');
     expect(safe.finish_plan_summary).toBeDefined();
     expect(safe.provider_quote_receipts).toBeDefined();
-  });
-
-  it('omits non-finish_plan payloads and invalid dates', () => {
-    const trace = {
+    // Non-finish_plan payloads stay omitted.
+    const other = projectSafeTrace({
       tool_inputs: [{ tool: 'search_providers', input: '{"q":"x"}' }],
       tool_outputs: [{ tool: 'search_providers', output: '{"providers":[]}' }],
-    };
-    const safe = projectSafeTrace(trace) as Record<string, unknown>;
-    expect((safe.tool_inputs as Array<Record<string, unknown>>)[0]?.input).toBe('[omitted]');
-    expect((safe.tool_outputs as Array<Record<string, unknown>>)[0]?.output).toBe('[omitted]');
+    }) as Record<string, unknown>;
+    expect((other.tool_inputs as Array<Record<string, unknown>>)[0]?.input).toBe('[omitted]');
+    expect((other.tool_outputs as Array<Record<string, unknown>>)[0]?.output).toBe('[omitted]');
   });
 
   it('builds S12 summaries with date and per-provider flags', () => {

@@ -10,9 +10,6 @@ import {
 } from '../src/runtime/information-auth-state-machine';import { AgentService } from '../src/runtime/agent-service';
 import type {
   AgentRuntime,
-  ComposeReplyRequest,
-  ComposeReplyResult,
-  ExtractRequest,
   ExtractionResult,
 } from '../src/runtime/contracts';
 import { InformationOrchestrator } from '../src/runtime/information-orchestrator';
@@ -21,6 +18,7 @@ import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import { PromptLoader } from '../src/runtime/prompt-loader';
 import type { ProviderGateway } from '../src/runtime/provider-gateway';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
+import { ScriptedAgentRuntime as ScriptedRuntime } from './agent-runtime-test-utils';
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -32,29 +30,6 @@ const promptLoader = new PromptLoader(path.resolve(process.cwd(), 'prompts'));
 const renderers = {
   terminal_whatsapp: new WhatsAppMessageRenderer(),
 };
-
-class ScriptedRuntime implements AgentRuntime {
-  public readonly extractRequests: ExtractRequest[] = [];
-
-  private index = 0;
-
-  constructor(private readonly extractions: ExtractionResult[]) {}
-
-  async extract(request: ExtractRequest): Promise<ExtractionResult> {
-    this.extractRequests.push(request);
-    const next = this.extractions[this.index] ?? this.extractions[this.extractions.length - 1];
-    this.index += 1;
-    if (!next) {
-      throw new Error('Missing extraction fixture.');
-    }
-    return next;
-  }
-
-  async composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult> {
-    void request;
-    return { text: 'Respuesta informativa.' };
-  }
-}
 
 class QuietKnowledgeGateway implements KnowledgeRetrievalGateway {
   async search(): Promise<never> {
@@ -260,13 +235,10 @@ describe('decideTerminalContinuation one-shot report wiring', () => {
     otpNonDeliveryReports: 0,
   };
 
-  it('terminates on the first non-delivery report of an active challenge', () => {
+  it('terminates an active challenge on non-delivery reports and resend requests', () => {
     expect(decideTerminalContinuation('report_otp_not_received', challenged)).toBe(
       'non_delivery_reported',
     );
-  });
-
-  it('terminates on a resend request of an active challenge', () => {
     expect(decideTerminalContinuation('resend_otp', challenged)).toBe('resend_requested');
   });
 
@@ -293,16 +265,17 @@ describe('decideTerminalContinuation one-shot report wiring', () => {
   });
 });
 
-describe('F1a first non-delivery report ends one-shot OTP recovery', () => {
-  it('hands off to human support without resending when the first report arrives', async () => {
-    const planStore = new InMemoryPlanStore();
-    await seedOtpPlan(planStore, { otp_send_attempts: 1, otp_non_delivery_reports: 0 });
-    const runtime = new ScriptedRuntime([twinExtraction([reportContinuation()])]);
-    const agentGateway = new RecordingAgentGateway();
-    const provider = scriptedProviderGateway();
-    const service = createService({ runtime, agentGateway, provider: provider.gateway, planStore });
+describe('F1a/F1b missing-code reports and resend requests hand off without a second send', () => {
+  it('hands off first reports, repeated reports, and explicit resends without sending', async () => {
+    // First non-delivery report ends one-shot OTP recovery.
+    const firstStore = new InMemoryPlanStore();
+    await seedOtpPlan(firstStore, { otp_send_attempts: 1, otp_non_delivery_reports: 0 });
+    const firstRuntime = new ScriptedRuntime([twinExtraction([reportContinuation()])]);
+    const firstGateway = new RecordingAgentGateway();
+    const firstProvider = scriptedProviderGateway();
+    const firstService = createService({ runtime: firstRuntime, agentGateway: firstGateway, provider: firstProvider.gateway, planStore: firstStore });
 
-    const response = await service.handleTurn({
+    const first = await firstService.handleTurn({
       channel: 'whatsapp',
       externalUserId: 'f1-otp-handoff-user',
       contactPhone: '+51900000302',
@@ -311,22 +284,19 @@ describe('F1a first non-delivery report ends one-shot OTP recovery', () => {
       receivedAt: new Date().toISOString(),
     });
 
-    expect(response.plan.current_node).toBe('solicitar_agente_humano');
-    expect(response.plan.human_escalation.status).toBe('requested');
-    expect(provider.requestCodeCalls).toBe(0);
-    expect(provider.verifyCodeCalls).toBe(0);
-    expect(agentGateway.takeoverCalls).toBe(1);
-    expect(response.plan.information_state.pending_requests.map((request) => request.query)).toContain(
+    expect(first.plan.current_node).toBe('solicitar_agente_humano');
+    expect(first.plan.human_escalation.status).toBe('requested');
+    expect(firstProvider.requestCodeCalls).toBe(0);
+    expect(firstProvider.verifyCodeCalls).toBe(0);
+    expect(firstGateway.takeoverCalls).toBe(1);
+    expect(first.plan.information_state.pending_requests.map((request) => request.query)).toContain(
       'Revisar el estado del regalo pagado por la persona.',
     );
-  });
-});
 
-describe('F1b repeated missing-code report and resend request hand off without a second send', () => {
-  it('hands off a second missing-code report after a prior resend', async () => {
-    const planStore = new InMemoryPlanStore();
+    // A second missing-code report after a prior resend still hands off.
+    const repeatStore = new InMemoryPlanStore();
     await seedOtpPlan(
-      planStore,
+      repeatStore,
       {
         status: 'code_requested',
         email: 'regression-not-received@example.invalid',
@@ -335,12 +305,12 @@ describe('F1b repeated missing-code report and resend request hand off without a
       },
       '¿La restricción de vestir de blanco aplica a mujeres y varones?',
     );
-    const runtime = new ScriptedRuntime([twinExtraction([reportContinuation()])]);
-    const agentGateway = new RecordingAgentGateway();
-    const provider = scriptedProviderGateway();
-    const service = createService({ runtime, agentGateway, provider: provider.gateway, planStore });
+    const repeatRuntime = new ScriptedRuntime([twinExtraction([reportContinuation()])]);
+    const repeatGateway = new RecordingAgentGateway();
+    const repeatProvider = scriptedProviderGateway();
+    const repeatService = createService({ runtime: repeatRuntime, agentGateway: repeatGateway, provider: repeatProvider.gateway, planStore: repeatStore });
 
-    const response = await service.handleTurn({
+    const repeat = await repeatService.handleTurn({
       channel: 'whatsapp',
       externalUserId: 'f1-otp-handoff-user',
       contactPhone: '+51900000302',
@@ -349,29 +319,28 @@ describe('F1b repeated missing-code report and resend request hand off without a
       receivedAt: new Date().toISOString(),
     });
 
-    expect(response.plan.current_node).toBe('solicitar_agente_humano');
-    expect(response.plan.human_escalation.status).toBe('requested');
-    expect(provider.requestCodeCalls).toBe(0);
-    expect(provider.verifyCodeCalls).toBe(0);
-    expect(agentGateway.takeoverCalls).toBe(1);
-    expect(response.plan.information_state.pending_requests).toHaveLength(1);
-  });
+    expect(repeat.plan.current_node).toBe('solicitar_agente_humano');
+    expect(repeat.plan.human_escalation.status).toBe('requested');
+    expect(repeatProvider.requestCodeCalls).toBe(0);
+    expect(repeatProvider.verifyCodeCalls).toBe(0);
+    expect(repeatGateway.takeoverCalls).toBe(1);
+    expect(repeat.plan.information_state.pending_requests).toHaveLength(1);
 
-  it('hands off an explicit resend request on an active challenge without sending', async () => {
-    const planStore = new InMemoryPlanStore();
-    await seedOtpPlan(planStore, { otp_send_attempts: 1, otp_non_delivery_reports: 0 });
-    const runtime = new ScriptedRuntime([twinExtraction([{
+    // An explicit resend request on an active challenge hands off without sending.
+    const resendStore = new InMemoryPlanStore();
+    await seedOtpPlan(resendStore, { otp_send_attempts: 1, otp_non_delivery_reports: 0 });
+    const resendRuntime = new ScriptedRuntime([twinExtraction([{
       kind: 'purchase',
       resource: 'gift_purchases',
       query: 'Revisar el estado del regalo pagado por la persona.',
       orderId: null,
       authAction: 'resend_otp',
     }])]);
-    const agentGateway = new RecordingAgentGateway();
-    const provider = scriptedProviderGateway();
-    const service = createService({ runtime, agentGateway, provider: provider.gateway, planStore });
+    const resendGateway = new RecordingAgentGateway();
+    const resendProvider = scriptedProviderGateway();
+    const resendService = createService({ runtime: resendRuntime, agentGateway: resendGateway, provider: resendProvider.gateway, planStore: resendStore });
 
-    const response = await service.handleTurn({
+    const resend = await resendService.handleTurn({
       channel: 'whatsapp',
       externalUserId: 'f1-otp-handoff-user',
       contactPhone: '+51900000302',
@@ -380,11 +349,11 @@ describe('F1b repeated missing-code report and resend request hand off without a
       receivedAt: new Date().toISOString(),
     });
 
-    expect(response.plan.current_node).toBe('solicitar_agente_humano');
-    expect(response.plan.human_escalation.status).toBe('requested');
-    expect(provider.requestCodeCalls).toBe(0);
-    expect(provider.verifyCodeCalls).toBe(0);
-    expect(agentGateway.takeoverCalls).toBe(1);
+    expect(resend.plan.current_node).toBe('solicitar_agente_humano');
+    expect(resend.plan.human_escalation.status).toBe('requested');
+    expect(resendProvider.requestCodeCalls).toBe(0);
+    expect(resendProvider.verifyCodeCalls).toBe(0);
+    expect(resendGateway.takeoverCalls).toBe(1);
   });
 });
 

@@ -13,6 +13,8 @@ const coverageSchema = z.object({
     id: z.string().min(1),
     implementedBy: z.string().regex(/^[0-9a-f]{7,40}$/u),
     liveCaseIds: z.array(z.string().min(1)).min(1),
+    status: z.enum(['active', 'retired']).default('active'),
+    retirementReason: z.string().min(1).optional(),
   })).min(1),
 });
 
@@ -40,6 +42,10 @@ describe('live behavior coverage registry', () => {
     expect(new Set(behaviorIds).size).toBe(behaviorIds.length);
 
     for (const change of registry.behaviorChanges) {
+      if (change.status === 'retired') {
+        expect(change.retirementReason, `${change.id} needs an explicit retirement reason`).toBeTruthy();
+        continue;
+      }
       for (const caseId of change.liveCaseIds) {
         const evalCase = casesById.get(caseId);
         expect(evalCase, `${change.id} references missing case ${caseId}`).toBeDefined();
@@ -59,16 +65,10 @@ describe('live behavior coverage registry', () => {
           `${caseId} needs a hard structural expectation`,
         ).toBe(true);
 
-        const hasRequiredSemanticJudge = evalCase?.expectations.some(
-          (expectation) =>
-            expectation.type === 'text_semantic' &&
-            expectation.severity === 'hard' &&
-            expectation.requireJudge,
-        );
         expect(
-          hasRequiredSemanticJudge,
-          `${caseId} needs a hard required semantic judge`,
-        ).toBe(true);
+          evalCase?.expectations.some((expectation) => expectation.type === 'text_semantic'),
+          `${caseId} must use hard contracts without semantic judge votes`,
+        ).toBe(false);
       }
     }
   });

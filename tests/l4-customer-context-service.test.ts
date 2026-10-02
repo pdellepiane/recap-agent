@@ -165,7 +165,7 @@ beforeEach(() => {
 });
 
 describe('l4 customer context production wiring', () => {
-  it('feeds a payment question the full canonical profile with the relevant order first', async () => {
+  it('serves the full canonical profile with stable order across requested, older, and ambiguous targets', async () => {
     const runtime = new PaymentQuestionRuntime();
     const relevant = purchaseResult('information-1', 'ORD-A', RELEVANT_TOTAL, 'cart-relevant-1');
     const unrelated = purchaseResult('information-2', 'ORD-B', UNRELATED_TOTAL, UNRELATED_CART);
@@ -185,13 +185,52 @@ describe('l4 customer context production wiring', () => {
     // entity; the requested order leads by reference instead of hiding the
     // rest. Carts stay distinct records for later cart questions.
     expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-A', 'ORD-B']);
-    expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-A', 'ORD-B']);
     expect(customerContext?.carts.map((entry) => entry.cartId)).toEqual(['cart-relevant-1', UNRELATED_CART]);
     const serialized = JSON.stringify(customerContext);
     expect(serialized).toContain(String(RELEVANT_TOTAL));
     expect(serialized).toContain(String(UNRELATED_TOTAL));
     // The serving owner travels with the request.
     expect(request?.owner).toBe('customer_assistance');
+
+    // An explicit years-old target stays present without
+    // reference-driven reordering or age-based filtering.
+    const olderRuntime = new PaymentQuestionRuntime('ORD-OLD');
+    const newest = purchaseResult('information-1', 'ORD-NEW', UNRELATED_TOTAL, 'cart-new');
+    const explicit = purchaseResult('information-2', 'ORD-OLD', 75.25, 'cart-old');
+    const { service: olderService } = serviceWith(
+      olderRuntime,
+      [newest.result, explicit.result],
+      [newest.summary, explicit.summary],
+    );
+
+    await olderService.handleTurn(inbound('¿Cuál es el estado de mi pago?', '+51900000001'));
+
+    expect(olderRuntime.composeRequests).toHaveLength(1);
+    const olderContext = olderRuntime.composeRequests[0]?.customerContext;
+    // Canonical order is stable backend order.
+    expect(olderContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-NEW', 'ORD-OLD']);
+    const olderSerialized = JSON.stringify(olderContext);
+    expect(olderSerialized).toContain('75.25');
+    expect(olderSerialized).toContain(String(UNRELATED_TOTAL));
+
+    // An ambiguous target keeps both candidates visible; write-gating
+    // comes from the unresolved target reference, not from hiding records.
+    const ambiguousRuntime = new PaymentQuestionRuntime(null);
+    const ambiguousRelevant = purchaseResult('information-1', 'ORD-A', RELEVANT_TOTAL, 'cart-relevant-1');
+    const ambiguousUnrelated = purchaseResult('information-2', 'ORD-B', UNRELATED_TOTAL, UNRELATED_CART);
+    const { service: ambiguousService } = serviceWith(
+      ambiguousRuntime,
+      [ambiguousRelevant.result, ambiguousUnrelated.result],
+      [ambiguousRelevant.summary, ambiguousUnrelated.summary],
+    );
+
+    await ambiguousService.handleTurn(inbound('¿Cuál es el estado de mi pago?', '+51900000001'));
+
+    expect(ambiguousRuntime.composeRequests).toHaveLength(1);
+    const ambiguousContext = ambiguousRuntime.composeRequests[0]?.customerContext;
+    expect(ambiguousContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-A', 'ORD-B']);
+    expect(ambiguousContext?.purchases).toHaveLength(2);
+    expect(ambiguousContext?.carts).toHaveLength(2);
   });
 
   it('projects explicit unavailable coverage without an authorized identity', async () => {
@@ -215,54 +254,10 @@ describe('l4 customer context production wiring', () => {
     });
   });
 
-  it('leads with an explicit years-old order instead of the newest record', async () => {
-    const runtime = new PaymentQuestionRuntime('ORD-OLD');
-    const newest = purchaseResult('information-1', 'ORD-NEW', UNRELATED_TOTAL, 'cart-new');
-    const explicit = purchaseResult('information-2', 'ORD-OLD', 75.25, 'cart-old');
-    const { service } = serviceWith(
-      runtime,
-      [newest.result, explicit.result],
-      [newest.summary, explicit.summary],
-    );
-
-    await service.handleTurn(inbound('¿Cuál es el estado de mi pago?', '+51900000001'));
-
-    expect(runtime.composeRequests).toHaveLength(1);
-    const customerContext = runtime.composeRequests[0]?.customerContext;
-    // Canonical order is stable backend order; the older target remains
-    // present without reference-driven reordering or age-based filtering.
-    expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-NEW', 'ORD-OLD']);
-    const serialized = JSON.stringify(customerContext);
-    expect(serialized).toContain('75.25');
-    expect(serialized).toContain(String(UNRELATED_TOTAL));
-  });
-
-  it('keeps an ambiguous target out of writes while retaining every record', async () => {
-    const runtime = new PaymentQuestionRuntime(null);
-    const relevant = purchaseResult('information-1', 'ORD-A', RELEVANT_TOTAL, 'cart-relevant-1');
-    const unrelated = purchaseResult('information-2', 'ORD-B', UNRELATED_TOTAL, UNRELATED_CART);
-    const { service } = serviceWith(
-      runtime,
-      [relevant.result, unrelated.result],
-      [relevant.summary, unrelated.summary],
-    );
-
-    await service.handleTurn(inbound('¿Cuál es el estado de mi pago?', '+51900000001'));
-
-    expect(runtime.composeRequests).toHaveLength(1);
-    const customerContext = runtime.composeRequests[0]?.customerContext;
-    // Both candidates stay visible; write-gating comes from the unresolved
-    // target reference (candidates, never an inferred mutation), not from
-    // hiding records.
-    expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-A', 'ORD-B']);
-    expect(customerContext?.purchases).toHaveLength(2);
-    expect(customerContext?.carts).toHaveLength(2);
-    expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-A', 'ORD-B']);
-  });
 });
 
 describe('l4 P1 canonical profile through public AgentService', () => {
-  it('coalesces duplicate scoped route results without detail loss', async () => {
+  it('coalesces duplicate scoped reads without detail loss and preserves ready facts on failure', async () => {
     const runtime = new PaymentQuestionRuntime('ORD-A');
     const summaryOnly = purchaseResult('information-1', 'ORD-A', RELEVANT_TOTAL, 'cart-ORD-A');
     const detailed = purchaseResult('information-2', 'ORD-A', RELEVANT_TOTAL, 'cart-ORD-A');
@@ -295,10 +290,8 @@ describe('l4 P1 canonical profile through public AgentService', () => {
     expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-A']);
     expect(customerContext?.purchases).toHaveLength(1);
     expect(customerContext?.purchases[0]?.items).toHaveLength(1);
-  });
 
-  it('preserves ready facts when a duplicate scoped read fails', async () => {
-    const runtime = new PaymentQuestionRuntime('ORD-A');
+    const failedRuntime = new PaymentQuestionRuntime('ORD-A');
     const relevant = purchaseResult('information-1', 'ORD-A', RELEVANT_TOTAL, 'cart-ORD-A');
     const failed: InformationTaskResult = {
       requestId: 'information-2',
@@ -320,18 +313,17 @@ describe('l4 P1 canonical profile through public AgentService', () => {
       resultCount: 0,
       durationMs: 10,
     };
-    const { service } = serviceWith(
-      runtime,
+    const { service: failedService } = serviceWith(
+      failedRuntime,
       [relevant.result, failed],
       [relevant.summary, failedSummary],
     );
 
-    await service.handleTurn(inbound('¿Cuál es el estado de mi pago?', '+51900000001'));
+    await failedService.handleTurn(inbound('¿Cuál es el estado de mi pago?', '+51900000001'));
 
-    expect(runtime.composeRequests).toHaveLength(1);
-    const customerContext = runtime.composeRequests[0]?.customerContext;
-    expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-A']);
-    expect(customerContext?.purchases.map((entry) => entry.orderId)).toContain('ORD-A');
+    expect(failedRuntime.composeRequests).toHaveLength(1);
+    const failedContext = failedRuntime.composeRequests[0]?.customerContext;
+    expect(failedContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-A']);
   });
 });
 
@@ -385,7 +377,7 @@ describe('l4 B receipt discovery merges both authorized sources canonically', ()
     };
   }
 
-  it('merges orders and gift discovery reads without amount filtering or duplicate blocking', async () => {
+  it('merges both receipt discovery sources canonically and keeps ready facts when gift fails', async () => {
     const runtime = new PaymentQuestionRuntime(null);
     const orders = sourceResult('information-1', 'orders', 'ORD-DISC-1', 340.44, 'pending');
     const gift = sourceResult('information-1:receipt-discovery', 'gift_purchases', 'GIFT-DISC-7', 340.44, 'approved');
@@ -406,18 +398,15 @@ describe('l4 B receipt discovery merges both authorized sources canonically', ()
       ['GIFT-DISC-7', 'ORD-DISC-1'],
     );
     expect(customerContext?.purchases).toHaveLength(2);
-    expect([...customerContext?.purchases.map((entry) => entry.orderId) ?? []].sort()).toEqual(['GIFT-DISC-7', 'ORD-DISC-1']);
     const serialized = JSON.stringify(customerContext);
     expect(serialized).toContain('340.44');
     expect(serialized).toContain('pending');
     expect(serialized).toContain('approved');
     expect(serialized).toContain('Evento Sintetico');
     expect(customerContext?.coverage.purchasesCarts.status).toBe('ready');
-  });
 
-  it('marks partial coverage when the gift discovery read fails while keeping ready orders facts', async () => {
-    const runtime = new PaymentQuestionRuntime(null);
-    const orders = sourceResult('information-1', 'orders', 'ORD-DISC-1', 340.44, 'pending');
+    const partialRuntime = new PaymentQuestionRuntime(null);
+    const partialOrders = sourceResult('information-1', 'orders', 'ORD-DISC-1', 340.44, 'pending');
     const failedGift: InformationTaskResult = {
       requestId: 'information-1:receipt-discovery',
       kind: 'purchase',
@@ -443,23 +432,22 @@ describe('l4 B receipt discovery merges both authorized sources canonically', ()
       coverage: null,
       resource: 'gift_purchases',
     };
-    const { service } = serviceWith(
-      runtime,
-      [orders.result, failedGift],
-      [orders.summary, failedGiftSummary],
+    const { service: partialService } = serviceWith(
+      partialRuntime,
+      [partialOrders.result, failedGift],
+      [partialOrders.summary, failedGiftSummary],
     );
 
-    await service.handleTurn(inbound('¿Cuál es el estado de mi pago?', '+51900000001'));
+    await partialService.handleTurn(inbound('¿Cuál es el estado de mi pago?', '+51900000001'));
 
-    expect(runtime.composeRequests).toHaveLength(1);
-    const customerContext = runtime.composeRequests[0]?.customerContext;
+    expect(partialRuntime.composeRequests).toHaveLength(1);
+    const partialContext = partialRuntime.composeRequests[0]?.customerContext;
     // Ready facts survive the failed optional source while the section
     // stays servable; the failed scope contributes no phantom record and
     // the per-result coverage behind the reply stays honest (proven at the
     // executor level).
-    expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-DISC-1']);
-    expect(customerContext?.purchases).toHaveLength(1);
-    expect(customerContext?.coverage.purchasesCarts.status).toBe('ready');
-    expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-DISC-1']);
+    expect(partialContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-DISC-1']);
+    expect(partialContext?.purchases).toHaveLength(1);
+    expect(partialContext?.coverage.purchasesCarts.status).toBe('ready');
   });
 });

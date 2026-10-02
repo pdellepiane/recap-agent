@@ -51,7 +51,10 @@ function eligibleGate(overrides: Record<string, unknown> = {}) {
 }
 
 describe('S06 one-shot OTP recovery budget', () => {
-  it('starts with no attempts and no terminal state', () => {
+  it('starts empty and sends exactly once without transport retries', () => {
+    expect(OTP_TRANSPORT_RETRY_POLICY.sendMaxRetries).toBe(0);
+    expect(OTP_TRANSPORT_RETRY_POLICY.verifyMaxRetries).toBe(0);
+    expect(shouldRetryOtpTransport()).toBe(false);
     expect(emptyAuthRecoveryState()).toEqual({
       sendAttempted: false,
       verificationAttempted: false,
@@ -60,9 +63,6 @@ describe('S06 one-shot OTP recovery budget', () => {
       challengeRequestedAt: null,
       preservedRequest: null,
     });
-  });
-
-  it('consumes the send allowance before dispatch and blocks a second send', () => {
     const first = consumeSendAttempt(emptyAuthRecoveryState(), {
       email: 'person@example.com',
       requestedAt: '2026-09-05T00:00:00.000Z',
@@ -79,30 +79,22 @@ describe('S06 one-shot OTP recovery budget', () => {
     });
     expect(second.allowed).toBe(false);
     expect(second.state.sendAttempted).toBe(true);
-  });
 
-  it('disables transport retries for both OTP operations', () => {
-    expect(OTP_TRANSPORT_RETRY_POLICY.sendMaxRetries).toBe(0);
-    expect(OTP_TRANSPORT_RETRY_POLICY.verifyMaxRetries).toBe(0);
-    expect(shouldRetryOtpTransport()).toBe(false);
-  });
-
-  it('a successful send awaits exactly one code', () => {
-    const consumed = consumeSendAttempt(emptyAuthRecoveryState(), {
+    // The single consumed send awaits exactly one code.
+    const dispatched = consumeSendAttempt(emptyAuthRecoveryState(), {
       email: 'person@example.com',
       requestedAt: '2026-09-05T00:00:00.000Z',
       preservedRequest: preservedRequest(),
     });
-    expect(consumed.allowed).toBe(true);
-    if (!consumed.allowed) return;
-    const result = applySendResult(consumed.state, 'sent');
+    expect(dispatched.allowed).toBe(true);
+    if (!dispatched.allowed) return;
+    const result = applySendResult(dispatched.state, 'sent');
     expect(result.next).toBe('await_code_once');
     expect(result.state.terminalReason).toBeNull();
   });
 
-  it.each(['failed', 'timeout', 'blocked', 'rate_limited', 'email_not_found'] as const)(
-    'send outcome %s terminates recovery without resend',
-    (outcome) => {
+  it('terminates recovery on failed sends and on first report, resend, change, or refusal', () => {
+    for (const outcome of ['failed', 'timeout', 'blocked', 'rate_limited', 'email_not_found'] as const) {
       const consumed = consumeSendAttempt(emptyAuthRecoveryState(), {
         email: 'person@example.com',
         requestedAt: '2026-09-05T00:00:00.000Z',
@@ -118,10 +110,7 @@ describe('S06 one-shot OTP recovery budget', () => {
         requestedAt: '2026-09-05T00:02:00.000Z',
         preservedRequest: preservedRequest(),
       }).allowed).toBe(false);
-    },
-  );
-
-  it('first non-delivery, resend, email-change, or refusal terminates recovery', () => {
+    }
     const base = consumeSendAttempt(emptyAuthRecoveryState(), {
       email: 'person@example.com',
       requestedAt: '2026-09-05T00:00:00.000Z',
@@ -145,25 +134,16 @@ describe('S06 one-shot OTP recovery budget', () => {
 });
 
 describe('S06 OTP entry gate is human-first', () => {
-  it('enters OTP only when every gate condition holds', () => {
+  it('gates OTP entry on verified eligibility and explicit choice without trusting user claims', () => {
     const decision = decideOtpEntry(eligibleGate());
     expect(decision).toEqual({ eligible: true, email: 'person@example.com' });
-  });
-
-  it('unknown eligibility fails the gate toward human help', () => {
     expect(decideOtpEntry(eligibleGate({ accountEligibility: 'unknown' })).eligible).toBe(false);
     expect(decideOtpEntry(eligibleGate({ accountEligibility: 'unsupported' })).eligible).toBe(false);
-  });
-
-  it('a user claim of being registered is never trusted evidence', () => {
-    const decision = decideOtpEntry(eligibleGate({
+    const claimed = decideOtpEntry(eligibleGate({
       trustedExistingAccountEmail: null,
       userClaimedRegistered: true,
     }));
-    expect(decision.eligible).toBe(false);
-  });
-
-  it('requires explicit choice, compatible resource, capability, budget, and no takeover', () => {
+    expect(claimed.eligible).toBe(false);
     expect(decideOtpEntry(eligibleGate({ userExplicitlyChoseEmail: false })).eligible).toBe(false);
     expect(decideOtpEntry(eligibleGate({ protectedResourceSupportsOtpCredential: false })).eligible).toBe(false);
     expect(decideOtpEntry(eligibleGate({ otpCapabilityEnabled: false })).eligible).toBe(false);
@@ -216,31 +196,21 @@ describe('S06 at most one verification', () => {
     expect(extractSingleCodeForVerification('123456 y 654321')).toBeNull();
   });
 
-  it('verifies one validly extracted code while the challenge is active', () => {
+  it('verifies one bound code while the challenge is active without persisting it', () => {
     const state = awaitingCode();
     expect(decideVerification(state, '753994', 'person@example.com')).toEqual({ allowed: true });
+    expect(decideVerification(state, '753994', 'other@example.com').allowed).toBe(false);
     const consumed = consumeVerificationAttempt(state);
     expect(consumed.allowed).toBe(true);
     if (!consumed.allowed) return;
     expect(consumed.state.verificationAttempted).toBe(true);
+    expect(JSON.stringify(consumed.state)).not.toContain('753994');
+    expect('submittedCode' in consumed.state).toBe(false);
     expect(decideVerification(consumed.state, '753994', 'person@example.com').allowed).toBe(false);
   });
 
-  it('never persists the submitted code', () => {
-    const consumed = consumeVerificationAttempt(awaitingCode());
-    expect(consumed.allowed).toBe(true);
-    if (!consumed.allowed) return;
-    expect(JSON.stringify(consumed.state)).not.toContain('753994');
-    expect('submittedCode' in consumed.state).toBe(false);
-  });
-
-  it('rejects verification for a mismatched challenge binding', () => {
-    expect(decideVerification(awaitingCode(), '753994', 'other@example.com').allowed).toBe(false);
-  });
-
-  it.each(['invalid_code', 'expired_code', 'rejected', 'timeout', 'malformed', 'unsupported_account'] as const)(
-    'verification outcome %s terminates recovery without a second attempt',
-    (outcome) => {
+  it('resolves verification once: failures terminate recovery and success resumes the preserved request', () => {
+    for (const outcome of ['invalid_code', 'expired_code', 'rejected', 'timeout', 'malformed', 'unsupported_account'] as const) {
       const consumed = consumeVerificationAttempt(awaitingCode());
       expect(consumed.allowed).toBe(true);
       if (!consumed.allowed) return;
@@ -248,10 +218,7 @@ describe('S06 at most one verification', () => {
       expect(result.next).toBe('terminal_human');
       expect(result.state.terminalReason).toBe('verification_failed');
       expect(consumeVerificationAttempt(result.state).allowed).toBe(false);
-    },
-  );
-
-  it('success resumes only the preserved protected request', () => {
+    }
     const consumed = consumeVerificationAttempt(awaitingCode());
     expect(consumed.allowed).toBe(true);
     if (!consumed.allowed) return;
@@ -260,15 +227,12 @@ describe('S06 at most one verification', () => {
     expect(result.resumeRequest).toEqual(preservedRequest());
   });
 
-  it('terminal state plus a later code or restart never reopens OTP', () => {
+  it('never reopens OTP after terminal state, later codes, or credential expiry', () => {
     const terminal = reportNonDelivery(awaitingCode()).state;
     const later = handlePostTerminalInput(terminal);
     expect(later.otpAllowed).toBe(false);
     expect(later.next).toBe('retain_human_path');
     expect(decideVerification(terminal, '753994', 'person@example.com').allowed).toBe(false);
-  });
-
-  it('credential expiry does not restart OTP', () => {
     const consumed = consumeVerificationAttempt(awaitingCode());
     expect(consumed.allowed).toBe(true);
     if (!consumed.allowed) return;
@@ -279,7 +243,7 @@ describe('S06 at most one verification', () => {
 });
 
 describe('S06 recovery budget survives resets and normalizes legacy state', () => {
-  it('an existing code_requested consumes the send allowance', () => {
+  it('normalizes legacy recovery into the one-shot budget or a terminal state', () => {
     const normalized = normalizeLegacyAuthRecovery({
       status: 'code_requested',
       email: 'person@example.com',
@@ -295,9 +259,6 @@ describe('S06 recovery budget survives resets and normalizes legacy state', () =
       requestedAt: '2026-09-05T00:00:00.000Z',
       preservedRequest: preservedRequest(),
     }).allowed).toBe(false);
-  });
-
-  it('legacy failure or non-delivery evidence terminates recovery', () => {
     expect(normalizeLegacyAuthRecovery({
       status: 'code_requested',
       email: 'person@example.com',

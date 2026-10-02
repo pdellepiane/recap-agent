@@ -79,7 +79,7 @@ describe('S12 per-provider quote completion', () => {
     expect(isValidEventDate('2026-10-18T10:00:00')).toBe(false);
   });
 
-  it('requires an explicitly captured event date and never calls the gateway without one', async () => {
+  it('gates completion on an explicitly captured valid date without gateway calls', async () => {
     const stub = stubGateway(async () => ({ ok: true }));
     for (const missing of [undefined, null, '', '   ']) {
       const outcome = await executePlanCompletion({
@@ -92,18 +92,13 @@ describe('S12 per-provider quote completion', () => {
       expect(outcome.effects).toEqual([]);
       expect(outcome.planUpdate).toBeNull();
     }
-    expect(stub.calls).toEqual([]);
-  });
-
-  it('rejects an invalid event date without gateway calls', async () => {
-    const stub = stubGateway(async () => ({ ok: true }));
-    const outcome = await executePlanCompletion({
+    const invalid = await executePlanCompletion({
       plan: planWithProviders(),
       eventDate: 'fecha pendiente',
       providerGateway: stub.gateway,
     });
-    expect(outcome.status).toBe('failed');
-    expect(outcome.error).toBe('invalid_event_date');
+    expect(invalid.status).toBe('failed');
+    expect(invalid.error).toBe('invalid_event_date');
     expect(stub.calls).toEqual([]);
   });
 
@@ -179,6 +174,15 @@ describe('S12 per-provider quote completion', () => {
     expect(first.effects.every((effect) => effect.status === 'unresolved')).toBe(true);
     expect(first.finished).toBe(false);
     expect(first.planUpdate).toBeNull();
+    // The S02 fixture twin agrees: unknown scenarios stay unresolved.
+    const unknown = new FixtureProviderGateway('s12-missing-scenario', null, 'unknown_scenario', {
+      runId: 'run-s12',
+      caseId: 'case-s12-unknown',
+    });
+    const twinFailed = await executePlanCompletion({ plan: planWithProviders(), eventDate: EVENT_DATE, providerGateway: unknown });
+    expect(twinFailed.status).toBe('failed');
+    expect(twinFailed.effects.every((effect) => effect.status === 'unresolved')).toBe(true);
+    expect(twinFailed.planUpdate).toBeNull();
     const retryStub = stubGateway(async () => ({ ok: true }));
     const second = await executePlanCompletion({
       plan: planWithProviders(),
@@ -200,23 +204,13 @@ describe('S12 per-provider quote completion', () => {
     expect(outcome.planUpdate?.provider_needs).toHaveLength(2);
     expect(plan.lifecycle_state).toBe('active');
     expect(outcome.planUpdate).not.toBe(plan);
-  });
-
-  it('S02 fixture twin: simulated quotes persist receipts and unknown scenarios stay unresolved', async () => {
+    // The S02 fixture twin agrees: simulated quotes persist receipts.
     const loaded = new FixtureProviderGateway('s12-provider-completion', null, 'loaded', {
       runId: 'run-s12',
       caseId: 'case-s12-twin',
     });
-    const ok = await executePlanCompletion({ plan: planWithProviders(), eventDate: EVENT_DATE, providerGateway: loaded });
-    expect(ok.status).toBe('success');
+    const twin = await executePlanCompletion({ plan: planWithProviders(), eventDate: EVENT_DATE, providerGateway: loaded });
+    expect(twin.status).toBe('success');
     expect(loaded.callCount('createQuoteRequest')).toBe(2);
-    const unknown = new FixtureProviderGateway('s12-missing-scenario', null, 'unknown_scenario', {
-      runId: 'run-s12',
-      caseId: 'case-s12-unknown',
-    });
-    const failed = await executePlanCompletion({ plan: planWithProviders(), eventDate: EVENT_DATE, providerGateway: unknown });
-    expect(failed.status).toBe('failed');
-    expect(failed.effects.every((effect) => effect.status === 'unresolved')).toBe(true);
-    expect(failed.planUpdate).toBeNull();
   });
 });

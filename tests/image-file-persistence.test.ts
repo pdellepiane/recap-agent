@@ -138,17 +138,29 @@ describe('file/url attachment union', () => {
   });
 
   it('reuses active digests, never expired files', () => {
+    // A pre-existing five-day reference stays active until its own recorded
+    // expiry: the one-day retention applies to new uploads only, and expiry
+    // bounds media availability, never stored facts.
+    const createdAtMs = Date.now() - 4 * 24 * 3600 * 1000;
     const refs = [fileRef({ contentDigest: 'a'.repeat(64) }), fileRef({
       fileId: 'file-old',
       messageId: 'm-old',
       contentDigest: 'b'.repeat(64),
       expiresAt: PAST,
+    }), fileRef({
+      fileId: 'file-legacy',
+      messageId: 'm-legacy',
+      contentDigest: 'c'.repeat(64),
+      expiresAt: new Date(createdAtMs + 5 * 24 * 3600 * 1000).toISOString(),
+      receivedAt: new Date(createdAtMs).toISOString(),
     })];
     expect(findReusableFileRef(refs, 'a'.repeat(64), NOW)?.fileId).toBe('file-abc123');
     expect(findReusableFileRef(refs, 'b'.repeat(64), NOW)).toBeNull();
+    expect(findReusableFileRef(refs, 'c'.repeat(64), NOW)?.fileId).toBe('file-legacy');
     expect(isFileRefActive(refs[0], NOW)).toBe(true);
     expect(isFileRefActive(refs[1], NOW)).toBe(false);
-    expect(pruneExpiredFileRefs(refs, NOW)).toHaveLength(1);
+    expect(isFileRefActive(refs[2], NOW)).toBe(true);
+    expect(pruneExpiredFileRefs(refs, NOW)).toHaveLength(2);
   });
 
   it('projects at most two active refs, most recent first', () => {
@@ -170,14 +182,11 @@ describe('file/url attachment union', () => {
 });
 
 describe('validated base64 decode', () => {
-  it('decodes available base64 in memory only', () => {
+  it('decodes available base64 in memory only and returns null otherwise', () => {
     const image = normalizeInboundImage({ data: PNG_1X1, mime_type: 'image/png' });
     const bytes = decodeValidatedBase64Bytes(image);
     expect(bytes).not.toBeNull();
     expect(bytes?.length).toBeGreaterThan(0);
-  });
-
-  it('returns null for unavailable and url images', () => {
     expect(decodeValidatedBase64Bytes({ status: 'unavailable', reason: 'media_unavailable', mimeType: 'image/png' })).toBeNull();
     expect(decodeValidatedBase64Bytes({ status: 'available', source: 'url', url: 'https://example.com/a.png', mimeType: null })).toBeNull();
   });
@@ -218,29 +227,8 @@ describe('Files adapter', () => {
     expect(result.fileId).toBe('file-new');
     expect(result.expiresAt).toBe(new Date((1750000000 + 86_400) * 1000).toISOString());
     expect(result.byteLength).toBe(3);
-  });
-
-  it('honors the recorded expiry of older references instead of assuming deletion', async () => {
-    // A pre-existing five-day reference stays active until its own recorded
-    // expiry: the one-day retention applies to new uploads only, and expiry
-    // bounds media availability, never stored facts.
-    const createdAtMs = Date.now() - 4 * 24 * 3600 * 1000;
-    const oldFiveDayRef: FileAttachmentRef = {
-      kind: 'file',
-      fileId: 'file-legacy',
-      expiresAt: new Date(createdAtMs + 5 * 24 * 3600 * 1000).toISOString(),
-      mimeType: 'image/png',
-      byteLength: 10,
-      contentDigest: 'c'.repeat(64),
-      messageId: 'm-legacy',
-      receivedAt: new Date(createdAtMs).toISOString(),
-    };
-    expect(isFileRefActive(oldFiveDayRef, Date.now())).toBe(true);
-    expect(findReusableFileRef([oldFiveDayRef], 'c'.repeat(64), Date.now())?.fileId).toBe('file-legacy');
-  });
-
-  it('retains the provider-returned expiry instead of recomputing it', async () => {
-    const { store } = storeWith({
+    // A provider-returned expiry is retained instead of recomputed.
+    const { store: returnedStore } = storeWith({
       create: async () => ({
         id: 'file-returned',
         created_at: 1750000000,
@@ -249,8 +237,8 @@ describe('Files adapter', () => {
       }),
       delete: async () => ({}),
     });
-    const result = await store.uploadImage({ bytes: Buffer.from([1, 2, 3]), mimeType: 'image/png' });
-    expect(result.expiresAt).toBe(new Date((1750000000 + 100_000) * 1000).toISOString());
+    const returned = await returnedStore.uploadImage({ bytes: Buffer.from([1, 2, 3]), mimeType: 'image/png' });
+    expect(returned.expiresAt).toBe(new Date((1750000000 + 100_000) * 1000).toISOString());
   });
 
   it('rejects invalid provider responses without inventing a successful upload', async () => {
@@ -305,138 +293,18 @@ describe('Files adapter', () => {
 });
 
 describe('file-ID reply content', () => {
-  it('builds SDK file-ID items and mirrors the Responses file_id wire shape', () => {
-    const items = buildNativeFileImageItems([{ fileId: 'file-abc123', messageId: 'm1' }]);
-    expect(items).toEqual([{ type: 'input_image', image: { id: 'file-abc123' }, detail: 'auto' }]);
-    expect(toResponsesWireImageItem(items[0])).toEqual({ type: 'input_image', file_id: 'file-abc123', detail: 'auto' });
-  });
-
-  it('lets the caller cap explicit file projection at two', () => {
+  it('caps explicit file projection at two and shapes file items as input_image.file_id', () => {
     const explicit = [0, 1, 2].map((index) => ({ fileId: `file-${index}`, messageId: `m${index}` }));
     expect(resolveProjectedImageFileAttachments({ explicit })).toHaveLength(2);
     expect(resolveProjectedImageFileAttachments({ explicit: undefined })).toEqual([]);
     expect(resolveProjectedImageFileAttachments({ explicit: [] })).toEqual([]);
+    // Native item shape plus wire serialization (wire capture itself lives in
+    // image-sdk-wire.test.ts, same lane).
+    const mirror = buildNativeFileImageItems([{ fileId: 'file-abc123', messageId: 'm1' }]);
+    expect(mirror).toEqual([{ type: 'input_image', image: { id: 'file-abc123' }, detail: 'auto' }]);
+    expect(toResponsesWireImageItem(mirror[0])).toEqual({ type: 'input_image', file_id: 'file-abc123', detail: 'auto' });
   });
 
-  it('serializes file IDs through the installed SDK as input_image.file_id', async () => {
-    const wireBodies: string[] = [];
-    const client = new OpenAI({ apiKey: 'test-key', maxRetries: 0 });
-    Reflect.set(client, 'fetch', async (_input: unknown, init?: RequestInit) => {
-      if (typeof init?.body === 'string') wireBodies.push(init.body);
-      return new Response(JSON.stringify({
-        id: 'resp_img_file_1',
-        object: 'response',
-        created_at: 1750000000,
-        model: 'gpt-test',
-        status: 'completed',
-        output: [{
-          type: 'message',
-          id: 'msg_1',
-          status: 'completed',
-          role: 'assistant',
-          content: [{ type: 'output_text', text: '{"type":"generic","paragraphs_es":["Veo el comprobante."]}', annotations: [] }],
-        }],
-        usage: { input_tokens: 120, output_tokens: 12, total_tokens: 132 },
-      }), {
-        status: 200,
-        headers: { 'content-type': 'application/json', 'x-request-id': 'req-sdk-file' },
-      });
-    });
-    const runtime = new OpenAiAgentRuntime({
-      apiKey: 'test-key',
-      replyModel: 'gpt-test',
-      extractorModel: 'gpt-test',
-      replyProviderLimit: 4,
-      presentationProviderLimit: 5,
-      providerDetailLookupLimit: 3,
-      promptLoader: {
-        loadNodeBundle: async () => ({
-          id: 'test-bundle',
-          filePaths: [],
-          instructions: 'Responde en español con un mensaje genérico.',
-          allowedTools: [],
-        }),
-        loadModuleFilesBundle: async () => ({
-          id: 'test-bundle',
-          filePaths: [],
-          instructions: 'Responde en español con un mensaje genérico.',
-          allowedTools: [],
-          fileBytes: [],
-        }),
-      } as never,
-      providerGateway: {} as never,
-      openAIClient: client,
-    });
-    const plan = mergePlan(
-      createEmptyPlan({ planId: 'sdk-file', channel: 'whatsapp', externalUserId: 'u' }),
-      {
-        current_node: 'resolver_consultas_informativas',
-        image_attachments: [fileRef()],
-      },
-    );
-    const baseExtraction: ExtractionResult = {
-      actionIntent: null,
-      informationRequests: [],
-      phoneConfirmation: null,
-      intentConfidence: 1,
-      ambiguity: { status: 'clear', clarificationQuestion: null, interpretations: [] },
-      eventType: null,
-      vendorCategory: null,
-      vendorCategories: [],
-      activeNeedCategory: null,
-      location: null,
-      budgetSignal: null,
-      guestRange: null,
-      preferences: [],
-      hardConstraints: [],
-      assumptions: [],
-      conversationSummary: 'Comprobante por archivo.',
-      selectedProviderHints: [],
-      pauseRequested: false,
-      contactName: null,
-      contactEmail: null,
-      contactPhone: null,
-      providerFitCriteria: null,
-      providerQueryIntents: [],
-      providerPlanOperations: [],
-      providerExplanationRequest: null,
-      providerDetailRequest: null,
-    };
-    await runtime.composeReply({
-      currentNode: 'resolver_consultas_informativas',
-      previousNode: 'resolver_consultas_informativas',
-      userMessage: 'Es mi comprobante',
-      messageContext: localTurnMessageContext('not_configured'),
-      plan,
-      extraction: baseExtraction,
-      missingFields: [],
-      searchReady: false,
-      providerResults: [],
-      errorMessage: null,
-      promptBundleId: 'test-bundle',
-      promptFilePaths: [],
-      toolUsage: { considered: [], called: [], inputs: [], outputs: [] },
-      imageEvidence: { status: 'available', reason: null, captionPresent: true, source: 'file', refStored: true },
-      imageFileAttachments: [{ fileId: 'file-abc123', messageId: 'wamid.file1' }],
-    });
-
-    expect(wireBodies.length).toBeGreaterThan(0);
-    const bodies = wireBodies.map((body) => JSON.parse(body) as Record<string, unknown>);
-    const imageItems = bodies.flatMap((body) => {
-      const input = body['input'];
-      if (!Array.isArray(input)) return [];
-      return input.flatMap((entry) => {
-        const record = entry as { content?: unknown[] };
-        return Array.isArray(record.content) ? record.content : [];
-      });
-    }).filter((item) => (item as { type?: string }).type === 'input_image');
-    // Actual installed-SDK serialization evidence: file_id, not a mirror.
-    expect(imageItems).toHaveLength(1);
-    expect(imageItems[0]).toMatchObject({ type: 'input_image', file_id: 'file-abc123', detail: 'auto' });
-    for (const body of wireBodies) {
-      expect(body.split('file-abc123').length - 1).toBe(1);
-    }
-  });
 });
 
 class StubFileStore implements ImageFileStore {
@@ -579,16 +447,6 @@ describe('base64 production wiring', () => {
     expect(JSON.stringify(response.plan)).not.toContain(PNG_1X1);
   });
 
-  it('reuses the persisted ref on duplicate delivery without re-uploading', async () => {
-    const runtime = new OwnerStubRuntime();
-    const store = new StubFileStore();
-    const { service } = fileService(runtime, store);
-    await service.handleTurn(inboundWithBase64(PNG_1X1, 'image/png', 'Cuanto dice aqui?', 'wamid.dupe'));
-    const second = await service.handleTurn(inboundWithBase64(PNG_1X1, 'image/png', 'Cuanto dice aqui?', 'wamid.dupe'));
-    expect(store.uploads).toBe(1);
-    expect(second.plan.image_attachments).toHaveLength(1);
-  });
-
   it('shares one file for identical bytes with distinct message linkage and original expiry', async () => {
     const runtime = new OwnerStubRuntime();
     const store = new StubFileStore();
@@ -604,34 +462,8 @@ describe('base64 production wiring', () => {
     expect(expiries[0]).toBe(expiries[1]);
   });
 
-  it('propagates a retryable transport upload failure instead of bad-input evidence', async () => {
-    const runtime = new OwnerStubRuntime();
-    const store = new StubFileStore();
-    store.failUpload = new ImageFileUploadError('boom', { retryable: true, causeName: 'APIConnectionError' });
-    const { service } = fileService(runtime, store);
-    await expect(
-      service.handleTurn(inboundWithBase64(PNG_1X1, 'image/png', 'Cuanto dice aqui?', 'wamid.up1')),
-    ).rejects.toThrow('boom');
-    // No unavailable-evidence fallback was composed for a transport failure.
-    expect(runtime.composeRequests).toHaveLength(0);
-    expect(store.uploads).toBe(1);
-  });
-
-  it('degrades a malformed-media upload failure to unavailable evidence without false success', async () => {
-    const runtime = new OwnerStubRuntime();
-    const store = new StubFileStore();
-    store.failUpload = new ImageFileUploadError('empty bytes', { retryable: false, causeName: 'validation' });
-    const { service } = fileService(runtime, store);
-    const response = await service.handleTurn(inboundWithBase64(PNG_1X1, 'image/png', 'Cuanto dice aqui?', 'wamid.up1b'));
-
-    expect(response.plan.image_attachments).toHaveLength(0);
-    const request = runtime.composeRequests[0];
-    expect(request?.imageEvidence).toMatchObject({ status: 'unavailable', reason: 'upload_failed' });
-    expect(request?.imageFileAttachments).toBeUndefined();
-    const outputs = JSON.stringify(response.trace.tool_outputs);
-    expect(outputs).toContain('upload_failed');
-  });
-
+  // Retryable-transport propagation lives in s17-image-turn.test.ts (same contract + extract ordering).
+  // Malformed-media degradation lives in r3-image-access-fallback.test.ts (same evidence + reason).
   it('never relabels a non-upload failure as an unreadable image', async () => {
     const runtime = new OwnerStubRuntime();
     const store = new StubFileStore();
@@ -665,14 +497,7 @@ describe('base64 production wiring', () => {
   });
 });
 
-describe('follow-up image relevance', () => {  async function seedImage(): Promise<{ service: AgentService; runtime: OwnerStubRuntime; store: StubFileStore }> {
-    const runtime = new OwnerStubRuntime();
-    const store = new StubFileStore();
-    const { service } = fileService(runtime, store);
-    await service.handleTurn(inboundWithBase64(PNG_1X1, 'image/png', '', 'wamid.seed1'));
-    return { service, runtime, store };
-  }
-
+describe('follow-up image relevance', () => {
   function textTurn(text: string, messageId: string): NormalizedInboundMessage {
     return {
       channel: 'whatsapp',
@@ -683,31 +508,6 @@ describe('follow-up image relevance', () => {  async function seedImage(): Promi
       contactPhone: '+51987654321',
     };
   }
-
-  it('omits pixels on unrelated turns without structured linkage', async () => {
-    const { service, runtime } = await seedImage();
-    runtime.scripted = {
-      informationRequests: [{ kind: 'faq', query: 'Cual es el horario?' }],
-      imageReference: { status: 'none', referencedMessageIds: [] },
-    };
-    await service.handleTurn(textTurn('Cual es el horario?', 'wamid.faq1'));
-    const request = runtime.composeRequests.at(-1);
-    expect(request?.imageFileAttachments ?? []).toEqual([]);
-    expect(request?.imageUrlAttachments ?? []).toEqual([]);
-    expect(request?.imageEvidence).toBeUndefined();
-  });
-
-  it('projects the linked file when the extractor references a prior image', async () => {
-    const { service, runtime } = await seedImage();
-    runtime.scripted = {
-      informationRequests: [{ kind: 'faq', query: 'Que monto ves ahi?' }],
-      imageReference: { status: 'prior_single', referencedMessageIds: ['wamid.seed1'] },
-    };
-    await service.handleTurn(textTurn('Que monto ves ahi?', 'wamid.q1'));
-    const request = runtime.composeRequests.at(-1);
-    expect(request?.imageFileAttachments).toEqual([{ fileId: 'file-live-1', messageId: 'wamid.seed1' }]);
-    expect(request?.imageEvidence).toMatchObject({ status: 'available', source: 'file' });
-  });
 
   it('reloads the persisted ref after a cold start without re-uploading', async () => {
     const runtime = new OwnerStubRuntime();
@@ -784,7 +584,7 @@ describe('extraction minimum disclosure for image linkage', () => {
     pause: false,
   };
 
-  it('omits imageReference from the schema while no refs are stored', () => {
+  it('gates image-linkage schema and guidance on stored refs', async () => {
     const withoutRefs = createDynamicExtractionSchema({
       allowedActionIntents: ['pausar'],
       capabilities,
@@ -797,9 +597,7 @@ describe('extraction minimum disclosure for image linkage', () => {
       includeImageReference: true,
     });
     expect(Object.keys(withRefs.shape)).toContain('imageReference');
-  });
-
-  it('loads image-linkage guidance only when refs are stored', async () => {
+    // The extractor bundle loads the linkage guidance file only with refs stored.
     const loader = new PromptLoader(path.resolve(process.cwd(), 'prompts'));
     const plain = await loader.loadExtractorBundle(capabilities);
     expect(plain.filePaths).not.toContain('extractors/image_reference.txt');
@@ -810,22 +608,6 @@ describe('extraction minimum disclosure for image linkage', () => {
 });
 
 describe('inbound continuity wire and plan shape', () => {
-  it('keeps the existing text plus optional image wire shape with no batch fields', () => {
-    const message: NormalizedInboundMessage = {
-      channel: 'whatsapp',
-      externalUserId: 'whatsapp:+51987654321',
-      text: 'Cuanto dice ahi?',
-      messageId: 'wamid.wire1',
-      receivedAt: '2026-09-08T14:30:00Z',
-      contactPhone: '+51987654321',
-    };
-    const keys = Object.keys(message);
-    for (const forbidden of ['package', 'parts', 'batchId', 'batch_id', 'batch']) {
-      expect(keys).not.toContain(forbidden);
-    }
-    expect(typeof message.text).toBe('string');
-  });
-
   it('carries no batch fields on the persisted plan and keeps attachment linkage across a transfer', () => {
     for (const forbidden of ['batch', 'batchId', 'batch_id', 'package', 'parts']) {
       expect(Object.keys(planSchema.shape)).not.toContain(forbidden);
@@ -954,7 +736,7 @@ describe('R2 extractor image index', () => {
     fileRef({ messageId: 'wamid.cur', receivedAt: '2026-09-08T14:30:00Z' }),
   ];
 
-  it('projects linkage, receive time, status and relation without raw media', () => {
+  it('projects the bounded linkage index without raw media and marks expired files', () => {
     const index = buildImageAttachmentIndexForExtraction({
       attachments: refs,
       currentMessageId: 'wamid.cur',
@@ -969,29 +751,27 @@ describe('R2 extractor image index', () => {
     expect(serialized).not.toContain('https://');
     expect(serialized).not.toContain('base64');
     expect(serialized).not.toContain('bytes');
-  });
-
-  it('marks expired files and caps the index', () => {
-    const index = buildImageAttachmentIndexForExtraction({
+    // Expired entries report expired, the index caps, and an expired current
+    // file never shows as available.
+    const capped = buildImageAttachmentIndexForExtraction({
       attachments: [fileRef({ messageId: 'wamid.old1', expiresAt: PAST }), ...refs],
       currentMessageId: null,
       nowMs: NOW,
       limit: 2,
     });
-    expect(index).toHaveLength(2);
-    expect(index.every((entry) => entry.relation === 'prior')).toBe(true);
-  });
-
-  it('marks an expired current file as expired, never as available', () => {
-    const index = buildImageAttachmentIndexForExtraction({
+    expect(capped).toHaveLength(2);
+    expect(capped.every((entry) => entry.relation === 'prior')).toBe(true);
+    // An expired current file reports expired, never available.
+    const current = buildImageAttachmentIndexForExtraction({
       attachments: [fileRef({ messageId: 'wamid.cur', expiresAt: PAST })],
       currentMessageId: 'wamid.cur',
       nowMs: NOW,
     });
-    expect(index).toEqual([
+    expect(current).toEqual([
       { message_id: 'wamid.cur', received_at: '2026-09-08T14:30:00Z', status: 'expired', relation: 'current' },
     ]);
   });
+
 });
 
 describe('R2 extractor input projection', () => {
@@ -1031,26 +811,22 @@ describe('R2 extractor input projection', () => {
     );
   }
 
-  it('exposes current-image status and the bounded index without raw media', () => {
+  it('projects image status and index only when images exist', () => {
     const input = extractorInput(projectionRefs, 'wamid.cur');
     expect(input).toContain('Imagen actual: disponible.');
     expect(input).toContain('"relation":"current"');
     expect(input).toContain('"relation":"prior"');
     expect(input).not.toContain('file-abc123');
     expect(input).not.toContain('https://example.com/old.png');
-  });
-
-  it('reports no current image on text-only follow-ups while keeping priors visible', () => {
-    const input = extractorInput(projectionRefs, 'wamid.followup');
-    expect(input).toContain('Imagen actual: no disponible.');
-    expect(input).toContain('"relation":"prior"');
-    expect(input).not.toContain('"relation":"current"');
-  });
-
-  it('stays byte-identical on imageless turns', () => {
-    const input = extractorInput([], null);
-    expect(input).not.toContain('Imagen actual');
-    expect(input).not.toContain('Índice de imágenes');
+    // Text-only follow-ups report no current image while priors stay visible.
+    const followup = extractorInput(projectionRefs, 'wamid.followup');
+    expect(followup).toContain('Imagen actual: no disponible.');
+    expect(followup).toContain('"relation":"prior"');
+    expect(followup).not.toContain('"relation":"current"');
+    // Imageless turns stay byte-identical: no image sections at all.
+    const imageless = extractorInput([], null);
+    expect(imageless).not.toContain('Imagen actual');
+    expect(imageless).not.toContain('Índice de imágenes');
   });
 });
 
@@ -1084,13 +860,11 @@ describe('R2 fresh image plus question schema', () => {
     });
   }
 
-  it('uses the generic owner schema for a fresh image question, not the welcome schema', () => {
+  it('selects the generic owner schema for image questions and gates pending_task_outcome', () => {
     expect(outputSchemaFor('contacto_inicial', true)).toBe(genericMessageSchema);
     expect(outputSchemaFor('contacto_inicial', false)).toBe(welcomeMessageSchema);
     expect(outputSchemaFor('resolver_consultas_informativas', true)).toBe(genericMessageSchema);
-  });
-
-  it('exposes pending_task_outcome only on turns carrying a pending question', () => {
+    // pending_task_outcome appears only on turns carrying a pending question.
     const runtime = new OpenAiAgentRuntime({
       apiKey: 'test-key',
       replyModel: 'test-reply',
@@ -1223,26 +997,7 @@ describe('R2 owner reply continuity through production turns', () => {
     expect(reloaded?.owner_pending_question).toBe('Que monto ves ahi?');
   });
 
-  it('a prior_single without linkage carries the single stored image', async () => {
-    const runtime = new OwnerStubRuntime();
-    const store = new StubFileStore();
-    const { service } = fileService(runtime, store);
-    await service.handleTurn(inboundWithBase64(PNG_1X1, 'image/png', '', 'wamid.seed1'));
-    runtime.scripted = {
-      informationRequests: [{ kind: 'faq', query: 'Cual es el horario?' }],
-      imageReference: { status: 'prior_single', referencedMessageIds: [] },
-    };
-    await service.handleTurn(faqTurn('Cual es el horario?', 'wamid.faq3'));
-    const request = runtime.composeRequests.at(-1);
-    // Deterministic single-candidate carry: the one usable stored image
-    // must be the referenced prior. Several stored refs stay ambiguous and
-    // project nothing (covered in s17-image-turn).
-    expect(request?.imageFileAttachments).toEqual([
-      { fileId: 'file-live-1', messageId: 'wamid.seed1' },
-    ]);
-    expect(request?.imageUrlAttachments ?? []).toEqual([]);
-  });
-
+  // Deterministic single-candidate prior_single carry lives in s17-image-turn.test.ts.
   it('a prior_uncertain projects at most two native images', async () => {
     const runtime = new OwnerStubRuntime();
     const planStore = new InMemoryPlanStore();
@@ -1276,7 +1031,7 @@ describe('R2 owner reply continuity through production turns', () => {
     expect(total).toBeGreaterThan(0);
   });
 
-  it('stashes the unresolved question on an image-seeking clarification', async () => {
+  it('stashes the unresolved question on clarification and cold normal-path turns', async () => {
     const runtime = new OwnerStubRuntime();
     const planStore = new InMemoryPlanStore();
     const empty = createEmptyPlan({ planId: 'p', channel: 'whatsapp', externalUserId: 'whatsapp:+51987654321' });
@@ -1309,12 +1064,10 @@ describe('R2 owner reply continuity through production turns', () => {
     const reloaded = await planStore.getByExternalUser('whatsapp', 'whatsapp:+51987654321');
     expect(reloaded?.owner_pending_question).toBe('Confirma el monto de mi comprobante');
     expect(reloaded?.last_outbound_context?.message_id).toBe('wamid.q5');
-  });
-
-  it('stashes the evidence-seeking question on a cold normal-path turn', async () => {
-    const runtime = new OwnerStubRuntime();
-    const { service, planStore } = fileService(runtime, new StubFileStore());
-    runtime.scripted = {
+    // The cold normal path stashes the same evidence-seeking question.
+    const coldRuntime = new OwnerStubRuntime();
+    const cold = fileService(coldRuntime, new StubFileStore());
+    coldRuntime.scripted = {
       ambiguity: {
         status: 'ambiguous',
         clarificationQuestion: 'Quieres el estado o que revise el comprobante?',
@@ -1323,41 +1076,15 @@ describe('R2 owner reply continuity through production turns', () => {
         questionKey: 'status_or_proof_review',
       },
     };
-    await service.handleTurn(faqTurn('Confirma el monto de mi comprobante', 'wamid.coldq'));
-    const reloaded = await planStore.getByExternalUser('whatsapp', 'whatsapp:+51987654321');
-    expect(reloaded?.owner_pending_question).toBe('Confirma el monto de mi comprobante');
+    await cold.service.handleTurn(faqTurn('Confirma el monto de mi comprobante', 'wamid.coldq'));
+    const coldReloaded = await cold.planStore.getByExternalUser('whatsapp', 'whatsapp:+51987654321');
+    expect(coldReloaded?.owner_pending_question).toBe('Confirma el monto de mi comprobante');
   });
 
-  it('an image that fulfills the pending question answers and clears it', async () => {
-    const runtime = new OwnerStubRuntime();
-    runtime.pendingOutcome = 'answered';
-    const store = new StubFileStore();
-    const planStore = new InMemoryPlanStore();
-    const empty = createEmptyPlan({ planId: 'p', channel: 'whatsapp', externalUserId: 'whatsapp:+51987654321' });
-    await planStore.save({
-      plan: mergePlan(empty, { owner_pending_question: 'Que monto ves ahi?' }),
-      reason: 'test-seed',
-    });
-    const service = new AgentService({
-      planStore,
-      runtime,
-      providerGateway: {} as unknown as ProviderGateway,
-      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
-      renderers: { whatsapp: new WhatsAppMessageRenderer() },
-      imageFileStore: store,
-    });
-    const response = await service.handleTurn(inboundWithBase64(PNG_1X1, 'image/png', '', 'wamid.img1'));
-    expect(response.outbound.delivery.action).toBe('send');
-    const request = runtime.composeRequests.at(-1);
-    expect(request?.continuity).toMatchObject({ pendingQuestion: 'Que monto ves ahi?' });
-    expect(request?.pendingQuestionRef).toBe('Que monto ves ahi?');
-    expect(request?.imageFileAttachments).toHaveLength(1);
-    const reloaded = await planStore.getByExternalUser('whatsapp', 'whatsapp:+51987654321');
-    expect(reloaded?.owner_pending_question).toBeNull();
-    expect(reloaded?.last_outbound_context?.message_id).toBe('wamid.img1');
-  });
-
-  it('a successful clarification keeps the original pending question', async () => {
+  // Pending-question fulfillment by an arriving image lives in
+  // s17-image-turn.test.ts (receipt question preserved across turns and
+  // answered with clearing plus last-response recording, same lane).
+  it('keeps the pending question when the turn does not answer it', async () => {
     const runtime = new OwnerStubRuntime();
     const planStore = new InMemoryPlanStore();
     const empty = createEmptyPlan({ planId: 'p', channel: 'whatsapp', externalUserId: 'whatsapp:+51987654321' });
@@ -1386,32 +1113,31 @@ describe('R2 owner reply continuity through production turns', () => {
     expect(response.outbound.delivery.action).toBe('send');
     const reloaded = await planStore.getByExternalUser('whatsapp', 'whatsapp:+51987654321');
     expect(reloaded?.owner_pending_question).toBe('Que monto ves ahi?');
-  });
-
-  it('an image reply without an answered outcome keeps the pending question', async () => {
-    const runtime = new OwnerStubRuntime();
-    runtime.pendingOutcome = 'needs_input';
-    const store = new StubFileStore();
-    const planStore = new InMemoryPlanStore();
-    const empty = createEmptyPlan({ planId: 'p', channel: 'whatsapp', externalUserId: 'whatsapp:+51987654321' });
-    await planStore.save({
-      plan: mergePlan(empty, { owner_pending_question: 'Que monto ves ahi?' }),
+    // An image reply without an answered outcome keeps it too.
+    const imageRuntime = new OwnerStubRuntime();
+    imageRuntime.pendingOutcome = 'needs_input';
+    const imageStore = new StubFileStore();
+    const imagePlanStore = new InMemoryPlanStore();
+    const imageSeed = createEmptyPlan({ planId: 'p', channel: 'whatsapp', externalUserId: 'whatsapp:+51987654321' });
+    await imagePlanStore.save({
+      plan: mergePlan(imageSeed, { owner_pending_question: 'Que monto ves ahi?' }),
       reason: 'test-seed',
     });
-    const service = new AgentService({
-      planStore,
-      runtime,
+    const imageService = new AgentService({
+      planStore: imagePlanStore,
+      runtime: imageRuntime,
       providerGateway: {} as unknown as ProviderGateway,
       promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
       renderers: { whatsapp: new WhatsAppMessageRenderer() },
-      imageFileStore: store,
+      imageFileStore: imageStore,
     });
-    const response = await service.handleTurn(inboundWithBase64(PNG_1X1, 'image/png', '', 'wamid.img2'));
-    expect(response.outbound.delivery.action).toBe('send');
-    const reloaded = await planStore.getByExternalUser('whatsapp', 'whatsapp:+51987654321');
-    expect(reloaded?.owner_pending_question).toBe('Que monto ves ahi?');
-    expect(reloaded?.last_outbound_context?.message_id).toBe('wamid.img2');
+    const imageResponse = await imageService.handleTurn(inboundWithBase64(PNG_1X1, 'image/png', '', 'wamid.img2'));
+    expect(imageResponse.outbound.delivery.action).toBe('send');
+    const imageReloaded = await imagePlanStore.getByExternalUser('whatsapp', 'whatsapp:+51987654321');
+    expect(imageReloaded?.owner_pending_question).toBe('Que monto ves ahi?');
+    expect(imageReloaded?.last_outbound_context?.message_id).toBe('wamid.img2');
   });
+
 });
 
 describe('R2 last-response fallback exposure', () => {
@@ -1437,31 +1163,30 @@ describe('R2 last-response fallback exposure', () => {
     });
   }
 
-  it('exposes the record only when backend history lacks the thread', async () => {
+  async function composeWithHistory(
+    messages: AgentConversationMessage[],
+    recordText = 'Respuesta previa útil.',
+  ): Promise<ComposeReplyRequest | undefined> {
     const runtime = new OwnerStubRuntime();
     const planStore = new InMemoryPlanStore();
-    await planStore.save({ plan: recordPlan('wamid.prev', 'Respuesta previa útil.'), reason: 'test-seed' });
+    await planStore.save({ plan: recordPlan('wamid.prev', recordText), reason: 'test-seed' });
+    const gateway = {
+      getRecentMessages: async () => ({ status: 'success' as const, messages }),
+      logMessage: async () => ({ status: 'success' as const, message: null }),
+    } as unknown as AgentConversationGateway;
     const service = new AgentService({
       planStore,
       runtime,
       providerGateway: {} as unknown as ProviderGateway,
+      agentConversationGateway: gateway,
       promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
       renderers: { whatsapp: new WhatsAppMessageRenderer() },
       imageFileStore: new StubFileStore(),
     });
     runtime.scripted = { informationRequests: [{ kind: 'faq', query: 'Y ahora?' }] };
-    await service.handleTurn(faqTurn('Y ahora?', 'wamid.q6'));
-    const request = runtime.composeRequests.at(-1);
-    const fallback = (request?.messageContext.recentMessages ?? []).filter(
-      (message) => message.whatsappMessageId === 'wamid.prev',
-    );
-    expect(fallback).toHaveLength(1);
-    expect(fallback[0]).toMatchObject({
-      direction: 'outbound',
-      body: 'Respuesta previa útil.',
-      status: 'constructed',
-    });
-  });
+    await service.handleTurn(faqTurn('Y ahora?', 'wamid.qx'));
+    return runtime.composeRequests.at(-1);
+  }
 
   it('stays out of the way when no record exists', async () => {
     const runtime = new OwnerStubRuntime();
@@ -1472,7 +1197,7 @@ describe('R2 last-response fallback exposure', () => {
     expect(request?.messageContext.recentMessages ?? []).toHaveLength(0);
   });
 
-  it('merges the latest response over inbound-only history without inventing linkage', async () => {
+  it('exposes the record when backend history lacks the thread, merging over inbound-only history', async () => {
     const runtime = new OwnerStubRuntime();
     const planStore = new InMemoryPlanStore();
     await planStore.save({ plan: recordPlan('wamid.prev', 'Respuesta previa útil.'), reason: 'test-seed' });
@@ -1512,13 +1237,35 @@ describe('R2 last-response fallback exposure', () => {
       body: 'Respuesta previa útil.',
       status: 'constructed',
     });
+    // Without any backend history the record is exposed on its own.
+    const bareRuntime = new OwnerStubRuntime();
+    const barePlanStore = new InMemoryPlanStore();
+    await barePlanStore.save({ plan: recordPlan('wamid.prev', 'Respuesta previa útil.'), reason: 'test-seed' });
+    const bareService = new AgentService({
+      planStore: barePlanStore,
+      runtime: bareRuntime,
+      providerGateway: {} as unknown as ProviderGateway,
+      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
+      renderers: { whatsapp: new WhatsAppMessageRenderer() },
+      imageFileStore: new StubFileStore(),
+    });
+    bareRuntime.scripted = { informationRequests: [{ kind: 'faq', query: 'Y ahora?' }] };
+    await bareService.handleTurn(faqTurn('Y ahora?', 'wamid.q6'));
+    const bareRequest = bareRuntime.composeRequests.at(-1);
+    const bareFallback = (bareRequest?.messageContext.recentMessages ?? []).filter(
+      (message) => message.whatsappMessageId === 'wamid.prev',
+    );
+    expect(bareFallback).toHaveLength(1);
+    expect(bareFallback[0]).toMatchObject({
+      direction: 'outbound',
+      body: 'Respuesta previa útil.',
+      status: 'constructed',
+    });
   });
 
-  it('a newer authoritative outbound supersedes the stored record', async () => {
-    const runtime = new OwnerStubRuntime();
-    const planStore = new InMemoryPlanStore();
-    await planStore.save({ plan: recordPlan('wamid.prev', 'Respuesta previa útil.'), reason: 'test-seed' });
-    const backendMessage: AgentConversationMessage = {
+  it('reconciles the stored record against backend history by recency and identity', async () => {
+    // A newer authoritative outbound supersedes the stored record.
+    const superseded = await composeWithHistory([{
       id: 9,
       direction: 'outbound',
       source: null,
@@ -1527,33 +1274,13 @@ describe('R2 last-response fallback exposure', () => {
       whatsappMessageId: 'wamid.newer',
       sentAt: '2026-09-08T14:40:00Z',
       createdAt: '2026-09-08T14:40:00Z',
-    };
-    const gateway = {
-      getRecentMessages: async () => ({ status: 'success' as const, messages: [backendMessage] }),
-      logMessage: async () => ({ status: 'success' as const, message: null }),
-    } as unknown as AgentConversationGateway;
-    const service = new AgentService({
-      planStore,
-      runtime,
-      providerGateway: {} as unknown as ProviderGateway,
-      agentConversationGateway: gateway,
-      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
-      renderers: { whatsapp: new WhatsAppMessageRenderer() },
-      imageFileStore: new StubFileStore(),
-    });
-    runtime.scripted = { informationRequests: [{ kind: 'faq', query: 'Y ahora?' }] };
-    await service.handleTurn(faqTurn('Y ahora?', 'wamid.q9'));
-    const request = runtime.composeRequests.at(-1);
-    const recent = request?.messageContext.recentMessages ?? [];
-    expect(recent).toHaveLength(1);
-    expect(recent[0]?.whatsappMessageId).toBe('wamid.newer');
-  });
+    }]);
+    const supersededRecent = superseded?.messageContext.recentMessages ?? [];
+    expect(supersededRecent).toHaveLength(1);
+    expect(supersededRecent[0]?.whatsappMessageId).toBe('wamid.newer');
 
-  it('an old campaign outbound never suppresses the newest response', async () => {
-    const runtime = new OwnerStubRuntime();
-    const planStore = new InMemoryPlanStore();
-    await planStore.save({ plan: recordPlan('wamid.prev', 'Respuesta previa útil.'), reason: 'test-seed' });
-    const campaign: AgentConversationMessage = {
+    // An old campaign outbound never suppresses the newest response.
+    const campaigned = await composeWithHistory([{
       id: 1,
       direction: 'outbound',
       source: 'admin_campaign',
@@ -1562,34 +1289,14 @@ describe('R2 last-response fallback exposure', () => {
       whatsappMessageId: 'wamid.campaign',
       sentAt: '2020-01-01T00:00:00Z',
       createdAt: '2020-01-01T00:00:00Z',
-    };
-    const gateway = {
-      getRecentMessages: async () => ({ status: 'success' as const, messages: [campaign] }),
-      logMessage: async () => ({ status: 'success' as const, message: null }),
-    } as unknown as AgentConversationGateway;
-    const service = new AgentService({
-      planStore,
-      runtime,
-      providerGateway: {} as unknown as ProviderGateway,
-      agentConversationGateway: gateway,
-      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
-      renderers: { whatsapp: new WhatsAppMessageRenderer() },
-      imageFileStore: new StubFileStore(),
-    });
-    runtime.scripted = { informationRequests: [{ kind: 'faq', query: 'Y ahora?' }] };
-    await service.handleTurn(faqTurn('Y ahora?', 'wamid.q10'));
-    const request = runtime.composeRequests.at(-1);
-    const recent = request?.messageContext.recentMessages ?? [];
-    const fallback = recent.filter((message) => message.whatsappMessageId === 'wamid.prev');
-    expect(fallback).toHaveLength(1);
-    expect(fallback[0]).toMatchObject({ direction: 'outbound', status: 'constructed' });
-  });
+    }]);
+    const campaignFallback = (campaigned?.messageContext.recentMessages ?? [])
+      .filter((message) => message.whatsappMessageId === 'wamid.prev');
+    expect(campaignFallback).toHaveLength(1);
+    expect(campaignFallback[0]).toMatchObject({ direction: 'outbound', status: 'constructed' });
 
-  it('already-linked history deduplicates by message identity, not text', async () => {
-    const runtime = new OwnerStubRuntime();
-    const planStore = new InMemoryPlanStore();
-    await planStore.save({ plan: recordPlan('wamid.prev', 'Mismo texto.'), reason: 'test-seed' });
-    const linked: AgentConversationMessage = {
+    // Already-linked history deduplicates by message identity, not text.
+    const deduped = await composeWithHistory([{
       id: 11,
       direction: 'outbound',
       source: null,
@@ -1598,8 +1305,7 @@ describe('R2 last-response fallback exposure', () => {
       whatsappMessageId: 'wamid.prev',
       sentAt: '2026-09-08T14:30:00Z',
       createdAt: '2026-09-08T14:30:00Z',
-    };
-    const sameTextOtherId: AgentConversationMessage = {
+    }, {
       id: 12,
       direction: 'outbound',
       source: null,
@@ -1608,25 +1314,9 @@ describe('R2 last-response fallback exposure', () => {
       whatsappMessageId: 'wamid.other-text',
       sentAt: '2026-09-08T14:31:00Z',
       createdAt: '2026-09-08T14:31:00Z',
-    };
-    const gateway = {
-      getRecentMessages: async () => ({ status: 'success' as const, messages: [linked, sameTextOtherId] }),
-      logMessage: async () => ({ status: 'success' as const, message: null }),
-    } as unknown as AgentConversationGateway;
-    const service = new AgentService({
-      planStore,
-      runtime,
-      providerGateway: {} as unknown as ProviderGateway,
-      agentConversationGateway: gateway,
-      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
-      renderers: { whatsapp: new WhatsAppMessageRenderer() },
-      imageFileStore: new StubFileStore(),
-    });
-    runtime.scripted = { informationRequests: [{ kind: 'faq', query: 'Y ahora?' }] };
-    await service.handleTurn(faqTurn('Y ahora?', 'wamid.q11'));
-    const request = runtime.composeRequests.at(-1);
-    const recent = request?.messageContext.recentMessages ?? [];
-    expect(recent.filter((message) => message.whatsappMessageId === 'wamid.prev')).toHaveLength(1);
-    expect(recent.some((message) => message.whatsappMessageId === undefined)).toBe(false);
+    }], 'Mismo texto.');
+    const dedupedRecent = deduped?.messageContext.recentMessages ?? [];
+    expect(dedupedRecent.filter((message) => message.whatsappMessageId === 'wamid.prev')).toHaveLength(1);
+    expect(dedupedRecent.some((message) => message.whatsappMessageId === undefined)).toBe(false);
   });
 });

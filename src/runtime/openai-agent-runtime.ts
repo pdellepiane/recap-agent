@@ -16,7 +16,12 @@ import { z } from 'zod';
 
 import type { ActionIntent, PersistedPlan } from '../core/plan';
 import { getActiveNeed } from '../core/plan';
-import { normalizeExtractedOrderReference } from '../core/order-reference';
+import { describeEventLocalTime } from '../core/event-local-time';
+import {
+  normalizeBackendCustomerTransactionNumber,
+  normalizeExtractedOrderReference,
+  parseOrderReference,
+} from '../core/order-reference';
 import { extractOtpCode } from './otp-normalization';
 import {
   type InformationTaskResult,
@@ -29,6 +34,7 @@ import {
 import { executeFinishPlanTool } from './finish-plan-tool';
 import type { ProviderQuoteEffect } from './plan-completion-executor';
 import { ModelComposedFailureError } from './model-composition';
+import { unsupportedCommissionNumericClaims, verifiedCommissionArticle } from './commission-grounding';
 import {
   buildCloseSubmissionReceipt,
   resolveCloseBlockers,
@@ -126,7 +132,7 @@ import {
   captureOpenAiTransport,
   installOpenAiTransportCapture,
 } from '../audit/openai-transport-capture';
-import { buildModelOriginReceipt } from './model-composition';
+import { buildModelOriginReceipt, resolveFaqCitationUrl } from './model-composition';
 import {
   MAX_PROJECTED_IMAGE_ATTACHMENTS,
   MAX_PROJECTED_IMAGE_URLS,
@@ -428,15 +434,15 @@ type ReplyTurnEvidence = {
     plus_one_support_offer_required?: boolean;
   } | null;
   /**
-   * R6 unambiguous event-time fact for the model-owned sentence. The stored
-   * value, its hour24 reading and the unknown timezone travel together so a
-   * stated time keeps the source hour with no guessed conversion. Present
-   * only on responder_invitacion when phone evidence carries a date.
+   * R6 unambiguous event-time fact for the model-owned sentence. The source
+   * value, recorded date/hour and zone travel together without conversion.
+   * Present only on a resolved RSVP event with a readable time.
    */
   rsvp_event_time?: {
     value: string;
+    recorded_date: string;
     hour24: string;
-    timezone: 'unknown';
+    timezone: string;
   } | null;
   /**
    * Completed-RSVP effect facts (verified write receipt). Parsed from the
@@ -450,6 +456,7 @@ type ReplyTurnEvidence = {
   rsvp_completed_effect?: {
     outcome: string | null;
     verification_status: string;
+    attendance_change_requested?: boolean;
     requested_attendance_change_verified: boolean;
     effect_applied?: boolean;
     gateway_status?: string;
@@ -460,6 +467,13 @@ type ReplyTurnEvidence = {
     } | null;
     replayed?: boolean;
     fresh_read?: boolean;
+    companion?: {
+      saved: boolean;
+      response: 'yes' | 'no' | null;
+      reason: string | null;
+      eligibility: 'ineligible' | 'unknown';
+      retry_appropriate: boolean | null;
+    };
   } | null;
   turn_state: {
     focus_need_category: PersistedPlan['active_need_category'];
@@ -952,21 +966,12 @@ export function buildImageAttachmentIndexForExtraction(args: {
   }));
 }
 
-/**
- * R6 unambiguous event-time fact. Parses the stored hour verbatim (hour24
- * as stored, e.g. 05:00 stays 05:00, never 17:00) with no timezone
- * conversion: record timestamps carry no verified timezone, so the zone is
- * always unknown. Returns null when the record carries no readable time so
- * unrelated turns stay byte-identical. Facts only, never reply prose.
- */
+/** Reads the event date and wall-clock time exactly as recorded; never converts. */
 export function describeRsvpEventTime(
   value: string | null | undefined,
-): { value: string; hour24: string; timezone: 'unknown' } | null {
-  if (typeof value !== 'string' || value.trim().length === 0) return null;
-  const stored = value.trim();
-  const match = stored.match(/[T ](\d{2}):(\d{2})(?::(\d{2}))?\b/u);
-  if (!match) return { value: stored, hour24: 'unknown', timezone: 'unknown' };
-  return { value: stored, hour24: `${match[1]}:${match[2]}`, timezone: 'unknown' };
+  eventTimeZone?: string | null,
+): { value: string; recorded_date: string; hour24: string; timezone: string } | null {
+  return describeEventLocalTime(value, eventTimeZone);
 }
 
 /**
@@ -1432,6 +1437,24 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     const structured = parseSchema.parse(
       this.normalizeSupportEmails(finalOutput),
     );
+    const commissionArticle = verifiedCommissionArticle(request.informationResults);
+    if (commissionArticle !== null) {
+      if (structured.type !== 'generic') {
+        throw new ModelComposedFailureError('model_error');
+      }
+      const unsupportedClaims = unsupportedCommissionNumericClaims({
+        reply: structured.paragraphs_es.join('\n'),
+        articleText: commissionArticle.evidence.map((entry) => entry.text).join('\n'),
+        userMessage: request.userMessage,
+      });
+      if (unsupportedClaims.length > 0) {
+        request.toolUsage.outputs.push({
+          tool: 'commission_numeric_grounding',
+          output: JSON.stringify({ status: 'rejected', claim_count: unsupportedClaims.length }),
+        });
+        throw new ModelComposedFailureError('model_error');
+      }
+    }
     const composedReply = {
       text: '',
       structuredMessage: structured,
@@ -1447,6 +1470,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       composedReply,
       bundle.id,
       request.providerResults,
+      resolveFaqCitationUrl(request.informationResults),
     );
     return {
       ...composedReply,
@@ -1921,6 +1945,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       { key: 'extractor_history', content: `Historial reciente para el extractor, cuerpos completos sin truncar orden medio (JSON, maximo 6 turnos x 2000 bytes = 12000 bytes): ${JSON.stringify(buildExtractorConversationHistory(request.messageContext))}` },
       { key: 'campaign_reference_context', content: this.buildExtractorCampaignReferenceContext(request) },
       { key: 'user_message', content: `Mensaje del usuario: ${request.userMessage}` },
+      { key: 'customer_reference', content: this.buildCustomerReferenceEvidence(request) },
       {
         key: 'media_metadata',
         content: request.media && request.media.length > 0
@@ -1942,6 +1967,31 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     ];
     // The stable extractor files carry operation, ambiguity, and empty-delta
     // rules once; the input contains only turn-specific evidence.
+  }
+
+  /**
+   * Relate a standalone customer reference to the already-authorized profile.
+   * This is identity evidence, never a route or intent decision. It costs zero
+   * prompt bytes on ordinary turns and makes an unmatched reference explicit
+   * without mistaking another order in the profile for the requested one.
+   */
+  private buildCustomerReferenceEvidence(request: ExtractRequest): string | null {
+    const value = request.userMessage.trim();
+    const parsed = parseOrderReference(value);
+    if (parsed?.kind !== 'customer_transaction') return null;
+    const profile = request.customerContext;
+    const matches = (profile?.purchases ?? []).filter((purchase) =>
+      normalizeBackendCustomerTransactionNumber(purchase.customerTransactionNumber) ===
+        parsed.transactionNumber,
+    );
+    return `Referencia de transacción aportada (JSON; coincidencias del perfil autorizado, no intención): ${JSON.stringify({
+      value: parsed.transactionNumber,
+      profileStatus: profile?.coverage.purchasesCarts.status ?? 'unavailable',
+      matchingRecords: matches.map((purchase) => ({
+        orderId: purchase.orderId,
+        source: purchase.recordSource ?? null,
+      })),
+    })}`;
   }
 
   /**
@@ -2285,10 +2335,21 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     request: ComposeReplyRequest,
   ): ModuleSelectionContext {
     const base = deriveReplyCompilerContext(request);
+    const tasks = [...base.tasks];
+    if (verifiedCommissionArticle(request.informationResults) !== null) {
+      tasks.push('faq_commission');
+    }
+    const hostWithdrawalHours = this.buildHostWithdrawalFacts(request)
+      .host_withdrawal_policy_hours;
+    if (typeof hostWithdrawalHours === 'number' && hostWithdrawalHours > 0) {
+      tasks.push('host_withdrawal_policy');
+    }
     // The wait-followup directive module loads only with the evidence
     // present, keeping stable prompt prefixes and cache keys otherwise.
-    if (this.waitFollowupEvidenceFor(request) === null) return base;
-    return { ...base, tasks: [...base.tasks, 'wait_followup'] };
+    if (this.waitFollowupEvidenceFor(request) !== null) {
+      tasks.push('wait_followup');
+    }
+    return tasks.length === base.tasks.length ? base : { ...base, tasks };
   }
 
   /**
@@ -3145,11 +3206,13 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       return {};
     }
     const evidence = request.rsvpPhoneEvidence;
-    if (!evidence || evidence.state === 'unavailable') return {};
-    const rawDate = evidence.state === 'resolved_single'
-      ? evidence.event.event_date
-      : evidence.candidates.map((candidate) => candidate.event_date).find((date) => date !== null) ?? null;
-    const fact = describeRsvpEventTime(rawDate);
+    if (!evidence || evidence.state !== 'resolved_single') return {};
+    const eventId = evidence.event.event_id;
+    const eventTimeZone = eventId === null
+      ? null
+      : request.customerContext?.invitations.find((invitation) =>
+        invitation.eventId === eventId)?.detail?.timezone ?? null;
+    const fact = describeRsvpEventTime(evidence.event.event_date, eventTimeZone);
     if (!fact) return {};
     // A date-only record carries no verified hour: project no fact so the
     // model-owned sentence states no hour instead of a midnight default.
@@ -3200,6 +3263,13 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       verification_status: verificationStatus,
       requested_attendance_change_verified: attendanceVerified,
     };
+    const requested = source['requested'];
+    if (typeof requested === 'object' && requested !== null) {
+      const action = (requested as Record<string, unknown>)['action'];
+      if (action === null || action === 'attending' || action === 'declining') {
+        effect.attendance_change_requested = action !== null;
+      }
+    }
     const effectApplied = source['effect_applied'];
     if (typeof effectApplied === 'boolean') effect.effect_applied = effectApplied;
     const gatewayStatus = source['gateway_status'];
@@ -3222,6 +3292,16 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     if (typeof replayed === 'boolean') effect.replayed = replayed;
     const freshRead = source['fresh_read'];
     if (typeof freshRead === 'boolean') effect.fresh_read = freshRead;
+    const companion = request.rsvpCompanionOutcome;
+    if (companion) {
+      effect.companion = {
+        saved: companion.saved,
+        response: companion.response,
+        reason: companion.reason,
+        eligibility: companion.eligibility,
+        retry_appropriate: companion.retryAppropriate,
+      };
+    }
     return { rsvp_completed_effect: effect };
   }
 
@@ -4517,17 +4597,11 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
   }
 
   /**
-   * P3 RSVP single-serialization projection without identity heuristics.
-   * RSVP evidence carries no event/guest IDs — only names and dates — so a
-   * name/date match cannot establish that an RSVP fact and a profile
-   * invitation are the same record, and conflicting attendance would be left
-   * unresolved. Until IDs exist, RSVP evidence and profile invitations stay
-   * SEPARATE evidence: the full RSVP facts travel unchanged next to the
-   * untouched profile, and the model answers from both. The only collapse is
-   * the reason-only unavailable state (nothing hidden: it carries no
-   * per-record facts, just coverage/resolution/reason plus the profile
-   * pointer). An explicit verified same-record binding may collapse again
-   * once IDs make it available; name matching never does.
+   * Preserve the full RSVP read beside the canonical customer profile.
+   * RSVP evidence now carries event and guest IDs plus its own read status;
+   * it may be fresher than the profile after a mutation or detail lookup.
+   * Name/date matching never merges two guests. The reason-only unavailable
+   * state carries no per-record facts and can use a profile reference.
    */
   private resolveRsvpProfileProjection(
     request: ComposeReplyRequest,
@@ -4563,8 +4637,9 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
    * order under a bounded total text budget with their source filenames,
    * through this existing projection path. A passage that does not fit the
    * remaining budget is excluded whole and the projection is marked
-   * partial, never clipped mid-meaning. No new lookup, no new state,
-   * no reply prose.
+   * partial, never clipped mid-meaning — except the first passage, which is
+   * always admitted whole so a complete article can never project to empty
+   * evidence. No new lookup, no new state, no reply prose.
    */
   private projectFaqEvidenceForReply(
     evidence: KnowledgeEvidence[],
@@ -4581,7 +4656,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       seen.add(key);
       if (usedChars + entry.text.length > MAX_TOTAL_CHARS) {
         coverage = 'partial';
-        continue;
+        if (projected.length > 0) continue;
       }
       usedChars += entry.text.length;
       projected.push({ filename: entry.filename, text: entry.text });
@@ -4604,6 +4679,10 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
           individualStatus: 'not_available',
         };
       }
+      // The citation URL stays out of model input on purpose: the footer
+      // renders it deterministically at delivery, and the agent must never
+      // see, generate or preempt the link. resolveFaqCitationUrl reads the
+      // typed result, not this projection.
       const faqProjection = this.projectFaqEvidenceForReply(result.evidence);
       return {
         requestId: result.requestId,
@@ -4622,10 +4701,19 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
         recordReferences: result.purchases.map((purchase) => ({
           orderId: purchase.orderId,
           source: purchase.recordSource ?? null,
+          ...(result.referenceResolution === 'matched' || result.referenceResolution === 'unavailable'
+            ? {
+                eventName: purchase.eventName,
+                eventDate: purchase.eventDate,
+              }
+            : {}),
         })),
         cartReferences: (result.carts ?? []).map((cart) => ({ id: cart.cartId })),
         needsSelection: result.needsSelection,
         referenceResolution: result.referenceResolution,
+        ...(result.requestedCustomerTransactionNumber != null
+          ? { requestedCustomerTransactionNumber: result.requestedCustomerTransactionNumber }
+          : {}),
       };
     }
     if (result.status === 'completed' && result.kind === 'associated_event') {

@@ -12,6 +12,7 @@ import { normalizeBackendCustomerTransactionNumber } from '../core/order-referen
 import { normalizePurchaseCurrency } from './purchase-currency';
 import {
   createAuthOperationId,
+  getRequestCorrelationId,
   logAuthObservabilityEvent,
   responseHeadersForAuthLog,
 } from './auth-observability';
@@ -49,6 +50,7 @@ export type AgentMessageDirection = 'inbound' | 'outbound';
 
 export type AgentConversationMessage = {
   id: number;
+  eventId?: number | null;
   direction: AgentMessageDirection;
   source: string | null;
   body: string;
@@ -667,6 +669,7 @@ const attendanceSchema = z.object({
 
 const messageSchema = z.object({
   id: z.number(),
+  event_id: z.number().int().positive().nullable().optional(),
   direction: z.enum(['inbound', 'outbound']),
   source: z.string().nullable().optional(),
   body: z.string(),
@@ -927,6 +930,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
       status: 'success',
       messages: parsed.data.messages.map((message) => ({
         id: message.id,
+        ...(message.event_id ? { eventId: message.event_id } : {}),
         direction: message.direction,
         source: message.source ?? null,
         body: message.body,
@@ -1410,20 +1414,14 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
           retryable: false,
         };
       }
-      const expectedWillAttend = input.action === 'attending';
       const returnedWillAttend = parsed.data.will_attend === true || parsed.data.will_attend === 1
         ? true
         : parsed.data.will_attend === false || parsed.data.will_attend === 0
           ? false
           : null;
-      if (input.action &&
-        (returnedWillAttend === null || returnedWillAttend !== expectedWillAttend)) {
-        return {
-          status: 'failed',
-          error: 'Agent API RSVP response did not confirm the requested attendance state.',
-          retryable: false,
-        };
-      }
+      // Preserve a companion receipt even when the attendance echo is
+      // absent or disagrees. The verified executor compares the requested
+      // attendance with a fresh read before any success claim.
       // Packet B: a returned guest identity different from the requested one
       // is a mismatch rejection, never a fallback to the requested id. Event
       // name alone never binds identity; the executor re-checks event id too.
@@ -1921,18 +1919,21 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
       path.startsWith('/auth-by-phone') ||
       path.startsWith('/user/update-phone') ||
       path.startsWith('/guest/events') ||
+      path.startsWith('/guest/rsvp') ||
       path.startsWith('/event?') ||
       path.startsWith('/orders') ||
       path.startsWith('/gift-purchases') ||
       Boolean(options.authorizationToken);
     const operationId = observeAuthExchange ? createAuthOperationId() : null;
     const requestStartedAt = Date.now();
+    const correlationId = getRequestCorrelationId();
     const requestHeaders = {
       'X-Agent-Key': this.options.apiKey,
       ...(options.authorizationToken
         ? { Authorization: `Bearer ${options.authorizationToken}` }
         : {}),
       ...(options.body ? { 'content-type': 'application/json' } : {}),
+      ...(correlationId ? { 'x-recap-correlation-id': correlationId } : {}),
     };
     if (operationId) {
       logAuthObservabilityEvent('info', 'auth_http_request_started', {
@@ -1944,6 +1945,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
         max_attempts: attempts,
         request_headers_present: Object.keys(requestHeaders),
         request_body_fields: options.body ? Object.keys(options.body) : [],
+        ...(correlationId ? { correlation_id: correlationId } : {}),
       });
     }
 
@@ -2094,6 +2096,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
     if (path.startsWith('/auth-by-phone')) return 'authenticate_by_phone';
     if (path.startsWith('/user/update-phone')) return 'update_phone_after_email_auth';
     if (path.startsWith('/guest/events')) return 'lookup_guest_events_by_phone';
+    if (path.startsWith('/guest/rsvp')) return 'respond_guest_rsvp';
     if (path.startsWith('/event?')) return 'lookup_guest_event_detail';
     if (path.startsWith('/guest/orders')) return 'lookup_guest_orders_by_phone';
     if (path.startsWith('/guest/gift-purchases')) return 'lookup_guest_gift_purchases_by_phone';

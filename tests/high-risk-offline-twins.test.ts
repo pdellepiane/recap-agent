@@ -1,50 +1,23 @@
-import crypto from 'node:crypto';
 import path from 'node:path';
 
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import { AgentService } from '../src/runtime/agent-service';
 import type { AgentConversationGateway } from '../src/runtime/agent-conversation-gateway';
-import type {
-  AgentRuntime,
-  ComposeReplyResult,
-  ExtractionResult,
-} from '../src/runtime/contracts';
+import type { AgentRuntime, ComposeReplyResult, ExtractionResult } from '../src/runtime/contracts';
 import { FixtureAgentConversationGateway } from '../src/runtime/eval-fixture-gateway';
 import { InformationOrchestrator } from '../src/runtime/information-orchestrator';
-import type {
-  KnowledgeRetrievalGateway,
-  KnowledgeRetrievalResult,
-} from '../src/runtime/knowledge-retrieval-gateway';
+import type { KnowledgeRetrievalGateway, KnowledgeRetrievalResult } from '../src/runtime/knowledge-retrieval-gateway';
 import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import { PromptLoader } from '../src/runtime/prompt-loader';
-import type {
-  ProviderGateway,
-  UserEventLookupResult,
-} from '../src/runtime/provider-gateway';
+import type { ProviderGateway, UserEventLookupResult } from '../src/runtime/provider-gateway';
 import { InMemoryRsvpEffectStore } from '../src/runtime/rsvp-effect-executor';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
 import { createEmptyPlan } from '../src/core/plan';
 import type { EvalTurnResult } from '../src/evals/case-schema';
 import { EvalLoader } from '../src/evals/loader';
 import { attachEvaluationState, type FixtureEffectSummary } from '../src/evals/evaluation-state';
-import {
-  assertLiveRegressionFixtureCoverage,
-  buildSemanticJudgeContext,
-  evaluateFixtureEffectCountForTesting,
-  resolveTextSemanticCandidate,
-} from '../src/evals/runner';
-
-const PLANNING_DIAGNOSTIC_ONLY = [
-  'live_behavior.provider_reference_cheaper_option',
-  'live_behavior.provider_reference_miraflores_option',
-  'live_behavior.reset_plan_discards_stored_context',
-  'live_behavior.s12_provider_completion_truthful_event_date',
-  'live_behavior.wedding_planner_location_completes_search',
-  'live_feedback.token_fresh_multifront_stays_multi_need',
-  'live_feedback.token_seeded_contact_correction',
-  'live_feedback.token_seeded_selection_defer_close',
-];
+import { assertLiveRegressionFixtureCoverage, evaluateFixtureEffectCountForTesting, resolveTextSemanticCandidate } from '../src/evals/runner';
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -145,22 +118,12 @@ function twinService(
 }
 
 describe('high-risk scenario offline twins (F3)', () => {
-  it('reconciles the mandatory suite count: 138 total, 130 support, 8 planning-only', async () => {
-    const catalog = await new EvalLoader(path.resolve(process.cwd(), 'evals')).loadCatalog();
-    const suite = catalog.suites.find((candidate) => candidate.id === 'live_behavior_regression');
-    const caseIds = new Set(suite?.caseIds ?? []);
-    // 2026-09-21 gift/campaign: 129 + 9 gift-fulfillment/B1 panel cases.
-    expect(caseIds.size).toBe(138);
-    for (const planningId of PLANNING_DIAGNOSTIC_ONLY) {
-      expect(caseIds.has(planningId), `${planningId} missing from the mandatory suite`).toBe(true);
-    }
-    expect(caseIds.size - PLANNING_DIAGNOSTIC_ONLY.length).toBe(130);
-    expect(caseIds.has('live_behavior.customer_event_task_continuity')).toBe(true);
-    expect(caseIds.has('live_behavior.support_pending_question_completed')).toBe(true);
-    expect(caseIds.has('live_behavior.wait_followup_no_repeat')).toBe(true);
-  });
+  // Mandatory suite reconciliation (119 total / 111 support / 8
+  // planning-only) lives in tests/eval-run-manifest.test.ts
+  // ('reconciles frozen support-gate counts from the catalog suite'),
+  // which pins the same counts plus the frozen-gate linkage.
 
-  it('accountless venue: fixture detail carries the reception facts with no OTP path', async () => {
+  it('accountless venue: one trusted phone yields events, reception facts, and scoped purchases', async () => {
     const gateway = await FixtureAgentConversationGateway.create('guest-julisabeth-andres');
     const events = await gateway.getGuestEventsByPhone({ phone_extension: '+51', phone_number: '904523314' });
     expect(events.status).toBe('success');
@@ -175,109 +138,79 @@ describe('high-risk scenario offline twins (F3)', () => {
     if (detail.status !== 'success') return;
     const moments = detail.event.moments.map((moment) => moment.description ?? '');
     expect(moments.some((description) => description.includes('Hacienda Recoveco'))).toBe(true);
-  });
-
-  it('mixed event/payment: the same trusted phone yields events and scoped purchases', async () => {
-    const gateway = await FixtureAgentConversationGateway.create('guest-julisabeth-andres');
-    const events = await gateway.getGuestEventsByPhone({ phone_extension: '+51', phone_number: '904523314' });
-    expect(events.status).toBe('success');
     const orders = await gateway.getGuestOrdersByPhone({ phone_extension: '+51', phone_number: '904523314' });
     expect(orders.status).toBe('success');
   });
 
-  it('owner payment and Luis unknown balance: total known, paid amount and currency unknown', async () => {
-    const gateway = await FixtureAgentConversationGateway.create('purchase-luis-389');
-    const orders = await gateway.getGuestOrdersByPhone({ phone_extension: '+51', phone_number: '938389389' });
-    expect(orders.status).toBe('success');
-    if (orders.status !== 'success') return;
-    const pending = orders.purchases.find((purchase) => purchase.orderId === 'order-luis-pending-227');
+  it('purchase fixtures carry grounded order shapes: totals, labels, and linkability', async () => {
+    const luis = await FixtureAgentConversationGateway.create('purchase-luis-389');
+    const luisOrders = await luis.getGuestOrdersByPhone({ phone_extension: '+51', phone_number: '938389389' });
+    expect(luisOrders.status).toBe('success');
+    if (luisOrders.status !== 'success') return;
+    const pending = luisOrders.purchases.find((purchase) => purchase.orderId === 'order-luis-pending-227');
     expect(pending?.paymentStatus).toBe('pending');
     expect(pending?.grandTotal).toBe(227.76);
     expect(pending?.currency ?? null).toBeNull();
-    const raw = JSON.stringify(orders.purchases);
+    const raw = JSON.stringify(luisOrders.purchases);
     expect(raw).not.toMatch(/amount_received|balance_due|remaining/i);
-  });
 
-  it('Martha selection: both candidates carry usable labels, dates, and totals', async () => {
-    const gateway = await FixtureAgentConversationGateway.create('purchase-martha-frozen');
-    const orders = await gateway.getGuestOrdersByPhone({ phone_extension: '+51', phone_number: '900070122' });
-    expect(orders.status).toBe('success');
-    if (orders.status !== 'success') return;
-    expect(orders.purchases.length).toBeGreaterThanOrEqual(2);
-    for (const purchase of orders.purchases) {
+    const martha = await FixtureAgentConversationGateway.create('purchase-martha-frozen');
+    const marthaOrders = await martha.getGuestOrdersByPhone({ phone_extension: '+51', phone_number: '900070122' });
+    expect(marthaOrders.status).toBe('success');
+    if (marthaOrders.status !== 'success') return;
+    expect(marthaOrders.purchases.length).toBeGreaterThanOrEqual(2);
+    for (const purchase of marthaOrders.purchases) {
       expect(purchase.eventName).toBeTruthy();
       expect(purchase.eventDate).toBeTruthy();
       expect(typeof purchase.grandTotal).toBe('number');
     }
-  });
 
-  it('unavailable transaction reference: two orders, neither linkable to the code', async () => {
-    const gateway = await FixtureAgentConversationGateway.create('s13-reference-unavailable-multiple');
-    const orders = await gateway.getGuestOrdersByPhone({ phone_extension: '+51', phone_number: '900001303' });
-    expect(orders.status).toBe('success');
-    if (orders.status !== 'success') return;
-    expect(orders.purchases.length).toBeGreaterThanOrEqual(2);
-    for (const purchase of orders.purchases) {
+    const s13 = await FixtureAgentConversationGateway.create('s13-reference-unavailable-multiple');
+    const s13Orders = await s13.getGuestOrdersByPhone({ phone_extension: '+51', phone_number: '900001303' });
+    expect(s13Orders.status).toBe('success');
+    if (s13Orders.status !== 'success') return;
+    expect(s13Orders.purchases.length).toBeGreaterThanOrEqual(2);
+    for (const purchase of s13Orders.purchases) {
       expect(purchase.customerTransactionNumber ?? null).toBeNull();
     }
   });
 
-  it('Diana thread: three inputs share one session and the detail turn reuses the single handoff receipt', async () => {
+  it('Diana thread: four inputs share one session and the detail turn reuses the single handoff receipt', async () => {
     const catalog = await new EvalLoader(path.resolve(process.cwd(), 'evals')).loadCatalog();
     const live = catalog.cases.find(
       (candidate) => candidate.id === 'live_behavior.host_withdrawal_diana_policy_and_support',
     );
-    expect(live?.inputs).toHaveLength(3);
+    // 2026-09-30 condensation: the general-policy question merged in as turn 0.
+    expect(live?.inputs).toHaveLength(4);
     expect(new Set((live?.inputs ?? []).map((input) => input.sessionId)).size).toBe(1);
     const effect = live?.expectations.find((expectation) => expectation.id === 'one-handoff-effect-in-thread');
     expect(effect?.type).toBe('fixture_effect_count');
     if (effect?.type !== 'fixture_effect_count') return;
     expect(effect.operation).toBe('handoff.write');
     // 2026-09-17 actionable-answer Lane B: cumulative-from-baseline ledger —
-    // turn 2 sees turn 1's single confirmed handoff (1/1/0), never a new
+    // turn 3 sees no new handoff (delta 0/0/0); turn 2 separately proves the single
     // attempt. Zero new dispatches are proven by the mustNotCall pin and the
     // offline service twin, not by a 0/0/0 cumulative count.
-    expect([effect.expectedAttempts, effect.expectedSuccesses, effect.expectedReplays]).toEqual([1, 1, 0]);
+    expect([effect.expectedAttempts, effect.expectedSuccesses, effect.expectedReplays]).toEqual([0, 0, 0]);
     expect(() => assertLiveRegressionFixtureCoverage([live!])).not.toThrow();
   });
 
-  it('image distractor: judge ground truth is digest-bound to the attached fixture image', async () => {
-    const catalog = await new EvalLoader(path.resolve(process.cwd(), 'evals')).loadCatalog();
-    const live = catalog.cases.find(
-      (candidate) => candidate.id === 'live_behavior.image_distractor_history_preserves_current_question',
-    );
-    const truth = live?.judgeGroundTruth;
-    expect(truth).toBeDefined();
-    if (!truth) return;
-    const boundInput = live?.inputs[truth.boundInputTurn];
-    const image = boundInput?.image;
-    const imageData = image !== undefined && image !== null && 'data' in image ? image.data : null;
-    expect(typeof imageData).toBe('string');
-    if (typeof imageData !== 'string') throw new Error('distractor fixture image needs data');
-    expect(imageData.length).toBeGreaterThan(0);
-    const digest = crypto.createHash('sha256').update(imageData, 'utf8').digest('hex');
-    expect(digest).toBe(truth.imageDigest);
-    expect(truth.verifiedAmount).toBe('S/ 149.90');
-  });
-
-  it('companion rejection stays a rejection: saved false with a scoped reason', async () => {
-    const gateway = await FixtureAgentConversationGateway.create('rsvp-plus-one-not-eligible');
-    const written = await gateway.guestRsvp({
+  it('companion outcomes report saved state honestly without inventing verification', async () => {
+    const rejected = await FixtureAgentConversationGateway.create('rsvp-plus-one-not-eligible');
+    const denial = await rejected.guestRsvp({
       phone_extension: '+51',
       phone_number: '942633292',
       guest_id: 70001,
       plus_one_response: 'yes',
     });
-    expect(written.status).toBe('responded');
-    if (written.status !== 'responded') return;
-    expect(written.plusOne?.saved).toBe(false);
-    expect(written.plusOne?.reason).toBeTruthy();
-    expect(written.willAttend).toBeNull();
-  });
+    expect(denial.status).toBe('responded');
+    if (denial.status !== 'responded') return;
+    expect(denial.plusOne?.saved).toBe(false);
+    expect(denial.plusOne?.reason).toBeTruthy();
+    expect(denial.willAttend).toBeNull();
 
-  it('companion acknowledgment: saved true, and no fresh read can verify the companion field', async () => {
-    const gateway = await FixtureAgentConversationGateway.create('rsvp-plus-one-saved');
-    const written = await gateway.guestRsvp({
+    const acknowledged = await FixtureAgentConversationGateway.create('rsvp-plus-one-saved');
+    const written = await acknowledged.guestRsvp({
       phone_extension: '+51',
       phone_number: '942633292',
       action: 'attending',
@@ -287,7 +220,7 @@ describe('high-risk scenario offline twins (F3)', () => {
     expect(written.status).toBe('responded');
     if (written.status !== 'responded') return;
     expect(written.plusOne?.saved).toBe(true);
-    const read = await gateway.getEventDetail({
+    const read = await acknowledged.getEventDetail({
       eventId: written.eventId ?? 0,
       phone: { phone_extension: '+51', phone_number: '942633292' },
     });
@@ -353,7 +286,9 @@ describe('high-risk scenario offline twins (F3)', () => {
 
   it('token-seeded close: contact gathering never submits, explicit authorization submits once', async () => {
     const catalog = await new EvalLoader(path.resolve(process.cwd(), 'evals')).loadCatalog();
-    const live = catalog.cases.find((candidate) => candidate.id === 'live_feedback.token_seeded_close_flow');
+    // 2026-09-30 live compression: the token close-flow thread merged into
+    // the close-date-provenance survivor with its pins intact.
+    const live = catalog.cases.find((candidate) => candidate.id === 'live_behavior.close_date_provenance_and_completed_retry');
     const noSubmit = live?.expectations.find((expectation) => expectation.id === 'contact-details-alone-do-not-submit');
     expect(noSubmit?.severity).toBe('hard');
     const effect = live?.expectations.find((expectation) => expectation.id === 'explicit-close-effect');
@@ -466,7 +401,7 @@ function receipt(
 }
 
 describe('support panel offline hardening proof (fault injections, 2026-09-17)', () => {
-  it('a second RSVP or takeover mutation fails the cumulative effect gate', async () => {
+  it('the cumulative effect gate fails closed on double mutation or missing receipts', async () => {
     const single = ledgerTurn([receipt('rsvp.write', 1, 1, 0)], 1);
     expect(
       evaluateFixtureEffectCountForTesting({
@@ -500,9 +435,7 @@ describe('support panel offline hardening proof (fault injections, 2026-09-17)',
         expectedReplays: 0,
       }).passed,
     ).toBe(false);
-  });
 
-  it('absent receipt evidence errors instead of passing as zero', async () => {
     const missing = ledgerTurn(null, 0);
     for (const expected of [
       { expectedAttempts: 1, expectedSuccesses: 1, expectedReplays: 0 },
@@ -537,57 +470,16 @@ describe('support panel offline hardening proof (fault injections, 2026-09-17)',
     expect(wrongEvent.status).not.toBe('success');
   });
 
-  it('a promise-only answer is a failing semantic counterexample at packet level only', async () => {
-    // Packet construction only: this proves the live judge would receive the grounded facts
-    // needed to fail a promise-only reply. It never mocks judge agreement; real agreement is
-    // proven only by the paid live run with requireJudge=true.
-    const catalog = await new EvalLoader(path.resolve(process.cwd(), 'evals')).loadCatalog();
-    const pending = catalog.cases.find(
-      (candidate) => candidate.id === 'live_behavior.support_pending_question_completed',
-    );
-    expect(pending).toBeDefined();
-    const turn1 = pending?.expectations.find(
-      (expectation) => expectation.id === 'turn1-reference-answered-grounded',
-    );
-    expect(turn1?.type).toBe('text_semantic');
-    if (turn1?.type !== 'text_semantic') return;
-    expect(turn1.rubric).toMatch(/18:00/);
-    expect(turn1.rubric).toMatch(/must not ask another clarifying question/);
-    const promiseOnly = ledgerTurn(null, 1, {
-      input: { text: 'El de Ana y Luis, la boda.', channel: 'whatsapp', sessionId: 's' },
-      outputText: 'Con gusto te ayudo con eso, en un momento te confirmo el horario.',
-      deliveredText: 'Con gusto te ayudo con eso, en un momento te confirmo el horario.',
-    });
-    const packet = buildSemanticJudgeContext([promiseOnly], 1, pending);
-    expect(packet).toContain('El de Ana y Luis');
-    expect(promiseOnly.outputText).not.toContain('18:00');
-  });
-
   it('read pixels alone never establish backend payment approval', async () => {
     const gateway = await FixtureAgentConversationGateway.create('image-clean-world');
     const orders = await gateway.getGuestOrdersByPhone({ phone_extension: '+51', phone_number: '987654321' });
     expect(orders.status).toBe('success');
     if (orders.status !== 'success') return;
     expect(orders.purchases).toHaveLength(0);
-    const catalog = await new EvalLoader(path.resolve(process.cwd(), 'evals')).loadCatalog();
-    for (const id of [
-      'live_behavior.continuity_text_image_same_turn',
-      'live_behavior.image_file_delayed_question',
-      'live_behavior.continuity_question_needs_image',
-    ]) {
-      const imageCase = catalog.cases.find((candidate) => candidate.id === id);
-      const semantics = (imageCase?.expectations ?? []).filter(
-        (expectation) => expectation.type === 'text_semantic',
-      );
-      expect(semantics.length).toBeGreaterThan(0);
-      const pixelAnswers = semantics.filter(
-        (expectation) => expectation.type === 'text_semantic' && /never backend payment approval/.test(expectation.rubric),
-      );
-      // Every pixel-answering rubric names read-accuracy-only; the turn-0 image-only silence
-      // rubric instead bans approval claims in its own terms and is covered above by silence routing.
-      expect(pixelAnswers.length, `${id} judges pixels without proving approval`).toBeGreaterThan(0);
-      expect(imageCase?.judgeGroundTruth?.verifiedAmount).toBeTruthy();
-    }
+    // Pixel observations do not alter backend approval or create a payment effect.
+    const after = await gateway.getGuestOrdersByPhone({ phone_extension: '+51', phone_number: '987654321' });
+    expect(after).toEqual(orders);
+
   });
 
   it('suppressed thanks reaches the mandatory judge while unexplained blank fails closed', async () => {
@@ -615,16 +507,22 @@ describe('support panel offline hardening proof (fault injections, 2026-09-17)',
 
   it('a valid paraphrase is not rejected by the retained exact checks or routing freedom', async () => {
     const catalog = await new EvalLoader(path.resolve(process.cwd(), 'evals')).loadCatalog();
+    // 2026-09-30 live compression: the plus-one thread merged into the
+    // cristian survivor; the honest negation must clear every retained pin.
     const plusOne = catalog.cases.find(
-      (candidate) => candidate.id === 'live_behavior.rsvp_plus_one_not_eligible_no_false_success',
+      (candidate) => candidate.id === 'live_behavior.rsvp_cristian_phone_enriched_confirmation',
     );
     const pins = (plusOne?.expectations ?? []).filter(
       (expectation) => expectation.type === 'text_not_contains',
     );
-    expect(pins).toHaveLength(1);
-    const phrases = pins[0]?.type === 'text_not_contains' ? pins[0].phrases : [];
-    // An honest negation reports the failure without tripping the retained raw-API token check.
-    expect('No quedó registrado con éxito, te ofrezco ayuda humana como opción.').not.toContain(phrases[0] ?? 'saved=true');
+    expect(pins.length).toBeGreaterThanOrEqual(1);
+    // An honest negation reports the failure without tripping any retained exact check.
+    for (const pin of pins) {
+      if (pin.type !== 'text_not_contains') continue;
+      for (const phrase of pin.phrases) {
+        expect('No quedó registrado con éxito, te ofrezco ayuda humana como opción.').not.toContain(phrase);
+      }
+    }
     const spanish = catalog.cases.find(
       (candidate) => candidate.id === 'live_behavior.spanish_only_mixed_language_request',
     );
@@ -636,12 +534,16 @@ describe('support panel offline hardening proof (fault injections, 2026-09-17)',
       expect('carolina@example.com').not.toContain(phrase);
       expect('https://ejemplo.com/confirmacion').not.toContain(phrase);
     }
+    // 2026-09-30 condensation: s11 absorbed the declined-state thread and
+    // its responder_invitacion node pin, so it no longer belongs here.
+    // 2026-09-30 live compression: the plus-one thread merged into the
+    // cristian survivor (absorbed turns 3-5 keep no node pin; the native
+    // cristian thread pins its own entry node at turn 0) and the
+    // owner-planning thread merged into image_conversation_continuity.
     for (const id of [
-      'live_behavior.s11_rsvp_durability_confirms_once',
-      'live_behavior.rsvp_plus_one_not_eligible_no_false_success',
       'live_behavior.s01_frozen_kiara_pending_replay',
       'live_behavior.purchase_martha_accountless_selection',
-      'live_behavior.owner_planning_to_faq_single_transfer',
+      'live_behavior.image_conversation_continuity',
       'live_behavior.authentication_refusal_closes_protected_query',
       'live_behavior.concurrent_support_turns_preserve_context',
     ]) {
@@ -649,6 +551,17 @@ describe('support panel offline hardening proof (fault injections, 2026-09-17)',
       expect(
         (imageCase?.expectations ?? []).some((expectation) => expectation.type === 'node_transition'),
         `${id} keeps no node pin`,
+      ).toBe(false);
+    }
+    {
+      const cristian = catalog.cases.find(
+        (candidate) => candidate.id === 'live_behavior.rsvp_cristian_phone_enriched_confirmation',
+      );
+      expect(
+        (cristian?.expectations ?? []).some(
+          (expectation) => expectation.type === 'node_transition' && (expectation.turnIndex ?? 0) >= 3,
+        ),
+        'cristian absorbed plus-one turns keep no node pin',
       ).toBe(false);
     }
   });

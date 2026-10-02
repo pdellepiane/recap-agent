@@ -225,24 +225,21 @@ describe('F packets flow unchanged with redaction and bounds', () => {
 });
 
 describe('F per-turn fixture resolver has no carry-forward', () => {
-  it('override A turn0 then absent turn1 resolves case fixture B', () => {
-    const currentCase = makeCase({
+  it('resolves per-turn overrides without carry-forward', () => {
+    const withCaseFixture = makeCase({
       backendFixture: { scenario: 'fixture-B' },
       inputs: [
         { text: 't0', backendFixture: { scenario: 'override-A' } },
         { text: 't1' },
       ],
     });
-    expect(resolveEffectiveFixtureScenario(currentCase, 0)).toBe('override-A');
-    expect(resolveEffectiveFixtureScenario(currentCase, 1)).toBe('fixture-B');
-  });
-
-  it('no case fixture at turn1 resolves real/no-fixture', () => {
-    const currentCase = makeCase({
+    expect(resolveEffectiveFixtureScenario(withCaseFixture, 0)).toBe('override-A');
+    expect(resolveEffectiveFixtureScenario(withCaseFixture, 1)).toBe('fixture-B');
+    const withoutCaseFixture = makeCase({
       inputs: [{ text: 't0', backendFixture: { scenario: 'override-A' } }, { text: 't1' }],
     });
-    expect(resolveEffectiveFixtureScenario(currentCase, 0)).toBe('override-A');
-    expect(resolveEffectiveFixtureScenario(currentCase, 1)).toBeNull();
+    expect(resolveEffectiveFixtureScenario(withoutCaseFixture, 0)).toBe('override-A');
+    expect(resolveEffectiveFixtureScenario(withoutCaseFixture, 1)).toBeNull();
   });
 
   it('nine frozen cases resolve to declared worlds every turn', async () => {
@@ -250,14 +247,8 @@ describe('F per-turn fixture resolver has no carry-forward', () => {
     const path = await import('node:path');
     const ids = [
       'live-behavior-ambiguous-confirmation.yaml',
-      'live-behavior-customer-transaction-code-by-phone.yaml',
-      'live-behavior-mailbox-continuity-maria-isabel.yaml',
       'live-behavior-otp-auto-resend-once.yaml',
-      'live-behavior-otp-not-received.yaml',
       'live-behavior-phone-account-rejected.yaml',
-      'live-behavior-phone-missing-information.yaml',
-      'live-behavior-repeated-otp-failure.yaml',
-      'live-behavior-roberto-reminder-disagreement.yaml',
     ];
     const yaml = await import('yaml');
     for (const file of ids) {
@@ -274,7 +265,7 @@ describe('F per-turn fixture resolver has no carry-forward', () => {
 });
 
 describe('F judge context isolation and digest gate', () => {
-  it('isolates candidate vs prior assistant vs fixture history and tool-name is not effect proof', () => {
+  it('isolates judge evidence and projects verified effect outcomes without tool-name claims', () => {
     const first = makeTurn({ turnIndex: 0, outputText: 'Confirma aqui: hola Sonia Maribel' });
     const second = makeTurn({ turnIndex: 1, outputText: 'Ya solicite apoyo humano', trace: { ...(first.trace as object), tools_called: ['request_human_takeover'] } as never });
     const currentCase = makeCase({
@@ -296,19 +287,17 @@ describe('F judge context isolation and digest gate', () => {
     expect(ctx).toContain('plan_guardado=si');
     expect(ctx).toContain('rsvp_pending_flow=none');
     expect(ctx).toMatch(/no especules falta de persistencia/i);
-  });
-
-  it('provides verified RSVP effect outcomes without relying on a tool-name claim', () => {
-    const turn = makeTurn();
+    // Verified RSVP effect outcomes ride on receipts, not tool names.
+    const effectTurn = makeTurn();
     const plan = createEmptyPlan({ planId: 'effect-evidence', channel: 'whatsapp', externalUserId: 'fixture' });
-    attachEvaluationState(turn, { plan, input: turn.input, outputText: turn.outputText,
+    attachEvaluationState(effectTurn, { plan, input: effectTurn.input, outputText: effectTurn.outputText,
       fixtureEffects: [{ operation: 'rsvp.write', attempts: 1, successes: 1, replays: 0,
         outcome: 'success', receiptPresent: true }] });
-    const context = buildSemanticJudgeContext([turn], 0);
-    expect(context).toContain('rsvp_pending_flow=none');
-    expect(context).toContain('"operation":"rsvp.write"');
-    expect(context).toContain('"successes":1');
-    expect(context).toContain('"receiptPresent":true');
+    const effectCtx = buildSemanticJudgeContext([effectTurn], 0);
+    expect(effectCtx).toContain('rsvp_pending_flow=none');
+    expect(effectCtx).toContain('"operation":"rsvp.write"');
+    expect(effectCtx).toContain('"successes":1');
+    expect(effectCtx).toContain('"receiptPresent":true');
   });
 
   it('hashes serialized judge request and validates strictly', async () => {

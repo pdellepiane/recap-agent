@@ -6,7 +6,7 @@ import {
 } from '../src/runtime/openai-stage-execution';
 
 describe('executeOpenAiStage', () => {
-  it('records bounded stage completion without payload content', async () => {
+  it('records bounded stage completion with response correlation and no payload content', async () => {
     const records: OpenAiStageLog[] = [];
 
     const result = await executeOpenAiStage({
@@ -35,6 +35,24 @@ describe('executeOpenAiStage', () => {
       timeout_ms: 1_000,
     });
     expect(records[1]).not.toHaveProperty('input');
+
+    const correlated: OpenAiStageLog[] = [];
+    await executeOpenAiStage({
+      stage: 'classifier',
+      model: 'gpt-5.6-luna',
+      timeoutMs: 1_000,
+      operation: async () => ({
+        id: 'resp_test',
+        _request_id: 'req_test',
+      }),
+      log: (record) => correlated.push(record),
+    });
+
+    expect(correlated.at(-1)).toMatchObject({
+      event: 'openai_stage_completed',
+      response_id: 'resp_test',
+      request_id: 'req_test',
+    });
   });
 
   it('aborts a hung stage and records a sanitized failure', async () => {
@@ -59,26 +77,5 @@ describe('executeOpenAiStage', () => {
       error_name: 'Error',
     });
     expect(records.at(-1)?.error_message).not.toContain(secret);
-  });
-
-  it('records OpenAI response correlation on successful calls', async () => {
-    const records: OpenAiStageLog[] = [];
-
-    await executeOpenAiStage({
-      stage: 'classifier',
-      model: 'gpt-5.6-luna',
-      timeoutMs: 1_000,
-      operation: async () => ({
-        id: 'resp_test',
-        _request_id: 'req_test',
-      }),
-      log: (record) => records.push(record),
-    });
-
-    expect(records.at(-1)).toMatchObject({
-      event: 'openai_stage_completed',
-      response_id: 'resp_test',
-      request_id: 'req_test',
-    });
   });
 });

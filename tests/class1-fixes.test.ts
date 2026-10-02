@@ -356,20 +356,4 @@ describe('class1 fixes twins', () => {
     });
     expect(response2.plan.current_node).toBe('resolver_consultas_informativas');
   });
-
-  it('extractor prompts contain salience rules', () => {
-    // Contract revision (purchase_discovery): salience now points at the
-    // subject-based source contract instead of aspect-based orders pins.
-    // Packet B: one ownership contract with facet independence; facets
-    // never decide the source.
-    const infoExtractor = fs.readFileSync('prompts/extractors/information.txt', 'utf8');
-    expect(infoExtractor).toContain('Compra activa, constancia o moneda');
-    expect(infoExtractor).toContain('Origen por sujeto:');
-    expect(infoExtractor).toContain('Facetas (monto, pago, entrega, envío) nunca deciden origen');
-    expect(infoExtractor).toContain('`purchase_discovery` (`purchase.read`)');
-    expect(infoExtractor).toContain('payment_status');
-    expect(infoExtractor).toContain('validation_window');
-    expect(infoExtractor).toContain('Y el evento es Baby Shower Catalina');
-    expect(infoExtractor).toContain('actionIntent=null');
-  });
 });

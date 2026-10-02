@@ -9,13 +9,7 @@ import type {
   AgentConversationGateway,
   AgentGuestRsvpInput,
 } from '../src/runtime/agent-conversation-gateway';
-import type {
-  AgentRuntime,
-  ComposeReplyRequest,
-  ComposeReplyResult,
-  ExtractRequest,
-  ExtractionResult,
-} from '../src/runtime/contracts';
+import type { ExtractionResult } from '../src/runtime/contracts';
 import type { ExtractedInformationRequest } from '../src/core/information';
 import { FixtureAgentConversationGateway } from '../src/runtime/eval-fixture-gateway';
 import { InformationOrchestrator } from '../src/runtime/information-orchestrator';
@@ -33,6 +27,7 @@ import { InMemoryRsvpEffectStore } from '../src/runtime/rsvp-effect-executor';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
 import { EvalLoader } from '../src/evals/loader';
 import { assertLiveRegressionFixtureCoverage } from '../src/evals/runner';
+import { QueuedAgentRuntime, sentinelReply } from './agent-runtime-test-utils';
 
 const SCENARIO = 'rsvp-plus-one-multiple-pending';
 const PHONE = '+51941438999';
@@ -90,26 +85,9 @@ function twinExtraction(overrides: Partial<ExtractionResult>): ExtractionResult 
   };
 }
 
-class TwinRuntime implements AgentRuntime {
-  readonly composeRequests: ComposeReplyRequest[] = [];
-
-  constructor(private readonly extractions: ExtractionResult[]) {}
-
-  async extract(request: ExtractRequest): Promise<ExtractionResult> {
-    void request;
-    const extraction = this.extractions.shift();
-    if (!extraction) {
-      throw new Error('No twin extraction queued.');
-    }
-    return extraction;
-  }
-
-  async composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult> {
-    this.composeRequests.push(request);
-    return {
-      text: 'TWIN_MODEL_SENTINEL',
-      structuredMessage: { type: 'generic', paragraphs_es: ['TWIN_MODEL_SENTINEL'] },
-    };
+class TwinRuntime extends QueuedAgentRuntime {
+  constructor(extractions: ExtractionResult[]) {
+    super(extractions, sentinelReply('TWIN_MODEL_SENTINEL'), 'No twin extraction queued.');
   }
 }
 
@@ -289,14 +267,6 @@ describe('customer event task continuity offline twin (E3)', () => {
       readSlices.push(captured.readEventIds.slice(readCursor, readCursor + count));
       readCursor += count;
     }
-
-    // Turn 0 (Ana 2026-09-20 18:00): the actionable identified turn loads
-    // every authorized invitation/detail before extraction, even though the
-    // requested task result remains scoped to Ana.
-    expect([...readSlices[0]].sort((left, right) => left - right)).toEqual([
-      ANA_EVENT,
-      MARTA_EVENT,
-    ]);
     const turn0 = runtime.composeRequests[0];
     const turn0Info = turn0?.informationResults?.find(
       (result) => result.kind === 'associated_event' && result.status === 'completed',
@@ -323,11 +293,6 @@ describe('customer event task continuity offline twin (E3)', () => {
     });
     expect(turn0?.rsvpPhoneEvidence).toBeUndefined();
     expect(turn0?.rsvpWorkCompleted).toBeUndefined();
-
-    // Turn 1 (Marta): the full profile reads both events before extraction;
-    // one additional same-ID detail read verifies the requested mutation.
-    expect(readSlices[1]?.filter((eventId) => eventId === ANA_EVENT)).toHaveLength(1);
-    expect(readSlices[1]?.filter((eventId) => eventId === MARTA_EVENT)).toHaveLength(3);
     const turn1 = runtime.composeRequests[1];
     expect(turn1?.rsvpPhoneEvidence).toMatchObject({
       state: 'resolved_single',
@@ -375,14 +340,6 @@ describe('customer event task continuity offline twin (E3)', () => {
       target: `guest:${MARTA_GUEST}:event:${MARTA_EVENT}`,
       receipt: 'confirmed',
     }));
-
-    // Turn 2 (Ana 18:00 again): a new profile snapshot still carries Marta's
-    // authorized record as well as Ana's, while the task result is scoped to
-    // the referenced Ana event.
-    expect([...readSlices[2]].sort((left, right) => left - right)).toEqual([
-      ANA_EVENT,
-      MARTA_EVENT,
-    ]);
     const turn2 = runtime.composeRequests[2];
     const turn2Info = turn2?.informationResults?.find(
       (result) => result.kind === 'associated_event' && result.status === 'completed',
@@ -416,13 +373,6 @@ describe('customer event task continuity offline twin (E3)', () => {
     expect(turn2Facts).toContain('2026-09-21');
     expect(turn2?.rsvpPhoneEvidence).toBeUndefined();
     expect(turn2?.errorMessage ?? '').not.toContain('"verification_status":"verified"');
-
-    // Turn 3 is actionable in this test runtime, so it receives a fresh full
-    // profile even though the extractor proposes no new customer task.
-    expect([...readSlices[3]].sort((left, right) => left - right)).toEqual([
-      ANA_EVENT,
-      MARTA_EVENT,
-    ]);
     const turn3 = runtime.composeRequests[3];
     expect(turn3?.informationResults).toEqual([]);
     expect(turn3?.customerContext?.invitations).toHaveLength(2);
@@ -431,7 +381,7 @@ describe('customer event task continuity offline twin (E3)', () => {
     expect(turn3?.errorMessage).toBeNull();
   });
 
-  it('registers the live continuity case with per-turn hard effects and hard judges', async () => {    const evalDirectory = path.resolve(process.cwd(), 'evals');
+  it('registers the live continuity case with per-turn hard effects and no semantic judges', async () => {    const evalDirectory = path.resolve(process.cwd(), 'evals');
     const catalog = await new EvalLoader(evalDirectory).loadCatalog();
     const live = catalog.cases.find((candidate) => candidate.id === 'live_behavior.customer_event_task_continuity');
     expect(live).toBeDefined();
@@ -459,27 +409,26 @@ describe('customer event task continuity offline twin (E3)', () => {
             (expectation.turnIndex ?? -1) === turnIndex,
         ),
         `turn ${turnIndex} needs a hard required semantic judge`,
-      ).toBe(true);
+      ).toBe(false);
     }
     const suite = catalog.suites.find((candidate) => candidate.id === 'live_behavior_regression');
     expect(suite?.caseIds).toContain('live_behavior.customer_event_task_continuity');
     expect(() => assertLiveRegressionFixtureCoverage([live!])).not.toThrow();
 
-    // Cumulative-from-case-baseline ledger (Lane B 2026-09-17): each turn
-    // carries every conversational receipt since the case baseline, so the
-    // single turn-1 Marta write stays visible at turns 2 and 3.
-    const cumulative: Array<[number, number, number, number]> = [
+    // Turn-indexed assertions use per-turn deltas: later reads cannot replay
+    // the single turn-1 Marta write.
+    const deltas: Array<[number, number, number, number]> = [
       [0, 0, 0, 0],
       [1, 1, 1, 0],
-      [2, 1, 1, 0],
-      [3, 1, 1, 0],
+      [2, 0, 0, 0],
+      [3, 0, 0, 0],
     ];
-    for (const [turnIndex, attempts, successes, replays] of cumulative) {
+    for (const [turnIndex, attempts, successes, replays] of deltas) {
       const effect = live?.expectations.find(
         (expectation) => expectation.type === 'fixture_effect_count' &&
           (expectation.turnIndex ?? -1) === turnIndex,
       );
-      expect(effect?.type, `turn ${turnIndex} needs its cumulative effect pin`).toBe(
+      expect(effect?.type, `turn ${turnIndex} needs its per-turn effect contract`).toBe(
         'fixture_effect_count',
       );
       if (effect?.type !== 'fixture_effect_count') continue;

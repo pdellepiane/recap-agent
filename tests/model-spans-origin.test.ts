@@ -94,7 +94,7 @@ function labeledRecommendationMessage(): StructuredMessage {
 }
 
 describe('structured-output origin spans', () => {
-  it('traces welcome spans instead of refusing a receipt', () => {
+  it('traces model spans in render order and refuses receipts for empty content', () => {
     const spans = modelSpansOf({ type: 'welcome', ...WELCOME_SPANS });
     expect(spans).toEqual([
       WELCOME_SPANS.greeting_es,
@@ -103,11 +103,7 @@ describe('structured-output origin spans', () => {
     ]);
     const receipt = buildModelOriginReceipt(replyWith({ type: 'welcome', ...WELCOME_SPANS }), 'bundle-w');
     expect(receipt?.modelParagraphs).toEqual(spans);
-  });
-
-  it('traces planning spans in render order including match labels', () => {
-    const spans = modelSpansOf(recommendationMessage());
-    expect(spans).toEqual([
+    expect(modelSpansOf(recommendationMessage())).toEqual([
       RECOMMENDATION_SPANS.intro_es,
       RECOMMENDATION_SPANS.rationale_es,
       RECOMMENDATION_SPANS.caveat_es,
@@ -140,6 +136,10 @@ describe('structured-output origin spans', () => {
       'Ideal por ubicación.',
       'Dime cuál prefieres.',
     ]);
+    expect(modelSpansOf({ type: 'welcome' })).toBeNull();
+    expect(modelSpansOf(undefined)).toBeNull();
+    expect(buildModelOriginReceipt(replyWith({ type: 'welcome' }), 'bundle-w')).toBeNull();
+    expect(buildModelOriginReceipt({ text: 'legado' }, 'bundle-x')).toBeNull();
   });
 
   it('snapshots raw model output plus authorized provider fields with distinct hashes', () => {
@@ -155,59 +155,33 @@ describe('structured-output origin spans', () => {
     expect(modelProviderIdsOf(message)).toEqual([7]);
   });
 
-  it('never fabricates a receipt from empty or mechanical-only content', () => {
-    expect(modelSpansOf({ type: 'welcome' })).toBeNull();
-    expect(modelSpansOf(undefined)).toBeNull();
-    expect(buildModelOriginReceipt(replyWith({ type: 'welcome' }), 'bundle-w')).toBeNull();
-    expect(buildModelOriginReceipt({ text: 'legado' }, 'bundle-x')).toBeNull();
-  });
-
-  it('accepts mechanically rendered delivery that keeps every span in order', () => {
-    const message: StructuredMessage = { type: 'welcome', ...WELCOME_SPANS };
-    const reply = replyWith(message);
-    const origin = buildModelOriginReceipt(reply, 'bundle-w');
-    const delivered = applyDocumentedTransportTransforms(
-      new WhatsAppMessageRenderer().render({ message, providerResults: [] }),
+  it('accepts mechanically rendered delivery that preserves model spans', () => {
+    const welcome: StructuredMessage = { type: 'welcome', ...WELCOME_SPANS };
+    const welcomeReply = replyWith(welcome);
+    const welcomeOrigin = buildModelOriginReceipt(welcomeReply, 'bundle-w');
+    const welcomeDelivered = applyDocumentedTransportTransforms(
+      new WhatsAppMessageRenderer().render({ message: welcome, providerResults: [] }),
     );
-    expect(deliveredContainsModelSpans({ spans: origin?.modelParagraphs ?? [], deliveredText: delivered })).toBe(true);
-    expect(() => assertModelOrigin({ origin, reply, deliveredText: delivered })).not.toThrow();
-  });
+    expect(deliveredContainsModelSpans({ spans: welcomeOrigin?.modelParagraphs ?? [], deliveredText: welcomeDelivered })).toBe(true);
+    expect(() => assertModelOrigin({ origin: welcomeOrigin, reply: welcomeReply, deliveredText: welcomeDelivered })).not.toThrow();
 
-  it('accepts a rendered recommendation whose provider cards surround the spans', () => {
-    const message = recommendationMessage();
-    const providers = [providerResult()];
-    const reply = replyWith(message);
-    const origin = buildModelOriginReceipt(reply, 'bundle-r', providers);
-    const delivered = applyDocumentedTransportTransforms(
-      new WhatsAppMessageRenderer().render({ message, providerResults: providers }),
-    );
-    expect(delivered).toContain(RECOMMENDATION_SPANS.intro_es);
-    expect(() => assertModelOrigin({
-      origin,
-      reply,
-      deliveredText: delivered,
-      providerResults: providers,
-    })).not.toThrow();
-  });
+    for (const message of [recommendationMessage(), labeledRecommendationMessage()]) {
+      const providers = [providerResult()];
+      const reply = replyWith(message);
+      const origin = buildModelOriginReceipt(reply, 'bundle-r', providers);
+      const delivered = applyDocumentedTransportTransforms(
+        new WhatsAppMessageRenderer().render({ message, providerResults: providers }),
+      );
+      expect(delivered).toContain(RECOMMENDATION_SPANS.intro_es);
+      expect(() => assertModelOrigin({
+        origin,
+        reply,
+        deliveredText: delivered,
+        providerResults: providers,
+      })).not.toThrow();
+    }
 
-  it('accepts a labeled single recommendation through full-render equality', () => {
-    const message = labeledRecommendationMessage();
-    const providers = [providerResult()];
-    const reply = replyWith(message);
-    const origin = buildModelOriginReceipt(reply, 'bundle-r', providers);
-    const delivered = applyDocumentedTransportTransforms(
-      new WhatsAppMessageRenderer().render({ message, providerResults: providers }),
-    );
-    expect(() => assertModelOrigin({
-      origin,
-      reply,
-      deliveredText: delivered,
-      providerResults: providers,
-    })).not.toThrow();
-  });
-
-  it('accepts a rendered multi-need recommendation with verified provider ids', () => {
-    const message: StructuredMessage = {
+    const multi: StructuredMessage = {
       type: 'multi_need_recommendation',
       intro_es: 'Intro multi.',
       needs: [{
@@ -222,29 +196,29 @@ describe('structured-output origin spans', () => {
       }],
       next_step_es: 'Dime cuál prefieres.',
     };
-    const providers = [providerResult({ id: 9, title: 'Salón Norte' })];
-    const reply = replyWith(message);
-    const origin = buildModelOriginReceipt(reply, 'bundle-m', providers);
-    const delivered = applyDocumentedTransportTransforms(
-      new WhatsAppMessageRenderer().render({ message, providerResults: providers }),
+    const multiProviders = [providerResult({ id: 9, title: 'Salón Norte' })];
+    const multiReply = replyWith(multi);
+    const multiOrigin = buildModelOriginReceipt(multiReply, 'bundle-m', multiProviders);
+    const multiDelivered = applyDocumentedTransportTransforms(
+      new WhatsAppMessageRenderer().render({ message: multi, providerResults: multiProviders }),
     );
     expect(() => assertModelOrigin({
-      origin,
-      reply,
-      deliveredText: delivered,
-      providerResults: providers,
+      origin: multiOrigin,
+      reply: multiReply,
+      deliveredText: multiDelivered,
+      providerResults: multiProviders,
     })).not.toThrow();
   });
 
-  it('fails when a span is dropped or reordered by post-generation code', () => {
-    const reply = replyWith({ type: 'welcome', ...WELCOME_SPANS });
-    const origin = buildModelOriginReceipt(reply, 'bundle-w');
+  it('fails when post-generation code tampers with spans, text, labels, or provider ids', () => {
+    const welcomeReply = replyWith({ type: 'welcome', ...WELCOME_SPANS });
+    const welcomeOrigin = buildModelOriginReceipt(welcomeReply, 'bundle-w');
     const dropped = `${WELCOME_SPANS.greeting_es}\n\n${WELCOME_SPANS.ask_es}`;
-    expect(() => assertModelOrigin({ origin, reply, deliveredText: dropped })).toThrow(
+    expect(() => assertModelOrigin({ origin: welcomeOrigin, reply: welcomeReply, deliveredText: dropped })).toThrow(
       ModelOriginViolationError,
     );
     const replaced = {
-      ...reply,
+      ...welcomeReply,
       structuredMessage: {
         type: 'welcome' as const,
         greeting_es: 'Texto fijo de respaldo.',
@@ -253,13 +227,11 @@ describe('structured-output origin spans', () => {
       },
     };
     expect(() => assertModelOrigin({
-      origin,
+      origin: welcomeOrigin,
       reply: replaced,
       deliveredText: 'Texto fijo de respaldo.',
     })).toThrow(ModelOriginViolationError);
-  });
 
-  it('fails when surrounding text is injected around intact spans', () => {
     const message = recommendationMessage();
     const providers = [providerResult()];
     const reply = replyWith(message);
@@ -278,13 +250,8 @@ describe('structured-output origin spans', () => {
       deliveredText: injected,
       providerResults: providers,
     })).toThrow(ModelOriginViolationError);
-  });
 
-  it('fails when a match label is changed after generation', () => {
-    const message = labeledRecommendationMessage();
-    const providers = [providerResult()];
-    const reply = replyWith(message);
-    const origin = buildModelOriginReceipt(reply, 'bundle-r', providers);
+    const labeledOrigin = buildModelOriginReceipt(replyWith(labeledRecommendationMessage()), 'bundle-r', providers);
     const mutated = replyWith({
       type: 'recommendation',
       intro_es: RECOMMENDATION_SPANS.intro_es,
@@ -295,25 +262,19 @@ describe('structured-output origin spans', () => {
         caveat_es: RECOMMENDATION_SPANS.caveat_es,
       }],
     });
-    const delivered = applyDocumentedTransportTransforms(
+    const mutatedDelivered = applyDocumentedTransportTransforms(
       new WhatsAppMessageRenderer().render({
         message: mutated.structuredMessage as StructuredMessage,
         providerResults: providers,
       }),
     );
     expect(() => assertModelOrigin({
-      origin,
+      origin: labeledOrigin,
       reply: mutated,
-      deliveredText: delivered,
+      deliveredText: mutatedDelivered,
       providerResults: providers,
     })).toThrow(ModelOriginViolationError);
-  });
 
-  it('fails when provider ids are swapped or ungrounded', () => {
-    const message = recommendationMessage();
-    const providers = [providerResult()];
-    const reply = replyWith(message);
-    const origin = buildModelOriginReceipt(reply, 'bundle-r', providers);
     const swapped = replyWith({
       type: 'recommendation',
       intro_es: RECOMMENDATION_SPANS.intro_es,
@@ -325,7 +286,7 @@ describe('structured-output origin spans', () => {
       }],
     });
     const swappedProviders = [providerResult({ id: 77, title: 'Otro local' })];
-    const delivered = applyDocumentedTransportTransforms(
+    const swappedDelivered = applyDocumentedTransportTransforms(
       new WhatsAppMessageRenderer().render({
         message: swapped.structuredMessage as StructuredMessage,
         providerResults: swappedProviders,
@@ -334,7 +295,7 @@ describe('structured-output origin spans', () => {
     expect(() => assertModelOrigin({
       origin,
       reply: swapped,
-      deliveredText: delivered,
+      deliveredText: swappedDelivered,
       providerResults: swappedProviders,
     })).toThrow(ModelOriginViolationError);
     expect(() => assertModelOrigin({
@@ -347,7 +308,7 @@ describe('structured-output origin spans', () => {
     })).toThrow(ModelOriginViolationError);
   });
 
-  it('fails closed on unknown transformation versions and tampered receipts', () => {
+  it('fails closed on unknown or stale transformation versions and tampered receipts', () => {
     const message = recommendationMessage();
     const providers = [providerResult()];
     const reply = replyWith(message);
@@ -355,12 +316,15 @@ describe('structured-output origin spans', () => {
     const delivered = applyDocumentedTransportTransforms(
       new WhatsAppMessageRenderer().render({ message, providerResults: providers }),
     );
-    expect(() => assertModelOrigin({
-      origin: origin === null ? origin : { ...origin, transformationVersion: 'transport-v9' as never },
-      reply,
-      deliveredText: delivered,
-      providerResults: providers,
-    })).toThrow(ModelOriginViolationError);
+    expect(origin?.transformationVersion).toBe('transport-v2');
+    for (const transformationVersion of ['transport-v9', 'transport-v1'] as const) {
+      expect(() => assertModelOrigin({
+        origin: origin === null ? origin : { ...origin, transformationVersion: transformationVersion as never },
+        reply,
+        deliveredText: delivered,
+        providerResults: providers,
+      })).toThrow(ModelOriginViolationError);
+    }
     expect(() => assertModelOrigin({
       origin: origin === null ? origin : {
         ...origin,
@@ -376,24 +340,7 @@ describe('structured-output origin spans', () => {
     })).toThrow(ModelOriginViolationError);
   });
 
-  it('rejects stale transport-v1 receipts as historical, never new evidence', () => {
-    const message = recommendationMessage();
-    const providers = [providerResult()];
-    const reply = replyWith(message);
-    const origin = buildModelOriginReceipt(reply, 'bundle-r', providers);
-    const delivered = applyDocumentedTransportTransforms(
-      new WhatsAppMessageRenderer().render({ message, providerResults: providers }),
-    );
-    expect(origin?.transformationVersion).toBe('transport-v2');
-    expect(() => assertModelOrigin({
-      origin: origin === null ? origin : { ...origin, transformationVersion: 'transport-v1' as never },
-      reply,
-      deliveredText: delivered,
-      providerResults: providers,
-    })).toThrow(ModelOriginViolationError);
-  });
-
-  it('fails when the model references a provider with no snapshot', () => {
+  it('fails when the model references a provider with no snapshot or delivers blank output', () => {
     const message = recommendationMessage();
     const reply = replyWith(message);
     const origin = buildModelOriginReceipt(reply, 'bundle-r', []);
@@ -404,6 +351,12 @@ describe('structured-output origin spans', () => {
       ReferenceRenderError,
     );
     expect(() => assertModelOrigin({ origin, reply, deliveredText: delivered, providerResults: [providerResult()] })).toThrow(
+      ModelOriginViolationError,
+    );
+    const generic: StructuredMessage = { type: 'generic', paragraphs_es: ['Texto real del modelo.'] };
+    const genericReply = replyWith(generic);
+    const genericOrigin = buildModelOriginReceipt(genericReply, 'bundle-x', []);
+    expect(() => assertModelOrigin({ origin: genericOrigin, reply: genericReply, deliveredText: '' })).toThrow(
       ModelOriginViolationError,
     );
   });
@@ -423,14 +376,6 @@ describe('structured-output origin spans', () => {
     expect(hashPrivateOutput(expected)).not.toBe(origin?.modelContentSha256);
   });
 
-  it('never verifies blank output', () => {
-    const message: StructuredMessage = { type: 'generic', paragraphs_es: ['Texto real del modelo.'] };
-    const reply = replyWith(message);
-    const origin = buildModelOriginReceipt(reply, 'bundle-x', []);
-    expect(() => assertModelOrigin({ origin, reply, deliveredText: '' })).toThrow(
-      ModelOriginViolationError,
-    );
-  });
 });
 
 describe('reference serializer drift (S4)', () => {
@@ -457,40 +402,27 @@ describe('reference serializer drift (S4)', () => {
   };
 
   it.each([
-    ['generic', genericMessage, []],
-    ['welcome', welcomeMessage, []],
-    ['recommendation', recommendation, [providerResult()]],
-    ['multi_need', multiNeed, [providerResult({ id: 9, title: 'Salón Norte' })]],
-  ])('matches the delivery renderer for %s on whatsapp', (_label, message, providers) => {
+    ['generic', 'whatsapp', genericMessage, []],
+    ['welcome', 'whatsapp', welcomeMessage, []],
+    ['recommendation', 'whatsapp', recommendation, [providerResult()]],
+    ['multi_need', 'whatsapp', multiNeed, [providerResult({ id: 9, title: 'Salón Norte' })]],
+    ['generic', 'webchat', genericMessage, []],
+    ['welcome', 'webchat', welcomeMessage, []],
+    ['recommendation', 'webchat', recommendation, [providerResult()]],
+    ['multi_need', 'webchat', multiNeed, [providerResult({ id: 9, title: 'Salón Norte' })]],
+  ])('matches the delivery renderer for %s on %s', (_label, channel, message, providers) => {
+    const channelName = channel as 'whatsapp' | 'webchat';
     const snapshot = snapshotProviderFields(providers);
     const expected = buildExpectedDeliveredText({
       message,
       providerFields: snapshot,
-      channel: 'whatsapp',
+      channel: channelName,
     });
+    const renderer = channelName === 'whatsapp'
+      ? new WhatsAppMessageRenderer()
+      : new WebChatMessageRenderer();
     const delivered = applyDocumentedTransportTransforms(
-      new WhatsAppMessageRenderer().render({
-        message,
-        providerResults: providers,
-      }),
-    );
-    expect(expected).toBe(delivered);
-  });
-
-  it.each([
-    ['generic', genericMessage, []],
-    ['welcome', welcomeMessage, []],
-    ['recommendation', recommendation, [providerResult()]],
-    ['multi_need', multiNeed, [providerResult({ id: 9, title: 'Salón Norte' })]],
-  ])('matches the delivery renderer for %s on webchat', (_label, message, providers) => {
-    const snapshot = snapshotProviderFields(providers);
-    const expected = buildExpectedDeliveredText({
-      message,
-      providerFields: snapshot,
-      channel: 'webchat',
-    });
-    const delivered = applyDocumentedTransportTransforms(
-      new WebChatMessageRenderer().render({
+      renderer.render({
         message,
         providerResults: providers,
       }),

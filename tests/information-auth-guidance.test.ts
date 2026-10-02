@@ -60,7 +60,7 @@ describe('information authentication guidance', () => {
     });
   });
 
-  it('offers recovery after one invalid code and human support after a repeated failure', () => {
+  it('guides code, rate-limit, and outage failures with distinct recovery paths', () => {
     expect(
       createInformationAuthGuidance('otp_invalid', 'person@example.com'),
     ).toEqual({
@@ -82,9 +82,6 @@ describe('information authentication guidance', () => {
       email: 'person@example.com',
       requirements: ['show_destination_email', 'offer_human_support'],
     });
-  });
-
-  it('keeps rate limits and outages distinct from invalid codes', () => {
     expect(createInformationAuthGuidance('otp_send_rate_limited', 'person@example.com'))
       .toEqual({
         reason: 'otp_send_rate_limited',

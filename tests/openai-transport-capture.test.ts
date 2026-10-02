@@ -35,7 +35,7 @@ function getTransport(client: OpenAI): TransportFetch {
 }
 
 describe('OpenAI transport accounting', () => {
-  it('captures every serialized request, identifiers, and UTF-8 component bytes', async () => {
+  it('captures every serialized request with identifiers, bytes, and stage attribution', async () => {
     const client = new OpenAI({ apiKey: 'test-key', maxRetries: 0 });
     let responseNumber = 0;
     installFetch(client, async () => {
@@ -66,6 +66,31 @@ describe('OpenAI transport accounting', () => {
     expect(first?.outputSchemaBytes).toBeGreaterThan(0);
     expect(first?.requestBodySha256).toMatch(/^[a-f0-9]{64}$/u);
     expect(() => assertCompleteTransportAccounting(captured.metrics, 2)).not.toThrow();
+    // A hidden second classifier request is detected and both calls attribute to classifier.
+    const classifierClient = new OpenAI({ apiKey: 'test-key', maxRetries: 0 });
+    let classifierResponses = 0;
+    installFetch(classifierClient, async () => {
+      classifierResponses += 1;
+      return new Response(JSON.stringify({ id: `classifier-response-${classifierResponses}` }), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+          'x-request-id': `classifier-request-${classifierResponses}`,
+        },
+      });
+    });
+    const classifierTransport = getTransport(classifierClient);
+    const classifierCaptured = await captureOpenAiTransport('classifier', async () => {
+      await classifierTransport('https://example.test/responses', { method: 'POST', body: requestBody() });
+      await classifierTransport('https://example.test/responses', { method: 'POST', body: requestBody() });
+    });
+
+    expect(classifierCaptured.metrics.observedRequestCount).toBe(2);
+    expect(classifierCaptured.metrics.requests.map((request) => request.stage)).toEqual([
+      'classifier',
+      'classifier',
+    ]);
+    expect(() => assertCompleteTransportAccounting(classifierCaptured.metrics, 2)).not.toThrow();
   });
 
   it('retains a failed request observation instead of converting it to zero', async () => {
@@ -90,30 +115,4 @@ describe('OpenAI transport accounting', () => {
     expect(() => assertCompleteTransportAccounting(failedMetrics, 1)).not.toThrow();
   });
 
-  it('detects a hidden second classifier request and attributes both calls to classifier', async () => {
-    const client = new OpenAI({ apiKey: 'test-key', maxRetries: 0 });
-    let responseNumber = 0;
-    installFetch(client, async () => {
-      responseNumber += 1;
-      return new Response(JSON.stringify({ id: `classifier-response-${responseNumber}` }), {
-        status: 200,
-        headers: {
-          'content-type': 'application/json',
-          'x-request-id': `classifier-request-${responseNumber}`,
-        },
-      });
-    });
-    const transport = getTransport(client);
-    const captured = await captureOpenAiTransport('classifier', async () => {
-      await transport('https://example.test/responses', { method: 'POST', body: requestBody() });
-      await transport('https://example.test/responses', { method: 'POST', body: requestBody() });
-    });
-
-    expect(captured.metrics.observedRequestCount).toBe(2);
-    expect(captured.metrics.requests.map((request) => request.stage)).toEqual([
-      'classifier',
-      'classifier',
-    ]);
-    expect(() => assertCompleteTransportAccounting(captured.metrics, 2)).not.toThrow();
-  });
 });

@@ -4,38 +4,9 @@ import fs from 'node:fs/promises';
 
 import { describe, expect, it } from 'vitest';
 
-import { PromptLoader } from '../src/runtime/prompt-loader';
-import { measureHistoricalBranches, measureCurrentBranches } from '../src/audit/prompt-branch-measurement';
+import { measureHistoricalBranches } from '../src/audit/prompt-branch-measurement';
 
 describe('prompt branch measurement parity', () => {
-  it.skip('projects min-disclosure on both sides with the same empty reason set', async () => {
-    const historical = await measureHistoricalBranches({
-      anchorRef: '78ae24e',
-      counterModel: 'gpt-5.6-luna',
-    });
-    const loader = new PromptLoader(path.resolve(process.cwd(), 'prompts'));
-    const current = await measureCurrentBranches({ loader, counterModel: 'gpt-5.6-luna' });
-
-    const histSupport = historical.find((b) => b.branchId === 'extractor:established_support');
-    const currSupport = current.find((b) => b.branchId === 'extractor:established_support');
-    expect(histSupport).toBeDefined();
-    expect(currSupport).toBeDefined();
-    expect(currSupport?.instructionBytes).toBeLessThan(histSupport?.instructionBytes ?? 0);
-    expect(currSupport?.filePaths).toContain('extractors/information_support.txt');
-    expect(histSupport?.filePaths).toContain('extractors/information.txt');
-    expect(histSupport?.filePaths).not.toContain('extractors/information_support.txt');
-
-    const histResolver = historical.find((b) => b.branchId === 'resolver_consultas_informativas');
-    const currResolver = current.find((b) => b.branchId === 'resolver_consultas_informativas');
-    expect(histResolver).toBeDefined();
-    expect(currResolver).toBeDefined();
-    expect(histResolver?.instructionBytes).toBe(13459);
-    expect(currResolver?.instructionBytes).toBeGreaterThan(0);
-    expect(currResolver?.instructionBytes).toBeLessThanOrEqual((histResolver?.instructionBytes as number) + 200);
-    expect((histResolver?.instructionBytes as number) - (currResolver?.instructionBytes as number)).toBeGreaterThanOrEqual(100);
-    expect(histResolver?.instructionBytes).toBeGreaterThan(0);
-  }, 15_000);
-
   it('strips min-disclosure blocks identically via historical mock and loader', async () => {
     const contentWithBlocks = [
       'Line A',

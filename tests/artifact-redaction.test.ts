@@ -81,10 +81,10 @@ describe('sensitive artifact redaction', () => {
     });
   });
 
-  it('preserves structural hashes, ids, statuses, counts, and timestamps', () => {
+  it('redacts sensitive keys while preserving structural values', () => {
     const conversationHash = 'deadbeef0123456789abcdef0123456789abcdef0123456789abcdef01234567';
     const capturedAt = '2026-08-07T12:34:56.789Z';
-    const safe = redactArtifactRecord({
+    const structural = redactArtifactRecord({
       conversation_hash: conversationHash,
       case_id: 'live_behavior.phone_first_auth_success',
       trace_id: 'trace-20260807-001',
@@ -93,7 +93,7 @@ describe('sensitive artifact redaction', () => {
       count: 123456,
     });
 
-    expect(safe).toEqual({
+    expect(structural).toEqual({
       conversation_hash: conversationHash,
       case_id: 'live_behavior.phone_first_auth_success',
       trace_id: 'trace-20260807-001',
@@ -101,9 +101,7 @@ describe('sensitive artifact redaction', () => {
       status: 'authenticated',
       count: 123456,
     });
-  });
 
-  it('redacts credentials and contact values by sensitive key only', () => {
     const token = 'access-token-canary';
     const jwt = 'eyJhbGciOiJIUzI1NiJ9.cli-canary.signature';
     const email = 'person@example.com';
@@ -146,20 +144,18 @@ describe('sensitive artifact redaction', () => {
     expect(safe.structural_code).toBe('status-code-is-structural');
   });
 
-  it('uses contextual redaction only for free-text content', () => {
-    const text = 'Mi correo es person@example.com y mi teléfono es +51973296571.';
+  it('redacts PII contextually in free text while preserving years and structural fields', () => {
+    const contact = 'Mi correo es person@example.com y mi teléfono es +51973296571.';
 
-    expect(redactArtifactText(text)).not.toContain('person@example.com');
-    expect(redactArtifactText(text)).not.toContain('+51973296571');
-    expect(redactArtifactRecord({ conversation_hash: text }).conversation_hash).toBe(text);
-  });
+    expect(redactArtifactText(contact)).not.toContain('person@example.com');
+    expect(redactArtifactText(contact)).not.toContain('+51973296571');
+    expect(redactArtifactRecord({ conversation_hash: contact }).conversation_hash).toBe(contact);
 
-  it('preserves calendar years while redacting standalone one-time codes', () => {
-    const text = 'El evento será el 12 de septiembre de 2026. El código es 753994.';
+    const dated = 'El evento será el 12 de septiembre de 2026. El código es 753994.';
 
-    expect(redactArtifactText(text)).toContain('septiembre de 2026');
-    expect(redactArtifactText(text)).not.toContain('753994');
-    expect(redactArtifactText(text)).toContain('[redacted-code]');
+    expect(redactArtifactText(dated)).toContain('septiembre de 2026');
+    expect(redactArtifactText(dated)).not.toContain('753994');
+    expect(redactArtifactText(dated)).toContain('[redacted-code]');
   });
 
   it('returns a schema-valid redacted handler response', () => {
@@ -358,7 +354,7 @@ describe('S3 public plan projection: image refs and last-response text', () => {
     };
   }
 
-  it('omits raw file IDs, URLs, and digests while exposing typed safe observations', () => {
+  it('projects typed safe image observations without leaking raw identities', () => {
     const safe = projectSafePlan(s3Plan());
     const serialized = JSON.stringify(safe);
 
@@ -383,6 +379,35 @@ describe('S3 public plan projection: image refs and last-response text', () => {
     expect(fileObservation?.refFingerprint).not.toContain(rawFileId);
     const urlObservation = safe.image_attachment_observations.find((entry) => entry.kind === 'url');
     expect(urlObservation).toMatchObject({ kind: 'url', active: true, expired: false });
+
+    const matched = projectSafePlan(s3Plan(), { observedMessageId: 'wamid.current1' });
+    expect(
+      matched.image_attachment_observations.find((entry) => entry.kind === 'file')?.messageMatch,
+    ).toBe('current');
+    expect(
+      matched.image_attachment_observations.find((entry) => entry.kind === 'url')?.messageMatch,
+    ).toBe('prior');
+
+    const expiredPlan = s3Plan();
+    expiredPlan.image_attachments = [
+      {
+        kind: 'file',
+        fileId: rawFileId,
+        expiresAt: new Date(Date.now() - 1000).toISOString(),
+        mimeType: 'image/png',
+        byteLength: 512,
+        contentDigest: rawDigest,
+        messageId: 'wamid.expired1',
+        receivedAt: new Date(Date.now() - 500_000).toISOString(),
+      },
+    ];
+    const expiredSafe = projectSafePlan(expiredPlan);
+    expect(expiredSafe.image_attachment_observations[0]).toMatchObject({
+      kind: 'file',
+      active: false,
+      expired: true,
+    });
+    expect(JSON.stringify(expiredSafe)).not.toContain(rawFileId);
   });
 
   it('redacts last-response text with the shared public-response policy', () => {
@@ -408,40 +433,6 @@ describe('S3 public plan projection: image refs and last-response text', () => {
     });
   });
 
-  it('marks current versus prior message linkage only from the observed ID', () => {
-    const plan = s3Plan();
-    const matched = projectSafePlan(plan, { observedMessageId: 'wamid.current1' });
-    expect(
-      matched.image_attachment_observations.find((entry) => entry.kind === 'file')?.messageMatch,
-    ).toBe('current');
-    expect(
-      matched.image_attachment_observations.find((entry) => entry.kind === 'url')?.messageMatch,
-    ).toBe('prior');
-  });
-
-  it('flags expired file refs without leaking their identity', () => {
-    const plan = s3Plan();
-    plan.image_attachments = [
-      {
-        kind: 'file',
-        fileId: rawFileId,
-        expiresAt: new Date(Date.now() - 1000).toISOString(),
-        mimeType: 'image/png',
-        byteLength: 512,
-        contentDigest: rawDigest,
-        messageId: 'wamid.expired1',
-        receivedAt: new Date(Date.now() - 500_000).toISOString(),
-      },
-    ];
-    const safe = projectSafePlan(plan);
-    expect(safe.image_attachment_observations[0]).toMatchObject({
-      kind: 'file',
-      active: false,
-      expired: true,
-    });
-    expect(JSON.stringify(safe)).not.toContain(rawFileId);
-  });
-
   it('never mutates the private plan snapshot', () => {
     const plan = s3Plan();
     const beforeAttachments = JSON.stringify(plan.image_attachments);
@@ -453,12 +444,65 @@ describe('S3 public plan projection: image refs and last-response text', () => {
     expect(JSON.stringify(plan)).toContain(rawFileId);
   });
 
-  it('keeps ordinary prose while scrubbing provider handles', () => {
-    const text = redactPublicResponseText(
+  it('applies the public-response redaction policy to prose, URLs, handles, and PII', () => {
+    const prose = redactPublicResponseText(
       'Tu pedido esta confirmado para el 12 de septiembre de 2026. Referencia ABC-123.',
     );
-    expect(text).toContain('2026');
-    expect(text).toContain('ABC-123');
+    expect(prose).toContain('2026');
+    expect(prose).toContain('ABC-123');
+
+    const defaultScrub = redactPublicResponseText(
+      'Calcula aquí https://sinenvolturas.com/cost-of-service. Fuente: https://sinenvolturas.tawk.help/article/cuanto-cuesta',
+    );
+    expect(defaultScrub).not.toContain('https://');
+    expect(defaultScrub.match(/\[redacted-url\]/gu)).toHaveLength(2);
+
+    const calculator = redactPublicResponseText(
+      'Calcula: https://sinenvolturas.com/coste-del-servicio. ' +
+      'No: https://sinenvolturas.com/coste-del-servicio?token=abc ' +
+      'ni https://sinenvolturas.com/coste-del-servicio/otra ' +
+      'ni https://sinenvolturas.com.evil.test/coste-del-servicio. ' +
+      'Contacto ana@example.com +51973296571.',
+    );
+    expect(calculator).toContain('https://sinenvolturas.com/coste-del-servicio.');
+    expect(calculator.match(/\[redacted-url\]/gu)).toHaveLength(3);
+    expect(calculator).not.toContain('?token=abc');
+    expect(calculator).not.toContain('ana@example.com');
+    expect(calculator).not.toContain('+51973296571');
+
+    const markdown = redactPublicResponseText(
+      'Usa la [calculadora](https://sinenvolturas.com/coste-del-servicio) y evita ' +
+      '[otro enlace](https://sinenvolturas.com/coste-del-servicio?mode=guest).',
+    );
+    expect(markdown).toContain('[calculadora](https://sinenvolturas.com/coste-del-servicio)');
+    expect(markdown).toContain('[otro enlace]([redacted-url])');
+    expect(markdown).not.toContain('?mode=guest');
+
+    const allowlisted = redactPublicResponseText(
+      'Calcula aquí https://sinenvolturas.com/cost-of-service. Fuente: https://sinenvolturas.tawk.help/article/cuanto-cuesta',
+      { preserveUrlPrefixes: ['https://sinenvolturas.tawk.help/article/'] },
+    );
+    expect(allowlisted).toContain('https://sinenvolturas.tawk.help/article/cuanto-cuesta');
+    expect(allowlisted).toContain('[redacted-url]');
+    expect(allowlisted).not.toContain('cost-of-service');
+
+    const nonArticle = redactPublicResponseText(
+      'Mira https://sinenvolturas.tawk.help/kb/listado y https://sinenvolturas.tawk.help/article/cuanto-cuesta',
+      { preserveUrlPrefixes: ['https://sinenvolturas.tawk.help/article/'] },
+    );
+    expect(nonArticle).toContain('https://sinenvolturas.tawk.help/article/cuanto-cuesta');
+    expect(nonArticle).toContain('[redacted-url]');
+    expect(nonArticle).not.toContain('/kb/listado');
+
+    const aroundPreserved = redactPublicResponseText(
+      'Fuente: https://sinenvolturas.tawk.help/article/cuanto-cuesta, archivo file-abc123XYZ, correo ana@example.com',
+      { preserveUrlPrefixes: ['https://sinenvolturas.tawk.help/article/'] },
+    );
+    expect(aroundPreserved).toContain('https://sinenvolturas.tawk.help/article/cuanto-cuesta');
+    expect(aroundPreserved).toContain('[redacted-file]');
+    expect(aroundPreserved).toContain('[redacted-email]');
+    expect(aroundPreserved).not.toContain('file-abc123XYZ');
+    expect(aroundPreserved).not.toContain('ana@example.com');
   });
 });
 

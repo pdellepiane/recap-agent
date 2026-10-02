@@ -85,8 +85,20 @@ function renderWelcome(message: StructuredMessage): string {
   return parts.filter(Boolean).join('\n\n');
 }
 
-function renderGeneric(message: StructuredMessage): string {
-  return (message.paragraphs_es ?? []).join('\n\n');
+function renderGeneric(message: StructuredMessage, citationUrl?: string | null): string {
+  const paragraphs = message.paragraphs_es ?? [];
+  const footer = renderCitationFooter(paragraphs, citationUrl);
+  return [...paragraphs, ...(footer === null ? [] : [footer])].join('\n\n');
+}
+
+/** Citation footer rule, duplicated from the delivery renderer on purpose. */
+function renderCitationFooter(
+  paragraphs: readonly string[],
+  citationUrl?: string | null,
+): string | null {
+  if (!citationUrl) return null;
+  if (paragraphs.some((paragraph) => paragraph.includes(citationUrl))) return null;
+  return `Fuente: ${citationUrl}`;
 }
 
 function renderProviderCard(
@@ -217,10 +229,11 @@ export function buildReferenceRender(args: {
   message: StructuredMessage;
   providerFields: readonly AuthorizedProviderRenderField[];
   channel?: string | null;
+  citationUrl?: string | null;
 }): string {
   const style = resolveReferenceStyle(args.channel ?? null);
   const providerMap = new Map(args.providerFields.map((field) => [field.id, field]));
-  if (args.message.type === 'generic') return renderGeneric(args.message);
+  if (args.message.type === 'generic') return renderGeneric(args.message, args.citationUrl);
   if (args.message.type === 'welcome') return renderWelcome(args.message);
   const referencedIds =
     args.message.type === 'recommendation'
@@ -247,12 +260,14 @@ export function buildExpectedDeliveredText(args: {
   message: StructuredMessage;
   providerFields: readonly AuthorizedProviderRenderField[];
   channel?: string | null;
+  citationUrl?: string | null;
 }): string {
   return applyReferenceTransportTransforms(
     buildReferenceRender({
       message: args.message,
       providerFields: args.providerFields,
       channel: args.channel ?? null,
+      citationUrl: args.citationUrl,
     }),
   );
 }

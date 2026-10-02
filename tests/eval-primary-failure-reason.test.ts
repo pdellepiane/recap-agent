@@ -28,12 +28,9 @@ function classify(args: {
 }
 
 describe('O5 one primary reason per failure', () => {
-  it('returns null for passed and skipped results', () => {
+  it('routes status-level signals to null or infrastructure', () => {
     expect(classify({ status: 'passed' })).toBeNull();
     expect(classify({ status: 'skipped' })).toBeNull();
-  });
-
-  it('treats errored, uncertain and transport failures as infrastructure', () => {
     expect(classify({ status: 'errored' })).toBe('infrastructure_error');
     expect(classify({ status: 'failed', executionUncertain: true })).toBe('infrastructure_error');
     expect(classify({
@@ -47,7 +44,8 @@ describe('O5 one primary reason per failure', () => {
     })).toBe('infrastructure_error');
   });
 
-  it('treats judge and receipt-evidence gaps as evaluator defects', () => {
+  it('maps expectation failures to evaluator, effect/identity, or fact/completeness buckets', () => {
+    // Judge and receipt-evidence gaps are evaluator defects.
     expect(classify({
       status: 'failed',
       expectationResults: [hard('text_semantic', 'Judge gate failed: timeout')],
@@ -64,9 +62,6 @@ describe('O5 one primary reason per failure', () => {
       status: 'failed',
       expectationResults: [hard('text_semantic', 'Missing wire-delivered candidate evidence for semantic judging.')],
     })).toBe('evaluator_defect');
-  });
-
-  it('treats wrong-event writes, duplicates and false success as product effect/identity', () => {
     // Wrong-event write: effect count mismatch against the typed receipt.
     expect(classify({
       status: 'failed',
@@ -93,12 +88,14 @@ describe('O5 one primary reason per failure', () => {
       status: 'failed',
       planDiffSummary: ['Output-origin gate failures: turn 1: mismatch.'],
     })).toBe('product_effect_identity');
-  });
-
-  it('treats invented absence, contradictory facts and false success as fact/completeness', () => {
+    // Invented absence, contradictory facts, and plain low scores land in fact/completeness.
     expect(classify({
       status: 'failed',
       expectationResults: [hard('text_semantic', 'score 0.3 below 0.9: invented absence of the pending order')],
+    })).toBe('product_fact_completeness');
+    expect(classify({
+      status: 'failed',
+      expectationResults: [hard('text_semantic', 'score 0.85 below 0.9')],
     })).toBe('product_fact_completeness');
     expect(classify({
       status: 'failed',
@@ -110,7 +107,7 @@ describe('O5 one primary reason per failure', () => {
     })).toBe('product_fact_completeness');
   });
 
-  it('reserves unnecessary interaction for quality-only failures', () => {
+  it('reserves unnecessary interaction for quality-only failures with deterministic priority', () => {
     expect(classify({
       status: 'failed',
       expectationResults: [hard('trajectory_invariants', 'repeated question detected')],
@@ -127,9 +124,6 @@ describe('O5 one primary reason per failure', () => {
         hard('text_semantic', 'score 0.1 below 0.9'),
       ],
     })).toBe('product_fact_completeness');
-  });
-
-  it('applies deterministic priority across mixed signals', () => {
     // Infrastructure outranks content.
     expect(classify({
       status: 'failed',
@@ -157,16 +151,7 @@ describe('O5 one primary reason per failure', () => {
       status: 'failed',
       expectationResults: [{ passed: false, severity: 'soft', type: 'text_semantic', message: 'low score' }],
     })).toBe('product_fact_completeness');
-  });
-
-  it('never requires a preferred sentence: wording alone is not a defect signal', () => {
-    // A failure message about preferred phrasing with no factual defect
-    // still lands in the diagnostic fact bucket by content, and the
-    // classifier never matches on quoted preferred words.
-    const reason = classify({
-      status: 'failed',
-      expectationResults: [hard('text_semantic', 'score 0.85 below 0.9')],
-    });
-    expect(reason).toBe('product_fact_completeness');
+    // A failed result with no signals at all defaults to the fact bucket.
+    expect(classify({ status: 'failed' })).toBe('product_fact_completeness');
   });
 });

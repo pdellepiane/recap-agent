@@ -122,7 +122,7 @@ function purchaseRequest(
 }
 
 describe('event identity matching canary fixes', () => {
-  it('canonicalizes conjunction, punctuation, case, and accents', () => {
+  it('canonicalizes and matches event names without substring false positives', () => {
     expect(normalizeEventTokens('Claudia&Luis Félipe')).toEqual([
       'claudia',
       'and',
@@ -137,9 +137,6 @@ describe('event identity matching canary fixes', () => {
       'Carlos y Adriana',
       'Carlos and Adriana',
     )).toBe(true);
-  });
-
-  it('matches exact event tokens without substring false positives', () => {
     expect(eventMatches('Josué y Paola', 'Josue')).toBe(true);
     expect(eventMatches('Paolo & Mariana', 'Paolo Mariana')).toBe(true);
     expect(eventMatches('Mariana & Santiago', 'Ana')).toBe(false);

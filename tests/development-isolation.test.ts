@@ -26,25 +26,23 @@ describe('development isolation', () => {
     vi.stubEnv('DEPLOYMENT_ENV', 'development');
     expect(getConfig().deployment.environment).toBe('development');
   });
-  it('blocks agent customer writes before any fetch or retry', async () => {
-    const fetchMock = vi.fn(); vi.stubGlobal('fetch', fetchMock);
-    const gateway = new HttpAgentConversationGateway({ baseUrl: 'https://api.test', apiKey: 'test',
+  it('blocks customer writes across agent and provider gateways in development', async () => {
+    const agentFetch = vi.fn(); vi.stubGlobal('fetch', agentFetch);
+    const agent = new HttpAgentConversationGateway({ baseUrl: 'https://api.test', apiKey: 'test',
       timeoutMs: 1000, maxRetries: 2, messageLoggingEnabled: true, allowCustomerWrites: false });
     const phone = { phone_extension: '+51', phone_number: '900000001' };
-    expect(await gateway.requestHumanTakeover('51900000001')).toMatchObject({ status: 'failed', retryable: false });
-    expect(await gateway.logMessage({ phoneNumber: '51900000001', body: 'test', direction: 'outbound' })).toMatchObject({ status: 'failed' });
-    expect(await gateway.guestRsvp({ ...phone, action: 'attending' })).toMatchObject({ status: 'failed' });
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-  it('blocks provider OTP writes and uses untracked detail reads', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: null }), { status: 200 }));
-    vi.stubGlobal('fetch', fetchMock);
-    const gateway = new SinEnvolturasGateway({ baseUrl: 'https://api.test', persistedSearchLimit: 12,
+    expect(await agent.requestHumanTakeover('51900000001')).toMatchObject({ status: 'failed', retryable: false });
+    expect(await agent.logMessage({ phoneNumber: '51900000001', body: 'test', direction: 'outbound' })).toMatchObject({ status: 'failed' });
+    expect(await agent.guestRsvp({ ...phone, action: 'attending' })).toMatchObject({ status: 'failed' });
+    expect(agentFetch).not.toHaveBeenCalled();
+    const providerFetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: null }), { status: 200 }));
+    vi.stubGlobal('fetch', providerFetch);
+    const provider = new SinEnvolturasGateway({ baseUrl: 'https://api.test', persistedSearchLimit: 12,
       summarySearchWordLimit: 5, allowCustomerWrites: false });
-    await gateway.requestUserLoginCode('test@example.test').catch(() => undefined);
-    expect(fetchMock).not.toHaveBeenCalled();
-    await gateway.getProviderDetailAndTrackView(1);
-    expect(fetchMock).toHaveBeenCalledOnce();
-    expect(fetchMock).toHaveBeenCalledWith(expect.not.stringContaining('/view/'));
+    await provider.requestUserLoginCode('test@example.test').catch(() => undefined);
+    expect(providerFetch).not.toHaveBeenCalled();
+    await provider.getProviderDetailAndTrackView(1);
+    expect(providerFetch).toHaveBeenCalledOnce();
+    expect(providerFetch).toHaveBeenCalledWith(expect.not.stringContaining('/view/'));
   });
 });

@@ -148,29 +148,25 @@ beforeEach(() => {
 });
 
 describe('URL image transport', () => {
-  it('accepts the strict url variant and rejects ambiguous url+data', () => {
+  it('normalizes URL and base64 image shapes into available or unavailable evidence', () => {
     const parsed = inboundImageSchema.safeParse({ url: URL_A });
     expect(parsed.success).toBe(true);
     expect(inboundImageSchema.safeParse({ url: URL_A, data: 'x', mime_type: 'image/png' }).success).toBe(false);
     const image = normalizeInboundImage({ url: URL_A });
     expect(image).toEqual({ status: 'available', source: 'url', url: URL_A, mimeType: null });
-  });
-
-  it('maps non-fetchable shapes to unavailable evidence instead of failing', () => {
     expect(isDirectlyFetchableImageUrlShape('http://example.com/a.png')).toBe(false);
     expect(isDirectlyFetchableImageUrlShape('https://127.0.0.1/a.png')).toBe(false);
     expect(isDirectlyFetchableImageUrlShape('https://user:pass@example.com/a.png')).toBe(false);
     expect(normalizeInboundImage({ url: 'http://example.com/a.png' }).status).toBe('unavailable');
     expect(normalizeInboundImage({ url: 'https://192.168.0.4/a.png' }).status).toBe('unavailable');
-  });
 
-  it('keeps the base64 path byte-identical in behavior', () => {
+    // The legacy base64 path stays byte-identical in behavior.
     const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
-    const image = normalizeInboundImage({ data: png, mime_type: 'image/png' });
-    expect(image.status).toBe('available');
-    if (image.status === 'available' && image.source === 'base64') {
-      expect(image.byteLength).toBeGreaterThan(0);
-      expect(image.mimeType).toBe('image/png');
+    const decoded = normalizeInboundImage({ data: png, mime_type: 'image/png' });
+    expect(decoded.status).toBe('available');
+    if (decoded.status === 'available' && decoded.source === 'base64') {
+      expect(decoded.byteLength).toBeGreaterThan(0);
+      expect(decoded.mimeType).toBe('image/png');
     } else {
       throw new Error('base64 must stay source base64');
     }
@@ -178,14 +174,10 @@ describe('URL image transport', () => {
 });
 
 describe('native wire shape', () => {
-  it('builds SDK input_image items with the image field', () => {
+  it('builds SDK input_image items and serializes them to the Responses wire shape', () => {
     const content = buildNativeImageContent('cuanto dice aqui?', [{ url: URL_A, messageId: 'm1' }]);
     expect(content[0]).toEqual({ type: 'input_text', text: 'cuanto dice aqui?' });
     expect(content[1]).toEqual({ type: 'input_image', image: URL_A, detail: 'auto' });
-  });
-
-  it('serializes to the Responses wire shape with image_url', () => {
-    const content = buildNativeImageContent('hola', [{ url: URL_A, messageId: 'm1' }]);
     const wire = content.map(toResponsesWireImageItem);
     expect(wire[1]).toEqual({ type: 'input_image', image_url: URL_A, detail: 'auto' });
     // Installed SDK converter (agents-openai openaiResponsesModel.js):
@@ -199,7 +191,7 @@ describe('native wire shape', () => {
 });
 
 describe('attachment persistence bounds', () => {
-  it('dedupes duplicated delivery and caps references', () => {
+  it('bounds stored attachment refs by dedupe, recency, and byte caps', () => {
     let refs: ImageAttachmentRef[] = [];
     refs = appendImageAttachmentRef(refs, ref(URL_A, 'm1', '2026-09-08T14:30:00Z'));
     refs = appendImageAttachmentRef(refs, ref(URL_A, 'm1', '2026-09-08T14:30:00Z'));
@@ -212,19 +204,17 @@ describe('attachment persistence bounds', () => {
     }
     expect(refs.length).toBeLessThanOrEqual(MAX_IMAGE_ATTACHMENT_REFS);
     expect(imageAttachmentsJsonBytes(refs)).toBeLessThan(MAX_IMAGE_ATTACHMENTS_JSON_BYTES);
-  });
 
-  it('drops late events instead of evicting newer context', () => {
-    let refs: ImageAttachmentRef[] = [];
+    let ordered: ImageAttachmentRef[] = [];
     for (let index = 0; index < MAX_IMAGE_ATTACHMENT_REFS; index += 1) {
-      refs = appendImageAttachmentRef(
-        refs,
+      ordered = appendImageAttachmentRef(
+        ordered,
         ref(`https://example.com/n${index}.png`, `n${index}`, `2026-09-08T15:0${index}:00Z`),
       );
     }
-    const before = refs.map((entry) => entry.messageId);
-    refs = appendImageAttachmentRef(refs, ref('https://example.com/late.png', 'late', '2026-09-08T14:00:00Z'));
-    expect(refs.map((entry) => entry.messageId).sort()).toEqual([...before].sort());
+    const before = ordered.map((entry) => entry.messageId);
+    ordered = appendImageAttachmentRef(ordered, ref('https://example.com/late.png', 'late', '2026-09-08T14:00:00Z'));
+    expect(ordered.map((entry) => entry.messageId).sort()).toEqual([...before].sort());
   });
 
   it('merges through mergePlan and strips legacy keys on load', () => {
@@ -255,7 +245,7 @@ describe('attachment persistence bounds', () => {
 });
 
 describe('URL image turn routing', () => {
-  it('answers through the owner reply call without inspecting', async () => {
+  it('answers URL turns through the owner reply call with real extraction and no inspection', async () => {
     const runtime = new UrlStubRuntime();
     const { service } = serviceWith(runtime);
     const response = await service.handleTurn(inboundWithUrl(URL_A, 'Es mi comprobante', 'wamid.url1'));
@@ -270,6 +260,22 @@ describe('URL image turn routing', () => {
     expect(JSON.stringify(response.plan.image_attachments)).not.toContain('base64');
     const traceJson = JSON.stringify(response.trace);
     expect(traceJson).not.toContain(URL_A);
+
+    const establishedRuntime = new ScriptedImageRuntime({});
+    const { service: establishedService } = serviceWith(establishedRuntime);
+    const establishedResponse = await establishedService.handleTurn(inboundWithUrl(URL_A, 'Es mi comprobante', 'wamid.owner1'));
+
+    expect(establishedRuntime.extractCalls).toBe(1);
+    expect(establishedRuntime.inspectCalls).toBe(0);
+    expect(establishedRuntime.composeRequests).toHaveLength(1);
+    const establishedRequest = establishedRuntime.composeRequests[0];
+    // Fresh plans serve from contacto_inicial; the informative node is not forced.
+    expect(establishedRequest?.currentNode).toBe('contacto_inicial');
+    expect(establishedRequest?.extraction.conversationSummary).toBe('caption extraída por el modelo');
+    expect(establishedRequest?.imageUrlAttachments).toEqual([{ url: URL_A, messageId: 'wamid.owner1' }]);
+    expect(establishedRequest?.imageEvidence).toMatchObject({ status: 'available', source: 'url', refStored: true });
+    expect(establishedResponse.plan.owner).toBe('planning');
+    expect(establishedResponse.plan.image_attachments).toHaveLength(1);
   });
 
   it('treats signed URLs as credentials in tool evidence', async () => {
@@ -317,7 +323,7 @@ describe('later-turn projection policy', () => {
   const stored = [0, 1, 2].map((index) =>
     ref(`https://example.com/${index}.png`, `m${index}`, `2026-09-08T14:3${index}:00Z`));
 
-  it('honors an explicit list, including empty', () => {
+  it('projects only explicit caller lists and never stored refs implicitly', () => {
     expect(resolveProjectedImageAttachments({
       explicit: [], currentNode: 'resolver_consultas_informativas', storedRefs: stored, openNeed: true,
     })).toEqual([]);
@@ -325,9 +331,6 @@ describe('later-turn projection policy', () => {
       explicit: [{ url: URL_A, messageId: 'm0' }],
       currentNode: 'otro_nodo', storedRefs: stored, openNeed: true,
     })).toEqual([{ url: URL_A, messageId: 'm0' }]);
-  });
-
-  it('never projects stored refs without an explicit caller list', () => {
     expect(resolveProjectedImageAttachments({
       explicit: undefined, currentNode: 'elicitacion_necesidades', storedRefs: stored, openNeed: true,
     })).toEqual([]);
@@ -455,77 +458,8 @@ function purchaseResultFor(
   return { result, summary };
 }
 
-function orchestratorWith(
-  results: InformationTaskResult[],
-  summaries: InformationExecutionSummary[],
-): InformationOrchestrator {
-  return fixtureCustomerContextOrchestrator({ results, summaries }) as unknown as InformationOrchestrator;
-}
-
 describe('established owner URL path', () => {
-  it('runs real extraction on the established node instead of forcing the informative node', async () => {
-    const runtime = new ScriptedImageRuntime({});
-    const { service } = serviceWith(runtime);
-    const response = await service.handleTurn(inboundWithUrl(URL_A, 'Es mi comprobante', 'wamid.owner1'));
-
-    expect(runtime.extractCalls).toBe(1);
-    expect(runtime.inspectCalls).toBe(0);
-    expect(runtime.composeRequests).toHaveLength(1);
-    const request = runtime.composeRequests[0];
-    // Fresh plans serve from contacto_inicial; the informative node is not forced.
-    expect(request?.currentNode).toBe('contacto_inicial');
-    expect(request?.extraction.conversationSummary).toBe('caption extraída por el modelo');
-    expect(request?.imageUrlAttachments).toEqual([{ url: URL_A, messageId: 'wamid.owner1' }]);
-    expect(request?.imageEvidence).toMatchObject({ status: 'available', source: 'url', refStored: true });
-    expect(response.plan.owner).toBe('planning');
-    expect(response.plan.image_attachments).toHaveLength(1);
-  });
-
-  it('supplies current purchase results and question-relevant customer context', async () => {
-    const runtime = new ScriptedImageRuntime({
-      informationRequests: [{
-        kind: 'purchase',
-        resource: 'orders',
-        query: '¿Ya se aprobó mi regalo?',
-        orderId: 'ORD-A',
-        authAction: 'none',
-      }],
-    });
-    const relevant = purchaseResultFor('information-1', 'ORD-A', 150.5, 'cart-sentinel-9');
-    const unrelated = purchaseResultFor('information-2', 'ORD-B', 999.75, 'cart-other-1');
-    const planStore = new InMemoryPlanStore();
-    const service = new AgentService({
-      planStore,
-      runtime,
-      providerGateway: {} as unknown as ProviderGateway,
-      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
-      renderers: { whatsapp: new WhatsAppMessageRenderer() },
-      informationOrchestrator: orchestratorWith(
-        [relevant.result, unrelated.result],
-        [relevant.summary, unrelated.summary],
-      ),
-    });
-    const response = await service.handleTurn(inboundWithUrl(URL_A, 'Es mi comprobante, ¿ya se aprobó?', 'wamid.owner2'));
-
-    expect(runtime.composeRequests).toHaveLength(1);
-    const request = runtime.composeRequests[0];
-    expect(request?.currentNode).toBe('resolver_consultas_informativas');
-    expect(request?.informationResults).toHaveLength(2);
-    const customerContext = request?.customerContext;
-    expect(customerContext).toBeDefined();
-    const serialized = JSON.stringify(customerContext);
-    // One canonical profile: every authorized record travels once, with the
-    // requested order leading by reference instead of hiding the rest.
-    expect(serialized).toContain('150.5');
-    expect(serialized).toContain('999.75');
-    expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(expect.arrayContaining(['ORD-A', 'ORD-B']));
-    expect(customerContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-A', 'ORD-B']);
-    expect(customerContext?.carts.map((entry) => entry.cartId)).toEqual(['cart-sentinel-9', 'cart-other-1']);
-    expect(request?.imageUrlAttachments).toEqual([{ url: URL_A, messageId: 'wamid.owner2' }]);
-    expect(response.plan.image_attachments).toHaveLength(1);
-  });
-
-  it('keeps the projection stable when unrelated facts change and moves it when relevant facts change', async () => {
+  it('serves question-relevant customer context on image turns and keeps its projection stable', async () => {
     const scripted = {
       informationRequests: [{
         kind: 'purchase' as const,
@@ -565,13 +499,30 @@ describe('established owner URL path', () => {
         },
       } as unknown as InformationOrchestrator,
     });
-    const turn = async (messageId: string): Promise<void> => {
-      await service.handleTurn(inboundWithUrl(URL_A, '¿Ya se aprobó?', messageId));
+    const turn = async (messageId: string) => {
+      const turnResponse = await service.handleTurn(inboundWithUrl(URL_A, '¿Ya se aprobó?', messageId));
       const last = runtime.composeRequests.at(-1)?.customerContext;
       seen.push(JSON.stringify(last));
+      return turnResponse;
     };
-    await turn('wamid.stable1');
+    const firstTurn = await turn('wamid.stable1');
     const base = seen[0];
+
+    // One canonical profile: every authorized record travels once, with the
+    // requested order leading by reference instead of hiding the rest.
+    expect(runtime.composeRequests).toHaveLength(1);
+    const firstRequest = runtime.composeRequests[0];
+    expect(firstRequest?.currentNode).toBe('resolver_consultas_informativas');
+    expect(firstRequest?.informationResults).toHaveLength(2);
+    const firstContext = firstRequest?.customerContext;
+    expect(firstContext).toBeDefined();
+    const firstSerialized = JSON.stringify(firstContext);
+    expect(firstSerialized).toContain('150.5');
+    expect(firstSerialized).toContain('999.75');
+    expect(firstContext?.purchases.map((entry) => entry.orderId)).toEqual(['ORD-A', 'ORD-B']);
+    expect(firstContext?.carts.map((entry) => entry.cartId)).toEqual(['cart-sentinel-9', 'cart-other-1']);
+    expect(firstRequest?.imageUrlAttachments).toEqual([{ url: URL_A, messageId: 'wamid.stable1' }]);
+    expect(firstTurn.plan.image_attachments).toHaveLength(1);
     // Unrelated order total changes: only that entity's evidence moves;
     // the requested order's evidence stays byte-identical.
     const drifted = purchaseResultFor('information-2', 'ORD-B', 111.11, 'cart-other-1');
@@ -645,7 +596,7 @@ describe('URL failure classification and reply accounting', () => {
     expect(call?.requestMetrics.transport?.observedRequestCount).toBe(1);
   });
 
-  it('propagates a generic model failure without an image_unavailable fallback', async () => {
+  it('propagates non-image failures without an image_unavailable fallback', async () => {
     const runtime = new ScriptedImageRuntime({});
     let calls = 0;
     const inner = runtime.composeReply.bind(runtime);
@@ -661,26 +612,24 @@ describe('URL failure classification and reply accounting', () => {
     // Exactly one attempt: no mislabeled unavailable retry was composed.
     expect(calls).toBe(1);
     expect(runtime.composeRequests).toHaveLength(0);
-  });
 
-  it('never relabels a persistence failure as image unavailability', async () => {
-    const runtime = new ScriptedImageRuntime({});
+    const persistRuntime = new ScriptedImageRuntime({});
     const planStore = new InMemoryPlanStore();
     planStore.save = async () => {
       throw new Error('plan persistence down');
     };
-    const service = new AgentService({
+    const persistService = new AgentService({
       planStore,
-      runtime,
+      runtime: persistRuntime,
       providerGateway: {} as unknown as ProviderGateway,
       promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
       renderers: { whatsapp: new WhatsAppMessageRenderer() },
     });
     await expect(
-      service.handleTurn(inboundWithUrl(URL_A, 'Es mi comprobante', 'wamid.persist1')),
+      persistService.handleTurn(inboundWithUrl(URL_A, 'Es mi comprobante', 'wamid.persist1')),
     ).rejects.toThrow('plan persistence down');
     // Exactly one model attempt: no mislabeled unavailable fallback was composed.
-    expect(runtime.composeRequests).toHaveLength(1);
-    expect(runtime.composeRequests[0]?.imageEvidence).toMatchObject({ status: 'available' });
+    expect(persistRuntime.composeRequests).toHaveLength(1);
+    expect(persistRuntime.composeRequests[0]?.imageEvidence).toMatchObject({ status: 'available' });
   });
 });

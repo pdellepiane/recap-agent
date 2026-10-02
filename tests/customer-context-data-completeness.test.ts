@@ -99,31 +99,15 @@ describe('complete customer context data reads', () => {
     expect(peakDetails).toBeLessThanOrEqual(4);
     expect(snapshot.readMetrics?.readsByOperation['agent.event_detail']).toBe(6);
     expect(snapshot.invitationsEvents.invitations).toHaveLength(6);
-    expect(snapshot.invitationsEvents.completeness).toBeNull();
+    expect(snapshot.invitationsEvents.completeness).toBe('partial');
     expect(projectCustomerContext(snapshot).invitations).toHaveLength(6);
   });
 
-  it('does no protected reads without an authorized identity and reports unavailable', async () => {
-    let reads = 0;
-    const gateway = {
-      async getGuestOrdersByPhone() { reads += 1; throw new Error('must not read'); },
-      async getGuestGiftPurchasesByPhone() { reads += 1; throw new Error('must not read'); },
-      async getGuestEventsByPhone() { reads += 1; throw new Error('must not read'); },
-    } as unknown as AgentConversationGateway;
-
-    const snapshot = await orchestrator(gateway).prepareCustomerContext({
-      authentication: null,
-      trustedPhone: null,
-      identity: null,
-      currentContext: null,
-      deadlineMs: null,
-    });
-
-    expect(reads).toBe(0);
-    expect(snapshot.readMetrics?.totalReads).toBe(0);
-    expect(snapshot.purchasesCarts.status).toBe('unavailable');
-    expect(snapshot.invitationsEvents.status).toBe('unavailable');
-  });
+  // No-identity zero-read coverage lives in
+  // complete-customer-context-serialized.test.ts ('represents missing
+  // authorization explicitly and performs zero protected reads'), which pins
+  // the same unavailable sections and zero totalReads plus per-operation
+  // zero-call counts and the serialized extraction/reply profiles.
 
   it('keeps same-ID records from distinct source roots as separate canonical facts', () => {
     const orders: PurchaseInformation = {

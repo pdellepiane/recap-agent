@@ -2,12 +2,13 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { AgentService } from '../src/runtime/agent-service';
 import type { AgentConversationGateway, AgentGuestEventsResult, AgentGuestRsvpResult } from '../src/runtime/agent-conversation-gateway';
-import type { AgentRuntime, ComposeReplyRequest, ComposeReplyResult, ExtractionResult } from '../src/runtime/contracts';
+import type { AgentRuntime, ExtractionResult } from '../src/runtime/contracts';
 import { PromptLoader } from '../src/runtime/prompt-loader';
 import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
 import type { ProviderGateway, UserEventLookupResult } from '../src/runtime/provider-gateway';
 import { createEmptyPlan, mergePlan } from '../src/core/plan';
+import { QueuedAgentRuntime, sentinelReply } from './agent-runtime-test-utils';
 
 describe('RSVP seeded candidate fallback', () => {
   it('projects seeded candidates into the model evidence and preserves generated output', async () => {
@@ -56,17 +57,9 @@ describe('RSVP seeded candidate fallback', () => {
   });
 });
 
-class RsvpRuntime implements AgentRuntime {
-  readonly composeRequests: ComposeReplyRequest[] = [];
-  constructor(private readonly extractions: ExtractionResult[]) {}
-  async extract(): Promise<ExtractionResult> {
-    const e = this.extractions.shift();
-    if (!e) throw new Error('No extraction queued');
-    return e;
-  }
-  async composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult> {
-    this.composeRequests.push(request);
-    return { text: 'RSVP_MODEL_SENTINEL', structuredMessage: { type: 'generic', paragraphs_es: ['RSVP_MODEL_SENTINEL'] } };
+class RsvpRuntime extends QueuedAgentRuntime {
+  constructor(extractions: ExtractionResult[]) {
+    super(extractions, sentinelReply('RSVP_MODEL_SENTINEL'));
   }
 }
 

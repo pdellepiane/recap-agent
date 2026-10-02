@@ -47,6 +47,20 @@ describe('S07 RSVP decision policy: offer disposition', () => {
         attendance: 'declining',
       }),
     );
+    // PASS 2: a non-matching already-offered key does not suppress the
+    // one-change offer either (same outcome, still no write).
+    const unmatchedKey = decideRsvpTurn({
+      trusted,
+      semanticTitle: 'Otra celebracion prueba',
+      hasExplicitDecision: false,
+      decisionSource: 'current_message',
+      requestedAction: null,
+      lookupFailed: false,
+      alreadyOfferedKeys: ['already-consumed'],
+      explicitNoChange: false,
+    });
+    expect(unmatchedKey.outcome).toBe('declining_offer_change_once');
+    expect(unmatchedKey.shouldWrite).toBe(false);
   });
 
   it('repeated query for the same event/state version does not re-offer', () => {
@@ -318,21 +332,10 @@ describe('S07 RSVP decision policy: distinct attendance and selection outcomes',
     expect(decision.shouldWrite).toBe(false);
   });
 
-  it('missing attendance decision requires an explicit decision without writing', () => {
-    const decision = decideRsvpTurn({
-      trusted: [invitation({ attendance: 'declining' })],
-      semanticTitle: 'Otra celebracion prueba',
-      hasExplicitDecision: false,
-      decisionSource: 'current_message',
-      requestedAction: null,
-      lookupFailed: false,
-      alreadyOfferedKeys: ['already-consumed'],
-      explicitNoChange: false,
-    });
-    expect(decision.shouldWrite).toBe(false);
-    expect(['declining_offer_change_once', 'declining_reported_no_reoffer']).toContain(decision.outcome);
-  });
-
+  // PASS 2: folded the non-matching already-offered-key scenario into
+  // 'read-only declining status offers one optional change with no
+  // mutation' above (verified exact outcome declining_offer_change_once,
+  // replacing this block's loose two-outcome disjunction).
   it('never writes using an ID or URL taken only from message text', () => {
     const decision = decideRsvpTurn({
       trusted: [invitation({ guestId: 42, eventName: 'Cumple Marcelo', attendance: 'declining' })],

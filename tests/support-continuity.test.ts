@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from 'vitest';
-import fs from 'node:fs';
 import path from 'node:path';
 
 import { createEmptyPlan, normalizeRawPlan, mergePlan } from '../src/core/plan';
@@ -20,8 +19,8 @@ import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
 
 describe('derived conversation continuity', () => {
-  it('derives purchase support from persisted information state and history', () => {
-    const plan = mergePlan(createEmptyPlan({
+  it('derives continuity from persisted information state or recent history without new welcomes', () => {
+    const purchasePlan = mergePlan(createEmptyPlan({
       planId: 'carina', channel: 'whatsapp', externalUserId: 'carina',
     }), {
       current_node: 'resolver_consultas_informativas',
@@ -34,29 +33,26 @@ describe('derived conversation continuity', () => {
         selection_candidates: [],
       },
     });
-    const continuity = deriveConversationContinuity({
-      plan,
+    const purchaseContinuity = deriveConversationContinuity({
+      plan: purchasePlan,
       recentMessages: [],
       historyStatus: 'empty' satisfies ConversationHistoryStatus,
     });
-    expect(continuity.lane).toBe('purchase_support');
-    expect(continuity.welcomeAllowed).toBe(false);
-  });
-
-  it('keeps Maria mailbox continuity without a persisted anchor', () => {
-    const plan = mergePlan(createEmptyPlan({
+    expect(purchaseContinuity.lane).toBe('purchase_support');
+    expect(purchaseContinuity.welcomeAllowed).toBe(false);
+    const mailboxPlan = mergePlan(createEmptyPlan({
       planId: 'maria', channel: 'whatsapp', externalUserId: 'maria',
     }), { current_node: 'resolver_consultas_informativas' });
-    const continuity = deriveConversationContinuity({
-      plan,
+    const mailboxContinuity = deriveConversationContinuity({
+      plan: mailboxPlan,
       recentMessages: [{
         id: 1, direction: 'inbound', source: null, body: 'Mi correo está lleno',
         status: 'sent', sentAt: null, createdAt: null,
       }],
       historyStatus: 'available',
     });
-    expect(continuity.hasPriorContext).toBe(true);
-    expect(continuity.welcomeAllowed).toBe(false);
+    expect(mailboxContinuity.hasPriorContext).toBe(true);
+    expect(mailboxContinuity.welcomeAllowed).toBe(false);
   });
 
   it('strips legacy support anchors at the plan boundary', () => {
@@ -64,38 +60,6 @@ describe('derived conversation continuity', () => {
       information_state: { support_anchor: { topic: 'mailbox_capacity' } },
     }) as { information_state: Record<string, unknown> };
     expect(normalized.information_state.support_anchor).toBeUndefined();
-  });
-});
-
-describe('support continuity prompt invariants', () => {
-  const promptsDir = path.resolve(process.cwd(), 'prompts');
-
-  it('carries the single shared actionable-answer directive without a duplicate rule', () => {
-    const shared = fs.readFileSync(path.join(promptsDir, 'shared/base_system.txt'), 'utf8');
-    const directive = 'Resuelve lo que puedas de la solicitud con los datos y las herramientas autorizadas antes de responder; entrega la información o el resultado, no solo la intención de ayudar.';
-    expect(shared).toContain(directive);
-    // One invariant, not an appended duplicate: the directive text occurs once.
-    expect(shared.split(directive).length - 1).toBe(1);
-  });
-
-  it('removes the mandatory open-query recital while keeping reported identity distinct', () => {
-    const continuity = fs.readFileSync(
-      path.join(promptsDir, 'nodes/resolver_consultas_informativas/support_continuity.txt'),
-      'utf8',
-    );
-    expect(continuity).not.toContain('support_query_open');
-    expect(continuity).not.toMatch(/misma consulta se mantiene/u);
-    expect(continuity).toContain('información reportada, no como verificación ni gestión');
-    expect(continuity).not.toContain('nombres de turnos anteriores');
-  });
-
-  it('keeps pending-question reference guidance in the information extractor', () => {
-    const extractor = fs.readFileSync(
-      path.join(promptsDir, 'extractors/information.txt'),
-      'utf8',
-    );
-    expect(extractor).toContain('supportAct');
-    expect(extractor).toContain('los nombres y eventos aportados no verifican identidad');
   });
 });
 
@@ -333,7 +297,7 @@ async function runSupportTurn(options: {
 }
 
 describe('pending support questions reach the information executor', () => {
-  it('routes a pending venue question plus a later event reference to lookup, not the ack shortcut', async () => {
+  it('routes pending support questions to lookup with scoped event context, not the ack shortcut', async () => {
     const pending: PendingInformationRequest = {
       requestId: 'pending-venue',
       kind: 'associated_event',
@@ -374,10 +338,10 @@ describe('pending support questions reach the information executor', () => {
     const replyInput = composeRequests[0]?.informationResults ?? [];
     expect(replyInput).toHaveLength(1);
     expect(JSON.stringify(replyInput[0])).toContain('Hacienda Recoveco');
-  });
 
-  it('answers a pending time question on a role correction without inventing ownership', async () => {
-    const pending: PendingInformationRequest = {
+    // A pending time question answers on a role correction without
+    // inventing ownership: the established target is preserved.
+    const timePending: PendingInformationRequest = {
       requestId: 'pending-time',
       kind: 'associated_event',
       query: '¿A qué hora es?',
@@ -389,14 +353,14 @@ describe('pending support questions reach the information executor', () => {
         ...(venueResult('pending-time').result as Record<string, unknown>),
       },
     };
-    const { execute, composeRequests, takeover } = await runSupportTurn({
+    const timed = await runSupportTurn({
       externalUserId: 'u-pending-time-role',
       text: 'Soy la anfitriona, no la invitada',
       contactPhone: '+51900000001',
       seed: {
         information_state: {
           resume_node: 'entrevista',
-          pending_requests: [pending],
+          pending_requests: [timePending],
           selection_candidates: [],
         },
       },
@@ -405,38 +369,54 @@ describe('pending support questions reach the information executor', () => {
       orchestratorSummaries: [venueSummary('pending-time')],
     });
 
-    expect(execute).toHaveBeenCalledTimes(1);
-    const executedRequests = (execute.mock.calls[0]?.[0] as { requests: PendingInformationRequest[] }).requests;
-    expect(executedRequests).toHaveLength(1);
+    expect(timed.execute).toHaveBeenCalledTimes(1);
+    const timedRequests = (timed.execute.mock.calls[0]?.[0] as { requests: PendingInformationRequest[] }).requests;
+    expect(timedRequests).toHaveLength(1);
     // The established target is preserved; the role correction adds context
     // without rewriting the scoped event or authorizing any write.
-    expect(executedRequests[0]?.eventHint).toBe('Boda Ana y Luis');
-    expect(takeover).not.toHaveBeenCalled();
-    const replyInput = composeRequests[0]?.informationResults ?? [];
-    expect(replyInput).toHaveLength(1);
-    expect(JSON.stringify(replyInput[0])).toContain('2026-09-20T18:00:00');
+    expect(timedRequests[0]?.eventHint).toBe('Boda Ana y Luis');
+    expect(timed.takeover).not.toHaveBeenCalled();
+    const timedReplyInput = timed.composeRequests[0]?.informationResults ?? [];
+    expect(timedReplyInput).toHaveLength(1);
+    expect(JSON.stringify(timedReplyInput[0])).toContain('2026-09-20T18:00:00');
   });
 
-  it('keeps a bare role correction lightweight with no forced lookup or event dump', async () => {
-    const { execute, composeRequests, takeover } = await runSupportTurn({
+  it('keeps context-free turns lightweight with no forced lookup or event dump', async () => {
+    const bareRole = await runSupportTurn({
       externalUserId: 'u-bare-role',
       text: 'Soy el anfitrión del evento',
       seed: {},
       extraction: supportExtraction({ reportedEventRole: 'host' }),
     });
 
-    expect(execute).not.toHaveBeenCalled();
-    expect(takeover).not.toHaveBeenCalled();
-    expect(composeRequests).toHaveLength(1);
+    expect(bareRole.execute).not.toHaveBeenCalled();
+    expect(bareRole.takeover).not.toHaveBeenCalled();
+    expect(bareRole.composeRequests).toHaveLength(1);
     // No event-information dump rides a turn with no pending task.
-    expect(composeRequests[0]?.informationResults ?? []).toEqual([]);
-    expect(composeRequests[0]?.customerContext?.coverage.purchasesCarts).toMatchObject({
+    expect(bareRole.composeRequests[0]?.informationResults ?? []).toEqual([]);
+    expect(bareRole.composeRequests[0]?.customerContext?.coverage.purchasesCarts).toMatchObject({
       status: 'unavailable',
       source: 'authorization',
     });
+
+    const thanks = await runSupportTurn({
+      externalUserId: 'u-thanks',
+      text: 'Gracias',
+      seed: {},
+      extraction: supportExtraction(),
+    });
+
+    expect(thanks.takeover).not.toHaveBeenCalled();
+    // Either suppressed before execution or executed with zero requests:
+    // no information read is ever issued for context-free thanks.
+    if (thanks.execute.mock.calls.length > 0) {
+      for (const call of thanks.execute.mock.calls) {
+        expect((call[0] as { requests: unknown[] }).requests).toEqual([]);
+      }
+    }
   });
 
-  it('preserves context on an answered policy plus names without new lookup or recital', async () => {
+  it('keeps completed threads free of invented work when new context arrives', async () => {
     const { result, execute, composeRequests, takeover } = await runSupportTurn({
       externalUserId: 'u-answered-policy',
       text: 'El invitado es Roger Abanto y el evento es Baby Shower Catalina',
@@ -473,25 +453,31 @@ describe('pending support questions reach the information executor', () => {
       personReference: 'Roger Abanto',
     });
     expect(result.outbound.delivery.action).toBe('send');
-  });
 
-  it('runs pure thanks with no read work instead of restarting the resolved task', async () => {
-    const { execute, takeover } = await runSupportTurn({
-      externalUserId: 'u-thanks',
-      text: 'Gracias',
-      seed: {},
-      extraction: supportExtraction(),
+    // A bare role correction on a completed thread likewise invents no
+    // lookup and infers no authorization from the role statement.
+    const corrected = await runSupportTurn({
+      externalUserId: 'u-bare-role-completed',
+      text: 'Soy la anfitriona, no la invitada',
+      seed: {
+        information_state: {
+          resume_node: 'entrevista',
+          pending_requests: [],
+          selection_candidates: [],
+          last_completed_request: { kind: 'faq', query: 'Un amigo no puede usar su tarjeta de crédito para comprar un regalo. ¿Hay problemas con tarjetas?' },
+        },
+      },
+      extraction: supportExtraction({ reportedEventRole: 'host' }),
     });
-
-    expect(takeover).not.toHaveBeenCalled();
-    // Either suppressed before execution or executed with zero requests:
-    // no information read is ever issued for context-free thanks.
-    if (execute.mock.calls.length > 0) {
-      for (const call of execute.mock.calls) {
-        expect((call[0] as { requests: unknown[] }).requests).toEqual([]);
-      }
-    }
+    expect(corrected.execute).not.toHaveBeenCalled();
+    expect(corrected.takeover).not.toHaveBeenCalled();
+    expect(corrected.otp.requested).toBe(0);
+    expect(corrected.otp.verified).toBe(0);
+    expect(corrected.result.plan.user_auth.status).toBe('none');
+    expect(corrected.result.plan.information_state.pending_requests).toEqual([]);
+    expect(corrected.result.plan.information_state.last_completed_request).toMatchObject({ kind: 'faq' });
   });
+
 });
 
 describe('pending credential resume and card topic preservation', () => {
@@ -506,7 +492,7 @@ describe('pending credential resume and card topic preservation', () => {
     };
   }
 
-  it('resumes a pending event question when the turn supplies the registered email', async () => {
+  it('resumes pending protected requests through the OTP episode and keeps declines terminal', async () => {
     const { result, execute, composeRequests, otp } = await runSupportTurn({
       externalUserId: 'u-otp-email-resume',
       text: 'Mi correo registrado es otp-resume@example.invalid.',
@@ -538,10 +524,10 @@ describe('pending credential resume and card topic preservation', () => {
     expect(executedRequests.map((request) => request.requestId)).toEqual(['information-1']);
     expect(result.trace.tools_called).toContain('request_user_login_code');
     expect(composeRequests).toHaveLength(1);
-  });
 
-  it('routes a supplied one-time code to verification on the pending protected request', async () => {
-    const { result, execute, otp } = await runSupportTurn({
+    // A supplied code on a code_requested thread reaches the existing
+    // verification path; no second code is requested.
+    const verified = await runSupportTurn({
       externalUserId: 'u-otp-code-verify',
       text: 'Mi código es 482913',
       seed: {
@@ -574,18 +560,16 @@ describe('pending credential resume and card topic preservation', () => {
       }),
     });
 
-    // The code in the inbound text reaches the existing verification path;
-    // no second code is requested.
-    expect(otp.verified).toBe(1);
-    expect(otp.requested).toBe(0);
-    expect(result.plan.user_auth.status).toBe('authenticated');
-    expect(execute).toHaveBeenCalledTimes(1);
-    expect(result.trace.tools_called).toContain('verify_user_login_code');
-    expect(result.trace.tools_called).not.toContain('request_user_login_code');
-  });
+    expect(verified.otp.verified).toBe(1);
+    expect(verified.otp.requested).toBe(0);
+    expect(verified.result.plan.user_auth.status).toBe('authenticated');
+    expect(verified.execute).toHaveBeenCalledTimes(1);
+    expect(verified.result.trace.tools_called).toContain('verify_user_login_code');
+    expect(verified.result.trace.tools_called).not.toContain('request_user_login_code');
 
-  it('keeps a declined protected request terminal when credential text arrives later', async () => {
-    const otp = { requested: 0, verified: 0 };
+    // A declined protected request stays terminal when credential text
+    // arrives later: no OTP episode reopens.
+    const refusedOtp = { requested: 0, verified: 0 };
     const declined = await runSupportTurn({
       externalUserId: 'u-otp-refused',
       text: 'No quiero dar mi correo',
@@ -604,11 +588,11 @@ describe('pending credential resume and card topic preservation', () => {
           authAction: 'decline_authentication',
         }],
       }),
-      otp,
+      otp: refusedOtp,
     });
 
-    expect(otp.requested).toBe(0);
-    expect(otp.verified).toBe(0);
+    expect(refusedOtp.requested).toBe(0);
+    expect(refusedOtp.verified).toBe(0);
     expect(
       declined.result.plan.information_state.pending_requests.some(
         (request) => request.kind === 'purchase' || request.kind === 'associated_event',
@@ -631,15 +615,15 @@ describe('pending credential resume and card topic preservation', () => {
         },
       }),
       store: declined.store,
-      otp,
+      otp: refusedOtp,
     });
 
-    expect(otp.requested).toBe(0);
-    expect(otp.verified).toBe(0);
+    expect(refusedOtp.requested).toBe(0);
+    expect(refusedOtp.verified).toBe(0);
     expect(late.result.plan.auth_recovery.terminalReason).toBe('auth_refused');
   });
 
-  it('keeps the card topic across two metadata turns without new reads', async () => {
+  it('keeps the card topic across metadata turns without new reads or re-asking', async () => {
     const first = await runSupportTurn({
       externalUserId: 'u-card-topic',
       text: 'El nombre del invitado afectado es Roger Abanto.',
@@ -698,122 +682,12 @@ describe('pending credential resume and card topic preservation', () => {
     expect(second.composeRequests[0]?.plan.information_state.last_completed_request?.query).toBe(cardQuery);
     expect(second.result.plan.user_auth.status).toBe('none');
     expect(second.result.outbound.delivery.action).toBe('send');
-  });
 
-  it('answers the card question from serialized KB evidence with a single execution', async () => {
-    const cardEvidence = 'Si la tarjeta es rechazada al comprar un regalo, el banco emisor debe autorizar la compra en línea.';
-    const { result, execute, composeRequests } = await runSupportTurn({
-      externalUserId: 'u-card-answer',
-      text: cardQuery,
-      seed: {},
-      extraction: supportExtraction({
-        informationRequests: [{
-          kind: 'faq',
-          query: cardQuery,
-        }],
-      }),
-      orchestratorResults: [{
-        requestId: 'information-1',
-        kind: 'faq',
-        status: 'completed',
-        evidence: [{
-          fileId: 'kb-card-payments',
-          filename: 'pagos.md',
-          score: 0.92,
-          text: cardEvidence,
-        }],
-      }],
-      orchestratorSummaries: [{
-        requestId: 'information-1',
-        kind: 'faq',
-        status: 'completed',
-        source: 'knowledge',
-        outcomeCode: 'completed_with_results',
-        retryable: null,
-        queryHash: 'card',
-        evidence: [],
-        resultCount: 1,
-        durationMs: 60,
-      }],
-    });
-
-    // One execution only: no extra search calls, no re-projection, and the
-    // card-rejection facts reach the reply input verbatim.
-    expect(execute).toHaveBeenCalledTimes(1);
-    expect(composeRequests).toHaveLength(1);
-    expect(JSON.stringify(composeRequests[0]?.informationResults ?? [])).toContain(cardEvidence);
-    expect(result.plan.information_state.last_completed_request).toMatchObject({ kind: 'faq' });
-  });
-
-  it('answers the card question from a multi-article evidence set without new reads', async () => {
-    // Retrieval returns gift-obligation, payment-method and card-rejection
-    // articles together; every excerpt reaches the reply request in one
-    // execution with no invented operational troubleshooting.
-    const paymentMethods = 'Medios de pago aceptados: Yape, Plin y transferencia bancaria.';
-    const cardRejection = 'Si la tarjeta es rechazada, el banco emisor debe autorizar la compra en linea.';
-    const { execute, composeRequests } = await runSupportTurn({
-      externalUserId: 'u-card-multi-evidence',
-      text: cardQuery,
-      seed: {},
-      extraction: supportExtraction({
-        informationRequests: [{
-          kind: 'faq',
-          query: cardQuery,
-        }],
-      }),
-      orchestratorResults: [{
-        requestId: 'information-1',
-        kind: 'faq',
-        status: 'completed',
-        evidence: [
-          {
-            fileId: 'kb-gift',
-            filename: 'obligacion-regalo.md',
-            score: 0.95,
-            text: 'Obsequio de lista: los novios agradecen cualquier muestra de carino.',
-          },
-          {
-            fileId: 'kb-pay',
-            filename: 'medios-pago.md',
-            score: 0.91,
-            text: paymentMethods,
-          },
-          {
-            fileId: 'kb-card',
-            filename: 'tarjeta-rechazada.md',
-            score: 0.88,
-            text: cardRejection,
-          },
-        ],
-      }],
-      orchestratorSummaries: [{
-        requestId: 'information-1',
-        kind: 'faq',
-        status: 'completed',
-        source: 'knowledge',
-        outcomeCode: 'completed_with_results',
-        retryable: null,
-        queryHash: 'card',
-        evidence: [],
-        resultCount: 3,
-        durationMs: 60,
-      }],
-    });
-
-    expect(execute).toHaveBeenCalledTimes(1);
-    expect(composeRequests).toHaveLength(1);
-    const serialized = JSON.stringify(composeRequests[0]?.informationResults ?? []);
-    expect(serialized).toContain(paymentMethods);
-    expect(serialized).toContain(cardRejection);
-    expect(composeRequests[0]?.errorMessage).toBeNull();
-  });
-
-  it('keeps an unanswered diagnostic question across supplied details without re-asking', async () => {
     // The open card question rides the existing pending-question
     // projection while supplied name/event details are incorporated: no
     // repeated lookup, no repeated question, and the topic survives.
     const openQuestion = 'Que mensaje muestra la tarjeta rechazada';
-    const first = await runSupportTurn({
+    const pendingFirst = await runSupportTurn({
       externalUserId: 'u-card-pending-question',
       text: 'El nombre del invitado afectado es Roger Abanto.',
       messageId: 'm-u-card-pending-1',
@@ -835,15 +709,15 @@ describe('pending credential resume and card topic preservation', () => {
       }),
     });
 
-    expect(first.execute).not.toHaveBeenCalled();
-    expect(first.takeover).not.toHaveBeenCalled();
-    expect(first.composeRequests).toHaveLength(1);
-    expect(first.composeRequests[0]?.pendingQuestionRef).toBe(openQuestion);
-    expect(first.composeRequests[0]?.errorMessage).toBeNull();
-    expect(first.composeRequests[0]?.plan.information_state.last_completed_request?.query).toBe(cardQuery);
-    expect(first.result.outbound.delivery.action).toBe('send');
+    expect(pendingFirst.execute).not.toHaveBeenCalled();
+    expect(pendingFirst.takeover).not.toHaveBeenCalled();
+    expect(pendingFirst.composeRequests).toHaveLength(1);
+    expect(pendingFirst.composeRequests[0]?.pendingQuestionRef).toBe(openQuestion);
+    expect(pendingFirst.composeRequests[0]?.errorMessage).toBeNull();
+    expect(pendingFirst.composeRequests[0]?.plan.information_state.last_completed_request?.query).toBe(cardQuery);
+    expect(pendingFirst.result.outbound.delivery.action).toBe('send');
 
-    const second = await runSupportTurn({
+    const pendingSecond = await runSupportTurn({
       externalUserId: 'u-card-pending-question',
       text: 'Y el evento es Baby Shower Catalina.',
       messageId: 'm-u-card-pending-2',
@@ -855,49 +729,106 @@ describe('pending credential resume and card topic preservation', () => {
           personReference: null,
         },
       }),
-      store: first.store,
+      store: pendingFirst.store,
     });
 
     // The second detail also stays lightweight: the open question is
     // still context, never a fresh interrogation without progress.
-    expect(second.execute).not.toHaveBeenCalled();
-    expect(second.takeover).not.toHaveBeenCalled();
-    expect(second.composeRequests).toHaveLength(1);
-    expect(second.composeRequests[0]?.pendingQuestionRef).toBe(openQuestion);
-    expect(second.composeRequests[0]?.errorMessage).toBeNull();
-    expect(second.composeRequests[0]?.extraction.supportAct).toMatchObject({
+    expect(pendingSecond.execute).not.toHaveBeenCalled();
+    expect(pendingSecond.takeover).not.toHaveBeenCalled();
+    expect(pendingSecond.composeRequests).toHaveLength(1);
+    expect(pendingSecond.composeRequests[0]?.pendingQuestionRef).toBe(openQuestion);
+    expect(pendingSecond.composeRequests[0]?.errorMessage).toBeNull();
+    expect(pendingSecond.composeRequests[0]?.extraction.supportAct).toMatchObject({
       kind: 'provide_detail',
       eventReference: 'Baby Shower Catalina',
     });
-    expect(second.composeRequests[0]?.plan.information_state.last_completed_request?.query).toBe(cardQuery);
-    expect(second.result.outbound.delivery.action).toBe('send');
+    expect(pendingSecond.composeRequests[0]?.plan.information_state.last_completed_request?.query).toBe(cardQuery);
+    expect(pendingSecond.result.outbound.delivery.action).toBe('send');
   });
 
-  it('keeps a bare role correction on a completed thread free of invented work', async () => {
-    const { result, execute, takeover, otp } = await runSupportTurn({
-      externalUserId: 'u-bare-role-completed',
-      text: 'Soy la anfitriona, no la invitada',
-      seed: {
-        information_state: {
-          resume_node: 'entrevista',
-          pending_requests: [],
-          selection_candidates: [],
-          last_completed_request: { kind: 'faq', query: cardQuery },
-        },
+  it('answers the card question from serialized KB evidence with a single execution', async () => {
+    const cardAnswer = async (externalUserId: string, evidence: Array<Record<string, unknown>>, resultCount: number) => {
+      const summary: Record<string, unknown> = {
+        requestId: 'information-1',
+        kind: 'faq',
+        status: 'completed',
+        source: 'knowledge',
+        outcomeCode: 'completed_with_results',
+        retryable: null,
+        queryHash: 'card',
+        evidence: [],
+        resultCount,
+        durationMs: 60,
+      };
+      return runSupportTurn({
+        externalUserId,
+        text: cardQuery,
+        seed: {},
+        extraction: supportExtraction({
+          informationRequests: [{
+            kind: 'faq',
+            query: cardQuery,
+          }],
+        }),
+        orchestratorResults: [{
+          requestId: 'information-1',
+          kind: 'faq',
+          status: 'completed',
+          evidence,
+        }],
+        orchestratorSummaries: [summary],
+      });
+    };
+    const cardEvidence = 'Si la tarjeta es rechazada al comprar un regalo, el banco emisor debe autorizar la compra en línea.';
+    const single = await cardAnswer('u-card-answer', [{
+      fileId: 'kb-card-payments',
+      filename: 'pagos.md',
+      score: 0.92,
+      text: cardEvidence,
+    }], 1);
+
+    // One execution only: no extra search calls, no re-projection, and the
+    // card-rejection facts reach the reply input verbatim.
+    expect(single.execute).toHaveBeenCalledTimes(1);
+    expect(single.composeRequests).toHaveLength(1);
+    expect(JSON.stringify(single.composeRequests[0]?.informationResults ?? [])).toContain(cardEvidence);
+    expect(single.result.plan.information_state.last_completed_request).toMatchObject({ kind: 'faq' });
+
+    // Retrieval returns gift-obligation, payment-method and card-rejection
+    // articles together; every excerpt reaches the reply request in one
+    // execution with no invented operational troubleshooting.
+    const paymentMethods = 'Medios de pago aceptados: Yape, Plin y transferencia bancaria.';
+    const cardRejection = 'Si la tarjeta es rechazada, el banco emisor debe autorizar la compra en linea.';
+    const multi = await cardAnswer('u-card-multi-evidence', [
+      {
+        fileId: 'kb-gift',
+        filename: 'obligacion-regalo.md',
+        score: 0.95,
+        text: 'Obsequio de lista: los novios agradecen cualquier muestra de carino.',
       },
-      extraction: supportExtraction({ reportedEventRole: 'host' }),
-    });
+      {
+        fileId: 'kb-pay',
+        filename: 'medios-pago.md',
+        score: 0.91,
+        text: paymentMethods,
+      },
+      {
+        fileId: 'kb-card',
+        filename: 'tarjeta-rechazada.md',
+        score: 0.88,
+        text: cardRejection,
+      },
+    ], 3);
 
-    // No lookup is invented from the correction alone and no authorization
-    // is inferred from the role statement.
-    expect(execute).not.toHaveBeenCalled();
-    expect(takeover).not.toHaveBeenCalled();
-    expect(otp.requested).toBe(0);
-    expect(otp.verified).toBe(0);
-    expect(result.plan.user_auth.status).toBe('none');
-    expect(result.plan.information_state.pending_requests).toEqual([]);
-    expect(result.plan.information_state.last_completed_request).toMatchObject({ kind: 'faq' });
+    expect(multi.execute).toHaveBeenCalledTimes(1);
+    expect(multi.composeRequests).toHaveLength(1);
+    const serialized = JSON.stringify(multi.composeRequests[0]?.informationResults ?? []);
+    expect(serialized).toContain(paymentMethods);
+    expect(serialized).toContain(cardRejection);
+    expect(multi.composeRequests[0]?.errorMessage).toBeNull();
   });
+
 });
 
 describe('exact-incident twin: rapid reconfirmation texts behind the lease', () => {

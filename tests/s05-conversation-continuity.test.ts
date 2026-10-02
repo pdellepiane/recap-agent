@@ -146,25 +146,6 @@ describe('S05 conversation continuity', () => {
     }
   });
 
-  it('never starts onboarding on an empty delta', () => {
-    const decision = resolveContinuityDecision({
-      hasPriorContext: false,
-      historyStatus: 'empty',
-      action: 'respond',
-      campaignReplyKind: 'not_applicable',
-      extractionDeltaEmpty: true,
-      hasExplicitRequest: false,
-      hasRsvpDecision: false,
-      hasCredentialDecision: false,
-      isExplicitTopicSwitch: false,
-      isPureClosure: false,
-      hasSubstantiveRelationshipRemark: false,
-      attendingState: 'none',
-      hasActionableUnresolvedRequest: false,
-    });
-    expect(decision.allowOnboarding).toBe(false);
-  });
-
   it('keeps Maria Paz confusion out of RSVP consent', () => {
     expect(
       isRsvpConsentDecision({ campaignReplyKind: 'question_or_request', hasExplicitRsvpDecision: false }),
@@ -215,30 +196,56 @@ describe('S05 conversation continuity', () => {
       hasActionableUnresolvedRequest: false,
     });
     expect(idle.boundedClarification).toBe(false);
+
+    // A known-empty history likewise never starts onboarding on an
+    // empty delta.
+    const emptyDelta = resolveContinuityDecision({
+      hasPriorContext: false,
+      historyStatus: 'empty',
+      action: 'respond',
+      campaignReplyKind: 'not_applicable',
+      extractionDeltaEmpty: true,
+      hasExplicitRequest: false,
+      hasRsvpDecision: false,
+      hasCredentialDecision: false,
+      isExplicitTopicSwitch: false,
+      isPureClosure: false,
+      hasSubstantiveRelationshipRemark: false,
+      attendingState: 'none',
+      hasActionableUnresolvedRequest: false,
+    });
+    expect(emptyDelta.allowOnboarding).toBe(false);
   });
 
-  it('treats a current frontend_followup as campaign reply without keyword routing', () => {
+  it('classifies campaign followups by recency and source, anchoring only the newest entry', () => {
     const current = [msg(1, 'outbound', 'frontend_followup'), msg(2, 'inbound', null)];
     expect(resolveClassifierProfile(current)).toBe('campaign_reply');
     expect(resolveReminderContext(current).hasCurrentReminder).toBe(true);
 
     const sameShapeOtherBody = [msg(1, 'outbound', 'frontend_followup', 'zzz-unrelated-body'), msg(2, 'inbound', null, 'other-words')];
     expect(resolveClassifierProfile(sameShapeOtherBody)).toBe('campaign_reply');
-  });
 
-  it('treats an old admin_campaign displaced by an agent message as general', () => {
-    const messages = [
+    const anchored = buildTurnMessageContext({
+      inbound: inbound(),
+      messages: [
+        msg(1, 'outbound', 'admin_campaign'),
+        msg(2, 'inbound', null),
+        msg(3, 'outbound', 'frontend_followup'),
+      ],
+    });
+    expect(anchored.entryMessage?.id).toBe(3);
+    expect(anchored.entryMessage?.source).toBe('frontend_followup');
+
+    const displaced = [
       msg(1, 'outbound', 'admin_campaign'),
       msg(2, 'outbound', 'agent'),
     ];
-    expect(resolveClassifierProfile(messages)).toBe('general');
-    const reminder = resolveReminderContext(messages);
-    expect(reminder.hasReminderHistory).toBe(true);
-    expect(reminder.hasCurrentReminder).toBe(false);
-    expect(reminder.hasOldCampaignOnly).toBe(true);
-  });
+    expect(resolveClassifierProfile(displaced)).toBe('general');
+    const displacedReminder = resolveReminderContext(displaced);
+    expect(displacedReminder.hasReminderHistory).toBe(true);
+    expect(displacedReminder.hasCurrentReminder).toBe(false);
+    expect(displacedReminder.hasOldCampaignOnly).toBe(true);
 
-  it('treats an agent-sent manual followup as general traffic without a campaign anchor', () => {
     const messages = [
       msg(1, 'outbound', 'admin_campaign'),
       msg(2, 'outbound', 'agent'),
@@ -261,19 +268,6 @@ describe('S05 conversation continuity', () => {
     });
     expect(context.entryMessage?.id).toBe(1);
     expect(context.recentMessages).toHaveLength(3);
-  });
-
-  it('anchors the newest frontend_followup instead of the oldest retained message', () => {
-    const context = buildTurnMessageContext({
-      inbound: inbound(),
-      messages: [
-        msg(1, 'outbound', 'admin_campaign'),
-        msg(2, 'inbound', null),
-        msg(3, 'outbound', 'frontend_followup'),
-      ],
-    });
-    expect(context.entryMessage?.id).toBe(3);
-    expect(context.entryMessage?.source).toBe('frontend_followup');
   });
 
   it('keeps raw history bounded with no second memory', () => {

@@ -45,9 +45,9 @@ describe('AgentParticipationService', () => {
     });
   });
 
-  it('is idempotent when the automated agent is already active', async () => {
-    const planStore = new InMemoryPlanStore();
-    await planStore.save({
+  it('is idempotent when the agent is already active or already overtaken', async () => {
+    const activeStore = new InMemoryPlanStore();
+    await activeStore.save({
       reason: 'seed_active',
       plan: createEmptyPlan({
         planId: 'plan-active',
@@ -55,11 +55,34 @@ describe('AgentParticipationService', () => {
         externalUserId: 'whatsapp:51999999999',
       }),
     });
-    const result = await new AgentParticipationService(planStore).resumeAutomatedAgent({
+    const active = await new AgentParticipationService(activeStore).resumeAutomatedAgent({
       channel: 'whatsapp',
       externalUserId: 'whatsapp:51999999999',
     });
-    expect(result.status).toBe('already_active');
+    expect(active.status).toBe('already_active');
+    const overtakenStore = new InMemoryPlanStore();
+    await overtakenStore.save({
+      reason: 'seed_overtaken',
+      plan: mergePlan(createEmptyPlan({
+        planId: 'plan-already-overtaken',
+        channel: 'whatsapp',
+        externalUserId: 'whatsapp:51999999999',
+      }), {
+        current_node: 'solicitar_agente_humano',
+        intent: 'solicitar_humano',
+        human_escalation: {
+          status: 'requested',
+          requested_at: '2026-07-15T22:30:00.000Z',
+          phone_number: '51999999999',
+          last_error: null,
+        },
+      }),
+    });
+    const overtaken = await new AgentParticipationService(overtakenStore).overtakeConversation({
+      channel: 'whatsapp',
+      externalUserId: 'whatsapp:51999999999',
+    });
+    expect(overtaken.status).toBe('already_overtaken');
   });
 
   it('reports a missing plan without creating one', async () => {
@@ -105,32 +128,5 @@ describe('AgentParticipationService', () => {
       phone_number: '51999999999',
       last_error: null,
     });
-  });
-
-  it('is idempotent when an external participant already owns the conversation', async () => {
-    const planStore = new InMemoryPlanStore();
-    await planStore.save({
-      reason: 'seed_overtaken',
-      plan: mergePlan(createEmptyPlan({
-        planId: 'plan-already-overtaken',
-        channel: 'whatsapp',
-        externalUserId: 'whatsapp:51999999999',
-      }), {
-        current_node: 'solicitar_agente_humano',
-        intent: 'solicitar_humano',
-        human_escalation: {
-          status: 'requested',
-          requested_at: '2026-07-15T22:30:00.000Z',
-          phone_number: '51999999999',
-          last_error: null,
-        },
-      }),
-    });
-
-    const result = await new AgentParticipationService(planStore).overtakeConversation({
-      channel: 'whatsapp',
-      externalUserId: 'whatsapp:51999999999',
-    });
-    expect(result.status).toBe('already_overtaken');
   });
 });

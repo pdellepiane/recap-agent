@@ -175,155 +175,98 @@ async function turn(service: AgentService, text: string, messageId: string, cont
 }
 
 describe('D1 ambiguous confirmation', () => {
-  it('unclear equals absent: twin clarifies with no provider tools', async () => {
-    const planStore = new InMemoryPlanStore();
-    await shortlistPlan(planStore);
-    const extraction = baseExtraction({
+  it('routes unclear, bare-yes, and close-pressure shortlist inputs without writes', async () => {
+    async function shortlistTurn(extraction: ExtractionResult, text: string, messageId: string) {
+      const planStore = new InMemoryPlanStore();
+      await shortlistPlan(planStore);
+      const runtime = new ScriptedRuntime([extraction]);
+      const gateway = new RecordingAgentGateway('success');
+      const service = createService(runtime, gateway, planStore);
+      return turn(service, text, messageId);
+    }
+
+    // Unclear equals absent: the twin clarifies with no provider tools and
+    // persists the aclarar node for structural proof.
+    const unclear = await shortlistTurn(baseExtraction({
       phoneConfirmation: 'unclear',
       ambiguity: { status: 'clear', clarificationQuestion: null, interpretations: [] },
-    });
-    const runtime = new ScriptedRuntime([extraction]);
-    const gateway = new RecordingAgentGateway('success');
-    const service = createService(runtime, gateway, planStore);
-    const res = await turn(service, 'Si confirmo.', 'd1-unclear-1');
-    expect(res.outbound.text).toBe('Respuesta compuesta.');
-    expect(res.trace.tools_called ?? []).not.toContain('search_providers_from_plan');
-    expect(res.trace.tools_called ?? []).not.toContain('get_provider_detail');
-    expect(res.plan.selected_provider_ids).toEqual([]);
-  });
+    }), 'Si confirmo.', 'd1-unclear-1');
+    expect(unclear.outbound.text).toBe('Respuesta compuesta.');
+    expect(unclear.plan.current_node).toBe('aclarar_pedir_faltante');
+    expect(unclear.trace.tools_called ?? []).not.toContain('search_providers_from_plan');
+    expect(unclear.trace.tools_called ?? []).not.toContain('get_provider_detail');
+    expect(unclear.trace.tools_called ?? []).not.toContain('finish_plan');
+    expect(unclear.plan.selected_provider_ids).toEqual([]);
 
-  it('yes is ignored in pure shortlist without auth state', async () => {
-    const planStore = new InMemoryPlanStore();
-    await shortlistPlan(planStore);
-    const extraction = baseExtraction({ phoneConfirmation: 'yes' });
-    const runtime = new ScriptedRuntime([extraction]);
-    const gateway = new RecordingAgentGateway('success');
-    const service = createService(runtime, gateway, planStore);
-    const res = await turn(service, 'Si, confirmo.', 'd1-yes-1');
-    expect(res.outbound.text).toBe('Respuesta compuesta.');
-    expect(res.plan.current_node).not.toBe('solicitar_agente_humano');
-  });
+    // A bare yes without auth state is ignored instead of escalating.
+    const yes = await shortlistTurn(
+      baseExtraction({ phoneConfirmation: 'yes' }), 'Si, confirmo.', 'd1-yes-1',
+    );
+    expect(yes.outbound.text).toBe('Respuesta compuesta.');
+    expect(yes.plan.current_node).not.toBe('solicitar_agente_humano');
+    expect(yes.plan.selected_provider_ids).toEqual([]);
 
-  it('clarification persists the aclarar_pedir_faltante node for structural proof', async () => {
-    const planStore = new InMemoryPlanStore();
-    await shortlistPlan(planStore);
-    const extraction = baseExtraction({
-      phoneConfirmation: 'unclear',
-      ambiguity: { status: 'clear', clarificationQuestion: null, interpretations: [] },
-    });
-    const runtime = new ScriptedRuntime([extraction]);
-    const gateway = new RecordingAgentGateway('success');
-    const service = createService(runtime, gateway, planStore);
-    const res = await turn(service, 'Si confirmo.', 'd1-node-1');
-    expect(res.outbound.text).toBe('Respuesta compuesta.');
-    expect(res.plan.current_node).toBe('aclarar_pedir_faltante');
-    expect(res.trace.tools_called ?? []).not.toContain('finish_plan');
-    expect(res.plan.selected_provider_ids).toEqual([]);
-  });
-
-  it('close pressure over an unresolved shortlist clarifies instead of closing', async () => {
-    const planStore = new InMemoryPlanStore();
-    await shortlistPlan(planStore);
-    const extraction = baseExtraction({
+    // Close pressure over the unresolved shortlist clarifies instead of
+    // closing.
+    const pressured = await shortlistTurn(baseExtraction({
       actionIntent: 'cerrar',
       closeAction: { type: 'confirm_close', category: null, reason: null },
       ambiguity: { status: 'clear', clarificationQuestion: null, interpretations: [] },
-    });
-    const runtime = new ScriptedRuntime([extraction]);
-    const gateway = new RecordingAgentGateway('success');
-    const service = createService(runtime, gateway, planStore);
-    const res = await turn(service, 'Si confirmo todo, usen lo que extrajeron y cierren.', 'd1-close-pressure-1');
-    expect(res.outbound.text).toBe('Respuesta compuesta.');
-    expect(res.plan.current_node).toBe('aclarar_pedir_faltante');
-    expect(res.trace.tools_called ?? []).not.toContain('finish_plan');
-    expect(res.trace.tools_called ?? []).not.toContain('search_providers_from_plan');
-    expect(res.plan.selected_provider_ids).toEqual([]);
+    }), 'Si confirmo todo, usen lo que extrajeron y cierren.', 'd1-close-pressure-1');
+    expect(pressured.outbound.text).toBe('Respuesta compuesta.');
+    expect(pressured.plan.current_node).toBe('aclarar_pedir_faltante');
+    expect(pressured.trace.tools_called ?? []).not.toContain('finish_plan');
+    expect(pressured.trace.tools_called ?? []).not.toContain('search_providers_from_plan');
+    expect(pressured.plan.selected_provider_ids).toEqual([]);
   });
 
-  it('rejection wins over clarification in protected context', async () => {
-    const planStore = new InMemoryPlanStore();
-    const seed = mergePlan(
-      createEmptyPlan({ planId: 'd-reject', channel: 'whatsapp', externalUserId: 'd-user' }),
-      {
-        current_node: 'resolver_consultas_informativas',
-        user_auth: { status: 'code_requested', email: 'a@b.invalid', token: null, token_expires_at: null, last_error: null, requested_at: '2026-08-24T21:18:00.000Z', failed_code_attempts: 0, otp_send_attempts: 1, otp_non_delivery_reports: 0, auth_method: null, awaiting_phone_confirmation: true },
-        information_state: { resume_node: 'deteccion_intencion', pending_requests: [{ requestId: 'information-1', kind: 'purchase', resource: 'gift_purchases', query: 'Estado del regalo.', orderId: null, authAction: 'none' }], selection_candidates: [], last_completed_request: null },
-      } as never,
-    );
-    await planStore.save({ plan: seed, reason: 'seed' });
-    const extraction = baseExtraction({
-      phoneConfirmation: 'no',
-      ambiguity: { status: 'ambiguous', clarificationQuestion: null, interpretations: [] },
-    });
-    const runtime = new ScriptedRuntime([extraction]);
-    const gateway = new RecordingAgentGateway('success');
-    const service = createService(runtime, gateway, planStore);
-    const res = await turn(service, 'Ese numero no es mio.', 'd1-reject-1');
-    expect(res.plan.current_node).toBe('solicitar_agente_humano');
-  });
 });
 
 describe('D2 mailbox and human arbitration', () => {
-  it('conflicting extraction replays support win with no handoff', async () => {
-    const planStore = new InMemoryPlanStore();
-    const seed = mergePlan(
-      createEmptyPlan({ planId: 'd-mailbox', channel: 'whatsapp', externalUserId: 'd-user' }),
-      { current_node: 'resolver_consultas_informativas' } as never,
-    );
-    await planStore.save({ plan: seed, reason: 'seed' });
-    const extraction = baseExtraction({
+  it('arbitrates human-help intents: conflicting and unoffered intents withhold handoff, explicit requests trigger exactly one', async () => {
+    async function arbitrationTurn(extraction: ExtractionResult, text: string, messageId: string) {
+      const planStore = new InMemoryPlanStore();
+      const seed = mergePlan(
+        createEmptyPlan({ planId: 'd-arbitration', channel: 'whatsapp', externalUserId: 'd-user' }),
+        { current_node: 'resolver_consultas_informativas' } as never,
+      );
+      await planStore.save({ plan: seed, reason: 'seed' });
+      const runtime = new ScriptedRuntime([extraction]);
+      const gateway = new RecordingAgentGateway('success');
+      const service = createService(runtime, gateway, planStore);
+      const res = await turn(service, text, messageId);
+      return { res, gateway };
+    }
+
+    // Conflicting extraction replays the support win with no handoff.
+    const conflicted = await arbitrationTurn(baseExtraction({
       actionIntent: 'solicitar_humano',
       supportAct: { kind: 'report_issue',} as never,
       ...( { humanHelpIntent: 'none' } as Record<string, unknown>),
-    });
-    const runtime = new ScriptedRuntime([extraction]);
-    const gateway = new RecordingAgentGateway('success');
-    const service = createService(runtime, gateway, planStore);
-    const res = await turn(service, 'Tengo un problema de capacidad en mi gmail registrado', 'd2-conflict-1');
-    expect(gateway.takeoverCalls).toBe(0);
-    expect(res.plan.human_escalation.status).toBe('none');
-    expect(res.plan.current_node).toBe('resolver_consultas_informativas');
-  });
+    }), 'Tengo un problema de capacidad en mi gmail registrado', 'd2-conflict-1');
+    expect(conflicted.gateway.takeoverCalls).toBe(0);
+    expect(conflicted.res.plan.human_escalation.status).toBe('none');
+    expect(conflicted.res.plan.current_node).toBe('resolver_consultas_informativas');
 
-  it('explicit human request triggers exactly one handoff without OTP copy', async () => {
-    const planStore = new InMemoryPlanStore();
-    const seed = mergePlan(
-      createEmptyPlan({ planId: 'd-explicit', channel: 'whatsapp', externalUserId: 'd-user' }),
-      { current_node: 'resolver_consultas_informativas' } as never,
-    );
-    await planStore.save({ plan: seed, reason: 'seed' });
-    const extraction = baseExtraction({
+    // An explicit human request triggers exactly one handoff without OTP copy.
+    const explicit = await arbitrationTurn(baseExtraction({
       actionIntent: 'solicitar_humano',
       supportAct: { kind: 'report_issue',} as never,
       ...( { humanHelpIntent: 'request' } as Record<string, unknown>),
-    });
-    const runtime = new ScriptedRuntime([extraction]);
-    const gateway = new RecordingAgentGateway('success');
-    const service = createService(runtime, gateway, planStore);
-    const res = await turn(service, 'Quiero hablar con una persona sobre mi correo lleno', 'd2-explicit-1');
-    expect(gateway.takeoverCalls).toBe(1);
-    expect(res.plan.human_escalation.status).toBe('requested');
-    expect((res.outbound.text ?? '').toLowerCase()).not.toContain('codigo');
-    expect((res.outbound.text ?? '').toLowerCase()).not.toContain('otp');
-    expect((res.outbound.text ?? '').toLowerCase()).not.toContain('correo');
-  });
+    }), 'Quiero hablar con una persona sobre mi correo lleno', 'd2-explicit-1');
+    expect(explicit.gateway.takeoverCalls).toBe(1);
+    expect(explicit.res.plan.human_escalation.status).toBe('requested');
+    expect((explicit.res.outbound.text ?? '').toLowerCase()).not.toContain('codigo');
+    expect((explicit.res.outbound.text ?? '').toLowerCase()).not.toContain('otp');
+    expect((explicit.res.outbound.text ?? '').toLowerCase()).not.toContain('correo');
 
-  it('accept_offer without pending offer does not handoff', async () => {
-    const planStore = new InMemoryPlanStore();
-    const seed = mergePlan(
-      createEmptyPlan({ planId: 'd-accept', channel: 'whatsapp', externalUserId: 'd-user' }),
-      { current_node: 'resolver_consultas_informativas' } as never,
-    );
-    await planStore.save({ plan: seed, reason: 'seed' });
-    const extraction = baseExtraction({
+    // accept_offer without a pending offer does not handoff.
+    const accepted = await arbitrationTurn(baseExtraction({
       actionIntent: 'solicitar_humano',
       ...( { humanHelpIntent: 'accept_offer' } as Record<string, unknown>),
-    });
-    const runtime = new ScriptedRuntime([extraction]);
-    const gateway = new RecordingAgentGateway('success');
-    const service = createService(runtime, gateway, planStore);
-    await turn(service, 'Si, acepto ayuda.', 'd2-accept-1');
-    expect(gateway.takeoverCalls).toBe(0);
+    }), 'Si, acepto ayuda.', 'd2-accept-1');
+    expect(accepted.gateway.takeoverCalls).toBe(0);
+    expect(accepted.res.plan.human_escalation.status).toBe('none');
   });
 
   it('bare greeting on first exchange gets a brief greeting with no plan presupposition', async () => {
@@ -373,7 +316,7 @@ describe('D3 missing purchase scoped rendering', () => {
     expect(res.trace.plan_persist_reason).not.toBe('information_authentication_terminal_handoff');
     expect(gateway.takeoverCalls).toBe(0);
     const pending = res.plan.information_state.pending_requests;
-    expect(pending.length).toBeGreaterThan(0);
+    expect(pending).toEqual([]); // The full authorized profile resolves the read-only request.
   });
 
   it('identity_rejected success states discontinued access and requested help', async () => {

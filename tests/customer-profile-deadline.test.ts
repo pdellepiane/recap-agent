@@ -259,7 +259,7 @@ describe('customer profile deadline origin and failure mapping (Finding 2)', () 
       currentContext: null,
       deadlineMs: Date.now() + 30_000,
     });
-    expect(snapshot.readMetrics?.totalReads).toBe(5);
+    expect(snapshot.readMetrics?.totalReads).toBe(6);
     expect(snapshot.readMetrics?.peakConcurrency).toBeLessThanOrEqual(4);
     const names = snapshot.invitationsEvents.invitations.map((event) => event.name);
     expect(names).toContain('Boda Ana y Luis');

@@ -295,9 +295,17 @@ describe('event identity RSVP regressions', () => {
     const runtime = new TwinRuntime([
       twinExtraction({ action: null, eventReference: 'Otra celebracion prueba' }),
     ]);
+    // Two-read order (d51acfef precedent): complete authorized profile
+    // preparation hydrates the associated event detail before extraction,
+    // then the RSVP-specific lookup reads the same detail again before the
+    // reply. Both reads observe the same decided attendance; no assertion
+    // below changed.
     const gateway = new TwinGateway(
       [],
-      [readDetail({ eventId: 200, guestId: 777, willAttend: true })],
+      [
+        readDetail({ eventId: 200, guestId: 777, willAttend: true }),
+        readDetail({ eventId: 200, guestId: 777, willAttend: true }),
+      ],
       { status: 'success', events: [associatedSummary] },
     );
     const service = twinService(
@@ -356,10 +364,12 @@ describe('event identity RSVP regressions', () => {
  * (offline: buildReplyTurnEvidence only, no model call). A date-only record
  * carries no verified hour, so no rsvp_event_time fact is projected and the
  * model-owned sentence states no hour instead of a midnight default. Full
- * datetimes project their stored hour verbatim. Facts only, never prose.
+ * No conversion is ever made: the recorded date and hour travel with the
+ * place's verified zone; the offset zone survives only as a fallback when
+ * no verified zone exists.
  */
 describe('rsvp event-time midnight suppression', () => {
-  function projectRsvpEventTime(eventDate: string | null) {
+  function projectRsvpEventTime(eventDate: string | null, eventTimeZone: string | null = null) {
     const runtime = new OpenAiAgentRuntime({
       apiKey: 'test',
       replyModel: 'gpt-5',
@@ -371,7 +381,7 @@ describe('rsvp event-time midnight suppression', () => {
       providerGateway: { lookupUserEventContext: async () => null } as unknown as never,
     });
     const evidence = (runtime as unknown as { buildReplyTurnEvidence: (args: unknown) => {
-      rsvp_event_time?: { value: string; hour24: string; timezone: 'unknown' };
+      rsvp_event_time?: { value: string; local_date: string; hour24: string; timezone: string };
     } }).buildReplyTurnEvidence({
       request: {
         currentNode: 'responder_invitacion',
@@ -392,11 +402,15 @@ describe('rsvp event-time midnight suppression', () => {
           coverage: 'complete',
           resolution: 'authoritative_invitation',
           event: {
+            event_id: 22,
             event_name: 'Boda Beto',
             event_date: eventDate,
             invitation_record: 'available',
             rsvp_state: 'attending',
           },
+        },
+        customerContext: eventTimeZone === null ? null : {
+          invitations: [{ eventId: 22, detail: { timezone: eventTimeZone } }],
         },
       },
       focusNeedCategory: null,
@@ -412,29 +426,55 @@ describe('rsvp event-time midnight suppression', () => {
     expect(projectRsvpEventTime('2026-09-21')).toBeUndefined();
   });
 
-  it('reads ISO-T hours verbatim instead of the trailing midnight default', () => {
+  it('recognizes explicit UTC hours without inventing an event zone', () => {
     expect(describeRsvpEventTime('2026-09-21T19:00:00.000Z')?.hour24).toBe('19:00');
     expect(describeRsvpEventTime('2026-09-21T00:00:00.000Z')?.hour24).toBe('00:00');
+    expect(describeRsvpEventTime('2026-09-21T19:00:00.000Z')?.timezone).toBe('UTC');
   });
 
   it('projects the truly-midnight ISO-T source instead of suppressing it', () => {
     expect(projectRsvpEventTime('2026-09-21T00:00:00.000Z')).toEqual({
       value: '2026-09-21T00:00:00.000Z',
+      recorded_date: '2026-09-21',
       hour24: '00:00',
-      timezone: 'unknown',
+      timezone: 'UTC',
     });
   });
 
   it.each([
-    { stored: '2026-09-21 19:00:00', expected: '19:00' },
-    { stored: '2026-09-20 18:00:00', expected: '18:00' },
-    { stored: '2026-09-21T19:00:00.000Z', expected: '19:00' },
-    { stored: '2026-09-21T18:00:00.000Z', expected: '18:00' },
-  ])('projects the stored hour verbatim for $stored', ({ stored, expected }) => {
+    { stored: '2026-09-21 19:00:00', expected: '19:00', timezone: 'unknown' },
+    { stored: '2026-09-20 18:00:00', expected: '18:00', timezone: 'unknown' },
+    { stored: '2026-09-21T19:00:00.000Z', expected: '19:00', timezone: 'UTC' },
+    { stored: '2026-09-21T18:00:00.000Z', expected: '18:00', timezone: 'UTC' },
+  ])('respects the source timezone for $stored', ({ stored, expected, timezone }) => {
     expect(projectRsvpEventTime(stored)).toEqual({
       value: stored,
+      recorded_date: stored.slice(0, 10),
       hour24: expected,
-      timezone: 'unknown',
+      timezone,
+    });
+  });
+
+  it('reads recorded hours as-is in the verified zone without converting', () => {
+    expect(projectRsvpEventTime('2026-09-20T18:00:00.000Z', 'America/Lima')).toEqual({
+      value: '2026-09-20T18:00:00.000Z',
+      recorded_date: '2026-09-20',
+      hour24: '18:00',
+      timezone: 'America/Lima',
+    });
+    expect(projectRsvpEventTime('2026-09-21T00:00:00.000Z', 'America/Lima')).toEqual({
+      value: '2026-09-21T00:00:00.000Z',
+      recorded_date: '2026-09-21',
+      hour24: '00:00',
+      timezone: 'America/Lima',
+    });
+    // PASS 2: folded the offset-free local-time case in here (same
+    // verified-zone preservation behavior, space-format input).
+    expect(projectRsvpEventTime('2026-09-20 18:00:00', 'America/Lima')).toEqual({
+      value: '2026-09-20 18:00:00',
+      recorded_date: '2026-09-20',
+      hour24: '18:00',
+      timezone: 'America/Lima',
     });
   });
 });

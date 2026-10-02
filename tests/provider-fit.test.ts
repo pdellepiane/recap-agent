@@ -25,14 +25,11 @@ function createProvider(overrides: Partial<ProviderSummary> = {}): ProviderSumma
 }
 
 describe('provider fit normalization', () => {
-  it('parses spanish budget amounts', () => {
+  it('parses literal and qualitative Spanish budget signals', () => {
     expect(parseBudgetAmount('mil soles')).toBe(1000);
     expect(parseBudgetAmount('S/ 1,000')).toBe(1000);
     expect(parseBudgetAmount('1000')).toBe(1000);
     expect(parseBudgetAmount(null)).toBeNull();
-  });
-
-  it('maps qualitative budget signals into ranking tiers', () => {
     expect(parseBudgetAmount('presupuesto mínimo')).toBe(1000);
     expect(parseBudgetAmount('presupuesto bajo')).toBe(3000);
     expect(parseBudgetAmount('presupuesto medio')).toBe(7500);

@@ -167,27 +167,31 @@ export type ExtractRequest = {
   imageFileAttachments?: readonly ImageFileAttachment[];
 };
 
+export type RsvpReplyInvitation = {
+  event_id: number | null;
+  guest_id: number | null;
+  event_name: string | null;
+  event_date: string | null;
+  invitation_record: 'available' | 'unavailable';
+  rsvp_state: 'pending' | 'attending' | 'declining' | 'unavailable';
+  state_read_status: 'known' | 'missing';
+  state_source: 'guest_record' | 'trusted_phone_event' | 'phone_enriched_event' | 'verified_fresh_read';
+  detail_read_status: 'success' | 'failed' | 'unavailable' | 'not_requested';
+};
+
 export type RsvpPhoneReplyEvidence =  | {
       state: 'resolved_single';
       coverage: 'complete' | 'partial';
       resolution: 'authoritative_invitation' | 'event_association_only' | 'not_found';
-      event: {
-        event_name: string | null;
-        event_date: string | null;
-        invitation_record: 'available' | 'unavailable';
-        rsvp_state: 'pending' | 'attending' | 'declining' | 'unavailable';
-      };
+      event: RsvpReplyInvitation;
+      /** Other authorized records remain visible after resolving one event. */
+      other_invitations: RsvpReplyInvitation[];
     }
   | {
       state: 'needs_event_selection';
       coverage: 'complete' | 'partial';
       resolution: 'authoritative_invitation' | 'event_association_only' | 'not_found';
-      candidates: Array<{
-        event_name: string | null;
-        event_date: string | null;
-        invitation_record: 'available' | 'unavailable';
-        rsvp_state: 'pending' | 'attending' | 'declining' | 'unavailable';
-      }>;
+      candidates: RsvpReplyInvitation[];
     }
   | {
       state: 'unavailable';
@@ -312,6 +316,14 @@ export type ComposeReplyRequest = {
    * stay byte-identical. Facts only, never reply prose.
    */
   rsvpWorkCompleted?: boolean;
+  /** Backend companion receipt; present only when the RSVP write returned one. */
+  rsvpCompanionOutcome?: {
+    saved: boolean;
+    response: 'yes' | 'no' | null;
+    reason: string | null;
+    eligibility: 'ineligible' | 'unknown';
+    retryAppropriate: boolean | null;
+  } | null;
   /** Complete authorized customer profile, prepared before extraction. */
   customerContext?: CustomerContextProjection | null;
   /** L4 persisted owner serving this turn. Absent means transient selection. */
@@ -387,6 +399,12 @@ export type ModelOriginReceipt = {
   readonly modelContentSha256: string;
   readonly bundleId: string;
   readonly transformationVersion: 'transport-v2';
+  /**
+   * Snapshotted mechanical citation URL for FAQ answers grounded in a
+   * complete article. Renderers append it as a `Fuente:` footer; the
+   * reference serializer must reproduce it exactly. Absent means no footer.
+   */
+  readonly citationUrl?: string | null;
 };
 
 export type ComposeReplyResult = {

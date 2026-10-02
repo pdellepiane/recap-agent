@@ -6,6 +6,7 @@ import {
   createInformationAuthGuidance,
   enrichmentBounds,
   enrichmentVisitKey,
+  firstFullArticleSourceUrl,
   purchaseDiscoveryChildId,
   type CartInformation,
   type InformationAuthGuidance,
@@ -259,11 +260,9 @@ export type CustomerLinkedEnrichment = {
 };
 
 /**
- * S2 model-visible transaction authorization. True only for the
- * authenticated-account scope or when the record number exactly matches
- * the customer-supplied reference the lookup resolved (same equality
- * filterPurchaseCandidates uses to narrow). Pure predicate; never
- * customer text inspection beyond the already-normalized reference.
+ * Transaction numbers are visible within an authorized customer scope.
+ * The caller establishes account or trusted-phone authorization; an exact
+ * requested reference also validates a narrower lookup.
  */
 export function transactionReferenceVisible(
   purchase: Pick<PurchaseInformation, 'customerTransactionNumber'>,
@@ -276,6 +275,59 @@ export function transactionReferenceVisible(
   const requested = options?.requestedCustomerTransactionNumber ?? null;
   const record = purchase.customerTransactionNumber ?? null;
   return requested !== null && record !== null && record === requested;
+}
+
+/**
+ * Typed purchase evidence for completed purchase summaries. One entry per
+ * order carrying the O5 purchaseFact the live judge projects; the hash
+ * binds the order identity to the fact bytes. Private dedication text is
+ * redacted (operational send/physical state still travels). Carts are
+ * never passed here: checkout evidence is not order evidence.
+ */
+export function projectPurchaseEvidenceItems(
+  purchases: PurchaseInformation[],
+): InformationExecutionSummary['evidence'] {
+  return purchases.map((purchase) => {
+    const dedication = purchase.dedication;
+    const purchaseFact = {
+      eventLabel: purchase.eventName,
+      total: purchase.grandTotal,
+      currency: purchase.currency ?? null,
+      currencySymbol: purchase.currencySymbol ?? null,
+      paymentMethod: purchase.paymentMethod,
+      paymentStatus: purchase.paymentStatus,
+      shippingStatus: purchase.shippingStatus,
+      eventDate: purchase.eventDate,
+      createdAt: purchase.createdAt,
+      referencePresent: typeof purchase.customerTransactionNumber === 'string' &&
+        purchase.customerTransactionNumber.length > 0,
+      ...(dedication
+        ? {
+          dedication: {
+            message: dedication.isPrivate === true ? null : dedication.message,
+            sendPhysical: dedication.sendPhysical,
+            physicalStatus: dedication.physicalStatus,
+          },
+        }
+        : {}),
+      items: purchase.items.map((item) => ({
+        name: item.giftName,
+        quantity: item.quantity,
+        amount: item.amount,
+        rowTotal: item.rowTotal,
+        fulfillment: item.fulfillment?.kind ?? null,
+      })),
+    };
+    return {
+      fileId: '',
+      filename: '',
+      score: 0,
+      contentHash: crypto.createHash('sha256')
+        .update(JSON.stringify({ orderId: purchase.orderId, fact: purchaseFact }))
+        .digest('hex'),
+      purchaseFact,
+    };
+  });
 }
 
 export class InformationOrchestrator {
@@ -514,13 +566,24 @@ export class InformationOrchestrator {
           hydrateAllAuthorizedEventDetails: true,
         });
       };
-      const executions = await Promise.all([
+      const [executions, phoneAccountEvents] = await Promise.all([
+        Promise.all([
         ...(args.authentication ? [readScope('account')] : []),
         ...(args.trustedPhone ? [readScope('trusted_phone_purchase')] : []),
+        ]),
+        args.trustedPhone
+          ? this.readVerifiedPhoneAccountEvents(args.trustedPhone)
+          : Promise.resolve(null),
       ]);
       const execution: InformationExecution = {
-        results: executions.flatMap((entry) => entry.results),
-        summaries: executions.flatMap((entry) => entry.summaries),
+        results: [
+          ...executions.flatMap((entry) => entry.results),
+          ...(phoneAccountEvents ? [phoneAccountEvents.result] : []),
+        ],
+        summaries: [
+          ...executions.flatMap((entry) => entry.summaries),
+          ...(phoneAccountEvents ? [phoneAccountEvents.summary] : []),
+        ],
       };
       const preferredScope = args.authentication ? 'account' : 'trusted_phone_purchase';
       const identity: IdentityEvidence = {
@@ -552,6 +615,130 @@ export class InformationOrchestrator {
       };
       return { ...snapshot, readMetrics };
     });
+  }
+
+  private async readVerifiedPhoneAccountEvents(
+    phone: AgentAuthByPhoneInput,
+  ): Promise<{ result: InformationTaskResult; summary: InformationExecutionSummary }> {
+    const requestId = 'customer-context-phone-account-events';
+    const queryHash = crypto.createHash('sha256')
+      .update('verified-phone-account-events')
+      .digest('hex');
+    const startedAt = Date.now();
+    const failed = (failureKind: 'unauthorized' | 'request_failed') => ({
+      result: {
+        requestId,
+        kind: 'associated_event' as const,
+        status: 'failed' as const,
+        retryable: failureKind === 'request_failed',
+        failureKind,
+        accessMethod: 'trusted_phone_guest' as const,
+        message: 'The verified phone account event source is unavailable.',
+      },
+      summary: {
+        requestId,
+        kind: 'associated_event' as const,
+        status: 'failed' as const,
+        source: 'associated_event_api' as const,
+        outcomeCode: failureKind,
+        retryable: failureKind === 'request_failed',
+        queryHash,
+        evidence: [],
+        resultCount: 0,
+        durationMs: Date.now() - startedAt,
+        accessMethod: 'trusted_phone_guest' as const,
+      },
+    });
+    try {
+      const lookup = await this.withCustomerRead('provider.phone_user_events', () =>
+        this.dependencies.providerGateway.lookupUserEventContext({
+          email: null,
+          phone: phone.phone_number,
+        }),
+      );
+      if (!lookup) {
+        return {
+          result: {
+            requestId, kind: 'associated_event', status: 'completed',
+            accessMethod: 'trusted_phone_guest',
+            result: {
+              lookup: { email: null, phone: phone.phone_number },
+              user: null, events: [], recentOrders: [],
+              counts: { ownerEvents: 0, guestEvents: 0, hostEvents: 0,
+                celebratedEvents: 0, recentOrders: 0 },
+            },
+          },
+          summary: {
+            requestId, kind: 'associated_event', status: 'completed',
+            source: 'associated_event_api', outcomeCode: 'completed_without_results',
+            retryable: null, queryHash, evidence: [], resultCount: 0,
+            durationMs: Date.now() - startedAt, accessMethod: 'trusted_phone_guest',
+          },
+        };
+      }
+      const actual = lookup.user?.fullPhone?.replace(/\D/gu, '') ?? '';
+      const expected = `${phone.phone_extension}${phone.phone_number}`.replace(/\D/gu, '');
+      if (actual !== expected) {
+        if (lookup.user === null && lookup.events.length === 0) {
+          return {
+            result: {
+              requestId, kind: 'associated_event', status: 'completed',
+              accessMethod: 'trusted_phone_guest',
+              result: { ...lookup, recentOrders: [], counts: { ...lookup.counts, recentOrders: 0 } },
+            },
+            summary: {
+              requestId, kind: 'associated_event', status: 'completed',
+              source: 'associated_event_api', outcomeCode: 'completed_without_results',
+              retryable: null, queryHash, evidence: [], resultCount: 0,
+              durationMs: Date.now() - startedAt, accessMethod: 'trusted_phone_guest',
+            },
+          };
+        }
+        return failed('unauthorized');
+      }
+      // The phone confirms association, not account authentication. Include
+      // event identity/logistics and roles; keep account and financial fields
+      // behind the authenticated account scope.
+      const events = lookup.events.map((event) => ({
+        ...event,
+        amountCollected: null,
+        amountTransferred: null,
+        transactionsCount: null,
+        hostPermission: null,
+        hostStatus: null,
+        guestStatus: null,
+        orders: [],
+        orderIds: [],
+      }));
+      const result: InformationTaskResult = {
+        requestId,
+        kind: 'associated_event',
+        status: 'completed',
+        accessMethod: 'trusted_phone_guest',
+        result: {
+          ...lookup,
+          user: null,
+          events,
+          recentOrders: [],
+          counts: { ...lookup.counts, recentOrders: 0 },
+        },
+      };
+      return { result, summary: {
+        requestId,
+        kind: 'associated_event',
+        status: 'completed',
+        source: 'associated_event_api',
+        outcomeCode: events.length > 0 ? 'completed_with_results' : 'completed_without_results',
+        retryable: null,
+        queryHash,
+        evidence: [],
+        resultCount: events.length,
+        durationMs: Date.now() - startedAt,
+        accessMethod: 'trusted_phone_guest',
+      } };
+    } catch {
+      return failed('request_failed');
+    }
   }
 
   async execute(args: {
@@ -832,6 +1019,7 @@ export class InformationOrchestrator {
           kind: 'faq',
           status: 'completed',
           evidence: retrieval.evidence,
+          citationUrl: firstFullArticleSourceUrl(retrieval.evidence),
           openAiTransport: retrieval.openAiTransport,
         };
       }
@@ -1177,7 +1365,7 @@ export class InformationOrchestrator {
       ...(sourceCoverage ? { sourceCoverage } : {}),
       purchases: referenceMatched ? requestedMatches : [...section.purchases],
       carts: [...section.carts],
-      needsSelection: referenceWasRequested && !referenceMatched,
+      needsSelection: referenceWasRequested && (!referenceMatched || requestedMatches.length > 1),
       accessMethod,
       ...(referenceWasRequested
         ? {
@@ -2099,6 +2287,7 @@ export class InformationOrchestrator {
             resource: request.resource,
             lookupResource: lookup.sourceResource,
             purchases: combined.map((purchase) => this.projectPurchase(purchase, request, {
+              transactionReferenceAuthorized: true,
               requestedCustomerTransactionNumber: lookup.requestedCustomerTransactionNumber ?? null,
             })),
             needsSelection: false,
@@ -2128,6 +2317,7 @@ export class InformationOrchestrator {
           lookupResource: lookup.sourceResource,
           purchases: combined.map((purchase) =>
             this.projectPurchase(purchase, request, {
+              transactionReferenceAuthorized: true,
               requestedCustomerTransactionNumber: lookup.requestedCustomerTransactionNumber ?? null,
             }),
           ),
@@ -2157,7 +2347,7 @@ export class InformationOrchestrator {
           status: 'completed',
           resource: request.resource,
           purchases: eventScopedPurchases.map((purchase) =>
-            this.projectPurchase(purchase, request),
+            this.projectPurchase(purchase, request, { transactionReferenceAuthorized: true }),
           ),
           // Lane B: event-scoped multiplicity is factual metadata; only an
           // explicit validated-reference mismatch asserts selection.
@@ -2247,6 +2437,7 @@ export class InformationOrchestrator {
         lookupResource: lookup.sourceResource,
         purchases: purchases.map((purchase) =>
           this.projectPurchase(purchase, request, {
+            transactionReferenceAuthorized: true,
             requestedCustomerTransactionNumber: lookup.requestedCustomerTransactionNumber ?? null,
           }),
         ),
@@ -2650,6 +2841,7 @@ export class InformationOrchestrator {
         resource: 'purchase_discovery' as const,
         sourceCoverage: this.orderedCoverage(request.requestId, coverage),
         purchases: matching.map((purchase) => this.projectPurchase(purchase, request, {
+          transactionReferenceAuthorized: true,
           requestedCustomerTransactionNumber: requestedReference,
         })),
         needsSelection: false,
@@ -2737,6 +2929,7 @@ export class InformationOrchestrator {
       sourceCoverage: this.orderedCoverage(request.requestId, coverage),
       purchases: combined.map((purchase) =>
         this.projectPurchase(purchase, request, {
+          transactionReferenceAuthorized: true,
           requestedCustomerTransactionNumber: requestedReference,
         }),
       ),
@@ -3058,14 +3251,13 @@ export class InformationOrchestrator {
     );
     if (matches.length === 0) {
       return {
-        result: {
-          status: 'not_found',
-          resource: result.resource,
-          orderId: requestedCustomerTransactionNumber,
-        },
+        // A reference present on some other record does not identify the
+        // requested reference. Preserve every authorized candidate so the
+        // reply can distinguish them without claiming a false match.
+        result,
         coverage,
         sourceResource,
-        referenceResolution: 'matched',
+        referenceResolution: 'unavailable',
         requestedCustomerTransactionNumber,
       };
     }
@@ -3399,7 +3591,11 @@ export class InformationOrchestrator {
         filename: entry.filename,
         score: entry.score,
         contentHash: this.hash(entry.text),
+        ...(entry.fullArticle === true ? { fullArticle: true as const } : {}),
       }));
+    }
+    if (result.kind === 'purchase') {
+      return projectPurchaseEvidenceItems(result.purchases);
     }
     return [];
   }

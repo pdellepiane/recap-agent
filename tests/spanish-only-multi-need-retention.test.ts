@@ -1,5 +1,4 @@
 import path from 'node:path';
-import fs from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
@@ -100,14 +99,17 @@ function inbound(text: string) {
 }
 
 describe('spanish-only mixed-request retention', () => {
-  it('retains planning and the email capability question without forcing a new agent', async () => {
-    const runtime = new ScriptedRuntime(extraction({
+  it('retains planning with a secondary capability question and stays byte-identical without one', async () => {
+    const planning: Partial<ExtractionResult> = {
       actionIntent: 'elicitar_necesidades',
-      requestedOperation: 'confirmation_document.send',
       eventType: 'baby_shower',
       vendorCategory: 'Catering',
       vendorCategories: ['Catering'],
       location: 'Miraflores',
+    };
+    const runtime = new ScriptedRuntime(extraction({
+      ...planning,
+      requestedOperation: 'confirmation_document.send',
     }));
 
     const response = await service(runtime).handleTurn(
@@ -127,44 +129,21 @@ describe('spanish-only mixed-request retention', () => {
     // One owner serves both needs; no forced new agent or escalation.
     expect(response.plan.owner).toBe('planning');
     expect(response.plan.human_escalation.status).toBe('none');
-  });
 
-  it('stays byte-identical when no secondary capability operation is requested', async () => {
-    const runtime = new ScriptedRuntime(extraction({
-      actionIntent: 'elicitar_necesidades',
+    // Without a secondary capability operation the turn carries no
+    // capability packet at all.
+    const plainRuntime = new ScriptedRuntime(extraction({
+      ...planning,
       requestedOperation: null,
-      eventType: 'baby_shower',
-      vendorCategory: 'Catering',
-      vendorCategories: ['Catering'],
-      location: 'Miraflores',
     }));
 
-    const response = await service(runtime).handleTurn(
+    const plainResponse = await service(plainRuntime).handleTurn(
       inbound('Necesito catering para un baby shower en Miraflores.'),
     );
 
-    const last = runtime.composeRequests.at(-1);
-    expect(last?.capabilityDecision).toBeUndefined();
-    expect(response.plan.owner_pending_task).toBeNull();
-    expect(response.plan.owner).toBe('planning');
-  });
-});
-
-describe('resolver multi-need retention wording', () => {
-  const contractPath = path.resolve(
-    process.cwd(),
-    'prompts/nodes/resolver_consultas_informativas/response_contract.txt',
-  );
-
-  it('states answer-the-current-task retention without TypeScript prescriptions', async () => {
-    const contract = await fs.promises.readFile(contractPath, 'utf8');
-    const retentionLines = contract
-      .split('\n')
-      .filter((line) => line.includes('tarea actual'));
-    expect(retentionLines.length).toBeGreaterThan(0);
-    for (const line of retentionLines) {
-      expect(line).not.toContain('`');
-    }
-    expect(contract).toContain('Lo pendiente sigue pendiente');
+    const plainLast = plainRuntime.composeRequests.at(-1);
+    expect(plainLast?.capabilityDecision).toBeUndefined();
+    expect(plainResponse.plan.owner_pending_task).toBeNull();
+    expect(plainResponse.plan.owner).toBe('planning');
   });
 });

@@ -8,7 +8,7 @@ import {
 import { resolveSearchCategories } from '../src/core/provider-category';
 
 describe('provider vector search result parser', () => {
-  it('parses valid provider ids and matched text', () => {
+  it('parses valid results and rejects malformed provider ids', () => {
     const parsed = parseProviderVectorSearchResult({
       attributes: {
         provider_id: 42,
@@ -31,12 +31,8 @@ describe('provider vector search result parser', () => {
       },
       filename: '42-foto.md',
     });
-  });
 
-  it('rejects malformed provider ids', () => {
-    const malformedValues = ['abc', 0, -1, true];
-
-    for (const providerId of malformedValues) {
+    for (const providerId of ['abc', 0, -1, true]) {
       expect(
         parseProviderVectorSearchResult({
           attributes: {

@@ -62,8 +62,8 @@ describe('Lambda channel request contract', () => {
     }
   });
 
-  it('accepts a captionless WhatsApp image using the native media descriptor fields', () => {
-    const result = channelRequestSchema.safeParse({
+  it('accepts WhatsApp images with or without a caption', () => {
+    const captionless = channelRequestSchema.safeParse({
       user_id: 'whatsapp:51999999999',
       channel: 'whatsapp',
       contact_phone: '+51999999999',
@@ -78,19 +78,17 @@ describe('Lambda channel request contract', () => {
       ],
     });
 
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.text).toBe('');
-      expect(result.data.media[0]).toMatchObject({
+    expect(captionless.success).toBe(true);
+    if (captionless.success) {
+      expect(captionless.data.text).toBe('');
+      expect(captionless.data.media[0]).toMatchObject({
         type: 'image',
         id: '2754859441498128',
         mime_type: 'image/jpeg',
       });
     }
-  });
 
-  it('accepts text and media together for a captioned WhatsApp image', () => {
-    const result = channelRequestSchema.safeParse({
+    const captioned = channelRequestSchema.safeParse({
       text: 'Este es el dato que aparece en la imagen',
       user_id: 'whatsapp:51999999999',
       channel: 'whatsapp',
@@ -106,21 +104,17 @@ describe('Lambda channel request contract', () => {
       ],
     });
 
-    expect(result.success).toBe(true);
+    expect(captioned.success).toBe(true);
   });
 
-  it('rejects a request without text or media', () => {
-    const result = channelRequestSchema.safeParse({
+  it('rejects malformed channel requests', () => {
+    expect(channelRequestSchema.safeParse({
       user_id: 'whatsapp:51999999999',
       channel: 'whatsapp',
       contact_phone: '+51999999999',
-    });
+    }).success).toBe(false);
 
-    expect(result.success).toBe(false);
-  });
-
-  it('rejects image metadata whose registered media type does not describe an image', () => {
-    const result = channelRequestSchema.safeParse({
+    expect(channelRequestSchema.safeParse({
       user_id: 'whatsapp:51999999999',
       channel: 'whatsapp',
       contact_phone: '+51999999999',
@@ -132,32 +126,76 @@ describe('Lambda channel request contract', () => {
           sha256: '81d3bd8a8db4868c9520ed47186e8b7c5789e61ff79f7f834be6950b808a90d3',
         },
       ],
-    });
+    }).success).toBe(false);
 
-    expect(result.success).toBe(false);
-  });
-
-  it('rejects WhatsApp requests without phone context', () => {
-    const result = channelRequestSchema.safeParse({
+    expect(channelRequestSchema.safeParse({
       text: 'Necesito catering',
       user_id: 'whatsapp:51999999999',
       channel: 'whatsapp',
-    });
-    expect(result.success).toBe(false);
-  });
+    }).success).toBe(false);
 
-  it('rejects malformed phone context instead of silently dropping it', () => {
-    const result = channelRequestSchema.safeParse({
+    expect(channelRequestSchema.safeParse({
       text: 'Necesito catering',
       user_id: 'whatsapp:51999999999',
       channel: 'whatsapp',
       contact_phone: '999999999',
+    }).success).toBe(false);
+
+    expect(channelRequestSchema.safeParse({
+      user_id: 'whatsapp:+51987654321',
+      channel: 'whatsapp',
+      contact_phone: '+51987654321',
+      message_id: 'wamid.ambiguous-image',
+      text: null,
+      image: {
+        data: 'iVBORw0KGgoAAAANSUhEUgAA',
+        error: 'media_unavailable',
+        mime_type: 'image/jpeg',
+      },
+    }).success).toBe(false);
+  });
+
+  it.each([
+    '+51900000689',
+    '+525512345678',
+    '+12025550100',
+    '+96170197268',
+    '+44900000689',
+  ])('accepts a trusted international phone on an explicit decline: %s', (contactPhone) => {
+    const result = channelRequestSchema.safeParse({
+      text: 'Lamentablemente, no podré asistir. Ya le envié un mensaje a Paula.',
+      user_id: `whatsapp:${contactPhone}`,
+      channel: 'whatsapp',
+      contact_phone: contactPhone,
+      message_id: 'wamid.synthetic-decline',
+      client_mode: 'channel',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.contact_phone).toBe(contactPhone);
+      expect(result.data.message_id).toBe('wamid.synthetic-decline');
+    }
+  });
+
+  it.each([
+    '900000689',
+    '+5190000068',
+    '+519000006890',
+    '+9991234567',
+    '+51 (900) unknown',
+  ])('rejects an untrusted or ambiguous phone before decline processing: %s', (contactPhone) => {
+    const result = channelRequestSchema.safeParse({
+      text: 'No podré asistir.',
+      user_id: 'whatsapp:unverified',
+      channel: 'whatsapp',
+      contact_phone: contactPhone,
+      message_id: 'wamid.synthetic-decline',
     });
     expect(result.success).toBe(false);
   });
 
-  it('accepts the backend image payload with text null and inline data', () => {
-    const result = channelRequestSchema.safeParse({
+  it('accepts backend image payloads, error events, and captions', () => {
+    const payload = channelRequestSchema.safeParse({
       user_id: 'whatsapp:+51987654321',
       channel: 'whatsapp',
       contact_phone: '+51987654321',
@@ -171,15 +209,13 @@ describe('Lambda channel request contract', () => {
       },
     });
 
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.text).toBe('');
-      expect(result.data.image).toMatchObject({ mime_type: 'image/jpeg' });
+    expect(payload.success).toBe(true);
+    if (payload.success) {
+      expect(payload.data.text).toBe('');
+      expect(payload.data.image).toMatchObject({ mime_type: 'image/jpeg' });
     }
-  });
 
-  it('accepts a captioned backend image with text and inline data together', () => {
-    const result = channelRequestSchema.safeParse({
+    const captioned = channelRequestSchema.safeParse({
       user_id: 'whatsapp:+51987654321',
       channel: 'whatsapp',
       contact_phone: '+51987654321',
@@ -193,15 +229,13 @@ describe('Lambda channel request contract', () => {
       },
     });
 
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.text).toBe('Este es mi comprobante');
-      expect(result.data.image).toMatchObject({ mime_type: 'image/jpeg' });
+    expect(captioned.success).toBe(true);
+    if (captioned.success) {
+      expect(captioned.data.text).toBe('Este es mi comprobante');
+      expect(captioned.data.image).toMatchObject({ mime_type: 'image/jpeg' });
     }
-  });
 
-  it('accepts the image_too_large error event with text null', () => {
-    const result = channelRequestSchema.safeParse({
+    const tooLarge = channelRequestSchema.safeParse({
       user_id: 'whatsapp:+51987654321',
       channel: 'whatsapp',
       contact_phone: '+51987654321',
@@ -215,15 +249,13 @@ describe('Lambda channel request contract', () => {
       },
     });
 
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.text).toBe('');
-      expect(result.data.image).toMatchObject({ error: 'image_too_large' });
+    expect(tooLarge.success).toBe(true);
+    if (tooLarge.success) {
+      expect(tooLarge.data.text).toBe('');
+      expect(tooLarge.data.image).toMatchObject({ error: 'image_too_large' });
     }
-  });
 
-  it('accepts the media_unavailable error event with text null', () => {
-    const result = channelRequestSchema.safeParse({
+    expect(channelRequestSchema.safeParse({
       user_id: 'whatsapp:+51987654321',
       channel: 'whatsapp',
       contact_phone: '+51987654321',
@@ -235,13 +267,9 @@ describe('Lambda channel request contract', () => {
         error: 'media_unavailable',
         mime_type: 'image/jpeg',
       },
-    });
+    }).success).toBe(true);
 
-    expect(result.success).toBe(true);
-  });
-
-  it('accepts a captioned image error event so the caption is preserved', () => {
-    const result = channelRequestSchema.safeParse({
+    const captionedError = channelRequestSchema.safeParse({
       user_id: 'whatsapp:+51987654321',
       channel: 'whatsapp',
       contact_phone: '+51987654321',
@@ -255,45 +283,23 @@ describe('Lambda channel request contract', () => {
       },
     });
 
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.text).toBe('No se ve bien?');
+    expect(captionedError.success).toBe(true);
+    if (captionedError.success) {
+      expect(captionedError.data.text).toBe('No se ve bien?');
     }
   });
 
-  it('rejects an image carrying both data and error', () => {
-    const result = channelRequestSchema.safeParse({
-      user_id: 'whatsapp:+51987654321',
-      channel: 'whatsapp',
-      contact_phone: '+51987654321',
-      message_id: 'wamid.ambiguous-image',
-      text: null,
-      image: {
-        data: 'iVBORw0KGgoAAAANSUhEUgAA',
-        error: 'media_unavailable',
-        mime_type: 'image/jpeg',
-      },
-    });
-
-    expect(result.success).toBe(false);
-  });
-
-  it('accepts a conversation ownership request', () => {
-    const result = agentParticipationRequestSchema.safeParse({
+  it('validates conversation ownership requests by correlation identity', () => {
+    expect(agentParticipationRequestSchema.safeParse({
       channel: 'whatsapp',
       user_id: 'whatsapp:51999999999',
       request_id: 'ownership-request-123',
       requested_at: '2026-07-15T20:00:00.000Z',
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it('rejects a conversation ownership request without correlation identity', () => {
-    const result = agentParticipationRequestSchema.safeParse({
+    }).success).toBe(true);
+    expect(agentParticipationRequestSchema.safeParse({
       channel: 'whatsapp',
       user_id: 'whatsapp:51999999999',
-    });
-    expect(result.success).toBe(false);
+    }).success).toBe(false);
   });
 
   it('requires a complete evaluation identity on the development fixture marker', () => {
@@ -307,15 +313,11 @@ describe('Lambda channel request contract', () => {
     expect(backendFixtureSchema.safeParse({
       scenario: 'image-clean-world', runId: 'run-1', caseId: 'live_behavior.case', extra: 'no',
     }).success).toBe(false);
-  });
-
-  it('rejects a development fixture marker with an incomplete identity at the channel boundary', () => {
-    const result = channelRequestSchema.safeParse({
+    expect(channelRequestSchema.safeParse({
       text: 'hola',
       user_id: 'user-123',
       channel: 'terminal_whatsapp_eval',
       backendFixture: { scenario: 'image-clean-world' },
-    });
-    expect(result.success).toBe(false);
+    }).success).toBe(false);
   });
 });

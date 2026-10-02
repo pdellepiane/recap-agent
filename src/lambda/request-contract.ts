@@ -2,7 +2,24 @@ import { z } from 'zod';
 
 import { inboundMediaKindValues } from '../core/messages';
 import { inboundImageSchema } from '../core/inbound-image';
-import { parseInternationalPhone } from '../runtime/phone';
+import { parseInternationalPhone, type PhoneParseResult } from '../runtime/phone';
+
+type InvalidPhoneReason = Extract<PhoneParseResult, { status: 'invalid' }>['reason'];
+
+function contactPhoneIssueMessage(reason: InvalidPhoneReason): string {
+  switch (reason) {
+    case 'missing_country_code':
+      return 'contact_phone must include the international prefix, e.g. +51999999999.';
+    case 'unsupported_country_code':
+      return 'contact_phone uses an unassigned country code; send canonical E.164 from the verified WhatsApp sender.';
+    case 'invalid_length':
+      return 'contact_phone has an invalid length for its country code.';
+    case 'invalid_characters':
+      return 'contact_phone contains invalid characters; send canonical E.164 digits.';
+    case 'empty':
+      return 'contact_phone is required for WhatsApp channels.';
+  }
+}
 
 const whatsAppChannels = new Set(['whatsapp', 'whatsapp_sandbox']);
 // The channel is the first component of the persisted channel#user partition key.
@@ -78,12 +95,15 @@ export const channelRequestSchema = z.object({
     });
     return;
   }
-  if (value.contact_phone && parseInternationalPhone(value.contact_phone).status === 'invalid') {
-    context.addIssue({
-      code: 'custom',
-      path: ['contact_phone'],
-      message: 'contact_phone must be a supported international number such as +51999999999.',
-    });
+  if (value.contact_phone) {
+    const phoneParse = parseInternationalPhone(value.contact_phone);
+    if (phoneParse.status === 'invalid') {
+      context.addIssue({
+        code: 'custom',
+        path: ['contact_phone'],
+        message: contactPhoneIssueMessage(phoneParse.reason),
+      });
+    }
   }
 });
 

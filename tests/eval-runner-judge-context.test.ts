@@ -109,7 +109,7 @@ function makeCase(overrides: Partial<EvalCase>): EvalCase {
 }
 
 describe('buildSemanticJudgeContext judge-context completeness', () => {
-  it('keeps prior user inputs and assistant responses but excludes the candidate', () => {
+  it('scopes judge context to prior and current turns, excluding the candidate and future turns', () => {
     const ctx = buildSemanticJudgeContext([
       makeTurn('mensaje previo', 0, 'respuesta previa'),
       makeTurn('mensaje actual', 1, 'respuesta candidata'),
@@ -118,19 +118,25 @@ describe('buildSemanticJudgeContext judge-context completeness', () => {
     expect(ctx).toContain('mensaje previo');
     expect(ctx).toContain('respuesta previa');
     expect(ctx).not.toContain('respuesta candidata');
+    const current = buildSemanticJudgeContext([
+      makeTurn('mensaje actual', 0, 'respuesta candidata'),
+      makeTurn('mensaje futuro unico xyz', 1, 'respuesta futura'),
+    ], 0);
+    expect(current).toContain('mensaje actual');
+    expect(current).not.toContain('mensaje futuro unico xyz');
+    expect(current).not.toContain('respuesta futura');
   });
 
-  it('includes notes and fixture recentMessages when case provides them', () => {
+  it('projects the trusted case section with fixture provenance, omitting it without notes, fixture, or case', () => {
+    const cartInput = {
+      text: 'Tengo un carrito abandonado de Carlos y Adriana',
+      channel: 'whatsapp',
+      contactPhone: '+51965765765',
+      sessionId: 's',
+    } as unknown as EvalCase['inputs'][number];
     const turns = [makeTurn('Tengo un carrito abandonado de Carlos y Adriana')];
     const currentCase = makeCase({
-      inputs: [
-        {
-          text: 'Tengo un carrito abandonado de Carlos y Adriana',
-          channel: 'whatsapp',
-          contactPhone: '+51965765765',
-          sessionId: 's',
-        } as unknown as EvalCase['inputs'][number],
-      ],
+      inputs: [cartInput],
       notes: [
         "Contexto confiable reconstruido: el historial saliente verificado contiene el mensaje id 1 outbound campaign body 'Hola Sonia Maribel, hiciste un regalo para Carlos & Adriana pero no terminaste el proceso. Puedes completarlo aqui: https://sinenvolturas.com/cart/recover/ea14739a-4064-4791-a646-aa24b799d2da' con ruta /cart/recover valida.",
       ],
@@ -147,11 +153,21 @@ describe('buildSemanticJudgeContext judge-context completeness', () => {
     expect(ctx).toContain('"direction":"outbound"');
     // also retains interaction
     expect(ctx).toContain('Tengo un carrito abandonado');
-  });
-
-  it('excludes fixture messages from other subjects', () => {
-    const turns = [makeTurn('COD301816')];
-    const currentCase = makeCase({
+    // campaign provenance travels with the fixture history
+    const provenanceCtx = buildSemanticJudgeContext(
+      [makeTurn('Tengo un carrito abandonado de Carlos y Adriana')],
+      0,
+      makeCase({
+        inputs: [cartInput],
+        notes: [],
+        backendFixture: { scenario: 'purchase-sonia-765' },
+      }),
+    );
+    expect(provenanceCtx).toContain('FIXTURE HISTORY');
+    expect(provenanceCtx).toContain('"source":"campaign"');
+    expect(provenanceCtx).toContain('sent_at');
+    const otherTurns = [makeTurn('COD301816')];
+    const otherCase = makeCase({
       inputs: [
         {
           text: 'COD301816',
@@ -163,29 +179,25 @@ describe('buildSemanticJudgeContext judge-context completeness', () => {
       notes: [],
       backendFixture: { scenario: 'purchase-sonia-765' },
     });
-    const ctx = buildSemanticJudgeContext(turns, 0, currentCase);
-    expect(ctx).not.toContain('Hola Sonia Maribel');
-    expect(ctx).toContain('sin mensajes para el sujeto de este caso');
-  });
+    const otherCtx = buildSemanticJudgeContext(otherTurns, 0, otherCase);
+    expect(otherCtx).not.toContain('Hola Sonia Maribel');
+    expect(otherCtx).toContain('sin mensajes para el sujeto de este caso');
 
-  it('omits trusted section when case has no notes and no fixture', () => {
-    const turns = [makeTurn('hola')];
-    const currentCase = makeCase({
+    // Without notes, fixture, or case the trusted section is omitted
+    // while the interaction JSON still travels.
+    const bareTurns = [makeTurn('hola')];
+    const bareCase = makeCase({
       notes: [],
     });
-    const ctx = buildSemanticJudgeContext(turns, 0, currentCase);
-    expect(ctx).not.toContain('Contexto confiable reconstruido del caso');
-    expect(ctx).not.toContain('Notas del caso');
-    expect(ctx).not.toContain('Historial confiable reciente');
+    const bareCtx = buildSemanticJudgeContext(bareTurns, 0, bareCase);
+    expect(bareCtx).not.toContain('Contexto confiable reconstruido del caso');
+    expect(bareCtx).not.toContain('Notas del caso');
+    expect(bareCtx).not.toContain('Historial confiable reciente');
     // still contains interaction JSON
-    expect(ctx).toContain('hola');
-  });
-
-  it('returns same as before when currentCase is undefined', () => {
-    const turns = [makeTurn('test without case')];
-    const ctx = buildSemanticJudgeContext(turns, 0);
-    expect(ctx).not.toContain('Contexto confiable reconstruido del caso');
-    expect(ctx).toContain('test without case');
+    expect(bareCtx).toContain('hola');
+    const caseless = buildSemanticJudgeContext([makeTurn('test without case')], 0);
+    expect(caseless).not.toContain('Contexto confiable reconstruido del caso');
+    expect(caseless).toContain('test without case');
   });
 });
 
@@ -244,69 +256,30 @@ describe('final support rescue judge-evidence completeness (2026-09-16)', () => 
     expect(ctx).toContain('Miraflores');
     expect(ctx).toContain('priceLevel');
   });
-
-  it('projects fixture message source and timestamps for campaign provenance', () => {
-    const turns = [makeTurn('Tengo un carrito abandonado de Carlos y Adriana')];
-    const currentCase = makeCase({
-      inputs: [
-        {
-          text: 'Tengo un carrito abandonado de Carlos y Adriana',
-          channel: 'whatsapp',
-          contactPhone: '+51965765765',
-          sessionId: 's',
-        } as unknown as EvalCase['inputs'][number],
-      ],
-      notes: [],
-      backendFixture: { scenario: 'purchase-sonia-765' },
-    });
-    const ctx = buildSemanticJudgeContext(turns, 0, currentCase);
-    expect(ctx).toContain('FIXTURE HISTORY');
-    expect(ctx).toContain('"source":"campaign"');
-    expect(ctx).toContain('sent_at');
-  });
-
-  it('binds digest-verified image truth for the same-turn continuity case', async () => {
-    const { EvalLoader } = await import('../src/evals/loader');
-    const { resolveJudgeOnlyImageGroundTruth } = await import('../src/evals/runner');
-    const catalog = await new EvalLoader('evals').loadCatalog();
-    const currentCase = catalog.cases.find(
-      (entry) => entry.id === 'live_behavior.continuity_text_image_same_turn',
-    );
-    expect(currentCase).toBeDefined();
-    if (!currentCase) throw new Error('Missing same-turn case.');
-    const truth = resolveJudgeOnlyImageGroundTruth(currentCase, 0);
-    expect(truth).not.toBeNull();
-    expect(truth ?? '').toContain('S/ 250.00');
-    expect(truth ?? '').toContain('judge use only, never candidate knowledge, never runtime input');
-  });
 });
 
 describe('finalization output-origin and transport gates', () => {
-  it('passes every delivered turn with consistent verified evidence', () => {
+  it('gates every delivered turn on consistent verified origin evidence', () => {
     const delivered = 'respuesta entregada';
     const sha = hashPrivateOutput(delivered);
+    const verifiedOrigin: {
+      status: 'verified';
+      candidateSha256: string;
+      deliveredSha256: string;
+      transformationVersion: string;
+      mismatchFields: string[];
+    } = {
+      status: 'verified',
+      candidateSha256: sha,
+      deliveredSha256: sha,
+      transformationVersion: 'transport-v2',
+      mismatchFields: [],
+    };
     const turn = makeTurn('hola', 0, delivered);
-    turn.outputOrigin = {
-      status: 'verified',
-      candidateSha256: sha,
-      deliveredSha256: sha,
-      transformationVersion: 'transport-v2',
-      mismatchFields: [],
-    };
+    turn.outputOrigin = { ...verifiedOrigin };
     expect(collectOriginGateFailures([turn])).toEqual([]);
-  });
-
-  it('fails an inconsistent hash on an unjudged intermediate turn', () => {
-    const delivered = 'respuesta entregada';
-    const sha = hashPrivateOutput(delivered);
     const verified = makeTurn('primero', 0, delivered);
-    verified.outputOrigin = {
-      status: 'verified',
-      candidateSha256: sha,
-      deliveredSha256: sha,
-      transformationVersion: 'transport-v2',
-      mismatchFields: [],
-    };
+    verified.outputOrigin = { ...verifiedOrigin };
     const intermediate = makeTurn('intermedio', 1, 'texto reemplazado');
     intermediate.outputOrigin = {
       status: 'mismatch',
@@ -352,19 +325,10 @@ describe('finalization output-origin and transport gates', () => {
     expect(failures.join('; ')).toContain('turn 0 reply');
   });
 
-  it('excludes future turns from the candidate-visible judge packet', () => {
-    const ctx = buildSemanticJudgeContext([
-      makeTurn('mensaje actual', 0, 'respuesta candidata'),
-      makeTurn('mensaje futuro unico xyz', 1, 'respuesta futura'),
-    ], 0);
-    expect(ctx).toContain('mensaje actual');
-    expect(ctx).not.toContain('mensaje futuro unico xyz');
-    expect(ctx).not.toContain('respuesta futura');
-  });
 });
 
 describe('judge packet identity under scheduling (O3)', () => {
-  it('builds byte-identical contexts for identical evidence regardless of run order', () => {
+  it('identifies judge packets by immutable evidence, independent of run order', () => {
     const turns = [
       makeTurn('mensaje previo', 0, 'respuesta previa'),
       makeTurn('mensaje actual', 1, 'respuesta candidata'),
@@ -375,9 +339,6 @@ describe('judge packet identity under scheduling (O3)', () => {
       makeTurn('mensaje actual', 1, 'respuesta candidata'),
     ], 1);
     expect(first).toBe(second);
-  });
-
-  it('changes the judge context when immutable evidence changes', () => {
     const before = buildSemanticJudgeContext([makeTurn('mensaje actual', 0, 'respuesta')], 0);
     const after = buildSemanticJudgeContext([makeTurn('mensaje distinto', 0, 'respuesta')], 0);
     expect(before).not.toBe(after);

@@ -5,7 +5,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { getConfig } from '../src/runtime/config';
 import {
-  DEFAULT_GPT_TEXT_MODEL,
   DEFAULT_PROMPT_CACHE_OPTIONS,
 } from '../src/runtime/openai-model-defaults';
 
@@ -14,21 +13,11 @@ describe('OpenAI model defaults', () => {
     vi.unstubAllEnvs();
   });
 
-  it('uses gpt-6-luna for every active GPT role', () => {
-    vi.stubEnv('OPENAI_MODEL', '');
-    vi.stubEnv('OPENAI_EXTRACTOR_MODEL', '');
-    vi.stubEnv('OPENAI_RESPONSE_CLASSIFIER_MODEL', '');
-    delete process.env.OPENAI_MODEL;
-    delete process.env.OPENAI_EXTRACTOR_MODEL;
-    delete process.env.OPENAI_RESPONSE_CLASSIFIER_MODEL;
-
-    expect(getConfig().openAi.models).toEqual({
-      reply: DEFAULT_GPT_TEXT_MODEL,
-      extractor: DEFAULT_GPT_TEXT_MODEL,
-      responseClassifier: DEFAULT_GPT_TEXT_MODEL,
-    });
-    expect(DEFAULT_GPT_TEXT_MODEL).toBe('gpt-6-luna');
-  });
+  // Default role mapping and model pins live in
+  // tests/owner-c-decision-4-model-deployment.test.ts ('targets gpt-6-luna
+  // for the application and the default judge' plus 'resolves reply,
+  // extractor, and classifier models independently'), which assert the same
+  // defaults with literal values and override coverage.
 
   it('locks implicit GPT-5.6 caching and removes the legacy deployment parameter', () => {
     expect(DEFAULT_PROMPT_CACHE_OPTIONS).toEqual({ mode: 'implicit', ttl: '30m' });

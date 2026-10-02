@@ -207,6 +207,7 @@ export const agentEventDetailWireShape: WireObjectShape = {
 export const agentRecentMessagesWireShape: WireObjectShape = {
   messages: {
     id: null,
+    event_id: null,
     direction: null,
     source: null,
     body: null,

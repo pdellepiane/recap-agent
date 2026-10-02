@@ -23,8 +23,85 @@ import type {
   ProviderGateway,
   UserEventLookupResult,
 } from '../src/runtime/provider-gateway';
+import hostedEventFixture from '../evals/fixtures/phone-owner-history-kilimanjaro.json';
 
 describe('InformationOrchestrator', () => {
+  it('includes verified-phone account event facts and rejects mismatched accounts', async () => {
+    const liveAccount = hostedEventFixture.providerUserEvents as unknown as UserEventLookupResult;
+    const liveOrchestrator = new InformationOrchestrator({
+      knowledgeGateway: { async search() { throw new Error('unused'); } },
+      providerGateway: { async lookupUserEventContext() { return liveAccount; } } as unknown as ProviderGateway,
+      agentGateway: new FakeAgentGateway(),
+    });
+    const liveSnapshot = await liveOrchestrator.prepareCustomerContext({
+      authentication: null,
+      trustedPhone: { phone_extension: '+51', phone_number: '900000400' },
+      identity: { customerRef: '+51900000400', scope: 'trusted_phone', source: 'test_phone' },
+      currentContext: { relevantEventIds: [40034] },
+      deadlineMs: null,
+    });
+    expect(liveSnapshot.invitationsEvents.invitations).toEqual(expect.arrayContaining([
+      expect.objectContaining({ eventId: 40034, name: 'Kilimanjaro', relation: 'host',
+        datetime: '2026-09-22 15:35:00' }),
+    ]));
+    expect(liveSnapshot.currentContext.relevantEventIds).toContain(40034);
+
+    const roles = eventLookup();
+    if (!roles.user) throw new Error('expected account fixture');
+    roles.user.fullPhone = '+51991347878';
+    roles.events = [
+      { ...roles.events[0], eventId: 40034, name: 'Kilimanjaro',
+        datetime: '2026-09-22 15:35:00', relation: 'owner' },
+      { ...roles.events[0], eventId: 40034, name: 'Kilimanjaro',
+        datetime: '2026-09-22 15:35:00', relation: 'host' },
+    ];
+    const lookupUserEventContext = vi.fn(async () => roles);
+    const providerGateway = {
+      lookupUserEventContext,
+    } as unknown as ProviderGateway;
+    const rolesOrchestrator = new InformationOrchestrator({
+      knowledgeGateway: { async search() { throw new Error('unused'); } },
+      providerGateway,
+      agentGateway: new FakeAgentGateway(),
+    });
+    const rolesSnapshot = await rolesOrchestrator.prepareCustomerContext({
+      authentication: null,
+      trustedPhone: { phone_extension: '+51', phone_number: '991347878' },
+      identity: { customerRef: '+51991347878', scope: 'trusted_phone', source: 'test_phone' },
+      currentContext: null,
+      deadlineMs: null,
+    });
+    expect(rolesSnapshot.invitationsEvents.invitations).toEqual(expect.arrayContaining([
+      expect.objectContaining({ eventId: 40034, relation: 'owner',
+        datetime: '2026-09-22 15:35:00', amountCollected: null, orders: [] }),
+      expect.objectContaining({ eventId: 40034, relation: 'host',
+        datetime: '2026-09-22 15:35:00', amountTransferred: null, orderIds: [] }),
+    ]));
+    expect(lookupUserEventContext).toHaveBeenCalledWith({
+      email: null, phone: '991347878',
+    });
+
+    const mismatch = eventLookup();
+    if (!mismatch.user) throw new Error('expected account fixture');
+    mismatch.user.fullPhone = '+51900000000';
+    mismatch.events[0] = { ...mismatch.events[0], eventId: 40034, name: 'Kilimanjaro' };
+    const mismatchOrchestrator = new InformationOrchestrator({
+      knowledgeGateway: { async search() { throw new Error('unused'); } },
+      providerGateway: { async lookupUserEventContext() { return mismatch; } } as unknown as ProviderGateway,
+      agentGateway: new FakeAgentGateway(),
+    });
+    const mismatchSnapshot = await mismatchOrchestrator.prepareCustomerContext({
+      authentication: null,
+      trustedPhone: { phone_extension: '+51', phone_number: '991347878' },
+      identity: { customerRef: '+51991347878', scope: 'trusted_phone', source: 'test_phone' },
+      currentContext: null,
+      deadlineMs: null,
+    });
+    expect(mismatchSnapshot.invitationsEvents.invitations).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ eventId: 40034 }),
+    ]));
+  });
+
   it('starts independent FAQ and authenticated event work concurrently and preserves request order', async () => {
     let release!: () => void;
     const gate = new Promise<void>((resolve) => {
@@ -191,20 +268,21 @@ describe('InformationOrchestrator', () => {
     ]);
   });
 
-  it('does not call protected capabilities until shared authentication is ready', async () => {
+  it('blocks protected capabilities until shared authentication is ready and preserves the typed next input', async () => {
+    const blockedKnowledgeGateway = {
+      async search() {
+        return {
+          status: 'failed' as const,
+          reason: 'not_configured' as const,
+          retryable: false,
+          error: 'not configured',
+        };
+      },
+    };
     const agentGateway = new FakeAgentGateway();
     const lookupAuthenticatedUserEvents = vi.fn();
     const orchestrator = new InformationOrchestrator({
-      knowledgeGateway: {
-        async search() {
-          return {
-            status: 'failed' as const,
-            reason: 'not_configured' as const,
-            retryable: false,
-            error: 'not configured',
-          };
-        },
-      },
+      knowledgeGateway: blockedKnowledgeGateway,
       providerGateway: {
         lookupAuthenticatedUserEvents,
       } as unknown as ProviderGateway,
@@ -243,44 +321,31 @@ describe('InformationOrchestrator', () => {
     expect(lookupAuthenticatedUserEvents).not.toHaveBeenCalled();
     expect(agentGateway.ordersCalls).toBe(0);
     expect(agentGateway.giftCalls).toBe(0);
-  });
 
-  it.each([
-    ['email', createInformationAuthGuidance('email_required', null)],
-    ['otp', createInformationAuthGuidance('otp_pending', 'user@example.com')],
-    [
-      'phone_confirmation',
-      createInformationAuthGuidance('phone_confirmation_required', null),
-    ],
-  ] as const)('preserves the typed authentication next input: %s', async (nextInput, guidance) => {
-    const orchestrator = new InformationOrchestrator({
-      knowledgeGateway: {
-        async search() {
-          return {
-            status: 'failed' as const,
-            reason: 'not_configured' as const,
-            retryable: false,
-            error: 'not configured',
-          };
-        },
-      },
-      providerGateway: {} as ProviderGateway,
-      agentGateway: new FakeAgentGateway(),
-    });
+    const variants = [
+      ['email', createInformationAuthGuidance('email_required', null)],
+      ['otp', createInformationAuthGuidance('otp_pending', 'user@example.com')],
+      [
+        'phone_confirmation',
+        createInformationAuthGuidance('phone_confirmation_required', null),
+      ],
+    ] as const;
+    for (const [nextInput, guidance] of variants) {
+      const typed = await orchestrator.execute({
+        requests: [purchaseRequest('typed-next-input')],
+        authentication: null,
+        authBlock: { nextInput, guidance },
+      });
 
-    const execution = await orchestrator.execute({
-      requests: [purchaseRequest('typed-next-input')],
-      authentication: null,
-      authBlock: { nextInput, guidance },
-    });
-
-    expect(execution.results[0]).toEqual(
-      expect.objectContaining({
-        status: 'needs_input',
-        nextInput,
-        guidance,
-      }),
-    );
+      expect(typed.results[0]).toEqual(
+        expect.objectContaining({
+          status: 'needs_input',
+          nextInput,
+          guidance,
+        }),
+      );
+    }
+    expect(lookupAuthenticatedUserEvents).not.toHaveBeenCalled();
   });
 
   it('answers a single discovery match without an exact-order re-read', async () => {
@@ -389,9 +454,10 @@ describe('InformationOrchestrator', () => {
     expect(result.result.counts.recentOrders).toBe(1);
   });
 
-  it('resolves an account-less guest event from the trusted phone without OTP', async () => {
-    const agentGateway = new FakeAgentGateway();
-    agentGateway.guestEventsResult = {
+  it('resolves phone-scoped guest events for single, ambiguous, and missing matches without OTP', async () => {
+    const trustedPhone = { phone_extension: '+51', phone_number: '973296571' };
+    const singleGateway = new FakeAgentGateway();
+    singleGateway.guestEventsResult = {
       status: 'success',
       events: [{
         eventId: 88,
@@ -407,10 +473,10 @@ describe('InformationOrchestrator', () => {
         currency: 'PEN',
       }],
     };
-    agentGateway.eventDetailResult = {
+    singleGateway.eventDetailResult = {
       status: 'success',
       event: {
-        ...agentGateway.guestEventsResult.events[0],
+        ...singleGateway.guestEventsResult.events[0],
         withTime: true,
         timezone: 'America/Lima',
         celebrateds: [],
@@ -430,13 +496,13 @@ describe('InformationOrchestrator', () => {
         contactInfo: [],
       },
     };
-    const orchestrator = new InformationOrchestrator({
+    const singleOrchestrator = new InformationOrchestrator({
       knowledgeGateway: { async search() { throw new Error('unused'); } },
       providerGateway: {} as ProviderGateway,
-      agentGateway,
+      agentGateway: singleGateway,
     });
 
-    const execution = await orchestrator.execute({
+    const single = await singleOrchestrator.execute({
       requests: [{
         requestId: 'event-guest-1',
         kind: 'associated_event',
@@ -445,12 +511,12 @@ describe('InformationOrchestrator', () => {
       }],
       authentication: null,
       authBlock: null,
-      trustedPhone: { phone_extension: '+51', phone_number: '973296571' },
+      trustedPhone,
     });
 
-    expect(agentGateway.guestEventCalls).toBe(1);
-    expect(agentGateway.eventDetailCalls).toBe(1);
-    expect(execution.results[0]).toMatchObject({
+    expect(singleGateway.guestEventCalls).toBe(1);
+    expect(singleGateway.eventDetailCalls).toBe(1);
+    expect(single.results[0]).toMatchObject({
       kind: 'associated_event',
       status: 'completed',
       accessMethod: 'trusted_phone_guest',
@@ -464,28 +530,26 @@ describe('InformationOrchestrator', () => {
         }],
       },
     });
-    expect(execution.summaries[0]).toMatchObject({
+    expect(single.summaries[0]).toMatchObject({
       accessMethod: 'trusted_phone_guest',
       eventDetailCount: 1,
     });
-  });
 
-  it('returns guest event choices without OTP when several invitations remain ambiguous', async () => {
-    const agentGateway = new FakeAgentGateway();
-    agentGateway.guestEventsResult = {
+    const manyGateway = new FakeAgentGateway();
+    manyGateway.guestEventsResult = {
       status: 'success',
       events: [
         guestEvent(88, 'Boda Laura & Marcos'),
         guestEvent(89, 'Bautizo Sofía'),
       ],
     };
-    const orchestrator = new InformationOrchestrator({
+    const manyOrchestrator = new InformationOrchestrator({
       knowledgeGateway: { async search() { throw new Error('unused'); } },
       providerGateway: {} as ProviderGateway,
-      agentGateway,
+      agentGateway: manyGateway,
     });
 
-    const execution = await orchestrator.execute({
+    const many = await manyOrchestrator.execute({
       requests: [{
         requestId: 'event-guest-many',
         kind: 'associated_event',
@@ -494,52 +558,52 @@ describe('InformationOrchestrator', () => {
       }],
       authentication: null,
       authBlock: null,
-      trustedPhone: { phone_extension: '+51', phone_number: '973296571' },
+      trustedPhone,
     });
 
-    expect(agentGateway.eventDetailCalls).toBe(2);
-    expect(execution.results[0]).toMatchObject({
+    expect(manyGateway.eventDetailCalls).toBe(2);
+    expect(many.results[0]).toMatchObject({
       status: 'completed',
       accessMethod: 'trusted_phone_guest',
       result: { counts: { guestEvents: 2 } },
     });
+
+    for (const outcome of ['not_found', 'empty'] as const) {
+      const missingGateway = new FakeAgentGateway();
+      missingGateway.guestEventsResult = outcome === 'not_found'
+        ? { status: 'not_found' }
+        : { status: 'success', events: [] };
+      const missingOrchestrator = new InformationOrchestrator({
+        knowledgeGateway: { async search() { throw new Error('unused'); } },
+        providerGateway: {} as ProviderGateway,
+        agentGateway: missingGateway,
+      });
+
+      const missing = await missingOrchestrator.execute({
+        requests: [{
+          requestId: 'event-guest-missing',
+          kind: 'associated_event',
+          query: '¿Dónde es mi evento?',
+          eventHint: null,
+        }],
+        authentication: null,
+        authBlock: {
+          nextInput: 'email',
+          guidance: createInformationAuthGuidance('email_required', null),
+        },
+        trustedPhone,
+      });
+
+      expect(missing.results[0]).toMatchObject({
+        status: 'failed',
+        failureKind: 'not_found',
+        accessMethod: 'trusted_phone_guest',
+      });
+      expect(missing.summaries[0]).toMatchObject({ outcomeCode: 'not_found', accessMethod: 'trusted_phone_guest' });
+    }
   });
 
-  it.each(['not_found', 'empty'] as const)('preserves a scoped phone %s instead of falling through to email', async (outcome) => {
-    const agentGateway = new FakeAgentGateway();
-    agentGateway.guestEventsResult = outcome === 'not_found'
-      ? { status: 'not_found' }
-      : { status: 'success', events: [] };
-    const orchestrator = new InformationOrchestrator({
-      knowledgeGateway: { async search() { throw new Error('unused'); } },
-      providerGateway: {} as ProviderGateway,
-      agentGateway,
-    });
-
-    const execution = await orchestrator.execute({
-      requests: [{
-        requestId: 'event-guest-missing',
-        kind: 'associated_event',
-        query: '¿Dónde es mi evento?',
-        eventHint: null,
-      }],
-      authentication: null,
-      authBlock: {
-        nextInput: 'email',
-        guidance: createInformationAuthGuidance('email_required', null),
-      },
-      trustedPhone: { phone_extension: '+51', phone_number: '973296571' },
-    });
-
-    expect(execution.results[0]).toMatchObject({
-      status: 'failed',
-      failureKind: 'not_found',
-      accessMethod: 'trusted_phone_guest',
-    });
-    expect(execution.summaries[0]).toMatchObject({ outcomeCode: 'not_found', accessMethod: 'trusted_phone_guest' });
-  });
-
-  it('reads phone-scoped orders without an authentication or OTP preflight', async () => {
+  it('reads phone-scoped orders once without a preflight and dedupes identical reads', async () => {
     const agentGateway = new FakeAgentGateway();
     agentGateway.guestOrdersResult = {
       status: 'success',
@@ -576,28 +640,60 @@ describe('InformationOrchestrator', () => {
       kind: 'purchase',
       needsSelection: false,
     });
-  });
 
-  it('retains successful orders when profile preparation sees a failed gift root', async () => {
-    const agentGateway = new FakeAgentGateway();
-    agentGateway.guestGiftResult = {
-      status: 'retryable_failure',
-      resource: 'gift_purchases',
-      retryable: true,
-      error: 'HTTP 500',
-    };
-    agentGateway.guestOrdersResult = {
+    const dedupeGateway = new FakeAgentGateway();
+    dedupeGateway.guestOrdersResult = {
       status: 'success',
       resource: 'orders',
       purchases: [giftPurchase()],
     };
-    const orchestrator = new InformationOrchestrator({
+    const dedupeOrchestrator = new InformationOrchestrator({
       knowledgeGateway: { async search() { throw new Error('unused'); } },
       providerGateway: {} as ProviderGateway,
-      agentGateway,
+      agentGateway: dedupeGateway,
     });
 
-    const snapshot = await orchestrator.prepareCustomerContext({
+    const dedupeRequest = (requestId: string): PendingInformationRequest => ({
+      requestId,
+      kind: 'purchase',
+      resource: 'orders',
+      query: 'Estado del pedido',
+      orderId: 'ORD-000880',
+      authAction: 'none',
+    });
+    const deduped = await dedupeOrchestrator.execute({
+      requests: [dedupeRequest('dedupe-1'), dedupeRequest('dedupe-2')],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
+    });
+
+    expect(dedupeGateway.guestOrdersCalls).toBe(1);
+    expect(deduped.results).toHaveLength(2);
+    expect(deduped.results.every((result) => result.status === 'completed')).toBe(true);
+  });
+
+  it('keeps a failed gift root explicit without an orders fallback in preparation and execution', async () => {
+    const failedGift = {
+      status: 'retryable_failure',
+      resource: 'gift_purchases',
+      retryable: true,
+      error: 'HTTP 500',
+    } as const;
+    const prepGateway = new FakeAgentGateway();
+    prepGateway.guestGiftResult = { ...failedGift };
+    prepGateway.guestOrdersResult = {
+      status: 'success',
+      resource: 'orders',
+      purchases: [giftPurchase()],
+    };
+    const prepOrchestrator = new InformationOrchestrator({
+      knowledgeGateway: { async search() { throw new Error('unused'); } },
+      providerGateway: {} as ProviderGateway,
+      agentGateway: prepGateway,
+    });
+
+    const snapshot = await prepOrchestrator.prepareCustomerContext({
       authentication: null,
       trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
       identity: {
@@ -611,8 +707,8 @@ describe('InformationOrchestrator', () => {
 
     // Both customer roots are read before extraction. A failed gift source
     // remains explicit while the successful orders fact stays available.
-    expect(agentGateway.guestGiftCalls).toBe(1);
-    expect(agentGateway.guestOrdersCalls).toBe(1);
+    expect(prepGateway.guestGiftCalls).toBe(1);
+    expect(prepGateway.guestOrdersCalls).toBe(1);
     expect(snapshot.purchasesCarts).toMatchObject({
       status: 'ready',
       completeness: 'partial',
@@ -622,23 +718,16 @@ describe('InformationOrchestrator', () => {
         { source: 'gift_purchases', status: 'failed' },
       ],
     });
-  });
 
-  it('does not use the orders fallback when gift details are requested', async () => {
-    const agentGateway = new FakeAgentGateway();
-    agentGateway.guestGiftResult = {
-      status: 'retryable_failure',
-      resource: 'gift_purchases',
-      retryable: true,
-      error: 'HTTP 500',
-    };
-    const orchestrator = new InformationOrchestrator({
+    const execGateway = new FakeAgentGateway();
+    execGateway.guestGiftResult = { ...failedGift };
+    const execOrchestrator = new InformationOrchestrator({
       knowledgeGateway: { async search() { throw new Error('unused'); } },
       providerGateway: {} as ProviderGateway,
-      agentGateway,
+      agentGateway: execGateway,
     });
 
-    const execution = await orchestrator.execute({
+    const execution = await execOrchestrator.execute({
       requests: [{
         requestId: 'phone-gift-details',
         kind: 'purchase',
@@ -652,8 +741,8 @@ describe('InformationOrchestrator', () => {
       trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
     });
 
-    expect(agentGateway.guestGiftCalls).toBe(1);
-    expect(agentGateway.guestOrdersCalls).toBe(0);
+    expect(execGateway.guestGiftCalls).toBe(1);
+    expect(execGateway.guestOrdersCalls).toBe(0);
     expect(execution.results[0]).toMatchObject({
       status: 'failed',
       failureKind: 'request_failed',
@@ -731,114 +820,89 @@ describe('InformationOrchestrator', () => {
     expect(statusResult.purchases[0]?.payment ?? null).toBeNull();
   });
 
-  it('deduplicates identical phone purchase reads across requests', async () => {
-    const agentGateway = new FakeAgentGateway();
-    agentGateway.guestOrdersResult = {
-      status: 'success',
-      resource: 'orders',
-      purchases: [giftPurchase()],
-    };
-    const orchestrator = new InformationOrchestrator({
-      knowledgeGateway: { async search() { throw new Error('unused'); } },
-      providerGateway: {} as ProviderGateway,
-      agentGateway,
-    });
+  it('resolves customer references locally, keeping authorized alternatives visible when unmatched', async () => {
+    const trustedPhone = { phone_extension: '+51', phone_number: '987654321' };
 
-    const request = (requestId: string): PendingInformationRequest => ({
-      requestId,
-      kind: 'purchase',
-      resource: 'orders',
-      query: 'Estado del pedido',
-      orderId: 'ORD-000880',
-      authAction: 'none',
-    });
-    const execution = await orchestrator.execute({
-      requests: [request('dedupe-1'), request('dedupe-2')],
-      authentication: null,
-      authBlock: null,
-      trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
-    });
-
-    expect(agentGateway.guestOrdersCalls).toBe(1);
-    expect(execution.results).toHaveLength(2);
-    expect(execution.results.every((result) => result.status === 'completed')).toBe(true);
-  });
-
-  it.each(['COD301816', '301816'])('matches customer reference %s locally against backend increment ids', async (reference) => {
-    const agentGateway = new FakeAgentGateway();
-    agentGateway.guestOrdersResult = {
-      status: 'success',
-      resource: 'orders',
-      purchases: [
-        { ...giftPurchase(), orderId: 'ORD_internal_1', customerTransactionNumber: '301816' },
-        { ...giftPurchase(), orderId: 'ORD_internal_2', customerTransactionNumber: '188308' },
-      ],
-    };
-    const orchestrator = new InformationOrchestrator({
-      knowledgeGateway: { async search() { throw new Error('unused'); } },
-      providerGateway: {} as ProviderGateway,
-      agentGateway,
-    });
-
-    const execution = await orchestrator.execute({
-      requests: [{
-        requestId: 'customer-code',
-        kind: 'purchase',
+    // A bare or prefixed reference matches locally against backend
+    // increment ids with no exact-order re-read.
+    for (const reference of ['COD301816', '301816']) {
+      const agentGateway = new FakeAgentGateway();
+      agentGateway.guestOrdersResult = {
+        status: 'success',
         resource: 'orders',
-        query: reference,
-        orderId: reference,
-        authAction: 'none',
-      }],
-      authentication: null,
-      authBlock: null,
-      trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
-    });
+        purchases: [
+          { ...giftPurchase(), orderId: 'ORD_internal_1', customerTransactionNumber: '301816' },
+          { ...giftPurchase(), orderId: 'ORD_internal_2', customerTransactionNumber: '188308' },
+        ],
+      };
+      const orchestrator = new InformationOrchestrator({
+        knowledgeGateway: { async search() { throw new Error('unused'); } },
+        providerGateway: {} as ProviderGateway,
+        agentGateway,
+      });
 
-    expect(agentGateway.guestOrderIds).toEqual([null]);
-    expect(execution.results[0]).toMatchObject({
-      status: 'completed',
-      needsSelection: false,
-      referenceResolution: 'matched',
-      requestedCustomerTransactionNumber: '301816',
-      purchases: [{
-        orderId: 'ORD_internal_1',
-        customerTransactionNumber: '301816',
-      }],
-    });
-  });
+      const execution = await orchestrator.execute({
+        requests: [{
+          requestId: 'customer-code',
+          kind: 'purchase',
+          resource: 'orders',
+          query: reference,
+          orderId: reference,
+          authAction: 'none',
+        }],
+        authentication: null,
+        authBlock: null,
+        trustedPhone,
+      });
 
-  it('falls back to phone-scoped choices when the backend omits customer transaction ids', async () => {
-    const agentGateway = new FakeAgentGateway();
-    agentGateway.guestOrdersResult = {
-      status: 'success',
-      resource: 'orders',
-      purchases: [
-        { ...giftPurchase(), orderId: 'ORD_internal_1', eventName: 'Maria Inés & Santiago' },
-        { ...giftPurchase(), orderId: 'ORD_internal_2', eventName: 'Sylvia & Moises' },
-      ],
+      expect(agentGateway.guestOrderIds).toEqual([null]);
+      expect(execution.results[0]).toMatchObject({
+        status: 'completed',
+        needsSelection: false,
+        referenceResolution: 'matched',
+        requestedCustomerTransactionNumber: '301816',
+        purchases: [{
+          orderId: 'ORD_internal_1',
+          customerTransactionNumber: '301816',
+        }],
+      });
+    }
+
+    const resolveReference = async (
+      requestId: string,
+      query: string,
+      orderId: string,
+      purchases: PurchaseInformation[],
+    ) => {
+      const agentGateway = new FakeAgentGateway();
+      agentGateway.guestOrdersResult = { status: 'success', resource: 'orders', purchases };
+      const orchestrator = new InformationOrchestrator({
+        knowledgeGateway: { async search() { throw new Error('unused'); } },
+        providerGateway: {} as ProviderGateway,
+        agentGateway,
+      });
+      const execution = await orchestrator.execute({
+        requests: [{
+          requestId,
+          kind: 'purchase',
+          resource: 'orders',
+          query,
+          orderId,
+          authAction: 'none',
+        }],
+        authentication: null,
+        authBlock: null,
+        trustedPhone,
+      });
+      expect(agentGateway.guestOrderIds).toEqual([null]);
+      return execution;
     };
-    const orchestrator = new InformationOrchestrator({
-      knowledgeGateway: { async search() { throw new Error('unused'); } },
-      providerGateway: {} as ProviderGateway,
-      agentGateway,
-    });
 
-    const execution = await orchestrator.execute({
-      requests: [{
-        requestId: 'customer-code-unavailable',
-        kind: 'purchase',
-        resource: 'orders',
-        query: '301816',
-        orderId: '301816',
-        authAction: 'none',
-      }],
-      authentication: null,
-      authBlock: null,
-      trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
-    });
-
-    expect(agentGateway.guestOrderIds).toEqual([null]);
-    expect(execution.results[0]).toMatchObject({
+    const omitted = await resolveReference('customer-code-unavailable', '301816', '301816', [
+      { ...giftPurchase(), orderId: 'ORD_internal_1', eventName: 'Maria Inés & Santiago' },
+      { ...giftPurchase(), orderId: 'ORD_internal_2', eventName: 'Sylvia & Moises' },
+    ]);
+    expect(omitted.results[0]).toMatchObject({
       status: 'completed',
       coverage: 'partial',
       needsSelection: true,
@@ -846,66 +910,113 @@ describe('InformationOrchestrator', () => {
       requestedCustomerTransactionNumber: '301816',
       purchases: [{ eventName: 'Maria Inés & Santiago' }, { eventName: 'Sylvia & Moises' }],
     });
+
+    const unmatched = await resolveReference('unmatched-customer-code', 'COD301816', 'COD301816', [
+      { ...giftPurchase(), orderId: 'ORD-A', customerTransactionNumber: '301817', eventName: 'Evento de prueba A', eventDate: '2026-09-12' },
+      { ...giftPurchase(), orderId: 'ORD-B', customerTransactionNumber: '301818', eventName: 'Evento de prueba B', eventDate: '2026-08-22' },
+    ]);
+    expect(unmatched.results[0]).toMatchObject({
+      status: 'completed',
+      needsSelection: true,
+      referenceResolution: 'unavailable',
+      requestedCustomerTransactionNumber: '301816',
+      purchases: [
+        { orderId: 'ORD-A', eventName: 'Evento de prueba A', eventDate: '2026-09-12' },
+        { orderId: 'ORD-B', eventName: 'Evento de prueba B', eventDate: '2026-08-22' },
+      ],
+    });
+
+    const nonexistent = await resolveReference('unknown-exact-ref', 'COD999999', 'COD999999', [
+      { ...giftPurchase(), orderId: 'ORD_internal_1', customerTransactionNumber: '111111' },
+      { ...giftPurchase(), orderId: 'ORD_internal_2', customerTransactionNumber: '222222' },
+    ]);
+    expect(nonexistent.results[0]).toMatchObject({
+      status: 'completed',
+      referenceResolution: 'unavailable',
+      needsSelection: true,
+    });
+    const nonexistentResult = nonexistent.results[0];
+    if (!nonexistentResult || nonexistentResult.status !== 'completed' || nonexistentResult.kind !== 'purchase') {
+      throw new Error('Expected a completed purchase result with unmatched-reference evidence.');
+    }
+    expect(nonexistentResult.purchases.map((purchase) => purchase.orderId)).toEqual([
+      'ORD_internal_1', 'ORD_internal_2',
+    ]);
   });
 
-  it('retains both purchases when descriptive hints name one candidate', async () => {
+  it('retains authorized purchase and gift records when hints or amounts describe them instead of backend identity', async () => {
     // Contract revision (Work 1, 2026-09-22): descriptive event/amount
     // hints never narrow candidates, so the older record stays visible
     // alongside the current one instead of resolving to the pending order
-    // alone.
+    // alone. No pending auto-selection may erase an explicit older target.
     // Contract revision (Lane B count-driven selection): multiplicity is
     // factual metadata, so needsSelection stays false here; the reply
     // model resolves the reference from the retained records.
-    const agentGateway = new FakeAgentGateway();
-    agentGateway.guestOrdersResult = {
-      status: 'success',
-      resource: 'orders',
-      purchases: [
-        {
-          ...giftPurchase(),
-          orderId: 'ORD-current',
-          eventName: 'Samuel Josué',
-          grandTotal: 80,
-          paymentStatus: 'pending',
-          createdAt: '2026-08-29',
-          currency: null,
-          payment: null,
-        },
-        {
-          ...giftPurchase(),
-          orderId: 'ORD-old',
-          eventName: 'Josué y Paola',
-          grandTotal: 88.18,
-          paymentStatus: 'approved',
-          createdAt: '2025-04-16',
-          currency: null,
-          payment: null,
-        },
-      ],
+    const hintedPurchases = (
+      currentId: string,
+      currentCreatedAt: string,
+      oldCreatedAt: string,
+    ): PurchaseInformation[] => [
+      {
+        ...giftPurchase(),
+        orderId: currentId,
+        eventName: 'Samuel Josué',
+        grandTotal: 80,
+        paymentStatus: 'pending',
+        createdAt: currentCreatedAt,
+        currency: null,
+        payment: null,
+      },
+      {
+        ...giftPurchase(),
+        orderId: 'ORD-old',
+        eventName: 'Josué y Paola',
+        grandTotal: 88.18,
+        paymentStatus: 'approved',
+        createdAt: oldCreatedAt,
+        currency: null,
+        payment: null,
+      },
+    ];
+    const runHinted = async (
+      requestId: string,
+      query: string,
+      eventHint: string,
+      amount: number | null,
+      purchases: PurchaseInformation[],
+    ) => {
+      const agentGateway = new FakeAgentGateway();
+      agentGateway.guestOrdersResult = { status: 'success', resource: 'orders', purchases };
+      const orchestrator = new InformationOrchestrator({
+        knowledgeGateway: { async search() { throw new Error('unused'); } },
+        providerGateway: {} as ProviderGateway,
+        agentGateway,
+      });
+      return orchestrator.execute({
+        requests: [{
+          requestId,
+          kind: 'purchase',
+          resource: 'orders',
+          query,
+          orderId: null,
+          eventHint,
+          ...(amount === null ? {} : { amount }),
+          authAction: 'none',
+        }],
+        authentication: null,
+        authBlock: null,
+        trustedPhone: { phone_extension: '+51', phone_number: '981056171' },
+      });
     };
-    const orchestrator = new InformationOrchestrator({
-      knowledgeGateway: { async search() { throw new Error('unused'); } },
-      providerGateway: {} as ProviderGateway,
-      agentGateway,
-    });
 
-    const execution = await orchestrator.execute({
-      requests: [{
-        requestId: 'victor-current-payment',
-        kind: 'purchase',
-        resource: 'orders',
-        query: 'Estado del regalo para Samuel Josué por S/ 80.',
-        orderId: null,
-        eventHint: 'Samuel Josué',
-        amount: 80,
-        authAction: 'none',
-      }],
-      authentication: null,
-      authBlock: null,
-      trustedPhone: { phone_extension: '+51', phone_number: '981056171' },
-    });
-
-    const currentResult = execution.results[0];
+    const currentHinted = await runHinted(
+      'victor-current-payment',
+      'Estado del regalo para Samuel Josué por S/ 80.',
+      'Samuel Josué',
+      80,
+      hintedPurchases('ORD-current', '2026-08-29', '2025-04-16'),
+    );
+    const currentResult = currentHinted.results[0];
     if (!currentResult || currentResult.status !== 'completed' || currentResult.kind !== 'purchase') {
       throw new Error('Expected a completed purchase result.');
     }
@@ -920,6 +1031,149 @@ describe('InformationOrchestrator', () => {
       grandTotal: 80,
       paymentStatus: 'pending',
     });
+
+    const olderHinted = await runHinted(
+      'explicit-older-target',
+      'Estado del regalo para Josué y Paola.',
+      'Josué y Paola',
+      null,
+      [
+        {
+          ...giftPurchase(),
+          orderId: 'ORD-new',
+          eventName: 'Samuel Josué',
+          grandTotal: 80,
+          paymentStatus: 'pending',
+          payment: null,
+        },
+        {
+          ...giftPurchase(),
+          orderId: 'ORD-old',
+          eventName: 'Josué y Paola',
+          grandTotal: 88.18,
+          paymentStatus: 'approved',
+          payment: null,
+        },
+      ],
+    );
+    const olderResult = olderHinted.results[0];
+    if (!olderResult || olderResult.status !== 'completed' || olderResult.kind !== 'purchase') {
+      throw new Error('Expected a completed purchase result.');
+    }
+    expect(olderResult.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
+      ['ORD-new', 'ORD-old'],
+    );
+    expect(olderResult.needsSelection).toBe(false);
+
+    // Gift records follow the same retention: a gift-naming hint, an
+    // item amount, and a same-value hint across events all keep their
+    // authorized records; erasing any of them as not_found is the
+    // baseline defect this test pins.
+    const mixedItems = (): PurchaseInformation['items'] => [
+      { giftName: 'Juego de sábanas', quantity: 1, amount: 150, rowTotal: 150, type: 'se_store' },
+      { giftName: 'Aporte luna de miel', quantity: 1, amount: 80, rowTotal: 80, type: 'credit' },
+    ];
+    const runGiftHint = async (
+      requestId: string,
+      query: string,
+      hints: { eventHint?: string; amount?: number },
+      purchases: PurchaseInformation[],
+    ) => {
+      const agentGateway = new FakeAgentGateway();
+      agentGateway.guestGiftResult = { status: 'success', resource: 'gift_purchases', purchases };
+      const orchestrator = new InformationOrchestrator({
+        knowledgeGateway: { async search() { throw new Error('unused'); } },
+        providerGateway: {} as ProviderGateway,
+        agentGateway,
+      });
+      return orchestrator.execute({
+        requests: [{
+          requestId,
+          kind: 'purchase',
+          resource: 'gift_purchases',
+          query,
+          orderId: null,
+          ...hints,
+          authAction: 'none',
+        }],
+        authentication: null,
+        authBlock: null,
+        trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
+      });
+    };
+    const completedPurchases = (
+      execution: Awaited<ReturnType<InformationOrchestrator['execute']>>,
+    ): PurchaseInformation[] => {
+      const result = execution.results[0];
+      if (!result || result.status !== 'completed' || result.kind !== 'purchase') {
+        throw new Error('Expected a completed purchase result.');
+      }
+      return result.purchases;
+    };
+
+    const honeymoon = await runGiftHint(
+      'honeymoon-hint',
+      '¿Dónde está mi aporte de luna de miel?',
+      { eventHint: 'luna de miel' },
+      [{
+        ...giftPurchase(),
+        orderId: 'GIFT-HONEY-1',
+        eventName: 'Boda Lucía y Marco',
+        grandTotal: 230,
+        paymentStatus: 'pending',
+        payment: null,
+        items: mixedItems(),
+      }],
+    );
+    expect(honeymoon.results[0]).toMatchObject({ status: 'completed' });
+    const honeymoonPurchases = completedPurchases(honeymoon);
+    expect(honeymoonPurchases).toHaveLength(1);
+    expect(honeymoonPurchases[0]).toMatchObject({
+      orderId: 'GIFT-HONEY-1',
+      eventName: 'Boda Lucía y Marco',
+      paymentStatus: 'pending',
+    });
+    expect(honeymoonPurchases[0]?.items.map((item) => item.giftName)).toEqual([
+      'Juego de sábanas',
+      'Aporte luna de miel',
+    ]);
+
+    const mixed = await runGiftHint(
+      'mixed-amount',
+      '¿Qué pasó con mi aporte de 80?',
+      { amount: 80 },
+      [{
+        ...giftPurchase(),
+        orderId: 'GIFT-MIX-9',
+        eventName: 'Boda Lucía y Marco',
+        grandTotal: 230,
+        paymentStatus: 'approved',
+        payment: null,
+        items: mixedItems(),
+      }],
+    );
+    expect(mixed.results[0]).toMatchObject({ status: 'completed' });
+    const mixedPurchases = completedPurchases(mixed);
+    expect(mixedPurchases).toHaveLength(1);
+    expect(mixedPurchases[0]?.items.map((item) => item.amount)).toEqual([150, 80]);
+
+    const equalValue = await runGiftHint(
+      'equal-value-hint',
+      'Estado del regalo de 80 para Boda Lucía y Marco.',
+      { eventHint: 'Boda Lucía y Marco', amount: 80 },
+      [
+        { ...giftPurchase(), orderId: 'GIFT-EQ-1', eventName: 'Boda Lucía y Marco', grandTotal: 80, payment: null },
+        { ...giftPurchase(), orderId: 'GIFT-EQ-2', eventName: 'Fiesta Ana', grandTotal: 80, payment: null },
+      ],
+    );
+    const equalResult = equalValue.results[0];
+    if (!equalResult || equalResult.status !== 'completed' || equalResult.kind !== 'purchase') {
+      throw new Error('Expected a completed purchase result.');
+    }
+    expect(equalResult.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
+      ['GIFT-EQ-1', 'GIFT-EQ-2'],
+    );
+    expect(equalResult.needsSelection).toBe(false);
   });
 
   it('treats a cart-only phone response as valid partial coverage', async () => {
@@ -1035,278 +1289,19 @@ describe('InformationOrchestrator', () => {
     ] });
   });
 
-  it('retains the authorized honeymoon record when the descriptive event hint names the gift, not the event', async () => {
-    // Work 1 (2026-09-22): descriptive hints never filter candidates. The
-    // hint below describes the gift ("luna de miel"), not the event name
-    // ("Boda Lucía y Marco"); erasing the authorized record as not_found
-    // is the baseline defect this test pins.
-    const agentGateway = new FakeAgentGateway();
-    agentGateway.guestGiftResult = {
-      status: 'success',
-      resource: 'gift_purchases',
-      purchases: [{
-        ...giftPurchase(),
-        orderId: 'GIFT-HONEY-1',
-        eventName: 'Boda Lucía y Marco',
-        grandTotal: 230,
-        paymentStatus: 'pending',
-        payment: null,
-        items: [
-          { giftName: 'Juego de sábanas', quantity: 1, amount: 150, rowTotal: 150, type: 'se_store' },
-          { giftName: 'Aporte luna de miel', quantity: 1, amount: 80, rowTotal: 80, type: 'credit' },
-        ],
-      }],
-    };
-    const orchestrator = new InformationOrchestrator({
-      knowledgeGateway: { async search() { throw new Error('unused'); } },
-      providerGateway: {} as ProviderGateway,
-      agentGateway,
-    });
-
-    const execution = await orchestrator.execute({
-      requests: [{
-        requestId: 'honeymoon-hint',
-        kind: 'purchase',
-        resource: 'gift_purchases',
-        query: '¿Dónde está mi aporte de luna de miel?',
-        orderId: null,
-        eventHint: 'luna de miel',
-        authAction: 'none',
-      }],
-      authentication: null,
-      authBlock: null,
-      trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
-    });
-
-    expect(execution.results[0]).toMatchObject({ status: 'completed' });
-    const result = execution.results[0];
-    if (!result || result.status !== 'completed' || result.kind !== 'purchase') {
-      throw new Error('Expected a completed purchase result.');
-    }
-    expect(result.purchases).toHaveLength(1);
-    expect(result.purchases[0]).toMatchObject({
-      orderId: 'GIFT-HONEY-1',
-      eventName: 'Boda Lucía y Marco',
-      paymentStatus: 'pending',
-    });
-    expect(result.purchases[0]?.items.map((item) => item.giftName)).toEqual([
-      'Juego de sábanas',
-      'Aporte luna de miel',
-    ]);
-  });
-
-  it('retains the mixed 150+80 record when the requested amount names one item, not the order total', async () => {
-    // Work 1 (2026-09-22): an item amount is evidence for the reply model,
-    // not backend identity. Amount 80 matches one item of the 230 order;
-    // failing the whole read as not_found is the baseline defect.
-    const agentGateway = new FakeAgentGateway();
-    agentGateway.guestGiftResult = {
-      status: 'success',
-      resource: 'gift_purchases',
-      purchases: [{
-        ...giftPurchase(),
-        orderId: 'GIFT-MIX-9',
-        eventName: 'Boda Lucía y Marco',
-        grandTotal: 230,
-        paymentStatus: 'approved',
-        payment: null,
-        items: [
-          { giftName: 'Juego de sábanas', quantity: 1, amount: 150, rowTotal: 150, type: 'se_store' },
-          { giftName: 'Aporte luna de miel', quantity: 1, amount: 80, rowTotal: 80, type: 'credit' },
-        ],
-      }],
-    };
-    const orchestrator = new InformationOrchestrator({
-      knowledgeGateway: { async search() { throw new Error('unused'); } },
-      providerGateway: {} as ProviderGateway,
-      agentGateway,
-    });
-
-    const execution = await orchestrator.execute({
-      requests: [{
-        requestId: 'mixed-amount',
-        kind: 'purchase',
-        resource: 'gift_purchases',
-        query: '¿Qué pasó con mi aporte de 80?',
-        orderId: null,
-        amount: 80,
-        authAction: 'none',
-      }],
-      authentication: null,
-      authBlock: null,
-      trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
-    });
-
-    expect(execution.results[0]).toMatchObject({ status: 'completed' });
-    const result = execution.results[0];
-    if (!result || result.status !== 'completed' || result.kind !== 'purchase') {
-      throw new Error('Expected a completed purchase result.');
-    }
-    expect(result.purchases).toHaveLength(1);
-    expect(result.purchases[0]?.items.map((item) => item.amount)).toEqual([150, 80]);
-  });
-
-  it('retains both equal-value candidates under different events instead of narrowing by hint', async () => {
-    // Work 1 (2026-09-22): hints retain scope; the reply model resolves
-    // the reference or asks the distinction from the retained records.
-    // Contract revision (Lane B count-driven selection): multiplicity is
-    // factual metadata, so needsSelection stays false here.
-    const agentGateway = new FakeAgentGateway();
-    agentGateway.guestGiftResult = {
-      status: 'success',
-      resource: 'gift_purchases',
-      purchases: [
-        { ...giftPurchase(), orderId: 'GIFT-EQ-1', eventName: 'Boda Lucía y Marco', grandTotal: 80, payment: null },
-        { ...giftPurchase(), orderId: 'GIFT-EQ-2', eventName: 'Fiesta Ana', grandTotal: 80, payment: null },
-      ],
-    };
-    const orchestrator = new InformationOrchestrator({
-      knowledgeGateway: { async search() { throw new Error('unused'); } },
-      providerGateway: {} as ProviderGateway,
-      agentGateway,
-    });
-
-    const execution = await orchestrator.execute({
-      requests: [{
-        requestId: 'equal-value-hint',
-        kind: 'purchase',
-        resource: 'gift_purchases',
-        query: 'Estado del regalo de 80 para Boda Lucía y Marco.',
-        orderId: null,
-        eventHint: 'Boda Lucía y Marco',
-        amount: 80,
-        authAction: 'none',
-      }],
-      authentication: null,
-      authBlock: null,
-      trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
-    });
-
-    const result = execution.results[0];
-    if (!result || result.status !== 'completed' || result.kind !== 'purchase') {
-      throw new Error('Expected a completed purchase result.');
-    }
-    expect(result.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
-      ['GIFT-EQ-1', 'GIFT-EQ-2'],
-    );
-    expect(result.needsSelection).toBe(false);
-  });
-
-  it('never resolves an exact nonexistent customer-transaction reference to a record', async () => {
-    // Work 1 (2026-09-22): an unmatched exact reference stays failed with
-    // no selected record; it must never silently retarget another order.
-    const agentGateway = new FakeAgentGateway();
-    agentGateway.guestOrdersResult = {
-      status: 'success',
-      resource: 'orders',
-      purchases: [
-        { ...giftPurchase(), orderId: 'ORD_internal_1', customerTransactionNumber: '111111' },
-        { ...giftPurchase(), orderId: 'ORD_internal_2', customerTransactionNumber: '222222' },
-      ],
-    };
-    const orchestrator = new InformationOrchestrator({
-      knowledgeGateway: { async search() { throw new Error('unused'); } },
-      providerGateway: {} as ProviderGateway,
-      agentGateway,
-    });
-
-    const execution = await orchestrator.execute({
-      requests: [{
-        requestId: 'unknown-exact-ref',
-        kind: 'purchase',
-        resource: 'orders',
-        query: 'COD999999',
-        orderId: 'COD999999',
-        authAction: 'none',
-      }],
-      authentication: null,
-      authBlock: null,
-      trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
-    });
-
-    expect(execution.results[0]).toMatchObject({
-      status: 'failed',
-      failureKind: 'not_found',
-    });
-    const result = execution.results[0];
-    if (!result || result.status !== 'failed') {
-      throw new Error('Expected a failed purchase result.');
-    }
-    expect(result).not.toHaveProperty('purchases');
-  });
-
-  it('keeps an explicitly named older record distinct from a newer pending one', async () => {
-    // Work 1 (2026-09-22): no pending auto-selection may erase an explicit
-    // older target; both authorized records stay visible for the reply.
-    // Contract revision (Lane B count-driven selection): multiplicity is
-    // factual metadata, so needsSelection stays false here; the explicit
-    // event hint travels for read reasoning without compelling a question.
-    const agentGateway = new FakeAgentGateway();
-    agentGateway.guestOrdersResult = {
-      status: 'success',
-      resource: 'orders',
-      purchases: [
-        {
-          ...giftPurchase(),
-          orderId: 'ORD-new',
-          eventName: 'Samuel Josué',
-          grandTotal: 80,
-          paymentStatus: 'pending',
-          payment: null,
-        },
-        {
-          ...giftPurchase(),
-          orderId: 'ORD-old',
-          eventName: 'Josué y Paola',
-          grandTotal: 88.18,
-          paymentStatus: 'approved',
-          payment: null,
-        },
-      ],
-    };
-    const orchestrator = new InformationOrchestrator({
-      knowledgeGateway: { async search() { throw new Error('unused'); } },
-      providerGateway: {} as ProviderGateway,
-      agentGateway,
-    });
-
-    const execution = await orchestrator.execute({
-      requests: [{
-        requestId: 'explicit-older-target',
-        kind: 'purchase',
-        resource: 'orders',
-        query: 'Estado del regalo para Josué y Paola.',
-        orderId: null,
-        eventHint: 'Josué y Paola',
-        authAction: 'none',
-      }],
-      authentication: null,
-      authBlock: null,
-      trustedPhone: { phone_extension: '+51', phone_number: '981056171' },
-    });
-
-    const result = execution.results[0];
-    if (!result || result.status !== 'completed' || result.kind !== 'purchase') {
-      throw new Error('Expected a completed purchase result.');
-    }
-    expect(result.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
-      ['ORD-new', 'ORD-old'],
-    );
-    expect(result.needsSelection).toBe(false);
-  });
-
-  it('retains a known guest event when enriched detail returns 500 and public detail succeeds', async () => {
-    const agentGateway = new FakeAgentGateway();
-    agentGateway.guestEventsResult = {
+  it('resolves enriched event detail with public fallback and keeps phone RSVP evidence', async () => {
+    const trustedPhone = { phone_extension: '+51', phone_number: '987654321' };
+    const fallbackGateway = new FakeAgentGateway();
+    fallbackGateway.guestEventsResult = {
       status: 'success',
       events: [guestEvent(88, 'Boda Laura & Marcos')],
     };
-    agentGateway.enrichedEventDetailResult = {
+    fallbackGateway.enrichedEventDetailResult = {
       status: 'failed',
       retryable: true,
       error: 'HTTP 500',
-    } as typeof agentGateway.enrichedEventDetailResult;
-    agentGateway.publicEventDetailResult = {
+    } as typeof fallbackGateway.enrichedEventDetailResult;
+    fallbackGateway.publicEventDetailResult = {
       status: 'success',
       event: {
         ...guestEvent(88, 'Boda Laura & Marcos'),
@@ -1319,13 +1314,13 @@ describe('InformationOrchestrator', () => {
         contactInfo: [],
       },
     };
-    const orchestrator = new InformationOrchestrator({
+    const fallbackOrchestrator = new InformationOrchestrator({
       knowledgeGateway: { async search() { throw new Error('unused'); } },
       providerGateway: {} as ProviderGateway,
-      agentGateway,
+      agentGateway: fallbackGateway,
     });
 
-    const execution = await orchestrator.execute({
+    const fallback = await fallbackOrchestrator.execute({
       requests: [{
         requestId: 'event-enriched-500',
         kind: 'associated_event',
@@ -1334,28 +1329,26 @@ describe('InformationOrchestrator', () => {
       }],
       authentication: null,
       authBlock: null,
-      trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
+      trustedPhone,
     });
 
-    expect(agentGateway.eventDetailCalls).toBe(2);
-    expect(agentGateway.eventDetailInputs).toEqual([
+    expect(fallbackGateway.eventDetailCalls).toBe(2);
+    expect(fallbackGateway.eventDetailInputs).toEqual([
       { eventId: 88, phone: { phone_extension: '+51', phone_number: '987654321' } },
       { eventId: 88 },
     ]);
-    expect(execution.results[0]).toMatchObject({
+    expect(fallback.results[0]).toMatchObject({
       status: 'completed',
       accessMethod: 'trusted_phone_guest',
       result: { events: [{ eventId: 88, detail: { withTime: true } }] },
     });
-  });
 
-  it('keeps phone RSVP evidence when enriched event detail succeeds', async () => {
-    const agentGateway = new FakeAgentGateway();
-    agentGateway.guestEventsResult = {
+    const attendanceGateway = new FakeAgentGateway();
+    attendanceGateway.guestEventsResult = {
       status: 'success',
       events: [guestEvent(88, 'Boda Laura & Marcos')],
     };
-    agentGateway.enrichedEventDetailResult = {
+    attendanceGateway.enrichedEventDetailResult = {
       status: 'success',
       event: {
         ...guestEvent(88, 'Boda Laura & Marcos'),
@@ -1375,14 +1368,14 @@ describe('InformationOrchestrator', () => {
         responseDate: '2026-08-25',
       },
       purchases: [],
-    } as typeof agentGateway.enrichedEventDetailResult;
-    const orchestrator = new InformationOrchestrator({
+    } as typeof attendanceGateway.enrichedEventDetailResult;
+    const attendanceOrchestrator = new InformationOrchestrator({
       knowledgeGateway: { async search() { throw new Error('unused'); } },
       providerGateway: {} as ProviderGateway,
-      agentGateway,
+      agentGateway: attendanceGateway,
     });
 
-    const execution = await orchestrator.execute({
+    const attendance = await attendanceOrchestrator.execute({
       requests: [{
         requestId: 'event-attendance-1',
         kind: 'associated_event',
@@ -1391,9 +1384,9 @@ describe('InformationOrchestrator', () => {
       }],
       authentication: null,
       authBlock: null,
-      trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
+      trustedPhone,
     });
-    expect(execution.results[0]).toMatchObject({
+    expect(attendance.results[0]).toMatchObject({
       result: {
         events: [{
           guestId: 123,
@@ -1528,7 +1521,7 @@ describe('InformationOrchestrator', () => {
     });
   });
 
-  it('P1 performs a repeated scoped account lookup once per turn', async () => {
+  it('P1 dedupes repeated scoped lookups within a turn but not across access scopes', async () => {
     const agentGateway = new FakeAgentGateway();
     agentGateway.ordersResult = {
       status: 'success',
@@ -1580,15 +1573,13 @@ describe('InformationOrchestrator', () => {
     });
     expect(execution.results).toHaveLength(2);
     expect(agentGateway.ordersCalls).toBe(1);
-  });
 
-  it('P1 scopes event detail by access scope instead of reusing broader access', async () => {
-    const agentGateway = new FakeAgentGateway();
-    agentGateway.guestEventsResult = {
+    const scopeGateway = new FakeAgentGateway();
+    scopeGateway.guestEventsResult = {
       status: 'success',
       events: [guestEvent(5, 'Fiesta Sol'), guestEvent(6, 'Fiesta Luna')],
     };
-    agentGateway.enrichedEventDetailResult = {
+    scopeGateway.enrichedEventDetailResult = {
       status: 'success',
       event: {
         eventId: 5,
@@ -1616,13 +1607,13 @@ describe('InformationOrchestrator', () => {
     // P1 fixture: the public re-fetch under a different access scope must
     // also succeed so the scope-separated second read proves a fresh gateway
     // call instead of reusing broader cached access.
-    agentGateway.publicEventDetailResult = agentGateway.enrichedEventDetailResult;
-    const orchestrator = new InformationOrchestrator({
+    scopeGateway.publicEventDetailResult = scopeGateway.enrichedEventDetailResult;
+    const scopeOrchestrator = new InformationOrchestrator({
       knowledgeGateway: { async search() { throw new Error('unused'); } },
       providerGateway: {} as ProviderGateway,
-      agentGateway,
+      agentGateway: scopeGateway,
     });
-    const first = await orchestrator.enrichCustomerLinkedDetail({
+    const first = await scopeOrchestrator.enrichCustomerLinkedDetail({
       orderIds: [],
       eventIds: [5],
       authentication: null,
@@ -1630,8 +1621,8 @@ describe('InformationOrchestrator', () => {
       scope: 'trusted_phone_guest:+51900000001',
     });
     expect(first.eventDetails.size).toBe(1);
-    const callsAfterFirst = agentGateway.eventDetailCalls;
-    const second = await orchestrator.enrichCustomerLinkedDetail({
+    const callsAfterFirst = scopeGateway.eventDetailCalls;
+    const second = await scopeOrchestrator.enrichCustomerLinkedDetail({
       orderIds: [],
       eventIds: [5],
       authentication: null,
@@ -1639,7 +1630,7 @@ describe('InformationOrchestrator', () => {
       scope: 'public',
     });
     expect(second.eventDetails.size).toBe(1);
-    expect(agentGateway.eventDetailCalls).toBe(callsAfterFirst + 1);
+    expect(scopeGateway.eventDetailCalls).toBe(callsAfterFirst + 1);
   });
 
   it('seeds the full guest root once and reuses it with honest coverage on purchase-only turns', async () => {
@@ -2106,7 +2097,7 @@ describe('B receipt discovery fan-out across authorized sources', () => {
 
   const TRUSTED_PHONE = { phone_extension: '+51', phone_number: '987654321' };
 
-  it('reads each declared source on its own route with one scoped read per source', async () => {
+  it('fans receipt discovery out across declared sources with honest partial coverage', async () => {
     const agentGateway = new FakeAgentGateway();
     agentGateway.guestOrdersResult = {
       status: 'success',
@@ -2190,24 +2181,22 @@ describe('B receipt discovery fan-out across authorized sources', () => {
     }
     // No mutations ride a read-only discovery turn.
     expect(JSON.stringify(execution.results)).not.toContain('human_help_receipt');
-  });
 
-  it('keeps ready orders facts when the optional gift source fails without claiming its coverage', async () => {
-    const agentGateway = new FakeAgentGateway();
-    agentGateway.guestOrdersResult = {
+    const failedGiftGateway = new FakeAgentGateway();
+    failedGiftGateway.guestOrdersResult = {
       status: 'success',
       resource: 'orders',
       orderPartitions: { pending: [discoveryOrder()], completed: [] },
       purchases: [discoveryOrder()],
     };
-    agentGateway.guestGiftResult = {
+    failedGiftGateway.guestGiftResult = {
       status: 'failed',
       resource: 'gift_purchases',
       retryable: false,
       failureKind: 'request_failed',
       error: 'gift route down',
     };
-    const execution = await discoveryOrchestrator(agentGateway).execute({
+    const failedGift = await discoveryOrchestrator(failedGiftGateway).execute({
       requests: [
         {
           requestId: 'receipt-orders',
@@ -2231,25 +2220,54 @@ describe('B receipt discovery fan-out across authorized sources', () => {
       trustedPhone: TRUSTED_PHONE,
     });
 
-    expect(agentGateway.guestOrdersCalls).toBe(1);
-    expect(agentGateway.guestGiftCalls).toBe(1);
-    const byId = new Map(execution.results.map((result) => [result.requestId, result]));
-    const ordersResult = byId.get('receipt-orders');
-    const giftResult = byId.get('receipt-gift');
+    expect(failedGiftGateway.guestOrdersCalls).toBe(1);
+    expect(failedGiftGateway.guestGiftCalls).toBe(1);
+    const failedById = new Map(failedGift.results.map((result) => [result.requestId, result]));
+    const failedOrdersResult = failedById.get('receipt-orders');
+    const failedGiftResult = failedById.get('receipt-gift');
     // The failed optional source neither discards ready facts nor reports
     // complete coverage for a scope it could not read.
-    expect(ordersResult).toMatchObject({ status: 'completed', lookupResource: 'orders' });
-    if (ordersResult?.status === 'completed' && ordersResult.kind === 'purchase') {
-      expect(ordersResult.purchases.map((purchase) => purchase.orderId)).toEqual(['ORD-DISC-1']);
+    expect(failedOrdersResult).toMatchObject({ status: 'completed', lookupResource: 'orders' });
+    if (failedOrdersResult?.status === 'completed' && failedOrdersResult.kind === 'purchase') {
+      expect(failedOrdersResult.purchases.map((purchase) => purchase.orderId)).toEqual(['ORD-DISC-1']);
     } else {
       throw new Error('expected the orders read to stay completed');
     }
-    expect(giftResult).toMatchObject({ status: 'failed' });
-    const completedGift = execution.results.filter(
+    expect(failedGiftResult).toMatchObject({ status: 'failed' });
+    const completedGift = failedGift.results.filter(
       (result) => result.kind === 'purchase' && result.status === 'completed' &&
         (result.lookupResource ?? result.resource) === 'gift_purchases',
     );
     expect(completedGift).toHaveLength(0);
+
+    const giftOnlyGateway = new FakeAgentGateway();
+    giftOnlyGateway.guestGiftResult = {
+      status: 'success',
+      resource: 'gift_purchases',
+      orderPartitions: { pending: [], completed: [discoveryGift()] },
+      purchases: [discoveryGift()],
+    };
+    const giftOnly = await discoveryOrchestrator(giftOnlyGateway).execute({
+      requests: [{
+        requestId: 'summary-gift-resource',
+        kind: 'purchase',
+        resource: 'gift_purchases',
+        query: 'Estado del pago.',
+        orderId: null,
+        authAction: 'none',
+      }],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: TRUSTED_PHONE,
+    });
+
+    // One source contract: aspects select answer facts, never the route.
+    expect(giftOnlyGateway.guestOrdersCalls).toBe(0);
+    expect(giftOnlyGateway.guestGiftCalls).toBe(1);
+    expect(giftOnly.results[0]).toMatchObject({
+      status: 'completed',
+      lookupResource: 'gift_purchases',
+    });
   });
 
   it('overlaps independent purchase roots while the shared seed resolves', async () => {
@@ -2348,42 +2366,14 @@ describe('B receipt discovery fan-out across authorized sources', () => {
     expect(execution.results.map((result) => result.status)).toEqual(['completed', 'completed']);
   });
 
-  it('honors a gift resource with summary aspects on the gift route', async () => {
-    const agentGateway = new FakeAgentGateway();
-    agentGateway.guestGiftResult = {
-      status: 'success',
-      resource: 'gift_purchases',
-      orderPartitions: { pending: [], completed: [discoveryGift()] },
-      purchases: [discoveryGift()],
-    };
-    const execution = await discoveryOrchestrator(agentGateway).execute({
-      requests: [{
-        requestId: 'summary-gift-resource',
-        kind: 'purchase',
-        resource: 'gift_purchases',
-        query: 'Estado del pago.',
-        orderId: null,
-        authAction: 'none',
-      }],
-      authentication: null,
-      authBlock: null,
-      trustedPhone: TRUSTED_PHONE,
-    });
-
-    // One source contract: aspects select answer facts, never the route.
-    expect(agentGateway.guestOrdersCalls).toBe(0);
-    expect(agentGateway.guestGiftCalls).toBe(1);
-    expect(execution.results[0]).toMatchObject({
-      status: 'completed',
-      lookupResource: 'gift_purchases',
-    });
-  });
 });
 
 describe('A one purchase source contract across access paths', () => {
   const MATRIX = [
-    { resource: 'orders', amount: 150 },
-    { resource: 'gift_purchases', amount: 80 },
+    { path: 'phone', resource: 'orders', amount: 150 },
+    { path: 'phone', resource: 'gift_purchases', amount: 80 },
+    { path: 'authenticated', resource: 'orders', amount: 150 },
+    { path: 'authenticated', resource: 'gift_purchases', amount: 80 },
   ] as const;
 
   function matrixOrchestrator(agentGateway: FakeAgentGateway): InformationOrchestrator {
@@ -2413,73 +2403,62 @@ describe('A one purchase source contract across access paths', () => {
   }
 
   it.each(MATRIX)(
-    'phone path reads the %s source without field selectors',
+    '$path path reads the $resource source without field selectors',
     async (entry) => {
       const agentGateway = new FakeAgentGateway();
-      agentGateway.guestOrdersResult = {
-        status: 'success', resource: 'orders', purchases: [matrixRecord('orders', entry.amount)],
-      };
-      agentGateway.guestGiftResult = {
-        status: 'success', resource: 'gift_purchases', purchases: [matrixRecord('gift_purchases', entry.amount)],
-      };
-      const execution = await matrixOrchestrator(agentGateway).execute({
-        requests: [{
-          requestId: 'matrix-1',
-          kind: 'purchase',
-          resource: entry.resource,
-          query: 'Consulta de matriz.',
-          orderId: null,
-          ...(entry.amount !== null ? { amount: entry.amount } : {}),
-          authAction: 'none',
-        }],
-        authentication: null,
-        authBlock: null,
-        trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
-      });
-      expect(agentGateway.guestOrdersCalls).toBe(entry.resource === 'orders' ? 1 : 0);
-      expect(agentGateway.guestGiftCalls).toBe(entry.resource === 'gift_purchases' ? 1 : 0);
-      expect(execution.results[0]).toMatchObject({
-        status: 'completed',
+      const request = {
+        requestId: 'matrix-1',
+        kind: 'purchase',
         resource: entry.resource,
-        lookupResource: entry.resource,
-      });
-    },
-  );
-
-  it.each(MATRIX)(
-    'authenticated path reads the %s source with the same source contract',
-    async (entry) => {
-      const agentGateway = new FakeAgentGateway();
-      agentGateway.ordersResult = {
-        status: 'success', resource: 'orders', purchases: [matrixRecord('orders', entry.amount)],
-      };
-      agentGateway.giftResult = {
-        status: 'success', resource: 'gift_purchases', purchases: [matrixRecord('gift_purchases', entry.amount)],
-      };
-      const execution = await matrixOrchestrator(agentGateway).execute({
-        requests: [{
-          requestId: 'matrix-1',
-          kind: 'purchase',
+        query: 'Consulta de matriz.',
+        orderId: null,
+        ...(entry.amount !== null ? { amount: entry.amount } : {}),
+        authAction: 'none',
+      } as const;
+      if (entry.path === 'phone') {
+        agentGateway.guestOrdersResult = {
+          status: 'success', resource: 'orders', purchases: [matrixRecord('orders', entry.amount)],
+        };
+        agentGateway.guestGiftResult = {
+          status: 'success', resource: 'gift_purchases', purchases: [matrixRecord('gift_purchases', entry.amount)],
+        };
+        const execution = await matrixOrchestrator(agentGateway).execute({
+          requests: [{ ...request }],
+          authentication: null,
+          authBlock: null,
+          trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
+        });
+        expect(agentGateway.guestOrdersCalls).toBe(entry.resource === 'orders' ? 1 : 0);
+        expect(agentGateway.guestGiftCalls).toBe(entry.resource === 'gift_purchases' ? 1 : 0);
+        expect(execution.results[0]).toMatchObject({
+          status: 'completed',
           resource: entry.resource,
-          query: 'Consulta de matriz.',
-          orderId: null,
-          ...(entry.amount !== null ? { amount: entry.amount } : {}),
-          authAction: 'none',
-        }],
-        authentication: { token: 'matrix-token', email: 'matrix@example.com' },
-        authBlock: null,
-      });
-      // Same requested source as the phone path; distinct permissioned
-      // endpoints (token reads, never phone reads) enforce the access scope.
-      expect(agentGateway.ordersCalls).toBe(entry.resource === 'orders' ? 1 : 0);
-      expect(agentGateway.giftCalls).toBe(entry.resource === 'gift_purchases' ? 1 : 0);
-      expect(agentGateway.guestOrdersCalls).toBe(0);
-      expect(agentGateway.guestGiftCalls).toBe(0);
-      expect(execution.results[0]).toMatchObject({
-        status: 'completed',
-        resource: entry.resource,
-        lookupResource: entry.resource,
-      });
+          lookupResource: entry.resource,
+        });
+      } else {
+        agentGateway.ordersResult = {
+          status: 'success', resource: 'orders', purchases: [matrixRecord('orders', entry.amount)],
+        };
+        agentGateway.giftResult = {
+          status: 'success', resource: 'gift_purchases', purchases: [matrixRecord('gift_purchases', entry.amount)],
+        };
+        const execution = await matrixOrchestrator(agentGateway).execute({
+          requests: [{ ...request }],
+          authentication: { token: 'matrix-token', email: 'matrix@example.com' },
+          authBlock: null,
+        });
+        // Same requested source as the phone path; distinct permissioned
+        // endpoints (token reads, never phone reads) enforce the access scope.
+        expect(agentGateway.ordersCalls).toBe(entry.resource === 'orders' ? 1 : 0);
+        expect(agentGateway.giftCalls).toBe(entry.resource === 'gift_purchases' ? 1 : 0);
+        expect(agentGateway.guestOrdersCalls).toBe(0);
+        expect(agentGateway.guestGiftCalls).toBe(0);
+        expect(execution.results[0]).toMatchObject({
+          status: 'completed',
+          resource: entry.resource,
+          lookupResource: entry.resource,
+        });
+      }
     },
   );
 });
@@ -2569,8 +2548,9 @@ describe('source discovery purchase_discovery contract', () => {
     };
   }
 
-  // Row 1: mixed gift shipping with unresolved backend source (phone path).
-  it('reads both authorized roots once each and merges 150/80 facts', async () => {
+  // Row 1: mixed gift shipping with unresolved backend source (phone and
+  // authenticated paths read both authorized roots once each).
+  it('reads both authorized roots once each and merges 150/80 facts on both paths', async () => {
     const agentGateway = mixedGateways();
     const execution = await discoveryOrchestrator(agentGateway).execute({
       requests: [discoveryRequest('¿Cuándo llega mi regalo? ¿Y el otro?')],
@@ -2606,35 +2586,35 @@ describe('source discovery purchase_discovery contract', () => {
     expect(execution.summaries[0]).not.toHaveProperty('resource');
     // Read-only discovery never mutates.
     expect(JSON.stringify(execution.results)).not.toContain('human_help_receipt');
-  });
 
-  // Row 1 (authenticated path): both token endpoints read once each.
-  it('reads both token endpoints once each on the authenticated path', async () => {
-    const agentGateway = mixedGateways();
-    const execution = await discoveryOrchestrator(agentGateway).execute({
+    const tokenGateway = mixedGateways();
+    const tokenExecution = await discoveryOrchestrator(tokenGateway).execute({
       requests: [discoveryRequest('¿Cuándo llega mi regalo?')],
       authentication: { token: 'discovery-token', email: 'discovery@example.com' },
       authBlock: null,
     });
 
-    expect(agentGateway.ordersCalls).toBe(1);
-    expect(agentGateway.giftCalls).toBe(1);
-    expect(agentGateway.guestOrdersCalls).toBe(0);
-    expect(agentGateway.guestGiftCalls).toBe(0);
-    const result = execution.results[0];
-    if (result?.status !== 'completed' || result.kind !== 'purchase') {
+    expect(tokenGateway.ordersCalls).toBe(1);
+    expect(tokenGateway.giftCalls).toBe(1);
+    expect(tokenGateway.guestOrdersCalls).toBe(0);
+    expect(tokenGateway.guestGiftCalls).toBe(0);
+    const tokenResult = tokenExecution.results[0];
+    if (tokenResult?.status !== 'completed' || tokenResult.kind !== 'purchase') {
       throw new Error('expected the authenticated discovery read to complete');
     }
-    expect(result.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
+    expect(tokenResult.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
       ['GIFT-SHIP-7', 'ORD-SHIP-1'],
     );
   });
 
   // Existing task reads use their declared source; profile preparation is
   // independently proven to load all authorized roots before extraction.
-  it.each(['orders', 'gift_purchases'] as const)(
-    'known %s task reads its source once',
-    async (resource) => {
+  it.each([
+    { resource: 'orders' as const, hidden: 'GIFT-SHIP-7' },
+    { resource: 'gift_purchases' as const, hidden: 'ORD-SHIP-1' },
+  ])(
+    'known $resource task reads its source once and never surfaces the other source',
+    async ({ resource, hidden }) => {
     const agentGateway = mixedGateways();
     const execution = await discoveryOrchestrator(agentGateway).execute({
       requests: [{
@@ -2658,6 +2638,7 @@ describe('source discovery purchase_discovery contract', () => {
     }
     expect(result.lookupResource).toBe(resource);
     expect(result.sourceCoverage ?? []).toEqual([]);
+    expect(result.purchases.map((purchase) => purchase.orderId)).not.toContain(hidden);
   });
 
   // Row 3: one discovery source unauthorized stays uncalled with partial coverage.
@@ -2688,9 +2669,13 @@ describe('source discovery purchase_discovery contract', () => {
   });
 
   // Row 4 (orchestrator part): an explicit event hint never filters authorized records.
-  it('retains both records when only an event hint is known', async () => {
-    const agentGateway = mixedGateways();
-    const execution = await discoveryOrchestrator(agentGateway).execute({
+  // Row 5: same amounts across events stay visible alternatives, never amount-filtered.
+  // Contract revision (Lane B count-driven selection): visibility without
+  // amount-only inference carries no selection flag; the alternatives stay
+  // distinguishable from the retained evidence.
+  it('retains both discovery records when only a hint or an amount is known', async () => {
+    const hintedGateway = mixedGateways();
+    const hinted = await discoveryOrchestrator(hintedGateway).execute({
       requests: [{
         ...discoveryRequest('Consulta por Aniversario Lucia. ¿Sigue pendiente?'),
         eventHint: 'Aniversario Lucia',
@@ -2700,21 +2685,15 @@ describe('source discovery purchase_discovery contract', () => {
       trustedPhone: DISCOVERY_PHONE,
     });
 
-    const result = execution.results[0];
-    if (result?.status !== 'completed' || result.kind !== 'purchase') {
+    const hintedResult = hinted.results[0];
+    if (hintedResult?.status !== 'completed' || hintedResult.kind !== 'purchase') {
       throw new Error('expected the hinted discovery read to complete');
     }
-    expect(result.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
+    expect(hintedResult.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
       ['GIFT-SHIP-7', 'ORD-SHIP-1'],
     );
-  });
 
-  // Row 5: same amounts across events stay visible alternatives, never amount-filtered.
-  // Contract revision (Lane B count-driven selection): visibility without
-  // amount-only inference carries no selection flag; the alternatives stay
-  // distinguishable from the retained evidence.
-  it('keeps same-amount alternatives visible without amount-only filtering', async () => {
-    const agentGateway = new FakeAgentGateway();
+    const amountGateway = new FakeAgentGateway();
     const first: PurchaseInformation = {
       ...ordersShippingRecord(),
       orderId: 'ORD-AMT-1',
@@ -2729,9 +2708,9 @@ describe('source discovery purchase_discovery contract', () => {
       grandTotal: 150,
       items: [],
     };
-    agentGateway.guestOrdersResult = { status: 'success', resource: 'orders', purchases: [first] };
-    agentGateway.guestGiftResult = { status: 'success', resource: 'gift_purchases', purchases: [second] };
-    const execution = await discoveryOrchestrator(agentGateway).execute({
+    amountGateway.guestOrdersResult = { status: 'success', resource: 'orders', purchases: [first] };
+    amountGateway.guestGiftResult = { status: 'success', resource: 'gift_purchases', purchases: [second] };
+    const amountHinted = await discoveryOrchestrator(amountGateway).execute({
       requests: [{
         ...discoveryRequest('¿Cuánto fue?'),
         amount: 150,
@@ -2741,14 +2720,14 @@ describe('source discovery purchase_discovery contract', () => {
       trustedPhone: DISCOVERY_PHONE,
     });
 
-    const result = execution.results[0];
-    if (result?.status !== 'completed' || result.kind !== 'purchase') {
+    const amountResult = amountHinted.results[0];
+    if (amountResult?.status !== 'completed' || amountResult.kind !== 'purchase') {
       throw new Error('expected the amount-hinted discovery read to complete');
     }
-    expect(result.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
+    expect(amountResult.purchases.map((purchase) => purchase.orderId).sort()).toEqual(
       ['GIFT-AMT-2', 'ORD-AMT-1'],
     );
-    expect(result.needsSelection).toBe(false);
+    expect(amountResult.needsSelection).toBe(false);
   });
 
   // Row 6: an exact unmatched reference is preserved, never silently retargeted.
@@ -2780,31 +2759,65 @@ describe('source discovery purchase_discovery contract', () => {
     expect(result.needsSelection).toBe(true);
   });
 
-  // Negative controls: forcing one source must NOT surface the other source facts.
   it.each([
-    { resource: 'orders' as const, hidden: 'GIFT-SHIP-7' },
-    { resource: 'gift_purchases' as const, hidden: 'ORD-SHIP-1' },
-  ])('forced $resource never surfaces the other source (source-sensitive proof)', async ({ resource, hidden }) => {
-    const agentGateway = mixedGateways();
-    const execution = await discoveryOrchestrator(agentGateway).execute({
+    { eventId: 90, name: 'Boda Ana y Luis', slug: 'boda-ana-luis', datetime: '2026-09-20T18:00:00.000Z', query: '¿Cuándo es la Boda Ana y Luis?' },
+    { eventId: 91, name: 'Boda Laura & Marcos', slug: 'boda-laura-marcos', datetime: '15/09/2026 18:00', query: '¿Cuándo es la Boda Laura?' },
+  ])('emits no local-time duplicate for guest event datetimes ($name)', async ({ eventId, name, slug, datetime, query }) => {
+    const agentGateway = new FakeAgentGateway();
+    agentGateway.guestEventsResult = {
+      status: 'success',
+      events: [{
+        eventId,
+        name,
+        slug,
+        url: null,
+        datetime,
+        type: 'wedding',
+        typeDetail: null,
+        stage: 'published',
+        city: 'Lima',
+        country: 'Perú',
+        currency: 'PEN',
+      }],
+    };
+    agentGateway.eventDetailResult = {
+      status: 'success',
+      event: {
+        ...agentGateway.guestEventsResult.events[0],
+        withTime: true,
+        timezone: 'America/Lima',
+        celebrateds: [],
+        moments: [],
+        dresscode: null,
+        commonAsked: [],
+        contactInfo: [],
+      },
+    };
+    const orchestrator = new InformationOrchestrator({
+      knowledgeGateway: { async search() { throw new Error('unused'); } },
+      providerGateway: {} as ProviderGateway,
+      agentGateway,
+    });
+
+    const execution = await orchestrator.execute({
       requests: [{
-        requestId: 'forced-1',
-        kind: 'purchase',
-        resource,
-        query: '¿Cuándo llega mi regalo?',
-        orderId: null,
-        authAction: 'none',
+        requestId: `event-time-${eventId}`,
+        kind: 'associated_event',
+        query,
+        eventHint: null,
       }],
       authentication: null,
       authBlock: null,
-      trustedPhone: DISCOVERY_PHONE,
+      trustedPhone: { phone_extension: '+51', phone_number: '973296571' },
     });
 
-    const result = execution.results[0];
-    if (result?.status !== 'completed' || result.kind !== 'purchase') {
-      throw new Error('expected the forced-source read to complete');
-    }
-    expect(result.purchases.map((purchase) => purchase.orderId)).not.toContain(hidden);
+    const events = execution.results[0]?.status === 'completed' &&
+        execution.results[0].kind === 'associated_event'
+      ? execution.results[0].result.events
+      : [];
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ eventId, datetime });
+    expect('local_time' in (events[0] ?? {})).toBe(false);
   });
 
   // Guard: unrelated turns never trigger a both-source read.
@@ -2822,5 +2835,51 @@ describe('source discovery purchase_discovery contract', () => {
     expect(agentGateway.ordersCalls).toBe(0);
     expect(agentGateway.giftCalls).toBe(0);
     expect(execution.results[0]?.status).toBe('failed');
+  });
+});
+
+describe('purchase evidence on summaries', () => {
+  it('carries typed purchaseFacts on a completed purchase summary', async () => {
+    const agentGateway = new FakeAgentGateway();
+    agentGateway.guestOrdersResult = {
+      status: 'success',
+      resource: 'orders',
+      purchases: [giftPurchase()],
+    };
+    const orchestrator = new InformationOrchestrator({
+      knowledgeGateway: { async search() { throw new Error('unused'); } },
+      providerGateway: {} as ProviderGateway,
+      agentGateway,
+    });
+
+    const execution = await orchestrator.execute({
+      requests: [{
+        requestId: 'ev-fact-1',
+        kind: 'purchase',
+        resource: 'orders',
+        query: '¿Cuál es el estado de mi pedido?',
+        orderId: null,
+        authAction: 'none',
+      }],
+      authentication: null,
+      authBlock: {
+        nextInput: 'email',
+        guidance: createInformationAuthGuidance('email_required', null),
+      },
+      trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
+    });
+
+    const evidence = execution.summaries[0]?.evidence ?? [];
+    expect(evidence).toHaveLength(1);
+    expect(evidence[0]).toMatchObject({
+      purchaseFact: {
+        eventLabel: 'Boda',
+        total: 300,
+        paymentMethod: 'Transferencia',
+        paymentStatus: 'approved',
+        referencePresent: false,
+      },
+    });
+    expect(evidence[0]?.contentHash).toMatch(/^[a-f0-9]{64}$/u);
   });
 });

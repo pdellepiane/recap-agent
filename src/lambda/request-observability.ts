@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import type { RuntimeRequestRoute } from './request-route';
 import type { InformationExecutionSummary } from '../core/information';
 import type { OpenAiCallRef } from '../runtime/contracts';
+import type { CorrelationSource, ProtectedPayloadCapture } from './request-payload-capture';
 import { checkTransportMetricsCompleteness } from '../audit/openai-transport-capture';
 
 export type ChannelRequestOutcome =
@@ -38,9 +39,28 @@ export type ChannelRequestValidationIssue = {
   message: string;
 };
 
+export type ChannelRequestPayloadCapture = {
+  body_bytes: number;
+  body_sha256: string;
+  body_parse: ProtectedPayloadCapture['bodyParse'];
+  top_level_fields?: string[];
+  array_length?: number;
+  array_element_types?: string[];
+  structure_skeleton: string;
+  identity_hashes?: {
+    channel?: string;
+    message_id_sha256?: string;
+    user_id_sha256?: string;
+    contact_phone_sha256?: string;
+    contact_phone_parse?: string;
+  };
+};
+
 export type ChannelRequestLog = {
   event: 'channel_request_completed';
   request_id: string;
+  correlation_id: string;
+  correlation_source: CorrelationSource;
   method: string;
   request_path: string;
   request_route: RuntimeRequestRoute;
@@ -73,6 +93,7 @@ export type ChannelRequestLog = {
   output_quality_flag_count?: number;
   spanish_policy_term_hit_count?: number;
   validation_issues?: ChannelRequestValidationIssue[];
+  payload_capture?: ChannelRequestPayloadCapture;
   delivery_action?: string;
   current_node?: string;
   trace_id?: string;
@@ -129,6 +150,9 @@ function finiteNonNegative(value: number): number {
 
 export function buildChannelRequestLog(args: {
   requestId: string;
+  correlationId?: string;
+  correlationSource?: CorrelationSource;
+  payloadCapture?: ProtectedPayloadCapture | null;
   method: string;
   requestPath: string;
   requestRoute: RuntimeRequestRoute;
@@ -175,6 +199,8 @@ export function buildChannelRequestLog(args: {
   return {
     event: 'channel_request_completed',
     request_id: args.requestId,
+    correlation_id: args.correlationId ?? args.requestId,
+    correlation_source: args.correlationSource ?? 'lambda_request',
     method: args.method,
     request_path: redact(args.requestPath),
     request_route: args.requestRoute,
@@ -235,6 +261,7 @@ export function buildChannelRequestLog(args: {
     ...(args.validationIssues && args.validationIssues.length > 0
       ? { validation_issues: args.validationIssues }
       : {}),
+    ...(args.payloadCapture ? { payload_capture: toLogPayloadCapture(args.payloadCapture) } : {}),
     ...(args.deliveryAction ? { delivery_action: args.deliveryAction } : {}),
     ...(args.currentNode ? { current_node: args.currentNode } : {}),
     ...(args.traceId ? { trace_id: args.traceId } : {}),
@@ -340,6 +367,37 @@ function describeTransportAccounting(
     }
   }
   return { complete: reasons.length === 0, reasons };
+}
+
+function toLogPayloadCapture(capture: ProtectedPayloadCapture): ChannelRequestPayloadCapture {
+  return {
+    body_bytes: capture.bodyBytes,
+    body_sha256: capture.bodySha256,
+    body_parse: capture.bodyParse,
+    ...(capture.topLevelFields ? { top_level_fields: [...capture.topLevelFields] } : {}),
+    ...(capture.arrayLength !== undefined ? { array_length: capture.arrayLength } : {}),
+    ...(capture.arrayElementTypes ? { array_element_types: [...capture.arrayElementTypes] } : {}),
+    structure_skeleton: capture.structureSkeleton,
+    ...(capture.identityHashes
+      ? {
+        identity_hashes: {
+          ...(capture.identityHashes.channel ? { channel: capture.identityHashes.channel } : {}),
+          ...(capture.identityHashes.messageIdSha256
+            ? { message_id_sha256: capture.identityHashes.messageIdSha256 }
+            : {}),
+          ...(capture.identityHashes.userIdSha256
+            ? { user_id_sha256: capture.identityHashes.userIdSha256 }
+            : {}),
+          ...(capture.identityHashes.contactPhoneSha256
+            ? { contact_phone_sha256: capture.identityHashes.contactPhoneSha256 }
+            : {}),
+          ...(capture.identityHashes.contactPhoneParse
+            ? { contact_phone_parse: capture.identityHashes.contactPhoneParse }
+            : {}),
+        },
+      }
+      : {}),
+  };
 }
 
 function ownershipOperation(

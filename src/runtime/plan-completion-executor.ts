@@ -1,5 +1,5 @@
 import { mergePlan, type PersistedPlan, type PlanSnapshot } from '../core/plan';
-import { splitInternationalPhone } from './phone';
+import { splitStoredInternationalPhone } from './phone';
 import type { ProviderGateway } from './provider-gateway';
 
 const EVENT_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/u;
@@ -122,14 +122,14 @@ export async function executePlanCompletion(request: PlanCompletionRequest): Pro
     );
   }
 
-  const parsedPhone = splitInternationalPhone(plan.contact_phone);
+  const parsedPhone = splitStoredInternationalPhone(plan.contact_phone);
   const phoneParts = parsedPhone
     ? { phone: parsedPhone.phone_number, phoneExtension: parsedPhone.phone_extension }
     : null;
   if (!phoneParts) {
     return fail(
       'invalid_contact_info',
-      'El teléfono debe incluir código de país compatible y número completo antes de llamar finish_plan.',
+      'El teléfono debe incluir código de país y número completo antes de llamar finish_plan.',
     );
   }
 

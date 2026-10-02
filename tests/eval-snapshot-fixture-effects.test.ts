@@ -18,6 +18,67 @@ import { validateImageOnlySilence } from '../src/evals/silence';
 import { collectOriginGateFailures, evaluateFixtureEffectCountForTesting, buildSemanticJudgeContext } from '../src/evals/runner';
 import { attendanceToIsolationState } from '../src/evals/rsvp-isolation';
 
+it('binds retained no-new-write live contracts to per-turn deltas and rejects a duplicate write', async () => {
+  const { EvalLoader } = await import('../src/evals/loader');
+  const catalog = await new EvalLoader('evals').loadCatalog();
+  const contracts = [
+    ['live_behavior.customer_event_task_continuity', 'turn2-ana-again-no-new-write'],
+    ['live_behavior.customer_event_task_continuity', 'turn3-thanks-no-restart'],
+    ['live_behavior.gift_shipping_limitation_accepted_handoff_once', 'handoff-final-ledger-stays-once'],
+    ['live_behavior.host_withdrawal_diana_policy_and_support', 'one-handoff-effect-in-thread'],
+    ['live_behavior.otp_terminal_handoff_failed', 'failed-handoff-effect-final-unchanged'],
+    ['live_behavior.otp_terminal_handoff_unknown', 'unknown-handoff-effect-final-unchanged'],
+  ] as const;
+
+  for (const [caseId, expectationId] of contracts) {
+    const liveCase = catalog.cases.find((entry) => entry.id === caseId);
+    const contract = liveCase?.expectations.find((entry) => entry.id === expectationId);
+    if (contract?.type !== 'fixture_effect_count' || contract.turnIndex === undefined) {
+      throw new Error(`Missing turn-scoped effect contract ${caseId}/${expectationId}`);
+    }
+    expect([contract.expectedAttempts, contract.expectedSuccesses, contract.expectedReplays]).toEqual([0, 0, 0]);
+    const targetTurn = contract.turnIndex;
+    const action = liveCase?.expectations.find((entry) =>
+      entry.type === 'fixture_effect_count' && entry.operation === contract.operation &&
+      entry.expectedAttempts === 1 && entry.turnIndex !== undefined && entry.turnIndex < targetTurn,
+    );
+    if (action?.type !== 'fixture_effect_count' || action.turnIndex === undefined) {
+      throw new Error(`Missing independently asserted prior action for ${caseId}`);
+    }
+    const actionTurn = action.turnIndex;
+    const turns = Array.from({ length: targetTurn + 1 }, (_, index) => {
+      const turn = makeSpeechTurn(index, 'model-generated fixture response');
+      attachEvaluationState(turn, {
+        plan: turn.plan,
+        input: turn.input,
+        outputText: turn.outputText,
+        fixtureEffects: [{
+          operation: contract.operation,
+          attempts: index >= actionTurn ? 1 : 0,
+          successes: index >= actionTurn ? action.expectedSuccesses : 0,
+          replays: 0,
+          outcome: action.expectedSuccesses === 1 ? 'success' : 'failed',
+          receiptPresent: index >= actionTurn,
+        }],
+      });
+      return turn;
+    });
+    const args = { ...contract, turns };
+    expect(evaluateFixtureEffectCountForTesting(args).passed, expectationId).toBe(true);
+    const final = turns[targetTurn];
+    if (!final) throw new Error('Missing final turn');
+    const effects = getEvaluationFixtureEffects(final);
+    if (!effects?.[0]) throw new Error('Missing cumulative receipt');
+    attachEvaluationState(final, {
+      plan: final.plan,
+      input: final.input,
+      outputText: final.outputText,
+      fixtureEffects: [{ ...effects[0], attempts: effects[0].attempts + 1 }],
+    });
+    expect(evaluateFixtureEffectCountForTesting(args).passed, `${expectationId} duplicate write`).toBe(false);
+  }
+});
+
 function baseTrace(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     trace_id: 'snapshot-trace',
@@ -151,60 +212,88 @@ function makeSpeechTurn(turnIndex: number, text: string): EvalTurnResult {
 }
 
 describe('recheck-b9a7662d evidence-preserving snapshot (execute->snapshot->teardown->finalize)', () => {
-  it('valid receipt survives the snapshot with binding intact', () => {
-    const messageId = 'snap-case-0-seed';
-    const original = makeImageSilenceTurn(messageId);
-    const [snapshot] = snapshotEvaluationTurns([original]);
-    if (!snapshot) throw new Error('Missing snapshot turn.');
-    expect(validateImageOnlySilence(snapshot, {
-      observedMessageId: snapshot.observedMessageId ?? null,
-      nowMs: Date.now(),
-    }).exempt).toBe(true);
-    const refs = (getPrivatePlanForEvidence(snapshot) as unknown as { image_attachments?: unknown[] }).image_attachments;
-    expect(Array.isArray(refs) && refs?.length).toBe(1);
-    expect(getEvaluationFixtureEffects(snapshot)).not.toBeNull();
+  it('snapshot preserves receipts immutably with binding intact', () => {
+    {
+      const messageId = 'snap-case-0-seed';
+      const original = makeImageSilenceTurn(messageId);
+      const [snapshot] = snapshotEvaluationTurns([original]);
+      if (!snapshot) throw new Error('Missing snapshot turn.');
+      expect(validateImageOnlySilence(snapshot, {
+        observedMessageId: snapshot.observedMessageId ?? null,
+        nowMs: Date.now(),
+      }).exempt).toBe(true);
+      const refs = (getPrivatePlanForEvidence(snapshot) as unknown as { image_attachments?: unknown[] }).image_attachments;
+      expect(Array.isArray(refs) && refs?.length).toBe(1);
+      expect(getEvaluationFixtureEffects(snapshot)).not.toBeNull();
+    }
+
+    {
+      const messageId = 'snap-mutate-0';
+      const original = makeImageSilenceTurn(messageId);
+      const [snapshot] = snapshotEvaluationTurns([original]);
+      if (!snapshot) throw new Error('Missing snapshot turn.');
+      const privatePlan = getPrivatePlanForEvidence(original) as unknown as {
+        image_attachments: Array<Record<string, unknown>>;
+        user_auth?: Record<string, unknown>;
+      };
+      privatePlan.image_attachments.length = 0;
+      attachEvaluationState(original, {
+        plan: getPrivatePlanForEvidence(original),
+        input: { text: 'mutated' },
+        outputText: 'mutated speech',
+        fixtureEffects: buildFixtureEffectSummariesFromReceipts([]),
+      });
+      expect(getEvaluationInput(snapshot).text).toBe('');
+      expect(getEvaluationOutputText(snapshot)).toBe('');
+      const snapshotRefs = (getPrivatePlanForEvidence(snapshot) as unknown as { image_attachments?: unknown[] }).image_attachments;
+      expect(Array.isArray(snapshotRefs) && snapshotRefs?.length).toBe(1);
+      expect(validateImageOnlySilence(snapshot, {
+        observedMessageId: snapshot.observedMessageId ?? null,
+        nowMs: Date.now(),
+      }).exempt).toBe(true);
+    }
   });
 
-  it('post-snapshot original mutation does not change the snapshot', () => {
-    const messageId = 'snap-mutate-0';
-    const original = makeImageSilenceTurn(messageId);
-    const [snapshot] = snapshotEvaluationTurns([original]);
-    if (!snapshot) throw new Error('Missing snapshot turn.');
-    const privatePlan = getPrivatePlanForEvidence(original) as unknown as {
-      image_attachments: Array<Record<string, unknown>>;
-      user_auth?: Record<string, unknown>;
-    };
-    privatePlan.image_attachments.length = 0;
-    attachEvaluationState(original, {
-      plan: getPrivatePlanForEvidence(original),
-      input: { text: 'mutated' },
-      outputText: 'mutated speech',
-      fixtureEffects: buildFixtureEffectSummariesFromReceipts([]),
-    });
-    expect(getEvaluationInput(snapshot).text).toBe('');
-    expect(getEvaluationOutputText(snapshot)).toBe('');
-    const snapshotRefs = (getPrivatePlanForEvidence(snapshot) as unknown as { image_attachments?: unknown[] }).image_attachments;
-    expect(Array.isArray(snapshotRefs) && snapshotRefs?.length).toBe(1);
-    expect(validateImageOnlySilence(snapshot, {
-      observedMessageId: snapshot.observedMessageId ?? null,
-      nowMs: Date.now(),
-    }).exempt).toBe(true);
-  });
+  it('absent effects stay unknown and never pass as zero', () => {
+    {
+      const turn = makeSpeechTurn(0, 'hola');
+      const bare = { ...JSON.parse(JSON.stringify(turn)) } as EvalTurnResult;
+      // No attach: private effects absent.
+      const [snapshot] = snapshotEvaluationTurns([bare]);
+      if (!snapshot) throw new Error('Missing snapshot turn.');
+      expect(getEvaluationFixtureEffects(snapshot)).toBeNull();
+      expect(evaluateFixtureEffectCountForTesting({
+        turns: [snapshot],
+        operation: 'rsvp.write',
+        expectedAttempts: 1,
+        expectedSuccesses: 1,
+        expectedReplays: 0,
+      }).passed).toBe(false);
+    }
 
-  it('preserves absent effects as absent instead of inventing zeros', () => {
-    const turn = makeSpeechTurn(0, 'hola');
-    const bare = { ...JSON.parse(JSON.stringify(turn)) } as EvalTurnResult;
-    // No attach: private effects absent.
-    const [snapshot] = snapshotEvaluationTurns([bare]);
-    if (!snapshot) throw new Error('Missing snapshot turn.');
-    expect(getEvaluationFixtureEffects(snapshot)).toBeNull();
-    expect(evaluateFixtureEffectCountForTesting({
-      turns: [snapshot],
-      operation: 'rsvp.write',
-      expectedAttempts: 1,
-      expectedSuccesses: 1,
-      expectedReplays: 0,
-    }).passed).toBe(false);
+    {
+      const observedZero = buildFixtureEffectSummariesFromReceipts([]);
+      expect(observedZero.find((entry) => entry.operation === 'rsvp.write')).toMatchObject({
+        attempts: 0, successes: 0, outcome: 'none',
+      });
+      const turn = makeSpeechTurn(0, 'hola');
+      const bare = { ...JSON.parse(JSON.stringify(turn)) } as EvalTurnResult;
+      expect(getEvaluationFixtureEffects(bare)).toBeNull();
+      expect(evaluateFixtureEffectCountForTesting({
+        turns: [bare], operation: 'rsvp.write',
+        expectedAttempts: 0, expectedSuccesses: 0, expectedReplays: 0,
+      }).passed).toBe(false);
+    }
+
+    {
+      const turn = makeSpeechTurn(0, 'hola');
+      const bare = { ...JSON.parse(JSON.stringify(turn)) } as EvalTurnResult;
+      expect(getEvaluationFixtureEffects(bare)).toBeNull();
+      expect(evaluateFixtureEffectCountForTesting({
+        turns: [bare], operation: 'handoff.write',
+        expectedAttempts: 0, expectedSuccesses: 0, expectedReplays: 0,
+      }).passed).toBe(false);
+    }
   });
 
   it('wrong message IDs, expired refs, missing refs, and failed generation remain failures', () => {
@@ -276,146 +365,220 @@ describe('recheck-b9a7662d evidence-preserving snapshot (execute->snapshot->tear
 });
 
 describe('recheck-b9a7662d verified fixture receipts (no inferred success)', () => {
-  it('failed writes and unknown outcomes are not successes', async () => {
-    const store = new InMemoryEvalFixtureStateStore();
-    await store.record({
-      runId: 'run-fail', caseId: 'case-fail', scenario: 's', operation: 'rsvp.write',
-      args: {}, resultStatus: 'failed',
-    });
-    await store.record({
-      runId: 'run-unknown', caseId: 'case-unknown', scenario: 's', operation: 'handoff.write',
-      args: {}, resultStatus: 'unknown',
-    });
-    const failed = buildFixtureEffectSummariesFromReceipts(await store.list('run-fail', 'case-fail'));
-    const unknown = buildFixtureEffectSummariesFromReceipts(await store.list('run-unknown', 'case-unknown'));
-    expect(failed.find((entry) => entry.operation === 'rsvp.write')).toMatchObject({
-      attempts: 1, successes: 0, replays: 0, outcome: 'failed',
-    });
-    expect(unknown.find((entry) => entry.operation === 'handoff.write')).toMatchObject({
-      attempts: 1, successes: 0, replays: 0, outcome: 'unknown',
-    });
+  it('counts receipt outcomes without inferring success', async () => {
+    {
+      const store = new InMemoryEvalFixtureStateStore();
+      await store.record({
+        runId: 'run-fail', caseId: 'case-fail', scenario: 's', operation: 'rsvp.write',
+        args: {}, resultStatus: 'failed',
+      });
+      await store.record({
+        runId: 'run-unknown', caseId: 'case-unknown', scenario: 's', operation: 'handoff.write',
+        args: {}, resultStatus: 'unknown',
+      });
+      const failed = buildFixtureEffectSummariesFromReceipts(await store.list('run-fail', 'case-fail'));
+      const unknown = buildFixtureEffectSummariesFromReceipts(await store.list('run-unknown', 'case-unknown'));
+      expect(failed.find((entry) => entry.operation === 'rsvp.write')).toMatchObject({
+        attempts: 1, successes: 0, replays: 0, outcome: 'failed',
+      });
+      expect(unknown.find((entry) => entry.operation === 'handoff.write')).toMatchObject({
+        attempts: 1, successes: 0, replays: 0, outcome: 'unknown',
+      });
+    }
+
+    {
+      const store = new InMemoryEvalFixtureStateStore();
+      await store.record({
+        runId: 'run-dup', caseId: 'case-dup', scenario: 's', operation: 'rsvp.write',
+        args: {}, resultStatus: 'responded',
+      });
+      await store.record({
+        runId: 'run-dup', caseId: 'case-dup', scenario: 's', operation: 'rsvp.write',
+        args: {}, resultStatus: 'responded',
+      });
+      await store.record({
+        runId: 'run-replay', caseId: 'case-replay', scenario: 's', operation: 'handoff.write',
+        args: {}, resultStatus: 'success',
+      });
+      await store.record({
+        runId: 'run-replay', caseId: 'case-replay', scenario: 's', operation: 'handoff.write',
+        args: {}, resultStatus: 'success', replayed: true,
+      });
+      const dup = buildFixtureEffectSummariesFromReceipts(await store.list('run-dup', 'case-dup'));
+      const replay = buildFixtureEffectSummariesFromReceipts(await store.list('run-replay', 'case-replay'));
+      expect(dup.find((entry) => entry.operation === 'rsvp.write')).toMatchObject({
+        attempts: 2, successes: 2, replays: 0,
+      });
+      expect(replay.find((entry) => entry.operation === 'handoff.write')).toMatchObject({
+        attempts: 2, successes: 2, replays: 1,
+      });
+    }
+
+    {
+      const store = new InMemoryEvalFixtureStateStore();
+      await store.record({
+        runId: 'run-q', caseId: 'case-q', scenario: 's', operation: 'provider.quote.write',
+        args: {}, resultStatus: 'intent',
+      });
+      await store.record({
+        runId: 'run-q', caseId: 'case-q', scenario: 's', operation: 'provider.quote.write',
+        args: {}, resultStatus: 'simulated',
+      });
+      await store.record({
+        runId: 'run-qi', caseId: 'case-qi', scenario: 's', operation: 'provider.quote.write',
+        args: {}, resultStatus: 'intent',
+      });
+      const paired = buildFixtureEffectSummariesFromReceipts(await store.list('run-q', 'case-q'));
+      const lone = buildFixtureEffectSummariesFromReceipts(await store.list('run-qi', 'case-qi'));
+      expect(paired.find((entry) => entry.operation === 'provider.quote.write')).toMatchObject({
+        attempts: 1, successes: 1, replays: 0, outcome: 'success',
+      });
+      expect(lone.find((entry) => entry.operation === 'provider.quote.write')).toMatchObject({
+        attempts: 1, successes: 0, outcome: 'failed',
+      });
+    }
   });
 
-  it('counts duplicate writes and replays from receipt identity', async () => {
+  it('compares per-turn deltas for turn-indexed expectations', async () => {
     const store = new InMemoryEvalFixtureStateStore();
-    await store.record({
-      runId: 'run-dup', caseId: 'case-dup', scenario: 's', operation: 'rsvp.write',
-      args: {}, resultStatus: 'responded',
-    });
-    await store.record({
-      runId: 'run-dup', caseId: 'case-dup', scenario: 's', operation: 'rsvp.write',
-      args: {}, resultStatus: 'responded',
-    });
-    await store.record({
-      runId: 'run-replay', caseId: 'case-replay', scenario: 's', operation: 'handoff.write',
-      args: {}, resultStatus: 'success',
-    });
-    await store.record({
-      runId: 'run-replay', caseId: 'case-replay', scenario: 's', operation: 'handoff.write',
-      args: {}, resultStatus: 'success', replayed: true,
-    });
-    const dup = buildFixtureEffectSummariesFromReceipts(await store.list('run-dup', 'case-dup'));
-    const replay = buildFixtureEffectSummariesFromReceipts(await store.list('run-replay', 'case-replay'));
-    expect(dup.find((entry) => entry.operation === 'rsvp.write')).toMatchObject({
-      attempts: 2, successes: 2, replays: 0,
-    });
-    expect(replay.find((entry) => entry.operation === 'handoff.write')).toMatchObject({
-      attempts: 2, successes: 2, replays: 1,
-    });
-  });
-
-  it('provider intent markers do not double-count; lone intent is a failed attempt', async () => {
-    const store = new InMemoryEvalFixtureStateStore();
-    await store.record({
-      runId: 'run-q', caseId: 'case-q', scenario: 's', operation: 'provider.quote.write',
-      args: {}, resultStatus: 'intent',
-    });
-    await store.record({
-      runId: 'run-q', caseId: 'case-q', scenario: 's', operation: 'provider.quote.write',
-      args: {}, resultStatus: 'simulated',
-    });
-    await store.record({
-      runId: 'run-qi', caseId: 'case-qi', scenario: 's', operation: 'provider.quote.write',
-      args: {}, resultStatus: 'intent',
-    });
-    const paired = buildFixtureEffectSummariesFromReceipts(await store.list('run-q', 'case-q'));
-    const lone = buildFixtureEffectSummariesFromReceipts(await store.list('run-qi', 'case-qi'));
-    expect(paired.find((entry) => entry.operation === 'provider.quote.write')).toMatchObject({
-      attempts: 1, successes: 1, replays: 0, outcome: 'success',
-    });
-    expect(lone.find((entry) => entry.operation === 'provider.quote.write')).toMatchObject({
-      attempts: 1, successes: 0, outcome: 'failed',
-    });
-  });
-
-  it('wrong scope never leaks and later-turn writes do not satisfy earlier assertions', async () => {
-    const store = new InMemoryEvalFixtureStateStore();
-    await store.record({
-      runId: 'run-scope', caseId: 'case-a', scenario: 's', operation: 'rsvp.write',
-      args: {}, resultStatus: 'responded',
-    });
-    const wrongScope = buildFixtureEffectSummariesFromReceipts(await store.list('run-scope', 'case-b'));
-    expect(wrongScope.find((entry) => entry.operation === 'rsvp.write')).toMatchObject({
-      attempts: 0, successes: 0, outcome: 'none',
-    });
-
-    const runId = 'run-boundary';
-    const caseId = 'case-boundary';
-    const baseline = await store.list(runId, caseId);
-    expect(baseline).toHaveLength(0);
+    const runId = 'run-delta';
+    const caseId = 'case-delta';
+    const attach = (index: number, text: string, receipts: Awaited<ReturnType<typeof store.list>>) => {
+      const turn = makeSpeechTurn(index, text);
+      attachEvaluationState(turn, {
+        plan: getPrivatePlanForEvidence(turn),
+        input: turn.input,
+        outputText: turn.outputText,
+        fixtureEffects: buildFixtureEffectSummariesFromReceipts(receipts),
+      });
+      return turn;
+    };
     await store.record({
       runId, caseId, scenario: 's', operation: 'rsvp.write', args: {}, resultStatus: 'responded',
     });
-    const firstBoundary = buildFixtureEffectSummariesFromReceipts(
-      (await store.list(runId, caseId)).filter((receipt) => !new Set(baseline.map((entry) => entry.syntheticId)).has(receipt.syntheticId)),
-    );
-    const turn0 = makeSpeechTurn(0, 'primero');
-    attachEvaluationState(turn0, {
-      plan: getPrivatePlanForEvidence(turn0),
-      input: turn0.input,
-      outputText: turn0.outputText,
-      fixtureEffects: firstBoundary,
-    });
-    const [snap0] = snapshotEvaluationTurns([turn0]);
-    if (!snap0) throw new Error('Missing turn0 snapshot.');
-
-    await store.record({
-      runId, caseId, scenario: 's', operation: 'rsvp.write', args: {}, resultStatus: 'responded',
-    });
-    const secondBoundary = buildFixtureEffectSummariesFromReceipts(await store.list(runId, caseId));
-    const turn1 = makeSpeechTurn(1, 'segundo');
-    attachEvaluationState(turn1, {
-      plan: getPrivatePlanForEvidence(turn1),
-      input: turn1.input,
-      outputText: turn1.outputText,
-      fixtureEffects: secondBoundary,
-    });
+    const turn0 = attach(0, 'declino', await store.list(runId, caseId));
+    const turn1 = attach(1, 'gracias', await store.list(runId, caseId));
     expect(evaluateFixtureEffectCountForTesting({
-      turns: [snap0, turn1], operation: 'rsvp.write', turnIndex: 0,
+      turns: [turn0, turn1], operation: 'rsvp.write', turnIndex: 0,
       expectedAttempts: 1, expectedSuccesses: 1, expectedReplays: 0,
     }).passed).toBe(true);
     expect(evaluateFixtureEffectCountForTesting({
-      turns: [snap0, turn1], operation: 'rsvp.write', turnIndex: 0,
-      expectedAttempts: 2, expectedSuccesses: 2, expectedReplays: 0,
+      turns: [turn0, turn1], operation: 'rsvp.write', turnIndex: 1,
+      expectedAttempts: 0, expectedSuccesses: 0, expectedReplays: 0,
+    }).passed).toBe(true);
+  });
+
+  it('detects repeat writes as nonzero turn deltas', async () => {
+    const store = new InMemoryEvalFixtureStateStore();
+    const runId = 'run-repeat';
+    const caseId = 'case-repeat';
+    const attach = async (index: number, text: string) => {
+      const turn = makeSpeechTurn(index, text);
+      attachEvaluationState(turn, {
+        plan: getPrivatePlanForEvidence(turn),
+        input: turn.input,
+        outputText: turn.outputText,
+        fixtureEffects: buildFixtureEffectSummariesFromReceipts(await store.list(runId, caseId)),
+      });
+      return turn;
+    };
+    await store.record({
+      runId, caseId, scenario: 's', operation: 'rsvp.write', args: {}, resultStatus: 'responded',
+    });
+    const turn0 = await attach(0, 'confirmo');
+    await store.record({
+      runId, caseId, scenario: 's', operation: 'rsvp.write', args: {}, resultStatus: 'responded',
+    });
+    const turn1 = await attach(1, 'confirmo otra vez');
+    expect(evaluateFixtureEffectCountForTesting({
+      turns: [turn0, turn1], operation: 'rsvp.write', turnIndex: 1,
+      expectedAttempts: 0, expectedSuccesses: 0, expectedReplays: 0,
     }).passed).toBe(false);
     expect(evaluateFixtureEffectCountForTesting({
-      turns: [snap0, turn1], operation: 'rsvp.write', turnIndex: 1,
+      turns: [turn0, turn1], operation: 'rsvp.write', turnIndex: 1,
+      expectedAttempts: 1, expectedSuccesses: 1, expectedReplays: 0,
+    }).passed).toBe(true);
+    expect(evaluateFixtureEffectCountForTesting({
+      turns: [turn0, turn1], operation: 'rsvp.write',
       expectedAttempts: 2, expectedSuccesses: 2, expectedReplays: 0,
     }).passed).toBe(true);
   });
 
-  it('tool calls without receipts are never writes; missing collection is unknown', () => {
-    const observedZero = buildFixtureEffectSummariesFromReceipts([]);
-    expect(observedZero.find((entry) => entry.operation === 'rsvp.write')).toMatchObject({
-      attempts: 0, successes: 0, outcome: 'none',
-    });
-    const turn = makeSpeechTurn(0, 'hola');
-    const bare = { ...JSON.parse(JSON.stringify(turn)) } as EvalTurnResult;
-    expect(getEvaluationFixtureEffects(bare)).toBeNull();
-    expect(evaluateFixtureEffectCountForTesting({
-      turns: [bare], operation: 'rsvp.write',
-      expectedAttempts: 0, expectedSuccesses: 0, expectedReplays: 0,
-    }).passed).toBe(false);
+  it('wrong scope never leaks across cases, runs, or turns', async () => {
+    {
+      const store = new InMemoryEvalFixtureStateStore();
+      await store.record({
+        runId: 'run-scope', caseId: 'case-a', scenario: 's', operation: 'rsvp.write',
+        args: {}, resultStatus: 'responded',
+      });
+      const wrongScope = buildFixtureEffectSummariesFromReceipts(await store.list('run-scope', 'case-b'));
+      expect(wrongScope.find((entry) => entry.operation === 'rsvp.write')).toMatchObject({
+        attempts: 0, successes: 0, outcome: 'none',
+      });
+
+      const runId = 'run-boundary';
+      const caseId = 'case-boundary';
+      const baseline = await store.list(runId, caseId);
+      expect(baseline).toHaveLength(0);
+      await store.record({
+        runId, caseId, scenario: 's', operation: 'rsvp.write', args: {}, resultStatus: 'responded',
+      });
+      const firstBoundary = buildFixtureEffectSummariesFromReceipts(
+        (await store.list(runId, caseId)).filter((receipt) => !new Set(baseline.map((entry) => entry.syntheticId)).has(receipt.syntheticId)),
+      );
+      const turn0 = makeSpeechTurn(0, 'primero');
+      attachEvaluationState(turn0, {
+        plan: getPrivatePlanForEvidence(turn0),
+        input: turn0.input,
+        outputText: turn0.outputText,
+        fixtureEffects: firstBoundary,
+      });
+      const [snap0] = snapshotEvaluationTurns([turn0]);
+      if (!snap0) throw new Error('Missing turn0 snapshot.');
+
+      await store.record({
+        runId, caseId, scenario: 's', operation: 'rsvp.write', args: {}, resultStatus: 'responded',
+      });
+      const secondBoundary = buildFixtureEffectSummariesFromReceipts(await store.list(runId, caseId));
+      const turn1 = makeSpeechTurn(1, 'segundo');
+      attachEvaluationState(turn1, {
+        plan: getPrivatePlanForEvidence(turn1),
+        input: turn1.input,
+        outputText: turn1.outputText,
+        fixtureEffects: secondBoundary,
+      });
+      expect(evaluateFixtureEffectCountForTesting({
+        turns: [snap0, turn1], operation: 'rsvp.write', turnIndex: 0,
+        expectedAttempts: 1, expectedSuccesses: 1, expectedReplays: 0,
+      }).passed).toBe(true);
+      expect(evaluateFixtureEffectCountForTesting({
+        turns: [snap0, turn1], operation: 'rsvp.write', turnIndex: 0,
+        expectedAttempts: 2, expectedSuccesses: 2, expectedReplays: 0,
+      }).passed).toBe(false);
+      expect(evaluateFixtureEffectCountForTesting({
+        turns: [snap0, turn1], operation: 'rsvp.write', turnIndex: 1,
+        expectedAttempts: 1, expectedSuccesses: 1, expectedReplays: 0,
+      }).passed).toBe(true);
+      expect(evaluateFixtureEffectCountForTesting({
+        turns: [snap0, turn1], operation: 'rsvp.write', turnIndex: 1,
+        expectedAttempts: 2, expectedSuccesses: 2, expectedReplays: 0,
+      }).passed).toBe(false);
+    }
+
+    {
+      const store = new InMemoryEvalFixtureStateStore();
+      await store.record({
+        runId: 'run-scope', caseId: 'case-a', scenario: 's', operation: 'provider.quote.write',
+        args: {}, resultStatus: 'confirmed',
+      });
+      const otherCase = buildFixtureEffectSummariesFromReceipts(await store.list('run-scope', 'case-b'));
+      expect(otherCase.find((entry) => entry.operation === 'provider.quote.write')).toMatchObject({
+        attempts: 0, successes: 0, outcome: 'none',
+      });
+      const filtered = await store.list('run-scope', 'case-a', 'provider.quote.write');
+      expect(filtered).toHaveLength(1);
+      expect(filtered[0]?.resultStatus).toBe('confirmed');
+    }
   });
 
   it('retains willAttend precedence regardless of hasResponded', () => {
@@ -487,58 +650,60 @@ describe('§3 integrated execute->snapshot->teardown->judge evidence pipeline', 
 });
 
 describe('Lane B cumulative-from-case-baseline ledger (2026-09-17 actionable-answer)', () => {
-  it('a real second write fails a cumulative 1/1/0 total', async () => {
-    const store = new InMemoryEvalFixtureStateStore();
-    const runId = 'run-laneb-dup';
-    const caseId = 'case-laneb-dup';
-    await store.record({
-      runId, caseId, scenario: 's', operation: 'rsvp.write',
-      args: {}, resultStatus: 'responded',
-    });
-    await store.record({
-      runId, caseId, scenario: 's', operation: 'rsvp.write',
-      args: {}, resultStatus: 'responded',
-    });
-    const turn = makeSpeechTurn(1, 'segundo');
-    attachEvaluationState(turn, {
-      plan: getPrivatePlanForEvidence(turn),
-      input: turn.input,
-      outputText: turn.outputText,
-      fixtureEffects: buildFixtureEffectSummariesFromReceipts(await store.list(runId, caseId)),
-    });
-    expect(evaluateFixtureEffectCountForTesting({
-      turns: [turn], operation: 'rsvp.write', turnIndex: 0,
-      expectedAttempts: 1, expectedSuccesses: 1, expectedReplays: 0,
-    }).passed).toBe(false);
-    expect(evaluateFixtureEffectCountForTesting({
-      turns: [turn], operation: 'rsvp.write', turnIndex: 0,
-      expectedAttempts: 2, expectedSuccesses: 2, expectedReplays: 0,
-    }).passed).toBe(true);
-  });
+  it('reads the cumulative ledger from the case baseline, never per-turn zero', async () => {
+    {
+      const store = new InMemoryEvalFixtureStateStore();
+      const runId = 'run-laneb-dup';
+      const caseId = 'case-laneb-dup';
+      await store.record({
+        runId, caseId, scenario: 's', operation: 'rsvp.write',
+        args: {}, resultStatus: 'responded',
+      });
+      await store.record({
+        runId, caseId, scenario: 's', operation: 'rsvp.write',
+        args: {}, resultStatus: 'responded',
+      });
+      const turn = makeSpeechTurn(1, 'segundo');
+      attachEvaluationState(turn, {
+        plan: getPrivatePlanForEvidence(turn),
+        input: turn.input,
+        outputText: turn.outputText,
+        fixtureEffects: buildFixtureEffectSummariesFromReceipts(await store.list(runId, caseId)),
+      });
+      expect(evaluateFixtureEffectCountForTesting({
+        turns: [turn], operation: 'rsvp.write', turnIndex: 0,
+        expectedAttempts: 1, expectedSuccesses: 1, expectedReplays: 0,
+      }).passed).toBe(false);
+      expect(evaluateFixtureEffectCountForTesting({
+        turns: [turn], operation: 'rsvp.write', turnIndex: 0,
+        expectedAttempts: 2, expectedSuccesses: 2, expectedReplays: 0,
+      }).passed).toBe(true);
+    }
 
-  it('a single earlier handoff stays visible at a later turn (cumulative 1/1/0, never later-turn 0/0/0)', async () => {
-    const store = new InMemoryEvalFixtureStateStore();
-    const runId = 'run-laneb-diana';
-    const caseId = 'case-laneb-diana';
-    await store.record({
-      runId, caseId, scenario: 's', operation: 'handoff.write',
-      args: {}, resultStatus: 'success',
-    });
-    const turn = makeSpeechTurn(2, 'Evento: Diana y Fernando');
-    attachEvaluationState(turn, {
-      plan: getPrivatePlanForEvidence(turn),
-      input: turn.input,
-      outputText: turn.outputText,
-      fixtureEffects: buildFixtureEffectSummariesFromReceipts(await store.list(runId, caseId)),
-    });
-    expect(evaluateFixtureEffectCountForTesting({
-      turns: [turn], operation: 'handoff.write', turnIndex: 0,
-      expectedAttempts: 0, expectedSuccesses: 0, expectedReplays: 0,
-    }).passed).toBe(false);
-    expect(evaluateFixtureEffectCountForTesting({
-      turns: [turn], operation: 'handoff.write', turnIndex: 0,
-      expectedAttempts: 1, expectedSuccesses: 1, expectedReplays: 0,
-    }).passed).toBe(true);
+    {
+      const store = new InMemoryEvalFixtureStateStore();
+      const runId = 'run-laneb-diana';
+      const caseId = 'case-laneb-diana';
+      await store.record({
+        runId, caseId, scenario: 's', operation: 'handoff.write',
+        args: {}, resultStatus: 'success',
+      });
+      const turn = makeSpeechTurn(2, 'Evento: Diana y Fernando');
+      attachEvaluationState(turn, {
+        plan: getPrivatePlanForEvidence(turn),
+        input: turn.input,
+        outputText: turn.outputText,
+        fixtureEffects: buildFixtureEffectSummariesFromReceipts(await store.list(runId, caseId)),
+      });
+      expect(evaluateFixtureEffectCountForTesting({
+        turns: [turn], operation: 'handoff.write', turnIndex: 0,
+        expectedAttempts: 0, expectedSuccesses: 0, expectedReplays: 0,
+      }).passed).toBe(false);
+      expect(evaluateFixtureEffectCountForTesting({
+        turns: [turn], operation: 'handoff.write', turnIndex: 0,
+        expectedAttempts: 1, expectedSuccesses: 1, expectedReplays: 0,
+      }).passed).toBe(true);
+    }
   });
 
   it('a mid-thread handoff stays 1/1/0 at a read-only thanks turn (gift-handoff T0/T1/T2 shape)', async () => {
@@ -565,7 +730,11 @@ describe('Lane B cumulative-from-case-baseline ledger (2026-09-17 actionable-ans
       outputText: turn1.outputText,
       fixtureEffects: buildFixtureEffectSummariesFromReceipts(await store.list(runId, caseId)),
     });
-    // T2 is read-only thanks: the cumulative ledger still reads 1/1/0.
+    // T2 is read-only thanks: per-turn delta reads 0/0/0 even though the
+    // cumulative ledger holds 1/1/0. Contract revision 2026-09-30: the
+    // 2026-09-17 cumulative-from-baseline reading made "no write at turn N"
+    // inexpressible after any earlier write; turn-indexed expectations now
+    // compare per-turn deltas (final expectations stay absolute).
     const turn2 = makeSpeechTurn(2, 'Gracias.');
     attachEvaluationState(turn2, {
       plan: getPrivatePlanForEvidence(turn2),
@@ -584,66 +753,66 @@ describe('Lane B cumulative-from-case-baseline ledger (2026-09-17 actionable-ans
     }).passed).toBe(true);
     expect(evaluateFixtureEffectCountForTesting({
       turns, operation: 'handoff.write', turnIndex: 2,
-      expectedAttempts: 1, expectedSuccesses: 1, expectedReplays: 0,
+      expectedAttempts: 0, expectedSuccesses: 0, expectedReplays: 0,
     }).passed).toBe(true);
-    // A per-turn-zero reading of the final snapshot is wrong and fails.
+    // A cumulative reading of a read-only turn is wrong and fails.
     expect(evaluateFixtureEffectCountForTesting({
       turns, operation: 'handoff.write', turnIndex: 2,
-      expectedAttempts: 0, expectedSuccesses: 0, expectedReplays: 0,
+      expectedAttempts: 1, expectedSuccesses: 1, expectedReplays: 0,
     }).passed).toBe(false);
-  });
-
-  it('missing receipt collection is unknown, never a passing zero', () => {
-    const turn = makeSpeechTurn(0, 'hola');
-    const bare = { ...JSON.parse(JSON.stringify(turn)) } as EvalTurnResult;
-    expect(getEvaluationFixtureEffects(bare)).toBeNull();
+    // Final (unindexed) expectations keep absolute cumulative counts.
     expect(evaluateFixtureEffectCountForTesting({
-      turns: [bare], operation: 'handoff.write',
-      expectedAttempts: 0, expectedSuccesses: 0, expectedReplays: 0,
-    }).passed).toBe(false);
+      turns, operation: 'handoff.write',
+      expectedAttempts: 1, expectedSuccesses: 1, expectedReplays: 0,
+    }).passed).toBe(true);
   });
 
-  it('judge packet separates an actionable pending question from a bare correction or thanks', () => {
-    const context = buildSemanticJudgeContext([makeSpeechTurn(0, 'hola')], 0, undefined);
-    expect(context).toContain('actionable pending question');
-    expect(context).toContain('bare role correction');
+  it('judge packet separates actionable questions, corrections, and takeover honesty', () => {
+    {
+      const context = buildSemanticJudgeContext([makeSpeechTurn(0, 'hola')], 0, undefined);
+      expect(context).toContain('actionable pending question');
+      expect(context).toContain('bare role correction');
+    }
+
+    {
+      const context = buildSemanticJudgeContext([makeSpeechTurn(0, 'hola')], 0, undefined);
+      expect(context).toContain('Handoff honesty');
+      expect(context).toContain('submitted only');
+      expect(context).toContain('An attempted takeover is never a confirmed handoff');
+    }
   });
 
-  it('judge packet treats a confirmed takeover as submission only', () => {
-    const context = buildSemanticJudgeContext([makeSpeechTurn(0, 'hola')], 0, undefined);
-    expect(context).toContain('Handoff honesty');
-    expect(context).toContain('submitted only');
-    expect(context).toContain('An attempted takeover is never a confirmed handoff');
-  });
 });
 
 describe('§4 authoritative effect ledger matrix', () => {
-  it('records a single success exactly', async () => {
-    const store = new InMemoryEvalFixtureStateStore();
-    await store.record({
-      runId: 'run-ok', caseId: 'case-ok', scenario: 's', operation: 'otp.request',
-      args: {}, resultStatus: 'sent',
-    });
-    const ledger = buildFixtureEffectSummariesFromReceipts(await store.list('run-ok', 'case-ok'));
-    expect(ledger.find((entry) => entry.operation === 'otp.request')).toMatchObject({
-      attempts: 1, successes: 1, replays: 0, outcome: 'success', receiptPresent: true,
-    });
-  });
+  it('records ledger receipts exactly and excludes pre-baseline ones', async () => {
+    {
+      const store = new InMemoryEvalFixtureStateStore();
+      await store.record({
+        runId: 'run-ok', caseId: 'case-ok', scenario: 's', operation: 'otp.request',
+        args: {}, resultStatus: 'sent',
+      });
+      const ledger = buildFixtureEffectSummariesFromReceipts(await store.list('run-ok', 'case-ok'));
+      expect(ledger.find((entry) => entry.operation === 'otp.request')).toMatchObject({
+        attempts: 1, successes: 1, replays: 0, outcome: 'success', receiptPresent: true,
+      });
+    }
 
-  it('excludes stale pre-baseline receipts (observed zero, never missing)', async () => {
-    const store = new InMemoryEvalFixtureStateStore();
-    await store.record({
-      runId: 'run-stale', caseId: 'case-stale', scenario: 's', operation: 'rsvp.write',
-      args: {}, resultStatus: 'responded',
-    });
-    // The turn boundary starts after the stale receipt: baseline filter.
-    const baseline = new Set((await store.list('run-stale', 'case-stale')).map((receipt) => receipt.syntheticId));
-    const conversational = (await store.list('run-stale', 'case-stale'))
-      .filter((receipt) => !baseline.has(receipt.syntheticId));
-    const ledger = buildFixtureEffectSummariesFromReceipts(conversational);
-    expect(ledger.find((entry) => entry.operation === 'rsvp.write')).toMatchObject({
-      attempts: 0, successes: 0, outcome: 'none', receiptPresent: true,
-    });
+    {
+      const store = new InMemoryEvalFixtureStateStore();
+      await store.record({
+        runId: 'run-stale', caseId: 'case-stale', scenario: 's', operation: 'rsvp.write',
+        args: {}, resultStatus: 'responded',
+      });
+      // The turn boundary starts after the stale receipt: baseline filter.
+      const baseline = new Set((await store.list('run-stale', 'case-stale')).map((receipt) => receipt.syntheticId));
+      const conversational = (await store.list('run-stale', 'case-stale'))
+        .filter((receipt) => !baseline.has(receipt.syntheticId));
+      const ledger = buildFixtureEffectSummariesFromReceipts(conversational);
+      expect(ledger.find((entry) => entry.operation === 'rsvp.write')).toMatchObject({
+        attempts: 0, successes: 0, outcome: 'none', receiptPresent: true,
+      });
+    }
   });
 
   it('a wrong-target write counts as an attempt and never silently satisfies an exact expectation', async () => {
@@ -678,18 +847,4 @@ describe('§4 authoritative effect ledger matrix', () => {
     }).passed).toBe(false);
   });
 
-  it('wrong run/case scope never leaks across operations', async () => {
-    const store = new InMemoryEvalFixtureStateStore();
-    await store.record({
-      runId: 'run-scope', caseId: 'case-a', scenario: 's', operation: 'provider.quote.write',
-      args: {}, resultStatus: 'confirmed',
-    });
-    const otherCase = buildFixtureEffectSummariesFromReceipts(await store.list('run-scope', 'case-b'));
-    expect(otherCase.find((entry) => entry.operation === 'provider.quote.write')).toMatchObject({
-      attempts: 0, successes: 0, outcome: 'none',
-    });
-    const filtered = await store.list('run-scope', 'case-a', 'provider.quote.write');
-    expect(filtered).toHaveLength(1);
-    expect(filtered[0]?.resultStatus).toBe('confirmed');
-  });
 });

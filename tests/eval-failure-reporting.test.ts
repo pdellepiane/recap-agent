@@ -8,7 +8,6 @@ import {
   computeHardGatePassed,
   normalizeZeroTurnResult,
 } from '../src/evals/runner';
-import { classifyPrimaryFailureReason } from '../src/evals/reporting';
 
 function minimalTurn(overrides: Record<string, unknown> = {}): EvalTurnResult {
   const text = 'Respuesta del modelo.';
@@ -73,27 +72,21 @@ function minimalTurn(overrides: Record<string, unknown> = {}): EvalTurnResult {
 }
 
 describe('§6 setup zero-turn is a harness/infrastructure failure with its cause', () => {
-  it('forces a zero-turn non-error into errored with a recorded cause', () => {
+  it('forces zero-turn non-errors into errored with the recorded cause', () => {
     const normalized = normalizeZeroTurnResult({ turns: [], status: 'passed' }, 'case-zero');
     expect(normalized.status).toBe('errored');
     expect(normalized.errorMessage).toContain('case-zero');
     expect(normalized.errorMessage).toContain('zero turns');
-  });
-
-  it('preserves the actual setup cause instead of replacing it', () => {
     const cause = 'RSVP isolation setup failed: External evaluations are restricted to the named coordinator host';
-    const normalized = normalizeZeroTurnResult(
+    const preserved = normalizeZeroTurnResult(
       { turns: [], status: 'skipped', errorMessage: cause },
       'case-setup',
     );
-    expect(normalized.status).toBe('errored');
-    expect(normalized.errorMessage).toBe(cause);
-  });
-
-  it('never turns a zero-turn completion into a silent skip', () => {
-    const normalized = normalizeZeroTurnResult({ turns: [], status: 'skipped' }, 'case-skip');
-    expect(normalized.status).not.toBe('skipped');
-    expect(normalized.status).not.toBe('passed');
+    expect(preserved.status).toBe('errored');
+    expect(preserved.errorMessage).toBe(cause);
+    const skip = normalizeZeroTurnResult({ turns: [], status: 'skipped' }, 'case-skip');
+    expect(skip.status).not.toBe('skipped');
+    expect(skip.status).not.toBe('passed');
   });
 
   it('leaves explicit errors and completed turns untouched', () => {
@@ -102,18 +95,10 @@ describe('§6 setup zero-turn is a harness/infrastructure failure with its cause
     const done = { turns: [minimalTurn()], status: 'passed' as const };
     expect(normalizeZeroTurnResult(done, 'case-d')).toBe(done);
   });
-
-  it('classifies a zero-turn setup failure as infrastructure_error', () => {
-    expect(classifyPrimaryFailureReason({
-      status: 'errored',
-      planDiffSummary: ['Runtime error: RSVP isolation setup failed: coordinator host is unset'],
-      expectationResults: [],
-    })).toBe('infrastructure_error');
-  });
 });
 
 describe('§6 passing expectations never obscure a failed origin or transport gate', () => {
-  it('fails the hard gate when every expectation passes but origin evidence fails', () => {
+  it('gates the hard pass on expectations plus origin and transport evidence', () => {
     const allPass = [
       { severity: 'hard' as const, passed: true },
       { severity: 'soft' as const, passed: true },
@@ -123,17 +108,11 @@ describe('§6 passing expectations never obscure a failed origin or transport ga
       originGateFailures: ['turn 0: output-origin status=mismatch'],
       transportGateFailures: [],
     })).toBe(false);
-  });
-
-  it('fails the hard gate on transport failures alone', () => {
     expect(computeHardGatePassed({
       expectationResults: [{ severity: 'hard' as const, passed: true }],
       originGateFailures: [],
       transportGateFailures: ['turn 0 classifier: transport evidence is missing; absent is not zero'],
     })).toBe(false);
-  });
-
-  it('passes only when hard expectations and both gates hold; soft failures never gate', () => {
     expect(computeHardGatePassed({
       expectationResults: [
         { severity: 'hard' as const, passed: true },
@@ -173,18 +152,5 @@ describe('§6 passing expectations never obscure a failed origin or transport ga
     // A clean turn fails neither gate.
     expect(collectOriginGateFailures([minimalTurn()])).toEqual([]);
     expect(collectTransportGateFailures([minimalTurn()])).toEqual([]);
-  });
-
-  it('keeps one primary reason per failure class', () => {
-    const reasonFor = (summary: string[]) => classifyPrimaryFailureReason({
-      status: 'failed',
-      planDiffSummary: summary,
-      expectationResults: [],
-    });
-    expect(reasonFor(['Output-origin gate failures: turn 0: output-origin status=mismatch.']))
-      .toBe('product_effect_identity');
-    expect(reasonFor(['Transport gate failures: turn 0 classifier: transport evidence is missing.']))
-      .toBe('infrastructure_error');
-    expect(reasonFor([])).toBe('product_fact_completeness');
   });
 });

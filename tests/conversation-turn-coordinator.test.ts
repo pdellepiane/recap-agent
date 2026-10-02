@@ -34,12 +34,63 @@ describe('conversation turn coordination', () => {
     expect(conversationPartitionKey('webchat', '+51999999999')).toBe('webchat#+51999999999');
   });
 
-  it('serializes one identity while allowing another identity', async () => {
-    const coordinator = new InMemoryConversationTurnCoordinator();
-    expect(await coordinator.acquire(lease('one'), 1_000)).toBe(true);
-    expect(await coordinator.acquire(lease('two'), 1_000)).toBe(false);
-    expect(await coordinator.acquire({ ...lease('other-user'), externalUserId: 'different' }, 1_000)).toBe(true);
-    expect(await coordinator.acquire({ ...lease('other-channel'), channel: 'webchat' }, 1_000)).toBe(true);
+  it('serializes turns per identity while allowing other identities', async () => {
+    {
+      const coordinator = new InMemoryConversationTurnCoordinator();
+      expect(await coordinator.acquire(lease('one'), 1_000)).toBe(true);
+      expect(await coordinator.acquire(lease('two'), 1_000)).toBe(false);
+      expect(await coordinator.acquire({ ...lease('other-user'), externalUserId: 'different' }, 1_000)).toBe(true);
+      expect(await coordinator.acquire({ ...lease('other-channel'), channel: 'webchat' }, 1_000)).toBe(true);
+    }
+
+    {
+      const coordinator = new InMemoryConversationTurnCoordinator();
+      let finishFirst: (() => void) | undefined;
+      let firstStarted: (() => void) | undefined;
+      const started = new Promise<void>((resolve) => { firstStarted = resolve; });
+      const first = runWithConversationTurnLease({
+        coordinator,
+        identity,
+        hardDeadlineMs: 10_000,
+        waitMs: 0,
+        executionReserveMs: 100,
+        expirySafetyMs: 1_000,
+        pollMs: 10,
+        operation: async () => await new Promise<string>((resolve) => {
+          firstStarted?.();
+          finishFirst = () => resolve('first');
+        }),
+        now: () => 1_000,
+        ownerId: 'first',
+      });
+      await started;
+      await expect(runWithConversationTurnLease({
+        coordinator,
+        identity,
+        hardDeadlineMs: 10_000,
+        waitMs: 0,
+        executionReserveMs: 100,
+        expirySafetyMs: 1_000,
+        pollMs: 10,
+        operation: async () => 'same-user',
+        now: () => 1_001,
+        ownerId: 'second',
+      })).rejects.toBeInstanceOf(ConversationTurnBusyError);
+      await expect(runWithConversationTurnLease({
+        coordinator,
+        identity: { ...identity, externalUserId: 'other-user' },
+        hardDeadlineMs: 10_000,
+        waitMs: 0,
+        executionReserveMs: 100,
+        expirySafetyMs: 1_000,
+        pollMs: 10,
+        operation: async () => 'other-user',
+        now: () => 1_001,
+        ownerId: 'other',
+      })).resolves.toBe('other-user');
+      finishFirst?.();
+      await expect(first).resolves.toBe('first');
+    }
   });
 
   it('only releases its own lock and recovers expired locks', async () => {
@@ -53,37 +104,68 @@ describe('conversation turn coordination', () => {
     expect(await coordinator.acquire(lease('three'), 1_101)).toBe(true);
   });
 
-  it('releases after successful and failed operations', async () => {
-    const coordinator = new InMemoryConversationTurnCoordinator();
-    const operation = vi.fn().mockResolvedValue('ok');
-    await expect(runWithConversationTurnLease({
-      coordinator,
-      identity,
-      hardDeadlineMs: 10_000,
-      waitMs: 0,
-      executionReserveMs: 100,
-      expirySafetyMs: 1_000,
-      pollMs: 10,
-      operation,
-      now: () => 1_000,
-      ownerId: 'one',
-    })).resolves.toBe('ok');
-    expect(operation).toHaveBeenCalledOnce();
-    expect(await coordinator.acquire(lease('two'), 1_001)).toBe(true);
+  it('releases the lease after settled operations whether they succeed or fail', async () => {
+    {
+      const coordinator = new InMemoryConversationTurnCoordinator();
+      const operation = vi.fn().mockResolvedValue('ok');
+      await expect(runWithConversationTurnLease({
+        coordinator,
+        identity,
+        hardDeadlineMs: 10_000,
+        waitMs: 0,
+        executionReserveMs: 100,
+        expirySafetyMs: 1_000,
+        pollMs: 10,
+        operation,
+        now: () => 1_000,
+        ownerId: 'one',
+      })).resolves.toBe('ok');
+      expect(operation).toHaveBeenCalledOnce();
+      expect(await coordinator.acquire(lease('two'), 1_001)).toBe(true);
 
-    await expect(runWithConversationTurnLease({
-      coordinator,
-      identity,
-      hardDeadlineMs: 10_000,
-      waitMs: 0,
-      executionReserveMs: 100,
-      expirySafetyMs: 1_000,
-      pollMs: 10,
-      operation: async () => { throw new Error('operation failed'); },
-      now: () => 2_000,
-      ownerId: 'three',
-    })).rejects.toThrow('operation failed');
-    expect(await coordinator.acquire(lease('four'), 2_001)).toBe(true);
+      await expect(runWithConversationTurnLease({
+        coordinator,
+        identity,
+        hardDeadlineMs: 10_000,
+        waitMs: 0,
+        executionReserveMs: 100,
+        expirySafetyMs: 1_000,
+        pollMs: 10,
+        operation: async () => { throw new Error('operation failed'); },
+        now: () => 2_000,
+        ownerId: 'three',
+      })).rejects.toThrow('operation failed');
+      expect(await coordinator.acquire(lease('four'), 2_001)).toBe(true);
+    }
+
+    {
+      const inner = new InMemoryConversationTurnCoordinator();
+      const releases: string[] = [];
+      const coordinator: ConversationTurnCoordinator = {
+        acquire: (turnLease, nowMs) => inner.acquire(turnLease, nowMs),
+        release: async (turnLease) => {
+          releases.push(turnLease.ownerId);
+          await inner.release(turnLease);
+        },
+      };
+      await expect(runWithConversationTurnLease({
+        coordinator,
+        identity,
+        hardDeadlineMs: 10_000,
+        waitMs: 0,
+        executionReserveMs: 100,
+        expirySafetyMs: 1_000,
+        pollMs: 10,
+        operation: async () => {
+          throw new Error('operation failed');
+        },
+        now: () => 1_000,
+        ownerId: 'failing',
+      })).rejects.toThrow('operation failed');
+      expect(releases).toEqual(['failing']);
+      // The failed holder did not wedge the lock: a later holder acquires.
+      expect(await inner.acquire(lease('next'), 1_001)).toBe(true);
+    }
   });
 
   it('fails closed on acquisition errors and does not run the operation when busy', async () => {
@@ -146,199 +228,156 @@ describe('conversation turn coordination', () => {
     expect(await coordinator.acquire(lease('two'), 1_001)).toBe(true);
   });
 
-  it('conflicts for concurrent turns with the same identity but not another user', async () => {
-    const coordinator = new InMemoryConversationTurnCoordinator();
-    let finishFirst: (() => void) | undefined;
-    let firstStarted: (() => void) | undefined;
-    const started = new Promise<void>((resolve) => { firstStarted = resolve; });
-    const first = runWithConversationTurnLease({
-      coordinator,
-      identity,
-      hardDeadlineMs: 10_000,
-      waitMs: 0,
-      executionReserveMs: 100,
-      expirySafetyMs: 1_000,
-      pollMs: 10,
-      operation: async () => await new Promise<string>((resolve) => {
-        firstStarted?.();
-        finishFirst = () => resolve('first');
-      }),
-      now: () => 1_000,
-      ownerId: 'first',
-    });
-    await started;
-    await expect(runWithConversationTurnLease({
-      coordinator,
-      identity,
-      hardDeadlineMs: 10_000,
-      waitMs: 0,
-      executionReserveMs: 100,
-      expirySafetyMs: 1_000,
-      pollMs: 10,
-      operation: async () => 'same-user',
-      now: () => 1_001,
-      ownerId: 'second',
-    })).rejects.toBeInstanceOf(ConversationTurnBusyError);
-    await expect(runWithConversationTurnLease({
-      coordinator,
-      identity: { ...identity, externalUserId: 'other-user' },
-      hardDeadlineMs: 10_000,
-      waitMs: 0,
-      executionReserveMs: 100,
-      expirySafetyMs: 1_000,
-      pollMs: 10,
-      operation: async () => 'other-user',
-      now: () => 1_001,
-      ownerId: 'other',
-    })).resolves.toBe('other-user');
-    finishFirst?.();
-    await expect(first).resolves.toBe('first');
+  it('polls within bounds and stops retries at exhaustion', async () => {
+    {
+      const coordinator = new InMemoryConversationTurnCoordinator();
+      const holder = lease('holder', 20_000);
+      await coordinator.acquire(holder, 1_000);
+      let clock = 1_000;
+      let polls = 0;
+      let sharedState = 'old';
+      const result = await runWithConversationTurnLease({
+        coordinator,
+        identity,
+        hardDeadlineMs: 10_000,
+        waitMs: 100,
+        executionReserveMs: 100,
+        expirySafetyMs: 1_000,
+        pollMs: 10,
+        operation: async () => sharedState,
+        now: () => clock,
+        random: () => 1,
+        sleep: async (ms) => {
+          clock += ms;
+          polls += 1;
+          if (polls === 2) {
+            sharedState = 'new';
+            await coordinator.release(holder);
+          }
+        },
+        ownerId: 'waiter',
+      });
+      expect(result).toBe('new');
+      expect(polls).toBe(2);
+    }
+
+    {
+      const sleeps: number[] = [];
+      let clock = 1_000;
+      const resultCoordinator: ConversationTurnCoordinator = {
+        acquire: async () => false,
+        release: async () => undefined,
+      };
+      await expect(runWithConversationTurnLease({
+        coordinator: resultCoordinator,
+        identity,
+        hardDeadlineMs: 200_000,
+        waitMs: 120_000,
+        executionReserveMs: 100,
+        expirySafetyMs: 1_000,
+        pollMs: 90_000,
+        operation: async () => 'unexpected',
+        now: () => clock,
+        random: () => 1,
+        sleep: async (ms) => { sleeps.push(ms); clock += ms; },
+        ownerId: 'waiter',
+      })).rejects.toBeInstanceOf(ConversationTurnBusyError);
+      expect(sleeps.length).toBeGreaterThan(0);
+      expect(Math.max(...sleeps)).toBeLessThanOrEqual(60_000);
+      expect(clock).toBe(121_000);
+    }
   });
 
-  it('waits through bounded polls, then observes state written by the released holder', async () => {
-    const coordinator = new InMemoryConversationTurnCoordinator();
-    const holder = lease('holder', 20_000);
-    await coordinator.acquire(holder, 1_000);
-    let clock = 1_000;
-    let polls = 0;
-    let sharedState = 'old';
-    const result = await runWithConversationTurnLease({
-      coordinator,
-      identity,
-      hardDeadlineMs: 10_000,
-      waitMs: 100,
-      executionReserveMs: 100,
-      expirySafetyMs: 1_000,
-      pollMs: 10,
-      operation: async () => sharedState,
-      now: () => clock,
-      random: () => 1,
-      sleep: async (ms) => {
-        clock += ms;
-        polls += 1;
-        if (polls === 2) {
-          sharedState = 'new';
-          await coordinator.release(holder);
-        }
-      },
-      ownerId: 'waiter',
-    });
-    expect(result).toBe('new');
-    expect(polls).toBe(2);
+  it('enforces lease timing from the hard deadline, reserve, and safety', async () => {
+    {
+      const release = vi.fn().mockResolvedValue(undefined);
+      const coordinator = {
+        acquire: vi.fn().mockResolvedValue(true),
+        release,
+      };
+      let clock = 1_000;
+      let reads = 0;
+      await expect(runWithConversationTurnLease({
+        coordinator,
+        identity,
+        hardDeadlineMs: 2_000,
+        waitMs: 0,
+        executionReserveMs: 500,
+        expirySafetyMs: 100,
+        pollMs: 10,
+        operation: async () => 'unexpected',
+        now: () => { reads += 1; clock = reads <= 2 ? 1_000 : 1_500; return clock; },
+        ownerId: 'one',
+      })).rejects.toBeInstanceOf(ConversationTurnBusyError);
+      expect(release).toHaveBeenCalledOnce();
+    }
+
+    {
+      const coordinator = new InMemoryConversationTurnCoordinator();
+      const captured: Array<{ expiresAtMs: number; ownerId: string }> = [];
+      const capturing: ConversationTurnCoordinator = {
+        acquire: async (turnLease) => {
+          captured.push({ expiresAtMs: turnLease.expiresAtMs, ownerId: turnLease.ownerId });
+          return true;
+        },
+        release: async () => undefined,
+      };
+      await runWithConversationTurnLease({
+        coordinator: capturing,
+        identity,
+        hardDeadlineMs: 100_000,
+        waitMs: 0,
+        executionReserveMs: 100,
+        expirySafetyMs: 5_000,
+        pollMs: 10,
+        operation: async () => 'ok',
+        now: () => 1_000,
+      });
+      expect(captured[0]?.expiresAtMs).toBe(105_000);
+      await coordinator.acquire(lease('old', 105_000), 1_000);
+      expect(await coordinator.acquire(lease('new', 200_000), 30_000)).toBe(false);
+      expect(await coordinator.acquire(lease('new', 200_000), 105_000)).toBe(true);
+    }
   });
 
-  it('stops exhausted retries at the wait bound with no sleep over one minute', async () => {
-    const sleeps: number[] = [];
-    let clock = 1_000;
-    const resultCoordinator: ConversationTurnCoordinator = {
-      acquire: async () => false,
-      release: async () => undefined,
-    };
-    await expect(runWithConversationTurnLease({
-      coordinator: resultCoordinator,
-      identity,
-      hardDeadlineMs: 200_000,
-      waitMs: 120_000,
-      executionReserveMs: 100,
-      expirySafetyMs: 1_000,
-      pollMs: 90_000,
-      operation: async () => 'unexpected',
-      now: () => clock,
-      random: () => 1,
-      sleep: async (ms) => { sleeps.push(ms); clock += ms; },
-      ownerId: 'waiter',
-    })).rejects.toBeInstanceOf(ConversationTurnBusyError);
-    expect(sleeps.length).toBeGreaterThan(0);
-    expect(Math.max(...sleeps)).toBeLessThanOrEqual(60_000);
-    expect(clock).toBe(121_000);
-  });
+  it('tolerates release and telemetry failures while preserving the result', async () => {
+    {
+      const release = vi.fn().mockRejectedValue(new Error('release failed'));
+      const events: Array<{ name: string; outcome: string }> = [];
+      const result = await runWithConversationTurnLease({
+        coordinator: { acquire: async () => true, release },
+        identity,
+        hardDeadlineMs: 10_000,
+        waitMs: 0,
+        executionReserveMs: 100,
+        expirySafetyMs: 1_000,
+        pollMs: 90_000,
+        operation: async () => 'ok',
+        onEvent: (event) => events.push(event),
+        now: () => 1_000,
+        ownerId: 'one',
+      });
+      expect(result).toBe('ok');
+      expect(events.some((event) => event.name === 'release' && event.outcome === 'error')).toBe(true);
+    }
 
-  it('handles a late acquisition at the execution reserve boundary', async () => {
-    const release = vi.fn().mockResolvedValue(undefined);
-    const coordinator = {
-      acquire: vi.fn().mockResolvedValue(true),
-      release,
-    };
-    let clock = 1_000;
-    let reads = 0;
-    await expect(runWithConversationTurnLease({
-      coordinator,
-      identity,
-      hardDeadlineMs: 2_000,
-      waitMs: 0,
-      executionReserveMs: 500,
-      expirySafetyMs: 100,
-      pollMs: 10,
-      operation: async () => 'unexpected',
-      now: () => { reads += 1; clock = reads <= 2 ? 1_000 : 1_500; return clock; },
-      ownerId: 'one',
-    })).rejects.toBeInstanceOf(ConversationTurnBusyError);
-    expect(release).toHaveBeenCalledOnce();
-  });
-
-  it('preserves operation result when release fails and bounds polling sleeps', async () => {
-    const release = vi.fn().mockRejectedValue(new Error('release failed'));
-    const events: Array<{ name: string; outcome: string }> = [];
-    const result = await runWithConversationTurnLease({
-      coordinator: { acquire: async () => true, release },
-      identity,
-      hardDeadlineMs: 10_000,
-      waitMs: 0,
-      executionReserveMs: 100,
-      expirySafetyMs: 1_000,
-      pollMs: 90_000,
-      operation: async () => 'ok',
-      onEvent: (event) => events.push(event),
-      now: () => 1_000,
-      ownerId: 'one',
-    });
-    expect(result).toBe('ok');
-    expect(events.some((event) => event.name === 'release' && event.outcome === 'error')).toBe(true);
-  });
-
-  it('ignores event callback failures and still releases the operation lease', async () => {
-    const coordinator = new InMemoryConversationTurnCoordinator();
-    await expect(runWithConversationTurnLease({
-      coordinator,
-      identity,
-      hardDeadlineMs: 10_000,
-      waitMs: 0,
-      executionReserveMs: 100,
-      expirySafetyMs: 1_000,
-      pollMs: 10,
-      operation: async () => 'ok',
-      onEvent: () => { throw new Error('telemetry failure'); },
-      now: () => 1_000,
-      ownerId: 'one',
-    })).resolves.toBe('ok');
-    expect(await coordinator.acquire(lease('two'), 1_001)).toBe(true);
-  });
-
-  it('uses the hard deadline plus safety and does not reclaim before that expiry', async () => {
-    const coordinator = new InMemoryConversationTurnCoordinator();
-    const captured: Array<{ expiresAtMs: number; ownerId: string }> = [];
-    const capturing: ConversationTurnCoordinator = {
-      acquire: async (turnLease) => {
-        captured.push({ expiresAtMs: turnLease.expiresAtMs, ownerId: turnLease.ownerId });
-        return true;
-      },
-      release: async () => undefined,
-    };
-    await runWithConversationTurnLease({
-      coordinator: capturing,
-      identity,
-      hardDeadlineMs: 100_000,
-      waitMs: 0,
-      executionReserveMs: 100,
-      expirySafetyMs: 5_000,
-      pollMs: 10,
-      operation: async () => 'ok',
-      now: () => 1_000,
-    });
-    expect(captured[0]?.expiresAtMs).toBe(105_000);
-    await coordinator.acquire(lease('old', 105_000), 1_000);
-    expect(await coordinator.acquire(lease('new', 200_000), 30_000)).toBe(false);
-    expect(await coordinator.acquire(lease('new', 200_000), 105_000)).toBe(true);
+    {
+      const coordinator = new InMemoryConversationTurnCoordinator();
+      await expect(runWithConversationTurnLease({
+        coordinator,
+        identity,
+        hardDeadlineMs: 10_000,
+        waitMs: 0,
+        executionReserveMs: 100,
+        expirySafetyMs: 1_000,
+        pollMs: 10,
+        operation: async () => 'ok',
+        onEvent: () => { throw new Error('telemetry failure'); },
+        now: () => 1_000,
+        ownerId: 'one',
+      })).resolves.toBe('ok');
+      expect(await coordinator.acquire(lease('two'), 1_001)).toBe(true);
+    }
   });
 
   it('generates a fresh owner token for each invocation', async () => {
@@ -399,91 +438,65 @@ describe('conversation turn coordination', () => {
     expect(seen).toBe('new');
   });
 
-  it('releases the lease when the operation throws (release-on-error)', async () => {
-    const inner = new InMemoryConversationTurnCoordinator();
-    const releases: string[] = [];
-    const coordinator: ConversationTurnCoordinator = {
-      acquire: (turnLease, nowMs) => inner.acquire(turnLease, nowMs),
-      release: async (turnLease) => {
-        releases.push(turnLease.ownerId);
-        await inner.release(turnLease);
-      },
-    };
-    await expect(runWithConversationTurnLease({
-      coordinator,
-      identity,
-      hardDeadlineMs: 10_000,
-      waitMs: 0,
-      executionReserveMs: 100,
-      expirySafetyMs: 1_000,
-      pollMs: 10,
-      operation: async () => {
-        throw new Error('operation failed');
-      },
-      now: () => 1_000,
-      ownerId: 'failing',
-    })).rejects.toThrow('operation failed');
-    expect(releases).toEqual(['failing']);
-    // The failed holder did not wedge the lock: a later holder acquires.
-    expect(await inner.acquire(lease('next'), 1_001)).toBe(true);
+  it('exposes immediate and waited acquisitions to the operation', async () => {
+    {
+      const coordinator = new InMemoryConversationTurnCoordinator();
+      const seen: Array<{ waitMs: number; attempts: number }> = [];
+      await runWithConversationTurnLease({
+        coordinator,
+        identity,
+        hardDeadlineMs: 10_000,
+        waitMs: 100,
+        executionReserveMs: 100,
+        expirySafetyMs: 1_000,
+        pollMs: 10,
+        operation: async (acquisition) => {
+          seen.push(acquisition);
+          return 'ok';
+        },
+        now: () => 1_000,
+        ownerId: 'immediate',
+      });
+      expect(seen).toEqual([{ waitMs: 0, attempts: 1 }]);
+    }
+
+    {
+      const coordinator = new InMemoryConversationTurnCoordinator();
+      await coordinator.acquire(lease('holder', 20_000), 1_000);
+      let clock = 1_000;
+      let polls = 0;
+      const seen: Array<{ waitMs: number; attempts: number }> = [];
+      const result = await runWithConversationTurnLease({
+        coordinator,
+        identity,
+        hardDeadlineMs: 10_000,
+        waitMs: 100,
+        executionReserveMs: 100,
+        expirySafetyMs: 1_000,
+        pollMs: 10,
+        operation: async (acquisition) => {
+          seen.push(acquisition);
+          return 'waited';
+        },
+        now: () => clock,
+        random: () => 1,
+        sleep: async (ms) => {
+          clock += ms;
+          polls += 1;
+          if (polls === 2) {
+            await coordinator.release(lease('holder', 20_000));
+          }
+        },
+        ownerId: 'waiter',
+      });
+      expect(result).toBe('waited');
+      expect(polls).toBe(2);
+      expect(seen).toHaveLength(1);
+      expect(seen[0]?.attempts).toBe(3);
+      expect(seen[0]?.waitMs).toBeGreaterThan(0);
+    }
   });
 
-  it('exposes an immediate acquisition (attempts 1, no wait) to the operation', async () => {
-    const coordinator = new InMemoryConversationTurnCoordinator();
-    const seen: Array<{ waitMs: number; attempts: number }> = [];
-    await runWithConversationTurnLease({
-      coordinator,
-      identity,
-      hardDeadlineMs: 10_000,
-      waitMs: 100,
-      executionReserveMs: 100,
-      expirySafetyMs: 1_000,
-      pollMs: 10,
-      operation: async (acquisition) => {
-        seen.push(acquisition);
-        return 'ok';
-      },
-      now: () => 1_000,
-      ownerId: 'immediate',
-    });
-    expect(seen).toEqual([{ waitMs: 0, attempts: 1 }]);
-  });
-
-  it('exposes the waited acquisition (attempts beyond 1) without changing polling', async () => {
-    const coordinator = new InMemoryConversationTurnCoordinator();
-    await coordinator.acquire(lease('holder', 20_000), 1_000);
-    let clock = 1_000;
-    let polls = 0;
-    const seen: Array<{ waitMs: number; attempts: number }> = [];
-    const result = await runWithConversationTurnLease({
-      coordinator,
-      identity,
-      hardDeadlineMs: 10_000,
-      waitMs: 100,
-      executionReserveMs: 100,
-      expirySafetyMs: 1_000,
-      pollMs: 10,
-      operation: async (acquisition) => {
-        seen.push(acquisition);
-        return 'waited';
-      },
-      now: () => clock,
-      random: () => 1,
-      sleep: async (ms) => {
-        clock += ms;
-        polls += 1;
-        if (polls === 2) {
-          await coordinator.release(lease('holder', 20_000));
-        }
-      },
-      ownerId: 'waiter',
-    });
-    expect(result).toBe('waited');
-    expect(polls).toBe(2);
-    expect(seen).toHaveLength(1);
-    expect(seen[0]?.attempts).toBe(3);
-    expect(seen[0]?.waitMs).toBeGreaterThan(0);
-  });
 });
 
 describe('Dynamo conversation turn coordinator', () => {

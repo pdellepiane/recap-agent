@@ -187,7 +187,7 @@ function createOriginService(runtime: AgentRuntime, gateway?: AgentConversationG
     informationOrchestrator: new InformationOrchestrator({
       knowledgeGateway: nullKnowledgeGateway,
       providerGateway: undefined,
-      agentGateway: undefined,
+      agentGateway: {} as AgentConversationGateway,
     } as unknown as ConstructorParameters<typeof InformationOrchestrator>[0]),
   });
 }
@@ -283,7 +283,7 @@ describe('model output origin (R01)', () => {
     expect(runtime.composeRequests.at(-1)?.handoffOutcome).not.toBe('handoff_requested');
   });
 
-  it('fails when post-generation code replaces the model paragraphs', async () => {
+  it('fails when post-generation code replaces paragraphs or appends canned questions', async () => {
     const runtime = new SentinelRuntime(SENTINEL_A);
     const reply = await composeModelReply(runtime, {
       currentNode: 'resolver_consultas_informativas',
@@ -309,17 +309,15 @@ describe('model output origin (R01)', () => {
     expect(() =>
       assertModelOrigin({ origin: reply.origin, reply: replaced, deliveredText: 'Texto fijo de respaldo.' }),
     ).toThrow(ModelOriginViolationError);
-  });
 
-  it('fails when a canned question is appended after generation', () => {
-    const message = { type: 'generic' as const, paragraphs_es: [...SENTINEL_B] };
-    const canonical = canonicalModelContent(message);
+    const cannedMessage = { type: 'generic' as const, paragraphs_es: [...SENTINEL_B] };
+    const canonical = canonicalModelContent(cannedMessage);
     expect(canonical).not.toBeNull();
     expect(() =>
       assertModelOrigin({
         origin: {
           modelParagraphs: SENTINEL_B,
-          modelMessage: message,
+          modelMessage: cannedMessage,
           providerFields: [],
           modelContentSha256: hashCanonicalModelContent(canonical as string),
           bundleId: 'test',
@@ -788,7 +786,7 @@ function createRecommendationService(
     informationOrchestrator: new InformationOrchestrator({
       knowledgeGateway: nullKnowledgeGateway,
       providerGateway: undefined,
-      agentGateway: undefined,
+      agentGateway: {} as AgentConversationGateway,
     } as unknown as ConstructorParameters<typeof InformationOrchestrator>[0]),
   });
   return { service, runtime };
@@ -806,28 +804,27 @@ async function runRecommendationTurn(mutation: RecommendationMutation, multiNeed
 }
 
 describe('recommendation origin across the production delivery path (R1)', () => {
-  it('delivers a rendered single recommendation with verified origin', async () => {
-    const response = await runRecommendationTurn('none', false);
-    expect(response.outbound.delivery.action).toBe('send');
-    expect(response.outbound.text).toContain('Encontré opciones que encajan con tu boda en Lima.');
-    expect(response.outbound.text).toContain('Sushi Mesa');
-    expect(response.outbound.text).toContain('Banda Clara');
-    expect(response.outbound.text).toContain('https://sinenvolturas.com/proveedores/sushi-mesa');
-    expect(response.outbound.outputOrigin?.status).toBe('verified');
-    expect(response.outbound.outputOrigin?.candidateSha256).toBe(
-      response.outbound.outputOrigin?.deliveredSha256,
+  it('delivers rendered single- and multi-need recommendations with verified origin', async () => {
+    const single = await runRecommendationTurn('none', false);
+    expect(single.outbound.delivery.action).toBe('send');
+    expect(single.outbound.text).toContain('Encontré opciones que encajan con tu boda en Lima.');
+    expect(single.outbound.text).toContain('Sushi Mesa');
+    expect(single.outbound.text).toContain('Banda Clara');
+    expect(single.outbound.text).toContain('https://sinenvolturas.com/proveedores/sushi-mesa');
+    expect(single.outbound.outputOrigin?.status).toBe('verified');
+    expect(single.outbound.outputOrigin?.transformationVersion).toBe('transport-v2');
+    expect(single.outbound.outputOrigin?.candidateSha256).toBe(
+      single.outbound.outputOrigin?.deliveredSha256,
     );
-    expect(validateOutputOriginEvidence(response.outbound.outputOrigin).valid).toBe(true);
-  });
+    expect(validateOutputOriginEvidence(single.outbound.outputOrigin).valid).toBe(true);
 
-  it('delivers a rendered multi-need recommendation with verified origin', async () => {
-    const response = await runRecommendationTurn('none', true);
-    expect(response.outbound.delivery.action).toBe('send');
-    expect(response.outbound.text).toContain('Busqué proveedores de Sin Envolturas');
-    expect(response.outbound.text).toContain('Sushi Mesa');
-    expect(response.outbound.text).toContain('Banda Clara');
-    expect(response.outbound.outputOrigin?.status).toBe('verified');
-    expect(validateOutputOriginEvidence(response.outbound.outputOrigin).valid).toBe(true);
+    const multi = await runRecommendationTurn('none', true);
+    expect(multi.outbound.delivery.action).toBe('send');
+    expect(multi.outbound.text).toContain('Busqué proveedores de Sin Envolturas');
+    expect(multi.outbound.text).toContain('Sushi Mesa');
+    expect(multi.outbound.text).toContain('Banda Clara');
+    expect(multi.outbound.outputOrigin?.status).toBe('verified');
+    expect(validateOutputOriginEvidence(multi.outbound.outputOrigin).valid).toBe(true);
   });
 
   it.each([
@@ -1015,7 +1012,7 @@ describe('injected renderer and generic prose mutations through the public path 
       informationOrchestrator: new InformationOrchestrator({
         knowledgeGateway: nullKnowledgeGateway,
         providerGateway: undefined,
-        agentGateway: undefined,
+        agentGateway: {} as AgentConversationGateway,
       } as unknown as ConstructorParameters<typeof InformationOrchestrator>[0]),
     });
     const response = await service.handleTurn({
@@ -1033,10 +1030,7 @@ describe('injected renderer and generic prose mutations through the public path 
     expect(validateOutputOriginEvidence(response.outbound.outputOrigin).valid).toBe(false);
   });
 
-  it('still delivers genuine provider cards when the delivery renderer is honest', async () => {
-    const response = await runRecommendationTurn('none', false);
-    expect(response.outbound.delivery.action).toBe('send');
-    expect(response.outbound.outputOrigin?.status).toBe('verified');
-    expect(response.outbound.outputOrigin?.transformationVersion).toBe('transport-v2');
-  });
+  // Honest-renderer provider-card delivery is covered by 'delivers
+  // rendered single- and multi-need recommendations with verified origin'
+  // above, which runs the same turn with strictly more assertions.
 });

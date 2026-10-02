@@ -17,9 +17,6 @@ import type {
 import { AgentService } from '../src/runtime/agent-service';
 import type {
   AgentRuntime,
-  ComposeReplyRequest,
-  ComposeReplyResult,
-  ExtractRequest,
   ExtractionResult,
 } from '../src/runtime/contracts';
 import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
@@ -38,6 +35,7 @@ import {
   type RsvpIntentSaveResult,
   type RsvpVerifiedEffect,
 } from '../src/runtime/rsvp-effect-executor';
+import { QueuedAgentRuntime, sentinelReply } from './agent-runtime-test-utils';
 
 const OPERATION: RsvpEffectOperation = {
   conversationKey: 'whatsapp#user-lease',
@@ -358,26 +356,9 @@ function replayInvitation(willAttend: boolean | null): UserEventLookupResult['ev
   };
 }
 
-class TwinRuntime implements AgentRuntime {
-  readonly composeRequests: ComposeReplyRequest[] = [];
-
-  constructor(private readonly extractions: ExtractionResult[]) {}
-
-  async extract(request: ExtractRequest): Promise<ExtractionResult> {
-    void request;
-    const extraction = this.extractions.shift();
-    if (!extraction) {
-      throw new Error('No twin extraction queued.');
-    }
-    return extraction;
-  }
-
-  async composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult> {
-    this.composeRequests.push(request);
-    return {
-      text: 'TWIN_MODEL_SENTINEL',
-      structuredMessage: { type: 'generic', paragraphs_es: ['TWIN_MODEL_SENTINEL'] },
-    };
+class TwinRuntime extends QueuedAgentRuntime {
+  constructor(extractions: ExtractionResult[]) {
+    super(extractions, sentinelReply('TWIN_MODEL_SENTINEL'), 'No twin extraction queued.');
   }
 }
 

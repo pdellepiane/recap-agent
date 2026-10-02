@@ -10,7 +10,7 @@ import type { ProviderGateway, UserEventLookupResult } from '../src/runtime/prov
 import { createEmptyPlan, mergePlan } from '../src/core/plan';
 
 describe('RSVP multi-person handoff (T11)', () => {
-  it('self_and_others with names replies single handoff sentence, no backend calls, plan untouched except backend-registered handoff', async () => {
+  it('self_and_others with names replies single handoff sentence, prefetch read only, plan untouched except backend-registered handoff', async () => {
     const runtime = new HandoffRuntime(
       rsvpExtraction({ party: { scope: 'self_and_others', mentioned_names: ['Maria'] } }),
     );
@@ -43,7 +43,10 @@ describe('RSVP multi-person handoff (T11)', () => {
     expect(outbound.toLowerCase()).not.toContain('rsvp');
     expect(outbound).not.toContain('Para cuál');
     expect(outbound).not.toContain('Evento sin nombre');
-    expect(gateway.calledTools).toEqual([]);
+    // Two-read order (d51acfef precedent): complete authorized profile
+    // preparation reads the phone events once before extraction. The handoff
+    // itself performs no RSVP-flow re-read, detail read, or write.
+    expect(gateway.calledTools).toEqual(['lookup_guest_events_by_phone']);
     expect(result.trace.tools_called.filter((t: string) => ['lookup_rsvp_invitations', 'lookup_guest_events_by_phone', 'get_guest_event_detail', 'guest_rsvp'].includes(t))).toEqual([]);
     expect(result.trace.tools_called).toContain('request_human_takeover');
     expect(gateway.takeoverCalls).toBe(1);
@@ -54,46 +57,11 @@ describe('RSVP multi-person handoff (T11)', () => {
     expect(result.trace.operational_note ?? '').toContain('handoff');
   });
 
-  it('self_and_others without names uses fallback tu acompañante, one sentence and backend registered', async () => {
-    const runtime = new HandoffRuntime(
-      rsvpExtraction({ party: { scope: 'self_and_others', mentioned_names: [] } }),
-    );
-    const store = new InMemoryPlanStore();
-    const seeded = mergePlan(createEmptyPlan({ planId: 'plan-handoff-2', channel: 'whatsapp', externalUserId: 'user-handoff-2' }), {
-      current_node: 'responder_invitacion',
-      intent: 'responder_invitacion',
-      contact_phone: '+51973296571',
-      contact_phone_extension: '+51',
-      contact_phone_number: '973296571',
-      rsvp_state: { status: 'none', pending_action: null, candidates: [], requested_at: null, selection_attempts: 0 },
-    });
-    await store.save({ plan: seeded, reason: 'seed' });
-    const gateway = new TrackingGateway();
-    const service = new AgentService({
-      planStore: store,
-      runtime,
-      providerGateway: {
-        async lookupUserEventContext(): Promise<UserEventLookupResult | null> {
-          throw new Error('should not be called');
-        },
-      } as unknown as ProviderGateway,
-      agentConversationGateway: gateway,
-      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
-      renderers: { whatsapp: new WhatsAppMessageRenderer() },
-    });
-    const result = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'user-handoff-2', text: 'Confirmamos asistencia para dos personas', messageId: 'msg-2', receivedAt: '2026-08-27T15:00:00.000Z', contactPhone: '+51973296571' });
-    const outbound = result.outbound.text ?? '';
-    expect(outbound).toBe('MODEL_HANDOFF_SENTINEL');
-    expect(outbound.toLowerCase()).not.toContain('rsvp');
-    expect(gateway.calledTools).toEqual([]);
-    expect(result.trace.tools_called).toContain('request_human_takeover');
-    expect(gateway.takeoverCalls).toBe(1);
-    expect(result.trace.tools_called.filter((t: string) => ['lookup_rsvp_invitations', 'lookup_guest_events_by_phone', 'get_guest_event_detail', 'guest_rsvp'].includes(t))).toEqual([]);
-    expect(result.plan.rsvp_state).toEqual(seeded.rsvp_state);
-    expect(result.plan.assumptions).toContain(`rsvp_handoff:${result.plan.conversation_id ?? result.plan.plan_id}`);
-  });
-
-  it('self_and_others with two names interpolates both and registers handoff', async () => {
+  // PASS 2: removed the nameless self_and_others block (same handoff
+  // assertions as the with-names test above, a strict subset, and it never
+  // asserted the fallback name its title named); keeper is the
+  // self_and_others with-names test in this file.
+  it('self_and_others with two names interpolates both, prefetch read only and registers handoff', async () => {
     const runtime = new HandoffRuntime(
       rsvpExtraction({ party: { scope: 'self_and_others', mentioned_names: ['Maria', 'Carlos'] } }),
     );
@@ -127,7 +95,8 @@ describe('RSVP multi-person handoff (T11)', () => {
     expect(result.trace.tools_called).toContain('request_human_takeover');
     expect(gateway.takeoverCalls).toBe(1);
     expect(result.trace.tools_called.filter((t: string) => ['lookup_rsvp_invitations', 'lookup_guest_events_by_phone', 'get_guest_event_detail', 'guest_rsvp'].includes(t))).toEqual([]);
-    expect(gateway.calledTools).toEqual([]);
+    // Prefetch-only read, as above: no RSVP-flow re-read, detail, or write.
+    expect(gateway.calledTools).toEqual(['lookup_guest_events_by_phone']);
     expect(result.plan.assumptions).toContain(`rsvp_handoff:${result.plan.conversation_id ?? result.plan.plan_id}`);
   });
 

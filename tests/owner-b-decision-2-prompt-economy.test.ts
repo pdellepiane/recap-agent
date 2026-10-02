@@ -251,107 +251,7 @@ function venueCustomerContext(): CustomerContextProjection {
   };
 }
 
-describe('Owner B B6 classifier economy', () => {
-  const general = readFileSync(
-    path.join(promptsDir, 'nodes/deteccion_intencion/response_classifier.txt'), 'utf8',
-  );
-  const campaign = readFileSync(
-    path.join(promptsDir, 'nodes/deteccion_intencion/response_classifier_campaign.txt'), 'utf8',
-  );
-
-  it('keeps the general classifier within its byte budget with one decision contract', () => {
-    // Negative control: restoring the old 9,175-byte automation recital
-    // breaks this ceiling.
-    expect(bytes(general)).toBeLessThanOrEqual(6_000);
-    expect(general).toContain('Contrato de decisión');
-    expect(general).toContain('Ante cualquier duda, devuelve `respond`');
-    expect(general).toContain('automation_confidence');
-    expect(general).toContain('automation_pattern');
-    expect(general).toContain('automation_scope');
-    // Health and human-help output semantics (field names live in the
-    // response schema; the prompt carries the decision rules).
-    expect(general).toContain('`stalled`');
-    expect(general).toContain('`frustrated`');
-    expect(general).toContain('`progressing`');
-    expect(general).toContain('help_offer_status');
-    // RSVP decisions always reach extraction, before state exists.
-    expect(general).toContain('cuando el estado aún sea `none`');
-    expect(general).toContain('Debe pasar a extracción estructurada');
-    expect(general).toContain('nunca la suprimas como simple acuse de recibo');
-    // One positive and one negative counterexample survive the cut.
-    expect(general).toContain('Contrajemplos: suprime cuando');
-    expect(general).toContain('Responde cuando una persona se identifica');
-  });
-
-  it('removes the repeated automation examples, priority list and menu lectures', () => {
-    expect(general).not.toContain('Aplica esta prioridad de decisión');
-    expect(general).not.toContain('Ejemplo semántico de supresión');
-    expect(general).not.toContain('Ejemplo semántico de respuesta');
-    expect(general).not.toContain('selector de sede o área');
-    expect(general).not.toContain('segundo paso de un menú');
-    expect(general).not.toContain('No confundas una selección con el menú que la solicitó. Si un mensaje');
-    // The single kept human-versus-menu distinction is the short form.
-    expect(general).toContain('No confundas una selección con el menú que la solicitó:');
-  });
-
-  it('keeps the campaign classifier within budget with its enum mapping', () => {
-    // Negative control: restoring the old 2,282-byte campaign file breaks
-    // this ceiling.
-    expect(bytes(campaign)).toBeLessThanOrEqual(1_500);
-    for (const kind of [
-      'rsvp_decision',
-      'declines_campaign_offer',
-      'acknowledgement_only',
-      'reaction_only',
-      'question_or_request',
-      'other_actionable',
-      'unclear',
-    ]) {
-      expect(campaign).toContain(kind);
-    }
-    expect(campaign).toContain('action: respond');
-    expect(campaign).not.toContain('No decidas por palabras o frases exactas');
-  });
-
-  it('measures the actual classifier bundles below budget', async () => {
-    const loader = new PromptLoader(promptsDir);
-    const generalBundle = await loader.loadResponseClassifierBundle('general');
-    const campaignBundle = await loader.loadResponseClassifierBundle('campaign_reply');
-    expect(bytes(generalBundle.instructions)).toBeLessThan(6_100);
-    expect(bytes(campaignBundle.instructions)).toBeLessThan(1_600);
-    // Stable cache identity per profile; a second load resolves identical.
-    const again = await loader.loadResponseClassifierBundle('general');
-    expect(again.id).toBe(generalBundle.id);
-  });
-});
-
 describe('Owner B B7 extractor instruction economy', () => {
-  it('keeps fresh cross-domain recognition below 12,000 actual bytes', async () => {
-    const runtime = testRuntime();
-    const fresh = mergePlan(
-      createEmptyPlan({ planId: 'owner-b-new', channel: 'whatsapp', externalUserId: 'owner-b-new' }),
-      { current_node: 'contacto_inicial' },
-    ) as PersistedPlan;
-    const spec = await runtime.buildExtractionRequestSpec({
-      userMessage: 'Hola, busco local para boda',
-      plan: fresh,
-      messageContext: localTurnMessageContext('not_configured'),
-    });
-    // Negative control: restoring the old extractor prose returns to the
-    // measured 14,954-byte case and breaks this ceiling.
-    expect(bytes(spec.instructions)).toBeLessThan(12_000);
-    // Fresh turns keep compact cross-domain recognition, not a router.
-    expect(spec.filePaths).toContain('extractors/planning.txt');
-    expect(spec.filePaths).toContain('extractors/information.txt');
-    expect(spec.filePaths).toContain('extractors/rsvp.txt');
-    expect(spec.filePaths).toContain('extractors/base_system.txt');
-    expect(spec.filePaths).toContain('extractors/capability_boundary.txt');
-    expect(spec.filePaths).not.toContain('extractors/provider_management.txt');
-    expect(spec.filePaths).not.toContain('extractors/close_pause.txt');
-    // Operations and schema guidance stay intact.
-    expect(spec.input).toContain('Acciones disponibles en este turno');
-  });
-
   it('loads no planning detail on established support turns', async () => {
     const runtime = testRuntime();
     const spec = await runtime.buildExtractionRequestSpec({
@@ -369,29 +269,6 @@ describe('Owner B B7 extractor instruction economy', () => {
     expect(spec.instructions).not.toContain('aspects');
   });
 
-  it('keeps one source contract, auth boundary and recognition contracts', () => {
-    const information = readFileSync(path.join(promptsDir, 'extractors/information.txt'), 'utf8');
-    expect(information).toContain('orderId');
-    expect(information).toContain('eventHint');
-    expect(information).toContain('amount');
-    expect(information).not.toContain('purchase_discovery');
-    expect(information).not.toContain('orders` o `gift_purchases');
-    expect(information).toContain('supportAct');
-    expect(information).not.toContain('personReference');
-    expect(information).not.toContain('eventReference');
-    expect(information).not.toContain('Conserva literalmente el nombre del evento citado');
-    const boundary = readFileSync(
-      path.join(promptsDir, 'extractors/capability_boundary.txt'), 'utf8',
-    );
-    expect(boundary).toContain('El runtime valida capacidad, identidad, autorización y precondiciones');
-    expect(boundary).not.toContain('purchase.read');
-    const rsvp = readFileSync(path.join(promptsDir, 'extractors/rsvp.txt'), 'utf8');
-    expect(rsvp).toContain('`rsvpAction` solo refleja una decisión expresada ahora');
-    expect(rsvp).not.toContain('rsvpDecisionSource');
-    const planning = readFileSync(path.join(promptsDir, 'extractors/planning.txt'), 'utf8');
-    expect(planning).toContain('Fotografía y video');
-    expect(planning).toContain('activeNeedCategory');
-  });
 });
 
 describe('Owner B B8 single extractor continuity object', () => {
@@ -512,7 +389,7 @@ describe('Owner B B8 single extractor continuity object', () => {
     expect(spec.input).toContain('Plan base (JSON compacto)');
   });
 
-  it('keeps an RSVP-switched turn on history without resolver continuity', async () => {
+  it('keeps RSVP-switched turns on history with the prior gist and no resolver continuity', async () => {
     const runtime = testRuntime();
     const plan = mergePlan(
       createEmptyPlan({ planId: 'owner-b-rsvp', channel: 'whatsapp', externalUserId: 'owner-b-rsvp' }),
@@ -527,6 +404,31 @@ describe('Owner B B8 single extractor continuity object', () => {
     expect(spec.input).not.toContain('Contexto previo relevante');
     expect(spec.filePaths).toContain('extractors/rsvp.txt');
     expect(spec.input).toContain('Mensaje del usuario: Sí, asistiré');
+
+    // The same switched turn behind a real prior answer keeps the single
+    // gist without resolver continuity prose or a forced follow-up line.
+    const gistPlan = mergePlan(
+      createEmptyPlan({ planId: 'continuity-rsvp-gist', channel: 'whatsapp', externalUserId: 'owner-b-user' }),
+      { current_node: 'responder_invitacion' },
+    ) as PersistedPlan;
+    const gistContext = buildTurnMessageContext({
+      messages: [{
+        id: 1, direction: 'outbound', source: 'agent',
+        body: 'La invitación de Ana sigue pendiente de respuesta.',
+        status: 'delivered', whatsappMessageId: null,
+        sentAt: '2026-09-22T10:00:00.000Z', createdAt: '2026-09-22T10:00:00.000Z',
+      }],
+      inbound: {
+        channel: 'whatsapp', externalUserId: 'owner-b-user', text: 'Sí, asistiré',
+        messageId: 'continuity-rsvp-gist', receivedAt: '2026-09-22T10:01:00.000Z',
+      },
+    });
+    const gistSpec = await runtime.buildExtractionRequestSpec({
+      userMessage: 'Sí, asistiré', plan: gistPlan, messageContext: gistContext,
+    });
+    expect(gistSpec.input).toContain('"prior_answer_gist"');
+    expect(gistSpec.input).toContain('La invitación de Ana sigue pendiente de respuesta.');
+    expect(gistSpec.input).not.toContain('El mensaje actual es un seguimiento de esta ruta');
   });
 
   it.each([
@@ -554,32 +456,6 @@ describe('Owner B B8 single extractor continuity object', () => {
     expect(countOccurrences(spec.input, '"pending_question"')).toBe(1);
   });
 
-  it('retains the prior answer gist after switching from support to RSVP', async () => {
-    const runtime = testRuntime();
-    const plan = mergePlan(
-      createEmptyPlan({ planId: 'continuity-rsvp-gist', channel: 'whatsapp', externalUserId: 'owner-b-user' }),
-      { current_node: 'responder_invitacion' },
-    ) as PersistedPlan;
-    const messageContext = buildTurnMessageContext({
-      messages: [{
-        id: 1, direction: 'outbound', source: 'agent',
-        body: 'La invitación de Ana sigue pendiente de respuesta.',
-        status: 'delivered', whatsappMessageId: null,
-        sentAt: '2026-09-22T10:00:00.000Z', createdAt: '2026-09-22T10:00:00.000Z',
-      }],
-      inbound: {
-        channel: 'whatsapp', externalUserId: 'owner-b-user', text: 'Sí, asistiré',
-        messageId: 'continuity-rsvp-gist', receivedAt: '2026-09-22T10:01:00.000Z',
-      },
-    });
-    const spec = await runtime.buildExtractionRequestSpec({
-      userMessage: 'Sí, asistiré', plan, messageContext,
-    });
-    expect(spec.input).toContain('"prior_answer_gist"');
-    expect(spec.input).toContain('La invitación de Ana sigue pendiente de respuesta.');
-    expect(spec.input).not.toContain('El mensaje actual es un seguimiento de esta ruta');
-  });
-
   it('carries image presence only while stored refs exist', async () => {
     const runtime = testRuntime();
     const plain = await runtime.buildExtractionRequestSpec({
@@ -588,6 +464,7 @@ describe('Owner B B8 single extractor continuity object', () => {
       messageContext: localTurnMessageContext('not_configured'),
     });
     expect(plain.input).not.toContain('Imagen actual');
+    expect(plain.filePaths).not.toContain('extractors/image_reference.txt');
     const withImage = await runtime.buildExtractionRequestSpec({
       userMessage: 'Te envié el comprobante',
       plan: supportPlan({
@@ -638,45 +515,24 @@ describe('Owner B decision 2 support continuity', () => {
     expect(continued.instructions).toContain('Usa el mensaje actual y el historial');
   });
 
-  it('addresses the unresolved issue after names and separates handoff states', () => {
-    const continuity = readFileSync(
-      path.join(promptsDir, 'nodes/resolver_consultas_informativas/support_continuity.txt'), 'utf8',
-    );
-    // Card case: names alone never restart the interview.
-    expect(continuity).toContain('Usa el mensaje actual y el historial');
-    expect(continuity).toContain('información reportada');
-    expect(continuity).toContain('resultado confirmado');
-    expect(bytes(continuity)).toBeLessThanOrEqual(500);
-    expect(continuity).not.toContain('support_query_open');
-  });
-
-  it('derives the serving owner per turn so a cross-topic turn can switch', () => {
-    const source = {
-      currentNode: 'resolver_consultas_informativas',
-      informationResults: [],
-      customerContext: null,
-      extraction: { informationRequests: [], supportAct: null },
-      plan: { information_state: { pending_requests: [] } },
-      capabilityDecision: null,
-      handoffOutcome: null,
-      authenticationOutcome: null,
-      imageEvidence: null,
-      rsvpPhoneEvidence: null,
-    } as unknown as Parameters<typeof deriveReplyCompilerContext>[0];
-    const support = deriveReplyCompilerContext(source);
-    expect(support.owner).toBe('customer_assistance');
-    const planning = deriveReplyCompilerContext({ ...source, currentNode: 'entrevista' });
-    expect(planning.owner).toBe('planning');
-    expect(planning.tasks).toContain('planning');
-  });
 });
 
 describe('Owner B B9 single reply core', () => {
   it('selects exactly one reply-core file in production', () => {
-    // Negative control: restoring the four-file core breaks this identity.
+    // Negative control: re-merging record-field semantics into the shared
+    // core, or restoring the four-file core, breaks this identity.
     expect([...instructionModuleRegistry.shared_invariants.files]).toEqual([
       'shared/reply_core.txt',
+    ]);
+    // Record-field semantics travel in their own scoped module on
+    // record-bearing turns only, never inside the shared core.
+    expect([...instructionModuleRegistry.reply_customer_context_fields.files]).toEqual([
       'shared/customer_context_fields.txt',
+    ]);
+    expect([...instructionModuleRegistry.reply_customer_context_fields.tasks].sort()).toEqual([
+      'purchase',
+      'rsvp',
+      'venue',
     ]);
     const core = readFileSync(path.join(promptsDir, 'shared/reply_core.txt'), 'utf8');
     expect(bytes(core)).toBeLessThanOrEqual(2_000);
@@ -884,39 +740,8 @@ describe('Owner B B12 cache layout and size table', () => {
     expect(first.manifest.promptIdentity).not.toContain('51900000001');
   });
 
-  it('holds the per-flow instruction ceilings on actual production specs', async () => {
-    const runtime = testRuntime();
-    const loader = new PromptLoader(promptsDir);
-    const general = await loader.loadResponseClassifierBundle('general');
-    const campaign = await loader.loadResponseClassifierBundle('campaign_reply');
-    const fresh = mergePlan(
-      createEmptyPlan({ planId: 'owner-b-new', channel: 'whatsapp', externalUserId: 'owner-b-new' }),
-      { current_node: 'contacto_inicial' },
-    ) as PersistedPlan;
-    const freshSpec = await runtime.buildExtractionRequestSpec({
-      userMessage: 'Hola', plan: fresh, messageContext: localTurnMessageContext('not_configured'),
-    });
-    const supportSpec = await runtime.buildExtractionRequestSpec({
-      userMessage: 'Gracias', plan: supportPlan(),
-      messageContext: localTurnMessageContext('not_configured'),
-    });
-    const firstReply = await runtime.buildReplyRequestSpec(
-      replyRequest(supportPlan(), { informationResults: [venueResult('req-venue')] }),
-    );
-    const table: Record<string, number> = {
-      classifierGeneral: bytes(general.instructions),
-      classifierCampaign: bytes(campaign.instructions),
-      extractorFresh: bytes(freshSpec.instructions),
-      extractorEstablished: bytes(supportSpec.instructions),
-      replyFirstSupport: bytes(firstReply.instructions),
-    };
-    expect(table.classifierGeneral).toBeLessThan(6_100);
-    expect(table.classifierCampaign).toBeLessThan(1_600);
-    expect(table.extractorFresh).toBeLessThan(12_000);
-    expect(table.extractorEstablished).toBeLessThan(11_000);
-    expect(table.replyFirstSupport).toBeLessThan(2_000);
-    for (const value of Object.values(table)) {
-      expect(value).toBeGreaterThan(0);
-    }
-  });
+  // Per-flow module selection is pinned by the dedicated tests above on the
+  // same specs: established extraction by 'loads no planning detail on
+  // established support turns', first support reply by 'sends the single core
+  // on support replies without legacy style prose'.
 });

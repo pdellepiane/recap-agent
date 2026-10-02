@@ -1,14 +1,36 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { AgentService } from '../src/runtime/agent-service';
-import type { AgentConversationGateway, AgentGuestEventsResult, AgentGuestRsvpResult } from '../src/runtime/agent-conversation-gateway';
-import type { AgentRuntime, ComposeReplyRequest, ComposeReplyResult, ExtractRequest, ExtractionResult } from '../src/runtime/contracts';
+import type { AgentConversationGateway, AgentEventDetailResult, AgentGuestEventSummary, AgentGuestEventsResult, AgentGuestRsvpResult } from '../src/runtime/agent-conversation-gateway';
+import type { AgentRuntime, ExtractionResult } from '../src/runtime/contracts';
 import { PromptLoader } from '../src/runtime/prompt-loader';
 import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
 import type { ProviderGateway, UserEventLookupResult } from '../src/runtime/provider-gateway';
+import { QueuedAgentRuntime, echoErrorMessage } from './agent-runtime-test-utils';
 
 describe('RSVP three-state projection (Paolo & Mariana fix)', () => {
+  it('reads every authorized phone event and keeps known states beside a resolved event', async () => {
+    const runtime = new RsvpRuntime([rsvpExtraction({ action: null, eventReference: 'Evento A' })]);
+    const gateway = new MultiEventGateway();
+    const service = createService(runtime, gateway, new InMemoryPlanStore(), [
+      rsvpLookupInvitation({ guestId: 11, eventId: 101, eventName: 'Evento A', hasResponded: true, willAttend: false }),
+      rsvpLookupInvitation({ guestId: 22, eventId: 202, eventName: 'Evento B', hasResponded: true, willAttend: true }),
+      rsvpLookupInvitation({ guestId: 33, eventId: 303, eventName: 'Evento C', hasResponded: false, willAttend: null }),
+    ]);
+    await service.handleTurn(inbound('¿Cuál es mi estado en Evento A y los demás?'));
+    expect([...new Set(gateway.readEventIds)]).toEqual([101, 202, 303]);
+    expect(runtime.composeRequests[0]?.rsvpPhoneEvidence).toMatchObject({
+      state: 'resolved_single',
+      coverage: 'partial',
+      event: { event_id: 101, rsvp_state: 'declining', state_read_status: 'known', state_source: 'guest_record', detail_read_status: 'success' },
+      other_invitations: [
+        { event_id: 202, rsvp_state: 'attending', state_source: 'guest_record', detail_read_status: 'success' },
+        { event_id: 303, rsvp_state: 'pending', state_read_status: 'known', state_source: 'guest_record', detail_read_status: 'failed' },
+      ],
+    });
+    expect(gateway.writes).toBe(0);
+  });
   it('projects resolved_single without candidate arrays for Paolo & Mariana attending', async () => {
     const invitations: UserEventLookupResult['events'] = [
       rsvpLookupInvitation({ guestId: 9001, eventId: 1001, eventName: 'Paolo & Mariana', hasResponded: true, willAttend: true, datetime: '2026-09-19T18:00:00.000Z' }),
@@ -159,18 +181,9 @@ describe('RSVP three-state projection (Paolo & Mariana fix)', () => {
   });
 });
 
-class RsvpRuntime implements AgentRuntime {
-  readonly composeRequests: ComposeReplyRequest[] = [];
-  constructor(private readonly extractions: ExtractionResult[]) {}
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async extract(_request: ExtractRequest): Promise<ExtractionResult> {
-    const e = this.extractions.shift();
-    if (!e) throw new Error('No extraction queued');
-    return e;
-  }
-  async composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult> {
-    this.composeRequests.push(request);
-    return { text: request.errorMessage ?? 'ok' };
+class RsvpRuntime extends QueuedAgentRuntime {
+  constructor(extractions: ExtractionResult[]) {
+    super(extractions, echoErrorMessage('ok'));
   }
 }
 
@@ -181,8 +194,46 @@ class RsvpGateway implements AgentConversationGateway {
   async authByPhone(): Promise<{ status: 'failed'; error: string; retryable: false }> { return { status: 'failed', error: 'Unused.', retryable: false }; }
   async updatePhone(): Promise<{ status: 'success' }> { return { status: 'success' }; }
   async getGuestEventsByPhone(): Promise<AgentGuestEventsResult> { return { status: 'not_found' }; }
-  async getEventDetail(): Promise<{ status: 'not_found'; error: string; retryable: false }> { return { status: 'not_found', error: 'not', retryable: false }; }
+  async getEventDetail(input: { eventId: number }): Promise<AgentEventDetailResult> { void input; return { status: 'not_found' }; }
   async guestRsvp(): Promise<AgentGuestRsvpResult> { return { status: 'failed', error: 'unused', retryable: false }; }
+}
+
+class MultiEventGateway extends RsvpGateway {
+  readonly readEventIds: number[] = [];
+  writes = 0;
+
+  override async getGuestEventsByPhone(): Promise<AgentGuestEventsResult> {
+    const summary = (eventId: number, name: string): AgentGuestEventSummary => ({
+      eventId, name, slug: `event-${eventId}`, url: null, datetime: '2026-09-12',
+      type: null, typeDetail: null, stage: null, city: null, country: null, currency: null,
+    });
+    return { status: 'success', events: [summary(101, 'Evento A'), summary(202, 'Evento B'), summary(303, 'Evento C')] };
+  }
+
+  override async getEventDetail(input: { eventId: number }): Promise<AgentEventDetailResult> {
+    this.readEventIds.push(input.eventId);
+    if (input.eventId === 303) return { status: 'failed', error: 'read unavailable', retryable: true };
+    const name = input.eventId === 101 ? 'Evento A' : 'Evento B';
+    return {
+      status: 'success',
+      event: {
+        eventId: input.eventId, name, slug: `event-${input.eventId}`, url: null,
+        datetime: '2026-09-12', type: null, typeDetail: null, stage: null,
+        city: null, country: null, currency: null, withTime: false, timezone: null,
+        celebrateds: [], moments: [], dresscode: null, commonAsked: [], contactInfo: [],
+        attendance: {
+          guestId: input.eventId === 101 ? 11 : 22, name: 'Invitado',
+          hasResponded: true, willAttend: input.eventId === 202,
+          responseDate: null,
+        },
+      },
+    };
+  }
+
+  override async guestRsvp(): Promise<AgentGuestRsvpResult> {
+    this.writes += 1;
+    return { status: 'failed', error: 'unexpected write', retryable: false };
+  }
 }
 
 function rsvpExtraction(args: { action?: 'attending'|'declining'|null; eventReference?: string | null }): ExtractionResult {

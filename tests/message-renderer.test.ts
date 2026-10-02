@@ -34,7 +34,7 @@ function createProvider(overrides: Partial<ProviderSummary> = {}): ProviderSumma
 
 describe('WhatsAppMessageRenderer', () => {
   describe('structured schemas', () => {
-    it('accepts valid multi-need recommendation payloads', () => {
+    it('validates multi-need recommendation payloads', () => {
       const parsed = multiNeedRecommendationMessageSchema.parse({
         type: 'multi_need_recommendation',
         intro_es: 'Encontré opciones para comparar.',
@@ -55,9 +55,25 @@ describe('WhatsAppMessageRenderer', () => {
       });
 
       expect(parsed.needs).toHaveLength(1);
-    });
 
-    it('rejects empty multi-need recommendation needs', () => {
+      const multi = multiNeedRecommendationMessageSchema.parse({
+        type: 'multi_need_recommendation',
+        intro_es: 'Encontré opciones para comparar.',
+        needs: [
+          {
+            category: 'Catering',
+            summary_es: 'Para catering.',
+            providers: [
+              { provider_id: 1, match_label_es: 'sushi', rationale_es: 'Primera.', caveat_es: null },
+              { provider_id: 2, match_label_es: 'torta', rationale_es: 'Segunda.', caveat_es: null },
+            ],
+          },
+        ],
+        next_step_es: 'Podemos revisar frente por frente.',
+      });
+
+      expect(multi.needs[0]?.providers).toHaveLength(2);
+
       expect(() =>
         multiNeedRecommendationMessageSchema.parse({
           type: 'multi_need_recommendation',
@@ -66,9 +82,6 @@ describe('WhatsAppMessageRenderer', () => {
           next_step_es: 'Podemos revisar frente por frente.',
         }),
       ).toThrow();
-    });
-
-    it('rejects malformed grouped provider references', () => {
       expect(() =>
         multiNeedRecommendationMessageSchema.parse({
           type: 'multi_need_recommendation',
@@ -91,31 +104,11 @@ describe('WhatsAppMessageRenderer', () => {
       ).toThrow();
     });
 
-    it('allows multiple providers per need for separate match components', () => {
-      const parsed = multiNeedRecommendationMessageSchema.parse({
-        type: 'multi_need_recommendation',
-        intro_es: 'Encontré opciones para comparar.',
-        needs: [
-          {
-            category: 'Catering',
-            summary_es: 'Para catering.',
-            providers: [
-              { provider_id: 1, match_label_es: 'sushi', rationale_es: 'Primera.', caveat_es: null },
-              { provider_id: 2, match_label_es: 'torta', rationale_es: 'Segunda.', caveat_es: null },
-            ],
-          },
-        ],
-        next_step_es: 'Podemos revisar frente por frente.',
-      });
-
-      expect(parsed.needs[0]?.providers).toHaveLength(2);
-    });
-
   });
 
   describe('welcome messages', () => {
-    it('renders a brief greeting, scope, and open question without lists', () => {
-      const message: StructuredMessage = {
+    it('renders a brief greeting with optional scope and open question', () => {
+      const full: StructuredMessage = {
         type: 'welcome',
         greeting_es: '¡Hola! Soy el asistente de Sin Envolturas.',
         scope_es:
@@ -123,126 +116,95 @@ describe('WhatsAppMessageRenderer', () => {
         ask_es: '¿Qué necesitas hoy?',
       };
 
-      const result = renderer.render({ message, providerResults: [] });
-
-      expect(result).toBe(
+      expect(renderer.render({ message: full, providerResults: [] })).toBe(
         '¡Hola! Soy el asistente de Sin Envolturas.\n\nPuedo ayudarte con tu evento o responder una consulta sobre Sin Envolturas.\n\n¿Qué necesitas hoy?',
       );
-    });
 
-    it('omits an absent optional scope', () => {
-      const message: StructuredMessage = {
+      const scopeless: StructuredMessage = {
         type: 'welcome',
         greeting_es: '¡Hola!',
         ask_es: '¿En qué te ayudo?',
       };
 
-      const result = renderer.render({ message, providerResults: [] });
-
-      expect(result).toBe('¡Hola!\n\n¿En qué te ayudo?');
+      expect(renderer.render({ message: scopeless, providerResults: [] })).toBe(
+        '¡Hola!\n\n¿En qué te ayudo?',
+      );
     });
   });
 
   describe('recommendation messages', () => {
-    it('renders provider cards with deterministic formatting', () => {
-      const provider = createProvider();
-      const message: StructuredMessage = {
-        type: 'recommendation',
-        intro_es: 'Encontré estas opciones para ti.',
-        providers: [
-          { provider_id: 1, rationale_es: 'Buena relación calidad-precio.', caveat_es: null },
-        ],
-      };
+    it('renders recommendation provider cards with deterministic formatting', () => {
+      const card = renderer.render({
+        message: {
+          type: 'recommendation',
+          intro_es: 'Encontré estas opciones para ti.',
+          providers: [
+            { provider_id: 1, rationale_es: 'Buena relación calidad-precio.', caveat_es: null },
+          ],
+        },
+        providerResults: [createProvider()],
+      });
 
-      const result = renderer.render({ message, providerResults: [provider] });
-
-      expect(result).toContain('1. La Botanería');
-      expect(result).toContain('Buena relación calidad-precio.');
-      expect(result).toContain('Ubicación: Lima, Perú.');
-      expect(result).toContain('Precio: $$.');
-      expect(result).toContain('Ficha: https://sinenvolturas.com/proveedores/la-botaneria');
-      expect(result).not.toContain('Elige un proveedor');
-    });
-
-    it('places Ficha link on its own line', () => {
-      const provider = createProvider();
-      const message: StructuredMessage = {
-        type: 'recommendation',
-        intro_es: 'Opciones:',
-        providers: [
-          { provider_id: 1, rationale_es: 'Opción destacada.', caveat_es: null },
-        ],
-      };
-
-      const result = renderer.render({ message, providerResults: [provider] });
-      const lines = result.split('\n');
-      const fichaLine = lines.find((line) => line.includes('Ficha:'));
-
-      expect(fichaLine).toBeDefined();
+      expect(card).toContain('1. La Botanería');
+      expect(card).toContain('Buena relación calidad-precio.');
+      expect(card).toContain('Ubicación: Lima, Perú.');
+      expect(card).toContain('Precio: $$.');
+      expect(card).toContain('Ficha: https://sinenvolturas.com/proveedores/la-botaneria');
+      expect(card).not.toContain('Elige un proveedor');
+      const fichaLine = card.split('\n').find((line) => line.includes('Ficha:'));
       expect(fichaLine?.trim()).toBe('Ficha: https://sinenvolturas.com/proveedores/la-botaneria');
-    });
 
-    it('renders caveat when present', () => {
-      const provider = createProvider();
-      const message: StructuredMessage = {
-        type: 'recommendation',
-        intro_es: 'Opciones:',
-        providers: [
-          {
-            provider_id: 1,
-            rationale_es: 'Excelente servicio.',
-            caveat_es: 'No incluye decoración.',
-          },
-        ],
-      };
+      const caveat = renderer.render({
+        message: {
+          type: 'recommendation',
+          intro_es: 'Opciones:',
+          providers: [
+            {
+              provider_id: 1,
+              rationale_es: 'Excelente servicio.',
+              caveat_es: 'No incluye decoración.',
+            },
+          ],
+        },
+        providerResults: [createProvider()],
+      });
+      expect(caveat).toContain('Nota: No incluye decoración.');
 
-      const result = renderer.render({ message, providerResults: [provider] });
+      const promo = renderer.render({
+        message: {
+          type: 'recommendation',
+          intro_es: 'Opciones:',
+          providers: [
+            { provider_id: 1, rationale_es: 'Con promo.', caveat_es: null },
+          ],
+        },
+        providerResults: [createProvider({ promoBadge: '15% off' })],
+      });
+      expect(promo).toContain('Promo: 15% off.');
 
-      expect(result).toContain('Nota: No incluye decoración.');
-    });
+      const missing = renderer.render({
+        message: {
+          type: 'recommendation',
+          intro_es: 'Opciones:',
+          providers: [
+            { provider_id: 999, rationale_es: 'No existe.', caveat_es: null },
+          ],
+        },
+        providerResults: [],
+      });
+      expect(missing).toBe('Opciones:');
 
-    it('renders promo when present', () => {
-      const provider = createProvider({ promoBadge: '15% off' });
-      const message: StructuredMessage = {
-        type: 'recommendation',
-        intro_es: 'Opciones:',
-        providers: [
-          { provider_id: 1, rationale_es: 'Con promo.', caveat_es: null },
-        ],
-      };
-
-      const result = renderer.render({ message, providerResults: [provider] });
-
-      expect(result).toContain('Promo: 15% off.');
-    });
-
-    it('skips providers not found in results', () => {
-      const message: StructuredMessage = {
-        type: 'recommendation',
-        intro_es: 'Opciones:',
-        providers: [
-          { provider_id: 999, rationale_es: 'No existe.', caveat_es: null },
-        ],
-      };
-
-      const result = renderer.render({ message, providerResults: [] });
-
-      expect(result).toBe('Opciones:');
-    });
-
-    it('uses fallback location when provider has no location', () => {
-      const provider = createProvider({ location: null });
-      const message: StructuredMessage = {
-        type: 'recommendation',
-        intro_es: 'Opciones:',
-        providers: [
-          { provider_id: 1, rationale_es: 'Sin ubicación.', caveat_es: null },
-        ],
-      };
-
-      const result = renderer.render({ message, providerResults: [provider] });
-
-      expect(result).toContain('Ubicación: Ubicación no especificada.');
+      const unlocated = renderer.render({
+        message: {
+          type: 'recommendation',
+          intro_es: 'Opciones:',
+          providers: [
+            { provider_id: 1, rationale_es: 'Sin ubicación.', caveat_es: null },
+          ],
+        },
+        providerResults: [createProvider({ location: null })],
+      });
+      expect(unlocated).toContain('Ubicación: Ubicación no especificada.');
     });
   });
 
@@ -334,8 +296,8 @@ describe('WhatsAppMessageRenderer', () => {
       expect(result).not.toContain('Ficha:');
     });
 
-    it('skips missing provider IDs inside grouped needs', () => {
-      const message: StructuredMessage = {
+    it('omits missing or miscategorized providers inside grouped needs', () => {
+      const missing: StructuredMessage = {
         type: 'multi_need_recommendation',
         intro_es: 'Encontré opciones para comparar.',
         needs: [
@@ -354,13 +316,11 @@ describe('WhatsAppMessageRenderer', () => {
         next_step_es: 'Revisemos el primer frente.',
       };
 
-      const result = renderer.render({ message, providerResults: [] });
+      expect(renderer.render({ message: missing, providerResults: [] })).toBe(
+        'Encontré opciones para comparar.\n\nRevisemos el primer frente.',
+      );
 
-      expect(result).toBe('Encontré opciones para comparar.\n\nRevisemos el primer frente.');
-    });
-
-    it('does not render a provider under a mismatched need category', () => {
-      const message: StructuredMessage = {
+      const mismatched: StructuredMessage = {
         type: 'multi_need_recommendation',
         intro_es: 'Encontré opciones para comparar.',
         needs: [
@@ -380,7 +340,7 @@ describe('WhatsAppMessageRenderer', () => {
       };
 
       const result = renderer.render({
-        message,
+        message: mismatched,
         providerResults: [createProvider({ category: 'Catering' })],
       });
 
@@ -405,30 +365,29 @@ describe('WhatsAppMessageRenderer', () => {
   });
 
   describe('no Markdown output', () => {
-    it('never outputs raw asterisks', () => {
-      const provider = createProvider();
-      const message: StructuredMessage = {
-        type: 'recommendation',
-        intro_es: 'Opciones:',
-        providers: [
-          { provider_id: 1, rationale_es: 'Razón.', caveat_es: null },
-        ],
-      };
+    it('never outputs Markdown markers', () => {
+      const card = renderer.render({
+        message: {
+          type: 'recommendation',
+          intro_es: 'Opciones:',
+          providers: [
+            { provider_id: 1, rationale_es: 'Razón.', caveat_es: null },
+          ],
+        },
+        providerResults: [createProvider()],
+      });
 
-      const result = renderer.render({ message, providerResults: [provider] });
+      expect(card).not.toContain('**');
 
-      expect(result).not.toContain('**');
-    });
+      const generic = renderer.render({
+        message: {
+          type: 'generic',
+          paragraphs_es: ['Texto de ejemplo.'],
+        },
+        providerResults: [],
+      });
 
-    it('never outputs underscores or backticks', () => {
-      const message: StructuredMessage = {
-        type: 'generic',
-        paragraphs_es: ['Texto de ejemplo.'],
-      };
-
-      const result = renderer.render({ message, providerResults: [] });
-
-      expect(result).not.toContain('`');
+      expect(generic).not.toContain('`');
     });
   });
 });

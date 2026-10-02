@@ -4,9 +4,6 @@ import { describe, expect, it } from 'vitest';
 
 import type {
   AgentRuntime,
-  ComposeReplyRequest,
-  ComposeReplyResult,
-  ExtractRequest,
   ExtractionResult,
 } from '../src/runtime/contracts';
 import { NoopAgentConversationGateway } from '../src/runtime/agent-conversation-gateway';
@@ -17,20 +14,11 @@ import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import { PromptLoader } from '../src/runtime/prompt-loader';
 import { createEmptyPlan, mergePlan } from '../src/core/plan';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
+import { ScriptedAgentRuntime, nodeReply } from './agent-runtime-test-utils';
 
-class ScriptedRuntime implements AgentRuntime {
-  readonly composeRequests: ComposeReplyRequest[] = [];
-
-  constructor(private readonly extraction: ExtractionResult) {}
-
-  async extract(request: ExtractRequest): Promise<ExtractionResult> {
-    void request;
-    return this.extraction;
-  }
-
-  async composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult> {
-    this.composeRequests.push(request);
-    return { text: `reply:${request.currentNode}` };
+class ScriptedRuntime extends ScriptedAgentRuntime {
+  constructor(extraction: ExtractionResult) {
+    super([extraction], nodeReply());
   }
 }
 

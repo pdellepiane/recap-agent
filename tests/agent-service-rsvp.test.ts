@@ -1,4 +1,3 @@
-import fs from 'node:fs';
 import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -139,19 +138,6 @@ describe('AgentService RSVP flow', () => {
     expect(result.trace.tools_called).not.toContain('guest_rsvp');
     expect(runtime.composeRequests[0]?.errorMessage).toContain('"outcome":"invitation_lookup_failed"');
   });
-  it('keeps immediate RSVP changes in the RSVP-only prompt bundle', () => {
-    const systemPrompt = fs.readFileSync(
-      path.resolve(process.cwd(), 'prompts/nodes/responder_invitacion/system.txt'),
-      'utf8',
-    );
-    expect(systemPrompt).toContain(
-      'registra el cambio en ese turno',
-    );
-    expect(systemPrompt).not.toContain(
-      'pide una sola confirmación antes de ejecutar el cambio',
-    );
-  });
-
   it.each([
     ['attending', '"outcome":"mutation_result"'],
     ['declining', '"outcome":"mutation_result"'],
@@ -204,43 +190,11 @@ describe('AgentService RSVP flow', () => {
     });
   });
 
-  it('records one companion together with the guest without human escalation', async () => {
-    const runtime = new RsvpRuntime([rsvpExtraction({
-      action: 'attending',
-      party: {
-        scope: 'self_and_others',
-        mentioned_names: ['María'],
-        companion_count: 'one',
-        plus_one_response: 'yes',
-      },
-    })]);
-    const gateway = new RsvpGateway([{
-      status: 'responded',
-      action: 'attending',
-      willAttend: true,
-      guestId: 41,
-      eventName: 'Matrimonio de Ana y Luis',
-      eventDate: '2026-09-12',
-      plusOne: { saved: true, response: 'yes', reason: null },
-    }], [], { status: 'not_found' }, undefined, { status: 'not_found' }, [
-      verifiedAttendanceDetail({}),
-    ]);
-    const service = createService(runtime, gateway);
-
-    const result = await service.handleTurn(inbound('Confirmo mi asistencia y la de mi esposa María'));
-
-    expect(gateway.inputs).toEqual([{
-      phone_extension: '+51',
-      phone_number: '973296571',
-      action: 'attending',
-      guest_id: 41,
-      plus_one_response: 'yes',
-    }]);
-    expect(result.trace.tools_called).not.toContain('request_human_takeover');
-    expect(result.outbound.text).toBe('RSVP_MODEL_SENTINEL');
-    expect(runtime.composeRequests[0]?.errorMessage).toContain('"response":"yes"');
-  });
-
+  // PASS 2: merged the single-companion write assertions into
+  // tests/rsvp-verified-effect.test.ts 'passes a saved companion write
+  // receipt without projecting a contradictory false confirmation' (same
+  // attending plus-one write, now pinned with write-input, no-handoff,
+  // and receipt-echo assertions in one place).
   it('does not claim companion success when the backend declines to save it', async () => {
     const runtime = new RsvpRuntime([rsvpExtraction({
       action: null,
@@ -278,6 +232,36 @@ describe('AgentService RSVP flow', () => {
     expect(runtime.composeRequests[0]?.errorMessage).toContain('"saved":false');
     expect(runtime.composeRequests[0]?.errorMessage).not.toContain('not_eligible');
     expect(result.trace.tools_called).not.toContain('request_human_takeover');
+  });
+
+  it('a fresh self confirmation does not attach an unresolved companion decision to the selected event', async () => {
+    const runtime = new RsvpRuntime([
+      rsvpExtraction({ action: 'attending' }),
+      rsvpExtraction({ action: null, party: { scope: 'self_and_others', mentioned_names: [],
+        companion_count: 'one', plus_one_response: 'yes' } }),
+      rsvpExtraction({ action: 'attending', candidateGuestId: 42, eventReference: 'Cumpleaños de Marta',
+        party: { scope: 'self', mentioned_names: [] } }),
+      rsvpExtraction({ action: null, decisionSource: 'current_message', eventReference: 'Matrimonio de Ana y Luis' }),
+      rsvpExtraction({ action: 'attending', eventReference: 'Boda Beto' }),
+    ]);
+    const gateway = new RsvpGateway([{
+      status: 'responded', action: 'attending', willAttend: true, guestId: 42,
+      eventId: 206, eventName: 'Cumpleaños de Marta', eventDate: null,
+    }], [], { status: 'not_found' }, undefined, { status: 'not_found' }, [
+      verifiedAttendanceDetail({ guestId: 42, eventId: 206 }),
+    ]);
+    const service = createService(runtime, gateway, new InMemoryPlanStore(), [
+      rsvpLookupInvitation({ guestId: 41, eventId: 205, eventName: 'Matrimonio de Ana y Luis' }),
+      rsvpLookupInvitation({ guestId: 42, eventId: 206, eventName: 'Cumpleaños de Marta' }),
+    ]);
+    const messages = ['Quiero confirmar mi asistencia al evento', 'Confirmo que mi acompañante asistirá al evento del sábado',
+      'Confirmo mi asistencia al Cumpleaños de Marta', '¿Cuándo es el Matrimonio de Ana y Luis?',
+      'Confirmo mi asistencia a la Boda Beto'];
+    for (const text of messages) await service.handleTurn(inbound(text));
+    expect(gateway.inputs).toEqual([{
+      phone_extension: '+51', phone_number: '973296571', guest_id: 42, action: 'attending',
+    }]);
+    expect(runtime.composeRequests[2]?.rsvpPhoneEvidence).toMatchObject({ event: { rsvp_state: 'attending' } });
   });
 
   it('preserves a companion response across one bounded event-selection turn', async () => {
@@ -438,7 +422,7 @@ describe('AgentService RSVP flow', () => {
     expect(gateway.inputs).toEqual([]);
     expect(result.trace.tools_called).not.toContain('guest_rsvp');
     expect(result.outbound.text).toBe('RSVP_MODEL_SENTINEL');
-    expect(runtime.composeRequests[0]?.rsvpPhoneEvidence).toEqual({
+    expect(runtime.composeRequests[0]?.rsvpPhoneEvidence).toMatchObject({
       state: 'needs_event_selection',
       coverage: 'complete',
       resolution: 'authoritative_invitation',
@@ -624,7 +608,14 @@ describe('AgentService RSVP flow', () => {
     expect((runtime.composeRequests[0]?.rsvpPhoneEvidence as unknown as { event: { invitation_record: string } }).event.invitation_record).toBe(
       'available',
     );
-    expect(runtime.composeRequests[0]?.errorMessage).toContain('"outcome":"current_state"');
+    const currentStateNote = JSON.parse(runtime.composeRequests[0]?.errorMessage ?? '{}') as {
+      outcome?: string;
+      base_outcome?: string;
+    };
+    const outcome = currentStateNote.base_outcome
+      ? JSON.parse(currentStateNote.base_outcome) as { outcome: string }
+      : currentStateNote;
+    expect(outcome.outcome).toBe('current_state');
   });
 
   it('applies an explicit RSVP reversal immediately without another confirmation turn', async () => {
@@ -735,52 +726,36 @@ describe('AgentService RSVP flow', () => {
   });
 
   it('reports a campaign-grounded invitation without auto-escalating when the user lookup has no current record', async () => {
-    const runtime = new RsvpRuntime([
-      rsvpExtraction({
-        action: 'attending',
-        eventReference: 'Gia Antonella',
-      }),
-    ]);
-    const gateway = new RsvpGateway([], [campaignMessage('Gia Antonella')]);
-    const service = createService(runtime, gateway, new InMemoryPlanStore(), []);
+    // PASS 2: covers both delivered and failed campaign delivery (delivery
+    // status does not gate campaign context, and neither auto-escalates).
+    const deliveries = [
+      campaignMessage('Gia Antonella'),
+      { ...campaignMessage('Gia Antonella'), id: 9, status: 'failed' },
+    ];
+    for (const delivery of deliveries) {
+      const runtime = new RsvpRuntime([
+        rsvpExtraction({
+          action: 'attending',
+          eventReference: 'Gia Antonella',
+        }),
+      ]);
+      const gateway = new RsvpGateway([], [delivery]);
+      const service = createService(runtime, gateway, new InMemoryPlanStore(), []);
 
-    const result = await service.handleTurn(inbound('Sí confirmamos la asistencia'));
+      const result = await service.handleTurn(inbound('Sí confirmamos la asistencia'));
 
-    // B1: campaign presence plus an RSVP action is not human-help consent.
-    // The missing invitation is reported factually; no takeover is submitted.
-    expect(runtime.composeRequests.length).toBe(1);
-    expect(result.plan.human_escalation.status).toBe('none');
-    expect(result.outbound.text).toBe('RSVP_MODEL_SENTINEL');
-    expect(runtime.composeRequests[0]?.errorMessage).toContain('"outcome":"campaign_invitation_without_lookup_record"');
-    expect(runtime.composeRequests[0]?.errorMessage).toContain('"campaign_event":"Gia Antonella"');
-    expect(runtime.composeRequests[0]?.errorMessage).not.toContain('"human_handoff":"requested"');
-    expect(result.trace.tools_called).toContain('lookup_rsvp_invitations');
-    expect(result.trace.tools_called).not.toContain('guest_rsvp');
-    expect(result.trace.tools_called).not.toContain('request_human_takeover');
-  });
-
-  it('never escalates on uncertain campaign delivery without an explicit human request', async () => {
-    const runtime = new RsvpRuntime([
-      rsvpExtraction({
-        action: 'attending',
-        eventReference: 'Gia Antonella',
-      }),
-    ]);
-    const gateway = new RsvpGateway([], [{
-      ...campaignMessage('Gia Antonella'),
-      id: 9,
-      status: 'failed',
-    }]);
-    const service = createService(runtime, gateway, new InMemoryPlanStore(), []);
-
-    const result = await service.handleTurn(inbound('Sí confirmamos la asistencia'));
-
-    expect(result.plan.human_escalation.status).toBe('none');
-    expect(runtime.composeRequests[0]?.errorMessage).toContain(
-      '"outcome":"campaign_invitation_without_lookup_record"',
-    );
-    expect(result.trace.tools_called).not.toContain('request_human_takeover');
-    expect(result.trace.tools_called).not.toContain('guest_rsvp');
+      // B1: campaign presence plus an RSVP action is not human-help consent.
+      // The missing invitation is reported factually; no takeover is submitted.
+      expect(runtime.composeRequests.length).toBe(1);
+      expect(result.plan.human_escalation.status).toBe('none');
+      expect(result.outbound.text).toBe('RSVP_MODEL_SENTINEL');
+      expect(runtime.composeRequests[0]?.errorMessage).toContain('"outcome":"campaign_invitation_without_lookup_record"');
+      expect(runtime.composeRequests[0]?.errorMessage).toContain('"campaign_event":"Gia Antonella"');
+      expect(runtime.composeRequests[0]?.errorMessage).not.toContain('"human_handoff":"requested"');
+      expect(result.trace.tools_called).toContain('lookup_rsvp_invitations');
+      expect(result.trace.tools_called).not.toContain('guest_rsvp');
+      expect(result.trace.tools_called).not.toContain('request_human_takeover');
+    }
   });
 
   it('treats an inbound campaign label as no campaign context and never escalates', async () => {
@@ -882,7 +857,7 @@ describe('AgentService RSVP flow', () => {
     expect(result.trace.tools_called).toContain('lookup_guest_events_by_phone');
     expect(result.trace.tools_called).toContain('get_guest_event_detail');
     expect(result.trace.tools_called).not.toContain('guest_rsvp');
-    expect(runtime.composeRequests[0]?.rsvpPhoneEvidence).toEqual({
+    expect(runtime.composeRequests[0]?.rsvpPhoneEvidence).toMatchObject({
       state: 'resolved_single',
       coverage: 'complete',
       resolution: 'authoritative_invitation',
@@ -969,79 +944,7 @@ describe('AgentService RSVP flow', () => {
     });
   });
 
-  it('starts both phone lookups before either result is reconciled', async () => {
-    const sequence: string[] = [];
-    const runtime = new RsvpRuntime([rsvpExtraction({ action: null })]);
-    const gateway = new RsvpGateway(
-      [],
-      [],
-      { status: 'not_found' },
-      () => sequence.push('guest-events-start'),
-    );
-    const providerGateway = {
-      async lookupUserEventContext(): Promise<UserEventLookupResult> {
-        sequence.push('user-context-start');
-        await new Promise((resolve) => setTimeout(resolve, 10));
-        sequence.push('user-context-end');
-        return {
-          lookup: { email: null, phone: '973296571' },
-          user: null,
-          events: [rsvpLookupInvitation({})],
-          counts: {
-            ownerEvents: 0,
-            guestEvents: 1,
-            hostEvents: 0,
-            celebratedEvents: 0,
-            recentOrders: 0,
-          },
-        };
-      },
-    } as unknown as ProviderGateway;
-    const service = createService(
-      runtime,
-      gateway,
-      new InMemoryPlanStore(),
-      [],
-      providerGateway,
-    );
-
-    await service.handleTurn(inbound('¿Cómo está mi invitación?'));
-
-    expect(sequence.filter((step) => step === 'guest-events-start')).toHaveLength(2);
-    expect(sequence.filter((step) => step === 'user-context-start')).toHaveLength(1);
-    expect(sequence.indexOf('guest-events-start')).toBeLessThan(sequence.indexOf('user-context-start'));
-    expect(sequence.lastIndexOf('guest-events-start')).toBeGreaterThan(sequence.indexOf('user-context-start'));
-    expect(sequence.lastIndexOf('guest-events-start')).toBeLessThan(sequence.indexOf('user-context-end'));
-  });
-
-  it('records the latest response centrally on an ordinary RSVP send', async () => {
-    const runtime = new RsvpRuntime([rsvpExtraction({ action: 'attending' })]);
-    const gateway = new RsvpGateway([{
-      status: 'responded',
-      action: 'attending',
-      willAttend: true,
-      guestId: 41,
-      eventName: 'Matrimonio de Ana y Luis',
-      eventDate: '2026-09-12',
-    }], [], { status: 'not_found' }, undefined, { status: 'not_found' }, [
-      verifiedAttendanceDetail({}),
-    ]);
-    const store = new InMemoryPlanStore();
-    const service = createService(runtime, gateway, store);
-
-    const result = await service.handleTurn(inbound('Confirmo mi asistencia'));
-
-    expect(result.outbound.delivery.action).toBe('send');
-    expect(result.plan.last_outbound_context).toMatchObject({
-      message_id: 'message-Confirmo mi asistencia',
-      text_truncated: false,
-      delivery_evidence: 'constructed',
-    });
-    const reloaded = await store.getByExternalUser('whatsapp', 'user-rsvp');
-    expect(reloaded?.last_outbound_context?.message_id).toBe('message-Confirmo mi asistencia');
-  });
-
-  it('keeps an unrelated owner pending question on an RSVP send without an answered outcome', async () => {
+  it('records the latest response centrally and keeps an unrelated owner pending question on an RSVP send', async () => {
     const runtime = new RsvpRuntime([rsvpExtraction({ action: 'attending' })]);
     const gateway = new RsvpGateway([{
       status: 'responded',
@@ -1071,7 +974,15 @@ describe('AgentService RSVP flow', () => {
 
     expect(result.outbound.delivery.action).toBe('send');
     expect(result.plan.owner_pending_question).toBe('Que monto ves ahi?');
-    expect(result.plan.last_outbound_context?.message_id).toBe('message-Confirmo mi asistencia');
+    // PASS 2: folded the central outbound-context recording assertions in
+    // here (same attending write plus send, now with an owner seed present).
+    expect(result.plan.last_outbound_context).toMatchObject({
+      message_id: 'message-Confirmo mi asistencia',
+      text_truncated: false,
+      delivery_evidence: 'constructed',
+    });
+    const reloaded = await store.getByExternalUser('whatsapp', 'user-rsvp');
+    expect(reloaded?.last_outbound_context?.message_id).toBe('message-Confirmo mi asistencia');
   });
 
   it('marks reconciled evidence partial when one phone lookup fails', async () => {

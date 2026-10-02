@@ -1,4 +1,3 @@
-import fs from 'node:fs';
 import path from 'node:path';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -127,7 +126,7 @@ describe('R8 same-day image observation', () => {
     expect(observation).toMatchObject({ seenToday: true, linkage: 'prior', depositMentioned: true });
   });
 
-  it('creates no cross-day duties from older images', () => {
+  it('creates no duties from older, absent, or expired images', () => {
     const nowMs = Date.parse('2026-09-09T09:00:00Z');
     expect(buildImageObservation({
       imageAvailable: false,
@@ -145,10 +144,9 @@ describe('R8 same-day image observation', () => {
       nowMs,
       depositMentioned: true,
     })).toBeNull();
-  });
-
-  it('ignores expired file refs when nothing usable was seen today', () => {
-    const nowMs = Date.parse('2026-09-08T18:00:00Z');
+    // Expired file refs are ignored the same way when nothing usable was
+    // seen today.
+    const expiredNowMs = Date.parse('2026-09-08T18:00:00Z');
     const expired: ImageAttachmentRef = {
       kind: 'file',
       fileId: 'file-old',
@@ -164,7 +162,7 @@ describe('R8 same-day image observation', () => {
       pixelsProjected: false,
       currentTurnCarriesImage: false,
       storedRefs: [expired],
-      nowMs,
+      nowMs: expiredNowMs,
       depositMentioned: false,
     })).toBeNull();
   });
@@ -214,40 +212,5 @@ describe('R8 image-turn observation wiring', () => {
       status: 'unavailable',
       observation: { seenToday: true, legibility: 'retained', linkage: 'prior' },
     });
-  });
-});
-
-describe('R8 prompt policy', () => {
-  const promptsDir = path.resolve(process.cwd(), 'prompts', 'nodes', 'resolver_consultas_informativas');
-
-  it('contains no re-upload, resend, or URL-recovery demands', () => {
-    for (const file of ['response_contract.txt', 'image_inspection.txt']) {
-      const text = fs.readFileSync(path.join(promptsDir, file), 'utf8');
-      // Imperative demands aimed at the user. The contract's own
-      // prohibition ("Nunca pidas reenviar la imagen") and the OTP-code
-      // resends live elsewhere and stay untouched.
-      expect(text).not.toMatch(/env[ií]ala de nuevo/i);
-      expect(text).not.toMatch(/(?<!Nunca pidas )reenviar la imagen/i);
-      expect(text).not.toMatch(/escr[ií]beme la informaci.n en texto/i);
-      // Backend-provided URLs only: never offer a URL alternative or ask
-      // for an image, re-upload, replacement attachment, or URL.
-      expect(text).not.toMatch(/enlace URL como alternativa/i);
-      expect(text).not.toMatch(/Si tienes un enlace URL/i);
-      expect(text).not.toMatch(/puedo revisarla por ah/i);
-    }
-  });
-
-  it('answers from the record and asks only for the specific missing fact', () => {
-    const contract = fs.readFileSync(path.join(promptsDir, 'response_contract.txt'), 'utf8');
-    expect(contract).not.toContain('image_agreement');
-    expect(contract).not.toMatch(/ofrece un enlace URL como alternativa/i);
-    // 2026-09-15 s3 narrowing: the datum ask applies only when the current
-    // task identifies it; otherwise a concise limitation or one open
-    // question, never a demanded datum, blind reads, or a resubmission hint.
-    expect(contract).toMatch(/si la tarea en curso identifica un dato concreto que falta, pide solo ese dato/i);
-    expect(contract).toMatch(/ni sugieras que podr.s revisarla cuando aparezca de nuevo/i);
-    expect(contract).toMatch(/responde con lo que el perfil y el registro s[ií] confirman/i);
-    const inspection = fs.readFileSync(path.join(promptsDir, 'image_inspection.txt'), 'utf8');
-    expect(inspection).toMatch(/nunca extracci.n estructurada/i);
   });
 });

@@ -40,8 +40,14 @@ describe('structured extraction schemas', () => {
       absent: [
         'informationRequests', 'eventType', 'contactEmail', 'providerPlanOperations',
         'selectedProviderReferences', 'providerExplanationRequest', 'closeAction',
-        'pauseRequested',
+        'pauseRequested', 'rsvpDecisionSource',
       ],
+    },
+    {
+      name: 'rsvp decision source',
+      capabilities: capabilityProfile({ rsvp: true }),
+      present: ['rsvpDecisionSource'],
+      absent: ['informationRequests', 'providerPlanOperations'],
     },
     {
       name: 'initial planning and information',
@@ -118,7 +124,7 @@ describe('structured extraction schemas', () => {
     }
   });
 
-  it('parses provider query intents with canonical fields', () => {
+  it('parses provider query intents with canonical fields and capped query slots', () => {
     const parsed = providerQueryIntentSchema.parse({
       category: 'Catering',
       label: 'Catering para boda',
@@ -144,10 +150,8 @@ describe('structured extraction schemas', () => {
 
     expect(parsed.category).toBe('Catering');
     expect(parsed.retrievalReady).toBe(true);
-  });
 
-  it('parses provider query intents with capped query slots', () => {
-    const parsed = providerQueryIntentSchema.parse({
+    const multi = providerQueryIntentSchema.parse({
       category: 'Catering',
       label: 'Catering para boda',
       priority: 1,
@@ -180,7 +184,7 @@ describe('structured extraction schemas', () => {
       fitCriteria,
     });
 
-    expect(parsed.queries.map((query) => query.label)).toEqual([
+    expect(multi.queries.map((query) => query.label)).toEqual([
       'sushi',
       'torta para novios',
     ]);
@@ -345,16 +349,7 @@ describe('structured extraction schemas', () => {
     });
   });
 
-  it('rejects malformed close actions', () => {
-    expect(() =>
-      closeActionSchema.parse({
-        type: 'defer_need',
-        category: 'not-a-category',
-      }),
-    ).toThrow();
-  });
-
-  it('accepts non-defer close actions with incidental categories', () => {
+  it('validates close actions by type and category', () => {
     const parsed = closeActionSchema.parse({
       type: 'request_contact',
       category: 'Catering',
@@ -366,6 +361,12 @@ describe('structured extraction schemas', () => {
       category: 'Catering',
       reason: null,
     });
+    expect(() =>
+      closeActionSchema.parse({
+        type: 'defer_need',
+        category: 'not-a-category',
+      }),
+    ).toThrow();
   });
 
   it('parses typed close flow results', () => {
@@ -415,19 +416,6 @@ describe('structured extraction schemas', () => {
     expect(current.rsvpDecisionSource).toBe('current_message');
     const planState = extractionSchema.parse({ ...base, rsvpDecisionSource: 'plan_state' });
     expect(planState.rsvpDecisionSource).toBe('plan_state');
-  });
-
-  it('exposes rsvpDecisionSource only when rsvp capability is enabled', () => {
-    const withoutRsvp = createDynamicExtractionSchema({
-      allowedActionIntents: ['solicitar_humano'],
-      capabilities: capabilityProfile(),
-    });
-    expect(withoutRsvp.keyof().options).not.toContain('rsvpDecisionSource');
-    const withRsvp = createDynamicExtractionSchema({
-      allowedActionIntents: ['solicitar_humano', 'responder_invitacion'],
-      capabilities: { ...capabilityProfile(), rsvp: true },
-    });
-    expect(withRsvp.keyof().options).toEqual(expect.arrayContaining(['rsvpDecisionSource']));
   });
 
   it('derives the established lane from typed plan state', () => {

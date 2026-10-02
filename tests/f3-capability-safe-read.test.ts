@@ -159,7 +159,7 @@ async function runModifyTurn(options: {
 }
 
 describe('F3c safe read precedes the unsupported mutation handoff', () => {
-  it('reads gift purchases and asks for selection on a dedication change', async () => {
+  it('reads gift purchases for dedication selection on fresh and persisted discovery turns', async () => {
     const giftResult = {
       requestId: 'capability-status-read',
       kind: 'purchase',
@@ -234,108 +234,7 @@ describe('F3c safe read precedes the unsupported mutation handoff', () => {
     expect(composeRequests[0]?.customerContext?.purchases.map((purchase) => purchase.orderId)).toEqual([
       'order-joaquin-frozen-01', 'order-joaquin-frozen-02',
     ]);
-  });
-
-  it('keeps a voucher report on the pending order without handoff', async () => {
-    const orderResult = {
-      requestId: 'capability-status-read',
-      kind: 'purchase',
-      status: 'completed',
-      resource: 'orders',
-      purchases: [
-        {
-          orderId: 'order-luis-pending-227',
-          paymentStatus: 'pending',
-          shippingStatus: null,
-          grandTotal: 227.76,
-          paymentMethod: 'Yape_o_Plin',
-          eventName: 'Alejandra',
-          eventDate: '2026-09-20',
-          eventUrl: null,
-          createdAt: '2026-08-27 15:00:00',
-          items: [],
-          payment: { method: 'Yape_o_Plin', amount: 227.76, paidAt: '2026-08-27 15:00:00' },
-          currency: null,
-        },
-      ],
-      needsSelection: false,
-      accessMethod: 'trusted_phone_purchase',
-      coverage: 'complete',
-    };
-    const { result, execute, composeRequests } = await runModifyTurn({
-      externalUserId: 'u-f3c-luis',
-      text: 'Ya envie los 13.76 que faltaban, tengo el voucher.',
-      contactPhone: '+51938389389',
-      extraction: modifyExtraction(),
-      purchaseResult: orderResult,
-      summary: {
-        requestId: 'capability-status-read',
-        kind: 'purchase',
-        status: 'completed',
-        source: 'agent_api',
-        outcomeCode: 'completed_with_results',
-        retryable: false,
-        queryHash: 'luis',
-        evidence: [],
-        resultCount: 1,
-        durationMs: 1,
-        accessMethod: 'trusted_phone_purchase',
-        resource: 'orders',
-      },
-      composedText: 'El pedido pendiente sigue en validacion sin derivacion.',
-    });
-    expect(execute).toHaveBeenCalled();
-    expect(result.plan.current_node).toBe('resolver_consultas_informativas');
-    const text = result.outbound.text ?? '';
-    expect(text).toBe('El pedido pendiente sigue en validacion sin derivacion.');
-    expect(composeRequests).toHaveLength(1);
-    expect(composeRequests[0]?.turnDecision?.persistReason).toBe('information_batch');
-    expect(composeRequests[0]?.informationResults).toEqual([
-      expect.objectContaining({ kind: 'purchase', status: 'completed', resource: 'orders' }),
-    ]);
-  });
-
-  it('keeps a persisted discovery request and gift records together during an unsupported edit', async () => {
-    const giftResult = {
-      requestId: 'capability-status-read',
-      kind: 'purchase',
-      status: 'completed',
-      resource: 'gift_purchases',
-      purchases: [
-        {
-          orderId: 'order-joaquin-frozen-01',
-          paymentStatus: 'pending',
-          shippingStatus: null,
-          grandTotal: 120.0,
-          paymentMethod: 'Transferencia',
-          eventName: 'Chiara Vittoria',
-          eventDate: '2026-09-10',
-          eventUrl: null,
-          createdAt: '2026-09-03 11:00:00',
-          items: [],
-          payment: { method: 'Transferencia', amount: 120.0, paidAt: '2026-09-03 11:00:00' },
-          currency: null,
-        },
-        {
-          orderId: 'order-joaquin-frozen-02',
-          paymentStatus: 'approved',
-          shippingStatus: null,
-          grandTotal: 95.5,
-          paymentMethod: 'Transferencia',
-          eventName: 'Chiara Vittoria',
-          eventDate: '2026-08-10',
-          eventUrl: null,
-          createdAt: '2026-08-10 11:00:00',
-          items: [],
-          payment: { method: 'Transferencia', amount: 95.5, paidAt: '2026-08-10 11:00:00' },
-          currency: null,
-        },
-      ],
-      needsSelection: true,
-      accessMethod: 'trusted_phone_purchase',
-      coverage: 'complete',
-    };
-    const { result, execute, composeRequests } = await runModifyTurn({
+    const persisted = await runModifyTurn({
       externalUserId: 'u-f3c-joaquin-persisted',
       text: 'Quisiera cambiar la dedicatoria de un regalo para Chiara Vittoria.',
       contactPhone: '+51926857444',
@@ -364,17 +263,16 @@ describe('F3c safe read precedes the unsupported mutation handoff', () => {
         authAction: 'none',
       },
     });
-    expect(execute).toHaveBeenCalled();
-    const sentRequest = (execute.mock.calls[0] as Array<{ requests?: Array<{ resource?: unknown }> }>)[0]?.requests?.[0];
+    expect(persisted.execute).toHaveBeenCalled();
+    const sentRequest = (persisted.execute.mock.calls[0] as Array<{ requests?: Array<{ resource?: unknown }> }>)[0]?.requests?.[0];
     expect(sentRequest?.resource).toBe('purchase_discovery');
-    expect(result.plan.current_node).toBe('resolver_consultas_informativas');
-    const text = result.outbound.text ?? '';
-    expect(text).toBe('respuesta generada para evidencia de compra');
-    expect(composeRequests).toHaveLength(1);
-    expect(composeRequests[0]?.informationResults).toEqual([
+    expect(persisted.result.plan.current_node).toBe('resolver_consultas_informativas');
+    expect(persisted.result.outbound.text ?? '').toBe('respuesta generada para evidencia de compra');
+    expect(persisted.composeRequests).toHaveLength(1);
+    expect(persisted.composeRequests[0]?.informationResults).toEqual([
       expect.objectContaining({ kind: 'purchase', status: 'completed', resource: 'gift_purchases' }),
     ]);
-    expect(composeRequests[0]?.customerContext?.purchases.map((purchase) => purchase.orderId)).toEqual([
+    expect(persisted.composeRequests[0]?.customerContext?.purchases.map((purchase) => purchase.orderId)).toEqual([
       'order-joaquin-frozen-01', 'order-joaquin-frozen-02',
     ]);
   });

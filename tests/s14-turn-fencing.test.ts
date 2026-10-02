@@ -28,19 +28,36 @@ function storedMessage(overrides: Partial<AgentConversationMessage> & { id: numb
 }
 
 describe('S14 available-ID deduplication preserves ambiguity', () => {
-  it('keeps distinct identical-body records when constituent IDs are absent', () => {
-    const context = buildTurnMessageContext({
-      messages: [storedMessage({ id: 16677 }), storedMessage({ id: 16679 })],
-      inbound: {
-        channel: 'whatsapp',
-        externalUserId: '+51900004780',
-        text: 'Otro texto distinto',
-        messageId: 'wamid.native-current',
-        receivedAt: '2026-09-04T13:12:00.000Z',
-      },
-    });
-    expect(context.recentMessages).toHaveLength(2);
-    expect(context.excludedCurrentMessageCount).toBe(0);
+  it('preserves identical-body records without identity evidence', () => {
+    {
+      const context = buildTurnMessageContext({
+        messages: [storedMessage({ id: 16677 }), storedMessage({ id: 16679 })],
+        inbound: {
+          channel: 'whatsapp',
+          externalUserId: '+51900004780',
+          text: 'Otro texto distinto',
+          messageId: 'wamid.native-current',
+          receivedAt: '2026-09-04T13:12:00.000Z',
+        },
+      });
+      expect(context.recentMessages).toHaveLength(2);
+      expect(context.excludedCurrentMessageCount).toBe(0);
+    }
+
+    {
+      const context = buildTurnMessageContext({
+        messages: [storedMessage({ id: 16677 }), storedMessage({ id: 16679 })],
+        inbound: {
+          channel: 'whatsapp',
+          externalUserId: '+51900004780',
+          text: 'Gracias por la organizacion',
+          messageId: 'wamid.unrelated',
+          receivedAt: '2026-09-04T13:11:35.000Z',
+        },
+      });
+      expect(context.recentMessages).toHaveLength(2);
+      expect(context.excludedCurrentMessageCount).toBe(0);
+    }
   });
 
   it('excludes exactly the current message on native ID match', () => {
@@ -60,21 +77,6 @@ describe('S14 available-ID deduplication preserves ambiguity', () => {
     expect(context.recentMessages).toHaveLength(1);
     expect(context.recentMessages[0]?.id).toBe(16679);
     expect(context.excludedCurrentMessageCount).toBe(1);
-  });
-
-  it('never deduplicates by body text alone', () => {
-    const context = buildTurnMessageContext({
-      messages: [storedMessage({ id: 16677 }), storedMessage({ id: 16679 })],
-      inbound: {
-        channel: 'whatsapp',
-        externalUserId: '+51900004780',
-        text: 'Gracias por la organizacion',
-        messageId: 'wamid.unrelated',
-        receivedAt: '2026-09-04T13:11:35.000Z',
-      },
-    });
-    expect(context.recentMessages).toHaveLength(2);
-    expect(context.excludedCurrentMessageCount).toBe(0);
   });
 
   it('keeps raw history bounded without a second memory store', () => {
@@ -106,32 +108,34 @@ describe('S14 lease fencing on the existing coordination record', () => {
     )).resolves.toBeUndefined();
   });
 
-  it('rejects an overlapping superseded owner without a second lock store', async () => {
-    const coordinator = new InMemoryConversationTurnCoordinator();
-    const store = new InMemoryLeaseFencedPlanStore(coordinator);
-    await coordinator.acquire({ ...identity, ownerId: 'owner-a', expiresAtMs: 20_000 }, 1_000);
-    await expect(store.saveFenced(
-      { planKey: 'k', version: 1 },
-      { ...identity, ownerId: 'owner-b', expiresAtMs: 20_000 },
-      1_000,
-    )).rejects.toBeInstanceOf(FencedPlanSaveRejectedError);
-  });
+  it('rejects saves from superseded or expired lease owners', async () => {
+    {
+      const coordinator = new InMemoryConversationTurnCoordinator();
+      const store = new InMemoryLeaseFencedPlanStore(coordinator);
+      await coordinator.acquire({ ...identity, ownerId: 'owner-a', expiresAtMs: 20_000 }, 1_000);
+      await expect(store.saveFenced(
+        { planKey: 'k', version: 1 },
+        { ...identity, ownerId: 'owner-b', expiresAtMs: 20_000 },
+        1_000,
+      )).rejects.toBeInstanceOf(FencedPlanSaveRejectedError);
+    }
 
-  it('rejects an expired owner after the lease lapses and admits the successor', async () => {
-    const coordinator = new InMemoryConversationTurnCoordinator();
-    const store = new InMemoryLeaseFencedPlanStore(coordinator);
-    await coordinator.acquire({ ...identity, ownerId: 'owner-a', expiresAtMs: 2_000 }, 1_000);
-    await expect(store.saveFenced(
-      { planKey: 'k', version: 1 },
-      { ...identity, ownerId: 'owner-a', expiresAtMs: 2_000 },
-      3_000,
-    )).rejects.toBeInstanceOf(FencedPlanSaveRejectedError);
-    expect(await coordinator.acquire({ ...identity, ownerId: 'owner-b', expiresAtMs: 30_000 }, 3_000)).toBe(true);
-    await expect(store.saveFenced(
-      { planKey: 'k', version: 2 },
-      { ...identity, ownerId: 'owner-b', expiresAtMs: 30_000 },
-      3_000,
-    )).resolves.toBeUndefined();
+    {
+      const coordinator = new InMemoryConversationTurnCoordinator();
+      const store = new InMemoryLeaseFencedPlanStore(coordinator);
+      await coordinator.acquire({ ...identity, ownerId: 'owner-a', expiresAtMs: 2_000 }, 1_000);
+      await expect(store.saveFenced(
+        { planKey: 'k', version: 1 },
+        { ...identity, ownerId: 'owner-a', expiresAtMs: 2_000 },
+        3_000,
+      )).rejects.toBeInstanceOf(FencedPlanSaveRejectedError);
+      expect(await coordinator.acquire({ ...identity, ownerId: 'owner-b', expiresAtMs: 30_000 }, 3_000)).toBe(true);
+      await expect(store.saveFenced(
+        { planKey: 'k', version: 2 },
+        { ...identity, ownerId: 'owner-b', expiresAtMs: 30_000 },
+        3_000,
+      )).resolves.toBeUndefined();
+    }
   });
 
   it('isLeaseFenceSatisfied matches the store decision table', () => {
@@ -166,21 +170,34 @@ describe('S14 lease fencing on the existing coordination record', () => {
 });
 
 describe('S14 duplicate input and delivery retry replay without repeating effects', () => {
-  it('replays the persisted outcome for a duplicate message ID', async () => {
-    const ledger = new TurnOutcomeLedger();
-    let effects = 0;
-    const first = await ledger.executeOnce('wamid.dup', async () => {
-      effects += 1;
-      return { text: 'Respuesta', deliveryAction: 'send' as const, effectCount: 1 };
-    });
-    expect(first.replayed).toBe(false);
-    const second = await ledger.executeOnce('wamid.dup', async () => {
-      effects += 1;
-      return { text: 'Respuesta', deliveryAction: 'send' as const, effectCount: 1 };
-    });
-    expect(second.replayed).toBe(true);
-    expect(second.outcome.text).toBe('Respuesta');
-    expect(effects).toBe(1);
+  it('replays persisted outcomes once per message ID in a bounded ledger', async () => {
+    {
+      const ledger = new TurnOutcomeLedger();
+      let effects = 0;
+      const first = await ledger.executeOnce('wamid.dup', async () => {
+        effects += 1;
+        return { text: 'Respuesta', deliveryAction: 'send' as const, effectCount: 1 };
+      });
+      expect(first.replayed).toBe(false);
+      const second = await ledger.executeOnce('wamid.dup', async () => {
+        effects += 1;
+        return { text: 'Respuesta', deliveryAction: 'send' as const, effectCount: 1 };
+      });
+      expect(second.replayed).toBe(true);
+      expect(second.outcome.text).toBe('Respuesta');
+      expect(effects).toBe(1);
+    }
+
+    {
+      const ledger = new TurnOutcomeLedger(3);
+      for (let index = 0; index < 5; index += 1) {
+        await ledger.executeOnce(`wamid.${index}`, async () => ({
+          text: 'x', deliveryAction: 'send' as const, effectCount: 0,
+        }));
+      }
+      expect(ledger.size()).toBeLessThanOrEqual(3);
+      expect(ledger.has('wamid.4')).toBe(true);
+    }
   });
 
   it('does not record an outcome when the save fails so a retry runs once more', async () => {
@@ -214,28 +231,21 @@ describe('S14 duplicate input and delivery retry replay without repeating effect
     expect(ledger.has('wamid.retry')).toBe(true);
   });
 
-  it('keeps the ledger bounded', async () => {
-    const ledger = new TurnOutcomeLedger(3);
-    for (let index = 0; index < 5; index += 1) {
-      await ledger.executeOnce(`wamid.${index}`, async () => ({
-        text: 'x', deliveryAction: 'send' as const, effectCount: 0,
-      }));
-    }
-    expect(ledger.size()).toBeLessThanOrEqual(3);
-    expect(ledger.has('wamid.4')).toBe(true);
-  });
 });
 
 describe('S14 Tito historical correlation is optional enrichment only', () => {
-  it('leaves the outcome unchanged when correlation is absent', () => {
-    const outcome = { text: 'ok', deliveryAction: 'send' as const };
-    expect(attachHistoricalCorrelation(outcome, null)).toEqual(outcome);
+  it('keeps historical correlation as optional enrichment only', () => {
+    {
+      const outcome = { text: 'ok', deliveryAction: 'send' as const };
+      expect(attachHistoricalCorrelation(outcome, null)).toEqual(outcome);
+    }
+
+    {
+      const outcome = { text: 'ok', deliveryAction: 'send' as const };
+      const enriched = attachHistoricalCorrelation(outcome, { note: 'screenshot-confirmed ordering' });
+      expect(enriched.text).toBe('ok');
+      expect(enriched.historicalCorrelation).toEqual({ note: 'screenshot-confirmed ordering' });
+    }
   });
 
-  it('attaches correlation evidence without altering the core outcome', () => {
-    const outcome = { text: 'ok', deliveryAction: 'send' as const };
-    const enriched = attachHistoricalCorrelation(outcome, { note: 'screenshot-confirmed ordering' });
-    expect(enriched.text).toBe('ok');
-    expect(enriched.historicalCorrelation).toEqual({ note: 'screenshot-confirmed ordering' });
-  });
 });

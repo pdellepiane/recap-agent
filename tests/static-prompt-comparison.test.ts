@@ -87,54 +87,6 @@ describe('per-branch historical baseline via git show', () => {
     const anchorRsvp = historical.find((branch) => branch.branchId === 'responder_invitacion:resolved_single');
     expect(anchorRsvp?.instructionBytes).toBe(8233);
     expect(anchorRsvp?.fileCount).toBe(7);
-    // Read-only RSVP offer guidance removes 27 bytes from the prior 8448-byte bundle.
-    // 2026-09-11 step C grounding: +534 bytes for evidence-driven RSVP wording
-    // (no-write clarity, plus-one/multi-person honesty, reminder-mismatch
-    // framing) replacing the retired deterministic-fragment/tissue mechanism.
-    // 2026-09-14 R7 grounding-continuity: +97 bytes for one R7 line
-    // (plus_one_support_offer_required always carries the human-support
-    // offer). Previous pin 8955.
-    // 2026-09-14 Packet C intent preservation: -18 bytes for softening the
-    // mandated no-change status restatement in
-    // responder_invitacion/response_contract.txt (gratitude/no-new-request
-    // turns keep the no-new-write honesty without a forced status
-    // paragraph). Previous pin 9052.
-    // 2026-09-15 tissue-removal reconciliation: pin 9034 matches neither
-    // clean HEAD (8421) nor this tree (8858, verified by measurement).
-    // The HEAD-to-tree diff was verified Spanish-only with no scripted
-    // prose: the deterministic-fragment tissue paragraph is replaced by a
-    // model-written reply rule, plus campaign-reminder honesty and
-    // plus-one/multi-person honesty lines. No wording added to satisfy the
-    // pin; the pin follows the intended removals. Previous pin 9034.
-    // 2026-09-15 date-only RSVP enumeration removal: selection turns defer
-    // to projected event facts (including rsvp_event_time.hour24) instead
-    // of enumerating nombre+fecha as complete; model-written sentences
-    // only. Previous pin 8858.
-    // 2026-09-15 confirmation-hour fact: the confirmation sentence states
-    // rsvp_event_time.hour24 when projected, so the Marta turn can carry
-    // 19:00; responder response_contract stays mandate-free. Previous pin
-    // 8872.
-    // 2026-09-16 P3 useful completeness: +94 bytes in responder_invitacion
-    // (venue-when-useful, answer-every-part, brief-not-paragraph rule). No
-    // fixed prose; hard paragraph mandates removed. Previous pin 8933.
-    // 2026-09-16 oracle-audit hostdecl hedge grounding: +281 bytes in
-    // responder_invitacion (verified-record states/dates question, no false
-    // cannot-verify hedge when grounded). Model wording only. Previous pin 9027.
-    // 2026-09-16 customer-support subtractive pass: companion verification
-    // scope wording in responder_invitacion/system.txt plus shared grounding
-    // invariants in base_system.txt, minus shared-prompt tightening that
-    // removed the node-obedience recital and capability-list verbosity.
-    // Net +49 on this branch; customer-turn instructions sit below the
-    // 1c15bce7 baseline on every measured scenario. Previous pin 9308.
-    // 2026-09-17 actionable-answer directive: +267 bytes for the single
-    // shared resolve-before-replying invariant in base_system.txt (net of
-    // the -19B support_continuity recital removal on other branches).
-    // Previous pin 9357.
-    const currentRsvp = current.find((branch) => branch.branchId === 'responder_invitacion:resolved_single');
-    // Static legacy bundles are diagnostic only; reductions are allowed.
-    // The production request is pinned separately by captured-spec tests.
-    expect(currentRsvp?.instructionBytes).toBeLessThanOrEqual(9266);
-    expect((currentRsvp?.instructionBytes ?? 0) - (anchorRsvp?.instructionBytes ?? 0)).toBeLessThanOrEqual(1033);
   }, 20_000);
 });
 

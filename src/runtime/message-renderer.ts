@@ -11,6 +11,11 @@ export interface MessageRenderer {
   render(input: {
     message: StructuredMessage;
     providerResults: ProviderSummary[];
+    /**
+     * Mechanical FAQ citation URL snapshotted at compose time. Rendered as
+     * a `Fuente:` footer on generic replies; never model prose.
+     */
+    citationUrl?: string | null;
   }): string;
 }
 
@@ -26,8 +31,9 @@ abstract class BaseProviderMessageRenderer implements MessageRenderer {
   render(input: {
     message: StructuredMessage;
     providerResults: ProviderSummary[];
+    citationUrl?: string | null;
   }): string {
-    const { message, providerResults } = input;
+    const { message, providerResults, citationUrl } = input;
 
     switch (message.type) {
       case 'welcome':
@@ -37,7 +43,7 @@ abstract class BaseProviderMessageRenderer implements MessageRenderer {
       case 'multi_need_recommendation':
         return this.renderMultiNeedRecommendation(message, providerResults);
       case 'generic':
-        return this.renderGeneric(message);
+        return this.renderGeneric(message, citationUrl);
     }
   }
 
@@ -238,8 +244,25 @@ abstract class BaseProviderMessageRenderer implements MessageRenderer {
     return lines.join('\n');
   }
 
-  private renderGeneric(message: StructuredMessage): string {
-    return (message.paragraphs_es ?? []).join('\n\n');
+  private renderGeneric(message: StructuredMessage, citationUrl?: string | null): string {
+    const paragraphs = message.paragraphs_es ?? [];
+    const footer = this.renderCitationFooter(paragraphs, citationUrl);
+    return [...paragraphs, ...(footer === null ? [] : [footer])].join('\n\n');
+  }
+
+  /**
+   * Deterministic citation footer for generic replies grounded in a
+   * complete article. Skipped when absent or when the model already cited
+   * the URL, so the footer can neither duplicate nor appear ungrounded.
+   * The reference serializer duplicates this rule on purpose.
+   */
+  private renderCitationFooter(
+    paragraphs: readonly string[],
+    citationUrl?: string | null,
+  ): string | null {
+    if (!citationUrl) return null;
+    if (paragraphs.some((paragraph) => paragraph.includes(citationUrl))) return null;
+    return `Fuente: ${citationUrl}`;
   }
 
   private buildProviderMap(providerResults: ProviderSummary[]): Map<number, ProviderSummary> {

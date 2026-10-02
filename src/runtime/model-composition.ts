@@ -270,6 +270,24 @@ export function deliveredContainsModelSpans(args: {
 }
 
 /**
+ * Deterministic FAQ citation for this turn: the citation URL of the first
+ * completed FAQ result grounded in a complete article, or null. Pure
+ * evidence read; chunk-only turns never cite.
+ */
+export function resolveFaqCitationUrl(
+  informationResults: ComposeReplyRequest['informationResults'],
+): string | null {
+  for (const result of informationResults ?? []) {
+    if (result.status === 'completed' && result.kind === 'faq') {
+      if (typeof result.citationUrl === 'string' && result.citationUrl.length > 0) {
+        return result.citationUrl;
+      }
+    }
+  }
+  return null;
+}
+
+/**
  * Immutable origin receipt for this turn's raw structured model output.
  * Snapshots the message (deep clone, never a live reference) and the
  * authorized mechanical provider fields supplied with the compose request,
@@ -281,6 +299,7 @@ export function buildModelOriginReceipt(
   reply: ComposeReplyResult,
   bundleId: string,
   providerResults?: readonly ProviderSummary[],
+  citationUrl?: string | null,
 ): ModelOriginReceipt | null {
   const paragraphs = modelSpansOf(reply.structuredMessage);
   if (paragraphs === null || reply.structuredMessage === undefined) return null;
@@ -293,6 +312,7 @@ export function buildModelOriginReceipt(
     modelContentSha256: hashCanonicalModelContent(canonical),
     bundleId,
     transformationVersion: 'transport-v2',
+    ...(citationUrl ? { citationUrl } : {}),
   };
 }
 
@@ -308,6 +328,9 @@ export async function composeModelReply(
     // only when the runtime reports no identity (stub runtimes in tests).
     reply.origin?.bundleId ?? request.promptBundleId,
     request.providerResults,
+    // The rebuilt receipt preserves the runtime-snapshotted mechanical
+    // citation; it never invents one.
+    reply.origin?.citationUrl ?? resolveFaqCitationUrl(request.informationResults),
   );
   return { ...reply, origin };
 }
@@ -401,6 +424,7 @@ export function assertModelOrigin(args: {
       message: args.origin.modelMessage,
       providerFields: args.origin.providerFields,
       channel: args.channel ?? 'whatsapp',
+      citationUrl: args.origin.citationUrl,
     });
   } catch (error) {
     if (error instanceof ReferenceRenderError) {

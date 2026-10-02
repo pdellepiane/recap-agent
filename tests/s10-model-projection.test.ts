@@ -69,7 +69,7 @@ describe('S10 extraction projection owns schema and text', () => {
     expect(projection.schemaPropertyCount).toBe(shapeKeys.length);
   });
 
-  it('omits inactive lane state from the profile', () => {
+  it('excludes inactive lanes and unavailable intents from the projection', () => {
     const projection = projectExtraction({
       plan: emptyPlan(),
       manifest: fullManifest(),
@@ -83,44 +83,40 @@ describe('S10 extraction projection owns schema and text', () => {
     expect(projection.profile.close).toBe(false);
     expect(projection.profile.pause).toBe(false);
     expect(projection.allowedOperations).toEqual([]);
-  });
 
-  it('filters intents by manifest availability', () => {
     const manifest = buildRuntimeCapabilityManifest({
       configured: true,
       environment: 'production',
       allowCustomerWrites: true,
       featureFlags: { rsvp: false, providerPlanning: true },
     });
-    const projection = projectExtraction({
+    const filtered = projectExtraction({
       plan: emptyPlan(),
       manifest,
       requestedDomain: 'rsvp',
       candidateOperations: ['rsvp.response.write'],
       allowedActionIntents: ['responder_invitacion', 'buscar_proveedores'],
     });
-    expect(projection.allowedActionIntents).not.toContain('responder_invitacion');
-    expect(projection.profile.rsvp).toBe(false);
+    expect(filtered.allowedActionIntents).not.toContain('responder_invitacion');
+    expect(filtered.profile.rsvp).toBe(false);
   });
 });
 
 describe('S10 reply evidence projector', () => {
-  it('excludes providers and tools on clarification but keeps the reply model', () => {
-    const projected = projectReply({
+  it('composes clarification, acknowledgement, and complete outcomes from facts without provider tools', () => {
+    const clarified = projectReply({
       continuity: { disposition: 'extract_action', providerToolsAllowed: false, suppressClosure: true },
       capabilityOutcome: { status: 'needs_input', operation: 'purchase.orders.read', reason: 'enabled', requiredInput: ['orderId'], allowedNext: 'clarify' },
       verifiedFacts: ['pending order 118'],
       allowedNextSteps: ['pedir numero de pedido'],
       providerResultCount: 3,
     });
-    expect(projected.providersExcluded).toBe(true);
-    expect(projected.providerTools).toEqual([]);
-    expect(projected.requiresReplyModel).toBe(true);
-    expect(projected.disposition).toBe('composed');
-  });
+    expect(clarified.providersExcluded).toBe(true);
+    expect(clarified.providerTools).toEqual([]);
+    expect(clarified.requiresReplyModel).toBe(true);
+    expect(clarified.disposition).toBe('composed');
 
-  it('composes acknowledgement from facts with no provider tools or model bypass', () => {
-    const projected = projectReply({
+    const acknowledged = projectReply({
       continuity: { disposition: 'acknowledge_without_interview', providerToolsAllowed: false, suppressClosure: false },
       capabilityOutcome: null,
       verifiedFacts: ['attendance attending preserved'],
@@ -128,13 +124,11 @@ describe('S10 reply evidence projector', () => {
       providerResultCount: 2,
       acknowledgeRelationshipOnce: true,
     });
-    expect(projected.providerTools).toEqual([]);
-    expect(projected.providersExcluded).toBe(true);
-    expect(projected.requiresReplyModel).toBe(true);
-    expect(projected.disposition).toBe('composed');
-  });
+    expect(acknowledged.providerTools).toEqual([]);
+    expect(acknowledged.providersExcluded).toBe(true);
+    expect(acknowledged.requiresReplyModel).toBe(true);
+    expect(acknowledged.disposition).toBe('composed');
 
-  it('composes complete capability outcomes from facts instead of fixed text', () => {
     for (const status of ['unsupported', 'already_completed', 'blocked', 'unavailable'] as const) {
       const projected = projectReply({
         continuity: { disposition: 'suppress_closure', providerToolsAllowed: false, suppressClosure: true },
@@ -150,24 +144,25 @@ describe('S10 reply evidence projector', () => {
     }
   });
 
-  it('resolves invalid structure to operational failure, never canned prose', () => {
+  it('resolves composed replies from narrative claim checks without canned prose', () => {
     const claims = checkReplyNarrativeClaims(
       [{ operation: 'rsvp.response.write', claimsSuccess: true, receiptPresent: false, operationAllowed: true }],
     );
     expect(claims).toBe('fallback');
-    const resolved = resolveComposedReply({
+    const failed = resolveComposedReply({
       disposition: 'composed',
       modelText: 'Listo, ya quedo confirmado.',
       claims,
     });
-    expect(resolved.disposition).toBe('operational_failure');
-    expect(resolved.text).toBeNull();
-  });
+    expect(failed.disposition).toBe('operational_failure');
+    expect(failed.text).toBeNull();
 
-  it('passes model text through for grounded claims without substitution', () => {
     expect(checkReplyNarrativeClaims(
       [{ operation: 'rsvp.response.write', claimsSuccess: true, receiptPresent: true, operationAllowed: true }],
     )).toBe('ok');
+    expect(checkReplyNarrativeClaims(
+      [{ operation: 'provider.quote.write', claimsSuccess: true, receiptPresent: true, operationAllowed: false }],
+    )).toBe('fallback');
     const resolved = resolveComposedReply({
       disposition: 'composed',
       modelText: 'Listo, ya quedo confirmado.',
@@ -184,16 +179,7 @@ describe('S10 reply evidence projector', () => {
     expect(projected.providersExcluded).toBe(true);
   });
 
-  it('accepts grounded narrative claims structurally', () => {
-    expect(checkReplyNarrativeClaims(
-      [{ operation: 'rsvp.response.write', claimsSuccess: true, receiptPresent: true, operationAllowed: true }],
-    )).toBe('ok');
-    expect(checkReplyNarrativeClaims(
-      [{ operation: 'provider.quote.write', claimsSuccess: true, receiptPresent: true, operationAllowed: false }],
-    )).toBe('fallback');
-  });
-
-  it('projects handoff evidence distinctly per gateway result', () => {
+  it('projects handoff evidence distinctly per gateway result, never a success claim', () => {
     const requested = projectSupportHandoffEvidence({
       result: { status: 'success', message: 'Requested.' },
       phonePresent: true,
@@ -233,31 +219,8 @@ describe('S10 reply evidence projector', () => {
       confirmedReceipt: false,
     });
     expect(skippedUnavailable.handoffOutcome).toBe('handoff_skipped_unavailable');
-  });
-
-  it('never projects a success claim from missing identity or a failed handoff', () => {
-    for (const evidence of [
-      projectSupportHandoffEvidence({
-        result: { status: 'skipped', reason: 'missing_phone_number', message: 'Missing.' },
-        phonePresent: false,
-        confirmedReceipt: false,
-      }),
-      projectSupportHandoffEvidence({
-        result: { status: 'skipped', reason: 'not_configured', message: 'Disabled.' },
-        phonePresent: true,
-        confirmedReceipt: false,
-      }),
-      projectSupportHandoffEvidence({
-        result: { status: 'failed', error: 'boom', retryable: false },
-        phonePresent: true,
-        confirmedReceipt: false,
-      }),
-      projectSupportHandoffEvidence({
-        result: { status: 'failed', error: 'timeout', retryable: true, outcome: 'unknown' },
-        phonePresent: true,
-        confirmedReceipt: false,
-      }),
-    ]) {
+    // No non-requested outcome claims success, confirmation, or a receipt.
+    for (const evidence of [failed, unknown, skipped, skippedUnavailable]) {
       expect(evidence.handoffOutcome).not.toBe('handoff_requested');
       expect(evidence.effectConfirmed).toBe(false);
       expect(evidence.receiptPresent).toBe(false);
@@ -267,7 +230,7 @@ describe('S10 reply evidence projector', () => {
 });
 
 describe('S10 bundle identity and byte deltas', () => {
-  it('records identity and bytes once with no growth on re-measure', () => {
+  it('measures bundle identity once and reports changed request deltas', () => {
     const first = measureBundle({
       bundleId: 'abc123',
       instructions: '## nodes/uno/system.txt\nHola',
@@ -283,12 +246,10 @@ describe('S10 bundle identity and byte deltas', () => {
       toolCount: 0,
     });
     expect(first).toEqual(second);
-    const delta = summarizeBundleDelta(first, second);
-    expect(delta.grew).toBe(false);
-    expect(delta.serializedDelta).toBe(0);
-  });
+    const stable = summarizeBundleDelta(first, second);
+    expect(stable.grew).toBe(false);
+    expect(stable.serializedDelta).toBe(0);
 
-  it('reports changed request deltas', () => {
     const before = measureBundle({
       bundleId: 'abc123',
       instructions: 'Hola',

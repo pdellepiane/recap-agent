@@ -29,39 +29,36 @@ describe('s13 reference worlds adapter contract', () => {
     expect(`${uniqueParts.phone_extension.replace(/\D/gu, '')}${uniqueParts.phone_number}`).toBe('51900001301');
   });
 
-  it('unavailable-unique exposes one approved order with absent code, amount and currency and no carts', async () => {
-    const gateway = await FixtureAgentConversationGateway.create('s13-reference-unavailable-unique');
-    const parts = split(UNIQUE_PHONE);
-    const result = await gateway.getGuestOrdersByPhone(parts);
-    expect(result.status).toBe('success');
-    if (result.status !== 'success') return;
-    expect(result.purchases).toHaveLength(1);
-    expect(result.carts ?? []).toEqual([]);
-    const purchase = result.purchases[0];
-    expect(purchase).toBeDefined();
-    if (!purchase) return;
-    expect(purchase.eventName).toBe('Evento de prueba A');
-    expect(purchase.paymentStatus).toBe('approved');
-    expect(purchase.customerTransactionNumber).toBeNull();
-    expect(purchase.grandTotal).toBeNull();
-    expect(purchase.currency).toBeNull();
-    expect(purchase.orderId).toBe('order-s13-unavailable-unique-01');
-    expect(purchase.orderId).not.toContain('301816');
-  });
-
-  it('matched keeps backend ids separate and requested reference is not an internal id filter', async () => {
-    const gateway = await FixtureAgentConversationGateway.create('s13-reference-matched');
-    const parts = split(MATCHED_PHONE);
+  it('separates backend ids from customer references across unavailable and matched worlds', async () => {
+    // Unavailable-unique: one approved order with absent code, amount, and currency, no carts.
+    const uniqueGateway = await FixtureAgentConversationGateway.create('s13-reference-unavailable-unique');
+    const uniqueResult = await uniqueGateway.getGuestOrdersByPhone(split(UNIQUE_PHONE));
+    expect(uniqueResult.status).toBe('success');
+    if (uniqueResult.status !== 'success') return;
+    expect(uniqueResult.purchases).toHaveLength(1);
+    expect(uniqueResult.carts ?? []).toEqual([]);
+    const unique = uniqueResult.purchases[0];
+    expect(unique).toBeDefined();
+    if (!unique) return;
+    expect(unique.eventName).toBe('Evento de prueba A');
+    expect(unique.paymentStatus).toBe('approved');
+    expect(unique.customerTransactionNumber).toBeNull();
+    expect(unique.grandTotal).toBeNull();
+    expect(unique.currency).toBeNull();
+    expect(unique.orderId).toBe('order-s13-unavailable-unique-01');
+    expect(unique.orderId).not.toContain('301816');
+    // Matched: a requested reference is not an internal id filter.
+    const matchedGateway = await FixtureAgentConversationGateway.create('s13-reference-matched');
     const requested = parseOrderReference('COD301816');
     expect(requested).toEqual({ kind: 'customer_transaction', transactionNumber: '301816' });
     const lookupOrderId = requested?.kind === 'backend_order_id' ? requested.orderId : null;
     expect(lookupOrderId).toBeNull();
-    const result = await gateway.getGuestOrdersByPhone({ ...parts, orderId: lookupOrderId });
-    expect(result.status).toBe('success');
-    if (result.status !== 'success') return;
-    expect(result.purchases).toHaveLength(2);
-    expect(result.carts ?? []).toEqual([]);
-    const byRef = new Map(result.purchases.map((p) => [p.customerTransactionNumber, p]));
+    const matchedResult = await matchedGateway.getGuestOrdersByPhone({ ...split(MATCHED_PHONE), orderId: lookupOrderId });
+    expect(matchedResult.status).toBe('success');
+    if (matchedResult.status !== 'success') return;
+    expect(matchedResult.purchases).toHaveLength(2);
+    expect(matchedResult.carts ?? []).toEqual([]);
+    const byRef = new Map(matchedResult.purchases.map((p) => [p.customerTransactionNumber, p]));
     const matchA = byRef.get('301816');
     const matchB = byRef.get('301817');
     expect(matchA?.eventName).toBe('Evento de prueba A');
@@ -70,33 +67,30 @@ describe('s13 reference worlds adapter contract', () => {
     expect(matchB?.orderId).toBe('order-s13-matched-b-01');
     expect(matchA?.orderId).not.toBe('301816');
     expect(normalizeBackendCustomerTransactionNumber('301816')).toBe('301816');
-    const selected = result.purchases.filter((p) => p.customerTransactionNumber === '301816');
+    const selected = matchedResult.purchases.filter((p) => p.customerTransactionNumber === '301816');
     expect(selected).toHaveLength(1);
     expect(selected[0]?.eventName).toBe('Evento de prueba A');
-  });
-
-  it('unavailable-multiple has two candidates without references and authorized totals for disambiguation', async () => {
-    const gateway = await FixtureAgentConversationGateway.create('s13-reference-unavailable-multiple');
-    const parts = split(MULTIPLE_PHONE);
-    const result = await gateway.getGuestOrdersByPhone(parts);
-    expect(result.status).toBe('success');
-    if (result.status !== 'success') return;
-    expect(result.purchases).toHaveLength(2);
-    expect(result.carts ?? []).toEqual([]);
-    for (const purchase of result.purchases) {
+    // Unavailable-multiple: two candidates without references, authorized totals for disambiguation.
+    const multipleGateway = await FixtureAgentConversationGateway.create('s13-reference-unavailable-multiple');
+    const multipleResult = await multipleGateway.getGuestOrdersByPhone(split(MULTIPLE_PHONE));
+    expect(multipleResult.status).toBe('success');
+    if (multipleResult.status !== 'success') return;
+    expect(multipleResult.purchases).toHaveLength(2);
+    expect(multipleResult.carts ?? []).toEqual([]);
+    for (const purchase of multipleResult.purchases) {
       expect(purchase.customerTransactionNumber).toBeNull();
     }
-    const events = result.purchases.map((p) => p.eventName).sort();
+    const events = multipleResult.purchases.map((p) => p.eventName).sort();
     expect(events).toEqual(['Evento de prueba A', 'Evento de prueba B']);
-    const statuses = new Set(result.purchases.map((p) => p.paymentStatus));
+    const statuses = new Set(multipleResult.purchases.map((p) => p.paymentStatus));
     expect(statuses.size).toBe(2);
-    for (const purchase of result.purchases) {
+    for (const purchase of multipleResult.purchases) {
       expect(typeof purchase.grandTotal).toBe('number');
       expect(purchase.currency).toBe('PEN');
     }
-    const requested = parseOrderReference('COD301816');
-    expect(requested?.kind).toBe('customer_transaction');
-    const matches = result.purchases.filter((p) => p.customerTransactionNumber === '301816');
+    const unmatched = parseOrderReference('COD301816');
+    expect(unmatched?.kind).toBe('customer_transaction');
+    const matches = multipleResult.purchases.filter((p) => p.customerTransactionNumber === '301816');
     expect(matches).toHaveLength(0);
   });
 });

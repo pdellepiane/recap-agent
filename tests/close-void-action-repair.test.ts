@@ -12,29 +12,20 @@ import { createDynamicExtractionSchema } from '../src/runtime/extraction-schemas
 import { assertOpenAiStructuredSchemaCompatible } from '../src/runtime/openai-structured-schema';
 
 describe('shared close-flow schema repair (token_seeded_close_flow 500)', () => {
-  it('reproduces the live 500 cause: clarify without reason fails schema validation', () => {
+  it('reproduces the live 500 cause: the wire schema accepts void fields the strict boundary rejects', () => {
     const parsed = closeActionSchema.safeParse({ type: 'clarify', category: null, reason: null });
     expect(parsed.success).toBe(false);
     if (parsed.success) throw new Error('Expected the void clarify to fail validation.');
     expect(parsed.error.issues[0]?.path).toEqual(['reason']);
-  });
-
-  it('accepts incomplete wire fields before the strict domain boundary', () => {
     const wire = closeActionWireSchema.parse({ type: 'clarify', category: null, reason: null });
-    expect(repairVoidCloseAction(wire)).toBeNull();
     expect(closeActionSchema.safeParse(wire).success).toBe(false);
+    expect(repairVoidCloseAction(wire)).toBeNull();
   });
 
-  it('normalizes a void clarify to null instead of poisoning output validation', () => {
+  it('normalizes void actions to null and passes specified actions through untouched', () => {
     expect(repairVoidCloseAction({ type: 'clarify', category: null, reason: null })).toBeNull();
     expect(repairVoidCloseAction(undefined)).toBeNull();
-  });
-
-  it('normalizes defer_need without category to null', () => {
     expect(repairVoidCloseAction({ type: 'defer_need', category: null, reason: null })).toBeNull();
-  });
-
-  it('passes fully specified actions through untouched', () => {
     const clarify = { type: 'clarify' as const, category: null, reason: 'Falta el teléfono de contacto.' };
     expect(repairVoidCloseAction(clarify)).toBe(clarify);
     const proceed = { type: 'proceed_confirmed' as const, category: null, reason: null };

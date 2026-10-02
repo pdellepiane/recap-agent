@@ -328,11 +328,38 @@ export const userAuthStateSchema = z.object({
 
 export type UserAuthState = z.infer<typeof userAuthStateSchema>;
 
+/**
+ * Validated source URL of the first full-article evidence entry, or null
+ * when no complete article grounded the result. Drives the deterministic
+ * citation footer; chunk evidence never yields a citation.
+ */
+export function firstFullArticleSourceUrl(
+  evidence: readonly KnowledgeEvidence[],
+): string | null {
+  for (const entry of evidence) {
+    if (entry.fullArticle === true && typeof entry.sourceUrl === 'string') {
+      return entry.sourceUrl;
+    }
+  }
+  return null;
+}
+
 export type KnowledgeEvidence = {
   fileId: string;
   filename: string;
   score: number;
   text: string;
+  /**
+   * True when text carries the complete article file instead of a vector
+   * search chunk. Absent or false means chunk evidence.
+   */
+  fullArticle?: boolean;
+  /**
+   * Validated help-center URL parsed from the complete article frontmatter.
+   * Present only on full-article evidence; the deterministic citation footer
+   * renders from this, never from model output.
+   */
+  sourceUrl?: string;
 };
 
 export const purchaseItemFulfillmentKindValues = [
@@ -634,6 +661,12 @@ export type InformationTaskResult =
       status: 'completed';
       evidence: KnowledgeEvidence[];
       hostWithdrawalPolicy?: { maxBusinessHours: number } | null;
+      /**
+       * Deterministic citation URL from the first full-article evidence
+       * entry. Absent when no highly relevant complete article grounded
+       * this result; the renderer then emits no footer.
+       */
+      citationUrl?: string | null;
       openAiTransport?: OpenAiTransportMetrics;
     }
   | {
@@ -741,6 +774,37 @@ export type InformationExecutionSummary = {
     filename: string;
     score: number;
     contentHash: string;
+    fullArticle?: boolean;
+    /**
+     * Packet O5 typed purchase fact. Present only on purchase summary
+     * evidence projected from a completed backend read; absent means
+     * unknown, never a demand for a named datum. Mirrors the trace
+     * schema in src/evals/case-schema.ts.
+     */
+    purchaseFact?: {
+      eventLabel: string | null;
+      total: number | null;
+      currency: string | null;
+      currencySymbol: string | null;
+      paymentMethod: string | null;
+      paymentStatus: string | null;
+      shippingStatus?: string | null;
+      eventDate: string | null;
+      createdAt: string | null;
+      referencePresent: boolean;
+      dedication?: {
+        message: string | null;
+        sendPhysical: boolean | null;
+        physicalStatus: string | null;
+      } | null;
+      items?: Array<{
+        name: string | null;
+        quantity: number | null;
+        amount: number | null;
+        rowTotal: number | null;
+        fulfillment: string | null;
+      }>;
+    };
   }>;
   resultCount: number;
   durationMs: number;

@@ -4,7 +4,9 @@ import path from 'node:path';
 import esbuild from 'esbuild';
 
 const root = process.cwd();
-const distDir = path.join(root, 'dist');
+const distDir = process.env.BUILD_OUTPUT_DIR
+  ? path.resolve(root, process.env.BUILD_OUTPUT_DIR)
+  : path.join(root, 'dist');
 const lambdaOutfile = path.join(distDir, 'lambda', 'index.js');
 const terminalOutfile = path.join(distDir, 'terminal', 'client.js');
 const knowledgeSyncOutfile = path.join(distDir, 'knowledge-sync', 'index.js');
@@ -60,6 +62,10 @@ await esbuild.build({
 });
 
 await cp(path.join(root, 'prompts'), path.join(distDir, 'prompts'), {
+  recursive: true,
+});
+
+await cp(path.join(root, 'knowledge-base'), path.join(distDir, 'knowledge-base'), {
   recursive: true,
 });
 

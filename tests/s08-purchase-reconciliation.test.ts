@@ -87,7 +87,7 @@ class FakeGateway implements AgentConversationGateway {
 }
 
 describe('S08 purchase reconciliation preserves identity and provenance', () => {
-  it('distinguishes pending and completed partitions and never coerces carts into orders', () => {
+  it('partition conflict is set exactly when one order id spans both partitions', () => {
     const pending = [basePurchase({ orderId: 'ORD-P-1', paymentStatus: 'pending', partition: 'pending_orders' })];
     const completed = [basePurchase({ orderId: 'ORD-C-1', paymentStatus: 'approved', partition: 'completed_orders' })];
     const conflicts = partitionHasConflict(pending, completed);
@@ -95,16 +95,13 @@ describe('S08 purchase reconciliation preserves identity and provenance', () => 
     expect(pending[0]?.partition).toBe('pending_orders');
     expect(completed[0]?.partition).toBe('completed_orders');
     expect(pending[0]?.orderId).not.toBe(completed[0]?.orderId);
+    const dupPending = [basePurchase({ orderId: 'ORD-DUP', paymentStatus: 'pending', partition: 'pending_orders' })];
+    const dupCompleted = [basePurchase({ orderId: 'ORD-DUP', paymentStatus: 'approved', partition: 'completed_orders' })];
+    const dupConflicts = partitionHasConflict(dupPending, dupCompleted);
+    expect(dupConflicts.has('ORD-DUP')).toBe(true);
   });
 
-  it('flags the same order id in both partitions as a partition conflict', () => {
-    const pending = [basePurchase({ orderId: 'ORD-DUP', paymentStatus: 'pending', partition: 'pending_orders' })];
-    const completed = [basePurchase({ orderId: 'ORD-DUP', paymentStatus: 'approved', partition: 'completed_orders' })];
-    const conflicts = partitionHasConflict(pending, completed);
-    expect(conflicts.has('ORD-DUP')).toBe(true);
-  });
-
-  it('detects conflicting non-null authority instead of picking by source priority', () => {
+  it('two-record reconciliation keeps agreement confident, treats null as freshness, prefers backend over stale notes, and conflicts on disagreed authority', () => {
     const current = basePurchase({ paymentStatus: 'pending', grandTotal: 149.9 });
     const incoming = basePurchase({ paymentStatus: 'approved', grandTotal: 149.9 });
     const fields = detectConflictingFields(current, incoming);
@@ -123,39 +120,26 @@ describe('S08 purchase reconciliation preserves identity and provenance', () => 
       expect(outcome.canonical.paymentStatus).toBeNull();
       expect(outcome.orderId).toBe('ORD-000880');
     }
-  });
-
-  it('keeps agreeing records confident with per-field provenance', () => {
-    const current = basePurchase({ paymentStatus: 'pending' });
-    const incoming = basePurchase({ paymentStatus: 'pending', shippingStatus: 'enroute' });
-    const outcome = reconcileTwoRecords(
-      current,
+    const agreeCurrent = basePurchase({ paymentStatus: 'pending' });
+    const agreeIncoming = basePurchase({ paymentStatus: 'pending', shippingStatus: 'enroute' });
+    const agreeOutcome = reconcileTwoRecords(
+      agreeCurrent,
       'orders',
       'pending_orders',
-      incoming,
+      agreeIncoming,
       'gift_purchases',
       'pending_orders',
     );
-    expect(outcome.status).toBe('ok');
-    if (outcome.status === 'ok') {
-      expect(outcome.canonical.paymentStatus).toBe('pending');
-      expect(outcome.provenance['paymentStatus']?.source).toBeDefined();
+    expect(agreeOutcome.status).toBe('ok');
+    if (agreeOutcome.status === 'ok') {
+      expect(agreeOutcome.canonical.paymentStatus).toBe('pending');
+      expect(agreeOutcome.provenance['paymentStatus']?.source).toBeDefined();
     }
-  });
-
-  it('treats null against a value as freshness, not a conflict', () => {
-    const current = basePurchase({ paymentMethod: null });
-    const incoming = basePurchase({ paymentMethod: 'Yape_o_Plin' });
-    expect(detectConflictingFields(current, incoming)).toEqual([]);
-  });
-
-  it('lets current backend status win over a stale test note, never over equal authority', () => {
+    const freshCurrent = basePurchase({ paymentMethod: null });
+    const freshIncoming = basePurchase({ paymentMethod: 'Yape_o_Plin' });
+    expect(detectConflictingFields(freshCurrent, freshIncoming)).toEqual([]);
     const backend = basePurchase({ paymentStatus: 'approved' });
     expect(resolveAgainstStaleNote(backend, 'pending note').paymentStatus).toBe('approved');
-    const equalA = basePurchase({ paymentStatus: 'pending' });
-    const equalB = basePurchase({ paymentStatus: 'approved' });
-    const outcome = reconcileTwoRecords(equalA, 'orders', 'pending_orders', equalB, 'gift_purchases', 'completed_orders');
-    expect(outcome.status).toBe('conflict');
   });
 
   it('never treats reported amounts, time or currency as settlement evidence', () => {
@@ -178,7 +162,7 @@ describe('S08 purchase reconciliation preserves identity and provenance', () => 
     expect(resolveTransactionReference(missing, true)).toBeNull();
   });
 
-  it('orchestrator marks equally authoritative status disagreement as inconsistent without confident status', async () => {
+  it('orchestrator preserves each source status and marks equally authoritative disagreement inconsistent', async () => {
     const gateway = new FakeGateway();
     gateway.guestOrdersResult = {
       status: 'success',
@@ -221,12 +205,14 @@ describe('S08 purchase reconciliation preserves identity and provenance', () => 
     for (const result of execution.results) {
       expect(result).toMatchObject({ status: 'completed', coverage: 'inconsistent' });
       if (result.status === 'completed' && result.kind === 'purchase') {
-        expect(result.purchases[0]?.paymentStatus).toBeNull();
+        expect(result.purchases[0]?.paymentStatus).toBe(
+          result.requestId === 'order-summary-conflict' ? 'pending' : 'approved',
+        ); // Preserve source-specific facts alongside inconsistency evidence.
       }
     }
   });
 
-  it('orchestrator keeps Martha multi-record selection from order mappings with empty guest events', async () => {
+  it('orchestrator keeps multi-record order and gift reads with factual counts and no forced selection', async () => {
     const gateway = new FakeGateway();
     gateway.guestOrdersResult = {
       status: 'success',
@@ -269,23 +255,20 @@ describe('S08 purchase reconciliation preserves identity and provenance', () => 
     if (result?.status === 'completed' && result.kind === 'purchase') {
       expect(result.purchases).toHaveLength(2);
     }
-  });
-
-  it('orchestrator serves an authorized gift read for dedication selection without coercing carts', async () => {
-    const gateway = new FakeGateway();
+    const giftGateway = new FakeGateway();
     const first = { ...basePurchase({ orderId: 'ORD-J-1', eventName: 'Chiara Vittoria', eventDate: '2026-09-10' }) };
     const second = { ...basePurchase({ orderId: 'ORD-J-2', eventName: 'Chiara Vittoria', eventDate: '2026-08-10' }) };
-    gateway.guestGiftResult = {
+    giftGateway.guestGiftResult = {
       status: 'success',
       resource: 'gift_purchases',
       purchases: [first, second],
     };
-    const orchestrator = new InformationOrchestrator({
+    const giftOrchestrator = new InformationOrchestrator({
       knowledgeGateway: { async search() { throw new Error('unused'); } },
       providerGateway: {} as ProviderGateway,
-      agentGateway: gateway,
+      agentGateway: giftGateway,
     });
-    const execution = await orchestrator.execute({
+    const giftExecution = await giftOrchestrator.execute({
       requests: [{
         requestId: 'joaquin-gift-read',
         kind: 'purchase',
@@ -298,13 +281,11 @@ describe('S08 purchase reconciliation preserves identity and provenance', () => 
       authBlock: null,
       trustedPhone: { phone_extension: '+51', phone_number: '926857444' },
     });
-    const result = execution.results[0];
-    // Contract revision (Lane B count-driven selection): multiplicity
-    // alone sets no selection flag; both records stay with factual count.
-    expect(result).toMatchObject({ status: 'completed', needsSelection: false });
-    if (result?.status === 'completed' && result.kind === 'purchase') {
-      expect(result.purchases).toHaveLength(2);
-      expect(result.carts ?? []).toEqual([]);
+    const giftResult = giftExecution.results[0];
+    expect(giftResult).toMatchObject({ status: 'completed', needsSelection: false });
+    if (giftResult?.status === 'completed' && giftResult.kind === 'purchase') {
+      expect(giftResult.purchases).toHaveLength(2);
+      expect(giftResult.carts ?? []).toEqual([]);
     }
   });
 });
@@ -461,16 +442,13 @@ describe('E requested reference falls back to bare query text', () => {
     });
   }
 
-  it('narrows a bare COD query to the single matching record', async () => {
+  it('a bare COD query narrows to the single match or keeps every candidate when none match', async () => {
     const execution = await runQuery(referenceGateway(), 'COD301816', null);
     const result = execution.results[0];
     expect(result).toMatchObject({ status: 'completed', referenceResolution: 'matched' });
     if (result?.status === 'completed' && result.kind === 'purchase') {
       expect(result.purchases.map((purchase) => purchase.eventName)).toEqual(['Evento de prueba A']);
     }
-  });
-
-  it('keeps every candidate with selection when a bare COD query matches none', async () => {
     const gateway = new FakeGateway();
     const noRefA = { ...basePurchase({ orderId: 'order-s13-multiple-a-01', eventName: 'Evento de prueba A', paymentStatus: 'pending', customerTransactionNumber: null }) };
     const noRefB = { ...basePurchase({ orderId: 'order-s13-multiple-b-01', eventName: 'Evento de prueba B', paymentStatus: 'approved', customerTransactionNumber: null }) };
@@ -481,11 +459,11 @@ describe('E requested reference falls back to bare query text', () => {
       carts: [],
       purchases: [noRefA, noRefB],
     };
-    const execution = await runQuery(gateway, 'COD301816', null);
-    const result = execution.results[0];
-    expect(result).toMatchObject({ status: 'completed', needsSelection: true, referenceResolution: 'unavailable' });
-    if (result?.status === 'completed' && result.kind === 'purchase') {
-      expect(result.purchases).toHaveLength(2);
+    const missExecution = await runQuery(gateway, 'COD301816', null);
+    const missResult = missExecution.results[0];
+    expect(missResult).toMatchObject({ status: 'completed', needsSelection: true, referenceResolution: 'unavailable' });
+    if (missResult?.status === 'completed' && missResult.kind === 'purchase') {
+      expect(missResult.purchases).toHaveLength(2);
     }
   });
 });
@@ -514,7 +492,7 @@ describe('approval boundary: receipt amount alone never proves approval', () => 
     };
   }
 
-  it('a completed purchase outcome settles the boundary with or without receipt context', () => {
+  it('completed outcomes, scoped misses, receipt context, and gift results settle the approval boundary', () => {
     expect(isApprovalBoundaryAnsweredByRecord({
       informationResults: [completedPurchase('a')],
       receiptContext: false,
@@ -523,9 +501,6 @@ describe('approval boundary: receipt amount alone never proves approval', () => 
       informationResults: [completedPurchase('a')],
       receiptContext: true,
     })).toBe(true);
-  });
-
-  it('a scoped read that found nothing settles the boundary only with receipt context', () => {
     expect(isApprovalBoundaryAnsweredByRecord({
       informationResults: [failedPurchase()],
       receiptContext: true,
@@ -534,9 +509,6 @@ describe('approval boundary: receipt amount alone never proves approval', () => 
       informationResults: [failedPurchase()],
       receiptContext: false,
     })).toBe(false);
-  });
-
-  it('an established receipt boundary settles without any purchase read so no follow-up is asked', () => {
     // Native receipt turn: the visible amount already establishes that a
     // receipt alone proves nothing, so the approval-versus-review ambiguity
     // is answered from receipt guidance instead of a redundant question.
@@ -548,28 +520,6 @@ describe('approval boundary: receipt amount alone never proves approval', () => 
       informationResults: [],
       receiptContext: false,
     })).toBe(false);
-  });
-});
-
-describe('B receipt discovery keeps competing records and settles from either source', () => {
-  it('retains two same-amount cross-source records without auto-picking one', () => {
-    // Contract revision (Lane C F2): the count=>selection helper is
-    // deleted with no src callers. Same amount alone never proves
-    // identity; multiplicity alone asserts no selection flag. Retention
-    // through production code is proven at the orchestrator level
-    // (discovery and same-amount service tests); this keeps the
-    // record-identity fixture honest without the helper.
-    const candidates = [
-      basePurchase({ orderId: 'ORD-DISC-1', paymentStatus: 'pending', grandTotal: 340.44 }),
-      basePurchase({ orderId: 'GIFT-DISC-7', paymentStatus: 'approved', grandTotal: 340.44 }),
-    ];
-    expect(candidates.map((purchase) => purchase.orderId).sort()).toEqual(
-      ['GIFT-DISC-7', 'ORD-DISC-1'],
-    );
-    expect(candidates).toHaveLength(2);
-  });
-
-  it('settles the approval boundary from a completed gift result as well as from orders', () => {
     const completedGift: InformationTaskResult = {
       requestId: 'req-gift',
       kind: 'purchase',

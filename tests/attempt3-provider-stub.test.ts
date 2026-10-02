@@ -1,66 +1,60 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { FixtureAgentConversationGateway } from '../src/runtime/eval-fixture-gateway';
 import type { AgentAuthByPhoneInput } from '../src/runtime/agent-conversation-gateway';
 
 describe('fixture provider stub and phone key normalization', () => {
-  it('resolveFixtureValue probes national, ext:national, concatenated in order - national wins', async () => {
-    const data = {
-      guestOrders: {
-        '981056171': { pending_orders: [{ id: 'order-national', increment_id: '1', payment_status: 'pending', grand_total: 10, event_name: 'National' }], completed_orders: [], carts: [] },
-        '+51:981056171': { pending_orders: [{ id: 'order-ext', increment_id: '2', payment_status: 'pending', grand_total: 20, event_name: 'Ext' }], completed_orders: [], carts: [] },
-        '51981056171': { pending_orders: [{ id: 'order-concat', increment_id: '3', payment_status: 'pending', grand_total: 30, event_name: 'Concat' }], completed_orders: [], carts: [] },
-      },
-    };
-    const gateway = FixtureAgentConversationGateway.createSync('probe-order', data, new Set(['probe-order']));
+  it('resolveFixtureValue probes national, ext:national, concatenated in order', async () => {
+    const order = (id: string, increment_id: string, grand_total: number, event_name: string) => ({
+      pending_orders: [{ id, increment_id, payment_status: 'pending' as const, grand_total, event_name }],
+      completed_orders: [],
+      carts: [],
+    });
     const phone: AgentAuthByPhoneInput = { phone_extension: '+51', phone_number: '981056171' };
-    const result = await gateway.getGuestOrdersByPhone(phone);
-    expect(result.status).toBe('success');
-    if (result.status === 'success') {
-      expect(result.purchases[0]?.eventName).toBe('National');
+    // National wins when every form is present.
+    const allForms = FixtureAgentConversationGateway.createSync('probe-order', {
+      guestOrders: {
+        '981056171': order('order-national', '1', 10, 'National'),
+        '+51:981056171': order('order-ext', '2', 20, 'Ext'),
+        '51981056171': order('order-concat', '3', 30, 'Concat'),
+      },
+    }, new Set(['probe-order']));
+    const national = await allForms.getGuestOrdersByPhone(phone);
+    expect(national.status).toBe('success');
+    if (national.status === 'success') {
+      expect(national.purchases[0]?.eventName).toBe('National');
     }
-  });
-
-  it('resolveFixtureValue falls back to ext:national when national missing', async () => {
-    const data = {
+    // Falls back to ext:national when national is missing.
+    const extForms = FixtureAgentConversationGateway.createSync('probe-ext', {
       guestOrders: {
-        '+51:981056171': { pending_orders: [{ id: 'order-ext', increment_id: '2', payment_status: 'pending', grand_total: 20, event_name: 'Ext' }], completed_orders: [], carts: [] },
-        '51981056171': { pending_orders: [{ id: 'order-concat', increment_id: '3', payment_status: 'pending', grand_total: 30, event_name: 'Concat' }], completed_orders: [], carts: [] },
+        '+51:981056171': order('order-ext', '2', 20, 'Ext'),
+        '51981056171': order('order-concat', '3', 30, 'Concat'),
       },
-    };
-    const gateway = FixtureAgentConversationGateway.createSync('probe-ext', data, new Set(['probe-ext']));
-    const phone: AgentAuthByPhoneInput = { phone_extension: '+51', phone_number: '981056171' };
-    const result = await gateway.getGuestOrdersByPhone(phone);
-    expect(result.status).toBe('success');
-    if (result.status === 'success') {
-      expect(result.purchases[0]?.eventName).toBe('Ext');
+    }, new Set(['probe-ext']));
+    const ext = await extForms.getGuestOrdersByPhone(phone);
+    expect(ext.status).toBe('success');
+    if (ext.status === 'success') {
+      expect(ext.purchases[0]?.eventName).toBe('Ext');
     }
-  });
-
-  it('resolveFixtureValue falls back to concatenated when others missing', async () => {
-    const data = {
+    // Falls back to concatenated when the other forms are missing.
+    const concatForms = FixtureAgentConversationGateway.createSync('probe-concat', {
       guestOrders: {
-        '51981056171': { pending_orders: [{ id: 'order-concat', increment_id: '3', payment_status: 'pending', grand_total: 30, event_name: 'Concat' }], completed_orders: [], carts: [] },
+        '51981056171': order('order-concat', '3', 30, 'Concat'),
       },
-    };
-    const gateway = FixtureAgentConversationGateway.createSync('probe-concat', data, new Set(['probe-concat']));
-    const phone: AgentAuthByPhoneInput = { phone_extension: '+51', phone_number: '981056171' };
-    const result = await gateway.getGuestOrdersByPhone(phone);
-    expect(result.status).toBe('success');
-    if (result.status === 'success') {
-      expect(result.purchases[0]?.eventName).toBe('Concat');
+    }, new Set(['probe-concat']));
+    const concat = await concatForms.getGuestOrdersByPhone(phone);
+    expect(concat.status).toBe('success');
+    if (concat.status === 'success') {
+      expect(concat.purchases[0]?.eventName).toBe('Concat');
     }
     expect(`${phone.phone_extension.replace(/\D/gu, '')}${phone.phone_number}`).toBe('51981056171');
-  });
-
-  it('realistic split form and concatenated both resolve fixture keyed by concatenated', async () => {
-    const data = {
+    // A realistic split form also resolves a concatenated-keyed fixture.
+    const claudia = FixtureAgentConversationGateway.createSync('claudia-concat', {
       guestOrders: {
-        '51957212085': { pending_orders: [{ id: 'order-claudia', increment_id: '100000085', payment_status: 'pending', grand_total: 1042.89, event_name: 'Claudia and Luis Felipe' }], completed_orders: [], carts: [] },
+        '51957212085': order('order-claudia', '100000085', 1042.89, 'Claudia and Luis Felipe'),
       },
-    };
-    const gateway = FixtureAgentConversationGateway.createSync('claudia-concat', data, new Set(['claudia-concat']));
+    }, new Set(['claudia-concat']));
     const realistic: AgentAuthByPhoneInput = { phone_extension: '+51', phone_number: '957212085' };
-    const resultRealistic = await gateway.getGuestOrdersByPhone(realistic);
+    const resultRealistic = await claudia.getGuestOrdersByPhone(realistic);
     expect(resultRealistic.status).toBe('success');
     if (resultRealistic.status === 'success') {
       expect(resultRealistic.purchases[0]?.eventName).toBe('Claudia and Luis Felipe');
@@ -111,45 +105,4 @@ describe('fixture provider stub and phone key normalization', () => {
     expect(resultExt.status === 'success' || resultExt.status === 'failed').toBe(true);
   });
 
-  it('provider stub under fixture marker returns empty context without outbound call', async () => {
-    // Simulate the handler fixtureProviderGateway stub: lookupUserEventContext should return empty without fetch
-    const fetchSpy = vi.spyOn(globalThis, 'fetch');
-    // Create a mock provider gateway that would call fetch if not stubbed
-    const mockProviderGateway = {
-      lookupUserEventContext: vi.fn(async () => {
-        // If this were called without stub, it would attempt fetch
-        await globalThis.fetch('https://example.com/provider');
-        return { lookup: { phone: '981056171' }, user: null, events: [{ relation: 'guest', guestId: 999, eventId: 1, name: 'Fake' } as unknown], counts: { ownerEvents: 0, guestEvents: 1, hostEvents: 0, celebratedEvents: 0, recentOrders: 0 } };
-      }),
-    };
-    // Our stub should override to return empty and not call fetch
-    const stubbedGateway = {
-      lookupUserEventContext: async (input: unknown) => {
-        return {
-          lookup: input,
-          user: null,
-          events: [],
-          counts: { ownerEvents: 0, guestEvents: 0, hostEvents: 0, celebratedEvents: 0, recentOrders: 0 },
-        };
-      },
-    };
-    const result = await stubbedGateway.lookupUserEventContext({ phone: '981056171' } as unknown);
-    expect(result.events.length).toBe(0);
-    expect(result.user).toBeNull();
-    expect(mockProviderGateway.lookupUserEventContext).not.toHaveBeenCalled();
-    expect(fetchSpy).not.toHaveBeenCalled();
-  });
-
-  it('production path without marker would call real provider gateway', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch');
-    // In production, the provider gateway is the real one; we simulate that it would be called
-    // Here we just verify that a non-stubbed gateway would be used when no marker present
-    // The test ensures we don't accidentally stub production
-    const realGateway = {
-      lookupUserEventContext: vi.fn(async (input: unknown) => { void input; return { lookup: { phone: 'x' }, user: null, events: [], counts: { ownerEvents: 0, guestEvents: 0, hostEvents: 0, celebratedEvents: 0, recentOrders: 0 } }; }),
-    };
-    await realGateway.lookupUserEventContext({ phone: '981056171' } as unknown as never);
-    expect(realGateway.lookupUserEventContext).toHaveBeenCalledTimes(1);
-    expect(fetchSpy).not.toHaveBeenCalled(); // not calling fetch in this mock, but would in real
-  });
 });

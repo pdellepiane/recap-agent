@@ -27,7 +27,7 @@ describe('permanent quota cascade stop (Finding 4)', () => {
     expect(alreadyStopped).toEqual({ stopped: true, reason: 'sigint' });
   });
 
-  it('stops scheduling new paid work while preserving completed partial results', async () => {
+  it('stops new paid work while preserving partial results as infrastructure errors', async () => {
     const stopSignal = { stopped: false, reason: null as SchedulerStopReason };
     const executed: string[] = [];
     const outcome = await runBoundedPipeline<string, string>({
@@ -85,11 +85,9 @@ describe('permanent quota cascade stop (Finding 4)', () => {
     expect(executed).not.toContain('unadmitted');
     expect(outcome.progress.complete).toBe(true);
     expect(outcome.progress.stopReason).toBe('quota_exhausted');
-  });
-
-  it('records quota-stopped admissions as infrastructure errors without semantic verdicts', async () => {
-    const stopSignal = { stopped: true, reason: 'quota_exhausted' as SchedulerStopReason };
-    const outcome = await runBoundedPipeline<string, string>({
+    // Quota-stopped admissions record infrastructure errors without semantic verdicts.
+    const stoppedSignal = { stopped: true, reason: 'quota_exhausted' as SchedulerStopReason };
+    const stopped = await runBoundedPipeline<string, string>({
       jobs: [
         {
           index: 0,
@@ -101,11 +99,11 @@ describe('permanent quota cascade stop (Finding 4)', () => {
       ],
       caseConcurrency: 1,
       judgeConcurrency: 1,
-      stopSignal,
+      stopSignal: stoppedSignal,
       drainMs: 1_000,
     });
-    expect(outcome.results).toHaveLength(1);
-    const entry = outcome.results[0];
+    expect(stopped.results).toHaveLength(1);
+    const entry = stopped.results[0];
     expect(entry?.status).toBe('error');
     if (entry?.status === 'error') {
       expect(entry.error).toMatch(/incomplete:/i);

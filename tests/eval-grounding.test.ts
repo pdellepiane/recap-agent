@@ -33,13 +33,11 @@ function recommendationTurn(args: {
 }
 
 describe('deterministic grounding assessment', () => {
-  it('passes a recommendation backed by matching structured evidence', () => {
-    const result = assessGrounding(recommendationTurn({ providerId: 10 }));
-    expect(result.grounded).toBe(true);
-    expect(result.verifiedProviderCount).toBe(1);
-  });
+  it('grounds recommendations only against matching structured evidence', () => {
+    const grounded = assessGrounding(recommendationTurn({ providerId: 10 }));
+    expect(grounded.grounded).toBe(true);
+    expect(grounded.verifiedProviderCount).toBe(1);
 
-  it('fails missing provider evidence and attribute mismatches', () => {
     const missing = assessGrounding(
       recommendationTurn({ providerId: 10, evidenceProviderId: 11 }),
     );
