@@ -580,7 +580,8 @@ describe('AgentService first-class information flow', () => {
   const hostKnowledge = () => {
     const gateway = new FakeKnowledgeGateway();
     const search = vi.spyOn(gateway, 'search').mockResolvedValue({ status: 'success', evidence: [{
-      fileId: 'host-policy', filename: 'atc-template-new-solicitud-de-fondos.md', score: 0.9,
+      fileId: 'host-policy', filename: 'donde-va-el-dinero.md', score: 0.9,
+      fullArticle: true, sourceUrl: 'https://sinenvolturas.tawk.help/article/donde-va-el-dinero',
       text: 'template_status: "Vigente"\nLas solicitudes se procesan en hasta 72 horas hábiles.\nComisión USD5. Retiro recibido mañana. Cuenta privada.',
     }] });
     return { gateway, search };
@@ -3252,7 +3253,8 @@ it('R4 merges provide_detail into a unique pending withdrawal but keeps ambiguou
   }]);
   const knowledge = new FakeKnowledgeGateway();
   const search = vi.spyOn(knowledge, 'search').mockResolvedValue({ status: 'success', evidence: [{
-    fileId: 'host-policy', filename: 'atc-template-new-solicitud-de-fondos.md', score: 0.9,
+    fileId: 'host-policy', filename: 'donde-va-el-dinero.md', score: 0.9,
+      fullArticle: true, sourceUrl: 'https://sinenvolturas.tawk.help/article/donde-va-el-dinero',
     text: 'template_status: "Vigente"\nLas solicitudes se procesan en hasta 72 horas hábiles.',
   }] });
   const gateway = new FakePurchaseGateway();

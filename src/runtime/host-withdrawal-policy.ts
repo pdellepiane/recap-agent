@@ -9,12 +9,10 @@ export function parseHostWithdrawalPolicy(evidence: KnowledgeEvidence[]): {
   evidence: KnowledgeEvidence[];
 } {
   const candidates = evidence.filter((entry) =>
-    entry.filename === 'atc-template-new-solicitud-de-fondos.md');
+    entry.filename === 'donde-va-el-dinero.md' && entry.fullArticle === true &&
+    entry.sourceUrl === 'https://sinenvolturas.tawk.help/article/donde-va-el-dinero');
   const facts = candidates.flatMap((entry) => {
     const normalized = entry.text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
-    // Factual-only supplemental format carries provenance as
-    // `Estado: Vigente`; legacy indexed files carry `template_status`.
-    if (!/\b(template_status|estado)\s*:\s*["']?vigente\b/u.test(normalized)) return [];
     const matches = [...normalized.matchAll(/las solicitudes se procesan en hasta\s+(\d+)\s*horas\s+habiles/gu)];
     return matches.map((match) => ({ hours: Number(match[1]), entry }));
   });

@@ -1,13 +1,12 @@
 template: template.base-live
 id: live.faq_kb_sources_official_and_atc
 suite: live_faq_kb_sources
-version: 3
-description: FAQ retrieval should answer from both official Tawk.to FAQ content and ATC suggested-response/template snippets without provider search. Extended with a gift-damage claim follow-up and a thanks closure.
+version: 4
+description: FAQ retrieval answers public commission and gift-claim questions from official Tawk FAQ articles without provider search. Raw ATC response templates are excluded. Includes a gift-damage follow-up and a thanks closure.
 tags:
   - live
   - faq
   - knowledge-base
-  - atc-template
 inputs:
   - text: "Necesito dos datos de FAQ: ¿qué comisión cobra Sin Envolturas si un invitado paga con tarjeta? Además, si tengo un problema con un regalo de mi web, ¿estoy obligado a comprarlo o debo reclamar con la marca?"
   - text: El regalo de un invitado llegó dañado, ¿reclamo con la marca o con ustedes?
@@ -39,7 +38,7 @@ expectations:
       - '0\.40 USD \+ IGV\s*/\s*IVA'
     turnIndex: 0
     severity: hard
-  - id: atc-template-gift-claim-signal
+  - id: official-faq-gift-claim-signal
     type: text_contains
     regex:
       - '(?:[Nn]o\s+(?:est[áa]s|est[aá]|hay|tienes|debes|te\s+corresponde)|[Nn]o\s+es|[Ss]in\s+obligaci[oó]n)[^.!?\n]*(?:obligad[oa]|obligatori[oa]|compr(?:ar|arlo)?|adquirir|hacer\s+la\s+compra|realizar\s+la\s+compra|regalo)'
@@ -84,4 +83,5 @@ expectations:
     maxTurns: 3
     maxToolCalls: 6
 notes:
+  - "2026-10-02 audit: source contract now excludes raw ATC response samples; historical case ID retained to preserve run references."
   - "SUPPORT lane merge surgery 2026-09-30: extended 1 to 3 turns with a gift-damage claim follow-up and a thanks closure; existing expectations pinned to turn 0; turn 0 semantic now requires the judge."

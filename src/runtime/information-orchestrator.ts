@@ -1010,7 +1010,8 @@ export class InformationOrchestrator {
           const parsed = parseHostWithdrawalPolicy(retrieval.evidence);
           return {
             requestId: request.requestId, kind: 'faq', status: 'completed',
-            evidence: parsed.evidence, hostWithdrawalPolicy: parsed.policy,
+            evidence: parsed.policy ? parsed.evidence : retrieval.evidence, hostWithdrawalPolicy: parsed.policy,
+            citationUrl: firstFullArticleSourceUrl(retrieval.evidence),
             openAiTransport: retrieval.openAiTransport,
           };
         }

@@ -134,6 +134,13 @@ describe('host withdrawal minimum disclosure and role correction', () => {
         text: 'Raw operational example: account 123; USD5 fee; payment approved; delivery tomorrow.' }] });
     expect(policy).toEqual({ requestId: 'host', kind: 'faq', status: 'completed', subject: 'host_withdrawal',
       processingPolicy: { maxBusinessHours: 72 }, individualStatus: 'not_available' });
+    const unsupportedWindow = runtime.projectInformationResultForReply({
+      requestId: 'host', kind: 'faq', status: 'completed', hostWithdrawalPolicy: null,
+      evidence: [{ fileId: 'official', filename: 'donde-va-el-dinero.md', score: 1,
+        text: 'Los fondos se mantienen hasta que el anfitrión solicita su retiro.' }],
+    }) as Record<string, unknown>;
+    expect(unsupportedWindow).not.toHaveProperty('processingPolicy');
+    expect(JSON.stringify(unsupportedWindow)).toContain('hasta que el anfitrión solicita su retiro');
     expect(Buffer.byteLength(JSON.stringify(policy))).toBeLessThan(210);
     expect(JSON.stringify(policy)).not.toMatch(/Raw|123|USD5|approved|tomorrow|evidence|private/u);
   });

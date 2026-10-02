@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   OpenAiKnowledgeRetrievalGateway,
+  FixtureKnowledgeRetrievalGateway,
   projectFullArticleForEvidence,
 } from '../src/runtime/knowledge-retrieval-gateway';
 
@@ -60,6 +61,10 @@ describe('OpenAiKnowledgeRetrievalGateway', () => {
     expect(call?.[0]).toBe('vs_faq');
     expect(call?.[1]).toEqual({
       query: '¿Cuánto cobra Sin Envolturas por una lista de regalos?',
+      filters: { type: 'and', filters: [
+        { type: 'ne', key: 'source', value: 'notion_customer_service_templates' },
+        { type: 'ne', key: 'source_kind', value: 'response_sample' },
+      ] },
       max_num_results: 4,
       rewrite_query: true,
       ranking_options: {
@@ -183,14 +188,14 @@ describe('OpenAiKnowledgeRetrievalGateway', () => {
   it('keeps chunks when expansion is unavailable or unsafe', async () => {
     {
       const articlesDir = snapshotWith(
-        [{ slug: 'cuanto-cuesta', title: 'Cuesta', body: 'Cuerpo.' }],
+        [{ slug: 'vigencia-evento', title: 'Cuesta', body: 'Cuerpo.' }],
         'kb-batch-1',
       );
       const search = vi.fn(async () => ({
         data: [
           {
             file_id: 'file-top',
-            filename: 'cuanto-cuesta.md',
+            filename: 'vigencia-evento.md',
             score: 0.7,
             content: [{ type: 'text', text: 'Texto parcial.' }],
           },
@@ -259,6 +264,26 @@ describe('OpenAiKnowledgeRetrievalGateway', () => {
       expect(evidence[1]?.text).toBe('Chunk huérfano.');
       expect(evidence[1]?.fullArticle).toBeUndefined();
     }
+  });
+
+  it('preserves the official citation for a first-ranked commission article below a score threshold', async () => {
+    const articlesDir = snapshotWith([
+      { slug: 'cuanto-cuesta', title: 'Comisiones', body: 'Tabla oficial.' },
+      { slug: 'cuanto-cuesta-invitados', title: 'Invitados', body: 'Ejemplo oficial.' },
+    ], 'kb-batch-1');
+    const search = vi.fn(async () => ({ data: [
+      { file_id: 'host', filename: 'cuanto-cuesta.md', score: 0.7998310192463652, content: [{ type: 'text', text: 'Chunk.' }] },
+      { file_id: 'guest', filename: 'cuanto-cuesta-invitados.md', score: 0.7615131717837881, content: [{ type: 'text', text: 'Chunk.' }] },
+    ] }));
+    const result = await gatewayWith({ search, list: storeFiles(['kb-batch-1']), articlesDir }).search('comisión para 50 soles');
+    expect(result.status).toBe('success');
+    if (result.status !== 'success') throw new Error('Retrieval failed');
+    expect(result.evidence.map((entry) => entry.sourceUrl)).toEqual(expect.arrayContaining([
+      'https://sinenvolturas.tawk.help/article/cuanto-cuesta',
+      'https://sinenvolturas.tawk.help/article/cuanto-cuesta-invitados',
+    ]));
+    expect(result.evidence).toHaveLength(2);
+    expect(result.evidence.every((entry) => entry.fullArticle)).toBe(true);
   });
 
   it('retries the batch check after a list failure instead of caching it', async () => {
@@ -388,6 +413,33 @@ describe('OpenAiKnowledgeRetrievalGateway', () => {
       const evidence = result.status === 'success' ? result.evidence : [];
       expect(evidence[0]?.fullArticle).toBeUndefined();
     }
+  });
+
+  it('excludes case-specific replies even when they outrank the official FAQ', async () => {
+    const sample = { score: 1, content: [{ type: 'text', text: 'Tu regalo ya está validado.' }] };
+    const search = vi.fn(async () => ({ data: [
+      { ...sample, file_id: 'tagged', filename: 'otherwise-normal.md', attributes: { source: 'notion_customer_service_templates' } },
+      { ...sample, file_id: 'legacy', filename: 'atc-template-validacion.md' },
+      { ...sample, file_id: 'response', filename: 'sample.md', attributes: { source_kind: 'response_sample' } },
+      { file_id: 'official', filename: 'validacion.md', score: 0.8, attributes: { source: 'recap-agent-knowledge-sync' }, content: [{ type: 'text', text: 'La validación requiere verificación.' }] },
+      { file_id: 'helper', filename: 'helper-document.txt', score: 0.7, attributes: { source: 'recap-agent-faq-helper' }, content: [{ type: 'text', text: 'Documento publicado por el equipo.' }] },
+    ] }));
+    const result = await gatewayWith({ search }).search('¿Ya validaron mi regalo?');
+    expect(result.status).toBe('success');
+    if (result.status !== 'success') throw new Error('Retrieval failed');
+    expect(result.evidence.map((entry) => entry.fileId)).toEqual(['official', 'helper']);
+    expect(result.evidence.some((entry) => entry.text.includes('ya está validado'))).toBe(false);
+  });
+
+  it('also excludes legacy template passages from fixture model input', async () => {
+    const gateway = new FixtureKnowledgeRetrievalGateway([
+      { filename: 'atc-template-validacion.md', text: 'Ya validamos tu pago.', score: 1 },
+      { filename: 'faq.md', text: 'La validación requiere verificación.', score: 0.8 },
+    ]);
+    const result = await gateway.search('validación');
+    expect(result.status).toBe('success');
+    if (result.status !== 'success') throw new Error('Retrieval failed');
+    expect(result.evidence.map((entry) => entry.filename)).toEqual(['faq.md']);
   });
 
   it('returns a retryable failure without exposing query content', async () => {

@@ -4671,7 +4671,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       return this.stripRawFields(facts);
     }
     if (result.status === 'completed' && result.kind === 'faq') {
-      if (result.hostWithdrawalPolicy !== undefined) {
+      if (result.hostWithdrawalPolicy != null) {
         return {
           requestId: result.requestId, kind: result.kind, status: result.status,
           subject: 'host_withdrawal',

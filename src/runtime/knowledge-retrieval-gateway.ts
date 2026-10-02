@@ -48,6 +48,18 @@ export type FixtureKnowledgePassage = {
   score?: number;
 };
 
+/** Raw historical replies are audit material, never knowledge evidence. */
+export const ATC_TEMPLATE_SOURCE = 'notion_customer_service_templates';
+
+function isResponseSample(result: {
+  filename: string;
+  attributes?: Record<string, string | number | boolean> | null;
+}): boolean {
+  return result.attributes?.source === ATC_TEMPLATE_SOURCE ||
+    result.attributes?.source_kind === 'response_sample' ||
+    result.filename.startsWith('atc-template-');
+}
+
 /**
  * Offline fixture KB gateway. Serves canned passages ranked by score
  * (declared order wins ties) as success evidence with stable fixture file
@@ -60,7 +72,7 @@ export class FixtureKnowledgeRetrievalGateway implements KnowledgeRetrievalGatew
   async search(query: string, options?: { rewriteQuery: boolean }): Promise<KnowledgeRetrievalResult> {
     void query;
     void options;
-    const ranked = [...this.passages].sort((a, b) => (b.score ?? 1) - (a.score ?? 1));
+    const ranked = this.passages.filter((passage) => !isResponseSample(passage)).sort((a, b) => (b.score ?? 1) - (a.score ?? 1));
     return {
       status: 'success',
       evidence: ranked.map((passage, index) => ({
@@ -237,6 +249,13 @@ export class OpenAiKnowledgeRetrievalGateway implements KnowledgeRetrievalGatewa
             this.options.vectorStoreId,
             {
               query,
+              filters: {
+                type: 'and',
+                filters: [
+                  { type: 'ne', key: 'source', value: ATC_TEMPLATE_SOURCE },
+                  { type: 'ne', key: 'source_kind', value: 'response_sample' },
+                ],
+              },
               max_num_results: this.options.maxResults,
               rewrite_query: options?.rewriteQuery ?? true,
               ranking_options: {
@@ -249,9 +268,11 @@ export class OpenAiKnowledgeRetrievalGateway implements KnowledgeRetrievalGatewa
         }),
         (metrics) => { transportMetrics = metrics; },
       );
-      const page = captured.value;
+      // Revalidate returned provenance as well as filtering before ranking.
+      // Filename identity also blocks legacy exports with missing attributes.
+      const results = captured.value.data.filter((result) => !isResponseSample(result));
 
-      const evidence: KnowledgeEvidence[] = page.data.map((result) => ({
+      const evidence: KnowledgeEvidence[] = results.map((result) => ({
         fileId: result.file_id,
         filename: result.filename,
         score: result.score,
@@ -262,7 +283,7 @@ export class OpenAiKnowledgeRetrievalGateway implements KnowledgeRetrievalGatewa
           .slice(0, 6_000),
       }));
       const expanded = await this.maybeExpandFullArticle(
-        page.data.map((result) => ({
+        results.map((result) => ({
           fileId: result.file_id,
           filename: result.filename,
           score: result.score,
@@ -317,10 +338,12 @@ export class OpenAiKnowledgeRetrievalGateway implements KnowledgeRetrievalGatewa
     // follow-up amount can rank the guest page at 0.84 and the host page at
     // 0.78; losing the worked example then invites unsupported arithmetic.
     // Select this verified source pair by file identity when either article
-    // remains a strong hit. Snapshot hash and live-batch checks still apply.
+    // ranks first or remains a strong hit. Similarity scores are continuous:
+    // a first-ranked trusted article at 0.799 must not lose its provenance.
+    // Snapshot hash and live-batch checks still apply.
     const commissionFiles = new Set(['cuanto-cuesta.md', 'cuanto-cuesta-invitados.md']);
-    const commissionPairRelevant = results.some((result) =>
-      commissionFiles.has(result.filename) && result.score >= 0.8);
+    const commissionPairRelevant = (results[0] !== undefined && commissionFiles.has(results[0].filename)) ||
+      results.some((result) => commissionFiles.has(result.filename) && result.score >= 0.8);
     const seen = new Set<string>();
     const targets: Array<{ fileId: string; filename: string }> = [];
     for (const result of results) {

@@ -34,3 +34,5 @@ The earlier [30 September source fingerprint](final-source-fingerprint-2026-09-3
 ## Final consolidation
 
 The [final consolidation record](final-consolidation-2026-09-30.json) identifies the source and documentation snapshot at its September cutoff, repository checks and remaining limitations. It supersedes the earlier source fingerprint as the current working-tree inventory while preserving that fingerprint and archive as historical evidence. It is not a clean Git release or a production deployment. Current behavior coverage is 46 cases/329 hard assertions; the valid final development validation covers the seven repaired cases only.
+
+Current ATC guidance decision: [response-template audit](diagnostics/2026-10-02-atc-template-audit.md). Raw ATC replies are audit material only and are excluded from conversational evidence in the corrected development runtime.

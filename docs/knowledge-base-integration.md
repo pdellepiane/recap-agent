@@ -87,16 +87,18 @@ removed. Cleanup is paginated and source-scoped, so it replaces only
 documents in the same vector store. A bounded post-cleanup audit requires the
 expected file count, zero stale files, and zero duplicate slugs.
 
-Supplemental customer-service documents use their own source-scoped workflow:
+Raw ATC/Notion response templates are excluded from model evidence. Their export
+is retained for audit only; generation and synchronization of raw chat replies
+have been removed. Source attributes and legacy filenames are checked before
+any retrieved text enters the conversational input. Existing indexed templates
+cannot ground answers or displace official FAQs in filtered search.
 
-```bash
-npm run generate:faq-atc-kb
-npm run sync:faq-atc-kb
-```
-
-The synchronizer uploads normalized documents to the configured FAQ vector
-store and removes stale supplemental ATC files without touching unrelated FAQ
-documents.
+Authorized customer state establishes individual facts; official FAQ articles
+establish public policy. Historical templates establish neither. Any future
+ATC-derived guidance requires a separate reviewed document with explicit
+applicability and provenance, without sample replies, customer-specific
+outcomes, payment destinations or operational promises. Such guidance cannot
+override customer state, official FAQs or confirmed action receipts.
 
 The runtime never scrapes the help center during a user turn.
 

@@ -121,67 +121,6 @@ export function buildAtcTemplateIngestion(source: LocalAtcTemplateSource): AtcTe
   };
 }
 
-export function formatAtcTemplateAsSupplementalMarkdown(template: NormalizedAtcTemplate): string {
-  // S3 factual-only projection: the model-visible file carries source-backed
-  // policy facts plus provenance (source/conditions/applicability) and
-  // nothing else. Frontmatter, trigger hints, response-sample framing and
-  // bracketed alternatives stay in the source export (retrieval scoring) and
-  // never reach the prompt. General timing never proves an individual email
-  // arrival and a receipt amount never proves approval: the conditions state
-  // both so the facts cannot be over-read.
-  return [
-    `# ${template.title}`,
-    '',
-    'Entrada de conocimiento de preguntas frecuentes con hechos de política verificados.',
-    `Origen: plantilla de atención al cliente de ATC/Notion. Canal: ${template.canal}. Estado: ${template.estado}. Tipo: ${template.tipo}. Actualización: ${template.actualizacion}.`,
-    'Alcance: respuestas de chat, WhatsApp y redes sociales cuando la pregunta coincida con esta política.',
-    'Condiciones: los plazos y valores son generales de la política; nunca prueban el estado individual de un correo, retiro o pago, ni la aprobación de un comprobante.',
-    '',
-    '## Hechos de la política',
-    '',
-    stripBracketedAlternatives(template.chatResponse).trim(),
-    '',
-  ].join('\n');
-}
-
-function stripBracketedAlternatives(value: string): string {
-  return value
-    .replace(/\[[^\n[\]]*\]/gu, '')
-    .replace(/[ \t]{2,}/gu, ' ')
-    .replace(/\n{3,}/gu, '\n\n')
-    .split('\n')
-    .map((line) => line.trimEnd())
-    .join('\n');
-}
-
-export function writeAtcSupplementalKnowledgeBase(
-  ingestion: AtcTemplateIngestionResult,
-  outputDir: string,
-): string[] {
-  fs.mkdirSync(outputDir, { recursive: true });
-  const writtenFiles: string[] = [];
-
-  for (const template of ingestion.activeTemplates) {
-    const filePath = path.join(outputDir, `atc-template-${template.slug}.md`);
-    fs.writeFileSync(filePath, formatAtcTemplateAsSupplementalMarkdown(template), 'utf-8');
-    writtenFiles.push(filePath);
-  }
-
-  fs.writeFileSync(
-    path.join(outputDir, 'atc-template-quality-report.json'),
-    `${JSON.stringify({
-      activeCount: ingestion.activeTemplates.length,
-      deprecatedExcludedCount: ingestion.deprecatedExcluded.length,
-      missingTriggerTemplates: ingestion.qualityReport.missingTriggerTemplates,
-      missingMarkdownRows: ingestion.qualityReport.missingMarkdownRows,
-      missingChatSectionRows: ingestion.qualityReport.missingChatSectionRows,
-    }, null, 2)}\n`,
-    'utf-8',
-  );
-
-  return writtenFiles;
-}
-
 function resolveExportCsvPath(basePath: string): string {
   const entries = fs.readdirSync(basePath);
   const allCsv = entries.find((entry) => entry.endsWith('_all.csv'));
