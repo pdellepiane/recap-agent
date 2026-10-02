@@ -8,23 +8,27 @@
 	12pt,
 ]{CSSullivanBusinessReport}
 
-\usepackage[spanish,es-tabla]{babel}
 \usepackage{csquotes}
+\setlength{\emergencystretch}{2em}
 \usepackage{tabularx}
 \usepackage{longtable}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta, positioning, shapes.geometric, shapes.misc, fit, calc}
 
 \addbibresource{sample.bib}
+\renewcommand{\contentsname}{Índice}
+\renewcommand{\figurename}{Figura}
+\renewcommand{\tablename}{Tabla}
+\DefineBibliographyStrings{english}{bibliography={Referencias},references={Referencias},urlseen={consultado el}}
 
-\reporttitle{recap-agent}
-\reportsubtitle{Informe técnico de arquitectura e implementación\\para un agente conversacional serverless}
+\reporttitle{Informe técnico de arquitectura e implementación\\para un agente conversacional serverless}
+\reportsubtitle{recap-agent}
 \reportauthors{Sin Envolturas}
-\reportdate{22 de junio de 2026}
+\reportdate{30 de septiembre de 2026}
 \rightheadercontent{\small Informe técnico}
 
 \hypersetup{
-	pdftitle={recap-agent: informe técnico de arquitectura e implementación},
+	pdftitle={Informe técnico de arquitectura e implementación para un agente conversacional serverless},
 	pdfauthor={Sin Envolturas},
 	colorlinks=true,
 	linkcolor=DarkBlue,
@@ -65,193 +69,173 @@
 
 \begin{document}
 \pagestyle{recaplogos}
-
 \thispagestyle{empty}
 \begin{fullwidth}
-	\vspace*{-0.06\textheight}
-	\brandlogo{utec-logo.png}{UTEC}\hfill\brandlogo{sin-envolturas-logo.jpeg}{Sin Envolturas}
-
-	\vspace{0.14\textheight}
-
-	\parbox{0.9\fulltextwidth}{\fontsize{48pt}{50pt}\selectfont\raggedright\textbf{\reporttitle}\par}
-
-	\vspace{0.03\textheight}
-
-	{\LARGE\textit{\textbf{\reportsubtitle}}\par}
-
-	\vfill
-
-	{\Large Sin Envolturas\par}
-
-	\vfill\vfill\vfill
-
-	{\large\reportdate\par}
+\vspace*{-0.06\textheight}
+\brandlogo{utec-logo.png}{UTEC}\hfill\brandlogo{sin-envolturas-logo.jpeg}{Sin Envolturas}
+\par\vspace{0.14\textheight}
+\parbox{0.9\fulltextwidth}{\fontsize{20pt}{26pt}\selectfont\raggedright\textbf{\reporttitle}\par}
+\par\vspace{0.03\textheight}
+{\LARGE\textit{\textbf{\reportsubtitle}}\par}
+\vfill {\Large Sin Envolturas\par}\vfill\vfill\vfill
+{\large\reportdate\par}
 \end{fullwidth}
-
 \newpage
 
 \thispagestyle{empty}
 \begin{twothirdswidth}
-	\footnotesize
+\footnotesize
+\subsection*{Resumen}
+Este informe describe la arquitectura y la implementación de \textit{recap-agent}, un agente conversacional serverless para Sin Envolturas. El sistema mantiene un plan de evento con varias necesidades de proveedores, recupera información del marketplace y ejecuta acciones sujetas a autorización. La implementación separa la interpretación y la generación de lenguaje, realizadas por el LLM, de la validación determinista de identidad, estado y efectos. La verificación determinista obtuvo un 100\% de aprobación en 1\,482 comprobaciones ejecutadas. La última evaluación dirigida en desarrollo obtuvo un 100\% en siete interacciones seleccionadas y en sus 47 condiciones objetivas. Estos indicadores corresponden a los escenarios y al entorno evaluados; no representan una tasa de éxito entre usuarios de producción.
 
-	\subsection*{Resumen documental}
+\subsection*{Alcance y evidencia}
+El documento cubre planificación, información autorizada del cliente, generación conversacional, ejecución de acciones, persistencia, observabilidad, despliegue y resultados de validación. La evidencia corresponde al repositorio y a los registros de implementación y evaluación disponibles hasta el 30 de septiembre de 2026 en America/Lima. El informe actualiza la entrega parcial de junio; los documentos y resultados anteriores se conservan como registros históricos.
 
-	Este informe consolida la arquitectura y la implementación de \textit{recap-agent}, un prototipo funcional de agente conversacional para la recomendación de proveedores de eventos en Sin Envolturas. La redacción toma como criterio formal la precisión, concisión, claridad y revisión objetiva recomendadas para informes técnicos \cite{unam-informe-tecnico}; el análisis técnico se fundamenta en la revisión integral del repositorio del proyecto, la bitácora de implementación, la documentación operativa y de evaluación, y los expedientes de análisis generados durante el desarrollo. Además, se consideran los artefactos de alcance y diseño, junto con la verificación del despliegue de desarrollo en AWS utilizando el perfil autorizado del proyecto.
-
-	\subsection*{Alcance}
-
-	El documento describe el sistema en términos de arquitectura, contratos, decisiones técnicas, modelo de dominio, persistencia, integración con proveedores, conocimiento, despliegue, telemetría y evaluación. No reproduce fragmentos de implementación ni depende de rutas de archivos como mecanismo explicativo; el énfasis está en el diseño técnico resultante y en las decisiones que lo sustentan.
-
-	\subsection*{Control de cambios}
-
-	\scriptsize
-	\begin{tabular}{@{} L{0.08\linewidth} L{0.18\linewidth} L{0.58\linewidth} @{}}
-		\toprule
-		v1.0 & 2026-06-22 & Informe inicial elaborado a partir del código vigente, artefactos de diseño del proyecto, expedientes de análisis y despliegue AWS de desarrollo.\\
-		\bottomrule
-	\end{tabular}
+\subsection*{Registro de versiones}
+\scriptsize
+\begin{tabular}{@{} L{0.09\linewidth} L{0.19\linewidth} L{0.57\linewidth} @{}}
+\toprule
+v1.0 & 2026-06-22 & Arquitectura de la entrega parcial, proveedores, conocimiento y despliegue en desarrollo.\\
+v2.0 & 2026-09-30 & Arquitectura y evidencia operativa hasta el 29 de septiembre.\\
+v2.1 & 2026-09-30 & Validación dirigida y consolidación documental.\\
+v2.2 & 2026-09-30 & Informe en español con redacción técnica descriptiva y términos especializados conservados.\\
+v2.3 & 2026-09-30 & Presentación de resultados medidos y cobertura funcional.\\
+\bottomrule
+\end{tabular}
 \end{twothirdswidth}
-
+\newpage
+\begin{twothirdswidth}\tableofcontents\end{twothirdswidth}
 \newpage
 
-\begin{twothirdswidth}
-	\tableofcontents
-\end{twothirdswidth}
+\section{Propósito y sistema implementado}
+La planificación de un evento suele comenzar con una solicitud incompleta. Un mismo evento puede requerir fotografía, catering y otros servicios, cada uno con restricciones y estados de selección distintos. \textit{recap-agent} representa estas necesidades en un plan persistente y las vincula con registros de proveedores de Sin Envolturas. El plan permite conservar una selección mientras se precisa o resuelve otra necesidad.
 
-\newpage
+El alcance implementado también comprende consultas públicas y de cuenta, pedidos y regalos, invitaciones, confirmación de asistencia, autenticación y soporte. Estas tareas comparten el procesamiento de turnos y el estado persistente, pero mantienen las restricciones de acceso y las condiciones de ejecución propias de cada fuente y acción.
 
-\section{Introducción}
+El runtime es independiente del canal. La integración con WhatsApp corresponde a un adaptador externo que verifica webhooks, obtiene la identidad confiable del remitente, deduplica entregas y envía la respuesta generada. El cliente de terminal invoca la Lambda de desarrollo y reproduce el comportamiento del canal sin streaming. El despliegue del runtime, por sí solo, no verifica el funcionamiento del adaptador externo.
 
-\textit{recap-agent} es un prototipo funcional de agente conversacional para Sin Envolturas. Este desarrollo surge ante la necesidad de optimizar la experiencia de usuarios que planifican eventos, facilitando la identificación y selección de proveedores adecuados mediante un enfoque conversacional innovador. El problema que aborda no es la negociación final del servicio, sino la etapa previa de conversación, estructuración de requisitos, búsqueda, shortlist y generación de contacto. En términos de producto, el agente reduce la distancia entre una solicitud informal --por ejemplo, ``necesito ayuda para una boda en Lima''-- y una acción útil sobre el marketplace: identificar necesidades, consultar proveedores reales, explicar opciones y cerrar una solicitud cuando el usuario decide avanzar. Este enfoque se relaciona con la literatura reciente sobre recomendadores conversacionales en preventa, donde los modelos de lenguaje y los sistemas de recomendación resultan complementarios para comprender preferencias y apoyar decisiones de compra \cite{liu-2023-crs-llm}. A diferencia de soluciones tradicionales, \textit{recap-agent} integra capacidades de lenguaje natural y búsqueda semántica, permitiendo una interacción más flexible y personalizada en la etapa de preventa.
+El LLM interpreta tareas estructuradas y genera las respuestas. El código determinista valida schemas, identidad, autorización, estado establecido, condiciones de ejecución y recibos de acciones. Cada oración entregada al cliente se genera en el turno correspondiente; el runtime no inserta respuestas predefinidas ni modifica el texto generado para imponer un resultado.
 
-Para abordar estos desafíos, el proyecto formula el objetivo como el diseño e implementación de un agente integrado con las APIs de Sin Envolturas, capaz de entrevistar usuarios por WhatsApp, estructurar requisitos y recomendar proveedores relevantes. Este alcance introduce una restricción importante: el canal inicial se comporta como WhatsApp, por lo que la respuesta debe ser síncrona, breve y no dependiente de streaming. Al mismo tiempo, la solución no puede quedar acoplada a WhatsApp, porque la evolución natural del sistema incluye webchat, terminal de evaluación y otros canales.
+\section{Arquitectura y procesamiento de turnos}
+\subsection{Componentes}
+AWS Lambda recibe la solicitud HTTP normalizada y valida el token de aplicación. La Function URL proporciona transporte HTTPS; la autorización del cliente se valida dentro de la aplicación. El handler comprueba la solicitud, asigna un identificador de correlación y delega el procesamiento al servicio conversacional. Los módulos de dominio mantienen planes y evidencia tipada. Los gateways encapsulan las APIs de Sin Envolturas y la recuperación semántica.
 
-Durante el diseño temprano se descartó una hipótesis demasiado optimista: que OpenAI pudiera hospedar toda la integración con WhatsApp y con las APIs internas sin una capa propia. La decisión vigente separa canal, adaptación, runtime conversacional e integraciones de negocio. Así, OpenAI provee capacidades de interpretación, extracción y generación, mientras que el proyecto conserva un runtime propio para controlar estado, herramientas, persistencia, observabilidad y validaciones. Esta separación coincide con la orientación de la plataforma de agentes de OpenAI, que ubica a los agentes como aplicaciones capaces de planificar, usar herramientas y mantener estado bajo control de la aplicación que los integra \cite{openai-agents-sdk}.
-
-El análisis y las conclusiones presentadas en este informe se fundamentan en la implementación vigente del repositorio como fuente autoritativa, complementada con la bitácora de implementación, documentación operativa, expedientes de análisis, artefactos de diseño del proyecto y verificación del despliegue AWS de desarrollo con el perfil \textit{se-dev}.
-
-\section{Arquitectura del sistema}
-
-La arquitectura implementada organiza el sistema en torno a un límite simple: el runtime recibe un turno normalizado y devuelve una respuesta normalizada. El adaptador de canal se encarga de la identidad externa, autenticación del webhook, idempotencia y entrega al usuario. El núcleo conversacional, por su parte, solo necesita conocer el texto entrante, el canal, el usuario externo y metadatos de sesión. Esa frontera permite que WhatsApp, un web client o la terminal de pruebas consuman el mismo contrato sin modificar el flujo interno.
-
-La Figura \ref{fig:aws-architecture} presenta la vista física recomendada para documentar el despliegue. El diagrama distingue los usuarios y canales de entrada, el límite serverless de AWS, la capa de agente en OpenAI y las APIs de Sin Envolturas que alimentan la recomendación y la sincronización. La función principal vive en AWS Lambda y se expone en desarrollo mediante Function URL, un endpoint HTTPS dedicado para una función Lambda \cite{aws-lambda-function-urls}. DynamoDB mantiene planes y telemetría como base NoSQL administrada \cite{aws-dynamodb-introduction}; Secrets Manager conserva la credencial de OpenAI \cite{aws-secrets-manager}; CloudWatch centraliza logs operativos \cite{aws-cloudwatch-logs}; S3 almacena artefactos de sincronización \cite{aws-s3}; y EventBridge activa jobs periódicos para conocimiento y proveedores \cite{aws-eventbridge-scheduler}.
+DynamoDB almacena planes, coordinación de turnos, recibos de efectos y registros de desempeño. Secrets Manager administra credenciales y CloudWatch conserva diagnósticos operativos protegidos. CloudFormation define recursos separados para desarrollo y producción \cite{aws-lambda-function-urls,aws-dynamodb-introduction,aws-secrets-manager,aws-cloudformation}. La Figura~\ref{fig:aws-architecture} presenta los componentes físicos y sus conexiones.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth]{Images/architecture-diagram.pdf}
-\caption{Vista de despliegue AWS y relación con canales, OpenAI y APIs de Sin Envolturas.}
+\caption{Arquitectura física del sistema: canales, runtime serverless, OpenAI y fuentes de Sin Envolturas. Los contratos descritos en el informe delimitan la responsabilidad de cada componente.}
 \label{fig:aws-architecture}
 \end{figure}
 
-Como se ilustra en la Figura \ref{fig:aws-architecture}, la verificación realizada el 22 de junio de 2026 confirmó que el entorno de desarrollo cuenta con tres componentes principales desplegados y operativos:
-
-\begin{itemize}
-	\item \term{Runtime principal}: núcleo del agente conversacional, encargado de procesar las interacciones, coordinar la extracción estructurada, consultar herramientas y componer respuestas.
-	\item \term{Sync de proveedores}: función dedicada a la actualización periódica de la información de proveedores desde las APIs de Sin Envolturas hacia el vector store de proveedores.
-	\item \term{Sync de conocimiento}: mantiene actualizada la base usada para preguntas frecuentes e información operativa relevante.
-\end{itemize}
-
-El runtime principal fue actualizado el 19 de junio de 2026, opera en \textit{us-east-1}, usa modelos separados para respuesta y extracción, mantiene búsqueda híbrida, habilita FAQ y consulta de invitado, y conserva telemetría con TTL de 30 días. Los stacks auxiliares mantienen los vector stores de proveedores y conocimiento que el runtime consume.
-
-En la implementación, esta arquitectura se traduce en una separación de responsabilidades. La entrada serverless valida la solicitud y delega la conversación. El runtime orquesta extracción, estado, herramientas y respuesta. El dominio define el plan, las necesidades, las transiciones y la evidencia. Las integraciones encapsulan APIs externas, búsqueda semántica, creación de cotizaciones y sincronización. La capa de almacenamiento conserva planes y métricas por turno. Esta división evita que la lógica de WhatsApp, la generación de lenguaje y la persistencia del plan queden entremezcladas.
-
-\section{Modelo conversacional y estado}
-
-El comportamiento del agente se diseñó como una entrevista guiada pero no rígida. La intención original del flujo era transformar lenguaje natural en requisitos estructurados y decidir cuándo consultar herramientas para recomendar de manera útil y trazable. La implementación materializa esa idea mediante una máquina de estados tipada, es decir, un modelo formal que define explícitamente los posibles estados de la conversación y las transiciones permitidas entre ellos. Esto permite controlar el flujo sin que el usuario perciba rigidez, ya que puede aportar información en cualquier orden. El agente puede aceptar información libre, reutilizar contexto previo, pedir solo los faltantes críticos y recomendar con supuestos explícitos cuando ya existe suficiencia mínima. Por ejemplo, si el usuario primero indica la ciudad y luego el tipo de evento, el agente puede conservar ambos datos, inferir restricciones iniciales de búsqueda y sugerir proveedores relevantes aunque todavía falten detalles como fecha exacta o número de invitados. Esta orientación responde a una tensión común en agentes conversacionales de producción: mantener flexibilidad lingüística sin perder restricciones de servicio, trazabilidad ni control operativo \cite{park-2025-workflow-graphs}.
-
-La pieza central del estado es el plan de evento. Un plan conserva identidad, canal, usuario externo, ciclo de vida, nodo actual, intención, tipo de evento, ubicación, presupuesto, escala de invitados, preferencias, restricciones, preguntas abiertas, resumen conversacional y datos de contacto. Lo más importante es que el plan puede contener varias necesidades de proveedor. Una boda, por ejemplo, puede tener local, catering, música y fotografía como frentes distintos. Cada frente puede estar identificado, listo para búsqueda, con shortlist, seleccionado, aplazado o sin proveedores disponibles. Esta decisión \textit{event-plan-first} evita que una búsqueda nueva destruya selecciones anteriores.
-
-La Figura \ref{fig:runtime-state} resume la relación entre interpretación, decisión y persistencia. El extractor produce evidencia estructurada; el runtime combina esa evidencia con el plan persistido; las reglas tipadas deciden el nodo operativo; las herramientas se habilitan por contexto; y el plan se guarda con la nueva evidencia. El diagrama no intenta enumerar todos los nodos, sino mostrar el ciclo estable que gobierna cada turno. En cada turno, el sistema sigue una secuencia estable: recibe la entrada del usuario, extrae evidencia estructurada, actualiza el plan persistente, decide el siguiente nodo según reglas tipadas, habilita herramientas contextuales, compone la respuesta y guarda el nuevo estado junto con la telemetría.
+\subsection{Secuencia observable}
+Cada turno valida la solicitud, carga y coordina el plan, prepara las fuentes autorizadas y extrae tareas estructuradas. Luego valida el estado y las condiciones de ejecución, realiza las lecturas y acciones permitidas, genera una respuesta a partir de la evidencia y persiste el estado y la telemetría. La clasificación de entrega se conserva en las rutas donde corresponde.
 
 \begin{figure}[H]
 \centering
 \resizebox{\linewidth}{!}{%
-\begin{tikzpicture}[x=1cm,y=1cm, every node/.style={font=\footnotesize}]
-	\tikzset{
-		rstep/.style={draw=DarkBlue, rounded corners=2pt, thick, fill=AliceBlue, align=center, minimum width=3.0cm, minimum height=0.85cm},
-		model/.style={draw=DarkOrange, rounded corners=2pt, thick, fill=OldLace, align=center, minimum width=3.0cm, minimum height=0.85cm},
-		state/.style={draw=DarkGreen, rounded corners=2pt, thick, fill=Honeydew, align=center, minimum width=3.0cm, minimum height=0.85cm},
-		tool/.style={draw=DarkRed, rounded corners=2pt, thick, fill=MistyRose, align=center, minimum width=3.0cm, minimum height=0.85cm},
-		arrow/.style={-{Latex[length=2.1mm]}, thick, draw=DimGray}
-	}
-	\node[rstep] (in) at (0,2.0) {Turno normalizado};
-	\node[model] (extract) at (3.7,2.0) {Extractor\\estructurado};
-	\node[state] (plan) at (7.4,2.0) {Plan persistente\\multi-necesidad};
-	\node[rstep] (decision) at (11.1,2.0) {Decisión de nodo\\con evidencia};
-	\node[tool] (tools) at (11.1,0.2) {Herramientas\\según contexto};
-	\node[model] (reply) at (7.4,0.2) {Agente de respuesta\\en español};
-	\node[rstep] (out) at (3.7,0.2) {Render y saneamiento\\del canal};
-	\node[state] (save) at (0,0.2) {Guardado de plan\\y telemetría};
-
-	\draw[arrow] (in) -- (extract);
-	\draw[arrow] (extract) -- (plan);
-	\draw[arrow] (plan) -- (decision);
-	\draw[arrow] (decision) -- (tools);
-	\draw[arrow] (tools) -- (reply);
-	\draw[arrow] (decision) -- (reply);
-	\draw[arrow] (reply) -- (out);
-	\draw[arrow] (out) -- (save);
-\end{tikzpicture}
-}
-\caption{Ciclo de interpretación, decisión y persistencia de un turno.}
-\label{fig:runtime-state}
+\begin{tikzpicture}[x=1cm,y=1cm,every node/.style={font=\footnotesize}]
+\tikzset{rstep/.style={draw=DarkBlue,rounded corners=2pt,thick,fill=AliceBlue,align=center,minimum width=3.0cm,minimum height=0.85cm},model/.style={draw=DarkOrange,rounded corners=2pt,thick,fill=OldLace,align=center,minimum width=3.0cm,minimum height=0.85cm},state/.style={draw=DarkGreen,rounded corners=2pt,thick,fill=Honeydew,align=center,minimum width=3.0cm,minimum height=0.85cm},tool/.style={draw=DarkRed,rounded corners=2pt,thick,fill=MistyRose,align=center,minimum width=3.0cm,minimum height=0.85cm},arrow/.style={-{Latex[length=2.1mm]},thick,draw=DimGray}}
+\node[rstep] (in) at (0,2.0) {Turno validado};
+\node[state] (profile) at (3.7,2.0) {Plan y perfil\\autorizado};
+\node[model] (extract) at (7.4,2.0) {Extracción\\estructurada};
+\node[rstep] (decision) at (11.1,2.0) {Estado y condiciones\\de ejecución};
+\node[tool] (tools) at (11.1,0.2) {Lecturas y efectos\\con recibos};
+\node[model] (reply) at (7.4,0.2) {Respuesta del LLM\\desde la evidencia};
+\node[rstep] (out) at (3.7,0.2) {Entrega por el\\adaptador};
+\node[state] (save) at (0,0.2) {Estado persistente\\y telemetría};
+\draw[arrow] (in)--(profile);\draw[arrow] (profile)--(extract);\draw[arrow] (extract)--(decision);\draw[arrow] (decision)--(tools);\draw[arrow] (tools)--(reply);\draw[arrow] (decision)--(reply);\draw[arrow] (reply)--(out);\draw[arrow] (out)--(save);
+\end{tikzpicture}}
+\caption{Procesamiento de un turno: preparación de evidencia autorizada, validación tipada, ejecución y generación de la respuesta.}
 \end{figure}
 
-Una restricción de ingeniería atraviesa todo este modelo: las decisiones conversacionales no se toman mediante palabras clave ni coincidencias exactas. El modelo interpreta y entrega evidencia estructurada, pero el runtime valida, normaliza y decide las consecuencias. Esta separación fue crucial para corregir fallos observados durante el desarrollo, como selección múltiple de proveedores, corrección parcial de datos de contacto, descarte de necesidades, recuperación de código de invitado y preservación de proveedores seleccionados. Además, garantiza que errores en la interpretación del lenguaje natural no comprometan la integridad del estado del plan, ya que toda decisión relevante se valida y normaliza antes de afectar el flujo conversacional. La conversación puede ser natural, pero el estado durable permanece tipado.
+\section{Conversación, planes y contexto}
+El plan de evento es el principal registro persistente. Almacena identidad del usuario y canal, estado del plan, tipo y ubicación del evento, presupuesto, escala, preferencias, restricciones, contexto pendiente y datos de contacto. Cada necesidad de proveedor tiene su propio estado y selección. Incorporar catering no elimina al fotógrafo seleccionado; cerrar necesidades listas no obliga a enviar aquellas que permanecen pendientes.
 
-Los prompts también forman parte del contrato de arquitectura. Están versionados como texto, en español, y organizados por nodo de flujo. Cada nodo define objetivo, política de herramientas, contrato de respuesta y reglas de transición. El versionado de prompts permite auditar cambios en el comportamiento conversacional y facilita la experimentación controlada, asegurando que cada modificación pueda ser evaluada y revertida si es necesario.
+La extracción estructurada propone tareas y acciones. El runtime no determina la intención mediante keywords o coincidencias exactas de texto. La validación determinista conserva entidades ya establecidas, comprueba fechas y números extraídos y verifica las condiciones de los efectos. La evidencia contiene hechos, procedencia, datos faltantes, alternativas sin resolver y resultados reales, en lugar de respuestas preescritas.
 
-\section{Integración con proveedores, conocimiento y cierre}
+Los prompts conversacionales en español se versionan en \texttt{prompts/}. El compilador de solicitudes selecciona instrucciones, herramientas y módulos de resultado a partir del estado tipado. La telemetría registra los bytes serializados de instrucciones e inputs, incluidos los fallos cuando existe esa información. La selección de instrucciones pertinentes no limita los registros del cliente que este tiene autorización para consultar. El extractor RSVP distingue las decisiones de acompañante expresadas en el turno actual.
 
-La recomendación de proveedores usa una estrategia híbrida. La API de Sin Envolturas sigue siendo la fuente de verdad para identificadores, enlaces, detalles, acciones de cotización y estado real. En paralelo, el vector store de proveedores agrega recuperación semántica sobre descripciones, servicios, promociones y términos. Este patrón se apoya en la idea de recuperación semántica sobre datos propios mediante vector stores, que permite encontrar resultados similares aunque no compartan exactamente las mismas palabras de la consulta \cite{openai-retrieval}. En modo híbrido, el runtime consulta información estructurada desde las APIs internas y utiliza el vector store para recuperar proveedores relevantes por similitud semántica. Los resultados se fusionan priorizando información completa y actualizada, se deduplican y se enriquecen antes de presentarse al agente de respuesta. La búsqueda vectorial no se expone como herramienta libre al modelo; se ejecuta dentro del runtime y produce una lista tipada de candidatos.
+La continuidad conserva preguntas pendientes, referencias a eventos y compras respaldadas por las fuentes y archivos relevantes. Las transferencias internas de tareas no se presentan al cliente. La coordinación de turnos y las barreras de escritura evitan que una ejecución tardía sobrescriba un estado posterior. Los recibos distinguen trabajo solicitado, intentado y confirmado. Un recuerdo o agradecimiento no autoriza repetir la autenticación de una consulta de compra que falló anteriormente.
 
-El aislamiento por necesidad es deliberado. Por ejemplo, si el usuario busca proveedores de música y luego de catering, las preferencias y filtros aplicados en la búsqueda de música no alteran los resultados ni las recomendaciones para catering, garantizando independencia y precisión en cada frente. Del mismo modo, la base de conocimiento de FAQ no se mezcla con la búsqueda de proveedores. La base de conocimiento se actualiza periódicamente a partir de fuentes operativas del proyecto y retroalimentación revisada; cada entrada se valida antes de incorporarse al vector store, asegurando respuestas precisas y verificables. Las preguntas sobre comisiones, soporte, listas de regalo o reclamos entran a un nodo de conocimiento que usa su propio vector store y preserva el plan de evento para que el usuario pueda volver a planificación después. Esta separación reduce falsos positivos y facilita explicar qué fuente intervino en cada respuesta; trabajos recientes sobre motores de diálogo con recuperación aumentada también resaltan la importancia de organizar el conocimiento de dominio para mejorar precisión y verificabilidad \cite{yu-2025-graphrag}.
+\section{Información del cliente y control de acceso}
+\subsection{Perfil autorizado completo}
+Antes de la extracción, el orquestador de información prepara todas las fuentes autorizadas disponibles: pedidos, compras de regalos, eventos de cuenta o invitado y detalles devueltos de esos eventos. Las rutas, recursos o aspectos seleccionados por el extractor no eliminan registros ni campos. No se aplica truncamiento por antigüedad ni por un número fijo de registros. Las lecturas tienen límites operativos de concurrencia y tiempo; una fuente incompleta se representa de forma explícita, no como un resultado vacío.
 
-La calidad del marketplace condiciona la precisión de las recomendaciones. Los expedientes de análisis muestran que, en la auditoría exhaustiva del 14 de abril de 2026, el sistema podía diferenciar proveedores en varias categorías, pero la cobertura de campos estructurados era desigual. Descripciones, promociones, servicios, términos, ubicación, precio y ratings no estaban completos de manera uniforme. Por ello, el agente justifica con la evidencia disponible y evita sobreafirmar cuando un proveedor tiene pocos datos comparativos.
+El mismo perfil autorizado llega a extracción y respuesta con fuente, alcance de acceso, momento de lectura, estado de completitud o paginación y fallos. Conservar todos los registros devueltos no prueba que el backend haya devuelto el historial completo. Los alcances de cuenta y teléfono confiable permanecen separados; la autorización mediante OTP puede incorporar registros de cuenta sin descartar los del teléfono. Se excluyen secretos de control de acceso y registros fuera de la autorización del solicitante. La negativa a autenticarse bloquea el acceso protegido aunque exista una cuenta en el estado previo.
 
-El cierre del flujo también es una integración de negocio, no solo un mensaje final. Cuando el usuario selecciona proveedores y entrega contacto válido, el sistema crea solicitudes de cotización o contacto para esos proveedores. Antes de enviar una solicitud, el runtime valida en tiempo real el teléfono y el correo electrónico proporcionados. Si detecta un error, solicita al usuario corregir la información antes de proceder; así evita que datos inválidos lleguen tarde al endpoint de cotización y produzcan ciclos confusos. El cierre puede ser parcial: una necesidad aplazada o sin resultados no bloquea otra necesidad ya seleccionada. En cambio, una shortlist con opciones visibles y sin decisión exige selección o descarte explícito antes de cerrar.
+\subsection{Consultas de información}
+Las tareas de FAQ, eventos asociados, pedidos y regalos pueden coexistir en un turno de solo lectura. Una referencia exacta y autorizada puede identificar una transacción; las alternativas sin resolver conservan su procedencia. Pago, preparación, envío y saldo de cuenta representan hechos distintos. Un fallo parcial de fuente no equivale a ausencia de registros, ni un pago pendiente equivale a aprobación. La divulgación de campos sensibles depende del alcance de acceso y de la referencia establecida.
 
-\section{Persistencia, observabilidad y evaluación}
+\section{Invitaciones, acciones y hora registrada}
+La ejecución de RSVP se vincula con la invitación del solicitante y el evento requerido. Los identificadores de evento e invitado, el sentido de la decisión y los recibos se conservan separados durante consulta, selección y escritura. Una solicitud de acompañante rechazada no se presenta como guardada ni altera la asistencia del usuario. El ejecutor verifica el resultado del backend y el estado actualizado antes de representar un efecto como confirmado; una discrepancia entre fuentes se conserva como conflicto.
 
-La persistencia se organiza por canal e identificador externo de usuario. Esto permite que la continuidad de conversación sea durable sin asumir que todos los canales comparten la misma identidad. El sistema utiliza identificadores de sesión y de usuario externo para distinguir conversaciones activas, reanudaciones y nuevas interacciones. El plan almacena el estado necesario para reanudar, pero el runtime también maneja foco de sesión para evitar que mensajes de sesiones previas influyan en nuevas conversaciones o que una interacción nueva herede contexto efímero de una conversación anterior. En paralelo, cada turno produce telemetría: ruta de nodos, herramientas consideradas, herramientas llamadas, resultados de proveedor, métricas de latencia, uso de tokens, resúmenes de extracción y estado de persistencia. Por ejemplo, la telemetría permite detectar incrementos de latencia durante consultas o sincronizaciones de proveedores y orientar optimizaciones en las rutas de búsqueda, persistencia o enriquecimiento.
+Una nueva confirmación de asistencia propia no incorpora una decisión anterior de acompañante que quedó sin resolver. Una continuación limitada a seleccionar el evento puede conservar esa decisión existente. El caso live de cinco turnos de Marta verifica una escritura exitosa y ausencia de escrituras en turnos ambiguos, de consulta o referidos a un evento sin coincidencia.
 
-La observabilidad evolucionó a partir de fallos reales. Al principio, las trazas permitían investigar estado y latencia, pero no siempre explicaban defectos de redacción final. La versión actual añade vista previa redactada de la respuesta, hash, flags de calidad y resúmenes de herramientas, todo con retención temporal. Esto permite investigar fugas de formato, mensajes robóticos o artefactos de cita sin depender únicamente de capturas manuales.
+El contrato temporal conserva la fecha y hora local registradas en la fuente. Una zona verificada del evento describe el lugar sin modificar esa hora; cuando no existe, se conserva el offset explícito o se marca la zona como desconocida. Un valor que contiene solo fecha no genera una hora. Esta semántica está implementada en \path{src/core/event-local-time.ts}.
 
-La evaluación evita comparar transcripciones completas, porque eso haría frágil la suite. En lugar de exigir una frase exacta, los casos verifican estado final, trayectoria, uso de herramientas, presencia o ausencia de proveedores, invariantes de selección, métricas de tokens y fragmentos contractuales. Hay un target offline con fixtures y almacenamiento en memoria, y un target live que llama al Lambda desplegado y confirma consumo real. Esta doble superficie permite iterar rápido y, al mismo tiempo, detectar drift entre la implementación local y el entorno real. La infraestructura se mantiene mediante CloudFormation, coherente con el uso de infraestructura como código para modelar y administrar recursos AWS como unidades de despliegue \cite{aws-cloudformation}.
+La identidad de un remitente internacional se deriva de códigos E.164 validados y evidencia confiable del canal, no del idioma o la ubicación del evento. El identificador de correlación conecta solicitudes del adaptador con Lambda. Los diagnósticos protegidos de payloads malformados registran estructura, longitudes y hashes, sin texto del cliente ni credenciales. La derivación confiable del remitente y la conciliación de mensajes almacenados sin invocación del runtime corresponden al adaptador externo.
 
-Los contratos resumidos en la Tabla \ref{tab:contracts} se auditan mediante versionado de prompts, pruebas automatizadas, bitácora de implementación y trazas por turno. Esta combinación permite reconstruir qué cambió, por qué se cambió y qué comportamiento se verificó después, preservando trazabilidad entre arquitectura, conversación y despliegue.
+\section{Proveedores, conocimiento y cierre}
+Las APIs de Sin Envolturas proporcionan identidad de proveedores y campos operativos. La recuperación vectorial amplía los candidatos semánticos; el runtime deduplica y enriquece los resultados antes de incorporarlos al contexto del LLM \cite{openai-retrieval}. Las preferencias se mantienen por necesidad de proveedor. Las operaciones de cotización o cierre validan contacto y selección y conservan sus recibos. Una respuesta fluida no demuestra que se haya enviado una solicitud comercial.
+
+El conocimiento de FAQ se sincroniza por una ruta distinta de la recuperación de proveedores. Los pasajes recuperados y sus citas conservan procedencia. Las consultas de comisiones utilizan el artículo aplicable completo y la evidencia de la calculadora oficial cuando está disponible; no incorporan porcentajes fijos ni cálculos de conciliación sin respaldo. Las instrucciones sobre comisiones se cargan para esa tarea tipada. Una imagen no disponible se representa como evidencia faltante; el LLM puede utilizar otros registros autorizados sin afirmar que observó el archivo.
+
+\section{Persistencia, observabilidad y despliegue}
+Las trazas registran decisiones, inputs y resultados de herramientas, tiempos, tokens, fuentes, persistencia y origen del texto entregado. Los diagnósticos de desarrollo se restringen al cliente de diagnóstico; el canal del cliente recibe la respuesta y la decisión de entrega. Los logs operativos evitan mensajes, teléfonos y credenciales en texto claro. Los resultados fallidos o desconocidos permanecen observables.
+
+La infraestructura se define mediante CloudFormation. Las modificaciones se despliegan primero en desarrollo y se vinculan con un artefacto identificable para su validación. Los registros de despliegue conservan la configuración aplicada, la identidad del código y la evidencia operativa. La promoción a producción utiliza un artefacto explícito y conserva una copia para rollback.
+
+El registro de producción del 29 de septiembre de 2026 documenta la promoción del artefacto seleccionado, la configuración de modelos y las comprobaciones operativas posteriores. La evaluación dirigida más reciente corresponde a un artefacto de desarrollo posterior. Cada resultado se atribuye a su entorno y fecha; la emisión de este informe no implica una nueva promoción.
+
+\section{Resultados de validación y cobertura funcional}
+\subsection{Indicadores de aprobación}
+La evidencia disponible al 30 de septiembre de 2026 distingue la verificación determinista de la evaluación conversacional sobre la Lambda de desarrollo. La primera comprueba reglas de autorización, contratos de datos y operaciones con entradas controladas. La segunda observa interacciones completas sobre el sistema desplegado. La Tabla~\ref{tab:validation-results} presenta los resultados con sus denominadores.
 
 \begin{table}[H]
-\caption{Contratos principales del sistema.}
-\label{tab:contracts}
-\begin{tabularx}{\linewidth}{@{} L{0.24\linewidth} X @{}}
+\centering\small
+\begin{tabularx}{\linewidth}{@{} L{0.43\linewidth} L{0.23\linewidth} X @{}}
 \toprule
-\term{Contrato} & \term{Función arquitectónica}\\
-\midrule
-Turno normalizado & Desacopla WhatsApp, webchat, CLI y evaluación del runtime central.\\
-Plan de evento & Mantiene estado durable, multi-necesidad, selección, contacto y resumen conversacional.\\
-Extracción estructurada & Convierte lenguaje natural en evidencia validable para decisiones de flujo.\\
-Herramientas por nodo & Limita qué integraciones pueden ejecutarse en cada contexto conversacional.\\
-Telemetría por turno & Hace auditable la trayectoria, el costo, los resultados y la calidad de salida.\\
-Suites de evaluación & Verifican comportamiento por estado y trayectoria, no por transcript rígido.\\
+Indicador & Resultado & Aprobación\\\midrule
+Comprobaciones deterministas ejecutadas & 1\,482 de 1\,482 & 100\%\\
+Interacciones seleccionadas en desarrollo & 7 de 7 & 100\%\\
+Condiciones objetivas de esas interacciones & 47 de 47 & 100\%\\
 \bottomrule
 \end{tabularx}
+\caption{Resultados registrados en el entorno y alcance evaluados.}\label{tab:validation-results}
 \end{table}
 
-\section{Discusión}
+Una comprobación determinista omitida no integra el denominador de aprobación. Las verificaciones de tipos y convenciones de código también concluyeron satisfactoriamente. La ejecución conversacional mantuvo la misma identidad de despliegue al inicio y al cierre. Su costo registrado fue de US\$0.025571, correspondiente a OpenAI y Lambda.
 
-La implementación muestra una evolución clara desde un agente de búsqueda hacia un runtime conversacional de dominio. La transición de una selección singular a una selección múltiple por necesidad permitió que los usuarios gestionaran eventos complejos sin perder información previa, mejorando la flexibilidad del flujo y reduciendo fricción cuando aparecen varios frentes de contratación. La separación entre la base de conocimiento y la búsqueda de proveedores disminuyó respuestas ambiguas, porque las preguntas operativas dejaron de competir con los resultados comerciales. La validación temprana de contacto, por su parte, trasladó los errores corregibles al momento conversacional adecuado, antes de crear solicitudes incompletas.
+\subsection{Cobertura funcional}
+La cobertura se expresa por responsabilidades observables del sistema. No se dispone de un porcentaje medido de cobertura de líneas de código ni de una estimación de éxito sobre la totalidad de las conversaciones posibles. La Tabla~\ref{tab:functional-coverage} describe las dimensiones verificadas y el resultado que se busca preservar.
 
-El principal riesgo técnico sigue siendo la calidad variable del marketplace. Para mitigarlo, el runtime prioriza una lógica de justificación basada en evidencia y evita sobreafirmar cuando faltan ubicación, precio, servicios o términos. El equipo puede reducir este riesgo ampliando la cobertura estructurada de proveedores y fortaleciendo las auditorías de datos antes de cada sincronización. Otro riesgo es la frontera de canal: la Function URL de desarrollo no autentica por sí misma, por lo que el adaptador productivo incorpora como trabajo necesario la validación de webhook, idempotencia, rate limits y políticas de abuso. Finalmente, las evaluaciones live consumen tokens y dependen de servicios externos; por ello, el proyecto las usa como complemento de la validación offline, no como sustituto de pruebas determinísticas.
+\begin{table}[H]
+\centering\small
+\begin{tabularx}{\linewidth}{@{} L{0.23\linewidth} X @{}}
+\toprule
+Dimensión & Comportamiento verificado\\\midrule
+Identidad y acceso & Alcance de cuenta, autenticación mediante OTP, aislamiento entre clientes y rechazo del acceso cuando no se acredita autorización.\\
+Acciones & Correspondencia entre solicitud, entidad y operación; confirmación mediante recibos; ausencia de escrituras en consultas y de efectos duplicados.\\
+Información & Conservación de los registros autorizados y su procedencia; concordancia de importes, fechas y estados con las fuentes consultadas.\\
+Resultados incompletos & Distinción entre ausencia de datos, error de consulta, resultado desconocido y operación reintentable, con correlación para seguimiento.\\
+Contratos de integración & Validación de schemas, entradas malformadas, persistencia, trazas y aritmética monetaria.\\
+\bottomrule
+\end{tabularx}
+\caption{Cobertura funcional de la verificación registrada.}\label{tab:functional-coverage}
+\end{table}
 
-En conjunto, \textit{recap-agent} es un prototipo defendible como artefacto de tesis porque combina una arquitectura serverless real, estado conversacional tipado, herramientas de negocio, búsqueda híbrida, conocimiento semántico y evaluación reproducible. Su valor no reside únicamente en generar texto, sino en sostener una conversación que puede convertirse en acciones verificables sobre un marketplace.
+Las siete interacciones de desarrollo cubren continuidad de tareas de evento, aceptación de transferencia a soporte para una limitación de envío de regalos, atención de la retirada de un anfitrión, resultados fallidos o desconocidos en la transferencia posterior a OTP, verificación de OTP expresado en palabras y ejecución de RSVP sobre el evento solicitado. Sus condiciones objetivas comprueban autorización, resultados de acciones y ausencia de repeticiones cuando corresponde.
 
-\section{Conclusiones}
+\subsection{Interpretación de los resultados}
+Los porcentajes describen la aprobación de las comprobaciones efectivamente ejecutadas. La cobertura funcional identifica responsabilidades verificadas, mientras que el resultado conversacional se limita a las siete interacciones seleccionadas en desarrollo. Ambos indicadores permiten comprobar hechos y efectos sin exigir una redacción determinada de la respuesta.
 
-El sistema responde a las restricciones iniciales del proyecto: opera de forma compatible con WhatsApp, conserva independencia de canal, consulta datos vivos, mantiene planes con múltiples necesidades y registra suficiente evidencia para evaluar decisiones. La arquitectura reconoce que OpenAI es una capa de inteligencia y orquestación, no el sistema completo de integración; por ello, el runtime propio conserva la autoridad sobre persistencia, validación, herramientas y cierre.
+\section{Discusión y limitaciones}
+La implementación combina planificación de eventos, información personalizada y acciones verificadas. La separación entre generación de lenguaje y autorización permite comprobar resultados de negocio sin imponer el texto de la respuesta. La conservación del perfil autorizado y la representación explícita de fuentes incompletas distinguen datos ausentes de fallos de lectura. Los recibos permiten diferenciar una afirmación conversacional de una acción confirmada por el backend.
 
-El estado actual permite presentar el proyecto como un prototipo funcional con base técnica sólida. Los siguientes pasos naturales son endurecer el adaptador productivo de WhatsApp, mejorar datos estructurados del marketplace, ampliar conversaciones de evaluación completas, incorporar métricas longitudinales de usuarios de prueba y producir una versión gráfica final de la arquitectura con iconografía oficial de AWS y OpenAI a partir de la topología descrita en este informe.
+La evidencia corresponde a siete interacciones de desarrollo. Su alcance depende de los datos del marketplace y de la integración del canal; no mide satisfacción de usuarios.
 
-\printbibliography
-
+\newpage
+\printbibliography[title={Referencias}]
 \end{document}

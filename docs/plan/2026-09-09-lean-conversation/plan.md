@@ -1,5 +1,7 @@
 # Lean conversation architecture: implementation plan
 
+> **Historical execution plan.** Its “current dispatch,” pending tasks, and older live-gate instructions describe September 9–14 planning, not the state on September 29. The binding behavioral invariants remain in [acceptance-contract.md](acceptance-contract.md); use the [current technical report](../../thesis/architecture-report/recap-agent-architecture-report.pdf) and [documentation map](../../README.md) for implemented and deployed status. The current project directive permits only explicitly selected targeted live cases after development deployment.
+
 ## Current dispatch — September 14
 
 Read [recheck-2026-09-14.md](recheck-2026-09-14.md) first. No newer full live run exists locally after31697069 (57/102). Repairs are present locally; fresh bounded offline run1543passed/5skipped, but integration and live acceptance remain open. Follow S0 → S2 → S3 → S1 → S4 → S5 → S6 → S7 → S8. The September11 matrix remains historical evidence, not a result from the repaired code. [Fresh evidence](recheck-2026-09-14-evidence.json).
@@ -72,7 +74,7 @@ The product retains its existing event-plan-first scope: multiple provider needs
 
 The audit demonstrated broad extraction inputs, duplicated stage decisions, complete fixed replies, and post-generation replacements. In a fresh live payment-confirmation replay the model correctly returned ambiguity, while the runtime passed “clear” to the reply model. The five-turn quote flow also demonstrated why fluent final text cannot substitute for correct effect timing.
 
-Sources: [audit](../../../analysis/agent-complexity-handoffs/findings.md), [scenario analysis](../../../analysis/agent-complexity-handoffs/scenarios.md), and the [earlier prohibition](/Users/leonardocandio/Work/thesis/recap-agent/docs/implementation-log.md:8133). The latest user instruction supersedes plans that prescribe complete deterministic responses.
+Sources: [audit](../../../analysis/agent-complexity-handoffs/findings.md), [scenario analysis](../../../analysis/agent-complexity-handoffs/scenarios.md), and the [earlier prohibition](../../implementation-log.md). The latest user instruction supersedes plans that prescribe complete deterministic responses.
 
 ## Non-negotiable acceptance contract
 

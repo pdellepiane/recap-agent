@@ -1,5 +1,7 @@
 # Evidence-driven feedback fixes demonstration
 
+> **Historical July 2026 demonstration record.** It documents the behavior and evidence available then. Use the [30 September technical report](thesis/architecture-report/recap-agent-architecture-report.pdf) for current implementation status.
+
 ## What this demonstration covers
 
 This is the primary stakeholder demonstration for the 2026-07-24 live WhatsApp

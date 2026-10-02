@@ -1,5 +1,7 @@
 # Evidence-preserving customer-support handoff — 2026-09-22
 
+> Superseded for implementation and validation by [Complete customer context, small extractor](complete-customer-context-2026-09-23.md). Historical evidence below is retained. The user's September 23 directive prohibits full live gates: only the replacement package's explicitly selected targeted cases may run.
+
 ## Binding objective and status
 
 This is an implementation handoff, not an authorization to deploy, run a paid gate, or promote. Current source is `066725bb`; the development Lambda serves clean-archive ZIP SHA-256 `a781ba47853fa39bb8618e1d140c219b95524d879adcc10c6af721ae04c199bc`, with reply/extractor/classifier `gpt-6-luna`. Production CodeSha256 remains `ZokennG5UakYBvsjlnAFCuXZ44ewvblwkukn1t2SmUY=`. The targeted development run `eval-2026-09-23T02-50-13-317Z-d9b6e8e8` is 4 pass / 8 fail / 0 error / 0 skip. Its report and case artifacts under `.eval-runs/` are immutable evidence. The older full run `eval-2026-09-22T21-54-01-651Z-54da3f5a` was 77 pass / 61 fail / 0 error / 0 skip on different source bytes; its 138-row adjudication ledger is `evals/ledgers/eval-2026-09-22T21-54-01-651Z-54da3f5a.json`. Do not sum or compare the scores as though they tested identical code.

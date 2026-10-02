@@ -1,494 +1,114 @@
-# Evaluation Framework
+# Evaluation framework
 
-This document explains how to benchmark `recap-agent` without turning the suite into a brittle set of transcript snapshots.
+The harness runs versioned interaction scenarios against deterministic offline targets and the deployed development Lambda. The current gate policy, current suite inventory, measured results and acceptance limits are defined in [Testing and validation](testing.md). This guide describes operation and case format; it does not authorize paid live execution.
 
-## Goals
+## Components
 
-The evaluation framework is designed around four constraints:
+| Component | Responsibility |
+| --- | --- |
+| `src/evals/case-schema.ts` | Typed case, expectation, scorer, turn and report contracts. |
+| `src/evals/loader.ts` | Catalog loading, templates, imports and variable interpolation. |
+| `src/evals/runner.ts` | Selected execution, private evidence snapshots, hard checks and reports. |
+| `src/evals/targets/offline.ts` | Deterministic runtime and gateway fixtures. |
+| `src/evals/targets/live-lambda.ts` | Development Lambda invocation and run-isolated physical conversation identities. |
+| `src/evals/live-behavior-cli.ts` | Required explicit case selection, prerequisites, pricing and final gate summary. |
+| `src/evals/run-manifest.ts` | Source, evaluator, case, prompt and deployment identities. |
+| `src/evals/reporting.ts`, `pricing.ts` | Reports and priced OpenAI, judge and Lambda cost accounting. |
+| `evals/live-behavior-coverage.yaml` | Active and explicitly retired behavior-change coverage. |
 
-1. We need the same case definitions to run against both a deterministic local harness and the live deployed Lambda contract.
-2. We need stable, trackable outputs for benchmarking model and prompt changes over time.
-3. We cannot rely on exact full-response matching because the agent is still evolving.
-4. We need enough structure to catch regressions in state, trajectory, tool use, and provider handling, not just surface phrasing.
+The general harness still supports semantic research scorers, internal trajectory checks and model matrices. Their existence does not make them live behavior acceptance requirements. Mandatory live cases contain objective hard assertions and no semantic judges.
 
-The framework therefore treats evaluation as a layered measurement problem:
+## Targets and identity
 
-- deterministic checks for state and flow correctness;
-- tolerant text checks for stable contractual language;
-- optional model-graded checks for subjective qualities such as helpfulness or conversational efficiency;
-- standardized result artifacts for longitudinal comparison.
+The offline target uses deterministic doubles to exercise contracts without paying for model calls. A double's reply does not establish live response quality. Do not manufacture token usage for an offline fixture.
 
-## Research Basis
+The live target invokes the deployed development Function URL with CLI diagnostics. It captures the returned message and permitted trace/performance evidence; it does not expose developer diagnostics in the customer channel. Run/config/case identities map logical users, sessions and message IDs to fresh physical conversations. Business phones, guest/event IDs and expected facts remain part of the fixture world rather than being silently remapped.
 
-The design is informed by current agent-evaluation practice and benchmark design.
+Fixture-backed execution uses the deployed runtime while isolating test effects. A successful fixture case proves the behavior in that declared world; it does not verify the live marketplace's customer records or the external WhatsApp adapter. Real external-effect cases need their declared isolation and cleanup hooks. An aborted request does not prove Lambda stopped; uncertain mutation execution requires completion evidence before restoration or replay.
 
-- OpenAI, *A Practical Guide to Building Agents*:
-  - Start with the strongest model to establish a performance baseline, then swap in smaller models and keep the evals constant while measuring the tradeoff.
-  - Treat tools, instructions, and orchestration as first-class pieces of the system, which means the eval harness must capture more than final text.
-  - Source: https://cdn.openai.com/business-guides-and-resources/a-practical-guide-to-building-agents.pdf
-- LangSmith evaluation concepts:
-  - Separate offline evaluation from online evaluation.
-  - Organize evaluation around datasets, experiments, runs, and evaluators.
-  - Use deterministic evaluators where possible and add LLM-as-judge only where a code check is insufficient.
-  - Source: https://docs.langchain.com/langsmith/evaluation-concepts
-- Anthropic, *Building Effective AI Agents*:
-  - Prefer modular, composable systems with explicit context management and evaluator-optimizer patterns when quality needs iterative improvement.
-  - Source: https://resources.anthropic.com/building-effective-ai-agents
-- Benchmark families that focus on end-to-end execution rather than isolated prompt quality:
-  - `τ-bench`: https://arxiv.org/abs/2406.12045
-  - `GAIA`: https://arxiv.org/abs/2311.12983
-  - `SWE-agent`: https://arxiv.org/abs/2405.15793
+## Case format
 
-The practical outcome for this repo is straightforward:
+Cases live under `evals/cases/`, with reusable templates and worlds under `evals/templates/` and `evals/fixtures/`. A case includes:
 
-- optimize for end-state plan correctness and trajectory invariants first;
-- test across models and prompt bundles using one shared dataset;
-- keep benchmark cases reusable and parameterized;
-- make every failure legible enough to tell whether the regression came from extraction, orchestration, tool use, provider ranking, or response quality.
+- Identity: `id`, `suite`, `version`, description and tags.
+- Scope: `targetModes`, configuration overrides, turn budget and optional isolation hooks.
+- Interaction: ordered `inputs`, seed plan, backend fixture, imports and variables.
+- Verification: `expectations`, severity and scorers.
+- Provenance: notes recording the interaction and any reviewed contract change.
 
-## High-Level Architecture
+An interaction-derived regression reconstructs history and relevant stored state, not an isolated phrase. Set a logical `sessionId` across its turns. Pin expectations to the intended `turnIndex`; do not accidentally grade a later answer or use future evidence.
 
-The evaluation subsystem lives under [`src/evals`](/Users/leonardocandio/Desktop/UTEC/2026-1/tesis/recap-agent/src/evals).
+Templates provide shared defaults. Imports load reusable structured fragments before the case body, which remains the final override. Variables interpolate declared fixture values, for example `{{event_type}}`; authorization is still enforced by the runtime.
 
-- [`case-schema.ts`](/Users/leonardocandio/Desktop/UTEC/2026-1/tesis/recap-agent/src/evals/case-schema.ts): typed schemas for cases, suites, matrices, expectations, scorers, turn envelopes, results, and reports.
-- [`loader.ts`](/Users/leonardocandio/Desktop/UTEC/2026-1/tesis/recap-agent/src/evals/loader.ts): YAML or JSON loading, template merge, fixture imports, and variable interpolation.
-- [`runner.ts`](/Users/leonardocandio/Desktop/UTEC/2026-1/tesis/recap-agent/src/evals/runner.ts): suite or case selection, target execution, expectation evaluation, scoring, and artifact writing.
-- [`reporting.ts`](/Users/leonardocandio/Desktop/UTEC/2026-1/tesis/recap-agent/src/evals/reporting.ts): JSONL, JSON, and Markdown output plus aggregate summaries.
-- [`targets/offline.ts`](/Users/leonardocandio/Desktop/UTEC/2026-1/tesis/recap-agent/src/evals/targets/offline.ts): deterministic local harness with in-memory plan storage, fixture-backed provider gateway, and fixture-backed runtime behavior.
-- [`targets/live-lambda.ts`](/Users/leonardocandio/Desktop/UTEC/2026-1/tesis/recap-agent/src/evals/targets/live-lambda.ts): live Lambda adapter that normalizes deployed responses into the same turn envelope used by offline runs.
-- [`scorers/semantic-judge.ts`](/Users/leonardocandio/Desktop/UTEC/2026-1/tesis/recap-agent/src/evals/scorers/semantic-judge.ts): optional model-based grader for rubric-driven judgments.
+## Expectations and verdicts
 
-The git-tracked dataset lives under [`evals/`](/Users/leonardocandio/Desktop/UTEC/2026-1/tesis/recap-agent/evals).
+Use hard assertions for authorization, independent effects, backend facts, real failure outcomes and public API/trace/receipt contracts. Choose the existing schema family that expresses the obligation:
 
-- `cases/`: scenario definitions
-- `templates/`: reusable base case definitions
-- `fixtures/`: reusable seed plans and offline fixture fragments
-- `suites/`: suite manifests
-- `matrices/`: model and configuration matrices
+- `plan_field_equals` and `plan_field_subset` for domain state and outcomes.
+- `fixture_effect_count` for attempted, successful and replayed fixture effects.
+- `tool_usage` for effect/auth boundaries and prohibited calls; avoid mandatory read-tool implementation pins.
+- `trace_field_equals`, `trace_field_subset` and `trace_field_number` for observable contract evidence.
+- Delivered-text value checks for established numeric facts or contractual URLs; avoid exact conversational phrasing.
+- Provider-result and trajectory checks only when they express a product obligation rather than internal routing.
 
-Generated run artifacts are written outside version control under `.eval-runs/`.
-
-## Targets
-
-### Offline
-
-The offline target is the default development surface.
-
-It runs the real `AgentService` against:
-
-- `InMemoryPlanStore`
-- a fixture-backed `ProviderGateway`
-- a fixture-backed `AgentRuntime`
-- the real prompt loader from `prompts/`
-
-Use offline runs for:
-
-- PR validation
-- regression testing
-- prompt iteration
-- model and config comparison without live provider or live Lambda variability
-
-### Live Lambda
-
-The live target calls the deployed Lambda Function URL and then hydrates the persisted plan from DynamoDB so the result envelope matches the offline shape as closely as possible.
-
-By contract, live eval requests are sent in CLI mode so diagnostics are returned:
-
-- request includes `client_mode=cli`;
-- response includes `trace` and optional `perf` fields for evaluation assertions;
-- telemetry persistence still happens server-side for all channels, including non-CLI traffic.
-
-Use live runs for:
-
-- contract verification against the deployed runtime
-- catching integration drift between local assumptions and real deployment behavior
-- validating trace and persisted-plan observability
-
-Do not use the live target as the default inner loop. It costs more, takes longer, and is more exposed to environment drift.
-
-### Observable Live Transcript
-
-For a human-viewable end-to-end run without printing trace or plan tables, use:
-
-```bash
-AWS_PROFILE=se-dev bun run eval:observable-live
-```
-
-This runner does not use `seedPlan`. It creates a fresh user/session, starts from a new event-planning request, requests CLI diagnostics from Lambda internally, and prints only the user turns and agent replies. It is meant for terminal observation of a complete conversation, not deterministic scoring.
-
-The turn generator is plan-aware. After each Lambda response, it reads the latest hidden plan/trace payload and chooses the next eligible operation block from the current state. Blocks are shuffled on every run, while prerequisites keep sequences sensible: provider detail, comparison, selection, replacement, deferral, reactivation, and refinement only run when the current plan has the relevant needs or shortlists. The close/contact turns always run last.
-
-Covered operation groups:
-
-- add, update, and delete provider needs
-- select, unselect, and replace providers
-- defer and reactivate needs
-- refine an existing need
-- provider detail, explanation, and comparison
-- FAQ/support-boundary turns
-- close/contact flow
-
-## Case Authoring
-
-An eval case is a structured scenario, not a golden transcript.
-
-Every case can include:
-
-- identity and metadata
-  - `id`
-  - `suite`
-  - `version`
-  - `description`
-  - `tags`
-  - `priority`
-  - `status`
-- execution scope
-  - `targetModes`
-  - `configOverrides`
-  - `budget`
-- scenario definition
-  - `inputs`
-  - `seedPlan`
-  - `fixtures`
-  - `variables`
-  - `imports`
-- validation
-  - `expectations`
-  - `scorers`
-- maintenance notes
-  - `notes`
-
-### Variables
-
-Variables let one case definition stay generic:
-
-```yaml
-variables:
-  event_type: boda
-  location: Lima
-
-inputs:
-  - text: quiero planear una {{event_type}} en {{location}}
-```
-
-### Turn session IDs
-
-Turn inputs can include an optional `sessionId`. Targets pass it through to the runtime or Lambda request as `session_id`, which lets evals assert session-scoped focus without coupling routing to durable active-need fields.
-
-```yaml
-inputs:
-  - text: quiero ver opciones de catering
-    sessionId: feedback-close-flow-session
-```
-
-Offline cases that omit `sessionId` default to the case ID. Live cases should set a stable `sessionId` when validating multi-turn session focus.
-
-### Templates
-
-Templates let cases share defaults such as:
-
-- target modes
-- base scorers
-- default notes
-- budget defaults
-
-### Imports
-
-Imports let cases reuse external structured fragments such as:
-
-- seed plans
-- provider shortlists
-- offline search fixtures
-- repeated expectation blocks
-
-Example:
-
-```yaml
-imports:
-  - ../fixtures/seed-plans/recommend-catering-shortlist-edo.yaml
-  - ../fixtures/offline/search-results/catering-shortlist-top-three.yaml
-```
-
-Imports are merged before the case body. The case body remains the final override layer.
-
-This keeps the suite customizable and reduces copy-pasted provider payloads.
-
-## Expectations
-
-Expectations are deterministic or semi-deterministic assertions attached to a case.
-
-Supported expectation families:
-
-- `node_transition`
-- `node_path_contains`
-- `plan_field_equals`
-- `plan_field_subset`
-- `provider_results_contains`
-- `tool_usage`
-- `trace_field_equals`
-- `trace_field_subset`
-- `trace_field_number`
-- `token_usage_present`
-- `text_contains`
-- `text_not_contains`
-- `text_semantic`
-- `trajectory_invariants`
-- `budget_constraints`
-
-### Token usage expectation
-
-`token_usage_present` is intended for live Lambda evals that must prove real model calls happened for each turn. It checks total token usage and, by default, extraction and reply token usage.
+Example of a read-only turn following an earlier successful RSVP:
 
 ```yaml
 expectations:
-  - id: live-token-usage
-    type: token_usage_present
-    allTurns: true
+  - id: recall-makes-no-new-write
+    type: fixture_effect_count
+    operation: rsvp.write
+    turnIndex: 1
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
 ```
 
-Offline fixtures must stay token-free; do not fake token consumption in offline cases.
+A turn-indexed count is a delta. The original action turn must independently require its write; the recall check is not evidence that the first action succeeded. Preserve identity/polarity checks and include negative controls where a duplicate or wrong-target mutation could otherwise pass.
 
-### Response classifier promotion
+`hardGatePassed` requires the hard expectations to pass. A weighted score cannot cancel a hard failure, missing case or infrastructure error. `expectation_pass_rate` remains useful for diagnosis. Style, judge, token-count, prompt-budget and internal node-transition assertions are excluded from the mandatory live panel. General harness schemas may retain them for historical or separately selected research use.
 
-`evals/classifiers/reply-suppression-seed.jsonl` is the labelled Spanish corpus for acknowledgement, reaction, corporate automated-response, campaign, provider-selection, correction, new-requirement, ambiguous, first-contact, support, and FAQ turns. Corporate automation coverage includes at least 13 clear automated replies, including unequivocal templates without prior outbound history and a generic branded reception after outbound contact, plus 12 must-respond lookalikes.
+## Coverage and contract maintenance
 
-The classifier now runs in `enforce`. Continue evaluating at least 200 labelled turns, including 100 must-reply turns and 50 suppression candidates. Operational quality should retain at least 99% must-reply recall, at least 90% recall for acknowledgements/reactions, at least 90% recall for clear corporate automation, and no false suppressions across the automation lookalikes, provider selection, new planning, corrections, questions, or human-escalation requests. Return to `observe` if those safeguards regress.
+Register each behavior-changing fix separately, even when it reuses a case. `tests/live-behavior-coverage.test.ts` checks active registry references, suite membership, live target, hard objective expectations, unique change IDs and absence of semantic judges. Retired entries require an explicit reason; historical coverage is not replaced by an unrelated passing case.
 
-`evals/classifiers/conversation-health-seed.jsonl` seeds the conversation-health labels used by the same classifier call. It covers normal progress, insufficient context, repeated questions and corrections, unresolved error loops, explicit interaction frustration, provider complaints, and responses to an offered human handoff. Before tuning thresholds, review false help offers separately from missed stalls; the runtime deliberately requires either one explicit-frustration decision or two consecutive stalled/frustrated turns.
+Before changing an oracle, identify a concrete contradiction with the declared contract and independent evidence. Keep the original run. Record corrected versions and negative controls. The six no-new-write corrections are documented in the [current testing record](testing.md#effect-counts-and-negative-controls). A user-authorized retirement is a contract/scope change and must remain visible, not a hidden score improvement.
 
-### Why layered expectations
+## Artifacts and costs
 
-Exact transcript matching is usually the wrong contract for agents in active development.
+Each execution writes `.eval-runs/<run-id>/`:
 
-Instead, the suite checks:
+- `manifest.json`: selected cases, model/configuration and source/evaluator identities, prerequisites and deployment checks before/after.
+- `progress.json`: partial lifecycle and cost progress; not an acceptance verdict.
+- `results.jsonl`: one normalized result per case/config/target.
+- `report.json` and `report.md`: final case and assertion totals, completion, timing and costs.
+- `artifacts/<config>/<case>.snapshot.json`: immutable, redacted execution evidence captured before cleanup.
+- `artifacts/<config>/<case>.json`: normalized case result and assertion messages.
 
-- whether the agent reached the correct node family;
-- whether the final plan state is correct;
-- whether prior selections were preserved;
-- whether the right tools were used or avoided;
-- whether required links or phrases are present;
-- whether known anti-patterns were avoided.
+Private fixture-effect evidence is attached internally; a redacted snapshot does not necessarily contain every private field. Missing evidence must not be interpreted as zero effects. Diagnose through the recorded expectation evidence and permitted backend/trace investigation.
 
-This is much more stable than snapshotting an entire Spanish reply.
-
-### Severity
-
-Every expectation is either:
-
-- `hard`: a failure should generally fail the case
-- `soft`: a failure should reduce quality score without necessarily failing the case
-
-Use `hard` for contract behavior. Use `soft` for preference-like quality checks.
-
-## Scorers
-
-Scorers convert expectation and trajectory quality into a normalized case score.
-
-Current scorer types:
-
-- `expectation_pass_rate`
-- `budget_efficiency`
-- `text_semantic`
-
-### Recommended scoring strategy
-
-Use a mixed model:
-
-- hard gates for catastrophic failures:
-  - wrong node family
-  - lost selected provider
-  - missing persisted state
-  - invalid provider links
-- soft quality scorers for:
-  - helpfulness
-  - recommendation differentiation
-  - clarification efficiency
-  - plan coherence across turns
-
-The framework computes a weighted score per case while still exposing all raw expectation outcomes.
-
-## Suites
-
-The suite taxonomy is organized around product behavior instead of source directories.
-
-Core regression suites:
-
-- `entrypoint_planning`
-- `clarification`
-- `recommendation`
-- `selection_continuity`
-- `multi_need_planning`
-- `state_and_resume`
-- `search_failure_modes`
-- `domain_knowledge`
-- `trace_observability`
-
-Benchmark or operator suites:
-
-- `smoke`
-- `dev_regression`
-- `live_smoke`
-- `benchmark_full`
-
-### Recommended usage
-
-- `smoke`: use during active iteration and before commits
-- `dev_regression`: use before merges or before prompt or model updates
-- `live_smoke`: use intentionally, with budget awareness
-- `benchmark_full`: use for scheduled comparisons and research-grade benchmarking
-
-## Run Matrices
-
-Run matrices make configuration benchmarking first-class.
-
-Each matrix entry can vary:
-
-- target
-- reply model
-- extractor model
-- reasoning effort
-- prompt bundle label
-- environment overrides
-- notes
-
-This is the main mechanism for comparing model or configuration changes without editing cases.
-
-## Result Artifacts
-
-Each run writes a dedicated directory under `.eval-runs/<run-id>/`.
-
-Artifacts include:
-
-- `results.jsonl`: one normalized result row per `(case, config, target)`
-- `report.json`: machine-readable aggregate report
-- `report.md`: human-readable leaderboard and summary
-- `artifacts/<config>/<case>.json`: full case result envelope
-
-Each normalized result includes:
-
-- pass or fail status
-- final normalized score
-- expectation results
-- scorer results
-- node transitions
-- latency and tool counts
-- plan diff summary
-- artifact paths
-- full normalized per-turn envelopes
-
-The aggregate report also includes:
-
-- suite summaries
-- config summaries
-- target summaries
-- flaky candidates when the same case shows inconsistent outcomes across configs or targets
+The live CLI selects the latest checked-in dated pricing file and requires priced reporting. Reports separate OpenAI, judge and Lambda costs, including explicit unpriced items. Dry-run estimates are forecasts, not billed totals. A run without verified final deployment identity is invalid even if individual executions succeeded. The progress label `ok` reports execution status, not assertion success.
 
 ## Commands
 
-List available suites and case ids:
-
 ```bash
 npm run eval:list
-```
-
-Run a cheap offline smoke slice:
-
-```bash
 npm run eval -- --suite smoke --target offline
-```
-
-Dry-run a larger matrix without executing it:
-
-```bash
-npm run eval -- --suite benchmark_full --matrix evals/matrices/models.yaml --dry-run
-```
-
-Run a single case:
-
-```bash
 npm run eval -- --case selection.choose_edo_from_shortlist --target offline
+npm run eval -- --suite benchmark_full --matrix evals/matrices/models.yaml --dry-run
+npm run eval:report -- --input .eval-runs/<run-id>
 ```
 
-Render a saved report:
+For authorized live validation, deploy development first and supply every selected ID:
 
 ```bash
-npm run eval:report -- --input .eval-runs/<run-id>
-npm run eval:report -- --input .eval-runs/<run-id>/report.json --format json
+AWS_PROFILE=se-dev AWS_REGION=us-east-1 npm run eval:behavior-live -- \
+  --case <selected-case-id> --label <evidence-label>
 ```
 
-## Safe Operating Workflow
+Freeze the selected list and paid-run budget before dispatch. The CLI requires case selectors; broad matrices and unfiltered live runs are not the current workflow. The one authorized 46-case baseline is historical evidence, not standing authorization to repeat it. `npm run check` runs local type checking, lint and Vitest; it does not execute the live panel.
 
-Recommended workflow while the agent is under active development:
+## Handoff
 
-1. Add or update an offline case first.
-2. Run a targeted offline smoke or single-case evaluation.
-3. If the change is deployment-sensitive, run a very small `live_smoke` slice.
-4. Only run broader matrices when explicitly benchmarking model or prompt changes.
-5. Promote production issues into offline regression cases whenever possible.
-
-This mirrors the offline to online feedback loop recommended by LangSmith:
-
-- online or live behavior surfaces issues
-- those issues become offline cases
-- offline cases validate fixes cheaply
-- live checks confirm the deployed contract
-
-## Anti-Patterns
-
-Avoid these when authoring or maintaining evals:
-
-- exact full-transcript assertions for multi-turn agent replies
-- hiding fixture logic inside test code instead of git-tracked case data
-- coupling a case to one specific model phrasing
-- mixing too many independent goals into one case
-- using live Lambda as the default development loop
-- adding only text checks while ignoring plan or trace state
-- creating “pass” conditions that a model can satisfy while silently failing on tool use or plan continuity
-
-## Current Limitations
-
-This framework intentionally does not do a few things yet:
-
-- It does not run the full suite in `npm run check`.
-- It does not automatically compare against a checked-in baseline run yet.
-- It does not automatically estimate token cost from real provider or model usage; dry-runs use case-level heuristics.
-- The semantic judge is optional and will skip when `OPENAI_API_KEY` is not set.
-
-Those are reasonable constraints for the current stage of the project. The main priority is to keep the evaluation system useful, inspectable, and cheap enough to use regularly.
-
-## Adding a New Case
-
-The target authoring experience is that a contributor can add a new case without touching TypeScript code.
-
-Recommended process:
-
-1. Choose the suite that best reflects the product behavior being tested.
-2. Start from an existing template under `evals/templates/`.
-3. Reuse imports from `evals/fixtures/` where possible.
-4. Add only the expectations that reflect the actual contract you care about.
-5. Prefer `plan_field_*`, `trajectory_invariants`, and `tool_usage` over exact reply text.
-6. Add `text_contains` only for truly stable reply requirements such as URLs or critical wording.
-7. Add a semantic scorer only when a deterministic check is not enough.
-
-## Case Design Heuristics
-
-For this agent, the most valuable checks tend to be:
-
-- final persisted plan state
-- active need continuity
-- selected provider continuity
-- correct transition family
-- exposed trace observability
-- provider shortlist contents and links
-- not reopening already-resolved ambiguity
-
-If a case fails, the report should make it obvious whether the fault was in:
-
-- state
-- trajectory
-- tools
-- shortlist
-- trace visibility
-- response quality
-
-That is the standard this framework is designed to enforce.
+Report selected versus executed cases, hard assertion results, errors/skips, costs, run IDs, exact artifact identity and unresolved limitations. Preserve interrupted and failing runs. Keep results tied to their tested artifact; never combine a historical broad run and a new subset into a fictitious full-green result. See [Testing and validation](testing.md) for the frozen 46-case inventory and the valid seven-case recovery result.

@@ -137,3 +137,7 @@ npm run check
 
 See `docs/information-flow.md` for authentication, purchase projection, mixed
 capability behavior, and failure semantics.
+
+## Adding individual durable FAQ documents
+
+See [document maintenance](knowledge-document-maintenance.md) for the internal incremental document helper. It preserves supplemental ingestion ownership and deliberately leaves the existing canonical `Fuente:` citation path exclusive to original linked help-center articles. Helper uploads require no rescrape or full-store replacement.

@@ -1,5 +1,7 @@
 # Technical Design — Multi-Message Bursts as One Logical Turn
 
+> **Historical design proposal (July 2026).** Current channel behavior and adapter ownership are documented in [channel-integration.md](channel-integration.md); the final implementation state is in the [technical report](thesis/architecture-report/recap-agent-architecture-report.pdf). Do not treat future-tense protocol sections below as deployed behavior.
+
 | Field | Value |
 | --- | --- |
 | Status | Draft |

@@ -2,6 +2,8 @@
 
 Added 2026-09-09 at the user's request. Applies to every package in [the implementation plan](plan.md). This is a proposed implementation/test specification, not a claim that these controls already exist.
 
+**Current testing amendment (30 September 2026):** the user's hard-assertion redesign and targeted-only execution rule supersede mandatory semantic judges, full live-suite execution and preference-based prompt/wording gates in the original checklist. [Testing and validation](../../testing.md) is the current test contract. E01-E11 and effect/output-origin invariants remain applicable; E12 and old judge adversarial tests are historical/research tooling rather than live acceptance requirements. The complete-authorized-profile directive also supersedes any older instruction to omit authorized records merely because a task is unrelated.
+
 Purpose: make superficial compliance and evaluation gaming detectable without replacing conversation with more deterministic dialogue logic. These controls belong primarily in tests and release verification, not an additional runtime supervisor model. No prompt can make an optimizing implementation agent or a semantic judge immune to reward hacking; evidence and independent enforcement must carry the guarantee.
 
 ## A. Exact edits and evidence required
@@ -55,7 +57,7 @@ Sentinel facts in inactive domains must never enter model input or output. Remov
 
 Freeze, before candidate implementation, a manifest of case IDs, inputs, fixture worlds, hard expectations, thresholds, judge configuration, relevant prompt/schema hashes, test code and deployment baseline. Digests expose drift; they are not a security boundary.
 
-A candidate change cannot silently lower thresholds, change hard to soft, remove cases, change selected turns, redact away a disputed phrase, substitute expected output, or rewrite a rubric around its observed answer. Do not delete old coverage to improve totals.
+A candidate change cannot silently lower thresholds, change hard to soft, remove cases, change selected turns, redact away a disputed phrase, substitute expected output, or rewrite a rubric around its observed answer. Do not silently delete coverage to improve totals. User-authorized retirement records the original scope and reason without claiming equivalent replacement coverage.
 
 If the evaluator is wrong, document the concrete contradiction using independently retrieved evidence. Repair it in a separate reviewed change, then rerun both baseline and candidate against the same revised contract. Preserve both old and revised results. This allows valid fixes such as giving the judge purchase facts actually visible to the candidate, without allowing score-driven rubric changes.
 
@@ -65,13 +67,13 @@ The judge packet contains (1) candidate-visible facts, (2) independent backend/s
 
 Use only conversation history up to the judged turn. Prior answers are conversational context, not authoritative facts. Private redaction must be consistent and preserve meaningful distinctions among synthetic test entities. Missing essential evidence fails packet validation rather than becoming an invented fact or zero effect count.
 
-### R07 — Judge the answer delivered and test the judge
+### R07 — Verify delivered facts and effects with hard assertions
 
-The semantic judge scores the wire-delivered candidate, never an internal draft. It must not follow instructions embedded in the candidate, user messages or retrieved material. Add adversarial candidates saying they passed, quoting desired rubric language, or instructing the judge to award full credit.
+Judge the tested product obligations through independent evidence, not semantic votes. Check authorization, identity and requested effect polarity/count, delivered backend values, failure outcomes, receipts and output origin. A passing tool call is not proof of a successful effect. Check the wire-delivered answer when a fact must be surfaced; an internal draft does not establish delivery.
 
-For each critical behavior, retain paired candidates that differ by one material error: approval versus pending; correct versus wrong event; clarification versus unsupported document claim; one confirmed submission versus unverified success. Include natural paraphrases that should pass. A judge that passes known wrong candidates or fails equivalent correct paraphrases cannot serve as the acceptance gate until investigated.
+Retain negative controls that differ by a material violation: wrong entity, pending presented as approved, unauthorized or duplicate mutation, missing receipt, unsupported success, replaced model output. They must fail the expected hard check. Style, paraphrase preferences, internal node transitions, mandatory read-tool calls, token counts and prompt byte budgets are excluded from the mandatory live panel. Prompt/request measurements remain diagnostic evidence.
 
-Do not use repeated judging until one score passes. Predeclare the repeat count and report every result. Structural failures cannot be averaged away by semantic scores. Judge disagreement or unavailable evidence is unresolved, not automatic acceptance.
+Semantic-judge tooling retained by the general harness is for historical or separately selected research use. Its score, disagreement or availability cannot grant or deny the current hard-contract gate.
 
 ### R08 — Prove the safeguards detect violations
 
@@ -93,7 +95,7 @@ The candidate runs through the same production path on fixture-backed developmen
 
 ### R11 — Fail closed on missing acceptance evidence
 
-The final report enumerates expected versus executed cases and all hard expectations. Any missing case, judge key, receipt, output-origin evidence or required request accounting is incomplete/failed acceptance, never “not applicable” unless that exact exclusion was predeclared for the scenario.
+The final report enumerates expected versus executed cases and all hard expectations. Any missing selected case, required receipt, output-origin evidence or required request accounting is incomplete/failed acceptance, never “not applicable” unless that exact exclusion was predeclared for the scenario.
 
 An optimizing implementation agent must not be able to self-certify completion by editing the report. Generate acceptance results from the harness, retain command/run IDs and deployment digest, and have the owner/reviewer verify the final diff and manifest. Where repository permissions/CI protection exist, put the acceptance entrypoint and release checks under separate control. Same-workspace checks provide detection, not tamper-proof enforcement.
 
@@ -101,6 +103,6 @@ An optimizing implementation agent must not be able to self-certify completion b
 
 Prefer extending the existing tests named in E01–E12. Add only three new focused files if equivalent coverage does not already exist: `tests/model-output-origin.test.ts`, `tests/runtime-context-isolation.test.ts`, and `tests/acceptance-contract-mutations.test.ts`. Keep judge adversarial fixtures in the existing semantic-judge test area. This is not a new testing framework.
 
-Each behavior-changing work package still requires its own coverage registry entry, offline invariant tests, deployment to the verified development account and the complete mandatory live suite. Contract/test-only changes run their focused checks; they do not trigger an unnecessary Lambda deployment unless runtime, prompts or dependencies also change.
+Each behavior-changing work package still requires its own coverage registry entry, offline invariant tests, deployment to the verified development account and the explicitly selected frozen live panel with objective hard assertions and a paid-run budget. Contract/test-only changes run their focused checks; they do not trigger an unnecessary Lambda deployment unless runtime, prompts or dependencies also change.
 
 Final submission must include: exact base/candidate/deployment digests; evaluation-contract diff; full expected/executed case lists; all failed and passing runs; before/after real-request metrics; removed-path inventory; output-origin comparisons; mutation results; and explicit holdout independence limits. No score, explanatory prose, or screenshot substitutes for those artifacts.

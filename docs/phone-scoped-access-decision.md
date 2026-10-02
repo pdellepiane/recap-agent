@@ -1,5 +1,7 @@
 # Phone-Scoped Access Decision
 
+> **Historical August 2026 decision and backend-gap inventory.** Later phone-scoped reads, RSVP effects, international-number parsing, and complete customer-profile work changed the implementation state. Use [channel integration](channel-integration.md), [information flow](information-flow.md), and the [30 September technical report](thesis/architecture-report/recap-agent-architecture-report.pdf). Future-tense backend requests below are not a current status report.
+
 Date: 2026-08-24  
 Status: Accepted for agent behavior; backend unlocks remain to be implemented
 

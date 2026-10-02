@@ -1,5 +1,7 @@
 # Feedback Test Coverage
 
+> **Historical feedback coverage matrix.** The historical rows below retain their original scope; current testing policy and measured results are in [Testing and validation](testing.md). The current case registry is `evals/live-behavior-coverage.yaml`; use the [evaluation guide](evaluation-framework.md) for the selected-case rule.
+
 This matrix maps the batch feedback sources to deterministic regression cases and live token-consuming evals. Each row includes the expected fixed behavior and the old broken behavior that must not return.
 
 ## Coverage Matrix

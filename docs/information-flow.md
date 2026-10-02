@@ -1,5 +1,7 @@
 # First-Class Multi-Capability Information Flow
 
+> **Current extension (30 September 2026):** actionable customer turns prepare the complete authorized profile before extraction. Extractor-selected routes, resources, aspects, and relevance hints cannot truncate or delete authorized returned records or fields. Each source preserves provenance and explicit incomplete/failure status. The capability-specific flow below operates on that profile; see the [technical report](thesis/architecture-report/recap-agent-architecture-report.pdf) for the consolidated architecture.
+
 ## Purpose
 
 The information engine resolves read-only user questions through one reusable

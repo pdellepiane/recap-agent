@@ -1,5 +1,7 @@
 # GitHub branch-based deployments
 
+> **Dated deployment design and setup record.** The final 29 September production promotion used the exact tested artifact through the authorized CloudFormation path. Check [the current technical report](thesis/architecture-report/recap-agent-architecture-report.pdf) and the current stack before relying on pending setup steps below.
+
 The repository is prepared for this release model:
 
 - pull requests into `develop` or `main` run mandatory CI;

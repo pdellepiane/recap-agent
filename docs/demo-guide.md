@@ -1,5 +1,7 @@
 # Demonstration guide
 
+> **Historical demonstration script.** Its sample responses and runtime assumptions predate the final September artifact. Check the [current documentation map](README.md) and deployed endpoint configuration before using it.
+
 This guide covers the request-shape and media-contract demonstration. For the
 complete evidence-driven stakeholder demonstration covering all audited fixes,
 use [Evidence-driven feedback fixes demonstration](feedback-fixes-demo.md) and

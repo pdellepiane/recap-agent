@@ -2,6 +2,8 @@
 
 Serverless conversational agent runtime for Sin Envolturas.
 
+**Consolidated documentation (30 September 2026):** [documentation map](docs/README.md), [testing contract and evidence](docs/testing.md), [technical report](docs/thesis/architecture-report/recap-agent-architecture-report.pdf), [editable source](docs/thesis/architecture-report/recap-agent-architecture-report.tex), and [activity report](docs/thesis/final-activity-log-2026-09-30.md). The live behavior suite contains 46 cases, 185 turns and 329 hard assertions. The repaired development artifact passed the seven affected cases and all 47 hard assertions; the complete 46-case panel was not rerun. Type checking, lint and the current offline suite pass; production promotion remains separate evidence.
+
 ## What is implemented
 
 - Explicit decision-flow-aligned runtime based on the `Flujo de estados`.
@@ -124,7 +126,7 @@ Response payload visibility is client-mode dependent:
 
 This means feedback from non-technical channels can still be correlated to hard telemetry data without exposing debug internals to end users.
 
-For full details and implementation guidance, see [channel-integration.md](/Users/leonardocandio/Desktop/UTEC/2026-1/tesis/recap-agent/docs/channel-integration.md).
+For full details and implementation guidance, see [channel-integration.md](docs/channel-integration.md).
 
 ## Purge terminal test plans
 
@@ -161,11 +163,13 @@ Primary commands:
 ```bash
 npm run eval:list
 npm run eval -- --suite smoke --target offline
-npm run eval -- --suite benchmark_full --target live_lambda --parallel 4
+npm run eval:behavior-live -- --case <explicitly-selected-case-id>
 npm run eval -- --case selection.choose_edo_from_shortlist --target offline
 npm run eval -- --suite benchmark_full --matrix evals/matrices/models.yaml --dry-run
 npm run eval:report -- --input .eval-runs/<run-id>
 ```
+
+Live behavior cases require an explicitly frozen case list and paid-run budget after development deployment. Never run an unfiltered or full live suite. The mandatory live panel uses objective hard assertions without semantic judges; see [current testing scope and results](docs/testing.md).
 
 Dataset layout:
 
@@ -192,7 +196,7 @@ The framework is designed around layered expectations rather than transcript sna
 - tolerant text checks
 - optional semantic graders
 
-Full usage guidance is documented in [evaluation-framework.md](/Users/leonardocandio/Desktop/UTEC/2026-1/tesis/recap-agent/docs/evaluation-framework.md).
+Full usage guidance is documented in [evaluation-framework.md](docs/evaluation-framework.md).
 
 ## Stored OpenAI payload audit
 
@@ -223,15 +227,15 @@ npm run eval:compare-models
 
 The comparison command runs the deterministic development regression suite,
 checks every prompt bundle, and uses the non-generative input-token endpoint
-when `OPENAI_API_KEY` is available. Live Luna promotion remains a separate
-post-deployment gate.
+when `OPENAI_API_KEY` is available. Live behavior validation remains a separate,
+explicitly selected targeted step after deployment to development.
 
 ## Lambda runtime env vars
 
 ```bash
-OPENAI_MODEL=gpt-5.6-luna
-OPENAI_EXTRACTOR_MODEL=gpt-5.6-luna
-OPENAI_RESPONSE_CLASSIFIER_MODEL=gpt-5.6-luna
+OPENAI_MODEL=gpt-6-luna
+OPENAI_EXTRACTOR_MODEL=gpt-6-luna
+OPENAI_RESPONSE_CLASSIFIER_MODEL=gpt-6-luna
 RESPONSE_CLASSIFIER_MODE=enforce
 AWS_REGION=us-east-1
 PLANS_TABLE_NAME=recap-agent-runtime-plans
@@ -248,10 +252,10 @@ KB_MAX_RESULTS=6
 KB_SCORE_THRESHOLD=0
 AGENT_FEATURE_PURCHASE_INFORMATION=true
 DEFAULT_INBOUND_CHANNEL=terminal_whatsapp
-PROVIDER_SEARCH_LIMIT=15
+PROVIDER_SEARCH_LIMIT=12
 SEARCH_SUMMARY_WORD_LIMIT=5
-REPLY_PROVIDER_LIMIT=15
-PRESENTATION_PROVIDER_LIMIT=5
+REPLY_PROVIDER_LIMIT=6
+PRESENTATION_PROVIDER_LIMIT=6
 PROVIDER_DETAIL_LOOKUP_LIMIT=3
 PERF_TABLE_NAME=recap-agent-runtime-perf
 PERF_RETENTION_DAYS=30
@@ -297,7 +301,7 @@ Each phone-bearing turn reads the five latest messages from the Agent API once, 
 
 The same low-cost classifier call also monitors conversation health. One explicit-frustration assessment or two consecutive non-progress assessments triggers a single optional human-help offer. The offer does not request takeover by itself: structured acceptance uses the existing Agent API escalation workflow, while a decline resumes the automated flow. After takeover, the automated agent stays paused until an authenticated request reaches `POST /conversations/resume`; there is no time-based cooldown. The terminal panel displays the health status, reason, and help-offer response for demos.
 
-Linting is enforced through [eslint.config.mjs](/Users/leonardocandio/Desktop/UTEC/2026-1/tesis/recap-agent/eslint.config.mjs), including an explicit ban on `any` in TypeScript files.
+Linting is enforced through [eslint.config.mjs](eslint.config.mjs), including an explicit ban on `any` in TypeScript files.
 
 The repo and deployed Lambda are aligned on Node 24 LTS.
 
@@ -331,4 +335,4 @@ Secret handling:
 
 Internal auth note:
 
-- [docs/aws-auth-setup.md](/Users/leonardocandio/Desktop/UTEC/2026-1/tesis/recap-agent/docs/aws-auth-setup.md)
+- [docs/aws-auth-setup.md](docs/aws-auth-setup.md)

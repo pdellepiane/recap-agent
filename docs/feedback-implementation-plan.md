@@ -1,5 +1,7 @@
 # Implementation Plan — Webchat Feedback (Images 1–14)
 
+> **Historical April 2026 plan.** This records the feedback and proposed work at the time. Use the [final documentation map](README.md) for the September implementation and release state.
+
 > Source: `feedback/feedback.md` + `feedback/images/one.jpeg` through `fourteen.jpeg`  
 > Scope: runtime orchestration, prompt contracts, provider-gateway data hygiene, perf telemetry  
 > Last updated: 2026-04-29

@@ -1,5 +1,7 @@
 # Reporte de tests de comportamiento — recap-agent
 
+> **Historical 5 September 2026 reviewer snapshot.** The current testing contract and results are documented in [Testing and validation](testing.md). This inventory must not be read as the final result or as authorization to run an unfiltered live suite; use [the evaluation framework](evaluation-framework.md) and the [30 September technical report](thesis/architecture-report/recap-agent-architecture-report.pdf).
+
 _Fecha: 2026-09-05 | Repo: recap-agent | Rama de evals: `evals/` + `tests/`_
 
 Documento para revisor externo. Cubre la totalidad de los tests de comportamiento vivos (Lambda real) y sus twins deterministas offline.

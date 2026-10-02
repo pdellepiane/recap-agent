@@ -1,5 +1,9 @@
 # recap-agent — Documentación integral del proyecto
 
+> Historical snapshot. Current testing policy and results are in [Testing and validation](../testing.md); the current formatted report is linked from the [documentation map](../README.md). Earlier WIP and judge-based results below retain their original cutoff.
+
+> **Historical partial-delivery snapshot (9 June 2026).** For the final September 2026 implementation, deployment, and open evaluation results, use [the 30 September technical report](architecture-report/recap-agent-architecture-report.pdf) and [activity log](final-activity-log-2026-09-30.md). The old model defaults and feature descriptions below are preserved as historical evidence.
+
 > **Fuentes:** `README.md`, `AGENTS.md`, `docs/implementation-log.md` (2480 líneas),
 > `docs/evaluation-framework.md`, `docs/channel-integration.md`,
 > `docs/knowledge-base-integration.md`, `docs/feedback-implementation-plan.md`,

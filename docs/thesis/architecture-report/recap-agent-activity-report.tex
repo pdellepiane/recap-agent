@@ -1,0 +1,179 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Sullivan Business Report
+% Adapted for recap-agent technical architecture report
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\documentclass[
+	a4paper,
+	12pt,
+]{CSSullivanBusinessReport}
+
+\usepackage{csquotes}
+\setlength{\emergencystretch}{2em}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric, shapes.misc, fit, calc}
+
+\addbibresource{sample.bib}
+\renewcommand{\contentsname}{Índice}
+\renewcommand{\figurename}{Figura}
+\renewcommand{\tablename}{Tabla}
+\DefineBibliographyStrings{english}{bibliography={Referencias},references={Referencias},urlseen={consultado el}}
+
+\reporttitle{Informe cronológico de actividades\\de implementación}
+\reportsubtitle{recap-agent}
+\reportauthors{Sin Envolturas}
+\reportdate{30 de septiembre de 2026}
+\rightheadercontent{\small Informe de actividades}
+
+\hypersetup{
+	pdftitle={Informe cronológico de actividades de implementación},
+	pdfauthor={Sin Envolturas},
+	colorlinks=true,
+	linkcolor=DarkBlue,
+	urlcolor=DarkBlue,
+	citecolor=DarkBlue
+}
+
+\newcommand{\term}[1]{\textbf{#1}}
+\newcommand{\smallcaps}[1]{\textsc{#1}}
+\newcommand{\metric}[1]{\textsf{#1}}
+\newcommand{\component}[1]{\textsf{#1}}
+\newcommand{\brandlogo}[2]{%
+	\IfFileExists{Images/#1}{%
+		\includegraphics[height=0.75cm,keepaspectratio]{Images/#1}%
+	}{%
+		\fbox{\parbox[c][0.62cm][c]{2.8cm}{\centering\scriptsize #2\\placeholder}}%
+	}%
+}
+
+\makeatletter
+\newcommand{\ps@recaplogos}{%
+	\renewcommand{\@oddhead}{\brandlogo{utec-logo.png}{UTEC}\hfill\small Informe de actividades\hfill\brandlogo{sin-envolturas-logo.jpeg}{Sin Envolturas}}%
+	\renewcommand{\@evenhead}{\@oddhead}%
+	\renewcommand{\@oddfoot}{\hfill\thepage\hfill}%
+	\renewcommand{\@evenfoot}{\@oddfoot}%
+}
+\makeatother
+
+\tikzset{
+	box/.style={draw=DarkBlue, rounded corners=2pt, very thick, align=center, inner sep=6pt, fill=AliceBlue},
+	store/.style={draw=DarkGreen, rounded corners=2pt, very thick, align=center, inner sep=6pt, fill=Honeydew},
+	ext/.style={draw=DarkRed, rounded corners=2pt, very thick, align=center, inner sep=6pt, fill=MistyRose},
+	agent/.style={draw=DarkOrange, rounded corners=2pt, very thick, align=center, inner sep=6pt, fill=OldLace},
+	decision/.style={draw=DarkMagenta, diamond, aspect=2.1, very thick, align=center, inner sep=2pt, fill=LavenderBlush},
+	flow/.style={-{Latex[length=3mm]}, very thick, draw=DimGray},
+	dashedflow/.style={-{Latex[length=3mm]}, very thick, dashed, draw=DimGray}
+}
+
+\begin{document}
+\pagestyle{recaplogos}
+\thispagestyle{empty}
+\begin{fullwidth}
+\vspace*{-0.06\textheight}
+\brandlogo{utec-logo.png}{UTEC}\hfill\brandlogo{sin-envolturas-logo.jpeg}{Sin Envolturas}
+\par\vspace{0.14\textheight}
+\parbox{0.9\fulltextwidth}{\fontsize{20pt}{26pt}\selectfont\raggedright\textbf{\reporttitle}\par}
+\par\vspace{0.03\textheight}
+{\LARGE\textit{\textbf{\reportsubtitle}}\par}
+\vfill {\Large Sin Envolturas\par}\vfill\vfill\vfill
+{\large\reportdate\par}
+\end{fullwidth}
+\newpage
+
+\thispagestyle{empty}
+\begin{twothirdswidth}
+\subsection*{Resumen}
+Este informe presenta las actividades documentadas de implementación de \textit{recap-agent}, desde la definición del proyecto hasta la consolidación de su arquitectura y evidencia operativa. El desarrollo comprende un runtime serverless, planificación de eventos, integración con el marketplace, información autorizada del cliente, recuperación de conocimiento y ejecución de acciones con recibos.
+
+\subsection*{Periodo y método}
+El periodo de implementación registrado abarca del 19 de marzo al 30 de septiembre de 2026. La cronología se reconstruye a partir del registro de implementación, el historial del repositorio, la entrega parcial de junio y los registros de diagnóstico y despliegue. Los intervalos señalan actividades documentadas; no representan un control de horas ni atribuyen trabajo diario cuando la evidencia solo identifica un periodo.
+
+\subsection*{Organización}
+Las actividades se ordenan por fecha y se describen mediante su propósito y resultado. Los detalles operativos, identificadores de ejecución y decisiones individuales se conservan en el registro de implementación del repositorio.
+\end{twothirdswidth}
+\newpage
+\begin{twothirdswidth}\tableofcontents\end{twothirdswidth}
+\newpage
+
+\section{Marzo: definición del proyecto}
+\subsection*{19--31 de marzo}
+Se definieron el alcance del piloto y las capacidades disponibles en las APIs del marketplace. Se estudiaron los límites de las herramientas del agente y se estableció una arquitectura que separa canal, adaptador y runtime. Esta decisión permitió concentrar la lógica conversacional en un servicio independiente del transporte y delimitar las responsabilidades de WhatsApp.
+
+\section{Abril: primera implementación ejecutable}
+\subsection*{5--16 de abril}
+Se construyó el servicio inicial en TypeScript, se normalizó la entrada de turnos y se incorporó persistencia del plan. La estructura del código separó dominio, almacenamiento, runtime e integraciones para mantener explícitas las dependencias externas.
+
+\subsection*{6--23 de abril}
+Se organizaron los prompts en español como archivos versionados, vinculados con los nodos de interpretación y respuesta. La separación entre extracción estructurada y generación de lenguaje estableció la base del procesamiento conversacional.
+
+\subsection*{Abril--mayo}
+Se integró el acceso a proveedores y se modeló el evento como un plan con varias necesidades. Se añadieron decisiones tipadas, un cliente de terminal y la infraestructura de desarrollo mediante CloudFormation. El cliente reprodujo el intercambio por turnos del canal previsto.
+
+\section{Mayo y junio: integración y entrega parcial}
+\subsection*{5--14 de mayo}
+Se incorporó recuperación híbrida de proveedores, normalización de categorías y eventos, enriquecimiento de candidatos y continuidad de recomendaciones. La búsqueda semántica complementó los campos operativos obtenidos de las APIs.
+
+\subsection*{Mayo--junio}
+Se integraron datos de clientes e invitaciones, autenticación de cuentas e invitados y recuperación de conocimiento. Se añadieron procesos de sincronización para proveedores y FAQ, así como trazas por turno para relacionar decisiones, consultas y resultados.
+
+\subsection*{9--22 de junio}
+Se prepararon la documentación técnica y el informe de arquitectura de la entrega parcial. Las observaciones recibidas orientaron ajustes en la información de proveedores y el análisis de interacciones. Esta entrega quedó conservada como evidencia histórica de la etapa inicial.
+
+\section{Julio y agosto: observabilidad y coordinación}
+\subsection*{Julio}
+Se ampliaron las verificaciones técnicas y el análisis de comportamiento, se documentó la integración del canal y se reforzó la observabilidad. Las auditorías de respuestas relacionaron conversaciones con trazas y registros externos para identificar sus causas.
+
+\subsection*{Agosto}
+Se revisaron los prompts y las ramas del flujo, se fortaleció la coordinación de turnos y se midieron las solicitudes enviadas al modelo. El trabajo permitió identificar instrucciones y contexto que podían seleccionarse de forma más precisa según el estado del turno.
+
+\section{Septiembre: consolidación del comportamiento}
+\subsection*{3--9 de septiembre}
+Se establecieron requisitos de continuidad de soporte y generación de respuestas por el LLM. La evidencia tipada y la selección de módulos de prompt se adoptaron como mecanismos para expresar el estado sin introducir respuestas conversacionales predefinidas.
+
+\subsection*{10--14 de septiembre}
+Se revisaron la identidad del evento, la integridad de recibos RSVP y la continuidad de imágenes. Las verificaciones se vincularon con el evento y el resultado real de la operación para distinguir una afirmación de una acción confirmada.
+
+\subsection*{15--17 de septiembre}
+Se incorporaron continuidad del perfil de cliente, evidencia de efectos y transferencias a soporte, selección de instrucciones y comportamiento de espera. También se preparó la operación de despliegues por rama.
+
+\subsection*{18 de septiembre}
+Se añadió contexto de recibos e imágenes a las llamadas existentes al modelo y se amplió el descubrimiento autorizado de pedidos y regalos. La información disponible se mantuvo vinculada con su procedencia y estado.
+
+\subsection*{21 de septiembre}
+Se representaron el cumplimiento de regalos y las referencias de campaña, se trataron discrepancias entre fuentes y se corrigió la conservación de importes. El candidato se desplegó en desarrollo y se evaluó sobre interacciones seleccionadas.
+
+\subsection*{22 de septiembre}
+Se simplificó la representación de evidencia y se completó el contexto de extracción. Se registró la cobertura de los cambios de comportamiento y se validó el candidato desplegado en desarrollo.
+
+\subsection*{23 de septiembre}
+Se construyó el perfil autorizado completo antes de la extracción. Se conservaron los registros y campos devueltos por las fuentes, con procedencia y estado explícito cuando la consulta era incompleta. Se reforzó el rechazo de acceso sin autorización.
+
+\subsection*{24 de septiembre}
+Se fundamentaron las respuestas sobre comisiones en artículos completos de FAQ, citas y evidencia de cálculo. Se protegió el tratamiento de URLs de diagnóstico y se revisó la consistencia de las verificaciones.
+
+\subsection*{25 de septiembre}
+Se mejoró la contabilización del costo de las evaluaciones y sus informes. Se revisó la conservación de evidencia de pagos, RSVP e imágenes y se preparó un alcance definido para la decisión de promoción.
+
+\subsection*{28 de septiembre}
+Se investigaron observaciones de producción sobre comisiones y respuestas RSVP. El análisis vinculó mensajes con evidencia de extracción, acciones y entrega; los ajustes seleccionados se verificaron en desarrollo.
+
+\section{29 y 30 de septiembre: despliegue y cierre}
+\subsection*{29 de septiembre: identidad y acciones}
+Se corrigió la vinculación de identificadores de evento y se representaron los resultados de RSVP y compras mediante evidencia tipada. Se revisó una interacción sin dispatch al runtime, se generalizó el tratamiento de teléfonos internacionales y se incorporaron correlación y protección de entradas malformadas.
+
+\subsection*{29 de septiembre: hora y producción}
+Se preservó la hora local registrada por el evento en la evidencia de consulta. Tras el despliegue en desarrollo, y con autorización del usuario, se promovió a producción el artefacto seleccionado y su configuración de modelos. Se conservó una copia para rollback y se comprobaron identidad de código, estado activo y comportamiento de la ruta protegida. Este registro corresponde a ese despliegue específico.
+
+\subsection*{29--30 de septiembre: consolidación documental}
+Se actualizó el mapa de documentación, se distinguieron contratos vigentes y registros históricos y se consolidó el informe técnico en el formato institucional existente. La edición en español mantuvo los términos especializados y adoptó una redacción descriptiva.
+
+\subsection*{30 de septiembre: continuidad y resultados}
+Se corrigieron la repetición de autenticación al recordar una tarea y la herencia de decisiones de acompañantes en RSVP. El artefacto de desarrollo obtuvo un 100\% de aprobación en siete interacciones seleccionadas y sus 47 condiciones objetivas. La verificación determinista completada obtuvo 1\,482 aprobaciones sobre 1\,482 comprobaciones ejecutadas; una comprobación omitida quedó fuera del denominador. También se completaron satisfactoriamente las verificaciones de tipos y convenciones.
+
+\section{Resultado del periodo}
+El proyecto dispone de un runtime serverless con planes de evento persistentes, consultas autorizadas, recuperación de proveedores y conocimiento, y ejecución de acciones con evidencia verificable. La documentación relaciona la arquitectura actual con las decisiones y actividades que condujeron a su implementación.
+
+Los resultados de desarrollo se atribuyen a sus interacciones seleccionadas y no representan una medición de satisfacción de usuarios. El despliegue de producción del 29 de septiembre conserva su propia identidad. El registro detallado de implementación y los diagnósticos del repositorio mantienen la trazabilidad de ambos entornos.
+\end{document}

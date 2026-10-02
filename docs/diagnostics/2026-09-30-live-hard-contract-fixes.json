@@ -1,0 +1,743 @@
+{
+  "originalRunId": "eval-2026-10-01T00-04-11-490Z-897da1bc",
+  "caseIds": [
+    "live_behavior.customer_event_task_continuity",
+    "live_behavior.gift_shipping_limitation_accepted_handoff_once",
+    "live_behavior.host_withdrawal_diana_policy_and_support",
+    "live_behavior.otp_terminal_handoff_failed",
+    "live_behavior.otp_terminal_handoff_unknown",
+    "live_behavior.otp_number_words_are_verified",
+    "live_behavior.rsvp_explicit_mutation_targets_requested_event"
+  ],
+  "maxPaidRunUsd": 1,
+  "retryPolicy": "No automatic retries or panel expansion.",
+  "localValidation": {
+    "targetedTestsPassed": 51,
+    "typecheck": "passed",
+    "lint": "passed",
+    "broaderInformationFlowBaselineFailures": 42,
+    "newFailuresComparedWithBeforeFix": 0,
+    "preExistingFailures": [
+      "tests/agent-service-information-flow.test.ts > AgentService first-class information flow > routes mailbox reports, deferrals and clarifications from empty information state without lookups or restarts",
+      "tests/agent-service-information-flow.test.ts > AgentService first-class information flow > clarifies a rejected purchase extraction without welcoming, looking up data, or starting OTP",
+      "tests/agent-service-information-flow.test.ts > AgentService first-class information flow > reads the verified purchase record for a typed purchase-status question instead of answering from the KB",
+      "tests/agent-service-information-flow.test.ts > AgentService first-class information flow > retains pending support and does not enter RSVP for a bare event reference after failed handoff",
+      "tests/agent-service-information-flow.test.ts > AgentService first-class information flow > still withholds reads when an ambiguous turn also executes a typed action",
+      "tests/agent-service-information-flow.test.ts > AgentService first-class information flow > reads a protected purchase with the trusted WhatsApp number without authentication",
+      "tests/agent-service-information-flow.test.ts > AgentService first-class information flow > projects a trusted cart recovery path separately from general payment policy",
+      "tests/agent-service-information-flow.test.ts > AgentService first-class information flow > recovers a persisted retired confirmation turn with the phone-scoped purchase read",
+      "tests/agent-service-information-flow.test.ts > AgentService first-class information flow > answers a phone-scoped not_found without handoff, OTP, or reply-model guessing",
+      "tests/agent-service-information-flow.test.ts > AgentService first-class information flow > answers a phone-scoped empty without handoff, OTP, or reply-model guessing",
+      "tests/agent-service-information-flow.test.ts > AgentService first-class information flow > answers a phone guest-event not_found without handoff with the support details preserved",
+      "tests/agent-service-information-flow.test.ts > AgentService first-class information flow > answers a phone guest-event empty without handoff with the support details preserved",
+      "tests/agent-service-information-flow.test.ts > AgentService first-class information flow > keeps usable phone purchase context when another requested lookup has no event match",
+      "tests/agent-service-information-flow.test.ts > AgentService first-class information flow > uses the trusted phone guest record before OTP when the phone has no account",
+      "tests/agent-service-information-flow.test.ts > AgentService first-class information flow > answers invited-event data before requesting email for a separate protected query",
+      "tests/agent-service-information-flow.test.ts > AgentService first-class information flow > hands off without asking for email when phone-scoped gift detail fails",
+      "tests/agent-service-information-flow.test.ts > AgentService first-class information flow > uses one OTP to resume associated-event and purchase requests together",
+      "tests/agent-service-information-flow.test.ts > AgentService first-class information flow > resolves an accountless purchase by trusted phone without asking for email",
+      "tests/agent-service-information-flow.test.ts > AgentService first-class information flow > retrieves the indexed validation policy exactly once for a pending-payment window question",
+      "tests/agent-service-information-flow.test.ts > AgentService first-class information flow > replays the primary purchase after a derived policy lookup on an ambiguous correction",
+      "tests/agent-service-information-flow.test.ts > AgentService first-class information flow > persists compact candidates when recent purchases require a selection",
+      "tests/agent-service-information-flow.test.ts > event entity threads: explicit switches keep their own identity > starts a separate thread for an explicit different event instead of blending hints",
+      "tests/agent-service-information-flow.test.ts > event entity threads: explicit switches keep their own identity > manufactures no new request from thanks after a completed event answer",
+      "tests/agent-service-information-flow.test.ts > campaign event-reference precedence (B1) > binds an elliptical event question to the campaign reference without demanding the reminder",
+      "tests/agent-service-information-flow.test.ts > campaign event-reference precedence (B1) > keeps an explicit different-event target ahead of the newest campaign",
+      "tests/agent-service-information-flow.test.ts > campaign event-reference precedence (B1) > keeps ambiguity across two genuinely conflicting campaign references",
+      "tests/agent-service-information-flow.test.ts > S6 projects recorded-method-no-currency as typed facts without a TypeScript phrase template",
+      "tests/agent-service-information-flow.test.ts > gift root-cause review: discovery, detail and honest coverage > discovers a recognized receipt with no purchase request through both sources once each",
+      "tests/agent-service-information-flow.test.ts > gift root-cause review: discovery, detail and honest coverage > adds the missing source when the extractor emitted one purchase request",
+      "tests/agent-service-information-flow.test.ts > gift root-cause review: discovery, detail and honest coverage > refreshes an identified receipt record on its single applicable source",
+      "tests/agent-service-information-flow.test.ts > gift root-cause review: discovery, detail and honest coverage > opens no purchase lookup for a non-receipt image with no task",
+      "tests/agent-service-information-flow.test.ts > gift root-cause review: discovery, detail and honest coverage > keeps dual equal-amount candidates ambiguous without auto-fetching detail",
+      "tests/agent-service-information-flow.test.ts > gift root-cause review: discovery, detail and honest coverage > answers a gift-only receipt from the gift record while carts stay uninvolved",
+      "tests/agent-service-information-flow.test.ts > gift root-cause review: discovery, detail and honest coverage > fetches gift-only facts for a discovery-identified record in the same turn",
+      "tests/agent-service-information-flow.test.ts > gift root-cause review: discovery, detail and honest coverage > skips the gift follow-up when discovery already supplies the facts",
+      "tests/agent-service-information-flow.test.ts > gift root-cause review: discovery, detail and honest coverage > distinguishes an empty source from a failed source with zero writes",
+      "tests/agent-service-information-flow.test.ts > gift root-cause review: discovery, detail and honest coverage > retains mixed gift amounts and fulfillment from service to projected model input",
+      "tests/agent-service-information-flow.test.ts > gift root-cause review: discovery, detail and honest coverage > serializes service-produced mixed gifts into the real reply input with per-item meaning",
+      "tests/agent-service-information-flow.test.ts > gift root-cause review: discovery, detail and honest coverage > delivers hinted honeymoon facts to the real reply input without erasing the record",
+      "tests/agent-service-information-flow.test.ts > source discovery information flow > preserves an unmatched exact ID without silently retargeting",
+      "tests/agent-service-information-flow.test.ts > source discovery information flow > synthesizes one discovery request for receipt assistance",
+      "tests/agent-service-information-flow.test.ts > source discovery information flow > reads no purchase root for gratitude without a new request"
+    ]
+  },
+  "promptModuleBytes": {
+    "before": 1011,
+    "after": 990
+  },
+  "deployment": {
+    "FunctionArn": "arn:aws:lambda:us-east-1:684516060775:function:recap-agent-runtime-dev",
+    "CodeSha256": "Zr1UCPLEphhUGVRMeXsqfoq5grwZX4+BmWgocSB9syg=",
+    "LastModified": "2026-10-01T00:40:40.000+0000",
+    "State": "Active",
+    "LastUpdateStatus": "Successful",
+    "artifactSha256": "66bd5408f2c4a6185419544c797b2a7e8ab982bc195f8f8199682871207db328"
+  },
+  "liveRun": {
+    "runId": "eval-2026-10-01T00-41-27-299Z-cf39e330",
+    "totalCases": 7,
+    "passedCases": 4,
+    "failedCases": 0,
+    "erroredCases": 3,
+    "skippedCases": 0,
+    "costSummary": {
+      "priced": true,
+      "pricingVersion": "2026-09-25",
+      "openaiUsd": 0.010354,
+      "judgeUsd": 0,
+      "lambdaUsd": 0.002453,
+      "totalUsd": 0.012807,
+      "unpricedCases": [],
+      "unpricedModels": []
+    },
+    "gateValidity": "invalid: deploymentAfter unavailable",
+    "caseResults": [
+      {
+        "caseId": "live_behavior.customer_event_task_continuity",
+        "status": "passed",
+        "hardGatePassed": true,
+        "errors": []
+      },
+      {
+        "caseId": "live_behavior.gift_shipping_limitation_accepted_handoff_once",
+        "status": "passed",
+        "hardGatePassed": true,
+        "errors": []
+      },
+      {
+        "caseId": "live_behavior.host_withdrawal_diana_policy_and_support",
+        "status": "passed",
+        "hardGatePassed": true,
+        "errors": []
+      },
+      {
+        "caseId": "live_behavior.otp_number_words_are_verified",
+        "status": "passed",
+        "hardGatePassed": true,
+        "errors": []
+      },
+      {
+        "caseId": "live_behavior.otp_terminal_handoff_failed",
+        "status": "errored",
+        "hardGatePassed": false,
+        "errors": [
+          "Runtime error: Uncertain execution: The operation was aborted due to timeout. An aborted HTTP request does not prove Lambda stopped; no retry was attempted and restoration waits for trace/lock evidence."
+        ]
+      },
+      {
+        "caseId": "live_behavior.otp_terminal_handoff_unknown",
+        "status": "errored",
+        "hardGatePassed": false,
+        "errors": [
+          "Runtime error: Could not load credentials from any providers"
+        ]
+      },
+      {
+        "caseId": "live_behavior.rsvp_explicit_mutation_targets_requested_event",
+        "status": "errored",
+        "hardGatePassed": false,
+        "errors": [
+          "Runtime error: Could not load credentials from any providers"
+        ]
+      }
+    ],
+    "deploymentBefore": {
+      "functionArn": "arn:aws:lambda:us-east-1:684516060775:function:recap-agent-runtime-dev",
+      "codeSha256": "Zr1UCPLEphhUGVRMeXsqfoq5grwZX4+BmWgocSB9syg=",
+      "version": "$LATEST",
+      "lastModified": "2026-10-01T00:40:40.000+0000",
+      "artifactSha256": "66bd5408f2c4a6185419544c797b2a7e8ab982bc195f8f8199682871207db328",
+      "artifactProvenance": "verified-aws",
+      "checkedAt": "2026-10-01T00:41:28.198Z"
+    },
+    "deploymentAfter": null
+  },
+  "infrastructureRecovery": {
+    "awsLogin": "refreshed se-signin; se-dev STS confirms 684516060775",
+    "deploymentUnchanged": true,
+    "timedOutInvocation": {
+      "requestId": "eb4bf898-b19e-4663-8a0c-76db32db8659",
+      "completion": "2026-10-01T00:44:39.078Z",
+      "statusCode": 200,
+      "outcome": "success",
+      "durationMs": 11145
+    },
+    "validationDecision": "Repeat the same frozen seven cases after infrastructure recovery; no semantic retries or expanded panel."
+  },
+  "recoveredLiveRun": {
+    "runId": "eval-2026-10-01T02-10-25-180Z-7b62f29a",
+    "totalCases": 7,
+    "passedCases": 7,
+    "failedCases": 0,
+    "erroredCases": 0,
+    "skippedCases": 0,
+    "costSummary": {
+      "priced": true,
+      "pricingVersion": "2026-09-25",
+      "openaiUsd": 0.020444,
+      "judgeUsd": 0,
+      "lambdaUsd": 0.005127,
+      "totalUsd": 0.025571,
+      "unpricedCases": [],
+      "unpricedModels": []
+    },
+    "hardAssertionsPassed": 47,
+    "deploymentBefore": {
+      "functionArn": "arn:aws:lambda:us-east-1:684516060775:function:recap-agent-runtime-dev",
+      "codeSha256": "Zr1UCPLEphhUGVRMeXsqfoq5grwZX4+BmWgocSB9syg=",
+      "version": "$LATEST",
+      "lastModified": "2026-10-01T00:40:40.000+0000",
+      "artifactSha256": "66bd5408f2c4a6185419544c797b2a7e8ab982bc195f8f8199682871207db328",
+      "artifactProvenance": "verified-aws",
+      "checkedAt": "2026-10-01T02:10:26.552Z"
+    },
+    "deploymentAfter": {
+      "functionArn": "arn:aws:lambda:us-east-1:684516060775:function:recap-agent-runtime-dev",
+      "codeSha256": "Zr1UCPLEphhUGVRMeXsqfoq5grwZX4+BmWgocSB9syg=",
+      "version": "$LATEST",
+      "lastModified": "2026-10-01T00:40:40.000+0000",
+      "artifactSha256": "66bd5408f2c4a6185419544c797b2a7e8ab982bc195f8f8199682871207db328",
+      "artifactProvenance": "verified-aws",
+      "checkedAt": "2026-10-01T02:12:36.068Z"
+    },
+    "gateValidity": "valid: same artifact before and after",
+    "caseResults": [
+      {
+        "caseId": "live_behavior.customer_event_task_continuity",
+        "status": "passed",
+        "hardGatePassed": true
+      },
+      {
+        "caseId": "live_behavior.gift_shipping_limitation_accepted_handoff_once",
+        "status": "passed",
+        "hardGatePassed": true
+      },
+      {
+        "caseId": "live_behavior.host_withdrawal_diana_policy_and_support",
+        "status": "passed",
+        "hardGatePassed": true
+      },
+      {
+        "caseId": "live_behavior.otp_number_words_are_verified",
+        "status": "passed",
+        "hardGatePassed": true
+      },
+      {
+        "caseId": "live_behavior.otp_terminal_handoff_failed",
+        "status": "passed",
+        "hardGatePassed": true
+      },
+      {
+        "caseId": "live_behavior.otp_terminal_handoff_unknown",
+        "status": "passed",
+        "hardGatePassed": true
+      },
+      {
+        "caseId": "live_behavior.rsvp_explicit_mutation_targets_requested_event",
+        "status": "passed",
+        "hardGatePassed": true
+      }
+    ]
+  },
+  "totalLiveValidationCostUsd": 0.038378,
+  "modelCallByteMeasurements": [
+    {
+      "caseId": "live_behavior.customer_event_task_continuity",
+      "turnIndex": 0,
+      "stage": "classifier",
+      "instructionBytes": 4896,
+      "inputBytes": 647
+    },
+    {
+      "caseId": "live_behavior.customer_event_task_continuity",
+      "turnIndex": 0,
+      "stage": "extraction",
+      "instructionBytes": 7671,
+      "inputBytes": 4438
+    },
+    {
+      "caseId": "live_behavior.customer_event_task_continuity",
+      "turnIndex": 0,
+      "stage": "reply",
+      "instructionBytes": 2119,
+      "inputBytes": 6986
+    },
+    {
+      "caseId": "live_behavior.customer_event_task_continuity",
+      "turnIndex": 1,
+      "stage": "classifier",
+      "instructionBytes": 4896,
+      "inputBytes": 963
+    },
+    {
+      "caseId": "live_behavior.customer_event_task_continuity",
+      "turnIndex": 1,
+      "stage": "extraction",
+      "instructionBytes": 5976,
+      "inputBytes": 4537
+    },
+    {
+      "caseId": "live_behavior.customer_event_task_continuity",
+      "turnIndex": 1,
+      "stage": "reply",
+      "instructionBytes": 2119,
+      "inputBytes": 10185
+    },
+    {
+      "caseId": "live_behavior.customer_event_task_continuity",
+      "turnIndex": 2,
+      "stage": "classifier",
+      "instructionBytes": 4896,
+      "inputBytes": 1217
+    },
+    {
+      "caseId": "live_behavior.customer_event_task_continuity",
+      "turnIndex": 2,
+      "stage": "extraction",
+      "instructionBytes": 5321,
+      "inputBytes": 4922
+    },
+    {
+      "caseId": "live_behavior.customer_event_task_continuity",
+      "turnIndex": 2,
+      "stage": "reply",
+      "instructionBytes": 2119,
+      "inputBytes": 7946
+    },
+    {
+      "caseId": "live_behavior.customer_event_task_continuity",
+      "turnIndex": 3,
+      "stage": "classifier",
+      "instructionBytes": 4896,
+      "inputBytes": 1358
+    },
+    {
+      "caseId": "live_behavior.customer_event_task_continuity",
+      "turnIndex": 3,
+      "stage": "extraction",
+      "instructionBytes": 5321,
+      "inputBytes": 5095
+    },
+    {
+      "caseId": "live_behavior.customer_event_task_continuity",
+      "turnIndex": 3,
+      "stage": "reply",
+      "instructionBytes": 2547,
+      "inputBytes": 9415
+    },
+    {
+      "caseId": "live_behavior.gift_shipping_limitation_accepted_handoff_once",
+      "turnIndex": 0,
+      "stage": "classifier",
+      "instructionBytes": 4896,
+      "inputBytes": 706
+    },
+    {
+      "caseId": "live_behavior.gift_shipping_limitation_accepted_handoff_once",
+      "turnIndex": 0,
+      "stage": "extraction",
+      "instructionBytes": 7671,
+      "inputBytes": 3703
+    },
+    {
+      "caseId": "live_behavior.gift_shipping_limitation_accepted_handoff_once",
+      "turnIndex": 0,
+      "stage": "reply",
+      "instructionBytes": 2298,
+      "inputBytes": 6486
+    },
+    {
+      "caseId": "live_behavior.gift_shipping_limitation_accepted_handoff_once",
+      "turnIndex": 1,
+      "stage": "classifier",
+      "instructionBytes": 4896,
+      "inputBytes": 1080
+    },
+    {
+      "caseId": "live_behavior.gift_shipping_limitation_accepted_handoff_once",
+      "turnIndex": 1,
+      "stage": "extraction",
+      "instructionBytes": 5976,
+      "inputBytes": 3912
+    },
+    {
+      "caseId": "live_behavior.gift_shipping_limitation_accepted_handoff_once",
+      "turnIndex": 1,
+      "stage": "reply",
+      "instructionBytes": 3317,
+      "inputBytes": 7043
+    },
+    {
+      "caseId": "live_behavior.gift_shipping_limitation_accepted_handoff_once",
+      "turnIndex": 2,
+      "stage": "extraction",
+      "instructionBytes": 5976,
+      "inputBytes": 4529
+    },
+    {
+      "caseId": "live_behavior.gift_shipping_limitation_accepted_handoff_once",
+      "turnIndex": 2,
+      "stage": "reply",
+      "instructionBytes": 510,
+      "inputBytes": 6175
+    },
+    {
+      "caseId": "live_behavior.host_withdrawal_diana_policy_and_support",
+      "turnIndex": 0,
+      "stage": "classifier",
+      "instructionBytes": 4896,
+      "inputBytes": 751
+    },
+    {
+      "caseId": "live_behavior.host_withdrawal_diana_policy_and_support",
+      "turnIndex": 0,
+      "stage": "extraction",
+      "instructionBytes": 7671,
+      "inputBytes": 2791
+    },
+    {
+      "caseId": "live_behavior.host_withdrawal_diana_policy_and_support",
+      "turnIndex": 0,
+      "stage": "reply",
+      "instructionBytes": 1447,
+      "inputBytes": 4166
+    },
+    {
+      "caseId": "live_behavior.host_withdrawal_diana_policy_and_support",
+      "turnIndex": 1,
+      "stage": "classifier",
+      "instructionBytes": 4896,
+      "inputBytes": 1136
+    },
+    {
+      "caseId": "live_behavior.host_withdrawal_diana_policy_and_support",
+      "turnIndex": 1,
+      "stage": "extraction",
+      "instructionBytes": 5976,
+      "inputBytes": 3032
+    },
+    {
+      "caseId": "live_behavior.host_withdrawal_diana_policy_and_support",
+      "turnIndex": 1,
+      "stage": "reply",
+      "instructionBytes": 510,
+      "inputBytes": 4264
+    },
+    {
+      "caseId": "live_behavior.host_withdrawal_diana_policy_and_support",
+      "turnIndex": 2,
+      "stage": "classifier",
+      "instructionBytes": 4896,
+      "inputBytes": 1441
+    },
+    {
+      "caseId": "live_behavior.host_withdrawal_diana_policy_and_support",
+      "turnIndex": 2,
+      "stage": "extraction",
+      "instructionBytes": 5976,
+      "inputBytes": 3350
+    },
+    {
+      "caseId": "live_behavior.host_withdrawal_diana_policy_and_support",
+      "turnIndex": 2,
+      "stage": "reply",
+      "instructionBytes": 2466,
+      "inputBytes": 6720
+    },
+    {
+      "caseId": "live_behavior.host_withdrawal_diana_policy_and_support",
+      "turnIndex": 3,
+      "stage": "extraction",
+      "instructionBytes": 5976,
+      "inputBytes": 3968
+    },
+    {
+      "caseId": "live_behavior.host_withdrawal_diana_policy_and_support",
+      "turnIndex": 3,
+      "stage": "reply",
+      "instructionBytes": 2466,
+      "inputBytes": 7255
+    },
+    {
+      "caseId": "live_behavior.otp_number_words_are_verified",
+      "turnIndex": 0,
+      "stage": "classifier",
+      "instructionBytes": 4896,
+      "inputBytes": 660
+    },
+    {
+      "caseId": "live_behavior.otp_number_words_are_verified",
+      "turnIndex": 0,
+      "stage": "extraction",
+      "instructionBytes": 5976,
+      "inputBytes": 2772
+    },
+    {
+      "caseId": "live_behavior.otp_number_words_are_verified",
+      "turnIndex": 0,
+      "stage": "reply",
+      "instructionBytes": 2749,
+      "inputBytes": 11636
+    },
+    {
+      "caseId": "live_behavior.otp_number_words_are_verified",
+      "turnIndex": 1,
+      "stage": "classifier",
+      "instructionBytes": 4896,
+      "inputBytes": 1037
+    },
+    {
+      "caseId": "live_behavior.otp_number_words_are_verified",
+      "turnIndex": 1,
+      "stage": "extraction",
+      "instructionBytes": 5976,
+      "inputBytes": 3290
+    },
+    {
+      "caseId": "live_behavior.otp_number_words_are_verified",
+      "turnIndex": 1,
+      "stage": "reply",
+      "instructionBytes": 2298,
+      "inputBytes": 4917
+    },
+    {
+      "caseId": "live_behavior.otp_number_words_are_verified",
+      "turnIndex": 2,
+      "stage": "classifier",
+      "instructionBytes": 4896,
+      "inputBytes": 1379
+    },
+    {
+      "caseId": "live_behavior.otp_terminal_handoff_failed",
+      "turnIndex": 0,
+      "stage": "classifier",
+      "instructionBytes": 4896,
+      "inputBytes": 634
+    },
+    {
+      "caseId": "live_behavior.otp_terminal_handoff_failed",
+      "turnIndex": 0,
+      "stage": "extraction",
+      "instructionBytes": 5976,
+      "inputBytes": 2941
+    },
+    {
+      "caseId": "live_behavior.otp_terminal_handoff_failed",
+      "turnIndex": 0,
+      "stage": "reply",
+      "instructionBytes": 3615,
+      "inputBytes": 4421
+    },
+    {
+      "caseId": "live_behavior.otp_terminal_handoff_failed",
+      "turnIndex": 1,
+      "stage": "classifier",
+      "instructionBytes": 4896,
+      "inputBytes": 914
+    },
+    {
+      "caseId": "live_behavior.otp_terminal_handoff_failed",
+      "turnIndex": 1,
+      "stage": "extraction",
+      "instructionBytes": 5976,
+      "inputBytes": 3196
+    },
+    {
+      "caseId": "live_behavior.otp_terminal_handoff_failed",
+      "turnIndex": 1,
+      "stage": "reply",
+      "instructionBytes": 3615,
+      "inputBytes": 4280
+    },
+    {
+      "caseId": "live_behavior.otp_terminal_handoff_failed",
+      "turnIndex": 2,
+      "stage": "classifier",
+      "instructionBytes": 4896,
+      "inputBytes": 1189
+    },
+    {
+      "caseId": "live_behavior.otp_terminal_handoff_failed",
+      "turnIndex": 2,
+      "stage": "extraction",
+      "instructionBytes": 5976,
+      "inputBytes": 3359
+    },
+    {
+      "caseId": "live_behavior.otp_terminal_handoff_failed",
+      "turnIndex": 2,
+      "stage": "reply",
+      "instructionBytes": 3615,
+      "inputBytes": 4740
+    },
+    {
+      "caseId": "live_behavior.otp_terminal_handoff_unknown",
+      "turnIndex": 0,
+      "stage": "classifier",
+      "instructionBytes": 4896,
+      "inputBytes": 634
+    },
+    {
+      "caseId": "live_behavior.otp_terminal_handoff_unknown",
+      "turnIndex": 0,
+      "stage": "extraction",
+      "instructionBytes": 5976,
+      "inputBytes": 2943
+    },
+    {
+      "caseId": "live_behavior.otp_terminal_handoff_unknown",
+      "turnIndex": 0,
+      "stage": "reply",
+      "instructionBytes": 3615,
+      "inputBytes": 4404
+    },
+    {
+      "caseId": "live_behavior.otp_terminal_handoff_unknown",
+      "turnIndex": 1,
+      "stage": "classifier",
+      "instructionBytes": 4896,
+      "inputBytes": 940
+    },
+    {
+      "caseId": "live_behavior.otp_terminal_handoff_unknown",
+      "turnIndex": 1,
+      "stage": "extraction",
+      "instructionBytes": 5976,
+      "inputBytes": 3238
+    },
+    {
+      "caseId": "live_behavior.otp_terminal_handoff_unknown",
+      "turnIndex": 1,
+      "stage": "reply",
+      "instructionBytes": 3615,
+      "inputBytes": 4305
+    },
+    {
+      "caseId": "live_behavior.otp_terminal_handoff_unknown",
+      "turnIndex": 2,
+      "stage": "classifier",
+      "instructionBytes": 4896,
+      "inputBytes": 1255
+    },
+    {
+      "caseId": "live_behavior.otp_terminal_handoff_unknown",
+      "turnIndex": 2,
+      "stage": "extraction",
+      "instructionBytes": 5976,
+      "inputBytes": 3461
+    },
+    {
+      "caseId": "live_behavior.otp_terminal_handoff_unknown",
+      "turnIndex": 2,
+      "stage": "reply",
+      "instructionBytes": 3615,
+      "inputBytes": 4798
+    },
+    {
+      "caseId": "live_behavior.rsvp_explicit_mutation_targets_requested_event",
+      "turnIndex": 0,
+      "stage": "classifier",
+      "instructionBytes": 4896,
+      "inputBytes": 661
+    },
+    {
+      "caseId": "live_behavior.rsvp_explicit_mutation_targets_requested_event",
+      "turnIndex": 0,
+      "stage": "extraction",
+      "instructionBytes": 7671,
+      "inputBytes": 4452
+    },
+    {
+      "caseId": "live_behavior.rsvp_explicit_mutation_targets_requested_event",
+      "turnIndex": 0,
+      "stage": "reply",
+      "instructionBytes": 510,
+      "inputBytes": 6756
+    },
+    {
+      "caseId": "live_behavior.rsvp_explicit_mutation_targets_requested_event",
+      "turnIndex": 1,
+      "stage": "classifier",
+      "instructionBytes": 4896,
+      "inputBytes": 1039
+    },
+    {
+      "caseId": "live_behavior.rsvp_explicit_mutation_targets_requested_event",
+      "turnIndex": 1,
+      "stage": "extraction",
+      "instructionBytes": 7671,
+      "inputBytes": 5169
+    },
+    {
+      "caseId": "live_behavior.rsvp_explicit_mutation_targets_requested_event",
+      "turnIndex": 1,
+      "stage": "reply",
+      "instructionBytes": 2547,
+      "inputBytes": 9427
+    },
+    {
+      "caseId": "live_behavior.rsvp_explicit_mutation_targets_requested_event",
+      "turnIndex": 2,
+      "stage": "classifier",
+      "instructionBytes": 4896,
+      "inputBytes": 1593
+    },
+    {
+      "caseId": "live_behavior.rsvp_explicit_mutation_targets_requested_event",
+      "turnIndex": 2,
+      "stage": "extraction",
+      "instructionBytes": 5321,
+      "inputBytes": 5360
+    },
+    {
+      "caseId": "live_behavior.rsvp_explicit_mutation_targets_requested_event",
+      "turnIndex": 2,
+      "stage": "reply",
+      "instructionBytes": 2119,
+      "inputBytes": 10424
+    },
+    {
+      "caseId": "live_behavior.rsvp_explicit_mutation_targets_requested_event",
+      "turnIndex": 3,
+      "stage": "classifier",
+      "instructionBytes": 4896,
+      "inputBytes": 1559
+    },
+    {
+      "caseId": "live_behavior.rsvp_explicit_mutation_targets_requested_event",
+      "turnIndex": 3,
+      "stage": "extraction",
+      "instructionBytes": 7671,
+      "inputBytes": 5785
+    },
+    {
+      "caseId": "live_behavior.rsvp_explicit_mutation_targets_requested_event",
+      "turnIndex": 3,
+      "stage": "reply",
+      "instructionBytes": 2119,
+      "inputBytes": 8543
+    },
+    {
+      "caseId": "live_behavior.rsvp_explicit_mutation_targets_requested_event",
+      "turnIndex": 4,
+      "stage": "classifier",
+      "instructionBytes": 4896,
+      "inputBytes": 1439
+    },
+    {
+      "caseId": "live_behavior.rsvp_explicit_mutation_targets_requested_event",
+      "turnIndex": 4,
+      "stage": "extraction",
+      "instructionBytes": 5976,
+      "inputBytes": 5131
+    },
+    {
+      "caseId": "live_behavior.rsvp_explicit_mutation_targets_requested_event",
+      "turnIndex": 4,
+      "stage": "reply",
+      "instructionBytes": 2547,
+      "inputBytes": 10124
+    }
+  ]
+}

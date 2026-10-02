@@ -2,11 +2,11 @@
 
 This guide is the working contract for connecting consumer channels to the deployed recap-agent runtime. It covers the live Lambda Function URL, request and response payloads, telemetry persistence, provider API dependencies, and the adapter responsibilities that must stay outside the channel-agnostic runtime.
 
-Last verified against CloudFormation outputs on 2026-07-15.
+The endpoint inventory below was verified against CloudFormation outputs on 2026-07-15. The 2026-09-29 production deployment identity and open adapter gap are recorded in [the current technical report](thesis/architecture-report/recap-agent-architecture-report.pdf); check current stack outputs before operating the endpoint.
 
-## Live Runtime Endpoints
+## Runtime Endpoints
 
-Current development deployment:
+The following endpoint values were captured in July 2026 and are historical examples. Resolve current development and production outputs before using an endpoint; development stack is `recap-agent-runtime-dev` and production stack is `recap-agent-runtime`.
 
 | Purpose | Value |
 | --- | --- |
@@ -15,8 +15,8 @@ Current development deployment:
 | Function URL native auth | `NONE` (no SigV4/AWS credentials) |
 | Application auth | `Authorization: Bearer <CHANNEL_API_KEY>` validated from Secrets Manager |
 | AWS region | `us-east-1` |
-| CloudFormation stack | `recap-agent-runtime` |
-| Lambda function | `recap-agent-runtime` |
+| CloudFormation stack in this historical example | `recap-agent-runtime` (production) |
+| Lambda function in this historical example | `recap-agent-runtime` (production) |
 | Plans table | `recap-agent-runtime-plans` |
 | Perf table | `recap-agent-runtime-perf` |
 | Default channel fallback | `terminal_whatsapp` |
@@ -28,7 +28,7 @@ Channel adapters must still verify the original WhatsApp webhook signature. The 
 Configure the runtime URL and the adapter's single runtime credential:
 
 ```text
-AGENT_FUNCTION_URL=https://jwtjjociscvaa5dsrp5gokmno40doiva.lambda-url.us-east-1.on.aws/
+AGENT_FUNCTION_URL=<current FunctionUrl output for the selected stack>
 CHANNEL_API_KEY=<value provisioned from recap-agent/channel-api-key>
 ```
 
@@ -45,7 +45,7 @@ Resolve the latest deployment values instead of hardcoding them in long-lived ad
 
 ```bash
 AWS_PROFILE=se-dev AWS_REGION=us-east-1 aws cloudformation describe-stacks \
-  --stack-name recap-agent-runtime \
+  --stack-name recap-agent-runtime-dev \
   --query "Stacks[0].Outputs" \
   --output table
 ```
@@ -164,7 +164,7 @@ The two fields have different jobs:
 | `user_id` | Stable namespaced plan identity. Together with `channel`, it selects the durable plan. |
 | `contact_phone` | Trusted channel contact context. It is normalized to digits, injected into the plan before classification/extraction, persisted as `plan.contact_phone`, and used for Agent API history, optional message logging, human takeover, and quote/contact flows. |
 
-Do not rely on `user_id` as an implicit phone fallback. Do not omit `contact_phone` because the same digits appear in `user_id`. For WhatsApp channels the Lambda rejects a missing phone context with `400`. It also rejects local-format values such as `999999999`; send `+51999999999`. Current phone validation supports Peru (`+51`), Mexico (`+52`), and NANP (`+1`). Passing the field on every turn is intentional: it hydrates new plans immediately and repairs older plans that did not yet store the phone, so the extractor and reply agent see the phone on the first turn and do not ask the user for it again.
+Do not rely on `user_id` as an implicit phone fallback. Do not omit `contact_phone` because the same digits appear in `user_id`. For WhatsApp channels the Lambda rejects a missing phone context with `400`. It also rejects local-format values such as `999999999`; send `+51999999999`. Phone validation accepts every assigned ITU-T E.164 country code (for example `+51`, `+52`, `+1`, `+44`, `+961`); the caller's country is never inferred from event city, message language, or the current customer profile. Derive `contact_phone` only from Meta's authenticated sender id and never prepend a default country code such as `+51` to an ambiguous display value. Passing the field on every turn is intentional: it hydrates new plans immediately and repairs older plans that did not yet store the phone, so the extractor and reply agent see the phone on the first turn and do not ask the user for it again.
 
 To rotate runtime access without interrupting the current adapter:
 
@@ -512,7 +512,15 @@ flowchart TD
 2. Build `user_id: whatsapp:<from>` and `contact_phone: +<from>`. Pass both on
    every turn.
 3. Call the Function URL with `Authorization: Bearer <CHANNEL_API_KEY>` and the original WhatsApp
-   `wamid` as `message_id`.
+   `wamid` as `message_id`. No adapter correlation work is required: Lambda automatically derives the
+   correlation id from the `message_id` already on the request, so retries of one inbound share one id and every
+   request/response pair joins the Lambda log without adapter changes. An explicit `x-recap-correlation-id`
+   header (UUID recommended, same value on every attempt including retries) overrides the derivation when the
+   adapter wants its own join key. Lambda returns the id on every response (including `400`) in both the
+   `x-recap-correlation-id` header and the `correlation_id` body field, alongside `x-recap-request-id` /
+   `request_id`, and logs it on every outcome. On `400` the log also carries the request body sha256, byte
+   length, structural shape, and sha256 hashes of the raw identity fields, so a pre-validation failure joins the
+   adapter's outbound record without exposing raw customer content.
    Do not save the inbound message separately through the Agent API. The
    existing external conversation service owns history population; Lambda reads
    that history and keeps its optional write path disabled by default.
@@ -554,14 +562,18 @@ type RuntimeChannelResponse = {
   conversation_id: string | null;
   plan_id: string;
   current_node: string;
+  correlation_id: string;
+  request_id: string;
 };
 
-async function forwardTurn(request: RuntimeRequest): Promise<RuntimeChannelResponse> {
+async function forwardTurn(request: RuntimeRequest, correlationId?: string): Promise<RuntimeChannelResponse> {
   const response = await fetch(process.env.AGENT_FUNCTION_URL, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
       authorization: `Bearer ${process.env.CHANNEL_API_KEY}`,
+      // Optional: overrides the automatic message_id-derived correlation.
+      ...(correlationId ? { 'x-recap-correlation-id': correlationId } : {}),
     },
     body: JSON.stringify(request),
   });
@@ -593,6 +605,8 @@ await markTurnComplete({
   planId: runtimeResponse.plan_id,
   currentNode: runtimeResponse.current_node,
   delivery: runtimeResponse.delivery,
+  correlationId: runtimeResponse.correlation_id,
+  requestId: runtimeResponse.request_id,
 });
 ```
 
@@ -607,7 +621,7 @@ For a WhatsApp webhook, map native fields like this:
 | `text` | inbound text body after trimming unsupported channel wrappers |
 | `media` | validated descriptor copied from the native media object; do not include bytes or a download URL |
 | `user_id` | `whatsapp:${from}` where `from` is the platform sender id |
-| `contact_phone` | `+${from}` after removing non-digits from Meta's sender id |
+| `contact_phone` | `+${from}` after removing non-digits from Meta's sender id; never prepend a default country code |
 | `channel` | `whatsapp` |
 | `message_id` | WhatsApp `wamid` |
 | `received_at` | WhatsApp timestamp converted to ISO-8601 |
@@ -732,7 +746,7 @@ AWS_PROFILE=se-dev AWS_REGION=us-east-1 aws dynamodb query \
 
 The plans table is `recap-agent-runtime-plans`. The runtime stores the full event plan and updates it across turns. The adapter should not read or write this table during normal operation.
 
-Use plan reads only for developer diagnostics, eval tooling, or support workflows where AWS access is appropriate. The terminal client already does this through [src/terminal/client.ts](/Users/leonardocandio/Desktop/UTEC/2026-1/tesis/recap-agent/src/terminal/client.ts).
+Use plan reads only for developer diagnostics, eval tooling, or support workflows where AWS access is appropriate. The terminal client already does this through [src/terminal/client.ts](../src/terminal/client.ts).
 
 ## Provider API Dependencies
 
@@ -742,7 +756,7 @@ The deployed runtime uses the Sin Envolturas vendor API base URL:
 https://api.sinenvolturas.com/api-web/vendor
 ```
 
-Current gateway operations in [src/runtime/sinenvolturas-gateway.ts](/Users/leonardocandio/Desktop/UTEC/2026-1/tesis/recap-agent/src/runtime/sinenvolturas-gateway.ts):
+Current gateway operations in [src/runtime/sinenvolturas-gateway.ts](../src/runtime/sinenvolturas-gateway.ts):
 
 | Runtime capability | Method and path |
 | --- | --- |
@@ -768,8 +782,8 @@ Search behavior:
 - Plan-driven search builds bounded search terms from active provider need category, category aliases, event type, location, and a short conversation summary.
 - Search fetches both `/filtered` and `/filtered/full` for each query page, merges by provider id, and auto-fetches up to 4 sequential pages.
 - If search returns no providers, the runtime falls back to `/relevant`.
-- The persisted shortlist is capped by `PROVIDER_SEARCH_LIMIT`, currently 15.
-- The reply presentation limit is `PRESENTATION_PROVIDER_LIMIT`, currently 5.
+- The persisted shortlist uses `PROVIDER_SEARCH_LIMIT`, whose current code default is 12.
+- The reply presentation uses `PRESENTATION_PROVIDER_LIMIT`, whose current code default is 6.
 - Deterministic provider enrichment looks up detail for up to `PROVIDER_DETAIL_LOOKUP_LIMIT`, currently 3.
 
 Quote request body sent by the gateway:
@@ -788,17 +802,17 @@ Quote request body sent by the gateway:
 }
 ```
 
-Live endpoint research on 2026-04-20 found `GET /api-web/vendor/filtered/full` and `POST /api-web/vendor/quote` to be stable tool candidates. See [analysis/vendor-endpoint-tool-readiness/findings.md](/Users/leonardocandio/Desktop/UTEC/2026-1/tesis/recap-agent/analysis/vendor-endpoint-tool-readiness/findings.md).
+Live endpoint research on 2026-04-20 found `GET /api-web/vendor/filtered/full` and `POST /api-web/vendor/quote` to be stable tool candidates. See [analysis/vendor-endpoint-tool-readiness/findings.md](../analysis/vendor-endpoint-tool-readiness/findings.md).
 
 ## Runtime Configuration
 
-The Lambda reads configuration through [src/runtime/config.ts](/Users/leonardocandio/Desktop/UTEC/2026-1/tesis/recap-agent/src/runtime/config.ts). Important deployed defaults:
+The Lambda reads configuration through [src/runtime/config.ts](../src/runtime/config.ts). Important deployed defaults:
 
 | Env var | Current value |
 | --- | --- |
-| `OPENAI_MODEL` | `gpt-5.6-luna` |
-| `OPENAI_EXTRACTOR_MODEL` | `gpt-5.6-luna` |
-| `OPENAI_RESPONSE_CLASSIFIER_MODEL` | `gpt-5.6-luna` |
+| `OPENAI_MODEL` | `gpt-6-luna` |
+| `OPENAI_EXTRACTOR_MODEL` | `gpt-6-luna` |
+| `OPENAI_RESPONSE_CLASSIFIER_MODEL` | `gpt-6-luna` |
 | `RESPONSE_CLASSIFIER_MODE` | `enforce` |
 | `AWS_REGION` | `us-east-1` |
 | `PLANS_TABLE_NAME` | `recap-agent-runtime-plans` |
@@ -811,14 +825,15 @@ The Lambda reads configuration through [src/runtime/config.ts](/Users/leonardoca
 | `CHANNEL_API_SECRET_ID` | Secrets Manager ARN for `recap-agent/channel-api-key` |
 | `LOG_RETENTION_DAYS` | `7` |
 
-All three GPT roles use `reasoning.effort: none`, low text verbosity, and
-GPT-5.6 implicit prompt caching with a `30m` TTL. Cache reads and billable
-cache writes are recorded separately in turn token usage.
+The three application model roles currently default to `gpt-6-luna`; supported
+models use low reasoning effort and low text verbosity. The runtime sets prompt
+cache options centrally, and cache reads and writes are recorded separately in
+turn token usage. The evaluation judge remains configured independently.
 | `DEFAULT_INBOUND_CHANNEL` | `terminal_whatsapp` unless overridden |
-| `PROVIDER_SEARCH_LIMIT` | `15` |
+| `PROVIDER_SEARCH_LIMIT` | `12` (code default) |
 | `SEARCH_SUMMARY_WORD_LIMIT` | `5` |
-| `REPLY_PROVIDER_LIMIT` | `15` |
-| `PRESENTATION_PROVIDER_LIMIT` | `5` |
+| `REPLY_PROVIDER_LIMIT` | `6` (code default) |
+| `PRESENTATION_PROVIDER_LIMIT` | `6` (code default) |
 | `PROVIDER_DETAIL_LOOKUP_LIMIT` | `3` |
 | `PERF_RETENTION_DAYS` | `30` |
 

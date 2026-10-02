@@ -1,5 +1,7 @@
 # Channel media integration
 
+> **Historical July 2026 capability snapshot.** The deterministic fixed image reply and the assertion that the runtime cannot inspect images were superseded by later model-written conversation and image-continuity work. Use [channel integration](channel-integration.md) and the [30 September technical report](thesis/architecture-report/recap-agent-architecture-report.pdf) for current behavior. The contract examples below remain as historical transport design evidence.
+
 ## Current capability boundary
 
 The channel contract carries complete provider-hosted media metadata through the
