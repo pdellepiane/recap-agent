@@ -1,0 +1,84 @@
+{
+  "scenario": "purchase-declined-card-transfer-pending",
+  "asOfTime": "2026-10-20T00:00:00.000Z",
+  "baselineCommit": "1a81b70e",
+  "note": "Dossier case D (2026-10-19 WhatsApp behaviour cases) THEN-state: the only record the runtime could read during the four turns was the declined card attempt ORD_6ad637da04583 for Nicolas (2026-10-24), S/ 403.53, transaction_status 'declined' with the PayU validation message, payment.paid_at 2026-10-19 15:31:44. The card method label is the repository card enum that matches the artifact's 'card method' and the replies' 'pago con tarjeta rechazado'. The same order id was later repriced in the live backend to S/ 391.87 with payment_status 'pending' and payment_method 'Yape o Plin' (the transfer the guest reported paying by Plin), but a single wire record can hold one payment state, so this fixture ships the declined state the runtime actually saw and does not invent the pending one: the guest-reported S/ 391.87 Plin payment is a model-side signal (turn text and receipt image), not a backend record. No increment_id key exists on any record, matching the live guest payloads. Phone +51900000404 is synthetic: no customer name, e-mail or phone is stored.",
+  "guestOrders": {
+    "51900000404": {
+      "pending_orders": [],
+      "completed_orders": [
+        {
+          "id": "ORD_6ad637da04583",
+          "name": null,
+          "email": null,
+          "payment_status": "declined",
+          "shipping_status": null,
+          "grand_total": 403.53,
+          "payment_method": "Tarjeta de crédito/débito",
+          "event_id": null,
+          "currency": null,
+          "currency_code": "PEN",
+          "currency_symbol": "S/",
+          "event_name": "Nicolás",
+          "event_date": "2026-10-24",
+          "event_url": null,
+          "items": [],
+          "payment": {
+            "method": "Tarjeta de crédito/débito",
+            "amount": 403.53,
+            "transaction_status": "declined",
+            "gateway_message": "Error de validación al generar el pago Payu",
+            "op_code": null,
+            "origin_bank": null,
+            "voucher": null,
+            "paid_at": "2026-10-19 15:31:44"
+          },
+          "created_at": "2026-10-19 15:31:44"
+        }
+      ],
+      "carts": []
+    }
+  },
+  "guestGiftPurchases": {
+    "51900000404": {
+      "purchases": [
+        {
+          "id": "ORD_6ad637da04583",
+          "payment_status": "declined",
+          "shipping_status": null,
+          "grand_total": 403.53,
+          "is_thanked": null,
+          "payment": {
+            "method": "Tarjeta de crédito/débito",
+            "amount": 403.53,
+            "transaction_status": "declined",
+            "gateway_message": "Error de validación al generar el pago Payu",
+            "op_code": null,
+            "origin_bank": null,
+            "voucher": null,
+            "paid_at": "2026-10-19 15:31:44"
+          },
+          "decline_code": null,
+          "admin_comment": null,
+          "event_id": null,
+          "currency": null,
+          "currency_code": "PEN",
+          "currency_symbol": "S/",
+          "event_name": "Nicolás",
+          "event_date": "2026-10-24",
+          "event_url": null,
+          "items": [],
+          "created_at": "2026-10-19 15:31:44"
+        }
+      ]
+    }
+  },
+  "guestEvents": {
+    "51900000404": {
+      "events": []
+    }
+  },
+  "handoff": {
+    "status": "success"
+  }
+}

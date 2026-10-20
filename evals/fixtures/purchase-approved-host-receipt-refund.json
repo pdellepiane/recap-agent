@@ -1,0 +1,104 @@
+{
+  "scenario": "purchase-approved-host-receipt-refund",
+  "asOfTime": "2026-10-20T00:00:00.000Z",
+  "baselineCommit": "1a81b70e",
+  "note": "Dossier case C (2026-10-19 WhatsApp behaviour cases) state, unchanged between the conversation and the 2026-10-20 recheck: one approved purchase ORD_6ab970ab70802 for the Baby Shower of 2026-10-17, charged S/ 87.36 and paid by Yape o Plin on 2026-09-27 19:38:19 (payment.op_code 'mobile-payment'). The single line item is a 'Cambiador portatil' worth S/ 79 whose raw backend type is 'credit', which the runtime disclosure policy maps to the host_credit fulfillment kind, so the gift was registered as credit for the hosts and not as a shipped physical article. The host receipt is present: is_thanked is true and the thank-you message is the real backend one, delivered by WhatsApp. The artifact captured only the beginning of that message, so the modelled text is exactly the captured prefix and the backend message continues past it. No increment_id key exists on any record, matching the live guest payloads. Phone +51900000403 is synthetic: no customer name, e-mail or phone is stored.",
+  "guestOrders": {
+    "51900000403": {
+      "pending_orders": [],
+      "completed_orders": [
+        {
+          "id": "ORD_6ab970ab70802",
+          "name": null,
+          "email": null,
+          "payment_status": "approved",
+          "shipping_status": null,
+          "grand_total": 87.36,
+          "payment_method": "Yape o Plin",
+          "event_id": null,
+          "currency": null,
+          "currency_code": "PEN",
+          "currency_symbol": "S/",
+          "event_name": "Baby Shower",
+          "event_date": "2026-10-17",
+          "event_url": null,
+          "items": [
+            {
+              "gift_name": "Cambiador portátil",
+              "quantity": 1,
+              "amount": 79.0,
+              "row_total": 79.0,
+              "type": "credit"
+            }
+          ],
+          "payment": {
+            "method": "Yape o Plin",
+            "amount": 87.36,
+            "transaction_status": null,
+            "gateway_message": null,
+            "op_code": "mobile-payment",
+            "origin_bank": null,
+            "voucher": null,
+            "paid_at": "2026-09-27 19:38:19"
+          },
+          "created_at": "2026-09-27 19:38:19"
+        }
+      ],
+      "carts": []
+    }
+  },
+  "guestGiftPurchases": {
+    "51900000403": {
+      "purchases": [
+        {
+          "id": "ORD_6ab970ab70802",
+          "payment_status": "approved",
+          "shipping_status": null,
+          "grand_total": 87.36,
+          "is_thanked": true,
+          "payment": {
+            "method": "Yape o Plin",
+            "amount": 87.36,
+            "transaction_status": null,
+            "gateway_message": null,
+            "op_code": "mobile-payment",
+            "origin_bank": null,
+            "voucher": null,
+            "paid_at": "2026-09-27 19:38:19"
+          },
+          "decline_code": null,
+          "admin_comment": null,
+          "event_id": null,
+          "currency": null,
+          "currency_code": "PEN",
+          "currency_symbol": "S/",
+          "event_name": "Baby Shower",
+          "event_date": "2026-10-17",
+          "event_url": null,
+          "items": [
+            {
+              "gift_name": "Cambiador portátil",
+              "quantity": 1,
+              "amount": 79.0,
+              "row_total": 79.0,
+              "type": "credit"
+            }
+          ],
+          "thanks": {
+            "message": "Hola tia hermosa! Hemos recibido tu regalo con muchisimo amor!",
+            "send_method": "whatsapp"
+          },
+          "created_at": "2026-09-27 19:38:19"
+        }
+      ]
+    }
+  },
+  "guestEvents": {
+    "51900000403": {
+      "events": []
+    }
+  },
+  "handoff": {
+    "status": "success"
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "scenario": "purchase-yape-receipt-no-match",
+  "asOfTime": "2026-10-20T00:00:00.000Z",
+  "baselineCommit": "1a81b70e",
+  "note": "Dossier case A (2026-10-19 WhatsApp behaviour cases) THEN-state. The guest lane had no purchase record at all during the conversation: every orders and gift-purchases read completed without results, so the Yape receipt image could not be matched to anything. The only records are the two identical abandoned carts 470893 and 471454 (S/ 442.00 each, Giuly & Brian 2026-10-24) that the bot asked the guest to choose between; the guest described them as a bed headboard cover and a bedspread, but no backend line item is modelled because the item split of the 442.00 was never captured. The order that settled later (ORD_6ac56cb4ec4bd, S/ 464.86, approved, payment.paid_at 2026-10-06 21:48:37, about 37 minutes after the last bot turn) did not exist yet and is deliberately NOT modelled here; a later-turn fixture may add it. No increment_id key exists on any record, matching the live guest payloads. Phone +51900000401 is synthetic: no customer name, e-mail or phone is stored.",
+  "guestOrders": {
+    "51900000401": {
+      "pending_orders": [],
+      "completed_orders": [],
+      "carts": [
+        {
+          "cart_id": 470893,
+          "status": "abandoned",
+          "was_abandoned": true,
+          "event_id": null,
+          "event_name": "Giuly & Brian",
+          "event_date": "2026-10-24",
+          "event_url": null,
+          "subtotal": 442.0,
+          "currency": null,
+          "currency_code": "PEN",
+          "currency_symbol": "S/",
+          "gifts_quantity": null,
+          "items": [],
+          "created_at": null
+        },
+        {
+          "cart_id": 471454,
+          "status": "abandoned",
+          "was_abandoned": true,
+          "event_id": null,
+          "event_name": "Giuly & Brian",
+          "event_date": "2026-10-24",
+          "event_url": null,
+          "subtotal": 442.0,
+          "currency": null,
+          "currency_code": "PEN",
+          "currency_symbol": "S/",
+          "gifts_quantity": null,
+          "items": [],
+          "created_at": null
+        }
+      ]
+    }
+  },
+  "guestGiftPurchases": {
+    "51900000401": {
+      "purchases": []
+    }
+  },
+  "guestEvents": {
+    "51900000401": {
+      "events": []
+    }
+  },
+  "handoff": {
+    "status": "success"
+  }
+}

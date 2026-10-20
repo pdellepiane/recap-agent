@@ -1,0 +1,172 @@
+{
+  "scenario": "purchase-ambiguous-two-orders",
+  "asOfTime": "2026-10-20T00:00:00.000Z",
+  "baselineCommit": "1a81b70e",
+  "note": "Multi-purchase ambiguity twin (dossier 2026-10-19, case E): a synthetic guest profile with two approved purchases that differ in event name, event date, total and payment method, so a question can be ambiguous between them and the router has to ask which one is meant. The two records are deliberately distinguishable, unlike the identical carts of case A. Phone +51900000405 is synthetic: no customer name, e-mail or phone is stored.",
+  "guestOrders": {
+    "51900000405": {
+      "pending_orders": [],
+      "completed_orders": [
+        {
+          "id": "ORD_amb-01",
+          "name": null,
+          "email": null,
+          "payment_status": "approved",
+          "shipping_status": null,
+          "grand_total": 350.0,
+          "payment_method": "Transferencia",
+          "event_id": null,
+          "currency": null,
+          "currency_code": "PEN",
+          "currency_symbol": "S/",
+          "event_name": "Boda Comunitaria",
+          "event_date": "2026-10-10",
+          "event_url": null,
+          "items": [
+            {
+              "gift_name": "Juego de sábanas",
+              "quantity": 1,
+              "amount": 350.0,
+              "row_total": 350.0,
+              "type": "se_store"
+            }
+          ],
+          "payment": {
+            "method": "Transferencia",
+            "amount": 350.0,
+            "transaction_status": null,
+            "gateway_message": null,
+            "op_code": null,
+            "origin_bank": null,
+            "voucher": null,
+            "paid_at": "2026-09-20 10:00:00"
+          },
+          "created_at": "2026-09-20 10:00:00"
+        },
+        {
+          "id": "ORD_amb-02",
+          "name": null,
+          "email": null,
+          "payment_status": "approved",
+          "shipping_status": null,
+          "grand_total": 120.5,
+          "payment_method": "Yape o Plin",
+          "event_id": null,
+          "currency": null,
+          "currency_code": "PEN",
+          "currency_symbol": "S/",
+          "event_name": "Cumpleaños Familiar",
+          "event_date": "2026-11-22",
+          "event_url": null,
+          "items": [
+            {
+              "gift_name": "Aporte de cumpleaños",
+              "quantity": 1,
+              "amount": 120.5,
+              "row_total": 120.5,
+              "type": "credit"
+            }
+          ],
+          "payment": {
+            "method": "Yape o Plin",
+            "amount": 120.5,
+            "transaction_status": null,
+            "gateway_message": null,
+            "op_code": null,
+            "origin_bank": null,
+            "voucher": null,
+            "paid_at": "2026-10-05 18:20:00"
+          },
+          "created_at": "2026-10-05 18:20:00"
+        }
+      ],
+      "carts": []
+    }
+  },
+  "guestGiftPurchases": {
+    "51900000405": {
+      "purchases": [
+        {
+          "id": "ORD_amb-01",
+          "payment_status": "approved",
+          "shipping_status": null,
+          "grand_total": 350.0,
+          "is_thanked": null,
+          "payment": {
+            "method": "Transferencia",
+            "amount": 350.0,
+            "transaction_status": null,
+            "gateway_message": null,
+            "op_code": null,
+            "origin_bank": null,
+            "voucher": null,
+            "paid_at": "2026-09-20 10:00:00"
+          },
+          "decline_code": null,
+          "admin_comment": null,
+          "event_id": null,
+          "currency": null,
+          "currency_code": "PEN",
+          "currency_symbol": "S/",
+          "event_name": "Boda Comunitaria",
+          "event_date": "2026-10-10",
+          "event_url": null,
+          "items": [
+            {
+              "gift_name": "Juego de sábanas",
+              "quantity": 1,
+              "amount": 350.0,
+              "row_total": 350.0,
+              "type": "se_store"
+            }
+          ],
+          "created_at": "2026-09-20 10:00:00"
+        },
+        {
+          "id": "ORD_amb-02",
+          "payment_status": "approved",
+          "shipping_status": null,
+          "grand_total": 120.5,
+          "is_thanked": null,
+          "payment": {
+            "method": "Yape o Plin",
+            "amount": 120.5,
+            "transaction_status": null,
+            "gateway_message": null,
+            "op_code": null,
+            "origin_bank": null,
+            "voucher": null,
+            "paid_at": "2026-10-05 18:20:00"
+          },
+          "decline_code": null,
+          "admin_comment": null,
+          "event_id": null,
+          "currency": null,
+          "currency_code": "PEN",
+          "currency_symbol": "S/",
+          "event_name": "Cumpleaños Familiar",
+          "event_date": "2026-11-22",
+          "event_url": null,
+          "items": [
+            {
+              "gift_name": "Aporte de cumpleaños",
+              "quantity": 1,
+              "amount": 120.5,
+              "row_total": 120.5,
+              "type": "credit"
+            }
+          ],
+          "created_at": "2026-10-05 18:20:00"
+        }
+      ]
+    }
+  },
+  "guestEvents": {
+    "51900000405": {
+      "events": []
+    }
+  },
+  "handoff": {
+    "status": "success"
+  }
+}

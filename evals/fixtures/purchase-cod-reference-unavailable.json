@@ -1,0 +1,212 @@
+{
+  "scenario": "purchase-cod-reference-unavailable",
+  "asOfTime": "2026-10-20T00:00:00.000Z",
+  "baselineCommit": "1a81b70e",
+  "note": "Dossier case B (2026-10-19 WhatsApp behaviour cases) NOW-state: four approved purchases for the guest. ORD_6ad6760c5bbee is the Michi & Chino wedding purchase of 2026-11-21 charged US$ 86.45 and paid by card on 2026-10-19 19:57:07, the record the guest asks about. The other three approved records (ORD_6a18d3ca76e45, 627063d405f1a, 66e85020a0241) belong to the second event of the guest, Michelle Vera & Franco Nicolini; the artifact captured only their identifiers, approved status and event, so their totals, dates and payment details are left unknown instead of being invented. CRITICAL: no record carries an increment_id key at all, exactly like the live guest payloads, so the customer transaction number is unmatchable by construction and the code the guest typed (COD309553) is not the identifier of any record. The gift label of the Michi & Chino purchase is a synthetic placeholder for the evidenced fact that the purchase includes a gift; its fulfillment type stays unknown because the artifact never captured it. Phone +51900000402 is synthetic: no customer name, e-mail or phone is stored.",
+  "guestOrders": {
+    "51900000402": {
+      "pending_orders": [],
+      "completed_orders": [
+        {
+          "id": "ORD_6ad6760c5bbee",
+          "name": null,
+          "email": null,
+          "payment_status": "approved",
+          "shipping_status": null,
+          "grand_total": 86.45,
+          "payment_method": "Tarjeta de crédito/débito",
+          "event_id": null,
+          "currency": null,
+          "currency_code": "USD",
+          "currency_symbol": "US$",
+          "event_name": "Michi & Chino",
+          "event_date": "2026-11-21",
+          "event_url": null,
+          "items": [
+            {
+              "gift_name": "Regalo de boda",
+              "quantity": 1,
+              "amount": 86.45,
+              "row_total": 86.45,
+              "type": null
+            }
+          ],
+          "payment": {
+            "method": "Tarjeta de crédito/débito",
+            "amount": 86.45,
+            "transaction_status": null,
+            "gateway_message": null,
+            "op_code": null,
+            "origin_bank": null,
+            "voucher": null,
+            "paid_at": "2026-10-19 19:57:07"
+          },
+          "created_at": "2026-10-19 19:57:07"
+        },
+        {
+          "id": "ORD_6a18d3ca76e45",
+          "name": null,
+          "email": null,
+          "payment_status": "approved",
+          "shipping_status": null,
+          "grand_total": null,
+          "payment_method": null,
+          "event_id": null,
+          "currency": null,
+          "currency_code": "USD",
+          "currency_symbol": "US$",
+          "event_name": "Michelle Vera & Franco Nicolini",
+          "event_date": null,
+          "event_url": null,
+          "items": [],
+          "created_at": null
+        },
+        {
+          "id": "627063d405f1a",
+          "name": null,
+          "email": null,
+          "payment_status": "approved",
+          "shipping_status": null,
+          "grand_total": null,
+          "payment_method": null,
+          "event_id": null,
+          "currency": null,
+          "currency_code": "USD",
+          "currency_symbol": "US$",
+          "event_name": "Michelle Vera & Franco Nicolini",
+          "event_date": null,
+          "event_url": null,
+          "items": [],
+          "created_at": null
+        },
+        {
+          "id": "66e85020a0241",
+          "name": null,
+          "email": null,
+          "payment_status": "approved",
+          "shipping_status": null,
+          "grand_total": null,
+          "payment_method": null,
+          "event_id": null,
+          "currency": null,
+          "currency_code": "USD",
+          "currency_symbol": "US$",
+          "event_name": "Michelle Vera & Franco Nicolini",
+          "event_date": null,
+          "event_url": null,
+          "items": [],
+          "created_at": null
+        }
+      ],
+      "carts": []
+    }
+  },
+  "guestGiftPurchases": {
+    "51900000402": {
+      "purchases": [
+        {
+          "id": "ORD_6ad6760c5bbee",
+          "payment_status": "approved",
+          "shipping_status": null,
+          "grand_total": 86.45,
+          "is_thanked": true,
+          "payment": {
+            "method": "Tarjeta de crédito/débito",
+            "amount": 86.45,
+            "transaction_status": null,
+            "gateway_message": null,
+            "op_code": null,
+            "origin_bank": null,
+            "voucher": null,
+            "paid_at": "2026-10-19 19:57:07"
+          },
+          "decline_code": null,
+          "admin_comment": null,
+          "event_id": null,
+          "currency": null,
+          "currency_code": "USD",
+          "currency_symbol": "US$",
+          "event_name": "Michi & Chino",
+          "event_date": "2026-11-21",
+          "event_url": null,
+          "items": [
+            {
+              "gift_name": "Regalo de boda",
+              "quantity": 1,
+              "amount": 86.45,
+              "row_total": 86.45,
+              "type": null
+            }
+          ],
+          "thanks": {
+            "message": null,
+            "send_method": "whatsapp"
+          },
+          "created_at": "2026-10-19 19:57:07"
+        },
+        {
+          "id": "ORD_6a18d3ca76e45",
+          "payment_status": "approved",
+          "shipping_status": null,
+          "grand_total": null,
+          "is_thanked": null,
+          "decline_code": null,
+          "admin_comment": null,
+          "event_id": null,
+          "currency": null,
+          "currency_code": "USD",
+          "currency_symbol": "US$",
+          "event_name": "Michelle Vera & Franco Nicolini",
+          "event_date": null,
+          "event_url": null,
+          "items": [],
+          "created_at": null
+        },
+        {
+          "id": "627063d405f1a",
+          "payment_status": "approved",
+          "shipping_status": null,
+          "grand_total": null,
+          "is_thanked": null,
+          "decline_code": null,
+          "admin_comment": null,
+          "event_id": null,
+          "currency": null,
+          "currency_code": "USD",
+          "currency_symbol": "US$",
+          "event_name": "Michelle Vera & Franco Nicolini",
+          "event_date": null,
+          "event_url": null,
+          "items": [],
+          "created_at": null
+        },
+        {
+          "id": "66e85020a0241",
+          "payment_status": "approved",
+          "shipping_status": null,
+          "grand_total": null,
+          "is_thanked": null,
+          "decline_code": null,
+          "admin_comment": null,
+          "event_id": null,
+          "currency": null,
+          "currency_code": "USD",
+          "currency_symbol": "US$",
+          "event_name": "Michelle Vera & Franco Nicolini",
+          "event_date": null,
+          "event_url": null,
+          "items": [],
+          "created_at": null
+        }
+      ]
+    }
+  },
+  "guestEvents": {
+    "51900000402": {
+      "events": []
+    }
+  },
+  "handoff": {
+    "status": "success"
+  }
+}
