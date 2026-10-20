@@ -13,10 +13,7 @@
  */
 import { z } from 'zod';
 
-import type {
-  ExtractedInformationRequest,
-  PendingInformationRequest,
-} from '../core/information';
+import type { ExtractedInformationRequest } from '../core/information';
 import type { PlanSnapshot } from '../core/plan';
 import type { RouterRoute } from './decisions-router-questions';
 import type { PriorReportedPayment } from './support-outcome';
@@ -109,22 +106,6 @@ export function supportLaneInformationRequests(args: {
     });
   }
   return requests;
-}
-
-/**
- * Merge the deterministic requests with the plan's pending requests using
- * the established merge rules. The pending list stays the base, so a live
- * pending request keeps its id, its selector and its request id.
- */
-export function mergeSupportLaneRequests(args: {
-  readonly pending: readonly PendingInformationRequest[];
-  readonly deterministic: readonly ExtractedInformationRequest[];
-  readonly merge: (
-    pending: PendingInformationRequest[],
-    extracted: ExtractedInformationRequest[],
-  ) => PendingInformationRequest[];
-}): PendingInformationRequest[] {
-  return args.merge([...args.pending], [...args.deterministic]);
 }
 
 /**
