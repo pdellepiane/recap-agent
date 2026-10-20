@@ -103,6 +103,7 @@ expectations:
     expectedReplays: 0
     severity: hard
 notes:
+  - "Runtime precondition: the deployed development Lambda must run the customer-assistance lane with AGENT_FEATURE_DECISIONS_ROUTER=true. With the flag off the classifier path owns the turn and the router contracts asserted here are not the behavior under test."
   - "Reconstruction of analysis/2026-10-19-whatsapp-behavior-cases dossier case A (turn table rows A1-A7, 2026-10-06): a Yape receipt, then repeated messages asking where the order is (A2, A3, A6) and the closing request to investigate the payment (A7). The synthetic phone +51900000401 and the fixture purchase-yape-receipt-no-match carry no purchase record at all, only the two abandoned carts 470893 and 471454, so the receipt can never be matched."
   - "Image substitution: the dossier screenshot is a private customer document, so the turn carries the repository's synthetic payment-receipt asset (evals/fixtures/images/receipt-amount-obscured.png, amount and date deliberately inked over). The asserted contract is the receipt-without-record effect, never a pixel amount; the guest states S/ 464.86 in text, exactly as in the dossier."
   - "The empty read is asserted as a hard backend fact through the typed purchase summary of the opening turn (completed, completed_without_results): the records carry no purchase, so no answer may claim that the guest paid."

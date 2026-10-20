@@ -126,6 +126,7 @@ expectations:
     expectedReplays: 0
     severity: hard
 notes:
+  - "Runtime precondition: the deployed development Lambda must run the customer-assistance lane with AGENT_FEATURE_DECISIONS_ROUTER=true. With the flag off the classifier path owns the turn and the router contracts asserted here are not the behavior under test."
   - "WP4 behavior of analysis/2026-10-19-whatsapp-behavior-cases: the judge evidence must carry the host-receipt fact (the thank-you receipt) and the payment summary beside paymentStatus. The typed evidence object is the purchaseFact on the purchase summary evidence of information_execution_summary, which is exactly what the live judge adapter (src/evals/purchase-evidence.ts projectLivePurchaseFacts) reads, so the assertion is structural over the trace and never over the reply wording."
   - "The synthetic phone +51900000403 and the fixture purchase-approved-host-receipt-refund carry one approved purchase (ORD_6ab970ab70802, S/ 87.36, Yape o Plin, host credit of S/ 79, is_thanked true, thank-you message present)."
   - "Limitation documented: the expectation is pinned on the opening record question. A later turn that replays the last completed purchase request may legitimately carry no new purchase summary, so the fact is asserted on the turn that performed the read."

@@ -97,6 +97,7 @@ expectations:
     expectedReplays: 0
     severity: hard
 notes:
+  - "Runtime precondition: the deployed development Lambda must run the customer-assistance lane with AGENT_FEATURE_DECISIONS_ROUTER=true. With the flag off the classifier path owns the turn and the router contracts asserted here are not the behavior under test."
   - "Reconstruction of analysis/2026-10-19-whatsapp-behavior-cases dossier case C (turn table rows C1-C12, 2026-10-17): the guest questions an approved S/ 87.36 host-credit purchase for the Baby Shower of 2026-10-17, asks for the money back (C4, C5), repeats the demand while frustrated (C6) and closes with the demand again (C12). The synthetic phone +51900000403 and the fixture purchase-approved-host-receipt-refund carry exactly one approved purchase (ORD_6ab970ab70802, S/ 87.36, Yape o Plin, host receipt present)."
   - "The escalation turn itself is NOT pinned: the router answers probabilities, so the takeover may land on any turn of the thread. The contract asserted here is the effect over the conversation (one successful takeover, no replay) plus the plan state, and the negative per-turn pin is the opening informational turn, which must not take the conversation over."
   - "The effect ledger is cumulative from the case baseline, so the un-indexed fixture_effect_count expectations cover the whole conversation: exactly one handoff attempt, one success, no replay, and no RSVP, OTP request or OTP verification anywhere in the thread."

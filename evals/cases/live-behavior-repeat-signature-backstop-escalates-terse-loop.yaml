@@ -93,6 +93,7 @@ expectations:
     expectedReplays: 0
     severity: hard
 notes:
+  - "Runtime precondition: the deployed development Lambda must run the customer-assistance lane with AGENT_FEATURE_DECISIONS_ROUTER=true. With the flag off the classifier path owns the turn and the router contracts asserted here are not the behavior under test."
   - "Reconstruction of analysis/2026-10-19-whatsapp-behavior-cases dossier case D (turn table rows D1-D4, 2026-10-19): a Plin receipt, then short repeated messages (D2, D3, D4) that keep reporting one unconfirmed payment while the only backend record is the declined card attempt ORD_6ad637da04583 (S/ 403.53, transaction_status declined). The synthetic phone +51900000404 and the fixture purchase-declined-card-transfer-pending carry exactly that declined record and nothing else."
   - "Image substitution: the dossier screenshot is a private customer document, so the turn carries the repository's synthetic payment-receipt asset (evals/fixtures/images/receipt-amount-obscured.png, amount and date deliberately inked over). The asserted contract is the unmatchable-receipt effect against a declined record, never a pixel amount; the guest states S/ 391.87 in text, exactly as in the dossier."
   - "support_outcome.unresolved_money is the typed classification of the turn money evidence: the record says declined while the guest reports a successful payment (declined_vs_reported_success). It is the hard, objective precondition of the repeat backstop and replaces any reading of the reply wording."
