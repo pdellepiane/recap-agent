@@ -252,6 +252,20 @@ export function mergeAuthRecoveryState(
 }
 
 /**
+ * WP3 reported payment state: the payment the guest reported, as reported by
+ * the compose sidecar. Model-side evidence only: the runtime never detects it
+ * from the message text.
+ */
+export const reportedPaymentStateSchema = z.object({
+  amount: z.number().nonnegative().nullable(),
+  currency: z.string().nullable(),
+  method: z.string().nullable(),
+  claimed_success: z.boolean(),
+});
+
+export type ReportedPaymentState = z.infer<typeof reportedPaymentStateSchema>;
+
+/**
  * WP2 support outcome state: the signature of the last purchase outcome with
  * its repeat counter. The signature is a hash of the outcome components, so
  * it carries no customer text and no identifier.
@@ -261,6 +275,13 @@ export const supportOutcomeStateSchema = z.object({
   repeat_count: z.number().int().min(0).default(0),
   unresolved_money: z.boolean().default(false),
   updated_at: z.string().nullable().default(null),
+  /**
+   * The payment the guest reported on the previous turn, persisted from that
+   * turn's compose sidecar. It is the `priorReportedPayment` input of the
+   * next turn's outcome signature. Absent or null when the previous turn
+   * carried no reported payment.
+   */
+  reported_payment: reportedPaymentStateSchema.nullable().optional(),
 });
 
 export type SupportOutcomeState = z.infer<typeof supportOutcomeStateSchema>;
@@ -271,6 +292,7 @@ export function emptySupportOutcomeState(): SupportOutcomeState {
     repeat_count: 0,
     unresolved_money: false,
     updated_at: null,
+    reported_payment: null,
   };
 }
 
@@ -282,6 +304,10 @@ export function emptySupportOutcomeState(): SupportOutcomeState {
  * value, because the outcome changed. A null incoming signature leaves the
  * stored state untouched. The merge never increments: the caller computes the
  * incoming repeat count before merging.
+ *
+ * The reported payment is a one-turn signal: the incoming value replaces the
+ * stored one, and a null incoming value clears it. It is therefore written
+ * together with the signature, never on its own.
  */
 export function mergeSupportOutcomeState(
   current: SupportOutcomeState,
@@ -298,6 +324,7 @@ export function mergeSupportOutcomeState(
       : incoming.repeat_count,
     unresolved_money: incoming.unresolved_money,
     updated_at: incoming.updated_at,
+    reported_payment: incoming.reported_payment ?? null,
   };
 }
 

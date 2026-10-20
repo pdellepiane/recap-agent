@@ -32,6 +32,7 @@ import { AgentService } from '../runtime/agent-service';
 import type { HandleTurnResponse } from '../runtime/agent-service';
 import { AgentParticipationService } from '../runtime/agent-participation-service';
 import { OpenAiMessageResponseClassifier } from '../runtime/message-response-classifier';
+import { OpenAiSupportLaneRouter } from '../runtime/decisions-router-lane';
 import {
   FixtureKnowledgeRetrievalGateway,
   NoopKnowledgeRetrievalGateway,
@@ -106,6 +107,11 @@ type SharedRuntimeDeps = {
   openAiRuntime: OpenAiAgentRuntime;
   capabilityManifest: RuntimeCapabilityManifest;
   responseClassifier: OpenAiMessageResponseClassifier;
+  /**
+   * WP3 Decisions API router of the customer-assistance lane. Disabled by
+   * default: a disabled router keeps the existing classifier path.
+   */
+  supportLaneRouter: OpenAiSupportLaneRouter;
   planStore: DynamoPlanStore;
   perfStore: PerfStore;
   imageFileStore: OpenAiImageFileStore;
@@ -719,6 +725,16 @@ async function getSharedRuntimeDeps(): Promise<SharedRuntimeDeps> {
         promptLoader,
         timeoutMs: config.openAi.timeoutsMs.responseClassifier,
       });
+      // WP3: the Decisions API router of the customer-assistance lane. The
+      // lane flag is the only switch: disabled keeps the classifier path.
+      const supportLaneRouter = new OpenAiSupportLaneRouter({
+        enabled: config.features.decisionsRouter,
+        apiKey,
+        baseUrl: config.openAi.baseUrl,
+        model: config.openAi.models.router,
+        timeoutMs: config.openAi.timeoutsMs.router,
+        promptLoader,
+      });
       const runtimePlanStore = getPlanStore();
       const perfStore = config.performance.tableName
         ? new DynamoPerfStore(config.performance.tableName, {
@@ -735,6 +751,7 @@ async function getSharedRuntimeDeps(): Promise<SharedRuntimeDeps> {
         knowledgeGateway,
         openAiRuntime,
         responseClassifier,
+        supportLaneRouter,
         planStore: runtimePlanStore,
         perfStore,
         capabilityManifest,
@@ -789,6 +806,7 @@ async function getRuntime(): Promise<{
           agentConversationGateway,
           informationOrchestrator,
           responseClassifier: shared.responseClassifier,
+          supportLaneRouter: shared.supportLaneRouter,
           promptLoader: shared.promptLoader,
           renderers: {
             whatsapp: new WhatsAppMessageRenderer(),
@@ -927,6 +945,7 @@ async function getFixtureRuntime(args: {
       agentConversationGateway: fixtureGateway,
       informationOrchestrator,
       responseClassifier: shared.responseClassifier,
+      supportLaneRouter: shared.supportLaneRouter,
       promptLoader: shared.promptLoader,
       renderers: {
         whatsapp: new WhatsAppMessageRenderer(),

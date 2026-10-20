@@ -15,6 +15,7 @@ import type {
 } from '../core/information';
 
 import type { StructuredMessage } from './structured-message';
+import type { SupportReplySidecar } from './support-lane-flow';
 import type { ProviderFitCriteria } from './provider-fit';
 import type { TurnMessageContext } from './turn-message-context';
 import type {
@@ -358,6 +359,12 @@ export type ComposeReplyRequest = {
   imageFileAttachments?: readonly ImageFileAttachment[];
   /** Persist a confirmed completion before subsequent model generation can fail. */
   onPlanCompleted?: (plan: PlanSnapshot) => Promise<void>;
+  /**
+   * WP3 support-lane compose: the reply output carries a sidecar beside the
+   * structured message (the cited order ids and the reported payment). The
+   * delivered message shape never changes; the sidecar is evidence only.
+   */
+  supportSidecar?: boolean;
 };
 
 /**
@@ -429,6 +436,13 @@ export type ComposeReplyResult = {
     readonly bundleId: string;
     readonly filePaths: readonly string[];
   };
+  /**
+   * WP3 support-lane sidecar. Present only when the request asked for it
+   * (`supportSidecar`). It never blocks the reply and never rewrites the
+   * message: the caller validates the cited order ids against the
+   * authorized profile and drops the violations.
+   */
+  sidecar?: SupportReplySidecar | null;
 };
 
 export type ToolUsage = {

@@ -314,6 +314,7 @@ export const planSchema = z.object({
     repeat_count: 0,
     unresolved_money: false,
     updated_at: null,
+    reported_payment: null,
   }),
   current_node: decisionNodeSchema,
   intent: z.enum(planIntentValues).nullable(),

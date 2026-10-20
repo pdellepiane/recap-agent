@@ -79,6 +79,7 @@ import type {
   PlanDebugSummary,
   ProviderCandidateAuditEntry,
   RecommendationFunnelTrace,
+  RouterDecisionTrace,
   SearchStrategyTrace,
   SelectionResolutionDebugSummary,
   ToolOutputTrace,
@@ -228,6 +229,25 @@ import {
   projectSupportHandoffEvidence,
   type SupportHandoffReplyOutcome,
 } from './reply-evidence-projector';
+import {
+  conversationHealthFromRouter,
+  type SupportLaneRouterPort,
+  type SupportLaneRouterResult,
+} from './decisions-router-lane';
+import type { RouterEscalationReason } from './decisions-router-policy';
+import type { RouterRoute } from './decisions-router-questions';
+import { buildCapabilityDigest } from './capability-digest';
+import {
+  supportLaneInformationRequests,
+  validateCitedOrderIds,
+} from './support-lane-flow';
+import {
+  computeSupportOutcomeSignature,
+  nextSupportOutcomeRepeatCount,
+  supportOutcomeComponentsFromSnapshot,
+  type PriorReportedPayment,
+  type SupportReferenceResolution,
+} from './support-outcome';
 import { buildFinishPlanSummary, buildProviderQuoteReceipts } from './finish-plan-debug';
 import {
   createAuthOperationId,
@@ -589,6 +609,63 @@ export function hasCurrentMessageRsvpReference(
 const PENDING_COMPILER_PROMPT_ID = 'compiler:runtime-reported';
 const UNREPORTED_COMPILER_PROMPT_ID = 'compiler:unreported';
 
+/**
+ * WP3 — the router outcomes that keep the existing extractor flow.
+ *
+ * Planning and RSVP turns need code to act before generation, so those
+ * lanes keep their extractor. Every other outcome is a support-lane turn:
+ * no extractor, deterministic reads and one compose call.
+ */
+function isExtractorLaneOutcome(outcome: { readonly kind: string }): boolean {
+  return outcome.kind === 'planning' || outcome.kind === 'rsvp';
+}
+
+/**
+ * WP3 — the reported payment persisted by the previous turn's compose
+ * sidecar. It is the `priorReportedPayment` input of this turn's outcome
+ * signature. Never derived from the message text.
+ */
+function priorReportedPaymentFromPlan(plan: PlanSnapshot): PriorReportedPayment | null {
+  const stored = plan.support_outcome?.reported_payment ?? null;
+  if (stored === null) {
+    return null;
+  }
+  return {
+    amount: stored.amount,
+    currency: stored.currency,
+    method: stored.method,
+    claimedSuccess: stored.claimed_success,
+  };
+}
+
+/**
+ * WP3 — how the customer reference resolved on this turn.
+ *
+ * A matched reference wins over an unavailable one. A turn without a
+ * requested reference resolves to `none`, which is not an unresolved money
+ * outcome.
+ */
+function referenceResolutionFromResults(
+  results: readonly InformationTaskResult[],
+): SupportReferenceResolution {
+  let resolution: SupportReferenceResolution = 'none';
+  for (const result of results) {
+    if (result.kind !== 'purchase') {
+      continue;
+    }
+    if (result.status !== 'completed' && result.status !== 'failed') {
+      continue;
+    }
+    if (result.referenceResolution === 'matched') {
+      return 'matched';
+    }
+    if (result.referenceResolution === 'unavailable') {
+      resolution = 'unavailable';
+    }
+  }
+  return resolution;
+}
+
 export class AgentService {
   private readonly capabilityManifest: RuntimeCapabilityManifest;
 
@@ -617,6 +694,12 @@ export class AgentService {
        * image evidence instead of failing the turn.
        */
       imageFileStore?: ImageFileStore;
+      /**
+       * WP3 Decisions API router for the customer-assistance lane. Absent or
+       * disabled keeps the existing classifier path untouched; an
+       * unavailable router falls back to that same path for the turn.
+       */
+      supportLaneRouter?: SupportLaneRouterPort;
     },
   ) {
     this.capabilityManifest = dependencies.capabilityManifest ??
@@ -705,6 +788,86 @@ export class AgentService {
     if (!pending) return false;
     if (args.outbound.delivery.action !== 'send') return false;
     return readPendingTaskOutcome(args.structuredMessage) === 'answered';
+  }
+
+  /**
+   * Human-escalation soft pause.
+   *
+   * A thread with a requested takeover is paused: the turn is suppressed and
+   * no new generation happens. The classifier path narrows the pause with
+   * its own "requires response" signal; the router path has no classifier,
+   * so the pause is unconditional there. Terminal OTP retention keeps the
+   * human path without a second effect.
+   */
+  private async handleHumanEscalationSoftPause(args: {
+    inbound: NormalizedInboundMessage;
+    existingPlan: PlanSnapshot;
+    messageContext: TurnMessageContext;
+    toolUsage: ToolUsage;
+    timingMs: TurnTiming;
+    tokenUsage: TurnTokenUsage;
+    responseClassifierTrace?: MessageResponseClassifierTrace;
+    handleTurnStartedAt: number;
+  }): Promise<HandleTurnResponse> {
+    // Terminal OTP retention: a code arriving after terminal recovery was
+    // persisted must not verify again. Retain the human path without a
+    // second effect. Prose follow-ups still take the suppress path.
+    if (
+      isTerminalAuthRecovery(this.effectiveAuthRecovery(args.existingPlan)) &&
+      this.extractUserLoginCode(args.inbound.text) !== null
+    ) {
+      return await this.retainTerminalOtpHandoff({
+        inbound: args.inbound,
+        existingPlan: this.withSeededAuthRecovery(args.existingPlan),
+        toolUsage: args.toolUsage,
+        timingMs: args.timingMs,
+        tokenUsage: args.tokenUsage,
+        responseClassifierTrace: args.responseClassifierTrace,
+        messageContext: args.messageContext,
+        handleTurnStartedAt: args.handleTurnStartedAt,
+      });
+    }
+    const planToSave = mergePlan(args.existingPlan, {
+      current_node: 'solicitar_agente_humano',
+    });
+    const savePlanStartedAt = Date.now();
+    await this.dependencies.planStore.save({
+      plan: planToSave,
+      reason: 'human_escalation_soft_pause',
+    });
+    args.timingMs.save_plan += Date.now() - savePlanStartedAt;
+    args.timingMs.total = Date.now() - args.handleTurnStartedAt;
+    const extraction = this.buildSyntheticEscalationExtraction(
+      'El usuario escribió después de que se pidió una revisión humana.',
+    );
+    const outbound = this.suppressOutbound(planToSave.conversation_id, 'human_escalation_active');
+    return {
+      plan: planToSave,
+      outbound,
+      trace: this.buildTrace({
+        plan: planToSave,
+        previousNode: args.existingPlan.current_node,
+        currentNode: 'solicitar_agente_humano',
+        nodePath: [args.existingPlan.current_node, 'solicitar_agente_humano'],
+        extraction,
+        missingFields: [],
+        searchReady: false,
+        promptBundleId: 'deterministic:human_escalation_soft_pause',
+        promptFilePaths: [],
+        toolUsage: args.toolUsage,
+        providerResults: [],
+        recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+        planPersisted: true,
+        planPersistReason: 'human_escalation_soft_pause',
+        timingMs: args.timingMs,
+        tokenUsage: args.tokenUsage,
+        messageContext: args.messageContext,
+        searchStrategy: 'none',
+        turnDecision: this.humanEscalationTurnDecision('human_escalation_soft_pause'),
+        operationalNote: 'Conversation is soft-paused after human escalation.',
+        responseClassifier: args.responseClassifierTrace,
+      }),
+    };
   }
 
   private async handleTurnCore(
@@ -806,6 +969,25 @@ export class AgentService {
       inbound.turnWait ?? null,
     );
     timingMs.response_classification += Date.now() - messageContextStartedAt;
+    // WP3: one shared router entry for the customer-assistance lane. The
+    // text, image and media-only shapes all reach the router, so no turn
+    // shape can bypass it.
+    const supportRouter = this.dependencies.supportLaneRouter ?? null;
+    const routerEnabled = supportRouter !== null && supportRouter.enabled;
+    if (routerEnabled && existingPlan?.human_escalation.status === 'requested') {
+      // The soft-pause short-circuit stays BEFORE the router: once a
+      // takeover was requested the thread is paused, so no new router work
+      // happens on it.
+      return await this.handleHumanEscalationSoftPause({
+        inbound,
+        existingPlan,
+        messageContext,
+        toolUsage,
+        timingMs,
+        tokenUsage,
+        handleTurnStartedAt,
+      });
+    }
     if (inbound.image) {
       return await this.handleImageTurn({
         inbound,
@@ -815,6 +997,7 @@ export class AgentService {
         timingMs,
         tokenUsage,
         handleTurnStartedAt,
+        supportRouter,
       });
     }
     if (inbound.text.trim().length === 0 && (inbound.media?.length ?? 0) > 0) {
@@ -826,10 +1009,66 @@ export class AgentService {
         timingMs,
         tokenUsage,
         handleTurnStartedAt,
+        supportRouter,
+      });
+    }
+    // WP3: the router replaces the classifier preflight on this lane. The
+    // customer context is prepared ONCE per turn and reused by the router,
+    // the extractor and the compose call, so no read happens twice.
+    let routerResult: SupportLaneRouterResult | null = null;
+    let turnCustomerContext: PreparedCustomerContext | null = null;
+    let routerPlan: PlanSnapshot = existingPlan ?? classifierPlan;
+    if (routerEnabled && supportRouter !== null) {
+      turnCustomerContext = await this.prepareCustomerContextForTurn({
+        plan: routerPlan,
+        contactPhone: inbound.contactPhone,
+        messageContext,
+      });
+      routerResult = await this.runSupportLaneRouter({
+        inbound,
+        plan: routerPlan,
+        messageContext,
+        preparedCustomerContext: turnCustomerContext,
+        timingMs,
+        tokenUsage,
+        supportRouter,
+      });
+      if (routerResult.status === 'ok') {
+        // The classifier no longer provides the conversation health on this
+        // lane, so it is derived from the router's loop-risk level.
+        routerPlan = this.withRouterHealth(routerPlan, routerResult);
+        classifierPlan = routerPlan;
+        if (existingPlan) {
+          existingPlan = routerPlan;
+        }
+      }
+    }
+    if (
+      routerResult !== null &&
+      routerResult.status === 'ok' &&
+      !isExtractorLaneOutcome(routerResult.outcome)
+    ) {
+      return await this.handleSupportLaneTurn({
+        inbound,
+        previousNode: existingPlan?.current_node ?? 'contacto_inicial',
+        workingPlan: mergePlan(routerPlan, {
+          current_node: 'resolver_consultas_informativas',
+        }),
+        preparedCustomerContext: turnCustomerContext,
+        router: routerResult,
+        toolUsage,
+        timingMs,
+        tokenUsage,
+        messageContext,
+        handleTurnStartedAt,
       });
     }
     let responseClassifierTrace: MessageResponseClassifierTrace | undefined;
-    if (this.dependencies.responseClassifier) {
+    // The classifier preflight runs only when the router does not own the
+    // turn: the lane flag is off, or the router was unavailable and the
+    // turn falls back to the classifier path.
+    const routerFallback = routerResult === null || routerResult.status === 'unavailable';
+    if (this.dependencies.responseClassifier && routerFallback) {
       const preflightStartedAt = Date.now();
       const preflight = await this.runResponseClassifierPreflight({
         inbound,
@@ -855,65 +1094,16 @@ export class AgentService {
         responseClassifierTrace?.reason === 'requires_response';
       const hasRetainedImageRefs = (existingPlan.image_attachments?.length ?? 0) > 0;
       if (!classifierAsksResponse && !hasRetainedImageRefs) {
-      // Terminal OTP retention: a code arriving after terminal recovery was
-      // persisted must not verify again. Retain the human path without a
-      // second effect. Prose follow-ups still take the suppress path.
-      if (
-        isTerminalAuthRecovery(this.effectiveAuthRecovery(existingPlan)) &&
-        this.extractUserLoginCode(inbound.text) !== null
-      ) {
-        return await this.retainTerminalOtpHandoff({
+        return await this.handleHumanEscalationSoftPause({
           inbound,
-          existingPlan: this.withSeededAuthRecovery(existingPlan),
+          existingPlan,
+          messageContext,
           toolUsage,
           timingMs,
           tokenUsage,
           responseClassifierTrace,
-          messageContext,
           handleTurnStartedAt,
         });
-      }
-      const planToSave = mergePlan(existingPlan, {
-        current_node: 'solicitar_agente_humano',
-      });
-      const savePlanStartedAt = Date.now();
-      await this.dependencies.planStore.save({
-        plan: planToSave,
-        reason: 'human_escalation_soft_pause',
-      });
-      timingMs.save_plan += Date.now() - savePlanStartedAt;
-      timingMs.total = Date.now() - handleTurnStartedAt;
-      const extraction = this.buildSyntheticEscalationExtraction(
-        'El usuario escribió después de que se pidió una revisión humana.',
-      );
-      const outbound = this.suppressOutbound(planToSave.conversation_id, 'human_escalation_active');
-      return {
-        plan: planToSave,
-        outbound,
-        trace: this.buildTrace({
-          plan: planToSave,
-          previousNode: existingPlan.current_node,
-          currentNode: 'solicitar_agente_humano',
-          nodePath: [existingPlan.current_node, 'solicitar_agente_humano'],
-          extraction,
-          missingFields: [],
-          searchReady: false,
-          promptBundleId: 'deterministic:human_escalation_soft_pause',
-          promptFilePaths: [],
-          toolUsage,
-          providerResults: [],
-          recommendationFunnel: this.resolveRecommendationFunnel(null, []),
-          planPersisted: true,
-          planPersistReason: 'human_escalation_soft_pause',
-          timingMs,
-          tokenUsage,
-          messageContext,
-          searchStrategy: 'none',
-          turnDecision: this.humanEscalationTurnDecision('human_escalation_soft_pause'),
-          operationalNote: 'Conversation is soft-paused after human escalation.',
-          responseClassifier: responseClassifierTrace,
-        }),
-      };
       }
     }
 
@@ -1265,7 +1455,9 @@ export class AgentService {
     }
 
     if (existingPlan && isPlanFinished(existingPlan)) {
-      const preparedCustomerContext = await this.prepareCustomerContextForTurn({
+      // WP3: the router path already prepared the customer context for this
+      // turn; it is reused so no authorized read happens twice.
+      const preparedCustomerContext = turnCustomerContext ?? await this.prepareCustomerContextForTurn({
         plan: existingPlan,
         contactPhone: inbound.contactPhone,
         messageContext,
@@ -1464,7 +1656,9 @@ export class AgentService {
     });
     timingMs.prepare_working_plan += Date.now() - prepareWorkingPlanStartedAt;
 
-    const preparedCustomerContext = await this.prepareCustomerContextForTurn({
+    // WP3: the router path already prepared the customer context for this
+    // turn; it is reused so no authorized read happens twice.
+    const preparedCustomerContext = turnCustomerContext ?? await this.prepareCustomerContextForTurn({
       plan: workingPlan,
       contactPhone: inbound.contactPhone,
       messageContext,
@@ -1769,177 +1963,23 @@ export class AgentService {
       if (nodePath[nodePath.length - 1] !== currentNode) {
         nodePath.push(currentNode);
       }
-      const phoneNumber = this.resolveEscalationPhone(inbound);
-      const requestedAt = new Date().toISOString();
-      // Dedupe-preserving explicit help handling: failed/skipped/unknown
-      // receipts are never auto-retried. Only a definitively failed handoff
-      // may retry on a new explicit inbound request; unknown stays unretried.
-      const priorHelpReceipt = mergedPlan.human_help_receipt ?? null;
-      const helpDecision = decideHumanHelpAttempt({
-        conversationId: mergedPlan.plan_id,
-        inboundId: inbound.messageId, scope: 'protected_request', trustedPhone: phoneNumber,
-        gatewayCapable: this.capabilityManifest['human.takeover.write'].available,
-        prior: priorHelpReceipt,
-        explicitRetry: priorHelpReceipt?.outcome === 'handoff_failed' &&
-          priorHelpReceipt.inboundId !== inbound.messageId,
+      return await this.handleHumanEscalationEffect({
+        inbound,
+        previousNode,
+        nodePath,
+        plan: mergedPlan,
+        extraction,
+        preparedCustomerContext,
+        gateway: agentConversationGateway,
+        toolUsage,
+        timingMs,
+        tokenUsage,
+        responseClassifierTrace,
+        messageContext,
+        handleTurnStartedAt,
+        searchStrategy,
+        failureReason: 'explicit_human_request_composition_failed',
       });
-      let gatewayResult: AgentGatewayResult;
-      let nextReceipt = priorHelpReceipt;
-      if (helpDecision.action === 'attempt' && phoneNumber) {
-        gatewayResult = await this.requestHumanTakeoverWithTrace(
-          agentConversationGateway,
-          phoneNumber,
-          toolUsage,
-        );
-        // Never fabricate a receipt for an unattempted effect: skipped
-        // gateway results persist only the reason, not a failed receipt.
-        nextReceipt = gatewayResult.status === 'skipped'
-          ? priorHelpReceipt
-          : applyHandoffResult({ dedupeKey: helpDecision.dedupeKey, inboundId: inbound.messageId,
-            phone: phoneNumber, gatewayStatus: resolveHandoffGatewayStatus({
-              status: gatewayResult.status === 'success' ? 'success' : 'failed',
-              outcome: gatewayResult.status === 'failed' ? gatewayResult.outcome : undefined,
-            }) });
-      } else if (priorHelpReceipt?.outcome === 'handoff_requested') {
-        gatewayResult = { status: 'success', message: 'retained_confirmed_handoff' };
-      } else if (phoneNumber === null) {
-        gatewayResult = this.missingPhoneEscalationResult();
-      } else {
-        gatewayResult = { status: 'skipped', reason: 'not_configured', message: helpDecision.reason };
-      }
-      const helpRequested = nextReceipt?.outcome === 'handoff_requested' ||
-        gatewayResult.status === 'success';
-      const helpLastError = helpRequested
-        ? null
-        : gatewayResult.status === 'failed'
-          ? gatewayResult.error
-          : gatewayResult.status === 'skipped'
-            ? gatewayResult.message
-            : (nextReceipt?.outcome ?? helpDecision.reason);
-      const planToSave = mergePlan(mergedPlan, {
-        current_node: currentNode,
-        intent: 'solicitar_humano',
-        human_help_receipt: nextReceipt,
-        human_escalation: {
-          status: helpRequested ? 'requested' : 'none',
-          requested_at: helpRequested ? (nextReceipt?.updatedAt ?? requestedAt) : null,
-          phone_number: phoneNumber,
-          last_error: helpLastError,
-        },
-      });
-      await persistPlan(planToSave, currentNode);
-      planPersisted = true;
-      planPersistReason = currentNode;
-      timingMs.total = Date.now() - handleTurnStartedAt;
-      const handoffEvidence = projectSupportHandoffEvidence({
-        result: gatewayResult,
-        phonePresent: phoneNumber !== null,
-        confirmedReceipt: nextReceipt?.outcome === 'handoff_requested',
-      });
-      const composeReplyStartedAt = Date.now();
-      let reply: ComposeReplyResult;
-      try {
-        reply = await composeModelReply(this.dependencies.runtime, {
-          currentNode: 'solicitar_agente_humano',
-          previousNode,
-          userMessage: inbound.text,
-          messageContext,
-          plan: planToSave,
-          extraction,
-          missingFields: [],
-          searchReady: false,
-          providerResults: [],
-          turnDecision: this.humanEscalationTurnDecision(currentNode),
-          errorMessage: handoffEvidence.operationalNote,
-          promptBundleId: PENDING_COMPILER_PROMPT_ID,
-          promptFilePaths: [],
-          toolUsage,
-          handoffOutcome: handoffEvidence.handoffOutcome,
-          customerContext: preparedCustomerContext.projection,
-        });
-      } catch (error) {
-        timingMs.compose_reply += Date.now() - composeReplyStartedAt;
-        timingMs.total = Date.now() - handleTurnStartedAt;
-        return {
-          plan: planToSave,
-          outbound: this.failureOutbound(
-            planToSave.conversation_id,
-            'explicit_human_request_composition_failed',
-            observeOutputOrigin({
-              candidateText: null,
-              deliveredText: null,
-              transformationVersion: 'transport-v2',
-              mismatchFields: ['model_output'],
-            }),
-          ),
-          trace: this.buildTrace({
-            plan: planToSave,
-            previousNode,
-            currentNode,
-            nodePath,
-            extraction,
-            missingFields: [],
-            searchReady: false,
-            promptBundleId: UNREPORTED_COMPILER_PROMPT_ID,
-            promptFilePaths: [],
-            toolUsage,
-            providerResults: [],
-            recommendationFunnel: this.resolveRecommendationFunnel(null, []),
-            planPersisted,
-            planPersistReason,
-            timingMs,
-            tokenUsage,
-            messageContext,
-            responseClassifier: responseClassifierTrace,
-            searchStrategy,
-            turnDecision: this.humanEscalationTurnDecision(currentNode),
-            operationalNote: `Explicit human request composition failed (${error instanceof Error ? error.name : 'unknown'}); typed operational failure delivered without prose.`,
-          }),
-        };
-      }
-      tokenUsage.reply = reply.tokenUsage ?? null;
-      tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
-      tokenUsage.total = this.sumTokenUsage(
-        tokenUsage.classifier,
-        tokenUsage.extraction,
-        tokenUsage.reply,
-      );
-      timingMs.compose_reply += Date.now() - composeReplyStartedAt;
-      timingMs.total = Date.now() - handleTurnStartedAt;
-      const outbound = this.renderOutbound(
-        reply,
-        [],
-        inbound.channel,
-        planToSave.conversation_id,
-        planToSave,
-      );
-      return {
-        plan: planToSave,
-        outbound,
-        trace: this.buildTrace({
-          plan: planToSave,
-          previousNode,
-          currentNode,
-          nodePath,
-          extraction,
-          missingFields: [],
-          searchReady: false,
-          promptBundleId: reply.compilerPrompt?.bundleId ?? reply.origin?.bundleId ?? UNREPORTED_COMPILER_PROMPT_ID,
-          promptFilePaths: reply.compilerPrompt != null ? [...reply.compilerPrompt.filePaths] : [],
-          toolUsage,
-          providerResults: [],
-          recommendationFunnel: this.resolveRecommendationFunnel(null, []),
-          planPersisted,
-          planPersistReason,
-          timingMs,
-          tokenUsage,
-          messageContext,
-          responseClassifier: responseClassifierTrace,
-          searchStrategy,
-          turnDecision: this.humanEscalationTurnDecision(currentNode),
-          operationalNote: this.humanEscalationOperationalNote(gatewayResult),
-        }),
-      };
     }
 
     if (
@@ -2566,6 +2606,542 @@ export class AgentService {
         capabilityDecision: planningCapabilityEvidence,
       }),
     };
+  }
+
+  /**
+   * WP3 — the shared router entry of the customer-assistance lane.
+   *
+   * Builds the router input from the current message (and its image flag),
+   * the recent message previews, the prepared customer-context snapshot, the
+   * capability digest and the plan's conversation health and support
+   * outcome; then asks the router and applies the deterministic policy. The
+   * method never writes a reply and never infers intent from text.
+   */
+  private async runSupportLaneRouter(args: {
+    inbound: NormalizedInboundMessage;
+    plan: PlanSnapshot;
+    messageContext: TurnMessageContext;
+    preparedCustomerContext: PreparedCustomerContext;
+    timingMs: TurnTiming;
+    tokenUsage: TurnTokenUsage;
+    supportRouter: SupportLaneRouterPort;
+  }): Promise<SupportLaneRouterResult> {
+    const routerStartedAt = Date.now();
+    const result = await args.supportRouter.run({
+      currentMessage: {
+        text: args.inbound.text,
+        hasImage: this.turnCarriedReceiptMedia(args.inbound),
+      },
+      recentMessages: args.messageContext.recentMessages.map((message) => ({
+        direction: message.direction,
+        preview: message.body,
+      })),
+      snapshot: args.preparedCustomerContext.snapshot,
+      capabilityDigest: buildCapabilityDigest(this.capabilityManifest),
+      plan: {
+        conversation_health: args.plan.conversation_health,
+        support_outcome: args.plan.support_outcome,
+      },
+    });
+    args.timingMs.router += Date.now() - routerStartedAt;
+    if (result.status === 'ok') {
+      args.tokenUsage.router = result.tokenUsage;
+      args.tokenUsage.openAiCalls.router = result.call;
+      args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage.router);
+    }
+    return result;
+  }
+
+  /**
+   * WP3 — the customer-assistance lane.
+   *
+   * The router decided this turn belongs to the support lane: the extractor
+   * never runs, the phone-scoped reads are deterministic and the reply is
+   * ONE model composition whose sidecar carries the cited records and the
+   * reported payment.
+   */
+  private async handleSupportLaneTurn(args: {
+    inbound: NormalizedInboundMessage;
+    previousNode: DecisionNode;
+    workingPlan: PlanSnapshot;
+    preparedCustomerContext: PreparedCustomerContext | null;
+    router: SupportLaneRouterResult & { readonly status: 'ok' };
+    toolUsage: ToolUsage;
+    timingMs: TurnTiming;
+    tokenUsage: TurnTokenUsage;
+    messageContext: TurnMessageContext;
+    handleTurnStartedAt: number;
+    imageTurn?: ImageTurnContext;
+  }): Promise<HandleTurnResponse> {
+    const outcome = args.router.outcome;
+    if (outcome.kind === 'suppress_ack') {
+      return await this.handleRouterSuppression(args);
+    }
+    if (outcome.kind === 'escalate') {
+      return await this.handleRouterEscalation({
+        ...args,
+        escalationReason: outcome.reason,
+      });
+    }
+    // answer / clarify / offer_human: the same deterministic reads and one
+    // compose call; the offer additionally opens the typed help offer.
+    const workingPlan = outcome.kind === 'offer_human'
+      ? this.openRouterHelpOffer(args.workingPlan)
+      : args.workingPlan;
+    const requests = this.supportLaneRequests(workingPlan, {
+      messageContext: args.messageContext,
+      preparedCustomerContext: args.preparedCustomerContext,
+      route: args.router.answers.route,
+    });
+    const extraction = this.buildSupportLaneExtraction(requests);
+    return await this.handleInformationFlow({
+      inbound: args.inbound,
+      previousNode: args.previousNode,
+      workingPlan,
+      extraction,
+      toolUsage: args.toolUsage,
+      timingMs: args.timingMs,
+      tokenUsage: args.tokenUsage,
+      messageContext: args.messageContext,
+      handleTurnStartedAt: args.handleTurnStartedAt,
+      ...(args.preparedCustomerContext ? { preparedCustomerContext: args.preparedCustomerContext } : {}),
+      ...(args.imageTurn ? { imageTurn: args.imageTurn } : {}),
+      routerDecision: args.router.decision,
+      supportLane: {
+        requests,
+        turnCarriedReceiptMedia: this.turnCarriedReceiptMedia(args.inbound),
+        priorReportedPayment: priorReportedPaymentFromPlan(workingPlan),
+        ...(outcome.kind === 'offer_human' ? { composeNode: 'ofrecer_agente_humano' as const } : {}),
+      },
+    });
+  }
+
+  /**
+   * WP3 — the router's escalation.
+   *
+   * The takeover effect, its dedupe and its receipt are the established
+   * ones; only the decision to escalate comes from the router. The reply is
+   * composed at the escalation node with the real outcome, never with a
+   * canned sentence.
+   */
+  private async handleRouterEscalation(args: {
+    inbound: NormalizedInboundMessage;
+    previousNode: DecisionNode;
+    workingPlan: PlanSnapshot;
+    preparedCustomerContext: PreparedCustomerContext | null;
+    router: SupportLaneRouterResult & { readonly status: 'ok' };
+    escalationReason: RouterEscalationReason;
+    toolUsage: ToolUsage;
+    timingMs: TurnTiming;
+    tokenUsage: TurnTokenUsage;
+    messageContext: TurnMessageContext;
+    handleTurnStartedAt: number;
+  }): Promise<HandleTurnResponse> {
+    const gateway = this.dependencies.agentConversationGateway ??
+      new NoopAgentConversationGateway('not_configured');
+    const currentNode: DecisionNode = 'solicitar_agente_humano';
+    const nodePath: DecisionNode[] = args.previousNode === currentNode
+      ? [currentNode]
+      : [args.previousNode, currentNode];
+    const preparedCustomerContext = args.preparedCustomerContext ??
+      await this.prepareCustomerContextForTurn({
+        plan: args.workingPlan,
+        contactPhone: args.inbound.contactPhone,
+        messageContext: args.messageContext,
+      });
+    // WP3 accept: the guest accepted the help offer of a previous turn, so
+    // the takeover executes now. The classifier's "accept" signal does not
+    // exist on this lane: the typed offer state plus the router's escalation
+    // is the accept.
+    const acceptedOffer = args.workingPlan.conversation_health.help_offer_status === 'offered';
+    return await this.handleHumanEscalationEffect({
+      inbound: args.inbound,
+      previousNode: args.previousNode,
+      nodePath,
+      plan: args.workingPlan,
+      extraction: this.buildSupportLaneExtraction([]),
+      preparedCustomerContext,
+      gateway,
+      toolUsage: args.toolUsage,
+      timingMs: args.timingMs,
+      tokenUsage: args.tokenUsage,
+      messageContext: args.messageContext,
+      handleTurnStartedAt: args.handleTurnStartedAt,
+      searchStrategy: 'none',
+      failureReason: 'router_escalation_composition_failed',
+      routerDecision: args.router.decision,
+      turnDecisionReason: acceptedOffer
+        ? 'human_help_offer_accepted'
+        : `router_escalation:${args.escalationReason}`,
+    });
+  }
+
+  /**
+   * WP3 — the router's suppressed acknowledgement.
+   *
+   * The existing suppression machinery is reused: no delivery, no generation
+   * and the established suppression reason vocabulary. Nothing about the
+   * customer message is inspected here.
+   */
+  private async handleRouterSuppression(args: {
+    inbound: NormalizedInboundMessage;
+    previousNode: DecisionNode;
+    workingPlan: PlanSnapshot;
+    preparedCustomerContext: PreparedCustomerContext | null;
+    router: SupportLaneRouterResult & { readonly status: 'ok' };
+    toolUsage: ToolUsage;
+    timingMs: TurnTiming;
+    tokenUsage: TurnTokenUsage;
+    messageContext: TurnMessageContext;
+    handleTurnStartedAt: number;
+  }): Promise<HandleTurnResponse> {
+    const planToSave = args.workingPlan;
+    const savePlanStartedAt = Date.now();
+    await this.dependencies.planStore.save({
+      plan: planToSave,
+      reason: 'router_suppress_ack',
+    });
+    args.timingMs.save_plan += Date.now() - savePlanStartedAt;
+    args.timingMs.total = Date.now() - args.handleTurnStartedAt;
+    const extraction = this.buildSupportLaneExtraction([]);
+    return {
+      plan: planToSave,
+      outbound: this.suppressOutbound(
+        planToSave.conversation_id,
+        'suppress_acknowledgement',
+      ),
+      trace: this.buildTrace({
+        plan: planToSave,
+        previousNode: args.previousNode,
+        currentNode: planToSave.current_node,
+        nodePath: [planToSave.current_node],
+        extraction,
+        missingFields: planToSave.missing_fields,
+        searchReady: false,
+        promptBundleId: 'deterministic:router_suppress_ack',
+        promptFilePaths: [],
+        toolUsage: args.toolUsage,
+        providerResults: [],
+        recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+        planPersisted: true,
+        planPersistReason: 'router_suppress_ack',
+        timingMs: args.timingMs,
+        tokenUsage: args.tokenUsage,
+        messageContext: args.messageContext,
+        searchStrategy: 'none',
+        operationalNote: 'Reply delivery was suppressed by the decisions router.',
+        routerDecision: args.router.decision,
+      }),
+    };
+  }
+
+  /**
+   * Human-takeover effect with the real outcome.
+   *
+   * The gateway call, the dedupe, the persisted receipt and the composed
+   * reply at the escalation node are shared by the explicit-request path and
+   * by the router's escalate outcome: the model writes the reply from the
+   * real handoff outcome, never from a canned sentence.
+   */
+  private async handleHumanEscalationEffect(args: {
+    inbound: NormalizedInboundMessage;
+    previousNode: DecisionNode;
+    nodePath: DecisionNode[];
+    plan: PlanSnapshot;
+    extraction: ExtractionResult;
+    preparedCustomerContext: PreparedCustomerContext;
+    gateway: AgentConversationGateway;
+    toolUsage: ToolUsage;
+    timingMs: TurnTiming;
+    tokenUsage: TurnTokenUsage;
+    responseClassifierTrace?: MessageResponseClassifierTrace;
+    messageContext: TurnMessageContext;
+    handleTurnStartedAt: number;
+    searchStrategy: SearchStrategyTrace;
+    failureReason: string;
+    routerDecision?: RouterDecisionTrace;
+    /** The stop reason of the escalation turn. */
+    turnDecisionReason?: string;
+  }): Promise<HandleTurnResponse> {
+    const currentNode: DecisionNode = 'solicitar_agente_humano';
+    const phoneNumber = this.resolveEscalationPhone(args.inbound);
+    const requestedAt = new Date().toISOString();
+    // Dedupe-preserving explicit help handling: failed/skipped/unknown
+    // receipts are never auto-retried. Only a definitively failed handoff
+    // may retry on a new explicit inbound request; unknown stays unretried.
+    const priorHelpReceipt = args.plan.human_help_receipt ?? null;
+    const helpDecision = decideHumanHelpAttempt({
+      conversationId: args.plan.plan_id,
+      inboundId: args.inbound.messageId, scope: 'protected_request', trustedPhone: phoneNumber,
+      gatewayCapable: this.capabilityManifest['human.takeover.write'].available,
+      prior: priorHelpReceipt,
+      explicitRetry: priorHelpReceipt?.outcome === 'handoff_failed' &&
+        priorHelpReceipt.inboundId !== args.inbound.messageId,
+    });
+    let gatewayResult: AgentGatewayResult;
+    let nextReceipt = priorHelpReceipt;
+    if (helpDecision.action === 'attempt' && phoneNumber) {
+      gatewayResult = await this.requestHumanTakeoverWithTrace(
+        args.gateway,
+        phoneNumber,
+        args.toolUsage,
+      );
+      // Never fabricate a receipt for an unattempted effect: skipped
+      // gateway results persist only the reason, not a failed receipt.
+      nextReceipt = gatewayResult.status === 'skipped'
+        ? priorHelpReceipt
+        : applyHandoffResult({ dedupeKey: helpDecision.dedupeKey, inboundId: args.inbound.messageId,
+          phone: phoneNumber, gatewayStatus: resolveHandoffGatewayStatus({
+            status: gatewayResult.status === 'success' ? 'success' : 'failed',
+            outcome: gatewayResult.status === 'failed' ? gatewayResult.outcome : undefined,
+          }) });
+    } else if (priorHelpReceipt?.outcome === 'handoff_requested') {
+      gatewayResult = { status: 'success', message: 'retained_confirmed_handoff' };
+    } else if (phoneNumber === null) {
+      gatewayResult = this.missingPhoneEscalationResult();
+    } else {
+      gatewayResult = { status: 'skipped', reason: 'not_configured', message: helpDecision.reason };
+    }
+    const helpRequested = nextReceipt?.outcome === 'handoff_requested' ||
+      gatewayResult.status === 'success';
+    const helpLastError = helpRequested
+      ? null
+      : gatewayResult.status === 'failed'
+        ? gatewayResult.error
+        : gatewayResult.status === 'skipped'
+          ? gatewayResult.message
+          : (nextReceipt?.outcome ?? helpDecision.reason);
+    const planToSave = mergePlan(args.plan, {
+      current_node: currentNode,
+      intent: 'solicitar_humano',
+      human_help_receipt: nextReceipt,
+      human_escalation: {
+        status: helpRequested ? 'requested' : 'none',
+        requested_at: helpRequested ? (nextReceipt?.updatedAt ?? requestedAt) : null,
+        phone_number: phoneNumber,
+        last_error: helpLastError,
+      },
+    });
+    const savePlanStartedAt = Date.now();
+    await this.dependencies.planStore.save({
+      plan: planToSave,
+      reason: currentNode,
+    });
+    args.timingMs.save_plan += Date.now() - savePlanStartedAt;
+    const planPersistReason = currentNode;
+    args.timingMs.total = Date.now() - args.handleTurnStartedAt;
+    const handoffEvidence = projectSupportHandoffEvidence({
+      result: gatewayResult,
+      phonePresent: phoneNumber !== null,
+      confirmedReceipt: nextReceipt?.outcome === 'handoff_requested',
+    });
+    const composeReplyStartedAt = Date.now();
+    let reply: ComposeReplyResult;
+    try {
+      reply = await composeModelReply(this.dependencies.runtime, {
+        currentNode: 'solicitar_agente_humano',
+        previousNode: args.previousNode,
+        userMessage: args.inbound.text,
+        messageContext: args.messageContext,
+        plan: planToSave,
+        extraction: args.extraction,
+        missingFields: [],
+        searchReady: false,
+        providerResults: [],
+        turnDecision: this.humanEscalationTurnDecision(args.turnDecisionReason ?? currentNode),
+        errorMessage: handoffEvidence.operationalNote,
+        promptBundleId: PENDING_COMPILER_PROMPT_ID,
+        promptFilePaths: [],
+        toolUsage: args.toolUsage,
+        handoffOutcome: handoffEvidence.handoffOutcome,
+        customerContext: args.preparedCustomerContext.projection,
+      });
+    } catch (error) {
+      args.timingMs.compose_reply += Date.now() - composeReplyStartedAt;
+      args.timingMs.total = Date.now() - args.handleTurnStartedAt;
+      return {
+        plan: planToSave,
+        outbound: this.failureOutbound(
+          planToSave.conversation_id,
+          args.failureReason,
+          observeOutputOrigin({
+            candidateText: null,
+            deliveredText: null,
+            transformationVersion: 'transport-v2',
+            mismatchFields: ['model_output'],
+          }),
+        ),
+        trace: this.buildTrace({
+          plan: planToSave,
+          previousNode: args.previousNode,
+          currentNode,
+          nodePath: args.nodePath,
+          extraction: args.extraction,
+          missingFields: [],
+          searchReady: false,
+          promptBundleId: UNREPORTED_COMPILER_PROMPT_ID,
+          promptFilePaths: [],
+          toolUsage: args.toolUsage,
+          providerResults: [],
+          recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+          planPersisted: true,
+          planPersistReason,
+          timingMs: args.timingMs,
+          tokenUsage: args.tokenUsage,
+          messageContext: args.messageContext,
+          responseClassifier: args.responseClassifierTrace,
+          searchStrategy: args.searchStrategy,
+          turnDecision: this.humanEscalationTurnDecision(args.turnDecisionReason ?? currentNode),
+          operationalNote: `Human escalation composition failed (${error instanceof Error ? error.name : 'unknown'}); typed operational failure delivered without prose.`,
+          ...(args.routerDecision ? { routerDecision: args.routerDecision } : {}),
+        }),
+      };
+    }
+    args.tokenUsage.reply = reply.tokenUsage ?? null;
+    args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
+    args.tokenUsage.total = this.sumTokenUsage(
+      args.tokenUsage.classifier,
+      args.tokenUsage.extraction,
+      args.tokenUsage.reply,
+    );
+    args.timingMs.compose_reply += Date.now() - composeReplyStartedAt;
+    args.timingMs.total = Date.now() - args.handleTurnStartedAt;
+    const outbound = this.renderOutbound(
+      reply,
+      [],
+      args.inbound.channel,
+      planToSave.conversation_id,
+      planToSave,
+    );
+    return {
+      plan: planToSave,
+      outbound,
+      trace: this.buildTrace({
+        plan: planToSave,
+        previousNode: args.previousNode,
+        currentNode,
+        nodePath: args.nodePath,
+        extraction: args.extraction,
+        missingFields: [],
+        searchReady: false,
+        promptBundleId: reply.compilerPrompt?.bundleId ?? reply.origin?.bundleId ?? UNREPORTED_COMPILER_PROMPT_ID,
+        promptFilePaths: reply.compilerPrompt != null ? [...reply.compilerPrompt.filePaths] : [],
+        toolUsage: args.toolUsage,
+        providerResults: [],
+        recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+        planPersisted: true,
+        planPersistReason,
+        timingMs: args.timingMs,
+        tokenUsage: args.tokenUsage,
+        messageContext: args.messageContext,
+        responseClassifier: args.responseClassifierTrace,
+        searchStrategy: args.searchStrategy,
+        turnDecision: this.humanEscalationTurnDecision(args.turnDecisionReason ?? currentNode),
+        operationalNote: this.humanEscalationOperationalNote(gatewayResult),
+        ...(args.routerDecision ? { routerDecision: args.routerDecision } : {}),
+      }),
+    };
+  }
+
+  /**
+   * WP3 — the conversation health derived from the router's loop risk.
+   *
+   * The classifier no longer provides the health on this lane, so the state
+   * comes from the router level. The mapping is fixed and named in
+   * `decisions-router-lane.ts`.
+   */
+  private withRouterHealth(
+    plan: PlanSnapshot,
+    router: SupportLaneRouterResult & { readonly status: 'ok' },
+  ): PlanSnapshot {
+    return mergePlan(plan, {
+      conversation_health: conversationHealthFromRouter({
+        loopRisk: router.answers.loopRisk,
+        previous: plan.conversation_health,
+        nowIso: new Date().toISOString(),
+      }),
+    });
+  }
+
+  /**
+   * WP3 — the deterministic information requests of a support-lane turn.
+   *
+   * The pending requests of the plan are the merge base; the lane adds the
+   * last-completed replay and the phone-scoped purchase discovery. No
+   * model-chosen request and no model-extracted customer reference travel
+   * here.
+   */
+  private supportLaneRequests(
+    plan: PlanSnapshot,
+    args: {
+      messageContext: TurnMessageContext;
+      preparedCustomerContext: PreparedCustomerContext | null;
+      route: RouterRoute;
+    },
+  ): PendingInformationRequest[] {
+    const snapshot = args.preparedCustomerContext?.snapshot ?? null;
+    const purchaseThreadActive = hasActivePurchaseThread({
+      hasPendingPurchaseOrEventRequest: plan.information_state.pending_requests.some(
+        (request) => request.kind === 'purchase' || request.kind === 'associated_event',
+      ),
+      lastCompletedKind: plan.information_state.last_completed_request?.kind ?? null,
+    }) ||
+      args.messageContext.continuity?.lane === 'purchase_support' ||
+      args.messageContext.continuity?.lane === 'event_support' ||
+      (snapshot?.purchasesCarts.purchases.length ?? 0) > 0 ||
+      (snapshot?.purchasesCarts.carts.length ?? 0) > 0;
+    return this.mergeInformationRequests(
+      plan.information_state.pending_requests,
+      supportLaneInformationRequests({
+        plan,
+        route: args.route,
+        purchaseThreadActive,
+        phoneScoped: args.preparedCustomerContext?.trustedPhone != null,
+      }),
+    );
+  }
+
+  /**
+   * WP3 — the synthetic extraction of a support-lane turn.
+   *
+   * The lane runs without the extractor, so the turn carries only the
+   * deterministic requests. Every model-owned field stays empty: the router
+   * owns the routing and the model owns the reply.
+   */
+  private buildSupportLaneExtraction(
+    informationRequests: PendingInformationRequest[],
+  ): ExtractionResult {
+    return {
+      ...this.buildNeutralMediaExtraction('Support lane turn; the router decided the lane.'),
+      conversationSummary:
+        'Turno de asistencia decidido por el router; las lecturas y la respuesta son deterministas.',
+      informationRequests,
+    };
+  }
+
+  /**
+   * WP3 — the typed help offer opened by the router.
+   *
+   * The offer state is set the same turn so a later accept can execute the
+   * takeover. The purchase-thread suppression of the classifier era does not
+   * apply here: the router's loop-risk level already encodes the
+   * repeated-outcome signal, so the offer is not disconnected from its
+   * sensor.
+   */
+  private openRouterHelpOffer(plan: PlanSnapshot): PlanSnapshot {
+    const assessedAt = new Date().toISOString();
+    return mergePlan(plan, {
+      conversation_health: {
+        ...plan.conversation_health,
+        help_offer_status: 'offered',
+        help_offered_at: assessedAt,
+      },
+    });
+  }
+
+  /** True when the turn carried an image or a media attachment. */
+  private turnCarriedReceiptMedia(inbound: NormalizedInboundMessage): boolean {
+    return inbound.image != null || (inbound.media?.length ?? 0) > 0;
   }
 
   /**
@@ -5136,11 +5712,39 @@ export class AgentService {
     timingMs: TurnTiming;
     tokenUsage: TurnTokenUsage;
     handleTurnStartedAt: number;
+    supportRouter?: SupportLaneRouterPort | null;
   }): Promise<HandleTurnResponse> {
     const plan = mergePlan(args.plan, { current_node: 'resolver_consultas_informativas' });
     const preparedCustomerContext = await this.prepareCustomerContextForTurn({
       plan: args.plan, contactPhone: args.inbound.contactPhone,
     });
+    // WP3: the media-only shape reaches the same router entry as the text
+    // and image shapes, so it cannot bypass the lane.
+    if (args.supportRouter?.enabled === true) {
+      const router = await this.runSupportLaneRouter({
+        inbound: args.inbound,
+        plan,
+        messageContext: args.messageContext,
+        preparedCustomerContext,
+        timingMs: args.timingMs,
+        tokenUsage: args.tokenUsage,
+        supportRouter: args.supportRouter,
+      });
+      if (router.status === 'ok' && !isExtractorLaneOutcome(router.outcome)) {
+        return await this.handleSupportLaneTurn({
+          inbound: args.inbound,
+          previousNode: args.plan.current_node,
+          workingPlan: this.withRouterHealth(plan, router),
+          preparedCustomerContext,
+          router,
+          toolUsage: args.toolUsage,
+          timingMs: args.timingMs,
+          tokenUsage: args.tokenUsage,
+          messageContext: args.messageContext,
+          handleTurnStartedAt: args.handleTurnStartedAt,
+        });
+      }
+    }
     const extraction = this.buildNeutralMediaExtraction('Media-only message; content access is unavailable.');
     const decision = resolveCapabilityDecision({
       requestedOperation: 'media.image.inspect',
@@ -5217,6 +5821,7 @@ export class AgentService {
     timingMs: TurnTiming;
     tokenUsage: TurnTokenUsage;
     handleTurnStartedAt: number;
+    supportRouter?: SupportLaneRouterPort | null;
   }): Promise<HandleTurnResponse> {
     const image: InboundImage | undefined = args.inbound.image;
     const caption = args.inbound.text;
@@ -5226,7 +5831,25 @@ export class AgentService {
     const preparedCustomerContext = await this.prepareCustomerContextForTurn({
       plan: args.plan, contactPhone: args.inbound.contactPhone,
     });
-    // URL images ride the owner reply call as native image content, and
+    // WP3: the image shape reaches the same router entry as the text and
+    // media-only shapes. A support-lane outcome skips the extraction: the
+    // image reference is still persisted and projected, but the reads are
+    // deterministic and the reply is one composition.
+    let supportRouterResult: (SupportLaneRouterResult & { readonly status: 'ok' }) | null = null;
+    if (args.supportRouter?.enabled === true) {
+      const router = await this.runSupportLaneRouter({
+        inbound: args.inbound,
+        plan,
+        messageContext: args.messageContext,
+        preparedCustomerContext,
+        timingMs: args.timingMs,
+        tokenUsage: args.tokenUsage,
+        supportRouter: args.supportRouter,
+      });
+      if (router.status === 'ok' && !isExtractorLaneOutcome(router.outcome)) {
+        supportRouterResult = router;
+      }
+    }    // URL images ride the owner reply call as native image content, and
     // base64 images ride the persisted file reference the same way. The
     // describe-by-default inspection call is retired and removed: no turn
     // inspects through the runtime. The descriptor below is trace metadata
@@ -5329,6 +5952,7 @@ export class AgentService {
         handleTurnStartedAt: args.handleTurnStartedAt,
         capabilityDecision: decision,
         preparedCustomerContext,
+        supportRouterResult,
       });
     }
 
@@ -5349,6 +5973,7 @@ export class AgentService {
       handleTurnStartedAt: args.handleTurnStartedAt,
       capabilityDecision: decision,
       preparedCustomerContext,
+      supportRouterResult,
     });
   }
 
@@ -5381,6 +6006,7 @@ export class AgentService {
     handleTurnStartedAt: number;
     capabilityDecision: CapabilityDecision;
     preparedCustomerContext?: PreparedCustomerContext;
+    supportRouterResult?: (SupportLaneRouterResult & { readonly status: 'ok' }) | null;
   }): Promise<HandleTurnResponse> {
     const captionPresent = args.caption.trim().length > 0;
     const storedRefs = args.plan.image_attachments ?? [];
@@ -5574,6 +6200,7 @@ export class AgentService {
     fileRef: FileAttachmentRef;
     uploadedNewFileId: string | null;
     preparedCustomerContext?: PreparedCustomerContext;
+    supportRouterResult?: (SupportLaneRouterResult & { readonly status: 'ok' }) | null;
   }): Promise<HandleTurnResponse> {
     const captionPresent = args.caption.trim().length > 0;
     const planWithRef = mergePlan(args.plan, {
@@ -5647,10 +6274,29 @@ export class AgentService {
     capabilityDecision: CapabilityDecision;
     imageTurn: ImageTurnContext;
     preparedCustomerContext?: PreparedCustomerContext;
+    supportRouterResult?: (SupportLaneRouterResult & { readonly status: 'ok' }) | null;
   }): Promise<HandleTurnResponse> {
     const preparedCustomerContext = args.preparedCustomerContext ?? await this.prepareCustomerContextForTurn({
       plan: args.plan, contactPhone: args.inbound.contactPhone,
     });
+    // WP3: the router owns this turn. The persisted reference is already in
+    // the plan, so the support lane answers with the image projected and
+    // without any extraction call.
+    if (args.supportRouterResult) {
+      return await this.handleSupportLaneTurn({
+        inbound: args.inbound,
+        previousNode: args.previousNode,
+        workingPlan: this.withRouterHealth(args.plan, args.supportRouterResult),
+        preparedCustomerContext,
+        router: args.supportRouterResult,
+        toolUsage: args.toolUsage,
+        timingMs: args.timingMs,
+        tokenUsage: args.tokenUsage,
+        messageContext: args.messageContext,
+        handleTurnStartedAt: args.handleTurnStartedAt,
+        imageTurn: args.imageTurn,
+      });
+    }
     const extractionStartedAt = Date.now();
     let extraction: ExtractionResult;
     try {
@@ -6249,6 +6895,7 @@ export class AgentService {
     handleTurnStartedAt: number;
     capabilityDecision: CapabilityDecision;
     preparedCustomerContext?: PreparedCustomerContext;
+    supportRouterResult?: (SupportLaneRouterResult & { readonly status: 'ok' }) | null;
   }): Promise<HandleTurnResponse> {
     const captionPresent = args.caption.trim().length > 0;
     const planWithRef = mergePlan(args.plan, {
@@ -6288,6 +6935,24 @@ export class AgentService {
     const preparedCustomerContext = args.preparedCustomerContext ?? await this.prepareCustomerContextForTurn({
       plan: planWithRef, contactPhone: args.inbound.contactPhone,
     });
+    // WP3: the router owns this turn. The URL reference is already in the
+    // plan, so the support lane answers with the image projected and
+    // without any extraction call.
+    if (args.supportRouterResult) {
+      return await this.handleSupportLaneTurn({
+        inbound: args.inbound,
+        previousNode: args.previousNode,
+        workingPlan: this.withRouterHealth(planWithRef, args.supportRouterResult),
+        preparedCustomerContext,
+        router: args.supportRouterResult,
+        toolUsage: args.toolUsage,
+        timingMs: args.timingMs,
+        tokenUsage: args.tokenUsage,
+        messageContext: args.messageContext,
+        handleTurnStartedAt: args.handleTurnStartedAt,
+        imageTurn,
+      });
+    }
     const extractionStartedAt = Date.now();
     let extraction: ExtractionResult;
     try {
@@ -7064,6 +7729,19 @@ export class AgentService {
     imageTurn?: ImageTurnContext;
     completedRsvp?: CompletedRsvpCarryover;
     preparedCustomerContext?: PreparedCustomerContext;
+    /** WP3: the redacted router decision of this turn. */
+    routerDecision?: RouterDecisionTrace;
+    /**
+     * WP3: the support-lane context. Present only on a router-decided
+     * support turn: the requests are deterministic, the compose carries the
+     * sidecar and the outcome signature is merged into the plan.
+     */
+    supportLane?: {
+      readonly requests: PendingInformationRequest[];
+      readonly turnCarriedReceiptMedia: boolean;
+      readonly priorReportedPayment: PriorReportedPayment | null;
+      readonly composeNode?: DecisionNode;
+    };
   }): Promise<HandleTurnResponse> {
     const declined = args.extraction.informationRequests.some((request) =>
       (request.kind === 'purchase' || request.kind === 'associated_event') && request.authAction === 'decline_authentication');
@@ -7087,7 +7765,7 @@ export class AgentService {
         resumeNode: args.workingPlan.information_state.resume_node,
         requests: this.mergeInformationRequests(args.workingPlan.information_state.pending_requests, args.extraction.informationRequests) });
     }
-    const currentNode: DecisionNode = 'resolver_consultas_informativas';
+    const currentNode: DecisionNode = args.supportLane?.composeNode ?? 'resolver_consultas_informativas';
     const taskCapabilityDecision = args.extraction.requestedOperation
       ? resolveCapabilityDecision({
         requestedOperation: args.extraction.requestedOperation,
@@ -7114,13 +7792,17 @@ export class AgentService {
           ? args.extraction.contactEmail
           : args.workingPlan.contact_email,
     });
-    let requests = this.mergeInformationRequests(
-      planWithContact.information_state.pending_requests,
-      this.carryStandaloneCustomerReference(
-        args.inbound.text,
-        args.extraction.informationRequests,
-      ),
-    );
+    // WP3: on the support lane the requests are deterministic; the
+    // classifier path keeps the extractor-chosen ones.
+    let requests = args.supportLane
+      ? args.supportLane.requests
+      : this.mergeInformationRequests(
+        planWithContact.information_state.pending_requests,
+        this.carryStandaloneCustomerReference(
+          args.inbound.text,
+          args.extraction.informationRequests,
+        ),
+      );
     const lastCompletedRequest =
       planWithContact.information_state.last_completed_request;
     const supportContinuesPurchaseThread = supportAcknowledgment &&
@@ -7594,6 +8276,8 @@ export class AgentService {
       imageEvidence: overrides.imageEvidence ?? defaultImageEvidence,
       imageUrlAttachments: overrides.imageUrlAttachments ?? ownerProjection.urls,
       imageFileAttachments: overrides.imageFileAttachments ?? ownerProjection.files,
+      // WP3: the support lane asks for the sidecar beside the message.
+      ...(args.supportLane ? { supportSidecar: true } : {}),
     }, args.completedRsvp));
     let composedReply: ComposeReplyResult;
     let deliveredTurnDecision = this.informationTurnDecision(operationalNote ?? 'information_batch');
@@ -7724,6 +8408,23 @@ export class AgentService {
         planToSave = this.clearAnsweredOwnerPendingQuestion(planToSave);
       }
     }
+    // WP3: the support lane closes the turn with the outcome signature and
+    // the reported payment. The signature is computed from the reads and the
+    // previous turn's reported payment; the reported payment of THIS turn
+    // is persisted for the next turn. The sidecar never blocks or rewrites
+    // the message.
+    if (args.supportLane) {
+      planToSave = this.mergeSupportLaneOutcome({
+        plan: planToSave,
+        snapshot: informationCustomerSnapshot,
+        referenceResolution: referenceResolutionFromResults(informationResults),
+        turnCarriedReceiptMedia: args.supportLane.turnCarriedReceiptMedia,
+        priorReportedPayment: args.supportLane.priorReportedPayment,
+        reportedPayment: reply.sidecar?.reportedPayment ?? null,
+        citedOrderIds: reply.sidecar?.citedOrderIds ?? [],
+        toolUsage: args.toolUsage,
+      });
+    }
     // S2: render first for the verified outbound; the wrapper finalizes the
     // latest-response record with one save when it actually changes.
     const outbound = this.renderOutbound(
@@ -7771,8 +8472,71 @@ export class AgentService {
         turnDecision,
         operationalNote: deliveredOperationalNote,
         informationExecution: informationSummaries,
+        ...(args.routerDecision ? { routerDecision: args.routerDecision } : {}),
       }),
     };
+  }
+
+  /**
+   * WP3 — the support-lane outcome of a turn.
+   *
+   * The signature hashes the outcome components of the reads; the repeat
+   * count is computed BEFORE the merge, so the merge itself never increments
+   * it. The reported payment of this turn is persisted for the next turn,
+   * where it becomes the `priorReportedPayment` of the outcome signature.
+   */
+  private mergeSupportLaneOutcome(args: {
+    plan: PlanSnapshot;
+    snapshot: CustomerContextSnapshot | null;
+    referenceResolution: SupportReferenceResolution;
+    turnCarriedReceiptMedia: boolean;
+    priorReportedPayment: PriorReportedPayment | null;
+    reportedPayment: PriorReportedPayment | null;
+    citedOrderIds: readonly string[];
+    toolUsage: ToolUsage;
+  }): PlanSnapshot {
+    const snapshot = args.snapshot;
+    if (snapshot === null) {
+      return args.plan;
+    }
+    // The cited order ids are validated against the authorized profile. A
+    // violation is dropped; it never rewrites the message.
+    const validatedCited = validateCitedOrderIds({
+      cited: args.citedOrderIds,
+      profileOrderIds: snapshot.purchasesCarts.purchases.map((purchase) => purchase.orderId),
+    });
+    this.recordDeterministicToolOutput(args.toolUsage, 'support_reply_sidecar', {
+      cited_order_count: validatedCited.citedOrderIds.length,
+      dropped_order_count: validatedCited.droppedOrderIds.length,
+    });
+    const components = supportOutcomeComponentsFromSnapshot({
+      snapshot,
+      referenceResolution: args.referenceResolution,
+      turnCarriedReceiptMedia: args.turnCarriedReceiptMedia,
+      priorReportedPayment: args.priorReportedPayment,
+    });
+    const signature = computeSupportOutcomeSignature(components);
+    const incomingRepeatCount = nextSupportOutcomeRepeatCount({
+      currentSignature: args.plan.support_outcome?.signature ?? null,
+      currentRepeatCount: args.plan.support_outcome?.repeat_count ?? 0,
+      nextSignature: signature.signature,
+    });
+    return mergePlan(args.plan, {
+      support_outcome: {
+        signature: signature.signature,
+        repeat_count: incomingRepeatCount,
+        unresolved_money: signature.unresolvedMoney,
+        updated_at: new Date().toISOString(),
+        reported_payment: args.reportedPayment === null
+          ? null
+          : {
+            amount: args.reportedPayment.amount,
+            currency: args.reportedPayment.currency,
+            method: args.reportedPayment.method,
+            claimed_success: args.reportedPayment.claimedSuccess,
+          },
+      },
+    });
   }
 
   private async handleSupportAcknowledgment(
@@ -11251,6 +12015,8 @@ export class AgentService {
     capabilityDecision?: CapabilityDecision;
     humanTakeoverAttempted?: boolean;
     humanTakeoverSucceeded?: boolean;
+    /** WP3: the redacted router decision of this turn. */
+    routerDecision?: RouterDecisionTrace;
   }): TurnTrace {
     const contactValidationSummary = this.summarizeContactValidation(args.extraction, args.plan);
     const turnDecision = args.turnDecision ?? this.fallbackTurnDecision({
@@ -11343,6 +12109,7 @@ export class AgentService {
         : null,
       human_takeover_attempted: args.humanTakeoverAttempted,
       human_takeover_succeeded: args.humanTakeoverSucceeded,
+      ...(args.routerDecision ? { router_decision: args.routerDecision } : {}),
     };
   }
 

@@ -68,7 +68,12 @@ import {
   recommendationMessageSchema,
   welcomeMessageSchema,
   type PendingTaskOutcome,
+  type StructuredMessage,
 } from './structured-message';
+import {
+  supportReplySidecarFromOutput,
+  supportReplySidecarSchema,
+} from './support-lane-flow';
 import { providerCategorySchema, categoryBucketNames } from '../core/provider-category';
 import type { ProviderCategory } from '../core/provider-category';
 import {
@@ -157,6 +162,23 @@ export function readPendingTaskOutcome(message: unknown): PendingTaskOutcome | n
   if (outcome === undefined) return null;
   const parsed = pendingTaskOutcomeSchema.safeParse(outcome);
   return parsed.success ? parsed.data : null;
+}
+
+/**
+ * WP3 support lane: the sidecar fields leave the structured message, so the
+ * delivered render keeps the established message shape. The message itself
+ * is never altered.
+ */
+function stripSupportSidecar(
+  parsed: StructuredMessage & {
+    readonly cited_order_ids?: unknown;
+    readonly reported_payment?: unknown;
+  },
+): StructuredMessage {
+  const { cited_order_ids: citedOrderIds, reported_payment: reportedPayment, ...message } = parsed;
+  void citedOrderIds;
+  void reportedPayment;
+  return message;
 }
 
 /**
@@ -1434,12 +1456,20 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       }
     }
     const parseSchema = outputSchema;
-    const structured = parseSchema.parse(
+    const parsed = parseSchema.parse(
       this.normalizeSupportEmails(finalOutput),
     );
+    // WP3 support lane: the sidecar travels beside the message and never
+    // inside it, so the delivered render keeps the established shape.
+    const sidecar = request.supportSidecar === true
+      ? supportReplySidecarFromOutput(parsed)
+      : null;
+    const structured = request.supportSidecar === true
+      ? stripSupportSidecar(parsed)
+      : parsed;
     const commissionArticle = verifiedCommissionArticle(request.informationResults);
     if (commissionArticle !== null) {
-      if (structured.type !== 'generic') {
+      if (structured.type !== 'generic' || !Array.isArray(structured.paragraphs_es)) {
         throw new ModelComposedFailureError('model_error');
       }
       const unsupportedClaims = unsupportedCommissionNumericClaims({
@@ -1465,6 +1495,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
         this.options.replyModel,
         { ...requestMetrics, transport: transportMetrics },
       ),
+      ...(sidecar ? { sidecar } : {}),
     };
     const origin: ModelOriginReceipt | null = buildModelOriginReceipt(
       composedReply,
@@ -3540,8 +3571,20 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     // active question reference travels in the request (explicit
     // pendingQuestionRef, else continuity, else plan); unrelated turns keep
     // the base schema byte-identical with no extra model call.
-    if (this.activePendingQuestionRef(request) === null) return base;
-    return base.extend({ pending_task_outcome: pendingTaskOutcomeSchema.optional() });
+    const pending = this.activePendingQuestionRef(request) === null
+      ? {}
+      : { pending_task_outcome: pendingTaskOutcomeSchema.optional() };
+    // WP3 support lane: the reply output carries the sidecar BESIDE the
+    // structured message. The message shape is unchanged, so the delivered
+    // render is unchanged; the sidecar is evidence the caller validates.
+    if (request.supportSidecar !== true) {
+      return Object.keys(pending).length > 0 ? base.extend(pending) : base;
+    }
+    return base.extend({
+      ...pending,
+      cited_order_ids: supportReplySidecarSchema.shape.cited_order_ids,
+      reported_payment: supportReplySidecarSchema.shape.reported_payment,
+    });
   }
 
   /**
