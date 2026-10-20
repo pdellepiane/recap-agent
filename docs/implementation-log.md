@@ -13870,3 +13870,37 @@ Offline only. No deployment, paid call, live rerun, rescoring, or production pro
 - The router stage has no output tokens, so its token entry always reports `output_tokens: 0`; when the API response carries no usage block the input token count is the byte-based estimate of the sent input and the result marks it as estimated.
 - `loop_risk` is consumed as the rubric LEVEL (the level with the highest probability, ties to the higher level); the API's weighted-average score is kept as evidence next to it.
 - Nothing in the turn flow calls the router yet: WP3 owns the wiring, the `unavailable` fallback branch and the `help_offer_status` write. No deployment, no AWS call, no paid call and no live evaluation in this WP.
+
+## 2026-10-20 — WP0 per-turn trace artifact for the WhatsApp behaviour cases
+
+**Reason:** the trace recheck in the implementation package was prose. Every later assertion needed a stable turn id it could cite, and several of the package's own numbers had to be re-derived from live data before they could be used as a contract.
+
+**Files:**
+- `analysis/2026-10-19-whatsapp-behavior-cases/artifacts/turn-table-2026-10-20.md` (new) and the sibling `.csv`: one row per runtime turn for the four dossier conversations (A1–A7, B1–B9, C1–C12, D1–D4, 32 rows). Each row carries the user/reply preview (redacted), the classifier health verdict, the extracted `informationRequests` and routing fields, the tools called, the per-source backend status, the order ids, payment statuses, reference/thanks presence, the route and the next node, plus the backend then-vs-now state and the source of every fact (perf `trace_id`, stored OpenAI `response_id`, or endpoint + query).
+- Sources: the DynamoDB perf table through the `channel-user-turns` GSI, 62 stored OpenAI payloads via `npm run audit:openai -- --response-id <id>`, the live guest endpoints (`/guest/orders`, `/guest/gift-purchases`, `/guest/events`) and the live conversation log. Read-only throughout: no write, no deploy, `POST /messages` never called. The raw audit files produced during the run were deleted so no raw customer payload stays on disk.
+- Redaction: previews use the repo helper semantics (e-mail, URL, phone and short-code runs masked). No API key, token, OTP, customer phone number or e-mail appears in the artifact. Order, cart and reference identifiers are reproduced because they are the deliverable's subject and are backend identifiers, not secrets.
+
+**Corrections against the package's own trace section (the artifact is the evidence):**
+1. 30/32 turns route `information_batch`, not 31/32 — A7 and C12 are `human_escalation` to `solicitar_agente_humano`.
+2. Case C is frustrated on 7 turns, not 6 (C12 at 22:24:29Z is `frustrated`/`explicit_frustration`).
+3. "D progressing x4" is 3 of 4 — D1 carries no classifier verdict at all (image-only turn, no text body).
+4. The code denial in case B spans 5 turns (B4–B8), not 4.
+5. Case D's pending Plin order was NOT created after the conversation: the same order id was repriced from S/ 403.53 (declined, card) to S/ 391.87 (pending, Yape o Plin), with the same `payment.paid_at`.
+6. `/guest/events` returns `stage=collected` for B's main event and for C's event, but `stage=transferred` for B's second event. The semantics remain undocumented, so no money question is answered from that field.
+7. The guest and conversation endpoints answer on `https://api.sinenvolturas.com/api/agent`, not on the `api-web` base (which answers "Ruta no encontrada"), matching the production Lambda configuration.
+
+**Not verified (stated as such in the artifact):** the CRM order `Orden #307431` (the CRM rail is not reachable from the available APIs; the guest API returns `ORD_6ac56cb4ec4bd` for the same S/ 464.86 purchase) and the claim that exactly one extracted field changed deterministic behaviour on the lane (no per-field causal evidence is persisted).
+
+## 2026-10-20 — Backend fixtures for the four dossier cases and the ambiguity twin
+
+**Reason:** the live cases and the deterministic offline twins replay these conversations through `FixtureAgentConversationGateway`, which reads `evals/fixtures/<scenario>.json`. Without faithful scenario data the twins would assert against invented records.
+
+**Files:**
+- `evals/fixtures/purchase-yape-receipt-no-match.json` (case A, then-state): no purchase record at all — the runtime read empty/completed_without_results on every turn — plus the two identical abandoned carts 470893 and 471454 at S/ 442.00.
+- `evals/fixtures/purchase-cod-reference-unavailable.json` (case B): four approved purchases, one of them the Michi & Chino event of 2026-11-21 charged US$ 86.45 by card. No record carries `increment_id`, so the customer transaction number is unmatchable by construction; no COD string is stored anywhere.
+- `evals/fixtures/purchase-approved-host-receipt-refund.json` (case C): one approved purchase for the Baby Shower of 2026-10-17, S/ 87.36, with the "Cambiador portátil" item worth S/ 79 (raw backend type `credit`, which the disclosure policy maps to the `host_credit` fulfillment kind) and the host receipt present (`is_thanked` true with the real thank-you message delivered by WhatsApp).
+- `evals/fixtures/purchase-declined-card-transfer-pending.json` (case D, then-state): the single declined card attempt S/ 403.53 with the PayU validation message and `payment.paid_at` 2026-10-19 15:31:44.
+- `evals/fixtures/purchase-ambiguous-two-orders.json`: two approved purchases with different events and different totals, for the ambiguity twin.
+- `tests/dossier-purchase-fixtures.test.ts` (new): loads each scenario through the fixture gateway and asserts the mapped facts, the `handoff.write` receipt and the absence of any HTTP call.
+
+**Modelling decisions:** a wire record carries one payment state, so the declined→pending repricing of case D cannot exist in one record. The fixture ships the declined state the runtime actually saw during the four turns; the guest-reported S/ 391.87 Plin payment is a MODEL-side signal (turn text and receipt image), not a backend record, and the same reasoning keeps case A's later-approved order out of the then-state. The item's raw wire type is `credit` because that is the only value the repository's single fulfillment mapper translates into `host_credit`. All phones are synthetic `900…` numbers; no customer name, e-mail, phone, token or OTP is stored.
