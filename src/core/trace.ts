@@ -30,6 +30,25 @@ export type ToolInputTrace = {
   input: string;
 };
 
+/**
+ * Redacted router decision evidence.
+ *
+ * Only the route name and numbers travel: the probabilities the router
+ * returned and the rubric level it chose. Never the customer message, never
+ * an identifier, never a prompt byte.
+ */
+export type RouterDecisionTrace = {
+  readonly route: string;
+  readonly route_probability: number;
+  readonly route_probabilities: readonly {
+    readonly value: string;
+    readonly probability: number;
+  }[];
+  readonly needs_human_now: number;
+  readonly capability_blocked: number;
+  readonly loop_risk: number;
+};
+
 export type AuthenticationExecutionTrace = {
   operation: 'auth_by_phone' | 'request_user_login_code' | 'verify_user_login_code';
   status: string;
@@ -242,9 +261,21 @@ export type TurnTrace = {
     prompt_bundle_load: number;
     compose_reply: number;
     save_plan: number;
+    /** Decisions API router stage. */
+    router?: number;
   };
   token_usage: {
     classifier?: {
+      input_tokens: number;
+      output_tokens: number;
+      total_tokens: number;
+      cached_input_tokens?: number;
+    } | null;
+    /**
+     * Router stage usage. The Decisions API bills input tokens only, so the
+     * output count is always zero.
+     */
+    router?: {
       input_tokens: number;
       output_tokens: number;
       total_tokens: number;
@@ -273,7 +304,14 @@ export type TurnTrace = {
     classifier: OpenAiCallRef | null;
     extraction: OpenAiCallRef | null;
     reply: OpenAiCallRef | null;
+    /** Decisions API router stage. */
+    router: OpenAiCallRef | null;
   };
+  /**
+   * Redacted router decision: the route name and the probabilities only.
+   * Never the message text, never an identifier.
+   */
+  router_decision?: RouterDecisionTrace;
   response_classifier?: MessageResponseClassifierTrace;
   message_context: MessageContextTrace;
   continuity_state?: 'new' | 'continuing' | 'degraded';

@@ -14,16 +14,21 @@ export type AppConfig = {
   openAi: {
     apiKey: string | null;
     secretId: string | null;
+    /** Base URL of the OpenAI API. The router posts to `<baseUrl>/decisions`. */
+    baseUrl: string;
     models: {
       reply: string;
       extractor: string;
       responseClassifier: string;
+      /** Model used by the Decisions API router. */
+      router: string;
     };
     timeoutsMs: {
       responseClassifier: number;
       extractor: number;
       reply: number;
       retrieval: number;
+      router: number;
     };
   };
   responseClassifier: {
@@ -108,6 +113,8 @@ export type AgentFeatureFlags = {
   invitedEventLookup: boolean;
   purchaseInformation: boolean;
   rsvp: boolean;
+  /** Decisions API router on the customer-assistance lane. Off by default. */
+  decisionsRouter: boolean;
 };
 
 const environmentSchema = z.object({
@@ -116,13 +123,16 @@ const environmentSchema = z.object({
   CHANNEL_API_SECRET_ID: z.string().min(1).optional(),
   OPENAI_API_KEY: z.string().min(1).optional(),
   OPENAI_SECRET_ID: z.string().min(1).optional(),
+  OPENAI_BASE_URL: z.string().url().default('https://api.openai.com/v1'),
   OPENAI_MODEL: z.string().min(1).default(DEFAULT_GPT_TEXT_MODEL),
   OPENAI_EXTRACTOR_MODEL: z.string().min(1).default(DEFAULT_GPT_TEXT_MODEL),
   OPENAI_RESPONSE_CLASSIFIER_MODEL: z.string().min(1).default(DEFAULT_GPT_TEXT_MODEL),
+  OPENAI_ROUTER_MODEL: z.string().min(1).default(DEFAULT_GPT_TEXT_MODEL),
   OPENAI_RESPONSE_CLASSIFIER_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(60_000).default(16_000),
   OPENAI_EXTRACTOR_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(60_000).default(35_000),
   OPENAI_REPLY_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(60_000).default(22_000),
   OPENAI_RETRIEVAL_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(60_000).default(8_000),
+  OPENAI_ROUTER_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(60_000).default(10_000),
   RESPONSE_CLASSIFIER_MODE: z.enum(['observe', 'enforce']).default('enforce'),
   AWS_REGION: z.string().min(1).default('us-east-1'),
   PLANS_TABLE_NAME: z.string().min(1).default('recap-agent-plans'),
@@ -184,6 +194,7 @@ const environmentSchema = z.object({
   AGENT_FEATURE_INVITED_EVENT_LOOKUP: z.enum(['true', 'false']).default('true'),
   AGENT_FEATURE_PURCHASE_INFORMATION: z.enum(['true', 'false']).default('true'),
   AGENT_FEATURE_RSVP: z.enum(['true', 'false']).default('true'),
+  AGENT_FEATURE_DECISIONS_ROUTER: z.enum(['true', 'false']).default('false'),
 });
 
 export function getConfig(): AppConfig {
@@ -201,17 +212,20 @@ export function getConfig(): AppConfig {
     openAi: {
       apiKey: environment.OPENAI_API_KEY ?? null,
       secretId: environment.OPENAI_SECRET_ID ?? null,
+      baseUrl: environment.OPENAI_BASE_URL.replace(/\/+$/u, ''),
       models: {
         reply: environment.OPENAI_MODEL,
         extractor:
           environment.OPENAI_EXTRACTOR_MODEL ?? environment.OPENAI_MODEL,
         responseClassifier: environment.OPENAI_RESPONSE_CLASSIFIER_MODEL,
+        router: environment.OPENAI_ROUTER_MODEL ?? environment.OPENAI_MODEL,
       },
       timeoutsMs: {
         responseClassifier: environment.OPENAI_RESPONSE_CLASSIFIER_TIMEOUT_MS,
         extractor: environment.OPENAI_EXTRACTOR_TIMEOUT_MS,
         reply: environment.OPENAI_REPLY_TIMEOUT_MS,
         retrieval: environment.OPENAI_RETRIEVAL_TIMEOUT_MS,
+        router: environment.OPENAI_ROUTER_TIMEOUT_MS,
       },
     },
     responseClassifier: {
@@ -289,6 +303,7 @@ export function getConfig(): AppConfig {
       purchaseInformation:
         environment.AGENT_FEATURE_PURCHASE_INFORMATION === 'true',
       rsvp: environment.AGENT_FEATURE_RSVP === 'true',
+      decisionsRouter: environment.AGENT_FEATURE_DECISIONS_ROUTER === 'true',
     },
   };
 }

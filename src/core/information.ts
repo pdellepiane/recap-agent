@@ -252,6 +252,56 @@ export function mergeAuthRecoveryState(
 }
 
 /**
+ * WP2 support outcome state: the signature of the last purchase outcome with
+ * its repeat counter. The signature is a hash of the outcome components, so
+ * it carries no customer text and no identifier.
+ */
+export const supportOutcomeStateSchema = z.object({
+  signature: z.string().nullable().default(null),
+  repeat_count: z.number().int().min(0).default(0),
+  unresolved_money: z.boolean().default(false),
+  updated_at: z.string().nullable().default(null),
+});
+
+export type SupportOutcomeState = z.infer<typeof supportOutcomeStateSchema>;
+
+export function emptySupportOutcomeState(): SupportOutcomeState {
+  return {
+    signature: null,
+    repeat_count: 0,
+    unresolved_money: false,
+    updated_at: null,
+  };
+}
+
+/**
+ * Merge for core persistence.
+ *
+ * The same signature keeps the larger repeat count, so a repetition never
+ * lowers the streak. A different signature resets the streak to the incoming
+ * value, because the outcome changed. A null incoming signature leaves the
+ * stored state untouched. The merge never increments: the caller computes the
+ * incoming repeat count before merging.
+ */
+export function mergeSupportOutcomeState(
+  current: SupportOutcomeState,
+  incoming: SupportOutcomeState,
+): SupportOutcomeState {
+  if (incoming.signature === null) {
+    return current;
+  }
+  const sameSignature = current.signature === incoming.signature;
+  return {
+    signature: incoming.signature,
+    repeat_count: sameSignature
+      ? Math.max(current.repeat_count, incoming.repeat_count)
+      : incoming.repeat_count,
+    unresolved_money: incoming.unresolved_money,
+    updated_at: incoming.updated_at,
+  };
+}
+
+/**
  * One-time normalization of legacy user_auth evidence into recovery state.
  * Never clears an already terminal episode; caller merges monotonically.
  */

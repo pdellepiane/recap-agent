@@ -58,23 +58,40 @@ type PricedTurn = {
   trace: {
     token_usage: {
       classifier?: PricedUsage | null;
+      router?: PricedUsage | null;
       extraction: PricedUsage | null;
       reply: PricedUsage | null;
     };
     openai_calls?: {
       classifier?: { model: string } | null;
+      router?: { model: string } | null;
       extraction?: { model: string } | null;
       reply?: { model: string } | null;
     } | null;
   };
 };
 
+/**
+ * Router stage rate (Decisions API).
+ *
+ * The pricing file keys rates per model, and the shared `gpt-6-luna` entry
+ * carries the chat rate with a non-zero output price. The router calls
+ * `POST /v1/decisions`, whose documented rate for `gpt-6-luna` is $0.10 per
+ * 1M input tokens with no output tokens billed. The router stage therefore
+ * uses this explicit input-only rate instead of the shared per-model entry.
+ */
+export const routerStagePricing = {
+  inputPerMillionUsd: 0.1,
+  cachedInputPerMillionUsd: 0.01,
+  outputPerMillionUsd: 0,
+} as const;
+
+const PRICED_TRACE_STAGES = ['classifier', 'extraction', 'reply', 'router'] as const;
+
 /** Presentation rounding: exact to a tenth of a microdollar. */
 export function roundUsd(value: number): number {
   return Math.round(value * 1_000_000) / 1_000_000;
 }
-
-const PRICED_TRACE_STAGES = ['classifier', 'extraction', 'reply'] as const;
 
 /**
  * Exact turn cost from measured trace usage and the per-stage models the
@@ -99,13 +116,13 @@ export function priceTurnFromTrace(
       unpricedStages.push(stage);
       continue;
     }
-    const price = pricing.models[model];
-    if (!price) {
+    if (!pricing.models[model]) {
       if (!unpricedModels.includes(model)) {
         unpricedModels.push(model);
       }
       continue;
     }
+    const price = stage === 'router' ? routerStagePricing : pricing.models[model];
     openaiUsd += estimateModelUsage(usage, price);
   }
   const lambdaUsd =
@@ -146,7 +163,7 @@ export function priceJudgeUsage(
 export function estimateTurnCost(
   turn: EvalArtifactTurnResult,
   pricing: PricingConfig,
-  models: { classifier?: string; extractor: string; reply: string },
+  models: { classifier?: string; extractor: string; reply: string; router?: string },
 ): CostEstimate {
   const classifier = estimateModelUsage(
     turn.trace.token_usage.classifier ?? null,
@@ -157,11 +174,16 @@ export function estimateTurnCost(
     pricing.models[models.extractor],
   );
   const reply = estimateModelUsage(turn.trace.token_usage.reply, pricing.models[models.reply]);
+  // The router stage uses the explicit Decisions input-only rate.
+  const router = estimateModelUsage(
+    turn.trace.token_usage.router ?? null,
+    routerStagePricing,
+  );
   const lambdaSeconds = turn.latencyMs / 1000;
   const lambdaUsd =
     pricing.lambda.requestUsd +
     lambdaSeconds * pricing.lambda.memoryGb * pricing.lambda.gbSecondUsd;
-  const openaiUsd = classifier + extraction + reply;
+  const openaiUsd = classifier + extraction + reply + router;
   return {
     openaiUsd,
     lambdaUsd,

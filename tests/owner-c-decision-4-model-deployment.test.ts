@@ -84,10 +84,12 @@ describe('Owner C decision 4 model/deployment contracts', () => {
     delete process.env.OPENAI_MODEL;
     delete process.env.OPENAI_EXTRACTOR_MODEL;
     delete process.env.OPENAI_RESPONSE_CLASSIFIER_MODEL;
+    delete process.env.OPENAI_ROUTER_MODEL;
     expect(getConfig().openAi.models).toEqual({
       reply: 'gpt-6-luna',
       extractor: 'gpt-6-luna',
       responseClassifier: 'gpt-6-luna',
+      router: 'gpt-6-luna',
     });
 
     vi.stubEnv('OPENAI_MODEL', 'gpt-6-luna');
@@ -97,12 +99,14 @@ describe('Owner C decision 4 model/deployment contracts', () => {
       reply: 'gpt-6-luna',
       extractor: 'gpt-6-luna-custom',
       responseClassifier: 'gpt-5.6-luna',
+      router: 'gpt-6-luna',
     });
 
     vi.stubEnv('OPENAI_MODEL', 'gpt-6-luna-override');
     expect(getConfig().openAi.models.reply).toBe('gpt-6-luna-override');
     expect(getConfig().openAi.models.extractor).toBe('gpt-6-luna-custom');
     expect(getConfig().openAi.models.responseClassifier).toBe('gpt-5.6-luna');
+    expect(getConfig().openAi.models.router).toBe('gpt-6-luna');
   });
 
   it('wires each configured model to its own runtime stage', () => {

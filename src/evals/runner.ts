@@ -2172,7 +2172,7 @@ export function collectOriginGateFailures(turns: EvalTurnResult[]): string[] {
 export function collectTransportGateFailures(turns: EvalTurnResult[]): string[] {
   const failures: string[] = [];
   for (const turn of turns) {
-    for (const stage of ['classifier', 'extraction', 'reply'] as const) {
+    for (const stage of ['classifier', 'extraction', 'reply', 'router'] as const) {
       const call = turn.trace.openai_calls?.[stage] ?? null;
       if (!call) continue;
       const result = checkTransportMetricsCompleteness(

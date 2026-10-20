@@ -11,7 +11,7 @@ import {
 import { extractorAuditProfiles } from './prompt-audit';
 
 export type PromptInventoryConsumer = {
-  callType: 'classifier' | 'extraction' | 'reply' | 'deterministic_reply';
+  callType: 'classifier' | 'extraction' | 'reply' | 'deterministic_reply' | 'router';
   nodes: string[];
   profiles: string[];
   transitions: string[];
@@ -59,7 +59,7 @@ export async function buildPromptInventory(args: {
     anchorRef: args.anchorRef ?? null,
     totalFiles: allFiles.length,
     totalNodes: decisionNodes.length,
-    callTypes: ['classifier', 'extraction', 'reply', 'deterministic_reply'],
+    callTypes: ['classifier', 'extraction', 'reply', 'deterministic_reply', 'router'],
     entries: entries.sort((a, b) => a.filePath.localeCompare(b.filePath)),
     unmappedFiles,
   };
@@ -191,6 +191,19 @@ function deriveConsumers(filePath: string): PromptInventoryConsumer[] {
         loader: `PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:${moduleId}`,
       });
     }
+  }
+
+  if (filePath.startsWith('router/')) {
+    // WP2 Decisions API router: the four question instruction files and the
+    // input template are loaded through the module-files loader and travel
+    // with the router request, never with the reply composer.
+    consumers.push({
+      callType: 'router',
+      nodes: [],
+      profiles: [],
+      transitions: ['router:decisions_router'],
+      loader: 'PromptLoader.loadModuleFilesBundle -> loadRouterQuestions / loadRouterInputTemplate -> Decisions API router (POST /v1/decisions)',
+    });
   }
 
   if (filePath.startsWith('nodes/deteccion_intencion/response_classifier')) {

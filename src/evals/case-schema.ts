@@ -116,7 +116,7 @@ const contactFieldPresenceSchema = z.object({
 
 const openAiTransportRequestSchema = z.object({
   sequence: z.number().int().nonnegative(),
-  stage: z.enum(['classifier', 'extraction', 'reply', 'image', 'knowledge_retrieval', 'provider_vector_search', 'unknown']),
+  stage: z.enum(['classifier', 'extraction', 'reply', 'router', 'image', 'knowledge_retrieval', 'provider_vector_search', 'unknown']),
   requestId: z.string().nullable(),
   responseId: z.string().nullable(),
   statusCode: z.number().int().nullable(),
@@ -350,6 +350,7 @@ export const turnTraceSchema = z.object({
     classifier: openAiCallSchema.nullable(),
     extraction: openAiCallSchema.nullable(),
     reply: openAiCallSchema.nullable(),
+    router: openAiCallSchema.nullable().optional(),
   }).optional(),
   recommendation_funnel: z.object({
     available_candidates: z.number().int().nonnegative(),
@@ -377,9 +378,17 @@ export const turnTraceSchema = z.object({
     prompt_bundle_load: z.number().nonnegative(),
     compose_reply: z.number().nonnegative(),
     save_plan: z.number().nonnegative(),
+    router: z.number().nonnegative().optional(),
   }).passthrough(),
   token_usage: z.object({
     classifier: z.object({
+      input_tokens: z.number().nonnegative(),
+      output_tokens: z.number().nonnegative(),
+      total_tokens: z.number().nonnegative(),
+      cached_input_tokens: z.number().nonnegative().optional(),
+      cache_write_input_tokens: z.number().nonnegative().optional(),
+    }).nullable().optional(),
+    router: z.object({
       input_tokens: z.number().nonnegative(),
       output_tokens: z.number().nonnegative(),
       total_tokens: z.number().nonnegative(),

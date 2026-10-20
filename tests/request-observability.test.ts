@@ -208,6 +208,7 @@ describe('Lambda channel request observability', () => {
         },
         extraction: null,
         reply: null,
+        router: null,
       },
     });
 
@@ -336,6 +337,7 @@ describe('Lambda channel request observability', () => {
             },
           },
         },
+        router: null,
       },
     });
 
@@ -370,6 +372,7 @@ describe('Lambda channel request observability', () => {
         },
         extraction: null,
         reply: null,
+        router: null,
       },
     });
 

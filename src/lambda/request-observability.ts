@@ -6,6 +6,16 @@ import type { OpenAiCallRef } from '../runtime/contracts';
 import type { CorrelationSource, ProtectedPayloadCapture } from './request-payload-capture';
 import { checkTransportMetricsCompleteness } from '../audit/openai-transport-capture';
 
+/** Model call stages reported by the request log. */
+export const openAiCallStages = [
+  'classifier',
+  'extraction',
+  'reply',
+  'router',
+] as const;
+
+export type OpenAiCallStage = (typeof openAiCallStages)[number];
+
 export type ChannelRequestOutcome =
   | 'success'
   | 'unauthorized'
@@ -103,7 +113,7 @@ export type ChannelRequestLog = {
     InformationExecutionSummary,
     'kind' | 'status' | 'source' | 'outcomeCode' | 'retryable' | 'queryHash' | 'evidence' | 'resultCount' | 'durationMs'
   >>;
-  openai_calls?: Record<'classifier' | 'extraction' | 'reply', {
+  openai_calls?: Record<OpenAiCallStage, {
     status: 'completed' | 'not_called';
     response_id: string | null;
     request_id: string | null;
@@ -192,7 +202,7 @@ export function buildChannelRequestLog(args: {
     failure_kind: string | null;
   }>;
   informationOutcomes?: InformationExecutionSummary[];
-  openAiCalls?: Record<'classifier' | 'extraction' | 'reply', OpenAiCallRef | null>;
+  openAiCalls?: Record<OpenAiCallStage, OpenAiCallRef | null>;
   error?: unknown;
 }): ChannelRequestLog {
   const error = describeError(args.error);
@@ -319,10 +329,10 @@ function describeAuthenticationPath(
 }
 
 function summarizeOpenAiCalls(
-  calls: Record<'classifier' | 'extraction' | 'reply', OpenAiCallRef | null>,
+  calls: Record<OpenAiCallStage, OpenAiCallRef | null>,
 ): NonNullable<ChannelRequestLog['openai_calls']> {
   return Object.fromEntries(
-    (['classifier', 'extraction', 'reply'] as const).map((stage) => {
+    openAiCallStages.map((stage) => {
       const call = calls[stage];
       return [stage, call
         ? {
@@ -352,10 +362,10 @@ function summarizeOpenAiCalls(
  * compact path reports aggregate completeness instead.
  */
 function describeTransportAccounting(
-  calls: Record<'classifier' | 'extraction' | 'reply', OpenAiCallRef | null>,
+  calls: Record<OpenAiCallStage, OpenAiCallRef | null>,
 ): NonNullable<ChannelRequestLog['transport_accounting']> {
   const reasons: string[] = [];
-  for (const stage of ['classifier', 'extraction', 'reply'] as const) {
+  for (const stage of openAiCallStages) {
     const call = calls[stage];
     if (!call) continue;
     const result = checkTransportMetricsCompleteness(

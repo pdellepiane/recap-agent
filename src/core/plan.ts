@@ -16,8 +16,12 @@ import {
   informationStateSchema,
   mergeAuthRecoveryState,
   seedAuthRecoveryFromUserAuth,
+  supportOutcomeStateSchema,
+  emptySupportOutcomeState,
+  mergeSupportOutcomeState,
   userAuthStateSchema,
   type AuthRecoveryState,
+  type SupportOutcomeState,
   type UserAuthState,
 } from './information';
 import { rsvpStateSchema, type RsvpState } from './rsvp';
@@ -172,8 +176,9 @@ export const humanEscalationStatusValues = ['none', 'requested'] as const;
 
 export type HumanEscalationStatus = (typeof humanEscalationStatusValues)[number];
 
-export type { UserAuthState, AuthRecoveryState };
+export type { UserAuthState, AuthRecoveryState, SupportOutcomeState };
 export { emptyAuthRecoveryState, mergeAuthRecoveryState };
+export { emptySupportOutcomeState, mergeSupportOutcomeState };
 
 export const humanEscalationStateSchema = z.object({
   status: z.enum(humanEscalationStatusValues),
@@ -304,6 +309,12 @@ export const planSchema = z.object({
     help_offered_at: null,
     last_assessed_at: null,
   }),
+  support_outcome: supportOutcomeStateSchema.default({
+    signature: null,
+    repeat_count: 0,
+    unresolved_money: false,
+    updated_at: null,
+  }),
   current_node: decisionNodeSchema,
   intent: z.enum(planIntentValues).nullable(),
   intent_confidence: z.number().min(0).max(1).nullable(),
@@ -340,11 +351,12 @@ export type PersistedPlan = z.infer<typeof planSchema>;
 export type PlanSnapshot = PersistedPlan & { current_node: DecisionNode };
 
 export type PlanUpdate = Partial<
-  Omit<PersistedPlan, 'plan_id' | 'channel' | 'external_user_id' | 'user_auth' | 'rsvp_state' | 'auth_recovery'>
+  Omit<PersistedPlan, 'plan_id' | 'channel' | 'external_user_id' | 'user_auth' | 'rsvp_state' | 'auth_recovery' | 'support_outcome'>
 > & {
   user_auth?: Partial<UserAuthState>;
   rsvp_state?: Partial<RsvpState>;
   auth_recovery?: Partial<AuthRecoveryState>;
+  support_outcome?: Partial<SupportOutcomeState>;
 };
 
 export function normalizeRawPlan(raw: unknown): unknown {
@@ -531,6 +543,16 @@ export function normalizeRawPlan(raw: unknown): unknown {
     // Keep raw plan when recovery seeding fails; schema validation reports it.
   }
 
+  // Seed typed support_outcome once so plans stored before the router landed
+  // stay loadable. A malformed record is replaced by the empty state instead
+  // of failing the plan.
+  if (plan.support_outcome !== undefined && plan.support_outcome !== null) {
+    const parsedOutcome = supportOutcomeStateSchema.safeParse(plan.support_outcome);
+    plan.support_outcome = parsedOutcome.success
+      ? parsedOutcome.data
+      : emptySupportOutcomeState();
+  }
+
   return plan;
 }
 
@@ -584,6 +606,7 @@ export function createEmptyPlan(args: {
       last_error: null,
     },
     auth_recovery: emptyAuthRecoveryState(),
+    support_outcome: emptySupportOutcomeState(),
     conversation_health: {
       status: 'uncertain',
       reason: 'insufficient_context',
@@ -926,13 +949,19 @@ export function mergePlan(plan: PlanSnapshot, update: PlanUpdate): PlanSnapshot 
     activeNeedState.activeNeedCategory,
   );
 
-  const { auth_recovery: authRecoveryUpdate, ...restUpdate } = update;
+  const { auth_recovery: authRecoveryUpdate, support_outcome: supportOutcomeUpdate, ...restUpdate } = update;
   const mergedAuthRecovery = authRecoveryUpdate
     ? mergeAuthRecoveryState(plan.auth_recovery ?? emptyAuthRecoveryState(), {
         ...emptyAuthRecoveryState(),
         ...authRecoveryUpdate,
       })
     : (plan.auth_recovery ?? emptyAuthRecoveryState());
+  const mergedSupportOutcome = supportOutcomeUpdate
+    ? mergeSupportOutcomeState(plan.support_outcome ?? emptySupportOutcomeState(), {
+        ...emptySupportOutcomeState(),
+        ...supportOutcomeUpdate,
+      })
+    : (plan.support_outcome ?? emptySupportOutcomeState());
 
   // L4 ownership coherence: a capability slice only lives under Customer
   // assistance. Leaving the owner clears a stale capability unless the same
@@ -948,6 +977,7 @@ export function mergePlan(plan: PlanSnapshot, update: PlanUpdate): PlanSnapshot 
     ...restUpdate,
     owner_capability: coherentCapability,
     auth_recovery: mergedAuthRecovery,
+    support_outcome: mergedSupportOutcome,
     image_attachments: mergeImageAttachmentRefs(
       plan.image_attachments,
       update.image_attachments,

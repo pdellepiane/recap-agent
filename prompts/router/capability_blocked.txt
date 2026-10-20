@@ -1,0 +1,14 @@
+Decide si la solicitud del cliente depende de una capacidad que este asistente no tiene y que el runtime no puede ejecutar.
+
+`capability_blocked` es verdadero cuando la respuesta depende de alguna de estas capacidades, todas no ejecutables por el runtime:
+
+- ejecutar devoluciones o retiros de dinero;
+- modificar una compra ya registrada;
+- enviar documentos de confirmación;
+- revisar cuentas bancarias, cuentas de Yape o Plin, o bandejas de correo electrónico;
+- verificar un código de compra contra un registro cuando ese registro no trae referencia, es decir cuando `referencePresent` es falso;
+- demostrar que la notificación al anfitrión fue entregada.
+
+`capability_blocked` es falso cuando la respuesta solo necesita leer los registros ya autorizados, pedir un dato que falta, o preparar una revisión manual para que la haga una persona.
+
+Usa el resumen del perfil y el resumen de capacidades: cada operación aparece con su disponibilidad y su motivo. Si el turno no pide ninguna de las capacidades listadas, `capability_blocked` es falso. La falta de un dato del cliente no es una capacidad bloqueada.

@@ -57,7 +57,7 @@ export type FeedbackSignalsV1 = {
     operational_note_present: boolean;
   };
   execution: {
-    model_call_stages: Array<'classifier' | 'extraction' | 'reply'>;
+    model_call_stages: Array<'classifier' | 'extraction' | 'reply' | 'router'>;
     model_call_count: number;
     tools_called_count: number;
     information_capability_count: number;
@@ -112,6 +112,8 @@ export type TurnPerfRecord = {
   timing_ms: TurnTrace['timing_ms'];
   token_usage: TurnTrace['token_usage'];
   openai_calls: TurnTrace['openai_calls'];
+  /** Redacted router decision: route name and probabilities only. */
+  router_decision?: TurnTrace['router_decision'];
   response_classifier?: TurnTrace['response_classifier'];
   message_context: TurnTrace['message_context'];
   continuity_state?: TurnTrace['continuity_state'];
@@ -280,6 +282,7 @@ export function buildTurnPerfRecord(args: {
     timing_ms: args.trace.timing_ms,
     token_usage: args.trace.token_usage,
     openai_calls: args.trace.openai_calls,
+    router_decision: args.trace.router_decision,
     response_classifier: args.trace.response_classifier,
     message_context: args.trace.message_context,
     continuity_state: args.trace.continuity_state,
@@ -372,6 +375,9 @@ function buildFeedbackSignals(args: {
   const modelCallStages: FeedbackSignalsV1['execution']['model_call_stages'] = [];
   if (args.trace.token_usage.classifier != null) {
     modelCallStages.push('classifier');
+  }
+  if (args.trace.token_usage.router != null) {
+    modelCallStages.push('router');
   }
   if (args.trace.token_usage.extraction != null) {
     modelCallStages.push('extraction');

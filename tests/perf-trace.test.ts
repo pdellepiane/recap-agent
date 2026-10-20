@@ -226,6 +226,7 @@ describe('perf trace module', () => {
             },
           },
           reply: null,
+          router: null,
         },
       },
       channel: 'terminal_whatsapp',
@@ -392,6 +393,7 @@ describe('perf trace module', () => {
         classifier: null,
         extraction: null,
         reply: null,
+        router: null,
       },
       message_context: {
         history_status: 'empty',

@@ -391,15 +391,20 @@ type TurnTiming = {
   prompt_bundle_load: number;
   compose_reply: number;
   save_plan: number;
+  /** Decisions API router stage. */
+  router: number;
 };
 
 type TurnTokenUsage = {
   classifier: TokenUsage | null;
+  /** Router stage usage. The Decisions API bills input tokens only. */
+  router: TokenUsage | null;
   extraction: TokenUsage | null;
   reply: TokenUsage | null;
   total: TokenUsage | null;
   openAiCalls: {
     classifier: OpenAiCallRef | null;
+    router: OpenAiCallRef | null;
     extraction: OpenAiCallRef | null;
     reply: OpenAiCallRef | null;
   };
@@ -727,14 +732,17 @@ export class AgentService {
       prompt_bundle_load: 0,
       compose_reply: 0,
       save_plan: 0,
+      router: 0,
     };
     const tokenUsage: TurnTokenUsage = {
       classifier: null,
+      router: null,
       extraction: null,
       reply: null,
       total: null,
       openAiCalls: {
         classifier: null,
+        router: null,
         extraction: null,
         reply: null,
       },
@@ -11295,12 +11303,14 @@ export class AgentService {
       timing_ms: args.timingMs,
       token_usage: {
         classifier: args.tokenUsage.classifier,
+        router: args.tokenUsage.router,
         extraction: args.tokenUsage.extraction,
         reply: args.tokenUsage.reply,
         total: args.tokenUsage.total,
       },
       openai_calls: {
         classifier: args.tokenUsage.openAiCalls.classifier,
+        router: args.tokenUsage.openAiCalls.router,
         extraction: args.tokenUsage.openAiCalls.extraction,
         reply: args.tokenUsage.openAiCalls.reply,
       },

@@ -1036,6 +1036,12 @@ function createComposeRequest(
         challengeRequestedAt: null,
         preservedRequest: null,
       },
+      support_outcome: {
+        signature: null,
+        repeat_count: 0,
+        unresolved_money: false,
+        updated_at: null,
+      },
       information_state: {
         resume_node: null,
         pending_requests: [],

@@ -2,6 +2,7 @@ export type OpenAiStage =
   | 'classifier'
   | 'extraction'
   | 'reply'
+  | 'router'
   | 'knowledge_retrieval'
   | 'provider_vector_search';
 

@@ -34,12 +34,14 @@ describe('OpenAI model defaults', () => {
     delete process.env.OPENAI_EXTRACTOR_TIMEOUT_MS;
     delete process.env.OPENAI_REPLY_TIMEOUT_MS;
     delete process.env.OPENAI_RETRIEVAL_TIMEOUT_MS;
+    delete process.env.OPENAI_ROUTER_TIMEOUT_MS;
 
     expect(getConfig().openAi.timeoutsMs).toEqual({
       responseClassifier: 16_000,
       extractor: 35_000,
       reply: 22_000,
       retrieval: 8_000,
+      router: 10_000,
     });
 
     const template = fs.readFileSync(

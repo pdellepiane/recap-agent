@@ -45,7 +45,7 @@ export type OpenAiRequestMetrics = {
 
 export type OpenAiTransportRequest = {
   sequence: number;
-  stage: 'classifier' | 'extraction' | 'reply' | 'image' | 'knowledge_retrieval' | 'provider_vector_search' | 'unknown';
+  stage: 'classifier' | 'extraction' | 'reply' | 'router' | 'image' | 'knowledge_retrieval' | 'provider_vector_search' | 'unknown';
   requestId: string | null;
   responseId: string | null;
   statusCode: number | null;

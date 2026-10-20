@@ -3704,6 +3704,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       invitedEventLookup: true,
       purchaseInformation: true,
       rsvp: true,
+      decisionsRouter: false,
       ...this.options.features,
     };
   }
