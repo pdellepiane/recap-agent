@@ -510,6 +510,7 @@ describe('decisions router: customer-assistance lane', () => {
             method: 'Yape o Plin',
             claimedSuccess: true,
           },
+          claimedHandoff: false,
         },
       }),
     );
@@ -689,6 +690,7 @@ describe('decisions router: customer-assistance lane', () => {
             method: 'Yape o Plin',
             claimedSuccess: true,
           },
+          claimedHandoff: false,
         },
       }),
     );

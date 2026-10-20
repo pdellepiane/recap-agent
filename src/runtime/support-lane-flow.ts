@@ -16,6 +16,7 @@ import { z } from 'zod';
 import type { ExtractedInformationRequest } from '../core/information';
 import type { PlanSnapshot } from '../core/plan';
 import type { RouterRoute } from './decisions-router-questions';
+import { checkReplyNarrativeClaims } from './reply-evidence-projector';
 import type { PriorReportedPayment } from './support-outcome';
 
 /** Model-reported payment evidence. Facts only, never reply prose. */
@@ -27,19 +28,29 @@ export const reportedPaymentSchema = z.object({
 });
 
 /**
- * The compose sidecar fields, beside the structured message. Both are
+ * The compose sidecar fields, beside the structured message. All three are
  * required in the model output so the model always states which records the
- * answer relies on and whether it carries a reported payment.
+ * answer relies on, whether it carries a reported payment and whether it
+ * claims a registered human handoff.
  */
 export const supportReplySidecarSchema = z.object({
   cited_order_ids: z.array(z.string()),
   reported_payment: reportedPaymentSchema.nullable(),
+  claimed_handoff: z.boolean().describe(
+    'True only when the reply states that a human handoff or a manual review was registered. False when no such success is claimed.',
+  ),
 });
 
 /** The sidecar the runtime hands back to the turn flow. */
 export type SupportReplySidecar = {
   readonly citedOrderIds: readonly string[];
   readonly reportedPayment: PriorReportedPayment | null;
+  /**
+   * The model's own claim that the turn registered a human handoff or a
+   * manual review. A claim needs an in-turn gateway success receipt; the
+   * claim is never taken on trust.
+   */
+  readonly claimedHandoff: boolean;
 };
 
 /**
@@ -52,11 +63,13 @@ export const SUPPORT_LANE_PURCHASE_DISCOVERY_QUERY =
 /**
  * The router routes that answer from the authorized records. A suppressed
  * acknowledgement and an escalation read nothing: the first delivers
- * nothing and the second hands the thread over.
+ * nothing and the second hands the thread over. A clarification reads
+ * nothing either: the complete profile already reaches the reply, and a
+ * purchase-specific read would turn the clarification into a purchase
+ * answer.
  */
 export const supportLaneRecordRoutes: readonly RouterRoute[] = [
   'answer_with_records',
-  'ask_clarification',
   'offer_human',
 ];
 
@@ -116,13 +129,41 @@ export function supportLaneInformationRequests(args: {
  */
 export function supportReplySidecarFromOutput(output: unknown): SupportReplySidecar {
   if (typeof output !== 'object' || output === null) {
-    return { citedOrderIds: [], reportedPayment: null };
+    return { citedOrderIds: [], reportedPayment: null, claimedHandoff: false };
   }
   const record = output as Record<string, unknown>;
   return {
     citedOrderIds: normalizeCitedOrderIds(record.cited_order_ids),
     reportedPayment: normalizeReportedPayment(record.reported_payment),
+    claimedHandoff: record.claimed_handoff === true,
   };
+}
+
+/**
+ * The operation a support-lane success claim is about: the human handoff
+ * (and the manual review it stands for).
+ */
+export const SUPPORT_LANE_HANDOFF_OPERATION = 'human.takeover.write';
+
+/**
+ * WP5 — the claim gate of a support-lane reply.
+ *
+ * A claim of a successful human handoff (or of a manual review standing for
+ * one) needs an in-turn gateway success receipt AND an allowed operation.
+ * The claim is checked, never taken on trust: the reply prose is the model's,
+ * but the effect it may assert is the runtime's.
+ */
+export function checkSupportLaneHandoffClaim(args: {
+  readonly claimedHandoff: boolean;
+  readonly receiptPresent: boolean;
+  readonly operationAllowed: boolean;
+}): 'ok' | 'fallback' {
+  return checkReplyNarrativeClaims([{
+    operation: SUPPORT_LANE_HANDOFF_OPERATION,
+    claimsSuccess: args.claimedHandoff,
+    receiptPresent: args.receiptPresent,
+    operationAllowed: args.operationAllowed,
+  }]);
 }
 
 /**

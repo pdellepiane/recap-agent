@@ -227,6 +227,8 @@ import {
 } from './owner-routing';
 import {
   projectSupportHandoffEvidence,
+  resolveComposedReply,
+  type SupportHandoffEvidence,
   type SupportHandoffReplyOutcome,
 } from './reply-evidence-projector';
 import {
@@ -238,6 +240,7 @@ import type { RouterEscalationReason } from './decisions-router-policy';
 import type { RouterRoute } from './decisions-router-questions';
 import { buildCapabilityDigest } from './capability-digest';
 import {
+  checkSupportLaneHandoffClaim,
   supportLaneInformationRequests,
   validateCitedOrderIds,
 } from './support-lane-flow';
@@ -2709,7 +2712,10 @@ export class AgentService {
       routerDecision: args.router.decision,
       supportLane: {
         requests,
-        turnCarriedReceiptMedia: this.turnCarriedReceiptMedia(args.inbound),
+        turnCarriedReceiptMedia: this.threadCarriesReceiptEvidence({
+          inbound: args.inbound,
+          plan: workingPlan,
+        }),
         priorReportedPayment: priorReportedPaymentFromPlan(workingPlan),
         ...(outcome.kind === 'offer_human' ? { composeNode: 'ofrecer_agente_humano' as const } : {}),
       },
@@ -2770,6 +2776,7 @@ export class AgentService {
       searchStrategy: 'none',
       failureReason: 'router_escalation_composition_failed',
       routerDecision: args.router.decision,
+      supportSidecar: true,
       turnDecisionReason: acceptedOffer
         ? 'human_help_offer_accepted'
         : `router_escalation:${args.escalationReason}`,
@@ -2862,6 +2869,12 @@ export class AgentService {
     routerDecision?: RouterDecisionTrace;
     /** The stop reason of the escalation turn. */
     turnDecisionReason?: string;
+    /**
+     * WP5: the support lane asks for the reply sidecar, so a claim about a
+     * registered handoff can be checked against the in-turn receipt. Absent
+     * on the classifier path, which keeps its established model contract.
+     */
+    supportSidecar?: boolean;
   }): Promise<HandleTurnResponse> {
     const currentNode: DecisionNode = 'solicitar_agente_humano';
     const phoneNumber = this.resolveEscalationPhone(args.inbound);
@@ -2955,6 +2968,9 @@ export class AgentService {
         toolUsage: args.toolUsage,
         handoffOutcome: handoffEvidence.handoffOutcome,
         customerContext: args.preparedCustomerContext.projection,
+        // WP5: the support lane asks for the sidecar, so the claim about a
+        // registered handoff can be checked against the in-turn receipt.
+        ...(args.supportSidecar === true ? { supportSidecar: true } : {}),
       });
     } catch (error) {
       args.timingMs.compose_reply += Date.now() - composeReplyStartedAt;
@@ -3006,6 +3022,54 @@ export class AgentService {
     );
     args.timingMs.compose_reply += Date.now() - composeReplyStartedAt;
     args.timingMs.total = Date.now() - args.handleTurnStartedAt;
+    // WP5: a success claim about the handoff needs the in-turn receipt. A
+    // failed or unattempted handoff must not be reported as registered: the
+    // turn resolves without the claim, as a typed operational failure.
+    if (args.supportSidecar === true) {
+      const claimViolation = this.supportLaneClaimViolation({
+        reply,
+        handoffEvidence,
+      });
+      if (claimViolation !== null) {
+        return {
+          plan: planToSave,
+          outbound: this.failureOutbound(
+            planToSave.conversation_id,
+            claimViolation,
+            observeOutputOrigin({
+              candidateText: null,
+              deliveredText: null,
+              transformationVersion: 'transport-v2',
+              mismatchFields: ['model_output'],
+            }),
+          ),
+          trace: this.buildTrace({
+            plan: planToSave,
+            previousNode: args.previousNode,
+            currentNode,
+            nodePath: args.nodePath,
+            extraction: args.extraction,
+            missingFields: [],
+            searchReady: false,
+            promptBundleId: UNREPORTED_COMPILER_PROMPT_ID,
+            promptFilePaths: [],
+            toolUsage: args.toolUsage,
+            providerResults: [],
+            recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+            planPersisted: true,
+            planPersistReason,
+            timingMs: args.timingMs,
+            tokenUsage: args.tokenUsage,
+            messageContext: args.messageContext,
+            responseClassifier: args.responseClassifierTrace,
+            searchStrategy: args.searchStrategy,
+            turnDecision: this.humanEscalationTurnDecision(args.turnDecisionReason ?? currentNode),
+            operationalNote: 'The reply claimed a registered handoff without an in-turn receipt; the turn resolved without the claim.',
+            ...(args.routerDecision ? { routerDecision: args.routerDecision } : {}),
+          }),
+        };
+      }
+    }
     const outbound = this.renderOutbound(
       reply,
       [],
@@ -3061,6 +3125,41 @@ export class AgentService {
         nowIso: new Date().toISOString(),
       }),
     });
+  }
+
+  /**
+   * WP5 — the claim gate of a support-lane reply.
+   *
+   * A claim of a successful human handoff (or of a manual review standing
+   * for one) needs an in-turn gateway success receipt AND an allowed
+   * operation. The claim is checked, never taken on trust: the reply prose
+   * stays the model's, but the effect it may assert is the runtime's.
+   *
+   * Returns null when the reply may be delivered, or the typed operational
+   * failure reason when the claim is not backed by a receipt. The gate never
+   * rewrites the message and never produces prose of its own.
+   */
+  private supportLaneClaimViolation(args: {
+    reply: ComposeReplyResult;
+    handoffEvidence: SupportHandoffEvidence | null;
+  }): string | null {
+    const sidecar = args.reply.sidecar ?? null;
+    if (sidecar === null) {
+      return null;
+    }
+    const claims = checkSupportLaneHandoffClaim({
+      claimedHandoff: sidecar.claimedHandoff,
+      receiptPresent: args.handoffEvidence?.receiptPresent === true,
+      operationAllowed: this.capabilityManifest['human.takeover.write'].available,
+    });
+    const resolved = resolveComposedReply({
+      disposition: 'composed',
+      modelText: args.reply.text,
+      claims,
+    });
+    return resolved.disposition === 'operational_failure'
+      ? 'support_lane_unverified_handoff_claim'
+      : null;
   }
 
   /**
@@ -3142,6 +3241,25 @@ export class AgentService {
   /** True when the turn carried an image or a media attachment. */
   private turnCarriedReceiptMedia(inbound: NormalizedInboundMessage): boolean {
     return inbound.image != null || (inbound.media?.length ?? 0) > 0;
+  }
+
+  /**
+   * WP3 — whether the thread carries receipt evidence.
+   *
+   * The current turn's image or media attachment, or a receipt reference
+   * already persisted in the plan by an earlier turn of the same thread. A
+   * receipt stays the open money question of the thread until the backend
+   * matches it, so the outcome kind does not flip between the turn that
+   * carries the image and the turns that continue it.
+   */
+  private threadCarriesReceiptEvidence(args: {
+    inbound: NormalizedInboundMessage;
+    plan: PlanSnapshot;
+  }): boolean {
+    if (this.turnCarriedReceiptMedia(args.inbound)) {
+      return true;
+    }
+    return (args.plan.image_attachments?.length ?? 0) > 0;
   }
 
   /**
@@ -8376,6 +8494,66 @@ export class AgentService {
       args.tokenUsage.reply,
     );
     args.timingMs.compose_reply += Date.now() - composeReplyStartedAt;
+    // WP5: a success claim about a human handoff needs an in-turn receipt.
+    // Without it the reply resolves without the claim: a typed operational
+    // failure, never a success sentence and never canned prose.
+    if (args.supportLane) {
+      const claimViolation = this.supportLaneClaimViolation({
+        reply,
+        handoffEvidence: null,
+      });
+      if (claimViolation !== null) {
+        args.timingMs.total = Date.now() - args.handleTurnStartedAt;
+        const failedPlan = planForInformation;
+        const claimSaveStartedAt = Date.now();
+        await this.dependencies.planStore.save({
+          plan: failedPlan,
+          reason: claimViolation,
+        });
+        args.timingMs.save_plan += Date.now() - claimSaveStartedAt;
+        return {
+          plan: failedPlan,
+          outbound: this.failureOutbound(
+            failedPlan.conversation_id,
+            claimViolation,
+            observeOutputOrigin({
+              candidateText: null,
+              deliveredText: null,
+              transformationVersion: 'transport-v2',
+              mismatchFields: ['model_output'],
+            }),
+          ),
+          trace: this.buildTrace({
+            plan: failedPlan,
+            previousNode: args.previousNode,
+            currentNode,
+            nodePath:
+              args.previousNode === currentNode
+                ? [currentNode]
+                : [args.previousNode, currentNode],
+            extraction: deliveredExtraction,
+            missingFields: [],
+            searchReady: false,
+            promptBundleId: UNREPORTED_COMPILER_PROMPT_ID,
+            promptFilePaths: [],
+            toolUsage: args.toolUsage,
+            providerResults: [],
+            recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+            planPersisted: true,
+            planPersistReason: claimViolation,
+            timingMs: args.timingMs,
+            tokenUsage: args.tokenUsage,
+            messageContext: args.messageContext,
+            responseClassifier: args.responseClassifierTrace,
+            searchStrategy: 'none',
+            turnDecision: deliveredTurnDecision,
+            operationalNote: 'The reply claimed a human handoff without an in-turn receipt; the turn resolved without the claim.',
+            informationExecution: informationSummaries,
+            ...(args.routerDecision ? { routerDecision: args.routerDecision } : {}),
+          }),
+        };
+      }
+    }
     // S2 pending-question continuity: work left pending keeps the unresolved
     // user question for later evidence (image or follow-up). A completed turn
     // clears the curated question only when the model reports
@@ -8509,11 +8687,16 @@ export class AgentService {
       cited_order_count: validatedCited.citedOrderIds.length,
       dropped_order_count: validatedCited.droppedOrderIds.length,
     });
+    // The reported payment is a model-side signal about what the guest
+    // claims. The freshest report wins: this turn's compose sidecar when the
+    // turn carries one, otherwise the signal persisted from an earlier turn
+    // of the same thread. It is never detected from the message text.
+    const effectiveReportedPayment = args.reportedPayment ?? args.priorReportedPayment;
     const components = supportOutcomeComponentsFromSnapshot({
       snapshot,
       referenceResolution: args.referenceResolution,
       turnCarriedReceiptMedia: args.turnCarriedReceiptMedia,
-      priorReportedPayment: args.priorReportedPayment,
+      priorReportedPayment: effectiveReportedPayment,
     });
     const signature = computeSupportOutcomeSignature(components);
     const incomingRepeatCount = nextSupportOutcomeRepeatCount({
@@ -8527,13 +8710,13 @@ export class AgentService {
         repeat_count: incomingRepeatCount,
         unresolved_money: signature.unresolvedMoney,
         updated_at: new Date().toISOString(),
-        reported_payment: args.reportedPayment === null
+        reported_payment: effectiveReportedPayment === null
           ? null
           : {
-            amount: args.reportedPayment.amount,
-            currency: args.reportedPayment.currency,
-            method: args.reportedPayment.method,
-            claimed_success: args.reportedPayment.claimedSuccess,
+            amount: effectiveReportedPayment.amount,
+            currency: effectiveReportedPayment.currency,
+            method: effectiveReportedPayment.method,
+            claimed_success: effectiveReportedPayment.claimedSuccess,
           },
       },
     });
