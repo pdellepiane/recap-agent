@@ -218,6 +218,7 @@ if (!isProductionPromotion) {
     `AgentFeatureInvitedEventLookup=${getDeploymentSetting('AGENT_FEATURE_INVITED_EVENT_LOOKUP', 'AgentFeatureInvitedEventLookup', 'true')}`,
     `AgentFeaturePurchaseInformation=${getDeploymentSetting('AGENT_FEATURE_PURCHASE_INFORMATION', 'AgentFeaturePurchaseInformation', 'true')}`,
     `AgentFeatureRsvp=${getDeploymentSetting('AGENT_FEATURE_RSVP', 'AgentFeatureRsvp', 'true')}`,
+    `AgentFeatureDecisionsRouter=${getDeploymentSetting('AGENT_FEATURE_DECISIONS_ROUTER', 'AgentFeatureDecisionsRouter', 'false')}`,
   );
 }
 const cloudFormationArgs = [

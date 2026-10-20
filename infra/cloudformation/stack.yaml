@@ -201,6 +201,15 @@ Parameters:
     AllowedValues:
       - 'true'
       - 'false'
+  # The Decisions API router owns routing on the customer-assistance lane.
+  # Default off: with the flag off the classifier preflight keeps owning the
+  # turn and nothing changes.
+  AgentFeatureDecisionsRouter:
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
 
 Rules:
   EnvironmentFunctionIsolation:
@@ -451,6 +460,7 @@ Resources:
           AGENT_FEATURE_INVITED_EVENT_LOOKUP: !Ref AgentFeatureInvitedEventLookup
           AGENT_FEATURE_PURCHASE_INFORMATION: !Ref AgentFeaturePurchaseInformation
           AGENT_FEATURE_RSVP: !Ref AgentFeatureRsvp
+          AGENT_FEATURE_DECISIONS_ROUTER: !Ref AgentFeatureDecisionsRouter
 
   RuntimeFunctionUrl:
     Type: AWS::Lambda::Url
