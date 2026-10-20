@@ -602,10 +602,36 @@ const providerGatewayFixtureSchema = z.object({
   reviewsById: z.record(z.string(), z.array(providerReviewSchema)).optional(),
 });
 
+/**
+ * The scripted router answers of one offline case. A case that replays the
+ * customer-assistance lane declares them as typed data, so the offline
+ * target can drive the deterministic policy without a model or a network.
+ */
+const scriptedRouterAnswerSchema = z.object({
+  route: z.enum([
+    'answer_with_records',
+    'ask_clarification',
+    'offer_human',
+    'escalate_human',
+    'rsvp_flow',
+    'planning_flow',
+    'suppress_ack',
+  ]),
+  loopRisk: z.number().int().min(0).max(4),
+  needsHumanNow: z.number().min(0).max(1),
+  capabilityBlocked: z.number().min(0).max(1),
+});
+
 const offlineFixtureSchema = z.object({
   extractionsByTurn: z.array(extractionResultSchema).optional(),
   repliesByTurn: z.array(z.string()).optional(),
   providerGateway: providerGatewayFixtureSchema.optional(),
+  /**
+   * The scripted Decisions router answers, in turn order. Absent means the
+   * case does not exercise the customer-assistance lane and the classifier
+   * path owns the turn.
+   */
+  routerAnswersByTurn: z.array(scriptedRouterAnswerSchema).optional(),
 });
 
 const planFieldExpectationSchema = z.object({

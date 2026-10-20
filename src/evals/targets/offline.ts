@@ -38,6 +38,7 @@ import {
   redactArtifactText,
 } from '../../runtime/artifact-redaction';
 import { attachEvaluationState, buildFixtureEffectSummariesFromReceipts } from '../evaluation-state';
+import { ScriptedSupportLaneRouter } from '../scripted-support-lane-router';
 
 export async function runOfflineCase(args: {
   currentCase: EvalCase;
@@ -49,6 +50,12 @@ export async function runOfflineCase(args: {
 }> {
   const planStore = new InMemoryPlanStore();
   const fixture = args.currentCase.fixtures?.offline;
+  // The scripted Decisions router: a case that declares router answers
+  // replays the customer-assistance lane, a case that declares none keeps
+  // the established path. The public behaviour of the target is unchanged.
+  const supportLaneRouter = new ScriptedSupportLaneRouter({
+    answers: fixture?.routerAnswersByTurn ?? [],
+  });
   const service = new AgentService({
     planStore,
     runtime: new FixtureRuntime(fixture),
@@ -59,6 +66,7 @@ export async function runOfflineCase(args: {
       terminal_whatsapp: new WhatsAppMessageRenderer(),
       terminal_whatsapp_eval: new WhatsAppMessageRenderer(),
     },
+    supportLaneRouter,
   });
   const userId = `offline-${args.currentCase.id}`;
   const turns: EvalTurnResult[] = [];
