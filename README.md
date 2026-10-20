@@ -2,7 +2,7 @@
 
 Serverless conversational agent runtime for Sin Envolturas.
 
-**Consolidated documentation (30 September 2026):** [documentation map](docs/README.md), [testing contract and evidence](docs/testing.md), [technical report](docs/thesis/architecture-report/recap-agent-architecture-report.pdf), [editable source](docs/thesis/architecture-report/recap-agent-architecture-report.tex), and [activity report](docs/thesis/final-activity-log-2026-09-30.md). The live behavior suite contains 46 cases, 185 turns and 329 hard assertions. The repaired development artifact passed the seven affected cases and all 47 hard assertions; the complete 46-case panel was not rerun. Type checking, lint and the current offline suite pass; production promotion remains separate evidence.
+**Consolidated documentation (30 September 2026):** [documentation map](docs/README.md), [testing contract and evidence](docs/testing.md), [technical report](docs/thesis/architecture-report/recap-agent-architecture-report.pdf), [editable source](docs/thesis/architecture-report/recap-agent-architecture-report.tex), and [activity report](docs/thesis/final-activity-log-2026-09-30.md). The live behavior suite contains 52 cases, 212 turns and 373 hard assertions. The repaired development artifact passed the seven affected cases and all 47 hard assertions; the complete 46-case panel of that September run was not rerun. Type checking, lint and the current offline suite pass; production promotion remains separate evidence.
 
 ## What is implemented
 

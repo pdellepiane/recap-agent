@@ -89,9 +89,10 @@ describe('run manifest identity (O0)', () => {
     expect(manifest.schemaVersion).toBe(RUN_MANIFEST_SCHEMA_VERSION);
     expect(manifest.releaseReadyClaim).toBe(false);
     // 2026-09-30 live compression: 119 - 27 merged threads = 92.
-    expect(manifest.cases.orderedIds).toHaveLength(46);
-    expect(new Set(manifest.cases.orderedIds).size).toBe(46);
-    expect(manifest.cases.identities).toHaveLength(46);
+    // 2026-10-20 decisions router: +6 support cases from the WhatsApp behaviour dossier = 52.
+    expect(manifest.cases.orderedIds).toHaveLength(52);
+    expect(new Set(manifest.cases.orderedIds).size).toBe(52);
+    expect(manifest.cases.identities).toHaveLength(52);
     expect(() => runManifestSchema.parse(manifest)).not.toThrow();
     expect(() => assertUniqueConfigCasePairs(manifest.cases.identities)).not.toThrow();
   });
@@ -427,14 +428,14 @@ describe('run manifest identity (O0)', () => {
     expect(() => parseResumeMode(['--resume-mode', 'partial'])).toThrow(/full or diagnostic/);
   });
 
-  it('reconciles frozen support-gate counts from the catalog suite (46 total / 43 support)', async () => {
+  it('reconciles frozen support-gate counts from the catalog suite (52 total / 49 support)', async () => {
     const catalog = await new EvalLoader(evalsDir).loadCatalog();
     const suite = catalog.suites.find((entry) => entry.id === 'live_behavior_regression');
     expect(suite).toBeDefined();
     const suiteIds = new Set(suite?.caseIds ?? []);
     const frozen = JSON.parse(
       await fs.readFile(
-        path.join(repoRoot, 'docs/plan/2026-09-09-lean-conversation/support-gate-2026-09-16.json'),
+        path.join(repoRoot, 'docs/plan/2026-09-09-lean-conversation/support-gate-2026-10-20.json'),
         'utf8',
       ),
     ) as { supportDenominator: number; supportIds: string[]; planningDiagnosticOnly: string[] };
@@ -444,9 +445,14 @@ describe('run manifest identity (O0)', () => {
     // 2026-09-29 hosted history: +1 phone-hosted-event-history case.
     // 2026-09-30 test condensation: 143 - 24 merged threads = 119 (111 support).
     // 2026-09-30 live compression: 119 - 27 merged threads = 92 (84 support).
-    expect(suiteIds.size).toBe(46);
-    expect(frozen.supportDenominator).toBe(43);
-    expect(frozen.supportIds).toHaveLength(43);
+    // 2026-09-30 hard-contract panel: 92 - 46 retired/merged = 46 (43 support).
+    // 2026-10-20 decisions router: +6 support cases from the WhatsApp behaviour
+    // dossier (cases A-D, the case C derivation variant and the WP4 host-receipt
+    // evidence case) = 52 (49 support). The historical 2026-09-16 gate file
+    // stays untouched as evidence.
+    expect(suiteIds.size).toBe(52);
+    expect(frozen.supportDenominator).toBe(49);
+    expect(frozen.supportIds).toHaveLength(49);
     expect(frozen.planningDiagnosticOnly).toHaveLength(3);
     expect(new Set([...frozen.supportIds, ...frozen.planningDiagnosticOnly])).toEqual(suiteIds);
     expect(frozen.supportIds).toContain('live_behavior.customer_event_task_continuity');

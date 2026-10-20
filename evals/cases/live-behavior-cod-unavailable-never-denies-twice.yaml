@@ -1,0 +1,123 @@
+template: template.base-live
+id: live_behavior.cod_unavailable_never_denies_twice
+suite: live_behavior_regression
+version: 1
+description: Dossier case B (Luis). The guest states the purchase code COD309553 that matches no record while an approved purchase exists; the case is taken over instead of being denied twice, and no other effect is produced.
+tags: [ live, behavior, purchase, escalation, customer-reference, dossier, whatsapp ]
+targetModes: [ live_lambda ]
+backendFixture:
+  scenario: purchase-cod-reference-unavailable
+inputs:
+  - text: "Hola, ¿mi compra existe? El número de compra que me dio su propia página es COD309553."
+    channel: whatsapp
+    contactPhone: "+51900000402"
+    sessionId: live-dossier-b-cod-reference
+    backendFixture:
+      scenario: purchase-cod-reference-unavailable
+  - text: "Es la boda de Michi & Chino del 21 de noviembre, el código es COD309553."
+    channel: whatsapp
+    contactPhone: "+51900000402"
+    sessionId: live-dossier-b-cod-reference
+    backendFixture:
+      scenario: purchase-cod-reference-unavailable
+  - text: "Por favor confírmenme que corresponde a la boda de Michelle Aramburú y Francisco Ugaz."
+    channel: whatsapp
+    contactPhone: "+51900000402"
+    sessionId: live-dossier-b-cod-reference
+    backendFixture:
+      scenario: purchase-cod-reference-unavailable
+  - text: "Es el número que me arroja su propia página cuando cobraron la compra, ¿qué le puedo decir?"
+    channel: whatsapp
+    contactPhone: "+51900000402"
+    sessionId: live-dossier-b-cod-reference
+    backendFixture:
+      scenario: purchase-cod-reference-unavailable
+  - text: "Entonces, ¿es posible afirmar que a Michi y Chino les llegará un mensaje indicando que les hice un regalo de bodas?"
+    channel: whatsapp
+    contactPhone: "+51900000402"
+    sessionId: live-dossier-b-cod-reference
+    backendFixture:
+      scenario: purchase-cod-reference-unavailable
+expectations:
+  - id: dossier-b-takeover-requested-and-succeeded
+    type: fixture_effect_count
+    operation: handoff.write
+    expectedAttempts: 1
+    expectedSuccesses: 1
+    expectedReplays: 0
+    severity: hard
+  - id: dossier-b-plan-records-the-escalation
+    type: plan_field_subset
+    path: human_escalation
+    expected:
+      status: requested
+    severity: hard
+  - id: dossier-b-approved-purchase-is-in-the-evidence
+    type: trace_field_subset
+    path: information_execution_summary
+    turnIndex: 0
+    expected:
+      - kind: purchase
+        status: completed
+        outcomeCode: completed_with_results
+        evidence:
+          - purchaseFact:
+              eventLabel: Michi & Chino
+              paymentStatus: approved
+              total: 86.45
+              currency: USD
+              currencySymbol: US$
+              referencePresent: false
+    severity: hard
+  - id: dossier-b-first-turn-does-not-take-over
+    type: fixture_effect_count
+    operation: handoff.write
+    turnIndex: 0
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: dossier-b-first-turn-calls-no-effect-tool
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - request_human_takeover
+      - request_user_login_code
+      - verify_user_login_code
+      - guest_rsvp
+    turnIndex: 0
+    severity: hard
+  - id: dossier-b-no-rsvp-write
+    type: fixture_effect_count
+    operation: rsvp.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: dossier-b-no-otp-request
+    type: fixture_effect_count
+    operation: otp.request
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: dossier-b-no-otp-verify
+    type: fixture_effect_count
+    operation: otp.verify
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+notes:
+  - "Reconstruction of analysis/2026-10-19-whatsapp-behavior-cases dossier case B (turn table rows B1-B9, 2026-10-19): the guest states the purchase code COD309553 (B5), asks for the wedding confirmation (B6) and objects that the code came from the company page itself (B7). The synthetic phone +51900000402 and the fixture purchase-cod-reference-unavailable carry four approved purchases, including ORD_6ad6760c5bbee (Michi & Chino, US$ 86.45, 2026-11-21), and no record carries a customer transaction number, so COD309553 matches nothing by construction."
+  - "The approved purchase is asserted as a hard backend fact through the typed purchaseFact evidence of the opening purchase read (approved, US$ 86.45, Michi & Chino, referencePresent false). It is the structural proof that the reply had the authorized purchase available, so no absence can be claimed from the records; the customer reference is the only unmatched datum."
+  - "No text_not_contains pin is used on the reply wording: denying the purchase is a semantic claim and pinning it would be a vocabulary pin, which the live behavior gate forbids. The takeover effect, the plan escalation state and the typed backend fact carry the contract instead. No text_semantic expectation either."
+  - "The escalation turn itself is NOT pinned: the router answers probabilities, so the takeover may land on any turn of the thread. The negative per-turn pin is the opening question, which must not take the conversation over."
+budget:
+  maxTurns: 5
+  estimatedPromptTokensPerTurn: 2200
+  estimatedCompletionTokensPerTurn: 300
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1

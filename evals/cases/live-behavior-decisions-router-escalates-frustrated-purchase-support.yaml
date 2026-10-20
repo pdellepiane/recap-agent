@@ -1,0 +1,111 @@
+template: template.base-live
+id: live_behavior.decisions_router_escalates_frustrated_purchase_support
+suite: live_behavior_regression
+version: 1
+description: Dossier case C (Mirta). An approved S/ 87.36 host-credit purchase is questioned, then a refund is demanded and repeated until the guest is frustrated; the router takes the case over, the takeover succeeds, and no other effect is produced.
+tags: [ live, behavior, purchase, escalation, refund, decisions-router, dossier, whatsapp ]
+targetModes: [ live_lambda ]
+backendFixture:
+  scenario: purchase-approved-host-receipt-refund
+inputs:
+  - text: "Estimados señores, por favor me pueden mandar por este medio la foto del regalo que compré para Stephanie Marroquín? No lo encuentro en el baby shower."
+    channel: whatsapp
+    contactPhone: "+51900000403"
+    sessionId: live-dossier-c-frustrated-refund
+    backendFixture:
+      scenario: purchase-approved-host-receipt-refund
+  - text: "Señores, Stephanie me dice que no ha recibido nada, por favor confirmen si le entregaste el regalo y qué monto figura."
+    channel: whatsapp
+    contactPhone: "+51900000403"
+    sessionId: live-dossier-c-frustrated-refund
+    backendFixture:
+      scenario: purchase-approved-host-receipt-refund
+  - text: "Por favor, entonces devuélvanme los ochenta y siete con treinta y seis soles por Yape a este número. Gracias."
+    channel: whatsapp
+    contactPhone: "+51900000403"
+    sessionId: live-dossier-c-frustrated-refund
+    backendFixture:
+      scenario: purchase-approved-host-receipt-refund
+  - text: "Sí, por favor necesito la devolución de mi dinero. Gracias."
+    channel: whatsapp
+    contactPhone: "+51900000403"
+    sessionId: live-dossier-c-frustrated-refund
+    backendFixture:
+      scenario: purchase-approved-host-receipt-refund
+  - text: "La verdad que estoy muy fastidiada porque hablé con la futura mamá y ustedes no le han hecho entrega de nada de eso."
+    channel: whatsapp
+    contactPhone: "+51900000403"
+    sessionId: live-dossier-c-frustrated-refund
+    backendFixture:
+      scenario: purchase-approved-host-receipt-refund
+  - text: "Deseo que me devuelvan mi dinero."
+    channel: whatsapp
+    contactPhone: "+51900000403"
+    sessionId: live-dossier-c-frustrated-refund
+    backendFixture:
+      scenario: purchase-approved-host-receipt-refund
+expectations:
+  - id: dossier-c-takeover-requested-and-succeeded
+    type: fixture_effect_count
+    operation: handoff.write
+    expectedAttempts: 1
+    expectedSuccesses: 1
+    expectedReplays: 0
+    severity: hard
+  - id: dossier-c-plan-records-the-escalation
+    type: plan_field_equals
+    path: human_escalation.status
+    expected: requested
+    severity: hard
+  - id: dossier-c-first-turn-does-not-take-over
+    type: fixture_effect_count
+    operation: handoff.write
+    turnIndex: 0
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: dossier-c-first-turn-calls-no-effect-tool
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - request_human_takeover
+      - request_user_login_code
+      - verify_user_login_code
+      - guest_rsvp
+    turnIndex: 0
+    severity: hard
+  - id: dossier-c-no-rsvp-write
+    type: fixture_effect_count
+    operation: rsvp.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: dossier-c-no-otp-request
+    type: fixture_effect_count
+    operation: otp.request
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: dossier-c-no-otp-verify
+    type: fixture_effect_count
+    operation: otp.verify
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+notes:
+  - "Reconstruction of analysis/2026-10-19-whatsapp-behavior-cases dossier case C (turn table rows C1-C12, 2026-10-17): the guest questions an approved S/ 87.36 host-credit purchase for the Baby Shower of 2026-10-17, asks for the money back (C4, C5), repeats the demand while frustrated (C6) and closes with the demand again (C12). The synthetic phone +51900000403 and the fixture purchase-approved-host-receipt-refund carry exactly one approved purchase (ORD_6ab970ab70802, S/ 87.36, Yape o Plin, host receipt present)."
+  - "The escalation turn itself is NOT pinned: the router answers probabilities, so the takeover may land on any turn of the thread. The contract asserted here is the effect over the conversation (one successful takeover, no replay) plus the plan state, and the negative per-turn pin is the opening informational turn, which must not take the conversation over."
+  - "The effect ledger is cumulative from the case baseline, so the un-indexed fixture_effect_count expectations cover the whole conversation: exactly one handoff attempt, one success, no replay, and no RSVP, OTP request or OTP verification anywhere in the thread."
+  - "No text_semantic, style or vocabulary expectation: this case asserts effects, authorization-free side effects and plan state only."
+budget:
+  maxTurns: 6
+  estimatedPromptTokensPerTurn: 2200
+  estimatedCompletionTokensPerTurn: 300
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1

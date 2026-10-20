@@ -1,0 +1,141 @@
+template: template.base-live
+id: live_behavior.host_receipt_fact_in_judge_evidence
+suite: live_behavior_regression
+version: 1
+description: Dossier case C, WP4. The record question about the Baby Shower purchase puts the host receipt, the payment summary and the labeled amounts into the typed judge evidence; the later refund demand is taken over.
+tags: [ live, behavior, purchase, evidence, host-receipt, escalation, dossier, whatsapp ]
+targetModes: [ live_lambda ]
+backendFixture:
+  scenario: purchase-approved-host-receipt-refund
+inputs:
+  - text: "Compré un regalo para el baby shower. ¿Qué figura en mis compras, cuánto pagué y qué le regalé?"
+    channel: whatsapp
+    contactPhone: "+51900000403"
+    sessionId: live-dossier-c-host-receipt-evidence
+    backendFixture:
+      scenario: purchase-approved-host-receipt-refund
+  - text: "¿Hay confirmación de que la anfitriona recibió el regalo? ¿Qué dice el acuse de recibo?"
+    channel: whatsapp
+    contactPhone: "+51900000403"
+    sessionId: live-dossier-c-host-receipt-evidence
+    backendFixture:
+      scenario: purchase-approved-host-receipt-refund
+  - text: "De todos modos quiero que me devuelvan los S/ 87.36, porque el regalo no se entregó."
+    channel: whatsapp
+    contactPhone: "+51900000403"
+    sessionId: live-dossier-c-host-receipt-evidence
+    backendFixture:
+      scenario: purchase-approved-host-receipt-refund
+  - text: "Quedo atenta, gracias."
+    channel: whatsapp
+    contactPhone: "+51900000403"
+    sessionId: live-dossier-c-host-receipt-evidence
+    backendFixture:
+      scenario: purchase-approved-host-receipt-refund
+expectations:
+  - id: dossier-c-host-receipt-in-judge-evidence
+    type: trace_field_subset
+    path: information_execution_summary
+    turnIndex: 0
+    expected:
+      - kind: purchase
+        status: completed
+        outcomeCode: completed_with_results
+        evidence:
+          - purchaseFact:
+              eventLabel: Baby Shower
+              eventDate: '2026-10-17'
+              paymentStatus: approved
+              total: 87.36
+              currency: PEN
+              currencySymbol: S/
+              referencePresent: false
+              thanksPresent: true
+              thanksMessage: "Hola tia hermosa! Hemos recibido tu regalo con muchisimo amor!"
+              thanksSendMethod: whatsapp
+              payment:
+                method: Yape o Plin
+                amount: 87.36
+                paidAt: '2026-09-27 19:38:19'
+              amounts:
+                charged_total:
+                  value: 87.36
+                  currency: PEN
+                  currencySymbol: S/
+                gift_value:
+                  - value: 79
+                    currency: PEN
+                    currencySymbol: S/
+                    itemName: Cambiador portátil
+              items:
+                - name: Cambiador portátil
+                  quantity: 1
+                  amount: 79
+                  rowTotal: 79
+                  fulfillment: host_credit
+    severity: hard
+  - id: dossier-c-evidence-takeover-requested-and-succeeded
+    type: fixture_effect_count
+    operation: handoff.write
+    expectedAttempts: 1
+    expectedSuccesses: 1
+    expectedReplays: 0
+    severity: hard
+  - id: dossier-c-evidence-plan-records-the-escalation
+    type: plan_field_equals
+    path: human_escalation.status
+    expected: requested
+    severity: hard
+  - id: dossier-c-evidence-first-turn-does-not-take-over
+    type: fixture_effect_count
+    operation: handoff.write
+    turnIndex: 0
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: dossier-c-evidence-first-turn-calls-no-effect-tool
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - request_human_takeover
+      - request_user_login_code
+      - verify_user_login_code
+      - guest_rsvp
+    turnIndex: 0
+    severity: hard
+  - id: dossier-c-evidence-no-rsvp-write
+    type: fixture_effect_count
+    operation: rsvp.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: dossier-c-evidence-no-otp-request
+    type: fixture_effect_count
+    operation: otp.request
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: dossier-c-evidence-no-otp-verify
+    type: fixture_effect_count
+    operation: otp.verify
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+notes:
+  - "WP4 behavior of analysis/2026-10-19-whatsapp-behavior-cases: the judge evidence must carry the host-receipt fact (the thank-you receipt) and the payment summary beside paymentStatus. The typed evidence object is the purchaseFact on the purchase summary evidence of information_execution_summary, which is exactly what the live judge adapter (src/evals/purchase-evidence.ts projectLivePurchaseFacts) reads, so the assertion is structural over the trace and never over the reply wording."
+  - "The synthetic phone +51900000403 and the fixture purchase-approved-host-receipt-refund carry one approved purchase (ORD_6ab970ab70802, S/ 87.36, Yape o Plin, host credit of S/ 79, is_thanked true, thank-you message present)."
+  - "Limitation documented: the expectation is pinned on the opening record question. A later turn that replays the last completed purchase request may legitimately carry no new purchase summary, so the fact is asserted on the turn that performed the read."
+  - "The escalation turn itself is NOT pinned: the router answers probabilities, so the takeover may land on the refund demand or later. The contract asserted here is the effect over the conversation (one successful takeover, no replay) plus the plan state."
+  - "No text_semantic, style or vocabulary expectation: this case asserts typed evidence, effects and plan state only."
+budget:
+  maxTurns: 4
+  estimatedPromptTokensPerTurn: 2200
+  estimatedCompletionTokensPerTurn: 300
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1

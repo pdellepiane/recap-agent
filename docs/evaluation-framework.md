@@ -111,4 +111,4 @@ Freeze the selected list and paid-run budget before dispatch. The CLI requires c
 
 ## Handoff
 
-Report selected versus executed cases, hard assertion results, errors/skips, costs, run IDs, exact artifact identity and unresolved limitations. Preserve interrupted and failing runs. Keep results tied to their tested artifact; never combine a historical broad run and a new subset into a fictitious full-green result. See [Testing and validation](testing.md) for the frozen 46-case inventory and the valid seven-case recovery result.
+Report selected versus executed cases, hard assertion results, errors/skips, costs, run IDs, exact artifact identity and unresolved limitations. Preserve interrupted and failing runs. Keep results tied to their tested artifact; never combine a historical broad run and a new subset into a fictitious full-green result. See [Testing and validation](testing.md) for the frozen 52-case inventory and the valid seven-case recovery result.

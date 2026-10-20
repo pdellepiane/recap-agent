@@ -24,7 +24,7 @@ Offline tests validate deterministic invariants and use synthetic gateways or ru
 
 Every behavior change receives a separate entry in `evals/live-behavior-coverage.yaml`, even when it reuses an existing case. Active entries must reference mandatory `live_behavior_regression` cases with hard objective assertions and no semantic judges. Retired entries state the retirement reason and preserve their original case IDs; retirement is not equivalent replacement coverage. Run `tests/live-behavior-coverage.test.ts` before handoff.
 
-The current live suite contains **46 cases, 185 turns and 329 hard assertions**, with no semantic judges.
+The current live suite contains **52 cases, 212 turns and 373 hard assertions**, with no semantic judges.
 
 ## Effect counts and negative controls
 

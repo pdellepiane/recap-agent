@@ -1,0 +1,75 @@
+template: template.base-live
+id: live_behavior.derivation_accept_executes_takeover
+suite: live_behavior_regression
+version: 1
+description: Dossier case C variant. A refund demand on an approved S/ 87.36 purchase followed by an accepted human-support offer produces one successful takeover and a recorded escalation state.
+tags: [ live, behavior, purchase, escalation, handoff, derivation, dossier, whatsapp ]
+targetModes: [ live_lambda ]
+backendFixture:
+  scenario: purchase-approved-host-receipt-refund
+inputs:
+  - text: "Compré un regalo para el baby shower del 17 de octubre por S/ 87.36, pero la anfitriona me dice que no recibió nada y quiero que me devuelvan el dinero."
+    channel: whatsapp
+    contactPhone: "+51900000403"
+    sessionId: live-dossier-c-derivation-accept
+    backendFixture:
+      scenario: purchase-approved-host-receipt-refund
+  - text: "Sí, por favor pásenme con una persona para que revisen la devolución."
+    channel: whatsapp
+    contactPhone: "+51900000403"
+    sessionId: live-dossier-c-derivation-accept
+    backendFixture:
+      scenario: purchase-approved-host-receipt-refund
+  - text: "Quedo atenta a la respuesta, gracias."
+    channel: whatsapp
+    contactPhone: "+51900000403"
+    sessionId: live-dossier-c-derivation-accept
+    backendFixture:
+      scenario: purchase-approved-host-receipt-refund
+expectations:
+  - id: dossier-c-accept-takeover-requested-and-succeeded
+    type: fixture_effect_count
+    operation: handoff.write
+    expectedAttempts: 1
+    expectedSuccesses: 1
+    expectedReplays: 0
+    severity: hard
+  - id: dossier-c-accept-plan-records-the-escalation
+    type: plan_field_equals
+    path: human_escalation.status
+    expected: requested
+    severity: hard
+  - id: dossier-c-accept-no-rsvp-write
+    type: fixture_effect_count
+    operation: rsvp.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: dossier-c-accept-no-otp-request
+    type: fixture_effect_count
+    operation: otp.request
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: dossier-c-accept-no-otp-verify
+    type: fixture_effect_count
+    operation: otp.verify
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+notes:
+  - "Reconstruction of analysis/2026-10-19-whatsapp-behavior-cases dossier case C, variant turns C4-C5: the refund demand on the approved S/ 87.36 purchase and the guest accepting the human-support offer that answers it. The synthetic phone +51900000403 and the fixture purchase-approved-host-receipt-refund carry the same approved purchase as the full case."
+  - "No per-turn expectation is used on purpose: the router answers probabilities, so the offer and its acceptance can land on different turns, and the takeover may happen on the demand turn instead of the accept turn. The contract is asserted over the whole conversation: exactly one takeover attempt, one success, no replay, plus the plan escalation state."
+  - "The effect ledger is cumulative from the case baseline, so the un-indexed fixture_effect_count expectations also prove that no RSVP write, OTP request or OTP verification happened anywhere in the thread."
+  - "No text_semantic, style or vocabulary expectation: this case asserts effects and plan state only."
+budget:
+  maxTurns: 3
+  estimatedPromptTokensPerTurn: 2200
+  estimatedCompletionTokensPerTurn: 300
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1
