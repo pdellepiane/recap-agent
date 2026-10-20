@@ -18,6 +18,9 @@ import {
   type PurchaseInformation,
   type PurchaseResource,
   type PurchaseSourceCoverage,
+  type PurchaseEvidenceAmounts,
+  type PurchaseEvidenceFact,
+  type PurchaseEvidencePayment,
 } from '../core/information';
 import { parseOrderReference } from '../core/order-reference';
 import type {
@@ -278,18 +281,86 @@ export function transactionReferenceVisible(
 }
 
 /**
+ * Payment summary of a purchase, projected from the gateway payment block.
+ * Only whitelisted facts travel: the gateway payment id, the destination
+ * account and the raw voucher location stay excluded. A record that carries
+ * a decline code but no payment block still projects its outcome.
+ */
+function projectPurchaseEvidencePayment(
+  purchase: PurchaseInformation,
+): PurchaseEvidencePayment | null {
+  const payment = purchase.payment;
+  const declineCode = purchase.declineCode ?? null;
+  if (!payment && declineCode === null) {
+    return null;
+  }
+  return {
+    method: payment?.method ?? null,
+    amount: payment?.amount ?? null,
+    paidAt: payment?.paidAt ?? null,
+    transactionStatus: payment?.transactionStatus ?? null,
+    gatewayMessage: payment?.gatewayMessage ?? null,
+    operationCode: payment?.operationCode ?? null,
+    originBank: payment?.originBank ?? null,
+    voucherProvided: payment?.voucherProvided ?? null,
+    declineCode,
+  };
+}
+
+/**
+ * Labeled amounts of a purchase. The charged total is the order's grand
+ * total, every gift value is an item row total, and the reported amount
+ * stays null because no backend record carries a customer-reported amount.
+ */
+function projectPurchaseEvidenceAmounts(
+  purchase: PurchaseInformation,
+): PurchaseEvidenceAmounts {
+  const currency = purchase.currency ?? null;
+  const currencySymbol = purchase.currencySymbol ?? null;
+  return {
+    charged_total: purchase.grandTotal === null
+      ? null
+      : { value: purchase.grandTotal, currency, currencySymbol },
+    gift_value: purchase.items
+      .filter((item) => typeof item.rowTotal === 'number' && Number.isFinite(item.rowTotal))
+      .map((item) => ({
+        value: item.rowTotal,
+        currency,
+        currencySymbol,
+        itemName: item.giftName ?? null,
+      })),
+    reported_amount: null,
+  };
+}
+
+/**
  * Typed purchase evidence for completed purchase summaries. One entry per
  * order carrying the O5 purchaseFact the live judge projects; the hash
  * binds the order identity to the fact bytes. Private dedication text is
- * redacted (operational send/physical state still travels). Carts are
- * never passed here: checkout evidence is not order evidence.
+ * redacted (operational send/physical state still travels). The host
+ * receipt, the payment summary, the customer reference value and the
+ * labeled amounts travel as first-class facts so a reader never has to
+ * infer them. Carts are never passed here: checkout evidence is not order
+ * evidence.
+ *
+ * The purchases must already be authorization-scoped: the orchestrator
+ * projects them through `projectPurchase`, which keeps the customer
+ * transaction reference only inside an authorized scope. This projection
+ * never widens that scope.
  */
 export function projectPurchaseEvidenceItems(
   purchases: PurchaseInformation[],
 ): InformationExecutionSummary['evidence'] {
   return purchases.map((purchase) => {
     const dedication = purchase.dedication;
-    const purchaseFact = {
+    const thanks = purchase.thanks ?? null;
+    const reference = typeof purchase.customerTransactionNumber === 'string' &&
+      purchase.customerTransactionNumber.length > 0
+      ? purchase.customerTransactionNumber
+      : null;
+    const thanksMessage = thanks?.message ?? null;
+    const thanksSendMethod = thanks?.sendMethod ?? null;
+    const purchaseFact: PurchaseEvidenceFact = {
       eventLabel: purchase.eventName,
       total: purchase.grandTotal,
       currency: purchase.currency ?? null,
@@ -299,8 +370,15 @@ export function projectPurchaseEvidenceItems(
       shippingStatus: purchase.shippingStatus,
       eventDate: purchase.eventDate,
       createdAt: purchase.createdAt,
-      referencePresent: typeof purchase.customerTransactionNumber === 'string' &&
-        purchase.customerTransactionNumber.length > 0,
+      referencePresent: reference !== null,
+      reference,
+      thanksPresent: purchase.isThanked === true ||
+        (thanksMessage !== null && thanksMessage.length > 0) ||
+        (thanksSendMethod !== null && thanksSendMethod.length > 0),
+      thanksMessage,
+      thanksSendMethod,
+      payment: projectPurchaseEvidencePayment(purchase),
+      amounts: projectPurchaseEvidenceAmounts(purchase),
       ...(dedication
         ? {
           dedication: {

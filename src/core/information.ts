@@ -752,6 +752,114 @@ export type InformationTaskResult =
       openAiTransport?: OpenAiTransportMetrics;
     };
 
+/**
+ * One labeled amount carried by purchase evidence. The label says what the
+ * amount IS, so a reader never has to infer it from context.
+ */
+export type PurchaseEvidenceAmount = {
+  /** Amount as recorded by the source; null when the source carries none. */
+  value: number | null;
+  /** Currency code of the amount. */
+  currency: string | null;
+  /** Display symbol of the currency. */
+  currencySymbol: string | null;
+};
+
+/** A gift value bound to the item it belongs to. */
+export type PurchaseEvidenceGiftValue = PurchaseEvidenceAmount & {
+  /** Item the gift value belongs to; null when the record names no item. */
+  itemName: string | null;
+};
+
+/**
+ * Labeled amount set of one purchase.
+ *
+ * - `charged_total`: the order's charged grand total.
+ * - `gift_value`: the per-item gift values (row totals).
+ * - `reported_amount`: an amount the customer reported. Absent when the
+ *   record carries none; a record is not a statement about what the customer
+ *   claimed.
+ */
+export type PurchaseEvidenceAmounts = {
+  charged_total: PurchaseEvidenceAmount | null;
+  gift_value: PurchaseEvidenceGiftValue[];
+  reported_amount: PurchaseEvidenceAmount | null;
+};
+
+/**
+ * Payment summary projected from the gateway payment block. Facts only: a
+ * gateway outcome never states that funds reached the host. The gateway
+ * payment id and the destination account stay excluded (internal reference
+ * and bank data); the raw voucher location is a credential and never travels.
+ */
+export type PurchaseEvidencePayment = {
+  method: string | null;
+  amount: number | null;
+  paidAt: string | null;
+  /** Gateway transaction state (for example `declined`). */
+  transactionStatus: string | null;
+  /** Gateway message attached to the payment. */
+  gatewayMessage: string | null;
+  /** Gateway operation code (Yape answers `mobile-payment`). */
+  operationCode: string | null;
+  /** Origin bank of the transfer. */
+  originBank: string | null;
+  /** Whether the record carries a voucher upload. */
+  voucherProvided: boolean | null;
+  /** Backend decline code, when the gateway recorded one. */
+  declineCode: string | null;
+};
+
+/**
+ * Typed purchase fact carried by purchase summary evidence. Facts only: no
+ * recommended reply, no derived conclusion. Mirrors the trace schema in
+ * src/evals/case-schema.ts.
+ */
+export type PurchaseEvidenceFact = {
+  eventLabel: string | null;
+  total: number | null;
+  currency: string | null;
+  currencySymbol: string | null;
+  paymentMethod: string | null;
+  paymentStatus: string | null;
+  shippingStatus?: string | null;
+  eventDate: string | null;
+  createdAt: string | null;
+  referencePresent: boolean;
+  /**
+   * Customer transaction reference value. Present only when the record
+   * carries it inside an authorized scope; null means the record carries
+   * none. Never emitted for a record outside the caller's authorization.
+   */
+  reference?: string | null;
+  /**
+   * Host-receipt fact: the backend recorded a thank-you for this purchase
+   * (the thanked flag or a thank-you record). It states that the record
+   * carries the host receipt, never that a message was delivered.
+   */
+  thanksPresent?: boolean;
+  /** Thank-you message recorded by the backend. */
+  thanksMessage?: string | null;
+  /** Channel the thank-you was sent through, as recorded. */
+  thanksSendMethod?: string | null;
+  /** Payment summary from the gateway payment block. */
+  payment?: PurchaseEvidencePayment | null;
+  /** Labeled amounts: charged total, per-item gift values, reported amount. */
+  amounts?: PurchaseEvidenceAmounts;
+  dedication?: {
+    message: string | null;
+    sendPhysical: boolean | null;
+    physicalStatus: string | null;
+  } | null;
+  items?: Array<{
+    name: string | null;
+    quantity: number | null;
+    amount: number | null;
+    rowTotal: number | null;
+    fulfillment: string | null;
+  }>;
+};
+
 export type InformationExecutionSummary = {
   requestId: string;
   kind: InformationTaskResult['kind'];
@@ -781,30 +889,7 @@ export type InformationExecutionSummary = {
      * unknown, never a demand for a named datum. Mirrors the trace
      * schema in src/evals/case-schema.ts.
      */
-    purchaseFact?: {
-      eventLabel: string | null;
-      total: number | null;
-      currency: string | null;
-      currencySymbol: string | null;
-      paymentMethod: string | null;
-      paymentStatus: string | null;
-      shippingStatus?: string | null;
-      eventDate: string | null;
-      createdAt: string | null;
-      referencePresent: boolean;
-      dedication?: {
-        message: string | null;
-        sendPhysical: boolean | null;
-        physicalStatus: string | null;
-      } | null;
-      items?: Array<{
-        name: string | null;
-        quantity: number | null;
-        amount: number | null;
-        rowTotal: number | null;
-        fulfillment: string | null;
-      }>;
-    };
+    purchaseFact?: PurchaseEvidenceFact;
   }>;
   resultCount: number;
   durationMs: number;

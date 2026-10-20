@@ -257,6 +257,46 @@ export const turnTraceSchema = z.object({
         eventDate: z.string().nullable(),
         createdAt: z.string().nullable(),
         referencePresent: z.boolean(),
+        /**
+         * Customer transaction reference value. Optional so historical
+         * artifacts stay loadable; absent means the record carries none.
+         */
+        reference: z.string().nullable().optional(),
+        /** Host-receipt fact: the record carries a thank-you for the purchase. */
+        thanksPresent: z.boolean().optional(),
+        thanksMessage: z.string().nullable().optional(),
+        thanksSendMethod: z.string().nullable().optional(),
+        /** Payment summary from the gateway payment block. */
+        payment: z.object({
+          method: z.string().nullable(),
+          amount: z.number().nullable(),
+          paidAt: z.string().nullable(),
+          transactionStatus: z.string().nullable(),
+          gatewayMessage: z.string().nullable(),
+          operationCode: z.string().nullable(),
+          originBank: z.string().nullable(),
+          voucherProvided: z.boolean().nullable(),
+          declineCode: z.string().nullable(),
+        }).nullable().optional(),
+        /** Labeled amounts: charged total, per-item gift values, reported amount. */
+        amounts: z.object({
+          charged_total: z.object({
+            value: z.number().nullable(),
+            currency: z.string().nullable(),
+            currencySymbol: z.string().nullable(),
+          }).nullable(),
+          gift_value: z.array(z.object({
+            value: z.number().nullable(),
+            currency: z.string().nullable(),
+            currencySymbol: z.string().nullable(),
+            itemName: z.string().nullable(),
+          })),
+          reported_amount: z.object({
+            value: z.number().nullable(),
+            currency: z.string().nullable(),
+            currencySymbol: z.string().nullable(),
+          }).nullable(),
+        }).optional(),
         dedication: z.object({
           message: z.string().nullable(),
           sendPhysical: z.boolean().nullable(),
