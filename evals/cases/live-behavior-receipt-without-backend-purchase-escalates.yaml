@@ -54,14 +54,17 @@ expectations:
     path: human_escalation.status
     expected: requested
     severity: hard
-  - id: dossier-a-backend-has-no-purchase-record
-    type: trace_field_subset
-    path: information_execution_summary
+  - id: dossier-a-router-owned-the-turn
+    type: trace_field_number
+    path: timing_ms.router
     turnIndex: 0
-    expected:
-      - kind: purchase
-        status: completed
-        outcomeCode: completed_without_results
+    min: 1
+    severity: hard
+  - id: dossier-a-no-extraction-on-the-support-lane
+    type: trace_field_number
+    path: timing_ms.extraction
+    turnIndex: 0
+    max: 0
     severity: hard
   - id: dossier-a-first-turn-does-not-take-over
     type: fixture_effect_count
@@ -106,7 +109,8 @@ notes:
   - "Runtime precondition: the deployed development Lambda must run the customer-assistance lane with AGENT_FEATURE_DECISIONS_ROUTER=true. With the flag off the classifier path owns the turn and the router contracts asserted here are not the behavior under test."
   - "Reconstruction of analysis/2026-10-19-whatsapp-behavior-cases dossier case A (turn table rows A1-A7, 2026-10-06): a Yape receipt, then repeated messages asking where the order is (A2, A3, A6) and the closing request to investigate the payment (A7). The synthetic phone +51900000401 and the fixture purchase-yape-receipt-no-match carry no purchase record at all, only the two abandoned carts 470893 and 471454, so the receipt can never be matched."
   - "Image substitution: the dossier screenshot is a private customer document, so the turn carries the repository's synthetic payment-receipt asset (evals/fixtures/images/receipt-amount-obscured.png, amount and date deliberately inked over). The asserted contract is the receipt-without-record effect, never a pixel amount; the guest states S/ 464.86 in text, exactly as in the dossier."
-  - "The empty read is asserted as a hard backend fact through the typed purchase summary of the opening turn (completed, completed_without_results): the records carry no purchase, so no answer may claim that the guest paid."
+  - "The empty read is NOT asserted through the purchase summary of the opening turn. The opening turn states that the amount on the receipt is obscured, so the router legitimately routes it to ask_clarification, and a clarification turn reads nothing by design: the complete profile already reaches the reply, and a purchase read would turn the clarification into a purchase answer (pinned by the deterministic twin E, which requires a clarification turn to carry no order-keyed fact). The backend fact is therefore a property of the fixture scenario (it holds no purchase), and the behavioural contract asserted here is that the customer-assistance lane was served by the Decisions router with no extraction stage."
+  - "The router stage timing and the absent extraction stage are the hard assertions for the opening turn: the lane ran on the router (timing_ms.router >= 1) and the extractor did not run on it (timing_ms.extraction = 0), which is the behaviour change this case covers."
   - "The escalation turn itself is NOT pinned: the router answers probabilities, so the takeover may land on any turn of the thread. The contract asserted here is the effect over the conversation (one successful takeover, no replay) plus the plan state, and the negative per-turn pin is the opening receipt turn, which must not take the conversation over."
   - "No text_semantic, style or vocabulary expectation: this case asserts effects, backend facts and plan state only."
 budget:
