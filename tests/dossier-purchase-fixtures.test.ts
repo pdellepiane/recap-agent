@@ -8,12 +8,14 @@ import { mapItemFulfillment } from '../src/runtime/purchase-disclosure-policy';
 
 /**
  * Backend fixtures for the 2026-10-19 WhatsApp behaviour dossier (cases A,
- * B, C, D) plus the multi-purchase ambiguity twin (case E).
+ * B, C, D), the multi-purchase ambiguity twin (case E), and the synthetic
+ * event-date and support-handoff worlds for objectives H/I.
  *
  * These files are the ONLY backend surface the runtime sees in those
  * scenarios: the fixture gateway is the sole reader. The assertions below are
  * therefore hard backend facts, not model output, and every value they pin
- * comes from `analysis/2026-10-19-whatsapp-behavior-cases/artifacts/turn-table-2026-10-20.md`.
+ * comes from `analysis/2026-10-19-whatsapp-behavior-cases/artifacts/turn-table-2026-10-20.md`
+ * or the explicitly synthetic worlds declared for objectives H/I.
  */
 
 const FIXTURE_ROOT = path.resolve(process.cwd(), 'evals', 'fixtures');
@@ -302,6 +304,76 @@ describe('dossier purchase fixtures (WhatsApp behaviour cases A/B/C/D + ambiguit
     const takeover = await gateway.requestHumanTakeover('+51900000405');
     expect(takeover.status).toBe('success');
     expect(gateway.getFixtureCallCount('handoff.write')).toBe(1);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { scenario: 'purchase-approved-event-date', phone: '900000406', orderId: 'ORD_support-event-406', total: 150, outcome: 'success', operationCode: 'fixture-event-406' },
+    { scenario: 'purchase-support-handoff-failed', phone: '900000407', orderId: 'ORD_support-failed-407', total: 180, outcome: 'failed', operationCode: null },
+    { scenario: 'purchase-support-handoff-unknown', phone: '900000408', orderId: 'ORD_support-unknown-408', total: 210, outcome: 'unknown', operationCode: null },
+  ] as const)('objectives H/I: $scenario maps its purchase and real handoff outcome', async ({ scenario, phone, orderId, total, outcome, operationCode }) => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const gateway = await FixtureAgentConversationGateway.create(scenario);
+
+    const orders = await gateway.getGuestOrdersByPhone({
+      phone_extension: '+51',
+      phone_number: phone,
+    });
+    expect(orders.status).toBe('success');
+    if (orders.status !== 'success') return;
+    expect(orders.purchases).toHaveLength(1);
+    expect(orders.purchases[0]?.orderId).toBe(orderId);
+    expect(orders.purchases[0]?.paymentStatus).toBe('approved');
+    expect(orders.purchases[0]?.grandTotal).toBe(total);
+    expect(orders.purchases[0]?.currency).toBe('PEN');
+    expect(orders.purchases[0]?.customerTransactionNumber ?? null).toBeNull();
+    expect(orders.purchases[0]?.payment?.operationCode ?? null).toBe(operationCode);
+
+    const gifts = await gateway.getGuestGiftPurchasesByPhone({
+      phone_extension: '+51',
+      phone_number: phone,
+    });
+    expect(gifts.status).toBe('success');
+    if (gifts.status !== 'success') return;
+    expect(gifts.purchases).toHaveLength(1);
+    const purchase = gifts.purchases[0];
+    expect(purchase?.orderId).toBe(orderId);
+    expect(purchase?.paymentStatus).toBe('approved');
+    expect(purchase?.grandTotal).toBe(total);
+    expect(purchase?.currency).toBe('PEN');
+    expect(purchase?.customerTransactionNumber ?? null).toBeNull();
+    expect(purchase?.payment?.operationCode ?? null).toBe(operationCode);
+    expect(purchase?.isThanked).toBe(false);
+    expect(purchase?.thanks ?? null).toBeNull();
+
+    const events = await gateway.getGuestEventsByPhone({
+      phone_extension: '+51',
+      phone_number: phone,
+    });
+    expect(events.status).toBe('success');
+    if (events.status !== 'success') return;
+    if (scenario === 'purchase-approved-event-date') {
+      expect(events.events).toHaveLength(1);
+      expect(events.events[0]?.eventId).toBe(90406);
+      expect(events.events[0]?.name).toBe('Celebración de prueba');
+      expect(events.events[0]?.datetime).toBe('2026-12-12');
+      expect(purchase?.eventId).toBe(90406);
+      expect(purchase?.eventDate).toBe('2026-12-12');
+    } else {
+      expect(events.events).toEqual([]);
+    }
+
+    const takeover = await gateway.requestHumanTakeover(`+51${phone}`);
+    expect(takeover.status).toBe(outcome === 'success' ? 'success' : 'failed');
+    if (takeover.status === 'failed') {
+      expect(takeover.outcome).toBe(outcome);
+      expect(takeover.retryable).toBe(false);
+    }
+    expect(gateway.getFixtureCallCount('handoff.write')).toBe(1);
+    const handoffReceipt = gateway.getFixtureReceipts()
+      .find((receipt) => receipt.operation === 'handoff.write');
+    expect(handoffReceipt?.resultStatus).toBe(outcome);
+    expect(handoffReceipt?.replayed).toBe(false);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 });
