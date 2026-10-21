@@ -380,6 +380,12 @@ describe('offline twin A — Wilfredo: settlement latency and the repeat backsto
     expect(harness.runtime.composeRequests[0]?.plan.support_outcome).toMatchObject({
       limitation_already_stated: false, prior_limitation_turns: 0,
     });
+    // The delivered plan of the first turn keeps the flag false: the
+    // post-compose merge never turns a first-turn limitation into an
+    // already stated one.
+    expect(results[0]?.response.plan.support_outcome).toMatchObject({
+      limitation_already_stated: false, prior_limitation_turns: 0,
+    });
     expect(harness.runtime.composeRequests[1]?.plan.support_outcome).toMatchObject({
       limitation_already_stated: true, prior_limitation_turns: 1,
     });

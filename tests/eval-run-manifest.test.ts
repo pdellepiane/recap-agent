@@ -90,9 +90,10 @@ describe('run manifest identity (O0)', () => {
     expect(manifest.releaseReadyClaim).toBe(false);
     // 2026-09-30 live compression: 119 - 27 merged threads = 92.
     // 2026-10-20 decisions router: +6 support cases from the WhatsApp behaviour dossier = 52.
-    expect(manifest.cases.orderedIds).toHaveLength(52);
-    expect(new Set(manifest.cases.orderedIds).size).toBe(52);
-    expect(manifest.cases.identities).toHaveLength(52);
+    // 2026-10-21 typed limitation memory: +1 support case = 53.
+    expect(manifest.cases.orderedIds).toHaveLength(53);
+    expect(new Set(manifest.cases.orderedIds).size).toBe(53);
+    expect(manifest.cases.identities).toHaveLength(53);
     expect(() => runManifestSchema.parse(manifest)).not.toThrow();
     expect(() => assertUniqueConfigCasePairs(manifest.cases.identities)).not.toThrow();
   });
@@ -428,14 +429,14 @@ describe('run manifest identity (O0)', () => {
     expect(() => parseResumeMode(['--resume-mode', 'partial'])).toThrow(/full or diagnostic/);
   });
 
-  it('reconciles frozen support-gate counts from the catalog suite (52 total / 49 support)', async () => {
+  it('reconciles frozen support-gate counts from the catalog suite (53 total / 50 support)', async () => {
     const catalog = await new EvalLoader(evalsDir).loadCatalog();
     const suite = catalog.suites.find((entry) => entry.id === 'live_behavior_regression');
     expect(suite).toBeDefined();
     const suiteIds = new Set(suite?.caseIds ?? []);
     const frozen = JSON.parse(
       await fs.readFile(
-        path.join(repoRoot, 'docs/plan/2026-09-09-lean-conversation/support-gate-2026-10-20.json'),
+        path.join(repoRoot, 'docs/plan/2026-09-09-lean-conversation/support-gate-2026-10-21.json'),
         'utf8',
       ),
     ) as { supportDenominator: number; supportIds: string[]; planningDiagnosticOnly: string[] };
@@ -450,13 +451,19 @@ describe('run manifest identity (O0)', () => {
     // dossier (cases A-D, the case C derivation variant and the WP4 host-receipt
     // evidence case) = 52 (49 support). The historical 2026-09-16 gate file
     // stays untouched as evidence.
-    expect(suiteIds.size).toBe(52);
-    expect(frozen.supportDenominator).toBe(49);
-    expect(frozen.supportIds).toHaveLength(49);
+    // 2026-10-21 typed limitation memory: +1 support case (the limitation-flag
+    // evidence state on a repeated unresolved money outcome) = 53 (50 support).
+    // The historical 2026-10-20 gate file stays untouched as evidence.
+    expect(suiteIds.size).toBe(53);
+    expect(frozen.supportDenominator).toBe(50);
+    expect(frozen.supportIds).toHaveLength(50);
     expect(frozen.planningDiagnosticOnly).toHaveLength(3);
     expect(new Set([...frozen.supportIds, ...frozen.planningDiagnosticOnly])).toEqual(suiteIds);
     expect(frozen.supportIds).toContain('live_behavior.customer_event_task_continuity');
     expect(frozen.supportIds).toContain('live_behavior.image_file_delayed_question');
+    expect(frozen.supportIds).toContain(
+      'live_behavior.limitation_memory_flags_repeated_unresolved_outcome',
+    );
     // wait_followup_no_repeat merged into support_pending_question_completed
     // (asserted above); the s3 survivor carries the absorbed s2 thread.
     expect(frozen.supportIds).toContain('live_behavior.image_unavailable_captioned');
