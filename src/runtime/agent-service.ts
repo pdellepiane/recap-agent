@@ -80,6 +80,7 @@ import type {
   ProviderCandidateAuditEntry,
   RecommendationFunnelTrace,
   RouterDecisionTrace,
+  RouterFailureTrace,
   SearchStrategyTrace,
   SelectionResolutionDebugSummary,
   ToolOutputTrace,
@@ -1050,6 +1051,13 @@ export class AgentService {
         }
       }
     }
+    // A router that ran and could not answer falls back to the classifier
+    // path. The reason travels into the trace and the perf record: a stage
+    // that ran and failed must never look like a stage that never ran.
+    const routerFailure: RouterFailureTrace | undefined =
+      routerResult?.status === 'unavailable'
+        ? { reason: routerResult.reason, retryable: routerResult.retryable }
+        : undefined;
     if (
       routerResult !== null &&
       routerResult.status === 'ok' &&
@@ -1253,6 +1261,7 @@ export class AgentService {
               turnDecision: this.humanEscalationTurnDecision('human_help_offer_accepted'),
               operationalNote: `Human help offer accepted composition failed (${error instanceof Error ? error.name : 'unknown'}); typed operational failure delivered without prose.`,
               responseClassifier: responseClassifierTrace,
+              routerFailure,
             }),
           };
         }
@@ -1292,6 +1301,7 @@ export class AgentService {
             turnDecision: this.humanEscalationTurnDecision('human_help_offer_accepted'),
             operationalNote: this.humanEscalationOperationalNote(gatewayResult),
             responseClassifier: responseClassifierTrace,
+            routerFailure,
           }),
         };
       }
@@ -1369,6 +1379,7 @@ export class AgentService {
               turnDecision: this.conversationHealthTurnDecision(responseClassifierTrace.health_reason),
               operationalNote: `Conversation health help offer composition failed (${error instanceof Error ? error.name : 'unknown'}); typed operational failure delivered without prose.`,
               responseClassifier: responseClassifierTrace,
+              routerFailure,
             }),
           };
         }
@@ -1408,6 +1419,7 @@ export class AgentService {
             turnDecision: this.conversationHealthTurnDecision(responseClassifierTrace.health_reason),
             operationalNote: 'Conversation health monitor offered optional human help.',
             responseClassifier: responseClassifierTrace,
+            routerFailure,
           }),
         };
       }
@@ -1453,6 +1465,7 @@ export class AgentService {
           searchStrategy: 'none',
           operationalNote: 'Reply delivery was suppressed by the response classifier.',
           responseClassifier: responseClassifierTrace,
+          routerFailure,
         }),
       };
     }
@@ -1625,6 +1638,7 @@ export class AgentService {
             tokenUsage,
             messageContext,
             responseClassifier: responseClassifierTrace,
+            routerFailure,
             searchStrategy: 'none',
             operationalNote: finishedErrorMessage,
           }),
@@ -2095,6 +2109,7 @@ export class AgentService {
             tokenUsage,
             messageContext,
             responseClassifier: responseClassifierTrace,
+            routerFailure,
             searchStrategy,
             operationalNote: errorMessage,
           }),
@@ -2179,6 +2194,7 @@ export class AgentService {
           tokenUsage,
           messageContext,
           responseClassifier: responseClassifierTrace,
+          routerFailure,
           searchStrategy,
           operationalNote: errorMessage,
         }),
@@ -2586,6 +2602,7 @@ export class AgentService {
         tokenUsage,
         messageContext,
         responseClassifier: responseClassifierTrace,
+        routerFailure,
         searchStrategy,
         turnDecision,
         sessionFocusUsed: Boolean(sessionFocus),
@@ -12338,6 +12355,7 @@ export class AgentService {
     humanTakeoverSucceeded?: boolean;
     /** WP3: the redacted router decision of this turn. */
     routerDecision?: RouterDecisionTrace;
+    routerFailure?: RouterFailureTrace;
   }): TurnTrace {
     const contactValidationSummary = this.summarizeContactValidation(args.extraction, args.plan);
     const turnDecision = args.turnDecision ?? this.fallbackTurnDecision({
@@ -12431,6 +12449,7 @@ export class AgentService {
       human_takeover_attempted: args.humanTakeoverAttempted,
       human_takeover_succeeded: args.humanTakeoverSucceeded,
       ...(args.routerDecision ? { router_decision: args.routerDecision } : {}),
+      ...(args.routerFailure ? { router_failure: args.routerFailure } : {}),
     };
   }
 

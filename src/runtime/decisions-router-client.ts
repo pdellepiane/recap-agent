@@ -131,7 +131,10 @@ const scoreAnswerSchema = z.object({
   name: z.string(),
   score: z.number(),
   probabilities: z.array(z.object({
-    value: z.string(),
+    // The Decisions API returns the LEVEL INDEX as the level value (a number),
+    // not the label: {"value": 0, "label": "0", "probability": 0.06}. The
+    // label is the rubric label, and the rubric level is read from it.
+    value: z.union([z.string(), z.number()]),
     label: z.string(),
     probability: z.number().min(0).max(1),
   })),
@@ -442,24 +445,30 @@ function parseRouterAnswers(
  * the loop risk. The API's weighted-average score is kept as evidence.
  */
 function modalLevel(
-  probabilities: readonly { value: string; label: string; probability: number }[],
+  probabilities: readonly { value: string | number; label: string; probability: number }[],
 ): number {
-  let bestLabel: string | null = null;
-  let bestProbability = -1;
+  let best: { value: string | number; label: string; probability: number } | null = null;
   for (const entry of probabilities) {
-    if (entry.probability > bestProbability) {
-      bestProbability = entry.probability;
-      bestLabel = entry.label;
+    if (entry.probability > (best?.probability ?? -1)) {
+      best = entry;
     }
   }
-  if (bestLabel === null) {
+  if (best === null) {
     return 0;
   }
-  const parsed = Number.parseInt(bestLabel, 10);
-  if (!Number.isFinite(parsed) || parsed < 0 || parsed > 4) {
-    return 0;
+  // The rubric level is the label the router was given ("0".."4"). The
+  // API's own level index (the numeric `value`) is the fallback.
+  const fromLabel = Number.parseInt(best.label, 10);
+  if (Number.isFinite(fromLabel) && fromLabel >= 0 && fromLabel <= 4) {
+    return fromLabel;
   }
-  return parsed;
+  const fromValue = typeof best.value === 'number'
+    ? best.value
+    : Number.parseInt(best.value, 10);
+  if (Number.isFinite(fromValue) && fromValue >= 0 && fromValue <= 4) {
+    return fromValue;
+  }
+  return 0;
 }
 
 function instructionBytesFor(questions: readonly RouterQuestion[]): number {

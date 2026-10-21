@@ -492,6 +492,11 @@ describe('decisions router: customer-assistance lane', () => {
     expect(classifier.calls).toBe(1);
     expect(runtime.extractRequests.length).toBeGreaterThan(0);
     expect(response.trace.router_decision).toBeUndefined();
+    // A stage that ran and failed must be visible: the reason travels into
+    // the trace and the perf record, so it can never look like a stage that
+    // never ran.
+    expect(response.trace.router_failure).toBeDefined();
+    expect(response.trace.router_failure?.reason.length).toBeGreaterThan(0);
   });
 
   it('keeps the extractor for the planning lane', async () => {

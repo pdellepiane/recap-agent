@@ -49,6 +49,18 @@ export type RouterDecisionTrace = {
   readonly loop_risk: number;
 };
 
+/**
+ * Why the router did not own the turn.
+ *
+ * The router falls back to the classifier path when the API is unavailable,
+ * and that fallback must be visible: a stage that ran and failed must not
+ * look like a stage that never ran.
+ */
+export type RouterFailureTrace = {
+  readonly reason: string;
+  readonly retryable: boolean;
+};
+
 export type AuthenticationExecutionTrace = {
   operation: 'auth_by_phone' | 'request_user_login_code' | 'verify_user_login_code';
   status: string;
@@ -312,6 +324,12 @@ export type TurnTrace = {
    * Never the message text, never an identifier.
    */
   router_decision?: RouterDecisionTrace;
+  /**
+   * Set when the router ran and could not answer, so the turn fell back to
+   * the classifier path. A stage that ran and failed must not look like a
+   * stage that never ran.
+   */
+  router_failure?: RouterFailureTrace;
   response_classifier?: MessageResponseClassifierTrace;
   message_context: MessageContextTrace;
   continuity_state?: 'new' | 'continuing' | 'degraded';

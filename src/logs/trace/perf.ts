@@ -114,6 +114,8 @@ export type TurnPerfRecord = {
   openai_calls: TurnTrace['openai_calls'];
   /** Redacted router decision: route name and probabilities only. */
   router_decision?: TurnTrace['router_decision'];
+  /** Set when the router ran and could not answer the turn. */
+  router_failure?: TurnTrace['router_failure'];
   response_classifier?: TurnTrace['response_classifier'];
   message_context: TurnTrace['message_context'];
   continuity_state?: TurnTrace['continuity_state'];
@@ -283,6 +285,7 @@ export function buildTurnPerfRecord(args: {
     token_usage: args.trace.token_usage,
     openai_calls: args.trace.openai_calls,
     router_decision: args.trace.router_decision,
+    router_failure: args.trace.router_failure,
     response_classifier: args.trace.response_classifier,
     message_context: args.trace.message_context,
     continuity_state: args.trace.continuity_state,

@@ -86,6 +86,98 @@ describe('decisions router client', () => {
     vi.unstubAllGlobals();
   });
 
+  it('parses the live Decisions API answer shape, whose score level value is a number', async () => {
+    // Captured verbatim from a real POST /v1/decisions response (2026-10-21).
+    // The API returns the rubric LEVEL INDEX as the level value (a number),
+    // while the label is the rubric label. A parser that expects a string
+    // value rejects the whole answer set and the turn silently falls back to
+    // the classifier path, so this shape is pinned here.
+    const fetchMock = makeFetchMock(jsonResponse(200, {
+      model: 'gpt-6-luna',
+      answers: [
+        { type: 'predicate', name: 'needs_human_now', probability: 0.04 },
+        { type: 'predicate', name: 'capability_blocked', probability: 0.97 },
+        {
+          type: 'choice',
+          name: 'route',
+          choice: 'answer_with_records',
+          probabilities: [
+            { value: 'answer_with_records', probability: 0.48 },
+            { value: 'ask_clarification', probability: 0.18 },
+            { value: 'offer_human', probability: 0.1 },
+            { value: 'escalate_human', probability: 0.21 },
+            { value: 'rsvp_flow', probability: 0.01 },
+            { value: 'planning_flow', probability: 0.01 },
+            { value: 'suppress_ack', probability: 0.01 },
+          ],
+          confidence: 0.39,
+        },
+        {
+          type: 'score',
+          name: 'loop_risk',
+          score: 1.09,
+          probabilities: [
+            { value: 0, label: '0', probability: 0.06 },
+            { value: 1, label: '1', probability: 0.88 },
+            { value: 2, label: '2', probability: 0.01 },
+            { value: 3, label: '3', probability: 0.01 },
+            { value: 4, label: '4', probability: 0.04 },
+          ],
+          confidence: 0.83,
+        },
+      ],
+      usage: { input_tokens: 1534, output_tokens: 0, total_tokens: 1534 },
+    }));
+
+    const result = await runRouter(fetchMock);
+
+    expect(result.status).toBe('ok');
+    if (result.status !== 'ok') return;
+    expect(result.answers.needsHumanNow).toBe(0.04);
+    expect(result.answers.capabilityBlocked).toBe(0.97);
+    expect(result.answers.route).toBe('answer_with_records');
+    expect(result.answers.loopRisk).toBe(1);
+    expect(result.answers.loopRiskScore).toBe(1.09);
+    expect(result.answers.loopRiskProbabilities).toHaveLength(5);
+    expect(result.answers.refusals).toEqual([]);
+    // The measured input tokens come from the API, never from an estimate.
+    expect(result.inputTokensEstimated).toBe(false);
+    expect(result.tokenUsage.input_tokens).toBe(1534);
+    expect(result.tokenUsage.output_tokens).toBe(0);
+  });
+
+  it('reads the rubric level from the level index when the label is not numeric', async () => {
+    const fetchMock = makeFetchMock(jsonResponse(200, {
+      answers: [
+        { type: 'predicate', name: 'needs_human_now', probability: 0.1 },
+        { type: 'predicate', name: 'capability_blocked', probability: 0.2 },
+        {
+          type: 'choice',
+          name: 'route',
+          choice: 'answer_with_records',
+          probabilities: [{ value: 'answer_with_records', probability: 1 }],
+          confidence: 1,
+        },
+        {
+          type: 'score',
+          name: 'loop_risk',
+          score: 3,
+          probabilities: [
+            { value: 3, label: 'repeated', probability: 0.7 },
+            { value: 2, label: 'same outcome', probability: 0.3 },
+          ],
+          confidence: 0.7,
+        },
+      ],
+    }));
+
+    const result = await runRouter(fetchMock);
+
+    expect(result.status).toBe('ok');
+    if (result.status !== 'ok') return;
+    expect(result.answers.loopRisk).toBe(3);
+  });
+
   it('parses predicate, choice and score answers into typed router answers', async () => {
     const fetchMock = makeFetchMock(jsonResponse(200, {
       id: 'dec_router_1',
