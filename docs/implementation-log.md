@@ -13904,3 +13904,62 @@ Offline only. No deployment, paid call, live rerun, rescoring, or production pro
 - `tests/dossier-purchase-fixtures.test.ts` (new): loads each scenario through the fixture gateway and asserts the mapped facts, the `handoff.write` receipt and the absence of any HTTP call.
 
 **Modelling decisions:** a wire record carries one payment state, so the declined→pending repricing of case D cannot exist in one record. The fixture ships the declined state the runtime actually saw during the four turns; the guest-reported S/ 391.87 Plin payment is a MODEL-side signal (turn text and receipt image), not a backend record, and the same reasoning keeps case A's later-approved order out of the then-state. The item's raw wire type is `credit` because that is the only value the repository's single fulfillment mapper translates into `host_credit`. All phones are synthetic `900…` numbers; no customer name, e-mail, phone, token or OTP is stored.
+
+## 2026-10-21 — WP3: the customer-assistance lane runs on the Decisions router
+
+**Reason:** four WhatsApp conversations looped in the FAQ node instead of routing to a human. The cause was architectural: the escalation signal existed but was suppressed, capability-blocked tasks landed on the one node with no tools, and a separate extraction call spent ~8 s and ~18 KB of input on a lane where one extracted field changed behaviour. Decision 1 makes the Decisions API the router on that lane; Decision 3 replaces extraction plus composition with one compose call there.
+
+**What changed:** the support lane now runs deterministic state → Decisions router → deterministic policy → phone-scoped reads → ONE compose call. The extractor does not run there. Planning, RSVP, close and auth lanes keep their extractor flow. The lane flag `AGENT_FEATURE_DECISIONS_ROUTER` (default `false`) is the only switch: off keeps the classifier preflight owning the turn.
+
+**Files:**
+- `src/runtime/decisions-router-lane.ts` (new): the narrow `SupportLaneRouterPort` the turn flow depends on, the production router behind it, and the named `loop_risk` → conversation-health mapping.
+- `src/runtime/support-lane-flow.ts` (new): the deterministic purchase requests for the lane, the compose sidecar (`citedOrderIds`, `reportedPayment`) and the validation that drops out-of-profile ids without ever rewriting the message.
+- `src/runtime/agent-service.ts`: the shared router entry for text, image and media-only turns (the image and media shapes previously returned before the classifier preflight, so no shape could bypass the router); the soft pause extracted so it stays ahead of the router; the router escalation sharing the existing takeover effect, dedupe and receipt; the deterministic requests replacing the extracted ones; the outcome signature merged into the plan.
+- `src/runtime/openai-agent-runtime.ts`: the compose output schema carries the sidecar beside the message on this lane, and the sidecar is split out of the structured message so the delivered render is unchanged.
+- `src/runtime/contracts.ts`, `src/core/information.ts`, `src/core/plan.ts`: the compose sidecar type and the `support_outcome` plan group.
+- `src/lambda/handler.ts`: the production router wired behind the lane flag.
+
+**Decisions:** the extractor schema lost NO field. `humanHelpIntent` is still read by the auth escalation path, `supportAct` by the RSVP suppression and `actionIntent` across the planning lanes, so removing them would have regressed the lanes this package excludes. The sidecar is additive: the existing structured message still carries the delivered text.
+
+**Validation:** typecheck and lint clean; the targeted support-lane suites green; the new lane test covers the flag off, the router-unavailable fallback, the planning/rsvp outcomes still running the extractor, an answer turn running one compose and no extraction, the escalation effect and receipt, the offer opened the same turn on an active purchase thread, the accept executing the takeover, the suppression route, the health derivation from the loop risk, the image and media-only shapes reaching the router, out-of-profile cited ids dropped without rewriting the message, the reported payment reaching the next turn's signature, and the strict-schema compatibility of the sidecar.
+
+## 2026-10-21 — WP5: the reply may not claim a handoff it cannot prove
+
+**Reason:** the reply could state that a human handoff was registered without an in-turn gateway receipt. The claim machinery existed (`checkReplyNarrativeClaims`, `projectSupportHandoffEvidence` in `src/runtime/reply-evidence-projector.ts`) but had no production caller, so nothing enforced it.
+
+**What changed:** the compose sidecar carries the model's own claim, and the turn checks it with the existing projector machinery: a claim of a successful human handoff without a gateway success receipt resolves the turn WITHOUT the claim, as a typed operational failure. No success prose and no canned sentence is produced; the reply stays model-written.
+
+**Also in this change:** the money outcome kind used to flip between the turn that carried the receipt image and the turns that continued it, so the repeat counter never reached the backstop. The receipt evidence is now a thread fact (the current attachment or a reference already persisted in the plan) and the freshest reported payment wins, so a declined record against a reported successful payment stays the same unresolved outcome for the whole thread.
+
+## 2026-10-21 — Deterministic offline twins of the WhatsApp behaviour dossier
+
+**Reason:** the package requires deterministic offline twins for the four dossier conversations and the multi-purchase ambiguity guardrail, replaying the stored evidence against the new lane.
+
+**Files:**
+- `tests/whatsapp-dossier-twins.test.ts` (new): five twins (A Wilfredo settlement latency and the repeat backstop; B Luis and the unmatchable customer reference; C Mirta derivation truth, host receipt and labelled amounts; D Silvia the terse loop that only the backstop can catch; E the multi-purchase clarification that must claim no order) plus a failed-handoff twin for the claim gate and a twin that replays a support turn through the offline evaluation target.
+- `src/evals/targets/offline.ts`: the offline target now builds the service with a scripted router, the fixture gateway and the orchestrator, so an offline case can replay the customer-assistance lane instead of only the classifier path.
+
+**How the twins assert:** structurally — the takeover effect and its receipt, the plan state, the router input's repeat count and unresolved-money flag, the number of composed answer turns while the outcome is unresolved, the absence of an extraction stage, the evidence facts (host receipt, labelled amounts) and the absence of a purchase-specific claim. No message wording is asserted and no semantic judge is involved.
+
+## 2026-10-21 — Live behaviour cases for the dossier and the 2026-10-20 support gate
+
+**Reason:** no live case reconstructed any of the four conversations, and the mandatory suite was pinned to a frozen support gate that could not grow.
+
+**Files:**
+- Six new cases in `evals/cases/`: the frustrated purchase-support escalation (C), the repeat-signature backstop on the terse loop (D), the customer reference that must never deny twice (B), the receipt without a backend purchase (A), the derivation accept that must execute the takeover (C variant) and the host-receipt fact in the judge evidence (WP4).
+- `evals/suites/live_behavior_regression.yaml`: 46 → 52 cases.
+- `docs/plan/2026-09-09-lean-conversation/support-gate-2026-10-20.json` (new): the new frozen gate (49 support + 3 planning-diagnostic). The historical `support-gate-2026-09-16.json` is preserved unmodified.
+- `tests/eval-run-manifest.test.ts`: the pinned counts follow the new gate, with a dated comment.
+- `README.md`, `docs/README.md`, `docs/testing.md`, `docs/evaluation-framework.md`: the current panel size only; the dated historical records stay as they are.
+
+**Decisions:** the cases assert effects, typed plan state and typed backend facts. The escalation TURN is never pinned, because the router's answers are probabilistic; what is asserted is that the takeover happens and succeeds, that the plan records the escalation, and that no unauthorised effect is produced. The dossier screenshots are private customer documents, so the receipt turns carry the repository's synthetic payment-receipt asset and the guest states the amount in text.
+
+## 2026-10-21 — A supervised end-to-end probe and a support-lane measurement
+
+**Reason:** the package asks for a post-deploy measurement, and the behavioural validation needs to reach the deployed development runtime with a human in the loop rather than only through fixed cases.
+
+**Files:**
+- `scripts/supervised-probe.mjs` (new): one turn per invocation against the mocked development fixture backend. The operator supplies the message, so a probe never overfits to a scripted phrase. The fixture scenario is MANDATORY, so the probe can never reach a real backend, and the state facts are read read-only from the development plan and perf tables. The turn runs in channel mode so the observed message is the exact delivered text.
+- `scripts/measure-support-lane.mjs` (new): the escalation rate on purchase-support turns, the unresolved money loops that ran past three turns and the human-takeover success rate, derived from the persisted perf records.
+
+**Validation:** both run against the development stack with the required AWS profile and the account check. The probe was exercised end to end against the deployed development Lambda with an existing fixture scenario; the baseline it recorded is three model calls (classifier, extraction, reply), ~9.2 s and ~7.4k tokens per support turn.
