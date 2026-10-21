@@ -179,11 +179,26 @@ export function computeSupportOutcomeSignature(
 }
 
 /**
- * Repeat counter for the next turn.
- *
- * The caller computes the incoming count BEFORE merging, so the merge itself
- * never increments: the same signature keeps growing, a different signature
- * restarts the streak at one.
+ * Prior-turn limitation memory. Resolved facts must never be suppressed by
+ * this unresolved-money-only gate, even when their signatures repeat.
+ */
+export function deriveSupportLimitationMemory(args: {
+  readonly priorSignature: string | null;
+  readonly priorRepeatCount: number;
+  readonly signature: SupportOutcomeSignature;
+}): { limitationAlreadyStated: boolean; priorLimitationTurns: number } {
+  const sameSignature = args.priorSignature !== null &&
+    args.priorSignature === args.signature.signature;
+  const limitationAlreadyStated = sameSignature && args.signature.unresolvedMoney;
+  return {
+    limitationAlreadyStated,
+    priorLimitationTurns: limitationAlreadyStated ? args.priorRepeatCount : 0,
+  };
+}
+
+/**
+ * The caller computes the incoming count before merging. The same signature
+ * grows the streak; a different signature restarts it at one.
  */
 export function nextSupportOutcomeRepeatCount(args: {
   readonly currentSignature: string | null;

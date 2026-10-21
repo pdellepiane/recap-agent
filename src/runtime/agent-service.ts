@@ -248,6 +248,7 @@ import {
 } from './support-lane-flow';
 import {
   computeSupportOutcomeSignature,
+  deriveSupportLimitationMemory,
   nextSupportOutcomeRepeatCount,
   supportOutcomeComponentsFromSnapshot,
   type PriorReportedPayment,
@@ -8812,6 +8813,11 @@ export class AgentService {
       priorReportedPayment: args.priorReportedPayment,
     });
     const signature = computeSupportOutcomeSignature(components);
+    const limitationMemory = deriveSupportLimitationMemory({
+      priorSignature: args.plan.support_outcome?.signature ?? null,
+      priorRepeatCount: args.plan.support_outcome?.repeat_count ?? 0,
+      signature,
+    });
     const incomingRepeatCount = nextSupportOutcomeRepeatCount({
       currentSignature: args.plan.support_outcome?.signature ?? null,
       currentRepeatCount: args.plan.support_outcome?.repeat_count ?? 0,
@@ -8822,6 +8828,8 @@ export class AgentService {
         signature: signature.signature,
         repeat_count: incomingRepeatCount,
         unresolved_money: signature.unresolvedMoney,
+        limitation_already_stated: limitationMemory.limitationAlreadyStated,
+        prior_limitation_turns: limitationMemory.priorLimitationTurns,
         updated_at: new Date().toISOString(),
         reported_payment: args.plan.support_outcome?.reported_payment ?? null,
       },
@@ -8870,6 +8878,8 @@ export class AgentService {
           signature: null,
           repeat_count: 0,
           unresolved_money: false,
+          limitation_already_stated: false,
+          prior_limitation_turns: 0,
           updated_at: null,
         }),
         updated_at: new Date().toISOString(),

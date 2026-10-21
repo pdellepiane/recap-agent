@@ -313,6 +313,8 @@ export const planSchema = z.object({
     signature: null,
     repeat_count: 0,
     unresolved_money: false,
+    limitation_already_stated: false,
+    prior_limitation_turns: 0,
     updated_at: null,
     reported_payment: null,
   }),
@@ -961,6 +963,10 @@ export function mergePlan(plan: PlanSnapshot, update: PlanUpdate): PlanSnapshot 
     ? mergeSupportOutcomeState(plan.support_outcome ?? emptySupportOutcomeState(), {
         ...emptySupportOutcomeState(),
         ...supportOutcomeUpdate,
+        limitation_already_stated: supportOutcomeUpdate.limitation_already_stated ??
+          (plan.support_outcome ?? emptySupportOutcomeState()).limitation_already_stated,
+        prior_limitation_turns: supportOutcomeUpdate.prior_limitation_turns ??
+          (plan.support_outcome ?? emptySupportOutcomeState()).prior_limitation_turns,
       })
     : (plan.support_outcome ?? emptySupportOutcomeState());
 

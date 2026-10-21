@@ -18,6 +18,7 @@ import {
 } from '../src/evals/scripted-support-lane-router';
 import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import { PromptLoader } from '../src/runtime/prompt-loader';
+import { OpenAiAgentRuntime } from '../src/runtime/openai-agent-runtime';
 import type {
   KnowledgeRetrievalGateway,
   KnowledgeRetrievalResult,
@@ -376,6 +377,25 @@ describe('offline twin A — Wilfredo: settlement latency and the repeat backsto
     const backstopInput = harness.router.inputs[escalationIndex];
     expect(backstopInput?.plan.support_outcome?.repeat_count).toBeGreaterThanOrEqual(2);
     expect(backstopInput?.plan.support_outcome?.unresolved_money).toBe(true);
+    expect(harness.runtime.composeRequests[0]?.plan.support_outcome).toMatchObject({
+      limitation_already_stated: false, prior_limitation_turns: 0,
+    });
+    expect(harness.runtime.composeRequests[1]?.plan.support_outcome).toMatchObject({
+      limitation_already_stated: true, prior_limitation_turns: 1,
+    });
+    expect(results[1]?.response.plan.support_outcome).toMatchObject({
+      limitation_already_stated: true, prior_limitation_turns: 1,
+    });
+    const repeatComposeRequest = harness.runtime.composeRequests[1];
+    if (!repeatComposeRequest) throw new Error('Expected the repeat-turn compose request.');
+    const replyRuntime = new OpenAiAgentRuntime({
+      apiKey: 'test-key', replyModel: 'gpt-test', extractorModel: 'gpt-test',
+      replyProviderLimit: 4, presentationProviderLimit: 5, providerDetailLookupLimit: 3,
+      promptLoader, providerGateway: providerGateway(),
+    });
+    const repeatSpec = await replyRuntime.buildReplyRequestSpec(repeatComposeRequest);
+    expect(repeatSpec.input).toContain('"limitationAlreadyStated": true');
+    expect(repeatSpec.input).toContain('"priorLimitationTurns": 1');
 
     // The escalation is a real human-escalation turn with a gateway receipt.
     const escalation = results[escalationIndex]?.response;
@@ -910,4 +930,3 @@ describe('offline eval target — the customer-assistance lane can be replayed',
     expect(openAiCalls?.extraction).toBeNull();
   });
 });
-

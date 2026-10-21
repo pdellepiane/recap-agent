@@ -1040,6 +1040,8 @@ function createComposeRequest(
         signature: null,
         repeat_count: 0,
         unresolved_money: false,
+        limitation_already_stated: false,
+        prior_limitation_turns: 0,
         updated_at: null,
       },
       information_state: {

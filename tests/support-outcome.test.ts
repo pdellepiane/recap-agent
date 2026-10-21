@@ -8,6 +8,7 @@ import { createEmptyPlan, mergePlan } from '../src/core/plan';
 import {
   classifySupportOutcomeResultKind,
   computeSupportOutcomeSignature,
+  deriveSupportLimitationMemory,
   nextSupportOutcomeRepeatCount,
   supportOutcomeComponentsFromSnapshot,
   type SupportOutcomeComponents,
@@ -181,6 +182,35 @@ describe('support outcome signature', () => {
 });
 
 describe('support outcome repeat counter', () => {
+  it('remembers only prior identical unresolved limitation turns', () => {
+    const signature = computeSupportOutcomeSignature({
+      ...baseComponents,
+      resultKind: 'reference_unavailable',
+    });
+    let priorSignature: string | null = null;
+    let priorRepeatCount = 0;
+    for (const priorTurns of [0, 1, 2]) {
+      expect(deriveSupportLimitationMemory({ priorSignature, priorRepeatCount, signature }))
+        .toEqual({ limitationAlreadyStated: priorTurns > 0, priorLimitationTurns: priorTurns });
+      priorRepeatCount = nextSupportOutcomeRepeatCount({
+        currentSignature: priorSignature,
+        currentRepeatCount: priorRepeatCount,
+        nextSignature: signature.signature,
+      });
+      expect(priorRepeatCount).toBe(priorTurns + 1);
+      priorSignature = signature.signature;
+    }
+    const changed = computeSupportOutcomeSignature({ ...signature.components, coverage: 'partial' });
+    expect(deriveSupportLimitationMemory({ priorSignature, priorRepeatCount, signature: changed }))
+      .toEqual({ limitationAlreadyStated: false, priorLimitationTurns: 0 });
+    const resolved = computeSupportOutcomeSignature(baseComponents);
+    expect(deriveSupportLimitationMemory({
+      priorSignature: resolved.signature,
+      priorRepeatCount: 2,
+      signature: resolved,
+    })).toEqual({ limitationAlreadyStated: false, priorLimitationTurns: 0 });
+  });
+
   it('increments on a repeated signature and restarts on a change', () => {
     const first = nextSupportOutcomeRepeatCount({
       currentSignature: null,
@@ -214,15 +244,40 @@ describe('support outcome repeat counter', () => {
 });
 
 describe('support outcome state merge', () => {
+  it('preserves limitation memory through partial and post-compose-shaped updates', () => {
+    const plan = mergePlan(createEmptyPlan({
+      planId: 'memory-plan', channel: 'whatsapp', externalUserId: 'memory-user',
+    }), {
+      support_outcome: {
+        signature: 'sig-a', repeat_count: 2, unresolved_money: true,
+        limitation_already_stated: true, prior_limitation_turns: 1,
+      },
+    });
+    const partial = mergePlan(plan, {
+      support_outcome: { signature: 'sig-a', updated_at: '2026-10-21T00:00:00.000Z' },
+    });
+    const postCompose = mergePlan(partial, {
+      support_outcome: { ...partial.support_outcome, reported_payment: null },
+    });
+    expect(postCompose.support_outcome).toMatchObject({
+      limitation_already_stated: true, prior_limitation_turns: 1,
+    });
+    expect(mergePlan(postCompose, {
+      support_outcome: { signature: 'sig-b', limitation_already_stated: false, prior_limitation_turns: 0 },
+    }).support_outcome).toMatchObject({ limitation_already_stated: false, prior_limitation_turns: 0 });
+  });
+
   it('keeps the larger repeat count for the same signature', () => {
     const merged = mergeSupportOutcomeState(
       {
+        ...emptySupportOutcomeState(),
         signature: 'sig-a',
         repeat_count: 3,
         unresolved_money: true,
         updated_at: '2026-10-20T00:00:00.000Z',
       },
       {
+        ...emptySupportOutcomeState(),
         signature: 'sig-a',
         repeat_count: 2,
         unresolved_money: true,
@@ -237,12 +292,14 @@ describe('support outcome state merge', () => {
   it('resets the streak when the signature changes', () => {
     const merged = mergeSupportOutcomeState(
       {
+        ...emptySupportOutcomeState(),
         signature: 'sig-a',
         repeat_count: 4,
         unresolved_money: true,
         updated_at: '2026-10-20T00:00:00.000Z',
       },
       {
+        ...emptySupportOutcomeState(),
         signature: 'sig-b',
         repeat_count: 1,
         unresolved_money: false,
@@ -257,6 +314,7 @@ describe('support outcome state merge', () => {
 
   it('leaves the state untouched when the incoming signature is null', () => {
     const current = {
+      ...emptySupportOutcomeState(),
       signature: 'sig-a',
       repeat_count: 2,
       unresolved_money: true,

@@ -103,6 +103,8 @@ function routerArgs(overrides: Partial<RouterInputArgs> = {}): RouterInputArgs {
         signature: 'abc123def4567890',
         repeat_count: 2,
         unresolved_money: true,
+        limitation_already_stated: false,
+        prior_limitation_turns: 0,
         updated_at: '2026-10-20T00:00:00.000Z',
       },
     },

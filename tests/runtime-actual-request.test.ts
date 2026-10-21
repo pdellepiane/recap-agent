@@ -471,6 +471,39 @@ describe('actual extraction request owns its instructions', () => {
 });
 
 describe('actual reply request owns its instructions', () => {
+  it('projects limitation memory only on the two support contract nodes', async () => {
+    const runtime = testRuntime();
+    const plan = supportPlan({ support_outcome: {
+      signature: 'repeated', repeat_count: 2, unresolved_money: true,
+      limitation_already_stated: true, prior_limitation_turns: 1,
+    } });
+    for (const currentNode of ['resolver_consultas_informativas', 'solicitar_agente_humano'] as const) {
+      const repeated = await runtime.buildReplyRequestSpec(replyRequest(plan, { currentNode }));
+      expect(repeated.input).toContain('"limitationAlreadyStated": true');
+      expect(repeated.input).toContain('"priorLimitationTurns": 1');
+      console.log('Limitation memory prompt audit', {
+        node: currentNode,
+        instructionBytes: Buffer.byteLength(repeated.instructions),
+        inputBytes: Buffer.byteLength(repeated.input),
+      });
+      const first = await runtime.buildReplyRequestSpec(replyRequest(supportPlan(), { currentNode }));
+      expect(first.input).toContain('"limitationAlreadyStated": false');
+      expect(first.input).toContain('"priorLimitationTurns": 0');
+    }
+    const unrelated = await runtime.buildReplyRequestSpec(replyRequest(plan, { currentNode: 'entrevista' }));
+    const baseline = await runtime.buildReplyRequestSpec(replyRequest(supportPlan(), { currentNode: 'entrevista' }));
+    expect(unrelated.input).not.toContain('limitationAlreadyStated');
+    expect(unrelated.input).not.toContain('priorLimitationTurns');
+    expect(unrelated.input).toBe(baseline.input);
+    expect(Buffer.byteLength(unrelated.input)).toBe(Buffer.byteLength(baseline.input));
+    console.log('Limitation memory prompt audit', {
+      node: 'entrevista',
+      instructionBytes: Buffer.byteLength(unrelated.instructions),
+      inputBytes: Buffer.byteLength(unrelated.input),
+      inputByteDelta: Buffer.byteLength(unrelated.input) - Buffer.byteLength(baseline.input),
+    });
+  });
+
   it('sends exactly the selected module files as instructions', async () => {
     const runtime = testRuntime();
     const { customerContext, informationResults } = venueRequest(702201);

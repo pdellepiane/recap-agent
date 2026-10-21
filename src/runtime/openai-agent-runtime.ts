@@ -501,6 +501,8 @@ type ReplyTurnEvidence = {
     focus_need_category: PersistedPlan['active_need_category'];
     missing_fields: string[];
     search_ready: boolean;
+    limitationAlreadyStated?: boolean;
+    priorLimitationTurns?: number;
     /**
      * W1-04 L1 evidence-only facts. Verbatim user-reported support names from
      * the extraction raw strings (never the normalized event_type), the open
@@ -2919,6 +2921,13 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
           this.userVisibleMissingFieldLabel(field),
         ),
         search_ready: args.request.searchReady,
+        ...(args.request.currentNode === 'resolver_consultas_informativas' ||
+            args.request.currentNode === 'solicitar_agente_humano'
+          ? {
+            limitationAlreadyStated: args.request.plan.support_outcome.limitation_already_stated,
+            priorLimitationTurns: args.request.plan.support_outcome.prior_limitation_turns,
+          }
+          : {}),
         ...supportContinuity,
         ...recordCheckFacts,
         ...hostWithdrawalContinuity,
