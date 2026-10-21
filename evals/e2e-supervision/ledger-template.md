@@ -19,6 +19,7 @@ conversation did is a ledger nobody will read.
 - Fixture: <scenario> (phone +<phone>)
 - Conversation id: <conversation-id> (fixture run id and case id)
 - Messages written by: the supervising agent, from the objective (not a script)
+- Router validity: <VALID AS ROUTER EVIDENCE — every supervised turn that ran a model stage ran `router`, with only `router`/`reply` stages recorded; soft pauses with no stages do not affect validity | INVALID AS ROUTER EVIDENCE — name every turn that ran `classifier`, `extraction`, or another non-`router`/`reply` stage>
 
 ## Goal met
 
@@ -49,6 +50,7 @@ PASS | PASS WITH FINDINGS | FAIL
 
 ## Field notes
 
+- **Router validity** — mandatory for the conversation. Use `VALID AS ROUTER EVIDENCE` when every supervised turn that ran a model stage ran `router`, with only `router`/`reply` stages recorded. Use `INVALID AS ROUTER EVIDENCE` if any turn ran `classifier`, `extraction`, or another non-`router`/`reply` stage; name every offending turn. Soft pauses with no stages (`none`) are legitimate silences and are excluded from the validity decision: they are neither evidence for nor against router ownership. If stages are missing or ambiguous, state that rather than guessing. For an invalid ledger, add a short note stating what it still proves, not router ownership. A ledger without this line is incomplete and may not be cited as router evidence.
 - **Guest said / Agent answered** — the real text, quoted. The agent's reply
   is the `delivered` block of the probe output; a suppression is written as
   *(no message — soft pause)* with its reason.

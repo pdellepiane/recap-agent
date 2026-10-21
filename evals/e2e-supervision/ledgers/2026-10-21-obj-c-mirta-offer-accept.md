@@ -7,6 +7,8 @@
 - Fixture: `purchase-approved-host-receipt-refund` (phone +51900000403)
 - Conversation id: `supervised-c-2026-10-21` (fixture run id and case id)
 - Messages written by: the supervising agent, from the objective (not a script)
+- Router validity: INVALID AS ROUTER EVIDENCE — turn 1 ran `classifier`, `extraction`, `reply` (no `router` stage).
+- Router validity note: Proves the offer → accept → takeover arc and follow-up soft pause, not router ownership of every model-driven turn. Turn 3 records `none`, a legitimate soft-pause silence that does not affect validity.
 
 ## Goal met
 

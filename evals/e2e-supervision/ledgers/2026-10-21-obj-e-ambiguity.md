@@ -7,6 +7,7 @@
 - Fixture: `purchase-ambiguous-two-orders` (phone +51900000405)
 - Conversation id: `transcript-e-2026-10-21` (fixture run id and case id)
 - Messages written by: the supervising agent, from the objective (not a script)
+- Router validity: VALID AS ROUTER EVIDENCE — every supervised turn that ran a model stage ran `router`, with only `router`/`reply` stages recorded; soft pauses with no stages do not affect validity.
 
 ## Goal met
 

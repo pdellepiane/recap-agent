@@ -7,6 +7,7 @@
 - Fixture: `purchase-declined-card-transfer-pending` (phone +51900000404)
 - Conversation id: `transcript-d-2026-10-21` (fixture run id and case id)
 - Messages written by: the supervising agent, from the objective (not a script)
+- Router validity: VALID AS ROUTER EVIDENCE — every supervised turn that ran a model stage ran `router`, with only `router`/`reply` stages recorded; soft pauses with no stages do not affect validity.
 - The receipt turn carries the repository's synthetic receipt asset
   (`evals/fixtures/images/receipt-amount-obscured.png`); the dossier screenshot
   is a private customer document.

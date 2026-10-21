@@ -7,6 +7,8 @@
 - Fixture: `purchase-approved-host-receipt-refund` (phone +51900000403)
 - Conversation id: `transcript-c-2026-10-21` (fixture run id and case id)
 - Messages written by: the supervising agent, from the objective (not a script)
+- Router validity: VALID AS ROUTER EVIDENCE — every supervised turn that ran a model stage ran `router`, with only `router`/`reply` stages recorded; soft pauses with no stages do not affect validity.
+- Router validity note: Proves the router-driven refund escalation on turn 1 and the post-takeover soft pause on turn 2. Turn 2 records `none`, a legitimate silence rather than a router-ownership defect.
 
 ## Goal met
 
