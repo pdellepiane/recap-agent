@@ -2945,6 +2945,11 @@ export class AgentService {
     }
     const helpRequested = nextReceipt?.outcome === 'handoff_requested' ||
       gatewayResult.status === 'success';
+    // The takeover evidence travels with the turn on every path, so the perf
+    // record can tell a takeover that was requested and confirmed from a
+    // turn that never attempted one.
+    const humanTakeoverAttempted = helpDecision.action === 'attempt' && phoneNumber !== null;
+    const humanTakeoverSucceeded = helpRequested;
     const helpLastError = helpRequested
       ? null
       : gatewayResult.status === 'failed'
@@ -3050,6 +3055,8 @@ export class AgentService {
           turnDecision: this.humanEscalationTurnDecision(args.turnDecisionReason ?? currentNode),
           operationalNote: `Human escalation composition failed (${error instanceof Error ? error.name : 'unknown'}); typed operational failure delivered without prose.`,
           ...(args.routerDecision ? { routerDecision: args.routerDecision } : {}),
+          humanTakeoverAttempted,
+          humanTakeoverSucceeded,
         }),
       };
     }
@@ -3100,6 +3107,8 @@ export class AgentService {
             responseClassifier: args.responseClassifierTrace,
             searchStrategy: args.searchStrategy,
             turnDecision: this.humanEscalationTurnDecision(args.turnDecisionReason ?? currentNode),
+            humanTakeoverAttempted,
+            humanTakeoverSucceeded,
             operationalNote: 'The reply claimed a registered handoff without an in-turn receipt; the turn resolved without the claim.',
             ...(args.routerDecision ? { routerDecision: args.routerDecision } : {}),
           }),
@@ -3145,6 +3154,8 @@ export class AgentService {
           (args.acceptedHelpOffer === true
             ? ' The guest accepted the open human help offer.'
             : ''),
+        humanTakeoverAttempted,
+        humanTakeoverSucceeded,
         ...(args.routerDecision ? { routerDecision: args.routerDecision } : {}),
       }),
     };

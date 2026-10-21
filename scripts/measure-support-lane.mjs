@@ -92,9 +92,12 @@ function stackOutputs(awsEnv, stackName) {
 }
 
 function isPurchaseSupportTurn(record) {
+  // A turn belongs to the customer-assistance lane when it answered the
+  // support node, or when it escalated out of it: the escalation IS the
+  // outcome of a support turn. The soft-paused follow-ups of an escalated
+  // thread are not support turns of their own.
   if (record.next_node === SUPPORT_NODE) return true;
-  const faqTurn = record.feedback_signals?.routing?.faq_turn;
-  return faqTurn === true;
+  return record.route_kind === 'human_escalation' && record.previous_node === SUPPORT_NODE;
 }
 
 function isUnresolvedMoneyTurn(record) {
@@ -118,7 +121,6 @@ function measure(records) {
     if (record.route_kind === 'human_escalation') escalationTurns += 1;
     if (record.human_takeover_attempted === true) takeoverAttempts += 1;
     if (record.human_takeover_succeeded === true) takeoverSuccesses += 1;
-
     const key = record.conversation_hash ?? record.plan_id ?? 'unknown';
     const entry = threads.get(key) ?? { turns: 0, unresolvedRun: 0, longestUnresolvedRun: 0 };
     entry.turns += 1;
