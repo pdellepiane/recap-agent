@@ -169,6 +169,14 @@ recorded as a suppression with its reason, not as a language failure.
 
 ---
 
+## L10 — No repeated limitation
+
+**The rule.** A reply that re-states a limitation already delivered on this thread, as its opening or closing move and without new evidence or a new action, is a FAIL.
+
+Worked example: dossier case D turns 2–4 ('no puedo verificar el correo ni confirmar que los fondos se hayan acreditado' x3).
+
+---
+
 ## How to apply the rubric
 
 1. Read the delivered reply (the `delivered` block of the probe output).
