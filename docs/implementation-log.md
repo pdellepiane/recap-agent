@@ -13991,3 +13991,22 @@ A third gap was closed on the same evidence: the `human_takeover_attempted` / `h
 **Measurement** (`scripts/measure-support-lane.mjs`, read-only over the development perf table, window 2026-10-21T16:18Z onward): 14 purchase-support turns, 5 escalation turns (rate 0.357), 5 takeover attempts and 5 confirmations (success rate 1.000), 5 threads observed, 0 unresolved money loops longer than three turns.
 
 **Follow-up (not done here):** the post-deploy sample of escalation rate, unresolved money loops longer than three turns and takeover success rate over a seven-day window on the development traffic. The measurement script is committed and is the single command for it. A production promotion of this lane is a separate decision: the flag defaults to `false`, the production stack was not updated, and the live cases were run against development only.
+
+## 2026-10-21 — Handoff for the supervised end-to-end supervision of the lane
+
+**Reason:** the structural live cases prove that the right EFFECT happened, and they are blind to what the customer read. The four dossier conversations failed on the words: "no se encontró ninguna compra" for six turns while an approved purchase existed, "no puedo confirmar la acreditación" about an approved S/ 87.36 that carried a host receipt. A judge could read a transcript, but a judge is a second opinion that does not know what the guest was already told, and it is not the agent that has to live with the result.
+
+**Decision:** the agent that runs the conversation qualifies the language itself, turn by turn, against a written rubric, and writes the verdict down. No judge, no semantic scorer, no second model. The same agent plays the guest, reads the state and applies the rubric.
+
+**Files:**
+- `evals/e2e-supervision/SKILL.md` (new): the loadable skill — the turn loop, the rubric in short, the completion criteria and the environment gotchas. The same text is installed as the user skill `whatsapp-e2e-supervision` (the canonical copy lives in the repository).
+- `evals/e2e-supervision/README.md` (new): orientation, the commands and the gotchas that will bite the next agent (the mandatory fixture scenario, the router flag, the root-owned `dist/`, the SDK that cannot call `/v1/decisions`, the expired delegation key, the `channel#user_id` plan keying).
+- `evals/e2e-supervision/objectives.md` (new): the five dossier objectives as outcomes rather than scripts, with the "must not" list written from the customer's point of view, and how to write a new one.
+- `evals/e2e-supervision/protocol.md` (new): the turn loop, the plan reset, and the completion criteria ("the effects are right AND the language is qualified, both in the same pass").
+- `evals/e2e-supervision/language-rubric.md` (new): L1..L9. **L1 — one reading per turn** is the check that catches the harm the others refine: a handoff announcement sitting next to an unresolved-money verdict leaves the customer unable to tell whether her order exists, which is what makes her think a refund is needed.
+- `evals/e2e-supervision/ledger-template.md` (new): the row format of a qualified conversation, with a FAIL carrying the phrase, the customer-level harm and the disposition.
+- `evals/e2e-supervision/extending.md` (new): fixture → objective → conversation → ledger, and then the structural layer (live case, frozen gate, registry entry, deterministic twin) for the behaviour that is objectively assertable.
+- `evals/e2e-supervision/ledgers/` (new): the four qualified conversations so far, with their verdicts. The open finding is the L1 failure in the case D escalation reply: "el pago figura como rechazado; no puedo confirmar que la transferencia se haya aplicado" followed by "la conversación se derivó para revisión" — three frames at once, and the guest cannot tell what happens to her S/ 391.87. The defect is in the escalation reply contract, not in the routing.
+- `scripts/reply-lint.mjs` (new): an offline lint over a CAPTURED reply that reports CANDIDATE issues (a handoff phrase next to an unresolved-money phrase, policy terms, internal identifiers, several questions). It never decides and never influences a runtime decision; the rubric does. It produces false positives on purpose, and the ledgers show one being cleared.
+
+**Why a lint and not a judge:** the lint can count marks and notice a phrase pair; it cannot tell whether two true statements leave one reading or two. That judgement needs the reader who knows what the guest was already told — which is the agent that wrote her messages.
