@@ -94,7 +94,22 @@ and the perf signals.
    none of the router behaviour is under test.
 3. **The dev plan is keyed by `channel#user_id`.** A conversation leaves a
    plan behind, and the next conversation with the same phone inherits it.
-   Reset the plan before every conversation (`protocol.md`).
+   Reset the whole partition before every conversation (`protocol.md`).
+   The reset value must equal the probe's `--user-id` — `51900000403`, with
+   no leading `+` — because that opaque value is what the runtime keys on.
+   A leading `+` is tolerated and stripped, so both spellings resolve to the
+   same partition; the `+` belongs only to `--contact-phone`:
+
+   ```bash
+   node scripts/purge-terminal-plans.mjs \
+     --profile se-dev --region us-east-1 --table recap-agent-runtime-dev-plans \
+     --channel whatsapp --phone 51900000403 --dry-run
+   ```
+
+   The command prints the exact partition key it used and the item count:
+   compare that pk with the `--user-id` you are about to probe with. A count
+   of `0` means the identifier form is wrong, not that there was nothing to
+   clean.
 4. **The openai SDK cannot call `/v1/decisions`.** The installed SDK is 6.49
    and the endpoint needs >= 7.30, while `@openai/agents` pins `openai@^6.46`.
    The router therefore uses an isolated raw-fetch client

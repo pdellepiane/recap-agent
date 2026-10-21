@@ -31,18 +31,43 @@ repository under `evals/e2e-supervision/`:
 1. **Pick an objective** (`objectives.md`). It states the backend state, the
    goal, what must NOT be said, and which language checks matter. It is NOT a
    script of messages.
-2. **Reset the conversation.** The dev plan is keyed by `channel#user_id`, so
-   the previous conversation with the same phone leaks into the next one:
+2. **Reset the conversation.** Stop concurrent turns first. Reset the entire
+   `channel#user_id` partition, not only `PLAN`: the runtime also writes
+   `TURN_LOCK`, `SESSION#<session-id>` and `RSVP_EFFECT#<message-id>`.
+   Use only a synthetic `51900xxxxxx` phone, never a customer number.
+   **The value must be identical to the probe's `--user-id`, with no leading
+   `+`** — the runtime keys conversation state as `channel#user_id` with that
+   opaque value, so the reset targets the exact partition the probe writes.
+   A leading `+` is tolerated and stripped, so both spellings resolve to the
+   same partition; the `+` belongs only to `--contact-phone`:
 
    ```bash
-   node -e "
-   const {DynamoDBClient}=require('@aws-sdk/client-dynamodb');
-   const {DynamoDBDocumentClient,DeleteCommand}=require('@aws-sdk/lib-dynamodb');
-   process.env.AWS_PROFILE='se-dev'; process.env.AWS_REGION='us-east-1';
-   (async()=>{const c=DynamoDBDocumentClient.from(new DynamoDBClient({region:'us-east-1'}));
-   await c.send(new DeleteCommand({TableName:'recap-agent-runtime-dev-plans',
-     Key:{pk:'whatsapp#<PHONE>',sk:'PLAN'}}));})();"
+   node scripts/purge-terminal-plans.mjs \
+     --profile se-dev --region us-east-1 --table recap-agent-runtime-dev-plans \
+     --channel whatsapp --phone <PHONE> --dry-run
+   node scripts/purge-terminal-plans.mjs \
+     --profile se-dev --region us-east-1 --table recap-agent-runtime-dev-plans \
+     --channel whatsapp --phone <PHONE> --yes
    ```
+   The command checks account `684516060775`, paginates a strongly consistent
+   query without a sort-key filter, deletes each returned item, then queries
+   again and fails unless `remaining` is zero. It prints the exact partition
+   key it used and the item count: compare that pk with the probe's
+   `--user-id` before trusting a reset. A count of `0` is reported loudly —
+   on a phone that has a real conversation it means the identifier form is
+   wrong, not that there was nothing to clean. Save its before/after listings.
+   For terminal probes use `--channel terminal_whatsapp` instead. Fixture
+   ledgers and perf traces are separately scoped history, not conversation
+   state; use a fresh run/case identity for the next fixture conversation.
+   Proven on 2026-10-21 with synthetic phone `51900000777` (unused by any
+   fixture or objective) against the real partition `whatsapp#51900000777`:
+   a fixture probe turn wrote only `PLAN`, and the `+`-prefixed partition
+   `whatsapp#+51900000777` held nothing — the runtime never writes there.
+   Explicitly seeded synthetic records for all four storage shapes proved
+   `PLAN`-only deletion leaves three items behind; the complete reset left
+   zero, confirmed by an independent second query. Natural probe persistence
+   of all four shapes was NOT PROVEN. Neither check proves absence of later
+   concurrent writes. Raw evidence: `.artifacts/wp-l1b-reset-proof/`.
 3. **Check the runtime**: the router must own the customer-assistance lane.
 
    ```bash

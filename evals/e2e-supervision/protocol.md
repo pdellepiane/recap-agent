@@ -21,19 +21,34 @@ is delegated to another model, and no judge scores the conversation.
 1. The objective is chosen (`objectives.md`).
 2. The dev conversation state is clean for that phone. The plan is keyed by
    `channel#user_id`, so a previous conversation with the same phone leaks
-   into the next one. Reset it:
+   into the next one. Reset the ENTIRE partition, not only `PLAN`: the
+   runtime also writes `TURN_LOCK`, `SESSION#<session-id>` and
+   `RSVP_EFFECT#<message-id>`.
+
+   **The value must be identical to the probe's `--user-id`, with no leading
+   `+`** — the runtime keys conversation state as `channel#user_id` with that
+   opaque value, so the reset targets the exact partition the probe writes.
+   A leading `+` is tolerated and stripped, so both spellings resolve to the
+   same partition; the `+` belongs only to `--contact-phone`. Use only a
+   synthetic `51900xxxxxx` phone, never a customer number:
 
    ```bash
-   node -e "
-   const {DynamoDBClient}=require('@aws-sdk/client-dynamodb');
-   const {DynamoDBDocumentClient,DeleteCommand}=require('@aws-sdk/lib-dynamodb');
-   process.env.AWS_PROFILE='se-dev'; process.env.AWS_REGION='us-east-1';
-   (async()=>{
-     const c=DynamoDBDocumentClient.from(new DynamoDBClient({region:'us-east-1'}));
-     await c.send(new DeleteCommand({TableName:'recap-agent-runtime-dev-plans',
-       Key:{pk:'whatsapp#<PHONE>',sk:'PLAN'}}));
-   })();"
+   node scripts/purge-terminal-plans.mjs \
+     --profile se-dev --region us-east-1 --table recap-agent-runtime-dev-plans \
+     --channel whatsapp --phone <PHONE> --dry-run
+   node scripts/purge-terminal-plans.mjs \
+     --profile se-dev --region us-east-1 --table recap-agent-runtime-dev-plans \
+     --channel whatsapp --phone <PHONE> --yes
    ```
+
+   The command checks account `684516060775`, paginates a strongly consistent
+   query without a sort-key filter, deletes each returned item, then queries
+   again and fails unless `remaining` is zero. It prints the exact partition
+   key it used and the item count: compare that pk with the probe's
+   `--user-id` before trusting a reset. A count of `0` is reported loudly —
+   on a phone that has a real conversation it means the identifier form is
+   wrong, not that there was nothing to clean. Save its before/after
+   listings. For terminal probes use `--channel terminal_whatsapp` instead.
 
 3. The runtime is the deployed development Lambda with the router lane on.
    Check before trusting a turn:
