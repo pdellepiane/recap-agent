@@ -241,6 +241,7 @@ import type { RouterRoute } from './decisions-router-questions';
 import { buildCapabilityDigest } from './capability-digest';
 import {
   checkSupportLaneHandoffClaim,
+  isCustomerAssistanceTurn,
   supportLaneInformationRequests,
   validateCitedOrderIds,
 } from './support-lane-flow';
@@ -249,7 +250,6 @@ import {
   nextSupportOutcomeRepeatCount,
   supportOutcomeComponentsFromSnapshot,
   type PriorReportedPayment,
-  type SupportReferenceResolution,
 } from './support-outcome';
 import { buildFinishPlanSummary, buildProviderQuoteReceipts } from './finish-plan-debug';
 import {
@@ -641,34 +641,6 @@ function priorReportedPaymentFromPlan(plan: PlanSnapshot): PriorReportedPayment 
   };
 }
 
-/**
- * WP3 — how the customer reference resolved on this turn.
- *
- * A matched reference wins over an unavailable one. A turn without a
- * requested reference resolves to `none`, which is not an unresolved money
- * outcome.
- */
-function referenceResolutionFromResults(
-  results: readonly InformationTaskResult[],
-): SupportReferenceResolution {
-  let resolution: SupportReferenceResolution = 'none';
-  for (const result of results) {
-    if (result.kind !== 'purchase') {
-      continue;
-    }
-    if (result.status !== 'completed' && result.status !== 'failed') {
-      continue;
-    }
-    if (result.referenceResolution === 'matched') {
-      return 'matched';
-    }
-    if (result.referenceResolution === 'unavailable') {
-      resolution = 'unavailable';
-    }
-  }
-  return resolution;
-}
-
 export class AgentService {
   private readonly capabilityManifest: RuntimeCapabilityManifest;
 
@@ -799,8 +771,12 @@ export class AgentService {
    * A thread with a requested takeover is paused: the turn is suppressed and
    * no new generation happens. The classifier path narrows the pause with
    * its own "requires response" signal; the router path has no classifier,
-   * so the pause is unconditional there. Terminal OTP retention keeps the
-   * human path without a second effect.
+   * so the narrowing keeps only its deterministic part: a turn that carries
+   * a new receipt image is never dropped, because that reference would be
+   * lost. This is the documented deviation from the classifier path, whose
+   * "requires response" verdict is unavailable on this lane.
+   *
+   * Terminal OTP retention keeps the human path without a second effect.
    */
   private async handleHumanEscalationSoftPause(args: {
     inbound: NormalizedInboundMessage;
@@ -811,6 +787,8 @@ export class AgentService {
     tokenUsage: TurnTokenUsage;
     responseClassifierTrace?: MessageResponseClassifierTrace;
     handleTurnStartedAt: number;
+    /** True when the deterministic narrowing lets the turn fall through. */
+    narrowPause?: boolean;
   }): Promise<HandleTurnResponse> {
     // Terminal OTP retention: a code arriving after terminal recovery was
     // persisted must not verify again. Retain the human path without a
@@ -977,19 +955,28 @@ export class AgentService {
     // shape can bypass it.
     const supportRouter = this.dependencies.supportLaneRouter ?? null;
     const routerEnabled = supportRouter !== null && supportRouter.enabled;
-    if (routerEnabled && existingPlan?.human_escalation.status === 'requested') {
+    // R2: the router owns the customer-assistance lane only. A turn with an
+    // in-flight obligation outside that lane (planning, RSVP, authentication)
+    // keeps the established flow: the classifier preflight and the extractor.
+    const routerOwnsTurn = routerEnabled && isCustomerAssistanceTurn(
+      existingPlan ?? classifierPlan,
+    );
+    if (routerOwnsTurn && existingPlan?.human_escalation.status === 'requested') {
       // The soft-pause short-circuit stays BEFORE the router: once a
       // takeover was requested the thread is paused, so no new router work
-      // happens on it.
-      return await this.handleHumanEscalationSoftPause({
-        inbound,
-        existingPlan,
-        messageContext,
-        toolUsage,
-        timingMs,
-        tokenUsage,
-        handleTurnStartedAt,
-      });
+      // happens on it. R6: a turn that carries a new receipt image is not
+      // dropped; the reference would be lost otherwise.
+      if (!this.turnCarriedReceiptMedia(inbound)) {
+        return await this.handleHumanEscalationSoftPause({
+          inbound,
+          existingPlan,
+          messageContext,
+          toolUsage,
+          timingMs,
+          tokenUsage,
+          handleTurnStartedAt,
+        });
+      }
     }
     if (inbound.image) {
       return await this.handleImageTurn({
@@ -1000,7 +987,7 @@ export class AgentService {
         timingMs,
         tokenUsage,
         handleTurnStartedAt,
-        supportRouter,
+        supportRouter: routerOwnsTurn ? supportRouter : null,
       });
     }
     if (inbound.text.trim().length === 0 && (inbound.media?.length ?? 0) > 0) {
@@ -1012,7 +999,7 @@ export class AgentService {
         timingMs,
         tokenUsage,
         handleTurnStartedAt,
-        supportRouter,
+        supportRouter: routerOwnsTurn ? supportRouter : null,
       });
     }
     // WP3: the router replaces the classifier preflight on this lane. The
@@ -1021,11 +1008,22 @@ export class AgentService {
     let routerResult: SupportLaneRouterResult | null = null;
     let turnCustomerContext: PreparedCustomerContext | null = null;
     let routerPlan: PlanSnapshot = existingPlan ?? classifierPlan;
-    if (routerEnabled && supportRouter !== null) {
+    if (routerOwnsTurn && supportRouter !== null) {
       turnCustomerContext = await this.prepareCustomerContextForTurn({
         plan: routerPlan,
         contactPhone: inbound.contactPhone,
         messageContext,
+      });
+      // R1: the outcome signature and the repeat counter are deterministic
+      // facts of the turn, so they are computed BEFORE the router input is
+      // built: the router must see the current turn's count, not the
+      // previous turn's. The reads of the task run after the router, so the
+      // customer reference resolves to "none" here (the guest lane carries
+      // no increment_id, so a customer code can never match).
+      routerPlan = this.withSupportLaneOutcomeBeforeRouter({
+        plan: routerPlan,
+        preparedCustomerContext: turnCustomerContext,
+        inbound,
       });
       routerResult = await this.runSupportLaneRouter({
         inbound,
@@ -1040,6 +1038,12 @@ export class AgentService {
         // The classifier no longer provides the conversation health on this
         // lane, so it is derived from the router's loop-risk level.
         routerPlan = this.withRouterHealth(routerPlan, routerResult);
+        // R9: a healthy turn retires a stale help offer. The offer is
+        // consumed by the takeover, so it never stays open for the whole
+        // life of the thread.
+        if (routerResult.answers.loopRisk === 0) {
+          routerPlan = this.clearRouterHelpOffer(routerPlan);
+        }
         classifierPlan = routerPlan;
         if (existingPlan) {
           existingPlan = routerPlan;
@@ -1067,10 +1071,14 @@ export class AgentService {
       });
     }
     let responseClassifierTrace: MessageResponseClassifierTrace | undefined;
-    // The classifier preflight runs only when the router does not own the
-    // turn: the lane flag is off, or the router was unavailable and the
-    // turn falls back to the classifier path.
-    const routerFallback = routerResult === null || routerResult.status === 'unavailable';
+    // R2: the classifier preflight runs when the router does not own the
+    // turn: the lane flag is off, the lane gate sent the turn to another
+    // lane, or the router was unavailable. It ALSO runs when the router
+    // routed the turn to planning or RSVP: those lanes keep their
+    // suppression, their accept branch and their classifier health.
+    const routerFallback = routerResult === null ||
+      routerResult.status === 'unavailable' ||
+      isExtractorLaneOutcome(routerResult.outcome);
     if (this.dependencies.responseClassifier && routerFallback) {
       const preflightStartedAt = Date.now();
       const preflight = await this.runResponseClassifierPreflight({
@@ -1083,7 +1091,7 @@ export class AgentService {
       timingMs.response_classification += Date.now() - preflightStartedAt;
       tokenUsage.classifier = preflight.tokenUsage;
       tokenUsage.openAiCalls.classifier = preflight.openAiCall ?? null;
-      tokenUsage.total = this.sumTokenUsage(tokenUsage.classifier);
+      tokenUsage.total = this.sumTokenUsage(tokenUsage);
       responseClassifierTrace = preflight.trace;
     }
 
@@ -1250,11 +1258,7 @@ export class AgentService {
         }
         tokenUsage.reply = reply.tokenUsage ?? null;
         tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
-        tokenUsage.total = this.sumTokenUsage(
-          tokenUsage.classifier,
-          tokenUsage.extraction,
-          tokenUsage.reply,
-        );
+        tokenUsage.total = this.sumTokenUsage(tokenUsage);
         timingMs.compose_reply += Date.now() - composeReplyStartedAt;
         timingMs.total = Date.now() - handleTurnStartedAt;
         return {
@@ -1370,11 +1374,7 @@ export class AgentService {
         }
         tokenUsage.reply = reply.tokenUsage ?? null;
         tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
-        tokenUsage.total = this.sumTokenUsage(
-          tokenUsage.classifier,
-          tokenUsage.extraction,
-          tokenUsage.reply,
-        );
+        tokenUsage.total = this.sumTokenUsage(tokenUsage);
         timingMs.compose_reply += Date.now() - composeReplyStartedAt;
         timingMs.total = Date.now() - handleTurnStartedAt;
         return {
@@ -1594,11 +1594,7 @@ export class AgentService {
         const reply = composedReply;
         tokenUsage.reply = reply.tokenUsage ?? null;
         tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
-        tokenUsage.total = this.sumTokenUsage(
-          tokenUsage.classifier,
-          tokenUsage.extraction,
-          tokenUsage.reply,
-        );
+        tokenUsage.total = this.sumTokenUsage(tokenUsage);
         timingMs.compose_reply += Date.now() - extractionStartedAt;
         timingMs.total = Date.now() - handleTurnStartedAt;
         return {
@@ -1982,6 +1978,7 @@ export class AgentService {
         handleTurnStartedAt,
         searchStrategy,
         failureReason: 'explicit_human_request_composition_failed',
+        allowExplicitRetry: true,
       });
     }
 
@@ -2059,11 +2056,7 @@ export class AgentService {
         });
         tokenUsage.reply = reply.tokenUsage ?? null;
         tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
-        tokenUsage.total = this.sumTokenUsage(
-          tokenUsage.classifier,
-          tokenUsage.extraction,
-          tokenUsage.reply,
-        );
+        tokenUsage.total = this.sumTokenUsage(tokenUsage);
         const recommendationFunnel = this.resolveRecommendationFunnel(
           reply.recommendationFunnel ?? null,
           providerResults,
@@ -2147,11 +2140,7 @@ export class AgentService {
       });
       tokenUsage.reply = reply.tokenUsage ?? null;
       tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
-      tokenUsage.total = this.sumTokenUsage(
-        tokenUsage.classifier,
-        tokenUsage.extraction,
-        tokenUsage.reply,
-      );
+      tokenUsage.total = this.sumTokenUsage(tokenUsage);
       const recommendationFunnel = this.resolveRecommendationFunnel(
         reply.recommendationFunnel ?? null,
         providerResults,
@@ -2550,11 +2539,7 @@ export class AgentService {
     const reply = composedReply;
     tokenUsage.reply = reply.tokenUsage ?? null;
     tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
-      tokenUsage.total = this.sumTokenUsage(
-        tokenUsage.classifier,
-        tokenUsage.extraction,
-        tokenUsage.reply,
-      );
+      tokenUsage.total = this.sumTokenUsage(tokenUsage);
     const recommendationFunnel = this.resolveRecommendationFunnel(
       reply.recommendationFunnel ?? null,
       providerResults,
@@ -2650,7 +2635,7 @@ export class AgentService {
     if (result.status === 'ok') {
       args.tokenUsage.router = result.tokenUsage;
       args.tokenUsage.openAiCalls.router = result.call;
-      args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage.router);
+      args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage);
     }
     return result;
   }
@@ -2696,7 +2681,7 @@ export class AgentService {
       preparedCustomerContext: args.preparedCustomerContext,
       route: args.router.answers.route,
     });
-    const extraction = this.buildSupportLaneExtraction(requests);
+    const extraction = this.buildSupportLaneExtraction({ informationRequests: requests, plan: workingPlan });
     return await this.handleInformationFlow({
       inbound: args.inbound,
       previousNode: args.previousNode,
@@ -2727,8 +2712,15 @@ export class AgentService {
    *
    * The takeover effect, its dedupe and its receipt are the established
    * ones; only the decision to escalate comes from the router. The reply is
-   * composed at the escalation node with the real outcome, never with a
-   * canned sentence.
+   * composed at the escalation node with the real `handoffOutcome`, never
+   * with a canned sentence.
+   *
+   * The RSVP multi-person handoff is a different scope and not a
+   * conversation takeover: it runs in the RSVP lane, records its own
+   * `rsvp_multi_person_handoff` outcome and its own dedupe key, and a plan
+   * that carries an RSVP state never reaches this lane (the lane gate sends
+   * it back to the RSVP flow). The support lane's double takeover is
+   * prevented by the dedupe, the receipt and the soft pause.
    */
   private async handleRouterEscalation(args: {
     inbound: NormalizedInboundMessage;
@@ -2765,7 +2757,7 @@ export class AgentService {
       previousNode: args.previousNode,
       nodePath,
       plan: args.workingPlan,
-      extraction: this.buildSupportLaneExtraction([]),
+      extraction: this.buildSupportLaneExtraction({ informationRequests: [], plan: args.workingPlan }),
       preparedCustomerContext,
       gateway,
       toolUsage: args.toolUsage,
@@ -2777,9 +2769,12 @@ export class AgentService {
       failureReason: 'router_escalation_composition_failed',
       routerDecision: args.router.decision,
       supportSidecar: true,
-      turnDecisionReason: acceptedOffer
-        ? 'human_help_offer_accepted'
-        : `router_escalation:${args.escalationReason}`,
+      // R9: the stop reason carries the router's own trigger. Whether the
+      // guest accepted an open offer is a separate fact (the offer state
+      // was open on the previous turn and is consumed now), never a
+      // substitute for the router reason.
+      turnDecisionReason: `router_escalation:${args.escalationReason}`,
+      acceptedHelpOffer: acceptedOffer,
     });
   }
 
@@ -2810,7 +2805,7 @@ export class AgentService {
     });
     args.timingMs.save_plan += Date.now() - savePlanStartedAt;
     args.timingMs.total = Date.now() - args.handleTurnStartedAt;
-    const extraction = this.buildSupportLaneExtraction([]);
+    const extraction = this.buildSupportLaneExtraction({ informationRequests: [], plan: args.workingPlan });
     return {
       plan: planToSave,
       outbound: this.suppressOutbound(
@@ -2875,6 +2870,18 @@ export class AgentService {
      * on the classifier path, which keeps its established model contract.
      */
     supportSidecar?: boolean;
+    /**
+     * R7: an explicit customer request may retry a failed handoff. The
+     * router lane never sets it: a router escalation is not an explicit
+     * request, so a failing gateway is not retried on every turn.
+     */
+    allowExplicitRetry?: boolean;
+    /**
+     * R9: the guest accepted the open help offer of a previous turn. The
+     * fact rides the turn decision as a separate signal, never as a
+     * substitute for the router reason.
+     */
+    acceptedHelpOffer?: boolean;
   }): Promise<HandleTurnResponse> {
     const currentNode: DecisionNode = 'solicitar_agente_humano';
     const phoneNumber = this.resolveEscalationPhone(args.inbound);
@@ -2888,7 +2895,11 @@ export class AgentService {
       inboundId: args.inbound.messageId, scope: 'protected_request', trustedPhone: phoneNumber,
       gatewayCapable: this.capabilityManifest['human.takeover.write'].available,
       prior: priorHelpReceipt,
-      explicitRetry: priorHelpReceipt?.outcome === 'handoff_failed' &&
+      // R7: only an explicit customer request may retry a failed handoff.
+      // A router escalation is not one, so a persistently failing gateway
+      // is not hit again on every following turn of the thread.
+      explicitRetry: args.allowExplicitRetry === true &&
+        priorHelpReceipt?.outcome === 'handoff_failed' &&
         priorHelpReceipt.inboundId !== args.inbound.messageId,
     });
     let gatewayResult: AgentGatewayResult;
@@ -2934,6 +2945,18 @@ export class AgentService {
         phone_number: phoneNumber,
         last_error: helpLastError,
       },
+      // R9: the takeover consumed the open help offer, so the offer is no
+      // longer open. A later escalation is a new router decision, not an
+      // acceptance of an offer that is still on the table.
+      ...(helpRequested && args.plan.conversation_health.help_offer_status === 'offered'
+        ? {
+          conversation_health: {
+            ...args.plan.conversation_health,
+            help_offer_status: 'none' as const,
+            help_offered_at: null,
+          },
+        }
+        : {}),
     });
     const savePlanStartedAt = Date.now();
     await this.dependencies.planStore.save({
@@ -3015,11 +3038,7 @@ export class AgentService {
     }
     args.tokenUsage.reply = reply.tokenUsage ?? null;
     args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
-    args.tokenUsage.total = this.sumTokenUsage(
-      args.tokenUsage.classifier,
-      args.tokenUsage.extraction,
-      args.tokenUsage.reply,
-    );
+    args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage);
     args.timingMs.compose_reply += Date.now() - composeReplyStartedAt;
     args.timingMs.total = Date.now() - args.handleTurnStartedAt;
     // WP5: a success claim about the handoff needs the in-turn receipt. A
@@ -3070,6 +3089,10 @@ export class AgentService {
         };
       }
     }
+    // R1: the reported payment of the escalation turn is not persisted:
+    // the takeover pauses the thread, so the next turn is suppressed and
+    // never computes an outcome signature. The signature and the repeat
+    // count merged before the router are untouched here.
     const outbound = this.renderOutbound(
       reply,
       [],
@@ -3101,7 +3124,10 @@ export class AgentService {
         responseClassifier: args.responseClassifierTrace,
         searchStrategy: args.searchStrategy,
         turnDecision: this.humanEscalationTurnDecision(args.turnDecisionReason ?? currentNode),
-        operationalNote: this.humanEscalationOperationalNote(gatewayResult),
+        operationalNote: this.humanEscalationOperationalNote(gatewayResult) +
+          (args.acceptedHelpOffer === true
+            ? ' The guest accepted the open human help offer.'
+            : ''),
         ...(args.routerDecision ? { routerDecision: args.routerDecision } : {}),
       }),
     };
@@ -3206,15 +3232,49 @@ export class AgentService {
    * The lane runs without the extractor, so the turn carries only the
    * deterministic requests. Every model-owned field stays empty: the router
    * owns the routing and the model owns the reply.
+   *
+   * R3: the stored receipt rides the text follow-up turns. The link is the
+   * deterministic single-candidate carry of
+   * `selectFollowUpImageProjection`: exactly one usable stored reference is
+   * the referenced prior, several keep the linkage ambiguous and project
+   * nothing. No model call and no keyword matching.
    */
-  private buildSupportLaneExtraction(
-    informationRequests: PendingInformationRequest[],
-  ): ExtractionResult {
+  private buildSupportLaneExtraction(args: {
+    informationRequests: PendingInformationRequest[];
+    plan: PlanSnapshot;
+  }): ExtractionResult {
     return {
       ...this.buildNeutralMediaExtraction('Support lane turn; the router decided the lane.'),
       conversationSummary:
         'Turno de asistencia decidido por el router; las lecturas y la respuesta son deterministas.',
-      informationRequests,
+      informationRequests: args.informationRequests,
+      imageReference: this.storedImageReferenceForFollowUp(args.plan),
+    };
+  }
+
+  /**
+   * R3 — the deterministic link to the one usable stored image reference.
+   *
+   * Null when the plan holds no usable reference or more than one: the
+   * linkage stays ambiguous and nothing is projected.
+   */
+  private storedImageReferenceForFollowUp(
+    plan: PlanSnapshot,
+  ): ExtractionResult['imageReference'] {
+    const nowMs = Date.now();
+    const usable = (plan.image_attachments ?? []).filter(
+      (ref) => ref.kind === 'url' || isFileRefActive(ref, nowMs),
+    );
+    if (usable.length !== 1) {
+      return null;
+    }
+    const reference = usable[0];
+    if (reference === undefined) {
+      return null;
+    }
+    return {
+      status: 'prior_single',
+      referencedMessageIds: [reference.messageId],
     };
   }
 
@@ -3234,6 +3294,25 @@ export class AgentService {
         ...plan.conversation_health,
         help_offer_status: 'offered',
         help_offered_at: assessedAt,
+      },
+    });
+  }
+
+  /**
+   * R9 — retire a stale help offer.
+   *
+   * A healthy turn (loop risk 0) closes an offer nobody accepted, so the
+   * router input stops reporting an open offer for the rest of the thread.
+   */
+  private clearRouterHelpOffer(plan: PlanSnapshot): PlanSnapshot {
+    if (plan.conversation_health.help_offer_status !== 'offered') {
+      return plan;
+    }
+    return mergePlan(plan, {
+      conversation_health: {
+        ...plan.conversation_health,
+        help_offer_status: 'none',
+        help_offered_at: null,
       },
     });
   }
@@ -3646,11 +3725,7 @@ export class AgentService {
       args.timingMs.compose_reply += Date.now() - composeStartedAt;
       args.tokenUsage.reply = reply.tokenUsage ?? null;
       args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
-      args.tokenUsage.total = this.sumTokenUsage(
-        args.tokenUsage.classifier,
-        args.tokenUsage.extraction,
-        args.tokenUsage.reply,
-      );
+      args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage);
       const saveStartedAt = Date.now();
       await this.dependencies.planStore.save({ plan: planToSaveHandoff, reason: currentNode });
       args.timingMs.save_plan += Date.now() - saveStartedAt;
@@ -4125,11 +4200,7 @@ export class AgentService {
     args.timingMs.compose_reply += Date.now() - composeStartedAt;
     args.tokenUsage.reply = reply.tokenUsage ?? null;
     args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
-    args.tokenUsage.total = this.sumTokenUsage(
-      args.tokenUsage.classifier,
-      args.tokenUsage.extraction,
-      args.tokenUsage.reply,
-    );
+    args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage);
     const saveStartedAt = Date.now();
     // Packet B: the RSVP effect-path plan write carries the current turn
     // lease condition when a lease is present and the store supports it.
@@ -5447,11 +5518,7 @@ export class AgentService {
     await this.dependencies.planStore.save({ plan: planToSave, reason: turnDecision.persistReason ?? 'contextual_clarification' });
     args.tokenUsage.reply = reply.tokenUsage ?? null;
     args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
-    args.tokenUsage.total = this.sumTokenUsage(
-      args.tokenUsage.classifier,
-      args.tokenUsage.extraction,
-      args.tokenUsage.reply,
-    );
+    args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage);
     args.timingMs.total = Date.now() - args.handleTurnStartedAt;
     return {
       plan: planToSave,
@@ -5666,11 +5733,7 @@ export class AgentService {
       }
       args.tokenUsage.reply = reply.tokenUsage ?? null;
       args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
-      args.tokenUsage.total = this.sumTokenUsage(
-        args.tokenUsage.classifier,
-        args.tokenUsage.extraction,
-        args.tokenUsage.reply,
-      );
+      args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage);
       args.timingMs.total = Date.now() - args.handleTurnStartedAt;
       const turnDecision = this.contextualClarificationTurnDecision('capability_clarification_requested');
       // S2: render first for the verified outbound; the public handleTurn
@@ -5774,11 +5837,7 @@ export class AgentService {
     }
     args.tokenUsage.reply = reply.tokenUsage ?? null;
     args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
-    args.tokenUsage.total = this.sumTokenUsage(
-      args.tokenUsage.classifier,
-      args.tokenUsage.extraction,
-      args.tokenUsage.reply,
-    );
+    args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage);
     args.timingMs.total = Date.now() - args.handleTurnStartedAt;
     // S2: render first for the verified outbound; the public handleTurn
     // wrapper finalizes the latest-response record centrally.
@@ -5834,14 +5893,23 @@ export class AgentService {
   }): Promise<HandleTurnResponse> {
     const plan = mergePlan(args.plan, { current_node: 'resolver_consultas_informativas' });
     const preparedCustomerContext = await this.prepareCustomerContextForTurn({
-      plan: args.plan, contactPhone: args.inbound.contactPhone,
+      plan: args.plan,
+      contactPhone: args.inbound.contactPhone,
+      // R10: the media-only shape carries the same event linkage as the text
+      // shape, so the prepared profile sees the same context.
+      messageContext: args.messageContext,
     });
     // WP3: the media-only shape reaches the same router entry as the text
     // and image shapes, so it cannot bypass the lane.
     if (args.supportRouter?.enabled === true) {
+      const routerPlan = this.withSupportLaneOutcomeBeforeRouter({
+        plan,
+        preparedCustomerContext,
+        inbound: args.inbound,
+      });
       const router = await this.runSupportLaneRouter({
         inbound: args.inbound,
-        plan,
+        plan: routerPlan,
         messageContext: args.messageContext,
         preparedCustomerContext,
         timingMs: args.timingMs,
@@ -5852,7 +5920,7 @@ export class AgentService {
         return await this.handleSupportLaneTurn({
           inbound: args.inbound,
           previousNode: args.plan.current_node,
-          workingPlan: this.withRouterHealth(plan, router),
+          workingPlan: this.withRouterHealth(routerPlan, router),
           preparedCustomerContext,
           router,
           toolUsage: args.toolUsage,
@@ -5893,7 +5961,7 @@ export class AgentService {
     await this.dependencies.planStore.save({ plan, reason: 'unsupported_image_media' });
     args.tokenUsage.reply = reply.tokenUsage ?? null;
     args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
-    args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage.classifier, args.tokenUsage.extraction, args.tokenUsage.reply);
+    args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage);
     args.timingMs.total = Date.now() - args.handleTurnStartedAt;
     return {
       plan,
@@ -5947,17 +6015,37 @@ export class AgentService {
       ? args.plan
       : mergePlan(args.plan, { current_node: 'resolver_consultas_informativas' });
     const preparedCustomerContext = await this.prepareCustomerContextForTurn({
-      plan: args.plan, contactPhone: args.inbound.contactPhone,
+      plan: args.plan,
+      contactPhone: args.inbound.contactPhone,
+      // R10: the image shape carries the same event linkage as the text
+      // shape, so the prepared profile sees the same context.
+      messageContext: args.messageContext,
     });
     // WP3: the image shape reaches the same router entry as the text and
     // media-only shapes. A support-lane outcome skips the extraction: the
     // image reference is still persisted and projected, but the reads are
     // deterministic and the reply is one composition.
+    //
+    // R10: a turn whose image is unavailable and that carries no text has
+    // nothing to route, so the router call is not spent on it.
+    const imageUsable = image !== undefined && image.status === 'available';
+    const captionPresent = caption.trim().length > 0;
+    const routerEligible = args.supportRouter?.enabled === true &&
+      (imageUsable || captionPresent);
+    const routerPlan = routerEligible
+      ? this.withSupportLaneOutcomeBeforeRouter({
+        // The established plan node is preserved: the outcome merge never
+        // touches the node, and the URL image turn keeps its own node.
+        plan: args.plan,
+        preparedCustomerContext,
+        inbound: args.inbound,
+      })
+      : args.plan;
     let supportRouterResult: (SupportLaneRouterResult & { readonly status: 'ok' }) | null = null;
-    if (args.supportRouter?.enabled === true) {
+    if (routerEligible && args.supportRouter) {
       const router = await this.runSupportLaneRouter({
         inbound: args.inbound,
-        plan,
+        plan: routerPlan,
         messageContext: args.messageContext,
         preparedCustomerContext,
         timingMs: args.timingMs,
@@ -6017,7 +6105,7 @@ export class AgentService {
       });
       args.tokenUsage.reply = reply.tokenUsage ?? null;
       args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
-      args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage.classifier, args.tokenUsage.extraction, args.tokenUsage.reply);
+      args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage);
       args.timingMs.total = Date.now() - args.handleTurnStartedAt;
       // S2: an inaccessible-image response never clears the pending
       // question; the public handleTurn wrapper finalizes the
@@ -6061,7 +6149,7 @@ export class AgentService {
         inbound: args.inbound,
         image,
         caption,
-        plan: args.plan,
+        plan: routerPlan,
         previousNode: args.plan.current_node,
         messageContext: args.messageContext,
         toolUsage: args.toolUsage,
@@ -6082,7 +6170,7 @@ export class AgentService {
       inbound: args.inbound,
       image,
       caption,
-      plan: args.plan,
+      plan: routerPlan,
       previousNode: args.plan.current_node,
       messageContext: args.messageContext,
       toolUsage: args.toolUsage,
@@ -6604,11 +6692,7 @@ export class AgentService {
     await this.dependencies.planStore.save({ plan: args.workingPlan, reason: persistReason });
     args.timingMs.save_plan += Date.now() - savePlanStartedAt;
     args.timingMs.total = Date.now() - args.handleTurnStartedAt;
-    args.tokenUsage.total = this.sumTokenUsage(
-      args.tokenUsage.classifier,
-      args.tokenUsage.extraction,
-      args.tokenUsage.reply,
-    );
+    args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage);
     return {
       plan: args.workingPlan,
       outbound: this.suppressOutbound(
@@ -6719,7 +6803,7 @@ export class AgentService {
     });
     args.tokenUsage.reply = reply.tokenUsage ?? null;
     args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
-    args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage.classifier, args.tokenUsage.extraction, args.tokenUsage.reply);
+    args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage);
     args.timingMs.total = Date.now() - args.handleTurnStartedAt;
     // S2: an inaccessible-image response never clears the pending question;
     // the public handleTurn wrapper finalizes the latest-response record.
@@ -7334,11 +7418,7 @@ export class AgentService {
     }
     args.tokenUsage.reply = reply.tokenUsage ?? null;
     args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
-    args.tokenUsage.total = this.sumTokenUsage(
-      args.tokenUsage.classifier,
-      args.tokenUsage.extraction,
-      args.tokenUsage.reply,
-    );
+    args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage);
     // R2 render-before-save: the outbound is rendered first so the
     // latest-response record carries this turn's successful rendered text.
     // Suppress/failure outbound records nothing and keeps pending state.
@@ -8488,11 +8568,7 @@ export class AgentService {
     const reply = composedReply;
     args.tokenUsage.reply = reply.tokenUsage ?? null;
     args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
-    args.tokenUsage.total = this.sumTokenUsage(
-      args.tokenUsage.classifier,
-      args.tokenUsage.extraction,
-      args.tokenUsage.reply,
-    );
+    args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage);
     args.timingMs.compose_reply += Date.now() - composeReplyStartedAt;
     // WP5: a success claim about a human handoff needs an in-turn receipt.
     // Without it the reply resolves without the claim: a typed operational
@@ -8595,8 +8671,6 @@ export class AgentService {
       planToSave = this.mergeSupportLaneOutcome({
         plan: planToSave,
         snapshot: informationCustomerSnapshot,
-        referenceResolution: referenceResolutionFromResults(informationResults),
-        turnCarriedReceiptMedia: args.supportLane.turnCarriedReceiptMedia,
         priorReportedPayment: args.supportLane.priorReportedPayment,
         reportedPayment: reply.sidecar?.reportedPayment ?? null,
         citedOrderIds: reply.sidecar?.citedOrderIds ?? [],
@@ -8656,47 +8730,59 @@ export class AgentService {
   }
 
   /**
-   * WP3 — the support-lane outcome of a turn.
+   * WP3 — the pre-router outcome merge of a turn.
    *
-   * The signature hashes the outcome components of the reads; the repeat
-   * count is computed BEFORE the merge, so the merge itself never increments
-   * it. The reported payment of this turn is persisted for the next turn,
-   * where it becomes the `priorReportedPayment` of the outcome signature.
+   * The signature and the repeat count are deterministic facts of the turn,
+   * so they are merged before the router input is built: the router must
+   * see the current turn's count, never the previous turn's.
    */
-  private mergeSupportLaneOutcome(args: {
+  private withSupportLaneOutcomeBeforeRouter(args: {
+    plan: PlanSnapshot;
+    preparedCustomerContext: PreparedCustomerContext;
+    inbound: NormalizedInboundMessage;
+  }): PlanSnapshot {
+    return this.mergeSupportLaneOutcomeBeforeRouter({
+      plan: args.plan,
+      snapshot: args.preparedCustomerContext.snapshot,
+      turnCarriedReceiptMedia: this.threadCarriesReceiptEvidence({
+        inbound: args.inbound,
+        plan: args.plan,
+      }),
+      priorReportedPayment: priorReportedPaymentFromPlan(args.plan),
+    });
+  }
+
+  /**
+   * WP3 — the support-lane outcome computed BEFORE the router.
+   *
+   * The signature hashes the outcome components of the authorized profile
+   * and the repeat count is computed BEFORE the merge, so the merge itself
+   * never increments it. The signature and the count are deterministic
+   * facts of the turn, so they are merged before the router input is
+   * built: the router must see the current turn's count, never the
+   * previous turn's.
+   *
+   * The task reads run after the router, so the customer reference
+   * resolves to "none" here. The `reference_unavailable` outcome kind is
+   * therefore unreachable on this lane by construction: the guest lane
+   * carries no increment_id, so a customer code can never match. Building
+   * a COD field is out of scope.
+   */
+  private mergeSupportLaneOutcomeBeforeRouter(args: {
     plan: PlanSnapshot;
     snapshot: CustomerContextSnapshot | null;
-    referenceResolution: SupportReferenceResolution;
     turnCarriedReceiptMedia: boolean;
     priorReportedPayment: PriorReportedPayment | null;
-    reportedPayment: PriorReportedPayment | null;
-    citedOrderIds: readonly string[];
-    toolUsage: ToolUsage;
   }): PlanSnapshot {
     const snapshot = args.snapshot;
     if (snapshot === null) {
       return args.plan;
     }
-    // The cited order ids are validated against the authorized profile. A
-    // violation is dropped; it never rewrites the message.
-    const validatedCited = validateCitedOrderIds({
-      cited: args.citedOrderIds,
-      profileOrderIds: snapshot.purchasesCarts.purchases.map((purchase) => purchase.orderId),
-    });
-    this.recordDeterministicToolOutput(args.toolUsage, 'support_reply_sidecar', {
-      cited_order_count: validatedCited.citedOrderIds.length,
-      dropped_order_count: validatedCited.droppedOrderIds.length,
-    });
-    // The reported payment is a model-side signal about what the guest
-    // claims. The freshest report wins: this turn's compose sidecar when the
-    // turn carries one, otherwise the signal persisted from an earlier turn
-    // of the same thread. It is never detected from the message text.
-    const effectiveReportedPayment = args.reportedPayment ?? args.priorReportedPayment;
     const components = supportOutcomeComponentsFromSnapshot({
       snapshot,
-      referenceResolution: args.referenceResolution,
+      referenceResolution: 'none',
       turnCarriedReceiptMedia: args.turnCarriedReceiptMedia,
-      priorReportedPayment: effectiveReportedPayment,
+      priorReportedPayment: args.priorReportedPayment,
     });
     const signature = computeSupportOutcomeSignature(components);
     const incomingRepeatCount = nextSupportOutcomeRepeatCount({
@@ -8709,6 +8795,56 @@ export class AgentService {
         signature: signature.signature,
         repeat_count: incomingRepeatCount,
         unresolved_money: signature.unresolvedMoney,
+        updated_at: new Date().toISOString(),
+        reported_payment: args.plan.support_outcome?.reported_payment ?? null,
+      },
+    });
+  }
+
+  /**
+   * WP3 — the support-lane outcome after the compose.
+   *
+   * The signature and the repeat count were already merged before the
+   * router, so this merge updates ONLY the reported payment (and the
+   * timestamp): the payment the client reported on this turn becomes the
+   * `priorReportedPayment` of the next turn's outcome signature.
+   *
+   * The cited order ids are validated against the authorized profile. A
+   * violation is dropped; it never rewrites the message.
+   */
+  private mergeSupportLaneOutcome(args: {
+    plan: PlanSnapshot;
+    snapshot: CustomerContextSnapshot | null;
+    reportedPayment: PriorReportedPayment | null;
+    priorReportedPayment: PriorReportedPayment | null;
+    citedOrderIds: readonly string[];
+    toolUsage: ToolUsage;
+  }): PlanSnapshot {
+    // The cited order ids are validated against the authorized profile. A
+    // violation is dropped; it never rewrites the message.
+    if (args.snapshot !== null) {
+      const validatedCited = validateCitedOrderIds({
+        cited: args.citedOrderIds,
+        profileOrderIds: args.snapshot.purchasesCarts.purchases.map((purchase) => purchase.orderId),
+      });
+      this.recordDeterministicToolOutput(args.toolUsage, 'support_reply_sidecar', {
+        cited_order_count: validatedCited.citedOrderIds.length,
+        dropped_order_count: validatedCited.droppedOrderIds.length,
+      });
+    }
+    // The reported payment is a model-side signal about what the client
+    // claims. The freshest report wins: this turn's compose sidecar when the
+    // turn carries one, otherwise the signal persisted from an earlier turn
+    // of the same thread. It is never detected from the message text.
+    const effectiveReportedPayment = args.reportedPayment ?? args.priorReportedPayment;
+    return mergePlan(args.plan, {
+      support_outcome: {
+        ...(args.plan.support_outcome ?? {
+          signature: null,
+          repeat_count: 0,
+          unresolved_money: false,
+          updated_at: null,
+        }),
         updated_at: new Date().toISOString(),
         reported_payment: effectiveReportedPayment === null
           ? null
@@ -8787,10 +8923,7 @@ export class AgentService {
         reason: 'support_continuity_acknowledgment',
       });
       args.timingMs.total = Date.now() - args.handleTurnStartedAt;
-      args.tokenUsage.total = this.sumTokenUsage(
-        args.tokenUsage.classifier,
-        args.tokenUsage.extraction,
-      );
+      args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage);
       return {
         plan: planWithSupportContext,
         outbound: this.failureOutbound(
@@ -8904,11 +9037,7 @@ export class AgentService {
     }
     args.tokenUsage.reply = reply.tokenUsage ?? null;
     args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
-    args.tokenUsage.total = this.sumTokenUsage(
-      args.tokenUsage.classifier,
-      args.tokenUsage.extraction,
-      args.tokenUsage.reply,
-    );
+    args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage);
     args.timingMs.compose_reply += 0;
     args.timingMs.total = Date.now() - args.handleTurnStartedAt;
     // S2: render first for the verified outbound; the public handleTurn
@@ -9124,11 +9253,7 @@ export class AgentService {
     args.timingMs.compose_reply += Date.now() - composeStartedAt;
     args.tokenUsage.reply = reply.tokenUsage ?? null;
     args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
-    args.tokenUsage.total = this.sumTokenUsage(
-      args.tokenUsage.classifier,
-      args.tokenUsage.extraction,
-      args.tokenUsage.reply,
-    );
+    args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage);
     // S2: render first for the verified outbound; the public handleTurn
     // wrapper finalizes the latest-response record centrally.
     const outbound = this.renderOutbound(
@@ -9324,7 +9449,7 @@ export class AgentService {
     }, args.completedRsvp));
     args.tokenUsage.reply = reply.tokenUsage ?? null;
     args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
-    args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage.classifier, args.tokenUsage.extraction, args.tokenUsage.reply);
+    args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage);
     args.timingMs.total = Date.now() - args.handleTurnStartedAt;
     return {
       plan: planToSave,
@@ -9439,7 +9564,7 @@ export class AgentService {
     });
     args.tokenUsage.reply = reply.tokenUsage ?? null;
     args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
-    args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage.classifier, args.tokenUsage.extraction, args.tokenUsage.reply);
+    args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage);
     return {
       plan: planToSave,
       outbound: this.renderOutbound(
@@ -9548,10 +9673,7 @@ export class AgentService {
       plan: planToSave,
       reason: 'information_authentication_terminal_handoff',
     });
-    args.tokenUsage.total = this.sumTokenUsage(
-      args.tokenUsage.classifier,
-      args.tokenUsage.extraction,
-    );
+    args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage);
     args.timingMs.total = Date.now() - args.handleTurnStartedAt;
     const handoffOutcome = requested
       ? 'handoff_requested' as const
@@ -9593,7 +9715,7 @@ export class AgentService {
     }, args.completedRsvp));
     args.tokenUsage.reply = reply.tokenUsage ?? null;
     args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
-    args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage.classifier, args.tokenUsage.extraction, args.tokenUsage.reply);
+    args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage);
     return {
       plan: planToSave,
       outbound: this.renderOutbound(
@@ -10610,20 +10732,36 @@ export class AgentService {
     };
   }
 
-  private sumTokenUsage(...usages: Array<TokenUsage | null>): TokenUsage | null {    if (!usages.some((usage) => usage)) {
+  /**
+   * The turn's total token usage.
+   *
+   * R8: the total is computed from the whole turn, so the router stage can
+   * never be dropped from the aggregate. The support lane spends three
+   * stages (router, extraction on the other lanes, reply) and the acceptance
+   * gate compares this total against the measured baseline, so the
+   * measurement must be honest.
+   */
+  private sumTokenUsage(usage: TurnTokenUsage): TokenUsage | null {
+    const usages: Array<TokenUsage | null> = [
+      usage.classifier,
+      usage.router,
+      usage.extraction,
+      usage.reply,
+    ];
+    if (!usages.some((entry) => entry)) {
       return null;
     }
 
     return {
-      input_tokens: usages.reduce((total, usage) => total + (usage?.input_tokens ?? 0), 0),
-      output_tokens: usages.reduce((total, usage) => total + (usage?.output_tokens ?? 0), 0),
-      total_tokens: usages.reduce((total, usage) => total + (usage?.total_tokens ?? 0), 0),
+      input_tokens: usages.reduce((total, entry) => total + (entry?.input_tokens ?? 0), 0),
+      output_tokens: usages.reduce((total, entry) => total + (entry?.output_tokens ?? 0), 0),
+      total_tokens: usages.reduce((total, entry) => total + (entry?.total_tokens ?? 0), 0),
       cached_input_tokens: usages.reduce(
-        (total, usage) => total + (usage?.cached_input_tokens ?? 0),
+        (total, entry) => total + (entry?.cached_input_tokens ?? 0),
         0,
       ),
       cache_write_input_tokens: usages.reduce(
-        (total, usage) => total + (usage?.cache_write_input_tokens ?? 0),
+        (total, entry) => total + (entry?.cache_write_input_tokens ?? 0),
         0,
       ),
     };

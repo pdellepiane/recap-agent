@@ -19,12 +19,25 @@ import type { RouterRoute } from './decisions-router-questions';
 import { checkReplyNarrativeClaims } from './reply-evidence-projector';
 import type { PriorReportedPayment } from './support-outcome';
 
-/** Model-reported payment evidence. Facts only, never reply prose. */
+/**
+ * The payment the client reported, as the model states it.
+ *
+ * The description binds the field to the customer's claim: the record's own
+ * payment never belongs here.
+ */
 export const reportedPaymentSchema = z.object({
-  amount: z.number().nonnegative().nullable(),
-  currency: z.string().nullable(),
-  method: z.string().nullable(),
-  claimed_success: z.boolean(),
+  amount: z.number().nonnegative().nullable().describe(
+    'The amount the client reported, in the currency the client used. Null when the client named no amount.',
+  ),
+  currency: z.string().nullable().describe(
+    'The currency of the reported amount, as the client stated it. Null when unknown.',
+  ),
+  method: z.string().nullable().describe(
+    'The payment method the client reported (for example a wallet or a transfer). Null when the client named no method.',
+  ),
+  claimed_success: z.boolean().describe(
+    'True when the client stated that the payment succeeded. False when the client reported a pending, failed or uncertain payment.',
+  ),
 });
 
 /**
@@ -32,10 +45,19 @@ export const reportedPaymentSchema = z.object({
  * required in the model output so the model always states which records the
  * answer relies on, whether it carries a reported payment and whether it
  * claims a registered human handoff.
+ *
+ * The descriptions are the contract the model reads. They bind the payment
+ * field to the CUSTOMER's claim, never to the record's own payment: a
+ * backend payment reported as the customer's claim would manufacture a
+ * "declined against a reported success" conflict that never happened.
  */
 export const supportReplySidecarSchema = z.object({
-  cited_order_ids: z.array(z.string()),
-  reported_payment: reportedPaymentSchema.nullable(),
+  cited_order_ids: z.array(z.string()).describe(
+    'The order ids this answer relies on, copied verbatim from the order ids of the authorized profile. Empty when the answer relies on no order.',
+  ),
+  reported_payment: reportedPaymentSchema.nullable().describe(
+    'The payment the CLIENT reported in this turn (for example a transfer the client says they made). This is NOT the payment of the record in the profile. Null when the client reported no payment.',
+  ),
   claimed_handoff: z.boolean().describe(
     'True only when the reply states that a human handoff or a manual review was registered. False when no such success is claimed.',
   ),
@@ -54,8 +76,53 @@ export type SupportReplySidecar = {
 };
 
 /**
- * Deterministic query of the phone-scoped purchase discovery. It names the
- * task, never the answer: the model writes the reply from the records.
+ * WP3 — the deterministic lane gate.
+ *
+ * The Decisions router owns the customer-assistance lane only. A turn that
+ * carries an in-flight obligation outside that lane (an established
+ * planning thread, an active RSVP state, a pending authentication flow)
+ * flows exactly as today: the classifier preflight and the extractor own
+ * it. The gate reads typed plan state only — never the customer message.
+ *
+ * A fresh plan with no obligation is a customer-assistance turn, so the
+ * customer-assistance conversations reach the router.
+ */
+export function isCustomerAssistanceTurn(plan: PlanSnapshot): boolean {
+  if (hasPlanningObligation(plan)) return false;
+  if (hasRsvpObligation(plan)) return false;
+  if (hasAuthenticationObligation(plan)) return false;
+  return true;
+}
+
+/** An established planning thread: providers, a need or open missing fields. */
+function hasPlanningObligation(plan: PlanSnapshot): boolean {
+  return plan.provider_needs.length > 0 ||
+    plan.active_need_category !== null ||
+    plan.recommended_providers.length > 0 ||
+    plan.selected_provider_ids.length > 0 ||
+    plan.missing_fields.length > 0 ||
+    plan.event_type !== null ||
+    plan.vendor_category !== null;
+}
+
+/** An RSVP obligation: the thread is resolving an attendance. */
+function hasRsvpObligation(plan: PlanSnapshot): boolean {
+  return plan.rsvp_state.status !== 'none' ||
+    plan.rsvp_state.pending_action !== null;
+}
+
+/** A pending authentication flow: the thread is waiting for a credential. */
+function hasAuthenticationObligation(plan: PlanSnapshot): boolean {
+  return plan.user_auth.status === 'code_requested' ||
+    plan.user_auth.status === 'failed' ||
+    plan.user_auth.status === 'email_not_found' ||
+    plan.user_auth.awaiting_phone_confirmation;
+}
+
+/**
+ * WP3 — the deterministic query of the phone-scoped purchase discovery. It
+ * names the task, never the answer: the model writes the reply from the
+ * records.
  */
 export const SUPPORT_LANE_PURCHASE_DISCOVERY_QUERY =
   'Estado de tus compras y regalos.';

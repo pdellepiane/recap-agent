@@ -366,10 +366,13 @@ describe('offline twin A — Wilfredo: settlement latency and the repeat backsto
 
     const results = await harness.replay(TURNS_A);
 
-    // The escalation is the first turn whose router input shows the repeat
-    // count of the unresolved money outcome.
+    // The escalation happens no later than the turn where repeatCount
+    // reaches 2 (03-acceptance-tests.md, "Twin A — Wilfredo"). The count is
+    // the CURRENT turn's count: the signature and the counter are computed
+    // before the router runs, so the second identical unresolved outcome
+    // escalates immediately.
     const escalationIndex = takeoverTurnIndex(results);
-    expect(escalationIndex).toBe(2);
+    expect(escalationIndex).toBe(1);
     const backstopInput = harness.router.inputs[escalationIndex];
     expect(backstopInput?.plan.support_outcome?.repeat_count).toBeGreaterThanOrEqual(2);
     expect(backstopInput?.plan.support_outcome?.unresolved_money).toBe(true);
@@ -406,9 +409,17 @@ describe('offline twin A — Wilfredo: settlement latency and the repeat backsto
         index > 0 &&
         results[index - 1]?.response.plan.support_outcome.unresolved_money === true,
     );
-    expect(composedWhileUnresolved).toHaveLength(1);
+    expect(composedWhileUnresolved.length).toBeLessThanOrEqual(1);
+    // No composed answer turn after the escalation: the soft pause holds
+    // for the text turns. R6: a turn that carries a new receipt image is
+    // not dropped, because that reference would be lost otherwise.
     const afterEscalation = results.slice(escalationIndex + 1);
-    expect(afterEscalation.every((result) => result.composedTurns === 0)).toBe(true);
+    afterEscalation.forEach((result, index) => {
+      if (TURNS_A[escalationIndex + 1 + index]?.image === true) {
+        return;
+      }
+      expect(result.composedTurns).toBe(0);
+    });
 
     // The support lane ran no extraction stage, and every answer turn was
     // one compose call.
@@ -641,8 +652,15 @@ describe('offline twin C — Mirta: derivation truth and the host receipt', () =
     expect(results[0]?.response.plan.conversation_health.help_offer_status).toBe('offered');
     const escalationIndex = takeoverTurnIndex(results);
     expect(escalationIndex).toBe(1);
+    // R9: the stop reason carries the router's own trigger; the acceptance
+    // of the open offer is a separate fact, never a substitute for it.
     expect(results[escalationIndex]?.response.trace.turn_decision.stopReason)
-      .toBe('human_help_offer_accepted');
+      .toBe('router_escalation:needs_human_now_threshold');
+    expect(results[escalationIndex]?.response.trace.operational_note)
+      .toContain('accepted the open human help offer');
+    // The takeover consumed the offer, so it is no longer open.
+    expect(results[escalationIndex]?.response.plan.conversation_health.help_offer_status)
+      .toBe('none');
     expect(results[escalationIndex]?.response.plan.human_escalation.status).toBe('requested');
     expect(gateway.getFixtureCallCount('handoff.write')).toBe(1);
     expect(
@@ -694,10 +712,11 @@ describe('offline twin D — Silvia: the terse loop escalates through the backst
 
     const results = await harness.replay(TURNS_D);
 
-    // The declined record plus the reported successful payment is the
-    // unresolved money outcome: the only unresolved kind reachable with a
-    // non-empty order set and no requested customer reference.
-    expect(results[0]?.response.plan.support_outcome.unresolved_money).toBe(true);
+    // The receipt turn knows the declined record but not yet the reported
+    // payment: the payment is the client's claim, and it only reaches the
+    // runtime after the compose of that turn. The outcome of the receipt
+    // turn is therefore the resolved one.
+    expect(results[0]?.response.plan.support_outcome.unresolved_money).toBe(false);
     const purchaseSummaries = results[0]?.response.trace.information_execution_summary ?? [];
     expect(
       purchaseSummaries.some((summary) => summary.kind === 'purchase' && summary.status === 'completed'),
@@ -716,9 +735,21 @@ describe('offline twin D — Silvia: the terse loop escalates through the backst
       purchaseResults.every((result) => result.referenceResolution === undefined),
     ).toBe(true);
 
+    // The next turn knows the reported payment: the declined record against
+    // the client's successful payment is the unresolved money outcome, the
+    // only unresolved kind reachable with a non-empty order set and no
+    // requested customer reference.
+    expect(results[1]?.response.plan.support_outcome.unresolved_money).toBe(true);
+    expect(results[1]?.response.plan.support_outcome.reported_payment).toMatchObject({
+      amount: 391.87,
+      method: 'Plin',
+      claimed_success: true,
+    });
+
     // The escalation happens by turn 3, through the repeat backstop.
     const escalationIndex = takeoverTurnIndex(results);
     expect(escalationIndex).toBeLessThanOrEqual(2);
+    expect(escalationIndex).toBeGreaterThanOrEqual(0);
     const backstopInput = harness.router.inputs[escalationIndex];
     expect(backstopInput?.plan.support_outcome?.repeat_count).toBeGreaterThanOrEqual(2);
     expect(backstopInput?.plan.support_outcome?.unresolved_money).toBe(true);

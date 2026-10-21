@@ -12,10 +12,12 @@ import type {
   MessageResponseClassifierResult,
 } from '../src/runtime/message-response-classifier';
 import { OpenAiSupportLaneRouter } from '../src/runtime/decisions-router-lane';
+import { loadRouterQuestions } from '../src/runtime/decisions-router-questions';
 import type { RouterRoute } from '../src/runtime/decisions-router-questions';
 import { assertOpenAiStructuredSchemaCompatible } from '../src/runtime/openai-structured-schema';
 import { genericMessageSchema } from '../src/runtime/structured-message';
-import { supportReplySidecarSchema } from '../src/runtime/support-lane-flow';
+import { supportReplySidecarSchema, isCustomerAssistanceTurn } from '../src/runtime/support-lane-flow';
+import { zodTextFormat } from 'openai/helpers/zod';
 import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import { PromptLoader } from '../src/runtime/prompt-loader';
 import type {
@@ -254,6 +256,187 @@ beforeEach(() => {
   vi.restoreAllMocks();
   vi.spyOn(console, 'info').mockImplementation(() => undefined);
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
+});
+
+describe('decisions router: the customer-assistance lane gate', () => {
+  // R2: the router owns the customer-assistance lane only. A turn with an
+  // in-flight obligation outside that lane keeps the established flow: the
+  // classifier preflight and the extractor.
+  it('decides the lane from typed plan state only', () => {
+    const fresh = createEmptyPlan({
+      planId: 'lane-gate-fresh',
+      channel: 'whatsapp',
+      externalUserId: 'lane-gate-fresh',
+    });
+    expect(isCustomerAssistanceTurn(fresh)).toBe(true);
+
+    const planning = mergePlan(fresh, {
+      active_need_category: 'Fotografía y video',
+      provider_needs: [{
+        category: 'Fotografía y video',
+        status: 'identified',
+        preferences: [],
+        hard_constraints: [],
+        missing_fields: [],
+        recommended_provider_ids: [],
+        recommended_providers: [],
+        sub_query_results: [],
+        selected_provider_ids: [],
+        selected_provider_hints: [],
+      }],
+    });
+    expect(isCustomerAssistanceTurn(planning)).toBe(false);
+
+    const rsvp = mergePlan(fresh, {
+      rsvp_state: {
+        status: 'awaiting_action',
+        pending_action: 'attending',
+        pending_plus_one_response: null,
+        candidates: [],
+        requested_at: '2026-10-20T00:00:00.000Z',
+        selection_attempts: 0,
+      },
+    });
+    expect(isCustomerAssistanceTurn(rsvp)).toBe(false);
+
+    const auth = mergePlan(fresh, {
+      user_auth: {
+        status: 'code_requested',
+        email: 'customer@example.com',
+        requested_at: '2026-10-20T00:00:00.000Z',
+      },
+    });
+    expect(isCustomerAssistanceTurn(auth)).toBe(false);
+
+    // A support thread (no obligation) is a customer-assistance turn.
+    const support = mergePlan(fresh, {
+      current_node: 'resolver_consultas_informativas',
+      information_state: {
+        resume_node: 'resolver_consultas_informativas',
+        pending_requests: [],
+        selection_candidates: [],
+        last_completed_request: {
+          kind: 'purchase',
+          resource: 'gift_purchases',
+          query: 'Compra anterior',
+          orderId: null,
+          authAction: 'none',
+        },
+      },
+    });
+    expect(isCustomerAssistanceTurn(support)).toBe(true);
+  });
+
+  it('does not reach the router when the plan carries an in-flight obligation', async () => {
+    const gateway = await FixtureAgentConversationGateway.create(CASE_C_SCENARIO);
+    const runtime = new ScriptedAgentRuntime(
+      [emptyExtraction()],
+      () => ({ text: 'Respuesta informativa.' }),
+    );
+    const { router, calls } = buildRouter({
+      enabled: true,
+      answers: { route: 'answer_with_records', loopRisk: 0, needsHumanNow: 0.1, capabilityBlocked: 0.1 },
+    });
+    const classifier = new RecordingClassifier();
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      reason: 'fixture',
+      plan: mergePlan(createEmptyPlan({
+        planId: 'lane-gate-planning',
+        channel: 'whatsapp',
+        externalUserId: 'lane-gate-planning',
+      }), {
+        current_node: 'elicitacion_necesidades',
+        active_need_category: 'Fotografía y video',
+        event_type: 'boda',
+      }),
+    });
+    const service = await createService({
+      runtime, gateway, router, planStore, responseClassifier: classifier,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'lane-gate-planning',
+      contactPhone: CASE_C_PHONE,
+      messageId: 'lane-gate-planning-1',
+      receivedAt: new Date().toISOString(),
+      text: 'QuieroContractual fotos para una boda.',
+    });
+
+    // The router never ran: the planning lane keeps the established flow.
+    expect(calls).toEqual([]);
+    expect(classifier.calls).toBe(1);
+    expect(runtime.extractRequests.length).toBeGreaterThan(0);
+    expect(response.trace.router_decision).toBeUndefined();
+  });
+
+  it('runs the classifier preflight when the router routes a turn to planning', async () => {
+    const gateway = await FixtureAgentConversationGateway.create(CASE_C_SCENARIO);
+    const runtime = new ScriptedAgentRuntime(
+      [emptyExtraction()],
+      () => ({ text: 'Respuesta informativa.' }),
+    );
+    const { router, calls } = buildRouter({
+      enabled: true,
+      answers: { route: 'planning_flow', loopRisk: 0, needsHumanNow: 0.1, capabilityBlocked: 0.1 },
+    });
+    const classifier = new RecordingClassifier();
+    const service = await createService({
+      runtime, gateway, router, responseClassifier: classifier,
+    });
+
+    await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'lane-gate-planning-route',
+      contactPhone: CASE_C_PHONE,
+      messageId: 'lane-gate-planning-route-1',
+      receivedAt: new Date().toISOString(),
+      text: 'Quiero un plan de proveedores para una boda.',
+    });
+
+    // The router ran, and the planning lane keeps its classifier preflight.
+    expect(calls.length).toBeGreaterThan(0);
+    expect(classifier.calls).toBe(1);
+    expect(runtime.extractRequests.length).toBeGreaterThan(0);
+  });
+});
+
+describe('decisions router: the reply sidecar contract', () => {
+  // R4: the sidecar fields reach the model through the reply output schema.
+  // The description is the contract the model reads, so it must survive the
+  // strict-schema conversion.
+  it('carries the sidecar descriptions into the schema sent to the model', () => {
+    const schema = genericMessageSchema.extend({
+      cited_order_ids: supportReplySidecarSchema.shape.cited_order_ids,
+      reported_payment: supportReplySidecarSchema.shape.reported_payment,
+      claimed_handoff: supportReplySidecarSchema.shape.claimed_handoff,
+    });
+    const format = zodTextFormat(schema, 'reply');
+    const properties = (format.schema as {
+      properties: Record<string, { description?: string }>;
+    }).properties;
+
+    expect(properties['cited_order_ids']?.description).toContain('order ids this answer relies on');
+    expect(properties['reported_payment']?.description).toContain('the CLIENT reported');
+    expect(properties['reported_payment']?.description).toContain('NOT the payment of the record');
+    expect(properties['claimed_handoff']?.description).toContain('human handoff');
+  });
+});
+
+describe('decisions router: the route contract', () => {
+  // R5: the router input already carries the open-offer state, and the
+  // route question tells the router that an accepted offer is an
+  // escalation. The accept stays typed (the offer state plus the router's
+  // decision): no keyword matching, no extra call.
+  it('tells the router that an accepted human offer is an escalation', async () => {
+    const questions = await loadRouterQuestions(promptLoader);
+    const route = questions.questions.find((question) => question.name === 'route');
+    expect(route?.type).toBe('choice');
+    if (route?.type !== 'choice') return;
+    expect(route.instructions).toContain('derivacion_pendiente');
+    expect(route.instructions).toContain('escalate_human');
+  });
 });
 
 describe('decisions router: customer-assistance lane', () => {
@@ -724,9 +907,12 @@ describe('decisions router: customer-assistance lane', () => {
       text: 'Revisa si ese pago ya se acreditó.',
     });
 
-    // The next turn reads the updated outcome state in its router input.
+    // The router input carries the CURRENT turn's outcome: the signature
+    // and the repeat count are computed before the router runs, so the
+    // router never reads the previous turn's count.
     expect(bodies.length).toBeGreaterThan(1);
-    expect(bodies[1]).toContain(firstSignature ?? 'missing');
+    expect(bodies[1]).toContain(second.plan.support_outcome.signature ?? 'missing');
+    expect(bodies[1]).not.toContain(firstSignature ?? 'missing');
     // The declined record plus the reported successful payment is an
     // unresolved money outcome: the model-side signal, never a keyword.
     expect(second.plan.support_outcome.unresolved_money).toBe(true);
