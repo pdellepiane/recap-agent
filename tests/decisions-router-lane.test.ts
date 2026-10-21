@@ -54,6 +54,10 @@ const CASE_C_SCENARIO = 'purchase-approved-host-receipt-refund';
 const CASE_C_PHONE = '+51900000403';
 const CASE_C_ORDER_ID = 'ORD_6ab970ab70802';
 
+/** Dossier case A: a receipt with no purchase record on the backend. */
+const CASE_A_SCENARIO = 'purchase-yape-receipt-no-match';
+const CASE_A_PHONE = '+51900000401';
+
 /** Dossier case D: the only readable record is the declined card attempt. */
 const CASE_D_SCENARIO = 'purchase-declined-card-transfer-pending';
 const CASE_D_PHONE = '+51900000404';
@@ -552,6 +556,39 @@ describe('decisions router: customer-assistance lane', () => {
     expect(response.trace.router_decision?.route).toBe('answer_with_records');
     // The phone-scoped read ran through the orchestrator.
     expect(response.trace.tools_called).toContain('lookup_guest_gift_purchases_by_phone');
+  });
+
+  it('carries the purchase read outcome in the evidence when the backend holds no purchase', async () => {
+    // The turn must prove the read outcome even when the backend has nothing:
+    // the judge reads the purchase facts from this summary, and an empty
+    // summary leaves the judge with no evidence at all on exactly the
+    // threads where the customer asks about a payment that is not there yet.
+    const gateway = await FixtureAgentConversationGateway.create(CASE_A_SCENARIO);
+    const runtime = new ScriptedAgentRuntime(
+      [emptyExtraction()],
+      () => ({ text: 'No encuentro una compra registrada.' }),
+    );
+    const { router } = buildRouter({
+      enabled: true,
+      answers: { route: 'answer_with_records', loopRisk: 0, needsHumanNow: 0.1, capabilityBlocked: 0.1 },
+    });
+    const service = await createService({ runtime, gateway, router });
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'router-empty-purchase-evidence',
+      contactPhone: CASE_A_PHONE,
+      messageId: 'router-empty-purchase-evidence-1',
+      receivedAt: new Date().toISOString(),
+      text: 'Ya hice la transferencia por Yape pero no me aparece ninguna compra.',
+    });
+
+    const purchaseSummary = response.trace.information_execution_summary.find(
+      (entry) => entry.kind === 'purchase',
+    );
+    expect(purchaseSummary).toBeDefined();
+    expect(purchaseSummary?.status).toBe('completed');
+    expect(purchaseSummary?.outcomeCode).toBe('completed_without_results');
   });
 
   it('escalates through the takeover gateway and persists the receipt', async () => {

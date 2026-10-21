@@ -3221,23 +3221,22 @@ export class AgentService {
       route: RouterRoute;
     },
   ): PendingInformationRequest[] {
-    const snapshot = args.preparedCustomerContext?.snapshot ?? null;
-    const purchaseThreadActive = hasActivePurchaseThread({
-      hasPendingPurchaseOrEventRequest: plan.information_state.pending_requests.some(
-        (request) => request.kind === 'purchase' || request.kind === 'associated_event',
-      ),
-      lastCompletedKind: plan.information_state.last_completed_request?.kind ?? null,
-    }) ||
-      args.messageContext.continuity?.lane === 'purchase_support' ||
-      args.messageContext.continuity?.lane === 'event_support' ||
-      (snapshot?.purchasesCarts.purchases.length ?? 0) > 0 ||
-      (snapshot?.purchasesCarts.carts.length ?? 0) > 0;
+    // The purchase discovery is issued whenever the turn is phone-scoped and
+    // the router routed it to a record route: the router decided the turn is
+    // answered from the authorized records, so the lane reads them and the
+    // turn carries the read outcome.
+    //
+    // The pre-router snapshot is NOT the gate: it is prepared without request
+    // hints and its purchases section is always `not_requested`, so gating on
+    // it silently skipped the read on exactly the threads with no purchase
+    // yet. The consequence was an empty execution summary, so the judge saw
+    // no purchase evidence at all on those turns while the reply quoted the
+    // records the lane had read in another phase.
     return this.mergeInformationRequests(
       plan.information_state.pending_requests,
       supportLaneInformationRequests({
         plan,
         route: args.route,
-        purchaseThreadActive,
         phoneScoped: args.preparedCustomerContext?.trustedPhone != null,
       }),
     );

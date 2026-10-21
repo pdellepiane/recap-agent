@@ -147,10 +147,13 @@ export const supportLaneRecordRoutes: readonly RouterRoute[] = [
  * `mergeInformationRequests`); this list only adds what the lane reads:
  *
  * - the last-completed replay, so the thread continues on the same task;
- * - the purchase discovery, for a phone-scoped purchase thread on a route
- *   that answers from the records. The discovery carries no order id: it
- *   reads the complete authorized set, and the complete profile reaches the
- *   reply through the customer context.
+ * - the purchase discovery, for a phone-scoped turn on a route that answers
+ *   from the records. The discovery carries no order id: it reads the
+ *   complete authorized set, and the complete profile reaches the reply
+ *   through the customer context. The discovery is NOT gated on a prior
+ *   purchase thread: the router already decided the turn is answered from
+ *   the records, and the read outcome must reach the turn's evidence even
+ *   when the backend holds no purchase at all.
  *
  * No model-chosen request and no model-extracted customer reference travel
  * here: the guest lane carries no `increment_id`, so a customer code cannot
@@ -159,7 +162,6 @@ export const supportLaneRecordRoutes: readonly RouterRoute[] = [
 export function supportLaneInformationRequests(args: {
   readonly plan: PlanSnapshot;
   readonly route: RouterRoute;
-  readonly purchaseThreadActive: boolean;
   readonly phoneScoped: boolean;
 }): ExtractedInformationRequest[] {
   const requests: ExtractedInformationRequest[] = [];
@@ -172,11 +174,7 @@ export function supportLaneInformationRequests(args: {
   if (lastCompleted?.kind === 'associated_event') {
     requests.push({ ...lastCompleted, authAction: 'none' });
   }
-  if (
-    args.purchaseThreadActive &&
-    args.phoneScoped &&
-    supportLaneRecordRoutes.includes(args.route)
-  ) {
+  if (args.phoneScoped && supportLaneRecordRoutes.includes(args.route)) {
     requests.push({
       kind: 'purchase',
       resource: 'purchase_discovery',
