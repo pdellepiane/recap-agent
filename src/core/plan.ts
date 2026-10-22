@@ -217,8 +217,12 @@ export const conversationHealthStateSchema = z.object({
    * capability the runtime cannot execute. The count is the deterministic
    * evidence that a request the runtime cannot serve is being asked again
    * and again; the capability-blocked repeat backstop escalates on it.
+   *
+   * The default keeps a plan stored before this field existed loadable: the
+   * stored plan is parsed strictly, so a missing key would fail the whole
+   * record.
    */
-  capability_blocked_streak: z.number().int().min(0),
+  capability_blocked_streak: z.number().int().min(0).default(0),
   help_offer_status: z.enum(humanHelpOfferStatusValues),
   help_offered_at: z.string().nullable(),
   last_assessed_at: z.string().nullable(),
