@@ -73,16 +73,24 @@ describe('decisions router policy', () => {
   );
 
   it.each([...routerRouteValues])(
-    'never pauses an unrelated turn after a takeover: the route answers (%s)',
+    'never pauses an unrelated turn after a takeover (%s)',
     (route) => {
       // The defect this design fixes: the previous turn parked a request with a
       // person, and a later question that is not about that request must still
-      // be served. `same_open_request: false` falls through to the route.
-      expect(decideRouterPolicy(policyInput({
+      // be served. `same_open_request: false` falls through to the route. The
+      // one route it cannot take is a second escalation: the conversation
+      // already has a person, so there is nothing left to escalate and the
+      // records answer the turn instead. A live probe answered an event-date
+      // question with a claimed new review and no date before this rule held.
+      const outcome = decideRouterPolicy(policyInput({
         route,
         sameOpenRequest: false,
         current: openRequest('with_person'),
-      }))).toEqual(routeOutcome[route]);
+      }));
+      expect(outcome).toEqual(
+        route === 'escalate_human' ? { kind: 'answer' } : routeOutcome[route],
+      );
+      expect(outcome).not.toEqual({ kind: 'pause' });
     },
   );
 
@@ -133,6 +141,21 @@ describe('decisions router policy', () => {
       route: 'escalate_human',
       sameOpenRequest: true,
       current: openRequest('answered', { turns: 1 }),
+    }))).toEqual({ kind: 'escalate', reason: 'explicit_person_request' });
+  });
+
+  it('answers a different request instead of escalating a thread that is with a person', () => {
+    expect(decideRouterPolicy(policyInput({
+      route: 'escalate_human',
+      sameOpenRequest: false,
+      current: openRequest('with_person'),
+    }))).toEqual({ kind: 'answer' });
+    // The retry path is untouched: a request the record left unresolved still
+    // escalates, because no person ever took it.
+    expect(decideRouterPolicy(policyInput({
+      route: 'escalate_human',
+      sameOpenRequest: false,
+      current: openRequest('unresolved'),
     }))).toEqual({ kind: 'escalate', reason: 'explicit_person_request' });
   });
 

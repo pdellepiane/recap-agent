@@ -62,7 +62,9 @@ export type RouterPolicyInput = {
  *    escalate. This is the loop, read from the record instead of inferred
  *    from a probability.
  * 3. The router says the guest asked for a person: escalate, and the attempt
- *    is retried when the record shows the previous one did not land.
+ *    is retried when the record shows the previous one did not land. A turn
+ *    about something else on a thread that is already with a person is not an
+ *    escalation: there is nothing left to escalate, so the records answer it.
  * 4. The router offers help: honor the offer only while none is open.
  * 5. Otherwise the route decides.
  */
@@ -77,7 +79,14 @@ export function decideRouterPolicy(input: RouterPolicyInput): RouterPolicyOutcom
   }
   switch (input.route) {
     case 'escalate_human':
-      return { kind: 'escalate', reason: 'explicit_person_request' };
+      // The record rule above already paused the turn that is about the parked
+      // request, so reaching this branch with a parked record means the turn is
+      // about something else. That case cannot be escalated: the conversation
+      // already has a person, and repeating the handoff would only let the
+      // reply claim a review instead of answering what was asked.
+      return current?.state === 'with_person'
+        ? { kind: 'answer' }
+        : { kind: 'escalate', reason: 'explicit_person_request' };
     case 'offer_human':
       return input.helpOfferPending ? { kind: 'answer' } : { kind: 'offer_human' };
     case 'answer_with_records':
