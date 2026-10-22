@@ -30,6 +30,7 @@ are the honest record of what the customer read at that time.
 | `2026-10-21-obj-d-silvia-transfer-rerun3.md` | OBJ-D | `8dab1ac6` | FAIL |
 | `2026-10-21-obj-m-wrong-recipient-transfer-rerun3.md` | OBJ-M | `8dab1ac6` | PASS WITH FINDINGS |
 | `2026-10-21-obj-f-persistent-guest.md` | OBJ-F | `8dab1ac6` | FAIL |
+| `2026-10-21-obj-f-persistent-guest-rerun.md` | OBJ-F | `ae0514d6` | PASS WITH FINDINGS |
 | `2026-10-21-obj-o-repeatability-obj-c-runs.md` | OBJ-O (OBJ-C half) | `8dab1ac6` | PASS WITH FINDINGS |
 | `2026-10-21-obj-j-happy-path.md` | OBJ-J | `8dab1ac6` | PASS |
 | `2026-10-21-obj-k-notification-question.md` | OBJ-K | `8dab1ac6` | FAIL |
@@ -40,7 +41,16 @@ are the honest record of what the customer read at that time.
 The artifacts, in order: `df72d58f` (the reply contracts), `53a1ff31` (the
 first next-step rule), `8dab1ac6` (the customer-anchored next step, the
 truthful handoff outcomes), `805d56b1` (the dead-key fix, the no-derivation
-rule, the escalation frame order, the not-retried handoff values).
+rule, the escalation frame order, the not-retried handoff values), `ae0514d6`
+(the offer-as-question rule and the capability-blocked backstop) and
+`ec20056c` (the legacy-plan load fix).
+
+Two ledgers name an artifact that is no longer the deployed one. The OBJ-F
+re-run names `ae0514d6`, the artifact deployed when that lane started;
+`ec20056c` differs from it only by an inner schema default that lets a plan
+stored before the new field load, which cannot change a fresh conversation.
+The deployed artifact was re-validated anyway: four targeted live cases
+passed and a two-turn check of the loop shape produced the same replies.
 
 A FAIL is a defect report, not a score: it names the phrase, the harm and
 the turn, and it says whether the disposition is open or fixed.
