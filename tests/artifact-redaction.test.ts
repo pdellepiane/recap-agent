@@ -504,6 +504,26 @@ describe('S3 public plan projection: image refs and last-response text', () => {
     expect(aroundPreserved).not.toContain('file-abc123XYZ');
     expect(aroundPreserved).not.toContain('ana@example.com');
   });
+
+  it('preserves public provider ficha URLs while scrubbing lookalikes and secrets', () => {
+    const ficha = redactPublicResponseText(
+      'Ficha: https://sinenvolturas.com/proveedores/4foodies. ' +
+      'Otra: https://sinenvolturas.com/proveedores/lucitana, fin.',
+    );
+    expect(ficha).toContain('Ficha: https://sinenvolturas.com/proveedores/4foodies.');
+    expect(ficha).toContain('https://sinenvolturas.com/proveedores/lucitana,');
+    expect(ficha).not.toContain('[redacted-url]');
+
+    const hostile = redactPublicResponseText(
+      'No: https://sinenvolturas.com/proveedores/4foodies?token=abc ' +
+      'ni https://sinenvolturas.com.evil.test/proveedores/4foodies ' +
+      'ni https://sinenvolturas.com/otra-ruta.',
+    );
+    expect(hostile).toContain('https://sinenvolturas.com/proveedores/4foodies?token=[redacted-token]');
+    expect(hostile).not.toContain('?token=abc');
+    expect(hostile.match(/\[redacted-url\]/gu)).toHaveLength(2);
+    expect(hostile).not.toContain('evil.test');
+  });
 });
 
 describe('eval artifact timing redaction (O2/O3)', () => {

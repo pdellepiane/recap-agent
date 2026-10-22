@@ -650,7 +650,14 @@ export type ProjectSafePlanOptions = {
  * live oracles can verify citation targets. The free-text pass still runs
  * first, so tokens, codes, emails and phone patterns are scrubbed even
  * inside a preserved URL; only the documented public prefix survives.
+ *
+ * Public provider ficha URLs (`https://sinenvolturas.com/proveedores/`) are
+ * always preserved: the renderer interpolates them into user-facing replies,
+ * so scrubbing them in diagnostics only hides links the customer already
+ * received on-channel.
  */
+export const publicProviderDirectoryUrlPrefix = 'https://sinenvolturas.com/proveedores/';
+
 export function redactPublicResponseText(
   value: string,
   options?: { preserveUrlPrefixes?: readonly string[] },
@@ -663,7 +670,7 @@ export function redactPublicResponseText(
     .replace(/https?:\/\/[^\s"'<>]+/giu, (match) => {
       const suffix = match.match(/[.,;:!?)]+$/u)?.[0] ?? '';
       const url = match.slice(0, match.length - suffix.length);
-      return url === publicCalculatorUrl || prefixes.some((prefix) => url.startsWith(prefix))
+      return url === publicCalculatorUrl || url.startsWith(publicProviderDirectoryUrlPrefix) || prefixes.some((prefix) => url.startsWith(prefix))
         ? match
         : `[redacted-url]${suffix}`;
     })
