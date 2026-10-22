@@ -47,22 +47,21 @@ describe('plan lifecycle', () => {
     expect(parsed.user_auth.awaiting_phone_confirmation).toBe(false);
   });
 
-  it('loads a plan stored before the capability-blocked streak existed', () => {
-    // The stored plan is parsed strictly, so a conversation health record
-    // written before the streak field landed must still load instead of
-    // failing the whole record and losing the thread.
+  it('loads a plan stored before the open-request record existed', () => {
+    // The stored plan is parsed strictly, so a record written before the
+    // open-request list landed must still load instead of failing the whole
+    // record and losing the thread.
     const base = createEmptyPlan({
       planId: 'p-legacy',
       channel: 'whatsapp',
       externalUserId: 'u-legacy',
     });
-    const legacyHealth: Record<string, unknown> = { ...base.conversation_health };
-    delete legacyHealth.capability_blocked_streak;
-    const legacy = { ...base, conversation_health: legacyHealth };
+    const legacy: Record<string, unknown> = { ...base };
+    delete legacy['open_requests'];
 
     const parsed = planSchema.parse(legacy);
 
-    expect(parsed.conversation_health.capability_blocked_streak).toBe(0);
+    expect(parsed.open_requests).toEqual([]);
   });
 
   it('records finish contact fields and finished state', () => {

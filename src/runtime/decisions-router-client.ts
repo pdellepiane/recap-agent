@@ -23,9 +23,13 @@ import type {
 } from './contracts';
 import {
   isRouterRoute,
+  routerRequestSettledValues,
+  routerSameOpenRequestValues,
   type RouterQuestion,
   type RouterQuestionName,
+  type RouterRequestSettledAnswer,
   type RouterRoute,
+  type RouterSameOpenRequestAnswer,
 } from './decisions-router-questions';
 import { executeOpenAiStage, type OpenAiStageLog } from './openai-stage-execution';
 import { classifyOpenAiRetry } from './openai-retry';
@@ -50,26 +54,19 @@ export type RouterRouteProbability = {
   readonly probability: number;
 };
 
-export type RouterLevelProbability = {
-  readonly label: string;
-  readonly probability: number;
-};
-
 export type RouterParsedAnswers = {
-  /** Probability of `needs_human_now`, 0..1. */
-  readonly needsHumanNow: number;
-  /** Probability of `capability_blocked`, 0..1. */
-  readonly capabilityBlocked: number;
   /** Route chosen by the router. */
   readonly route: RouterRoute;
   /** Per-route probabilities. */
   readonly routeProbabilities: readonly RouterRouteProbability[];
-  /** Rubric level of `loop_risk`, 0..4 (the level with the highest probability). */
-  readonly loopRisk: number;
-  /** Raw weighted-average score returned by the API. */
-  readonly loopRiskScore: number;
-  /** Per-level probabilities. */
-  readonly loopRiskProbabilities: readonly RouterLevelProbability[];
+  /** Whether this turn is about the request the record already holds. */
+  readonly sameOpenRequest: boolean;
+  /** Probability the API assigned to the chosen value. */
+  readonly sameOpenRequestProbability: number;
+  /** Whether the turn leaves the request settled. */
+  readonly requestSettled: boolean;
+  /** Probability the API assigned to the chosen value. */
+  readonly requestSettledProbability: number;
   /** Questions the model refused to answer. */
   readonly refusals: readonly RouterQuestionName[];
 };
@@ -109,12 +106,6 @@ type FetchImplementation = (
   init?: RequestInit,
 ) => Promise<Response>;
 
-const predicateAnswerSchema = z.object({
-  type: z.literal('predicate'),
-  name: z.string(),
-  probability: z.number().min(0).max(1),
-});
-
 const choiceAnswerSchema = z.object({
   type: z.literal('choice'),
   name: z.string(),
@@ -126,30 +117,13 @@ const choiceAnswerSchema = z.object({
   confidence: z.number().optional(),
 });
 
-const scoreAnswerSchema = z.object({
-  type: z.literal('score'),
-  name: z.string(),
-  score: z.number(),
-  probabilities: z.array(z.object({
-    // The Decisions API returns the LEVEL INDEX as the level value (a number),
-    // not the label: {"value": 0, "label": "0", "probability": 0.06}. The
-    // label is the rubric label, and the rubric level is read from it.
-    value: z.union([z.string(), z.number()]),
-    label: z.string(),
-    probability: z.number().min(0).max(1),
-  })),
-  confidence: z.number().optional(),
-});
-
 const refusalAnswerSchema = z.object({
   type: z.literal('refusal'),
   name: z.string(),
 });
 
 const answerSchema = z.discriminatedUnion('type', [
-  predicateAnswerSchema,
   choiceAnswerSchema,
-  scoreAnswerSchema,
   refusalAnswerSchema,
 ]);
 
@@ -335,9 +309,10 @@ export function toRouterDecisionTrace(answers: RouterParsedAnswers): RouterDecis
       value: entry.value,
       probability: entry.probability,
     })),
-    needs_human_now: answers.needsHumanNow,
-    capability_blocked: answers.capabilityBlocked,
-    loop_risk: answers.loopRisk,
+    same_open_request: answers.sameOpenRequest,
+    same_open_request_probability: answers.sameOpenRequestProbability,
+    request_settled: answers.requestSettled,
+    request_settled_probability: answers.requestSettledProbability,
   };
 }
 
@@ -353,53 +328,41 @@ function parseDecisionsResponse(payloadText: string): z.infer<typeof decisionsRe
 }
 
 /**
- * Map the four answers onto the typed router answers.
+ * Map the three answers onto the typed router answers.
  *
  * A refusal is never an escalation trigger: the refused question contributes
- * its neutral default (probability 0, route `answer_with_records`, rubric
- * level 0) and is listed in `refusals` so the turn flow can report it.
+ * its neutral value (route `answer_with_records`, `same_open_request` false so
+ * the record opens a new request, `request_settled` false so the reply is not
+ * told the turn settled anything) and is listed in `refusals` so the turn flow
+ * can report it and keep the record still.
  */
 function parseRouterAnswers(
   answers: readonly z.infer<typeof answerSchema>[],
 ): RouterParsedAnswers | null {
   const refusals: RouterQuestionName[] = [];
-  let needsHumanNow = 0;
-  let capabilityBlocked = 0;
   let route: RouterRoute = 'answer_with_records';
   let routeProbabilities: readonly RouterRouteProbability[] = [];
-  let loopRisk = 0;
-  let loopRiskScore = 0;
-  let loopRiskProbabilities: readonly RouterLevelProbability[] = [];
+  let sameOpenRequest: RouterSameOpenRequestAnswer = 'new';
+  let sameOpenRequestProbability = 0;
+  let requestSettled: RouterRequestSettledAnswer = 'open';
+  let requestSettledProbability = 0;
 
-  let sawNeedsHumanNow = false;
-  let sawCapabilityBlocked = false;
   let sawRoute = false;
-  let sawLoopRisk = false;
+  let sawSameOpenRequest = false;
+  let sawRequestSettled = false;
 
   for (const answer of answers) {
     if (answer.type === 'refusal') {
       refusals.push(answer.name as RouterQuestionName);
-      // A refused question counts as answered with its neutral default: it
-      // is never an escalation trigger.
-      if (answer.name === 'needs_human_now') sawNeedsHumanNow = true;
-      if (answer.name === 'capability_blocked') sawCapabilityBlocked = true;
+      // A refused question counts as answered with its neutral value: it is
+      // never an escalation trigger.
       if (answer.name === 'route') sawRoute = true;
-      if (answer.name === 'loop_risk') sawLoopRisk = true;
+      if (answer.name === 'same_open_request') sawSameOpenRequest = true;
+      if (answer.name === 'request_settled') sawRequestSettled = true;
       continue;
     }
     switch (answer.name) {
-      case 'needs_human_now':
-        if (answer.type !== 'predicate') return null;
-        needsHumanNow = answer.probability;
-        sawNeedsHumanNow = true;
-        break;
-      case 'capability_blocked':
-        if (answer.type !== 'predicate') return null;
-        capabilityBlocked = answer.probability;
-        sawCapabilityBlocked = true;
-        break;
       case 'route':
-        if (answer.type !== 'choice') return null;
         if (!isRouterRoute(answer.choice)) return null;
         route = answer.choice;
         routeProbabilities = answer.probabilities
@@ -408,82 +371,65 @@ function parseRouterAnswers(
           .map((entry) => ({ value: entry.value, probability: entry.probability }));
         sawRoute = true;
         break;
-      case 'loop_risk':
-        if (answer.type !== 'score') return null;
-        loopRiskScore = answer.score;
-        loopRiskProbabilities = answer.probabilities.map((entry) => ({
-          label: entry.label,
-          probability: entry.probability,
-        }));
-        loopRisk = modalLevel(answer.probabilities);
-        sawLoopRisk = true;
+      case 'same_open_request': {
+        const parsed = parseChoiceValue(answer, routerSameOpenRequestValues);
+        if (parsed === null) return null;
+        sameOpenRequest = parsed.value;
+        sameOpenRequestProbability = parsed.probability;
+        sawSameOpenRequest = true;
         break;
+      }
+      case 'request_settled': {
+        const parsed = parseChoiceValue(answer, routerRequestSettledValues);
+        if (parsed === null) return null;
+        requestSettled = parsed.value;
+        requestSettledProbability = parsed.probability;
+        sawRequestSettled = true;
+        break;
+      }
       default:
         break;
     }
   }
 
-  if (!sawNeedsHumanNow || !sawCapabilityBlocked || !sawRoute || !sawLoopRisk) {
+  if (!sawRoute || !sawSameOpenRequest || !sawRequestSettled) {
     return null;
   }
 
   return {
-    needsHumanNow,
-    capabilityBlocked,
     route,
     routeProbabilities,
-    loopRisk,
-    loopRiskScore,
-    loopRiskProbabilities,
+    sameOpenRequest: sameOpenRequest === 'same',
+    sameOpenRequestProbability,
+    requestSettled: requestSettled === 'settled',
+    requestSettledProbability,
     refusals,
   };
 }
 
 /**
- * The rubric level the router chose: the level with the highest probability.
- * Ties resolve to the higher level, so an ambiguous answer never understates
- * the loop risk. The API's weighted-average score is kept as evidence.
+ * Read one two-value choice answer. The chosen value is the API's `choice`;
+ * its probability comes from the same answer so the trace can report how
+ * confident the API was without inventing a threshold.
  */
-function modalLevel(
-  probabilities: readonly { value: string | number; label: string; probability: number }[],
-): number {
-  let best: { value: string | number; label: string; probability: number } | null = null;
-  for (const entry of probabilities) {
-    if (entry.probability > (best?.probability ?? -1)) {
-      best = entry;
-    }
+function parseChoiceValue<T extends string>(
+  answer: { readonly choice: string; readonly probabilities: readonly { value: string; probability: number }[] },
+  allowed: readonly T[],
+): { value: T; probability: number } | null {
+  const value = answer.choice.trim();
+  if (!(allowed as readonly string[]).includes(value)) {
+    return null;
   }
-  if (best === null) {
-    return 0;
-  }
-  // The rubric level is the label the router was given ("0".."4"). The
-  // API's own level index (the numeric `value`) is the fallback.
-  const fromLabel = Number.parseInt(best.label, 10);
-  if (Number.isFinite(fromLabel) && fromLabel >= 0 && fromLabel <= 4) {
-    return fromLabel;
-  }
-  const fromValue = typeof best.value === 'number'
-    ? best.value
-    : Number.parseInt(best.value, 10);
-  if (Number.isFinite(fromValue) && fromValue >= 0 && fromValue <= 4) {
-    return fromValue;
-  }
-  return 0;
+  const match = answer.probabilities.find((entry) => entry.value === value);
+  return { value: value as T, probability: match?.probability ?? 0 };
 }
 
 function instructionBytesFor(questions: readonly RouterQuestion[]): number {
   let total = 0;
   for (const question of questions) {
     total += Buffer.byteLength(question.instructions, 'utf8');
-    if (question.type === 'choice') {
-      for (const choice of question.choices) {
-        total += Buffer.byteLength(choice.description, 'utf8');
-      }
-    }
-    if (question.type === 'score') {
-      for (const level of question.levels) {
-        total += Buffer.byteLength(level.description, 'utf8');
-      }
+    for (const choice of question.choices) {
+      total += Buffer.byteLength(choice.description, 'utf8');
     }
   }
   return total;

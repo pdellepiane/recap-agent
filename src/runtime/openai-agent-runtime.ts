@@ -502,8 +502,15 @@ type ReplyTurnEvidence = {
     focus_need_category: PersistedPlan['active_need_category'];
     missing_fields: string[];
     search_ready: boolean;
-    limitationAlreadyStated?: boolean;
-    priorLimitationTurns?: number;
+    /**
+     * The guest's request is still open on this turn: one record per open
+     * request (unresolved, waiting on input, or with a person) replaces the
+     * money classification and the router streak. `request_open_turns` is the
+     * record's age in turns. Present only on the two support contract nodes.
+     * Facts only.
+     */
+    request_open?: boolean;
+    request_open_turns?: number;
     /**
      * The turn's money evidence is not settled: the money stayed unresolved,
      * or a purchase in the authorized profile carries a payment status that
@@ -513,14 +520,6 @@ type ReplyTurnEvidence = {
      * judgement about whether it "resolved" the question. Facts only.
      */
     requiresNextStep?: boolean;
-    /**
-     * The request depends on a capability the runtime cannot execute. The
-     * router's own classification, carried as a fact so the reply contract
-     * can require a next step that transfers the task instead of a promise
-     * the runtime cannot keep. Present only on the two support contract
-     * nodes. Facts only.
-     */
-    capabilityBlocked?: boolean;
     /**
      * W1-04 L1 evidence-only facts. Verbatim user-reported support names from
      * the extraction raw strings (never the normalized event_type), the open
@@ -2942,17 +2941,13 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
         ...(args.request.currentNode === 'resolver_consultas_informativas' ||
             args.request.currentNode === 'solicitar_agente_humano'
           ? {
-            limitationAlreadyStated: args.request.plan.support_outcome.limitation_already_stated,
-            priorLimitationTurns: args.request.plan.support_outcome.prior_limitation_turns,
+            request_open: args.request.requestOpen ?? false,
+            request_open_turns: args.request.requestOpenTurns ?? 0,
             requiresNextStep: deriveRequiresNextStep({
-              unresolvedMoney: args.request.plan.support_outcome.unresolved_money,
-              capabilityBlocked:
-                args.request.plan.conversation_health.capability_blocked_streak >= 1,
+              requestState: args.request.requestOpen === true ? 'unresolved' : 'answered',
               paymentStatuses: (args.request.customerContext?.purchases ?? [])
                 .map((purchase) => purchase.paymentStatus),
             }),
-            capabilityBlocked:
-              args.request.plan.conversation_health.capability_blocked_streak >= 1,
           }
           : {}),
         ...supportContinuity,

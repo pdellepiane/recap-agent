@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createEmptyPlan } from '../src/core/plan';
 import type { CartInformation, PurchaseInformation } from '../src/core/information';
+import type { OpenRequest } from '../src/core/open-request';
 import { buildCapabilityDigest } from '../src/runtime/capability-digest';
 import { buildRuntimeCapabilityManifest } from '../src/runtime/capability-manifest';
 import {
@@ -20,6 +21,18 @@ import {
 
 /** Explicit byte budget for the rendered router input. */
 const ROUTER_INPUT_BYTE_BUDGET = 16_000;
+
+/** The eight placeholders the template is allowed to reference. */
+const TEMPLATE_PLACEHOLDERS = [
+  'botClaimedDerivationPending',
+  'capabilities',
+  'carts',
+  'currentMessage',
+  'hasImage',
+  'openRequest',
+  'purchases',
+  'recentMessages',
+];
 
 const purchase: PurchaseInformation = {
   orderId: 'ORD_6ab970ab70802',
@@ -57,6 +70,14 @@ const cart: CartInformation = {
   items: [],
 };
 
+const withPersonRequest: OpenRequest = {
+  key: 'wamid.request-1',
+  opening_text: 'Quiero la devolución de mi compra ORD_6ad637da04583',
+  state: 'with_person',
+  since: '2026-10-20T00:00:00.000Z',
+  turns: 3,
+};
+
 function snapshotWith(
   purchases: readonly PurchaseInformation[],
   carts: readonly CartInformation[],
@@ -78,7 +99,10 @@ function snapshotWith(
   };
 }
 
-function routerArgs(overrides: Partial<RouterInputArgs> = {}): RouterInputArgs {
+function routerArgs(
+  overrides: Partial<RouterInputArgs> = {},
+  openRequests: readonly OpenRequest[] = [],
+): RouterInputArgs {
   const plan = createEmptyPlan({
     planId: 'plan-1',
     channel: 'terminal_whatsapp',
@@ -96,18 +120,9 @@ function routerArgs(overrides: Partial<RouterInputArgs> = {}): RouterInputArgs {
       ...plan,
       conversation_health: {
         ...plan.conversation_health,
-        consecutive_non_progress_turns: 3,
-        capability_blocked_streak: 0,
         help_offer_status: 'offered',
       },
-      support_outcome: {
-        signature: 'abc123def4567890',
-        repeat_count: 2,
-        unresolved_money: true,
-        limitation_already_stated: false,
-        prior_limitation_turns: 0,
-        updated_at: '2026-10-20T00:00:00.000Z',
-      },
+      open_requests: [...openRequests],
     },
     ...overrides,
   };
@@ -117,6 +132,20 @@ async function loadTemplate(): Promise<string> {
   const loader = new PromptLoader(path.resolve(process.cwd(), 'prompts'));
   const template = await loadRouterInputTemplate(loader);
   return template.template;
+}
+
+function placeholderNames(template: string): string[] {
+  return [...template.matchAll(/\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}/gu)]
+    .map((match) => match[1] ?? '');
+}
+
+/** Read the rendered `solicitud_actual` line back as JSON. */
+function solicitudActual(rendered: string): unknown {
+  const line = rendered
+    .split('\n')
+    .find((entry) => entry.startsWith('solicitud_actual: ') === true);
+  expect(line).toBeDefined();
+  return JSON.parse((line ?? '').slice('solicitud_actual: '.length));
 }
 
 describe('decisions router input builder', () => {
@@ -133,15 +162,67 @@ describe('decisions router input builder', () => {
       'compras',
       'carritos',
       'capacidades',
-      'resultado_turno',
       'derivacion_pendiente',
-      'turnos_sin_avance',
+      'solicitud_actual',
     ]);
   });
 
-  it('projects the purchase, cart, capability and outcome facts', async () => {
+  it('renders the open-request record as solicitud_actual', async () => {
+    const template = await loadTemplate();
+    const rendered = buildRouterInput(
+      routerArgs({}, [withPersonRequest]),
+      template,
+    );
+
+    // The record is one object, not a list: the router reads one request.
+    expect(solicitudActual(rendered)).toEqual({
+      texto_inicial: 'Quiero la devolución de mi compra ORD_6ad637da04583',
+      estado: 'with_person',
+      turnos: 3,
+    });
+  });
+
+  it('renders a null record when the thread has none', async () => {
     const template = await loadTemplate();
     const rendered = buildRouterInput(routerArgs(), template);
+
+    expect(rendered).toContain('solicitud_actual: null');
+    expect(solicitudActual(rendered)).toBeNull();
+  });
+
+  it('never renders the removed decision keys', async () => {
+    const template = await loadTemplate();
+    const rendered = buildRouterInput(
+      routerArgs({}, [withPersonRequest]),
+      template,
+    );
+
+    expect(rendered).not.toContain('signature');
+    expect(rendered).not.toContain('repeatCount');
+    expect(rendered).not.toContain('turnsSinceProgress');
+    expect(rendered).not.toContain('resultado_turno');
+    expect(rendered).not.toContain('turnos_sin_avance');
+  });
+
+  it('uses exactly the eight fixed template placeholders', async () => {
+    const template = await loadTemplate();
+
+    expect([...new Set(placeholderNames(template))].sort()).toEqual(TEMPLATE_PLACEHOLDERS);
+  });
+
+  it('throws when the template references an unknown placeholder', () => {
+    expect(() => buildRouterInput(
+      routerArgs(),
+      'mensaje_actual: {{currentMessage}}\nturnos_sin_avance: {{turnsSinceProgress}}',
+    )).toThrow(/unknown field: turnsSinceProgress/u);
+  });
+
+  it('projects the purchase, cart, capability and record facts', async () => {
+    const template = await loadTemplate();
+    const rendered = buildRouterInput(
+      routerArgs({}, [withPersonRequest]),
+      template,
+    );
 
     expect(rendered).toContain('Por favor devuelvan mi dinero');
     expect(rendered).toContain('imagen_actual: false');
@@ -158,10 +239,23 @@ describe('decisions router input builder', () => {
     expect(rendered).toContain('"subtotal":464.86');
     expect(rendered).toContain('"id":"refund_or_withdrawal.execute"');
     expect(rendered).toContain('"class":"unsupported"');
-    expect(rendered).toContain('"signature":"abc123def4567890"');
-    expect(rendered).toContain('"repeatCount":2');
     expect(rendered).toContain('derivacion_pendiente: true');
-    expect(rendered).toContain('turnos_sin_avance: 3');
+  });
+
+  it('keeps every authorized purchase and cart in the digest', async () => {
+    const template = await loadTemplate();
+    const rendered = buildRouterInput(routerArgs({
+      snapshot: snapshotWith(
+        [purchase, declinedPurchase, purchase],
+        [cart, cart],
+      ),
+    }), template);
+
+    // Two records share the first order id, so a digest that dropped or
+    // deduplicated records would render fewer occurrences.
+    expect(rendered.match(/"orderId":"ORD_6ab970ab70802"/gu)).toHaveLength(2);
+    expect(rendered.match(/"orderId":"ORD_6ad637da04583"/gu)).toHaveLength(1);
+    expect(rendered.match(/"cartId":"cart:470893"/gu)).toHaveLength(2);
   });
 
   it('marks the pending and declined purchase flags', async () => {
@@ -194,7 +288,7 @@ describe('decisions router input builder', () => {
 
   it('is deterministic and stays inside the byte budget', async () => {
     const template = await loadTemplate();
-    const args = routerArgs();
+    const args = routerArgs({}, [withPersonRequest]);
     const first = buildRouterInput(args, template);
     const second = buildRouterInput(args, template);
 
@@ -208,17 +302,20 @@ describe('decisions router input builder', () => {
 
   it('stays inside the byte budget on a heavy turn', async () => {
     const template = await loadTemplate();
-    const heavy = routerArgs({
-      currentMessage: { text: 'a'.repeat(2_000), hasImage: true },
-      recentMessages: Array.from({ length: 5 }, (_, index) => ({
-        direction: index % 2 === 0 ? 'inbound' as const : 'outbound' as const,
-        preview: 'b'.repeat(240),
-      })),
-      snapshot: snapshotWith(
-        [purchase, declinedPurchase, purchase, declinedPurchase],
-        [cart, cart, cart, cart],
-      ),
-    });
+    const heavy = routerArgs(
+      {
+        currentMessage: { text: 'a'.repeat(2_000), hasImage: true },
+        recentMessages: Array.from({ length: 5 }, (_, index) => ({
+          direction: index % 2 === 0 ? 'inbound' as const : 'outbound' as const,
+          preview: 'b'.repeat(240),
+        })),
+        snapshot: snapshotWith(
+          [purchase, declinedPurchase, purchase, declinedPurchase],
+          [cart, cart, cart, cart],
+        ),
+      },
+      [withPersonRequest],
+    );
 
     const rendered = buildRouterInput(heavy, template);
     const bytes = Buffer.byteLength(rendered, 'utf8');
@@ -226,20 +323,23 @@ describe('decisions router input builder', () => {
     console.info(`rendered heavy router input bytes: ${bytes}`);
   });
 
-  it('loads the four fixed questions from the tracked prompt files', async () => {
+  it('loads the three fixed choice questions from the tracked prompt files', async () => {
     const loader = new PromptLoader(path.resolve(process.cwd(), 'prompts'));
     const loaded = await loadRouterQuestions(loader);
 
     expect(loaded.questions.map((question) => question.name)).toEqual([
-      'needs_human_now',
-      'capability_blocked',
       'route',
-      'loop_risk',
+      'same_open_request',
+      'request_settled',
     ]);
-    const route = loaded.questions.find((question) => question.name === 'route');
-    expect(route?.type).toBe('choice');
-    if (route?.type !== 'choice') return;
-    expect(route.choices.map((choice) => choice.value)).toEqual([
+    expect(loaded.questions.map((question) => question.type)).toEqual([
+      'choice',
+      'choice',
+      'choice',
+    ]);
+
+    const route = loaded.questions[0];
+    expect(route?.choices.map((choice) => choice.value)).toEqual([
       'answer_with_records',
       'ask_clarification',
       'offer_human',
@@ -248,21 +348,15 @@ describe('decisions router input builder', () => {
       'planning_flow',
       'suppress_ack',
     ]);
-    expect(new Set(route.choices.map((choice) => choice.description)).size).toBe(7);
+    expect(new Set(route?.choices.map((choice) => choice.description)).size).toBe(7);
 
-    const loopRisk = loaded.questions.find((question) => question.name === 'loop_risk');
-    expect(loopRisk?.type).toBe('score');
-    if (loopRisk?.type !== 'score') return;
-    expect(loopRisk.levels.map((level) => level.label)).toEqual(['0', '1', '2', '3', '4']);
-    expect(new Set(loopRisk.levels.map((level) => level.description)).size).toBe(5);
-
-    const blocked = loaded.questions.find((question) => question.name === 'capability_blocked');
-    expect(blocked?.instructions).toContain('devoluciones o retiros');
-    expect(blocked?.instructions).toContain('modificar una compra');
-    expect(blocked?.instructions).toContain('documentos de confirmación');
-    expect(blocked?.instructions).toContain('Yape o Plin');
-    expect(blocked?.instructions).toContain('bandejas de correo');
-    expect(blocked?.instructions).toContain('referencePresent');
-    expect(blocked?.instructions).toContain('notificación al anfitrión');
+    expect(loaded.questions[1]?.choices.map((choice) => choice.value)).toEqual([
+      'same',
+      'new',
+    ]);
+    expect(loaded.questions[2]?.choices.map((choice) => choice.value)).toEqual([
+      'settled',
+      'open',
+    ]);
   });
 });

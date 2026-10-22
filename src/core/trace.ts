@@ -44,9 +44,12 @@ export type RouterDecisionTrace = {
     readonly value: string;
     readonly probability: number;
   }[];
-  readonly needs_human_now: number;
-  readonly capability_blocked: number;
-  readonly loop_risk: number;
+  /** Whether this turn is about the request the record already holds. */
+  readonly same_open_request: boolean;
+  readonly same_open_request_probability: number;
+  /** Whether the turn leaves the request settled. */
+  readonly request_settled: boolean;
+  readonly request_settled_probability: number;
 };
 
 /**
@@ -324,6 +327,12 @@ export type TurnTrace = {
    * Never the message text, never an identifier.
    */
   router_decision?: RouterDecisionTrace;
+  /**
+   * The state the open-request record holds after this turn. The record is
+   * the only source of escalation, so it travels in the trace: a turn that
+   * escalated must be explainable by one field.
+   */
+  open_request_state?: 'answered' | 'needs_input' | 'with_person' | 'unresolved' | null;
   /**
    * Set when the router ran and could not answer, so the turn fell back to
    * the classifier path. A stage that ran and failed must not look like a

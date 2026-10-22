@@ -1,11 +1,14 @@
 /**
- * WP2 — Decisions API router: the four fixed questions.
+ * WP2 — Decisions API router: the three fixed questions.
  *
- * Decision 1 fixes the question set exactly: two predicates, one choice with
- * seven routes and one score with five ordered levels. This module owns the
- * SHAPE (names, types, route values, level labels and order); the instruction
- * text and the rubric live in git-tracked prompt files under `prompts/router/`
- * and are supplied by the PromptLoader.
+ * The question set is three choices and nothing else. The router no longer
+ * scores how stuck the conversation looks: it says which route the turn needs,
+ * whether the turn is about the request the runtime already has open, and
+ * whether that turn leaves the request settled.
+ *
+ * This module owns the SHAPE (names, values, order); the instruction text and
+ * the option descriptions live in git-tracked prompt files under
+ * `prompts/router/` and are supplied by the PromptLoader.
  *
  * Nothing here is a conversational reply: the router decides, the reply model
  * writes. The instructions never name a reply, a promise or a wording.
@@ -29,48 +32,31 @@ export function isRouterRoute(value: string): value is RouterRoute {
   return (routerRouteValues as readonly string[]).includes(value);
 }
 
-/** The five rubric levels fixed by Decision 1. Labels start at 0. */
-export const routerLoopRiskLabels = ['0', '1', '2', '3', '4'] as const;
+/** Values of `same_open_request`, in contract order. */
+export const routerSameOpenRequestValues = ['same', 'new'] as const;
 
-export type RouterLoopRiskLabel = (typeof routerLoopRiskLabels)[number];
+export type RouterSameOpenRequestAnswer =
+  (typeof routerSameOpenRequestValues)[number];
 
-export type RouterPredicateQuestionName = 'needs_human_now' | 'capability_blocked';
+/** Values of `request_settled`, in contract order. */
+export const routerRequestSettledValues = ['settled', 'open'] as const;
 
-export type RouterPredicateQuestion = {
-  readonly type: 'predicate';
-  readonly name: RouterPredicateQuestionName;
-  readonly instructions: string;
-};
+export type RouterRequestSettledAnswer =
+  (typeof routerRequestSettledValues)[number];
 
 export type RouterChoiceQuestion = {
   readonly type: 'choice';
-  readonly name: 'route';
+  readonly name: 'route' | 'same_open_request' | 'request_settled';
   readonly instructions: string;
   readonly choices: readonly {
-    readonly value: RouterRoute;
+    readonly value: string;
     readonly description: string;
   }[];
 };
 
-export type RouterScoreQuestion = {
-  readonly type: 'score';
-  readonly name: 'loop_risk';
-  readonly instructions: string;
-  readonly levels: readonly {
-    readonly label: RouterLoopRiskLabel;
-    readonly description: string;
-  }[];
-};
+export type RouterQuestion = RouterChoiceQuestion;
 
-export type RouterQuestion =
-  | RouterPredicateQuestion
-  | RouterChoiceQuestion
-  | RouterScoreQuestion;
-
-export type RouterQuestionName =
-  | RouterPredicateQuestionName
-  | 'route'
-  | 'loop_risk';
+export type RouterQuestionName = RouterChoiceQuestion['name'];
 
 export type RouterQuestions = {
   readonly questions: readonly RouterQuestion[];
@@ -78,31 +64,28 @@ export type RouterQuestions = {
   readonly promptFilePaths: readonly string[];
 };
 
-/** Prompt files backing the four questions. Tracked under `prompts/router/`. */
+/** Prompt files backing the three questions. Tracked under `prompts/router/`. */
 export const routerQuestionPromptFiles = {
-  needsHumanNow: 'router/needs_human_now.txt',
-  capabilityBlocked: 'router/capability_blocked.txt',
   route: 'router/route.txt',
-  loopRisk: 'router/loop_risk.txt',
+  sameOpenRequest: 'router/same_open_request.txt',
+  requestSettled: 'router/request_settled.txt',
 } as const;
 
-const ROUTE_SECTION_MARKER = '--- choices ---';
-const LEVEL_SECTION_MARKER = '--- levels ---';
+const CHOICES_SECTION_MARKER = '--- choices ---';
 
 /**
- * Load the four questions with their prompt-backed instructions.
+ * Load the three questions with their prompt-backed instructions.
  *
  * The loader validates the prompt files against the fixed shape: seven route
- * choices in contract order, five rubric levels labelled 0..4, and distinct
- * descriptions. A prompt file that drifts from the contract fails closed
- * instead of silently changing the router.
+ * choices in contract order, two values for each of the two facts, and
+ * distinct descriptions. A prompt file that drifts from the contract fails
+ * closed instead of silently changing the router.
  */
 export async function loadRouterQuestions(loader: PromptLoader): Promise<RouterQuestions> {
   const paths = [
-    routerQuestionPromptFiles.needsHumanNow,
-    routerQuestionPromptFiles.capabilityBlocked,
     routerQuestionPromptFiles.route,
-    routerQuestionPromptFiles.loopRisk,
+    routerQuestionPromptFiles.sameOpenRequest,
+    routerQuestionPromptFiles.requestSettled,
   ];
   const loaded = await Promise.all(
     paths.map(async (relativePath) => ({
@@ -112,39 +95,49 @@ export async function loadRouterQuestions(loader: PromptLoader): Promise<RouterQ
   );
   const byPath = new Map(loaded.map((entry) => [entry.relativePath, entry.content]));
 
-  const needsHumanNow = requireSection(
-    byPath.get(routerQuestionPromptFiles.needsHumanNow) ?? '',
-    routerQuestionPromptFiles.needsHumanNow,
-  );
-  const capabilityBlocked = requireSection(
-    byPath.get(routerQuestionPromptFiles.capabilityBlocked) ?? '',
-    routerQuestionPromptFiles.capabilityBlocked,
-  );
   const routeFile = splitRouterPrompt(
     byPath.get(routerQuestionPromptFiles.route) ?? '',
-    ROUTE_SECTION_MARKER,
     routerQuestionPromptFiles.route,
   );
-  const loopRiskFile = splitRouterPrompt(
-    byPath.get(routerQuestionPromptFiles.loopRisk) ?? '',
-    LEVEL_SECTION_MARKER,
-    routerQuestionPromptFiles.loopRisk,
+  const sameOpenRequestFile = splitRouterPrompt(
+    byPath.get(routerQuestionPromptFiles.sameOpenRequest) ?? '',
+    routerQuestionPromptFiles.sameOpenRequest,
+  );
+  const requestSettledFile = splitRouterPrompt(
+    byPath.get(routerQuestionPromptFiles.requestSettled) ?? '',
+    routerQuestionPromptFiles.requestSettled,
   );
 
   const questions: readonly RouterQuestion[] = [
-    { type: 'predicate', name: 'needs_human_now', instructions: needsHumanNow },
-    { type: 'predicate', name: 'capability_blocked', instructions: capabilityBlocked },
     {
       type: 'choice',
       name: 'route',
       instructions: routeFile.instruction,
-      choices: parseRouteChoices(routeFile.entries),
+      choices: requireValues(
+        routeFile.entries,
+        routerRouteValues,
+        routerQuestionPromptFiles.route,
+      ),
     },
     {
-      type: 'score',
-      name: 'loop_risk',
-      instructions: loopRiskFile.instruction,
-      levels: parseLoopRiskLevels(loopRiskFile.entries),
+      type: 'choice',
+      name: 'same_open_request',
+      instructions: sameOpenRequestFile.instruction,
+      choices: requireValues(
+        sameOpenRequestFile.entries,
+        routerSameOpenRequestValues,
+        routerQuestionPromptFiles.sameOpenRequest,
+      ),
+    },
+    {
+      type: 'choice',
+      name: 'request_settled',
+      instructions: requestSettledFile.instruction,
+      choices: requireValues(
+        requestSettledFile.entries,
+        routerRequestSettledValues,
+        routerQuestionPromptFiles.requestSettled,
+      ),
     },
   ];
 
@@ -171,23 +164,14 @@ async function loadRouterPromptFile(
     : bundle.instructions.trim();
 }
 
-function requireSection(content: string, relativePath: string): string {
-  const instruction = content.trim();
-  if (instruction.length === 0) {
-    throw new Error(`Router prompt file is empty: ${relativePath}`);
-  }
-  return instruction;
-}
-
 function splitRouterPrompt(
   content: string,
-  marker: string,
   relativePath: string,
 ): { instruction: string; entries: string[] } {
   const lines = content.split(/\r?\n/u);
-  const markerIndex = lines.findIndex((line) => line.trim() === marker);
+  const markerIndex = lines.findIndex((line) => line.trim() === CHOICES_SECTION_MARKER);
   if (markerIndex < 0) {
-    throw new Error(`Router prompt file is missing the section marker "${marker}": ${relativePath}`);
+    throw new Error(`Router prompt file is missing the section marker "${CHOICES_SECTION_MARKER}": ${relativePath}`);
   }
   const instruction = lines.slice(0, markerIndex).join('\n').trim();
   if (instruction.length === 0) {
@@ -200,56 +184,34 @@ function splitRouterPrompt(
   return { instruction, entries };
 }
 
-function parseRouteChoices(
+/**
+ * Check the entries against the contract values, in order, with distinct
+ * descriptions. A drifting prompt fails closed.
+ */
+function requireValues(
   entries: readonly string[],
-): readonly { value: RouterRoute; description: string }[] {
-  if (entries.length !== routerRouteValues.length) {
+  expected: readonly string[],
+  relativePath: string,
+): readonly { value: string; description: string }[] {
+  if (entries.length !== expected.length) {
     throw new Error(
-      `Router route prompt must define exactly ${routerRouteValues.length} choices, found ${entries.length}.`,
+      `Router prompt must define exactly ${expected.length} choices, found ${entries.length}: ${relativePath}`,
     );
   }
   const choices = entries.map((entry, index) => {
-    const { value, description } = parseEntry(entry, routerQuestionPromptFiles.route);
-    if (!isRouterRoute(value)) {
-      throw new Error(`Router route prompt defines an unknown route: ${value}`);
-    }
-    if (value !== routerRouteValues[index]) {
+    const { value, description } = parseEntry(entry, relativePath);
+    if (value !== expected[index]) {
       throw new Error(
-        `Router route prompt must list "${routerRouteValues[index]}" at position ${index}, found "${value}".`,
+        `Router prompt must list "${expected[index]}" at position ${index}, found "${value}": ${relativePath}`,
       );
     }
     return { value, description };
   });
   const descriptions = new Set(choices.map((choice) => choice.description));
   if (descriptions.size !== choices.length) {
-    throw new Error('Router route prompt must give every choice a distinct description.');
+    throw new Error('Router prompt must give every choice a distinct description.');
   }
   return choices;
-}
-
-function parseLoopRiskLevels(
-  entries: readonly string[],
-): readonly { label: RouterLoopRiskLabel; description: string }[] {
-  if (entries.length !== routerLoopRiskLabels.length) {
-    throw new Error(
-      `Router loop risk prompt must define exactly ${routerLoopRiskLabels.length} levels, found ${entries.length}.`,
-    );
-  }
-  const levels = entries.map((entry, index) => {
-    const { value, description } = parseEntry(entry, routerQuestionPromptFiles.loopRisk);
-    const expected = routerLoopRiskLabels[index];
-    if (value !== expected) {
-      throw new Error(
-        `Router loop risk prompt must list level "${expected}" at position ${index}, found "${value}".`,
-      );
-    }
-    return { label: expected, description };
-  });
-  const descriptions = new Set(levels.map((level) => level.description));
-  if (descriptions.size !== levels.length) {
-    throw new Error('Router loop risk prompt must give every level a distinct description.');
-  }
-  return levels;
 }
 
 function parseEntry(entry: string, relativePath: string): { value: string; description: string } {

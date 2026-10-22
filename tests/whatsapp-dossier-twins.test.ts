@@ -18,7 +18,6 @@ import {
 } from '../src/evals/scripted-support-lane-router';
 import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import { PromptLoader } from '../src/runtime/prompt-loader';
-import { OpenAiAgentRuntime } from '../src/runtime/openai-agent-runtime';
 import type {
   KnowledgeRetrievalGateway,
   KnowledgeRetrievalResult,
@@ -338,11 +337,11 @@ beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
 });
 
-describe('offline twin A — Wilfredo: settlement latency and the repeat backstop', () => {
+describe('offline twin A — Wilfredo: settlement latency and the repeated open request', () => {
   // 03-acceptance-tests.md, "Twin A — Wilfredo (settlement latency +
-  // repeat backstop)": the escalation happens no later than the turn where
-  // repeatCount reaches 2, no turn asserts global purchase absence after
-  // the receipt turn, and the stages contain no extraction.
+  // repeat backstop)": the escalation happens as soon as the guest repeats
+  // the request the first turn left open, no turn asserts global purchase
+  // absence after the receipt turn, and the stages contain no extraction.
   const TURNS_A: readonly TwinTurn[] = [
     { text: '', image: true },
     { text: 'Ya pagué por Yape el 4 de octubre y no me aparece ninguna compra en la página.' },
@@ -353,55 +352,41 @@ describe('offline twin A — Wilfredo: settlement latency and the repeat backsto
     { text: 'Por favor, investiguen ese pago y me comuniquen el resultado.' },
   ];
 
-  it('escalates through the repeat backstop and never asserts a global purchase absence', async () => {
+  it('escalates on the repeated open request and never asserts a global purchase absence', async () => {
     const gateway = await createGateway(SCENARIO_A);
     const harness = await createHarness({
       gateway,
-      answers: TURNS_A.map(() => ({
+      answers: TURNS_A.map((_turn, index) => ({
         route: 'answer_with_records' as const,
-        loopRisk: 0,
-        needsHumanNow: 0.1,
-        capabilityBlocked: 0.1,
+        sameOpenRequest: index > 0,
+        requestSettled: false,
       })),
     });
 
     const results = await harness.replay(TURNS_A);
 
-    // The escalation happens no later than the turn where repeatCount
-    // reaches 2 (03-acceptance-tests.md, "Twin A — Wilfredo"). The count is
-    // the CURRENT turn's count: the signature and the counter are computed
-    // before the router runs, so the second identical unresolved outcome
-    // escalates immediately.
+    // The record, not the money classification, drives the escalation: the
+    // first turn leaves the request unresolved and the second turn is about
+    // that same request.
     const escalationIndex = takeoverTurnIndex(results);
     expect(escalationIndex).toBe(1);
-    const backstopInput = harness.router.inputs[escalationIndex];
-    expect(backstopInput?.plan.support_outcome?.repeat_count).toBeGreaterThanOrEqual(2);
-    expect(backstopInput?.plan.support_outcome?.unresolved_money).toBe(true);
-    expect(harness.runtime.composeRequests[0]?.plan.support_outcome).toMatchObject({
-      limitation_already_stated: false, prior_limitation_turns: 0,
+    const escalationInput = harness.router.inputs[escalationIndex];
+    expect(escalationInput?.plan.open_requests.at(-1)).toMatchObject({
+      state: 'unresolved',
+      turns: 1,
     });
-    // The delivered plan of the first turn keeps the flag false: the
-    // post-compose merge never turns a first-turn limitation into an
-    // already stated one.
-    expect(results[0]?.response.plan.support_outcome).toMatchObject({
-      limitation_already_stated: false, prior_limitation_turns: 0,
+    // The reply evidence carries the open request: the first turn opened it,
+    // and the repeat turn is its second turn.
+    expect(harness.runtime.composeRequests[0]?.requestOpen).toBe(true);
+    expect(harness.runtime.composeRequests[0]?.requestOpenTurns).toBe(1);
+    expect(results[0]?.response.plan.open_requests.at(-1)).toMatchObject({
+      state: 'unresolved', turns: 1,
     });
-    expect(harness.runtime.composeRequests[1]?.plan.support_outcome).toMatchObject({
-      limitation_already_stated: true, prior_limitation_turns: 1,
+    expect(harness.runtime.composeRequests[1]?.requestOpen).toBe(true);
+    expect(harness.runtime.composeRequests[1]?.requestOpenTurns).toBe(2);
+    expect(results[1]?.response.plan.open_requests.at(-1)).toMatchObject({
+      state: 'with_person', turns: 2,
     });
-    expect(results[1]?.response.plan.support_outcome).toMatchObject({
-      limitation_already_stated: true, prior_limitation_turns: 1,
-    });
-    const repeatComposeRequest = harness.runtime.composeRequests[1];
-    if (!repeatComposeRequest) throw new Error('Expected the repeat-turn compose request.');
-    const replyRuntime = new OpenAiAgentRuntime({
-      apiKey: 'test-key', replyModel: 'gpt-test', extractorModel: 'gpt-test',
-      replyProviderLimit: 4, presentationProviderLimit: 5, providerDetailLookupLimit: 3,
-      promptLoader, providerGateway: providerGateway(),
-    });
-    const repeatSpec = await replyRuntime.buildReplyRequestSpec(repeatComposeRequest);
-    expect(repeatSpec.input).toContain('"limitationAlreadyStated": true');
-    expect(repeatSpec.input).toContain('"priorLimitationTurns": 1');
 
     // The escalation is a real human-escalation turn with a gateway receipt.
     const escalation = results[escalationIndex]?.response;
@@ -480,15 +465,13 @@ describe('offline twin B — Luis: the customer reference never denies twice', (
         index === 3
           ? {
             route: 'escalate_human' as const,
-            loopRisk: 3,
-            needsHumanNow: 0.9,
-            capabilityBlocked: 0.1,
+            sameOpenRequest: true,
+            requestSettled: false,
           }
           : {
             route: 'answer_with_records' as const,
-            loopRisk: 0,
-            needsHumanNow: 0.1,
-            capabilityBlocked: 0.1,
+            sameOpenRequest: index > 0,
+            requestSettled: true,
           }
       )),
     });
@@ -577,15 +560,13 @@ describe('offline twin C — Mirta: derivation truth and the host receipt', () =
         index >= 3
           ? {
             route: 'escalate_human' as const,
-            loopRisk: 3,
-            needsHumanNow: 0.4,
-            capabilityBlocked: 0.9,
+            sameOpenRequest: true,
+            requestSettled: false,
           }
           : {
             route: 'answer_with_records' as const,
-            loopRisk: 0,
-            needsHumanNow: 0.1,
-            capabilityBlocked: 0.1,
+            sameOpenRequest: index > 0,
+            requestSettled: true,
           }
       )),
     });
@@ -648,22 +629,19 @@ describe('offline twin C — Mirta: derivation truth and the host receipt', () =
         // offers the human review.
         {
           route: 'offer_human' as const,
-          loopRisk: 2,
-          needsHumanNow: 0.1,
-          capabilityBlocked: 0.1,
+          sameOpenRequest: false,
+          requestSettled: false,
         },
         // The accept turn: the guest takes the offer, the takeover runs.
         {
           route: 'escalate_human' as const,
-          loopRisk: 2,
-          needsHumanNow: 0.9,
-          capabilityBlocked: 0.1,
+          sameOpenRequest: false,
+          requestSettled: false,
         },
         {
           route: 'answer_with_records' as const,
-          loopRisk: 0,
-          needsHumanNow: 0.1,
-          capabilityBlocked: 0.1,
+          sameOpenRequest: false,
+          requestSettled: true,
         },
       ],
     });
@@ -681,7 +659,7 @@ describe('offline twin C — Mirta: derivation truth and the host receipt', () =
     // R9: the stop reason carries the router's own trigger; the acceptance
     // of the open offer is a separate fact, never a substitute for it.
     expect(results[escalationIndex]?.response.trace.turn_decision.stopReason)
-      .toBe('router_escalation:needs_human_now_threshold');
+      .toBe('router_escalation:explicit_person_request');
     expect(results[escalationIndex]?.response.trace.operational_note)
       .toContain('accepted the open human help offer');
     // The takeover consumed the offer, so it is no longer open.
@@ -700,11 +678,10 @@ describe('offline twin C — Mirta: derivation truth and the host receipt', () =
   });
 });
 
-describe('offline twin D — Silvia: the terse loop escalates through the backstop', () => {
+describe('offline twin D — Silvia: the terse loop escalates from the unresolved record', () => {
   // 03-acceptance-tests.md, "Twin D — Silvia (terse loop; backstop only)":
-  // the escalation happens through the repeat backstop by turn 3 even
-  // though the health signal is progressing, no extraction stage runs and
-  // the receipt is present.
+  // the escalation happens from the unresolved record by turn 3, no
+  // extraction stage runs and the receipt is present.
   const TURNS_D: readonly TwinTurn[] = [
     { text: '', image: true },
     { text: 'Ya envié el comprobante del plin al correo.' },
@@ -712,15 +689,14 @@ describe('offline twin D — Silvia: the terse loop escalates through the backst
     { text: 'Acá sí se ha cobrado el plin, de Ana Cerdán. ¿Y mi pedido?' },
   ];
 
-  it('escalates by turn 3 through the backstop with the reported payment', async () => {
+  it('escalates by turn 3 from the unresolved record with the reported payment', async () => {
     const gateway = await createGateway(SCENARIO_D);
     const harness = await createHarness({
       gateway,
-      answers: TURNS_D.map(() => ({
+      answers: TURNS_D.map((_turn, index) => ({
         route: 'answer_with_records' as const,
-        loopRisk: 0,
-        needsHumanNow: 0.1,
-        capabilityBlocked: 0.1,
+        sameOpenRequest: index > 0,
+        requestSettled: true,
       })),
     });
     // The guest reports the Plin payment on the receipt turn: the model
@@ -772,13 +748,15 @@ describe('offline twin D — Silvia: the terse loop escalates through the backst
       claimed_success: true,
     });
 
-    // The escalation happens by turn 3, through the repeat backstop.
+    // The escalation happens by turn 3, from the unresolved record.
     const escalationIndex = takeoverTurnIndex(results);
     expect(escalationIndex).toBeLessThanOrEqual(2);
     expect(escalationIndex).toBeGreaterThanOrEqual(0);
-    const backstopInput = harness.router.inputs[escalationIndex];
-    expect(backstopInput?.plan.support_outcome?.repeat_count).toBeGreaterThanOrEqual(2);
-    expect(backstopInput?.plan.support_outcome?.unresolved_money).toBe(true);
+    const escalationInput = harness.router.inputs[escalationIndex];
+    expect(escalationInput?.plan.open_requests.at(-1)).toMatchObject({
+      state: 'unresolved',
+      turns: 2,
+    });
     expect(results[escalationIndex]?.response.plan.human_escalation.status).toBe('requested');
     expect(gateway.getFixtureCallCount('handoff.write')).toBe(1);
     expect(
@@ -786,9 +764,14 @@ describe('offline twin D — Silvia: the terse loop escalates through the backst
         ?.resultStatus,
     ).toBe('success');
 
-    // The health signal never left "progressing": the backstop, not the
-    // health, escalated the thread.
-    expect(results[escalationIndex]?.response.plan.conversation_health.status).toBe('progressing');
+    // The health is derived from the record: the request is already on its
+    // second unresolved turn, so the turn is stalled and the record itself
+    // escalated the thread.
+    expect(results[escalationIndex]?.response.plan.conversation_health).toMatchObject({
+      status: 'stalled',
+      reason: 'repeated_question',
+      consecutive_non_progress_turns: 2,
+    });
     expect(harness.runtime.extractRequests).toHaveLength(0);
     for (const result of results) {
       expectSupportLaneStages(result);
@@ -811,9 +794,8 @@ describe('offline twin E — multi-purchase ambiguity: the clarification claims 
       gateway,
       answers: [{
         route: 'ask_clarification' as const,
-        loopRisk: 0,
-        needsHumanNow: 0.1,
-        capabilityBlocked: 0.1,
+        sameOpenRequest: false,
+        requestSettled: false,
       }],
     });
     const targetOrderIds = ['ORD_amb-01', 'ORD_amb-02'];
@@ -856,9 +838,8 @@ describe('offline twin — a failed handoff never carries a success claim', () =
       gateway,
       answers: [{
         route: 'escalate_human' as const,
-        loopRisk: 4,
-        needsHumanNow: 0.9,
-        capabilityBlocked: 0.5,
+        sameOpenRequest: false,
+        requestSettled: false,
       }],
     });
     // The model claims the handoff was registered; the gateway says it was
@@ -908,9 +889,8 @@ describe('offline eval target — the customer-assistance lane can be replayed',
           repliesByTurn: ['Respuesta de la replay offline.'],
           routerAnswersByTurn: [{
             route: 'answer_with_records',
-            loopRisk: 0,
-            needsHumanNow: 0.1,
-            capabilityBlocked: 0.1,
+            sameOpenRequest: false,
+            requestSettled: true,
           }],
         },
       },

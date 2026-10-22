@@ -62,19 +62,25 @@ const CASE_A_PHONE = '+51900000401';
 const CASE_D_SCENARIO = 'purchase-declined-card-transfer-pending';
 const CASE_D_PHONE = '+51900000404';
 
+/** One scripted router answer: the three facts the router states. */
 type RouterAnswers = {
   readonly route: RouterRoute;
-  readonly loopRisk: number;
-  readonly needsHumanNow: number;
-  readonly capabilityBlocked: number;
+  readonly sameOpenRequest: boolean;
+  readonly requestSettled: boolean;
 };
 
+/** The transport script: one answer, one per call, or a hard failure. */
+type RouterScript =
+  | RouterAnswers
+  | readonly RouterAnswers[]
+  | { readonly unavailable: true };
+
 function decisionsPayload(answers: RouterAnswers): unknown {
+  const sameOpenRequest = answers.sameOpenRequest ? 'same' : 'new';
+  const requestSettled = answers.requestSettled ? 'settled' : 'open';
   return {
     id: 'dec_router_test',
     answers: [
-      { type: 'predicate', name: 'needs_human_now', probability: answers.needsHumanNow },
-      { type: 'predicate', name: 'capability_blocked', probability: answers.capabilityBlocked },
       {
         type: 'choice',
         name: 'route',
@@ -82,31 +88,47 @@ function decisionsPayload(answers: RouterAnswers): unknown {
         probabilities: [{ value: answers.route, probability: 0.9 }],
       },
       {
-        type: 'score',
-        name: 'loop_risk',
-        score: answers.loopRisk,
-        probabilities: [
-          { value: String(answers.loopRisk), label: String(answers.loopRisk), probability: 0.9 },
-        ],
+        type: 'choice',
+        name: 'same_open_request',
+        choice: sameOpenRequest,
+        probabilities: [{ value: sameOpenRequest, probability: 0.9 }],
+      },
+      {
+        type: 'choice',
+        name: 'request_settled',
+        choice: requestSettled,
+        probabilities: [{ value: requestSettled, probability: 0.9 }],
       },
     ],
   };
+}
+
+/** The scripted answers, consumed in turn order; the last one repeats. */
+function routerScriptAnswers(
+  script: RouterScript,
+): readonly (RouterAnswers | { readonly unavailable: true })[] {
+  return Array.isArray(script)
+    ? (script as readonly RouterAnswers[])
+    : [script as RouterAnswers | { readonly unavailable: true }];
 }
 
 /**
  * The stubbed router transport. It records every call so a test can prove
  * the router did or did not run.
  */
-function routerFetch(answers: RouterAnswers | { readonly unavailable: true }) {
+function routerFetch(script: RouterScript) {
   const calls: string[] = [];
   const bodies: string[] = [];
+  const answers = routerScriptAnswers(script);
   const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
+    const index = calls.length;
     calls.push(url);
     bodies.push(typeof init?.body === 'string' ? init.body : '');
-    if ('unavailable' in answers) {
+    const next = answers[Math.min(index, answers.length - 1)];
+    if (next === undefined || 'unavailable' in next) {
       return new Response(JSON.stringify({ error: 'bad request' }), { status: 400 });
     }
-    return new Response(JSON.stringify(decisionsPayload(answers)), {
+    return new Response(JSON.stringify(decisionsPayload(next)), {
       status: 200,
       headers: { 'content-type': 'application/json' },
     });
@@ -116,7 +138,7 @@ function routerFetch(answers: RouterAnswers | { readonly unavailable: true }) {
 
 function buildRouter(args: {
   readonly enabled: boolean;
-  readonly answers: RouterAnswers | { readonly unavailable: true };
+  readonly answers: RouterScript;
 }): { router: OpenAiSupportLaneRouter; calls: string[]; bodies: string[] } {
   const stub = routerFetch(args.answers);
   const router = new OpenAiSupportLaneRouter({
@@ -339,7 +361,7 @@ describe('decisions router: the customer-assistance lane gate', () => {
     );
     const { router, calls } = buildRouter({
       enabled: true,
-      answers: { route: 'answer_with_records', loopRisk: 0, needsHumanNow: 0.1, capabilityBlocked: 0.1 },
+      answers: { route: 'answer_with_records', sameOpenRequest: false, requestSettled: true },
     });
     const classifier = new RecordingClassifier();
     const planStore = new InMemoryPlanStore();
@@ -383,7 +405,7 @@ describe('decisions router: the customer-assistance lane gate', () => {
     );
     const { router, calls } = buildRouter({
       enabled: true,
-      answers: { route: 'planning_flow', loopRisk: 0, needsHumanNow: 0.1, capabilityBlocked: 0.1 },
+      answers: { route: 'planning_flow', sameOpenRequest: false, requestSettled: false },
     });
     const classifier = new RecordingClassifier();
     const service = await createService({
@@ -452,7 +474,7 @@ describe('decisions router: customer-assistance lane', () => {
     );
     const { router, calls } = buildRouter({
       enabled: false,
-      answers: { route: 'answer_with_records', loopRisk: 0, needsHumanNow: 0.1, capabilityBlocked: 0.1 },
+      answers: { route: 'answer_with_records', sameOpenRequest: false, requestSettled: true },
     });
     const classifier = new RecordingClassifier();
     const service = await createService({ runtime, gateway, router, responseClassifier: classifier });
@@ -511,7 +533,7 @@ describe('decisions router: customer-assistance lane', () => {
     );
     const { router, calls } = buildRouter({
       enabled: true,
-      answers: { route: 'planning_flow', loopRisk: 0, needsHumanNow: 0.1, capabilityBlocked: 0.1 },
+      answers: { route: 'planning_flow', sameOpenRequest: false, requestSettled: false },
     });
     const service = await createService({ runtime, gateway, router });
 
@@ -536,7 +558,7 @@ describe('decisions router: customer-assistance lane', () => {
     );
     const { router, calls } = buildRouter({
       enabled: true,
-      answers: { route: 'answer_with_records', loopRisk: 0, needsHumanNow: 0.1, capabilityBlocked: 0.1 },
+      answers: { route: 'answer_with_records', sameOpenRequest: false, requestSettled: true },
     });
     const service = await createService({ runtime, gateway, router });
 
@@ -570,7 +592,7 @@ describe('decisions router: customer-assistance lane', () => {
     );
     const { router } = buildRouter({
       enabled: true,
-      answers: { route: 'answer_with_records', loopRisk: 0, needsHumanNow: 0.1, capabilityBlocked: 0.1 },
+      answers: { route: 'answer_with_records', sameOpenRequest: false, requestSettled: true },
     });
     const service = await createService({ runtime, gateway, router });
 
@@ -591,10 +613,10 @@ describe('decisions router: customer-assistance lane', () => {
     expect(purchaseSummary?.outcomeCode).toBe('completed_without_results');
   });
 
-  it('escalates the second consecutive capability-blocked turn, whatever the router proposed', async () => {
-    // The router keeps answering a request the runtime cannot execute. The
-    // first turn may still be answered from the records; the second one is
-    // a loop, and the deterministic backstop escalates it.
+  it('escalates the second turn of a request the record left unresolved', async () => {
+    // The router keeps answering the same request the first turn could not
+    // settle. The record says the request is still open and the guest came
+    // back to it, so the policy escalates whatever the route says.
     const gateway = await FixtureAgentConversationGateway.create(CASE_C_SCENARIO);
     const runtime = new ScriptedAgentRuntime(
       [emptyExtraction()],
@@ -602,41 +624,52 @@ describe('decisions router: customer-assistance lane', () => {
     );
     const { router } = buildRouter({
       enabled: true,
-      answers: { route: 'answer_with_records', loopRisk: 0, needsHumanNow: 0.1, capabilityBlocked: 0.95 },
+      answers: [
+        { route: 'answer_with_records', sameOpenRequest: false, requestSettled: false },
+        { route: 'answer_with_records', sameOpenRequest: true, requestSettled: false },
+      ],
     });
     const planStore = new InMemoryPlanStore();
     const service = await createService({ runtime, gateway, router, planStore });
 
     const first = await service.handleTurn({
       channel: 'whatsapp',
-      externalUserId: 'router-capability-streak',
+      externalUserId: 'router-open-request-repeat',
       contactPhone: CASE_C_PHONE,
-      messageId: 'router-capability-streak-1',
+      messageId: 'router-open-request-repeat-1',
       receivedAt: new Date().toISOString(),
       text: 'Quiero que me devuelvan el dinero de mi regalo.',
     });
 
-    // The first blocked turn is still answered, and the streak is persisted.
+    // The first turn is answered and leaves the request open.
     expect(first.trace.turn_decision.stopReason).toBeNull();
-    expect(first.plan.conversation_health.capability_blocked_streak).toBe(1);
-    expect(runtime.composeRequests[0]?.plan.conversation_health.capability_blocked_streak).toBe(1);
+    expect(first.plan.open_requests.at(-1)).toMatchObject({
+      state: 'unresolved',
+      turns: 1,
+    });
+    expect(runtime.composeRequests[0]?.requestOpen).toBe(true);
+    expect(runtime.composeRequests[0]?.requestOpenTurns).toBe(1);
 
     const second = await service.handleTurn({
       channel: 'whatsapp',
-      externalUserId: 'router-capability-streak',
+      externalUserId: 'router-open-request-repeat',
       contactPhone: CASE_C_PHONE,
-      messageId: 'router-capability-streak-2',
+      messageId: 'router-open-request-repeat-2',
       receivedAt: new Date().toISOString(),
       text: 'Sigo sin recibir la devolución, quiero mi dinero de vuelta.',
     });
 
     expect(second.trace.turn_decision.stopReason)
-      .toBe('router_escalation:capability_blocked_repeat_backstop');
+      .toBe('router_escalation:unresolved_request_repeated');
     expect(gateway.getFixtureCallCount('handoff.write')).toBe(1);
     expect(second.plan.human_escalation.status).toBe('requested');
+    expect(second.plan.open_requests.at(-1)).toMatchObject({
+      state: 'with_person',
+      turns: 2,
+    });
   });
 
-  it('does not escalate a single capability-blocked turn', async () => {
+  it('does not escalate the first turn of an open request', async () => {
     const gateway = await FixtureAgentConversationGateway.create(CASE_C_SCENARIO);
     const runtime = new ScriptedAgentRuntime(
       [emptyExtraction()],
@@ -644,21 +677,22 @@ describe('decisions router: customer-assistance lane', () => {
     );
     const { router } = buildRouter({
       enabled: true,
-      answers: { route: 'answer_with_records', loopRisk: 0, needsHumanNow: 0.1, capabilityBlocked: 0.95 },
+      answers: { route: 'answer_with_records', sameOpenRequest: false, requestSettled: false },
     });
     const service = await createService({ runtime, gateway, router });
 
     const response = await service.handleTurn({
       channel: 'whatsapp',
-      externalUserId: 'router-capability-single',
+      externalUserId: 'router-open-request-single',
       contactPhone: CASE_C_PHONE,
-      messageId: 'router-capability-single-1',
+      messageId: 'router-open-request-single-1',
       receivedAt: new Date().toISOString(),
       text: 'Quiero que me devuelvan el dinero de mi regalo.',
     });
 
     expect(response.trace.turn_decision.stopReason).toBeNull();
     expect(gateway.getFixtureCallCount('handoff.write')).toBe(0);
+    expect(response.plan.open_requests.at(-1)?.state).toBe('unresolved');
   });
 
   it('escalates through the takeover gateway and persists the receipt', async () => {
@@ -669,7 +703,7 @@ describe('decisions router: customer-assistance lane', () => {
     );
     const { router } = buildRouter({
       enabled: true,
-      answers: { route: 'escalate_human', loopRisk: 4, needsHumanNow: 0.9, capabilityBlocked: 0.9 },
+      answers: { route: 'escalate_human', sameOpenRequest: false, requestSettled: false },
     });
     const service = await createService({ runtime, gateway, router });
 
@@ -699,22 +733,37 @@ describe('decisions router: customer-assistance lane', () => {
     {
       scenario: 'purchase-support-handoff-failed',
       phone: '+51900000407',
-      replyOutcome: 'handoff_failed_not_retried',
+      title: 'retries the failed takeover of a still-open request',
       attemptOutcome: 'handoff_failed',
       receiptOutcome: 'handoff_failed',
-      lastError: 'failed_no_auto_retry',
+      secondOutcome: 'handoff_failed',
+      secondReceiptOutcome: 'handoff_failed',
+      attemptsAfterSecondTurn: 2,
+      lastError: 'Fixture handoff failed.',
     },
     {
       scenario: 'purchase-support-handoff-unknown',
       phone: '+51900000408',
-      replyOutcome: 'handoff_unknown_not_retried',
+      title: 'never retries an unknown takeover outcome',
       attemptOutcome: 'handoff_unknown',
       receiptOutcome: 'outcome_unknown',
+      secondOutcome: 'handoff_unknown_not_retried',
+      secondReceiptOutcome: 'outcome_unknown',
+      attemptsAfterSecondTurn: 1,
       lastError: 'unknown_stays_unretried',
     },
   ] as const)(
-    'reports the real $replyOutcome takeover outcome on the turn that does not retry it ($scenario)',
-    async ({ scenario, phone, replyOutcome, attemptOutcome, receiptOutcome, lastError }) => {
+    'reports the real takeover outcome on the next turn of an open request: $title ($scenario)',
+    async ({
+      scenario,
+      phone,
+      attemptOutcome,
+      receiptOutcome,
+      secondOutcome,
+      secondReceiptOutcome,
+      attemptsAfterSecondTurn,
+      lastError,
+    }) => {
       const gateway = await FixtureAgentConversationGateway.create(scenario);
       const runtime = new ScriptedAgentRuntime(
         [emptyExtraction()],
@@ -722,7 +771,10 @@ describe('decisions router: customer-assistance lane', () => {
       );
       const { router } = buildRouter({
         enabled: true,
-        answers: { route: 'escalate_human', loopRisk: 4, needsHumanNow: 0.9, capabilityBlocked: 0.9 },
+        answers: [
+          { route: 'escalate_human', sameOpenRequest: false, requestSettled: false },
+          { route: 'escalate_human', sameOpenRequest: true, requestSettled: false },
+        ],
       });
       const planStore = new InMemoryPlanStore();
       const service = await createService({ runtime, gateway, router, planStore });
@@ -747,6 +799,9 @@ describe('decisions router: customer-assistance lane', () => {
         requested: false,
         softPaused: false,
       });
+      // A failed or unconfirmed takeover leaves the request open: that is the
+      // fact the next turn reads to decide a retry.
+      expect(first.plan.open_requests.at(-1)?.state).toBe('unresolved');
 
       const second = await service.handleTurn({
         channel: 'whatsapp',
@@ -757,23 +812,76 @@ describe('decisions router: customer-assistance lane', () => {
         text: 'Necesito que alguien me atienda esto, por favor.',
       });
 
-      // The takeover is never retried automatically: the effect ledger keeps
-      // exactly one attempt.
-      expect(gateway.getFixtureCallCount('handoff.write')).toBe(1);
-      // The reply evidence keeps the real outcome and says this turn sent no
-      // request: a skipped retry is not an unavailable capability, and it is
-      // not a fresh attempt either, so the reply cannot narrate one.
-      expect(runtime.composeRequests[1]?.handoffOutcome).toBe(replyOutcome);
-      expect(runtime.composeRequests[1]?.handoffOutcome).not.toBe('handoff_skipped_unavailable');
-      expect(runtime.composeRequests[1]?.handoffOutcome).not.toBe(attemptOutcome);
-      // The plan state, the node and the stop reason do not change.
+      // The record decided the second turn: the request came back still open.
+      expect(second.trace.turn_decision.stopReason)
+        .toBe('router_escalation:unresolved_request_repeated');
+      expect(second.plan.open_requests.at(-1)?.state).toBe('unresolved');
+      expect(gateway.getFixtureCallCount('handoff.write')).toBe(attemptsAfterSecondTurn);
+      expect(runtime.composeRequests[1]?.handoffOutcome).toBe(secondOutcome);
+      if (scenario === 'purchase-support-handoff-unknown') {
+        // An unknown outcome is never retried automatically: the reply says
+        // this turn sent no request, because a skipped retry is neither an
+        // unavailable capability nor a fresh attempt.
+        expect(runtime.composeRequests[1]?.handoffOutcome)
+          .not.toBe('handoff_skipped_unavailable');
+        expect(runtime.composeRequests[1]?.handoffOutcome).not.toBe(attemptOutcome);
+      }
+      // The plan state, the node and the last error follow the real effect.
       expect(second.plan.current_node).toBe('solicitar_agente_humano');
       expect(second.plan.human_escalation.status).toBe('none');
       expect(second.plan.human_escalation.last_error).toBe(lastError);
-      expect(second.plan.human_help_receipt?.outcome).toBe(receiptOutcome);
-      expect(second.trace.turn_decision.stopReason).toBe('router_escalation:needs_human_now_threshold');
+      expect(second.plan.human_help_receipt?.outcome).toBe(secondReceiptOutcome);
     },
   );
+
+  it('answers an unrelated question after a takeover instead of suppressing the thread', async () => {
+    // Defect this prevents: a record parked with a person used to pause every
+    // later turn, so a question about anything else was swallowed.
+    const gateway = await FixtureAgentConversationGateway.create(CASE_C_SCENARIO);
+    const runtime = new ScriptedAgentRuntime(
+      [emptyExtraction()],
+      () => ({ text: 'Respuesta informativa.' }),
+    );
+    const { router } = buildRouter({
+      enabled: true,
+      answers: [
+        { route: 'escalate_human', sameOpenRequest: false, requestSettled: false },
+        { route: 'answer_with_records', sameOpenRequest: false, requestSettled: true },
+      ],
+    });
+    const service = await createService({ runtime, gateway, router });
+
+    const first = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'router-parked-then-unrelated',
+      contactPhone: CASE_C_PHONE,
+      messageId: 'router-parked-then-unrelated-1',
+      receivedAt: new Date().toISOString(),
+      text: 'Quiero que me devuelvan el dinero y hablen con una persona.',
+    });
+    expect(first.plan.open_requests.at(-1)?.state).toBe('with_person');
+    expect(gateway.getFixtureCallCount('handoff.write')).toBe(1);
+
+    const second = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'router-parked-then-unrelated',
+      contactPhone: CASE_C_PHONE,
+      messageId: 'router-parked-then-unrelated-2',
+      receivedAt: new Date().toISOString(),
+      text: '¿Hasta cuándo puedo cambiar la dirección de entrega?',
+    });
+
+    // The unrelated question is a new request: it is answered, not paused.
+    expect(second.outbound.delivery.action).toBe('send');
+    expect(runtime.composeRequests).toHaveLength(2);
+    expect(runtime.composeRequests[1]?.currentNode).toBe('resolver_consultas_informativas');
+    // No second takeover: the parked request is not retried by an unrelated
+    // turn, and the record that is with a person stays in the list.
+    expect(gateway.getFixtureCallCount('handoff.write')).toBe(1);
+    expect(second.plan.open_requests).toContainEqual(
+      expect.objectContaining({ state: 'with_person' }),
+    );
+  });
 
   it('opens the typed help offer on a purchase thread in the same turn', async () => {
     const gateway = await FixtureAgentConversationGateway.create(CASE_C_SCENARIO);
@@ -783,7 +891,7 @@ describe('decisions router: customer-assistance lane', () => {
     );
     const { router } = buildRouter({
       enabled: true,
-      answers: { route: 'offer_human', loopRisk: 2, needsHumanNow: 0.1, capabilityBlocked: 0.1 },
+      answers: { route: 'offer_human', sameOpenRequest: false, requestSettled: false },
     });
     const planStore = new InMemoryPlanStore();
     // An active purchase thread: the classifier-era suppression would have
@@ -834,7 +942,7 @@ describe('decisions router: customer-assistance lane', () => {
     );
     const { router } = buildRouter({
       enabled: true,
-      answers: { route: 'escalate_human', loopRisk: 4, needsHumanNow: 0.9, capabilityBlocked: 0.2 },
+      answers: { route: 'escalate_human', sameOpenRequest: false, requestSettled: false },
     });
     const planStore = new InMemoryPlanStore();
     await planStore.save({
@@ -849,7 +957,6 @@ describe('decisions router: customer-assistance lane', () => {
           status: 'frustrated',
           reason: 'explicit_frustration',
           consecutive_non_progress_turns: 2,
-          capability_blocked_streak: 0,
           help_offer_status: 'offered',
           help_offered_at: '2026-10-20T00:00:00.000Z',
           last_assessed_at: '2026-10-20T00:00:00.000Z',
@@ -892,7 +999,7 @@ describe('decisions router: customer-assistance lane', () => {
     );
     const { router } = buildRouter({
       enabled: true,
-      answers: { route: 'answer_with_records', loopRisk: 0, needsHumanNow: 0.1, capabilityBlocked: 0.1 },
+      answers: { route: 'answer_with_records', sameOpenRequest: false, requestSettled: true },
     });
     const service = await createService({ runtime, gateway, router });
 
@@ -931,7 +1038,7 @@ describe('decisions router: customer-assistance lane', () => {
     );
     const { router } = buildRouter({
       enabled: true,
-      answers: { route: 'suppress_ack', loopRisk: 0, needsHumanNow: 0.1, capabilityBlocked: 0.1 },
+      answers: { route: 'suppress_ack', sameOpenRequest: false, requestSettled: true },
     });
     const service = await createService({ runtime, gateway, router });
 
@@ -950,16 +1057,37 @@ describe('decisions router: customer-assistance lane', () => {
     expect(runtime.extractRequests).toHaveLength(0);
   });
 
-  it('derives the conversation health from the router loop risk', async () => {    const gateway = await FixtureAgentConversationGateway.create(CASE_C_SCENARIO);
+  it('derives the conversation health from the open-request record', async () => {
+    const gateway = await FixtureAgentConversationGateway.create(CASE_C_SCENARIO);
     const runtime = new ScriptedAgentRuntime(
       [emptyExtraction()],
       () => ({ text: 'Respuesta informativa.' }),
     );
     const { router } = buildRouter({
       enabled: true,
-      answers: { route: 'answer_with_records', loopRisk: 3, needsHumanNow: 0.1, capabilityBlocked: 0.1 },
+      answers: { route: 'answer_with_records', sameOpenRequest: true, requestSettled: false },
     });
-    const service = await createService({ runtime, gateway, router });
+    const planStore = new InMemoryPlanStore();
+    // A request the thread already left unresolved twice: the record, and
+    // nothing else, is the health evidence on this lane.
+    await planStore.save({
+      reason: 'fixture',
+      plan: mergePlan(createEmptyPlan({
+        planId: 'router-health',
+        channel: 'whatsapp',
+        externalUserId: 'router-health',
+      }), {
+        current_node: 'resolver_consultas_informativas',
+        open_requests: [{
+          key: 'router-health-seed',
+          opening_text: 'Ya te lo dije antes, esto no avanza.',
+          state: 'unresolved',
+          since: '2026-10-20T00:00:00.000Z',
+          turns: 2,
+        }],
+      }),
+    });
+    const service = await createService({ runtime, gateway, router, planStore });
 
     const response = await service.handleTurn({
       channel: 'whatsapp',
@@ -970,9 +1098,13 @@ describe('decisions router: customer-assistance lane', () => {
       text: 'Ya te lo dije antes, esto no avanza.',
     });
 
-    expect(response.plan.conversation_health.status).toBe('frustrated');
-    expect(response.plan.conversation_health.reason).toBe('repeated_correction');
-    expect(response.plan.conversation_health.consecutive_non_progress_turns).toBe(1);
+    expect(response.plan.conversation_health).toMatchObject({
+      status: 'stalled',
+      reason: 'repeated_question',
+      consecutive_non_progress_turns: 2,
+    });
+    expect(response.trace.turn_decision.stopReason)
+      .toBe('router_escalation:unresolved_request_repeated');
   });
 
   it('reaches the router from an image turn and runs the support lane', async () => {
@@ -983,7 +1115,7 @@ describe('decisions router: customer-assistance lane', () => {
     );
     const { router, calls } = buildRouter({
       enabled: true,
-      answers: { route: 'answer_with_records', loopRisk: 0, needsHumanNow: 0.1, capabilityBlocked: 0.1 },
+      answers: { route: 'answer_with_records', sameOpenRequest: false, requestSettled: true },
     });
     const service = await createService({ runtime, gateway, router });
 
@@ -1016,7 +1148,7 @@ describe('decisions router: customer-assistance lane', () => {
     );
     const { router, calls } = buildRouter({
       enabled: true,
-      answers: { route: 'answer_with_records', loopRisk: 0, needsHumanNow: 0.1, capabilityBlocked: 0.1 },
+      answers: { route: 'answer_with_records', sameOpenRequest: false, requestSettled: true },
     });
     const service = await createService({ runtime, gateway, router });
 
@@ -1072,7 +1204,7 @@ describe('decisions router: customer-assistance lane', () => {
     );
     const { router, bodies } = buildRouter({
       enabled: true,
-      answers: { route: 'answer_with_records', loopRisk: 0, needsHumanNow: 0.1, capabilityBlocked: 0.1 },
+      answers: { route: 'answer_with_records', sameOpenRequest: false, requestSettled: true },
     });
     const service = await createService({ runtime, gateway, router });
     const inbound = {
@@ -1091,8 +1223,7 @@ describe('decisions router: customer-assistance lane', () => {
       amount: 391.87,
       claimed_success: true,
     });
-    const firstSignature = first.plan.support_outcome.signature;
-    expect(firstSignature).not.toBeNull();
+    expect(first.plan.support_outcome.signature).not.toBeNull();
 
     const second = await service.handleTurn({
       ...inbound,
@@ -1100,12 +1231,13 @@ describe('decisions router: customer-assistance lane', () => {
       text: 'Revisa si ese pago ya se acreditó.',
     });
 
-    // The router input carries the CURRENT turn's outcome: the signature
-    // and the repeat count are computed before the router runs, so the
-    // router never reads the previous turn's count.
+    // The router input carries the open-request record of the previous
+    // turn. The signature and the repeat count no longer travel to the
+    // router: the record is the only state the policy reads.
     expect(bodies.length).toBeGreaterThan(1);
-    expect(bodies[1]).toContain(second.plan.support_outcome.signature ?? 'missing');
-    expect(bodies[1]).not.toContain(firstSignature ?? 'missing');
+    expect(bodies[1]).toContain('solicitud_actual:');
+    expect(bodies[1]).toContain('Aquí sí se ha cobrado el Plin.');
+    expect(first.plan.open_requests.at(-1)?.state).toBe('answered');
     // The declined record plus the reported successful payment is an
     // unresolved money outcome: the model-side signal, never a keyword.
     expect(second.plan.support_outcome.unresolved_money).toBe(true);

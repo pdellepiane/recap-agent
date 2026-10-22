@@ -617,9 +617,8 @@ const scriptedRouterAnswerSchema = z.object({
     'planning_flow',
     'suppress_ack',
   ]),
-  loopRisk: z.number().int().min(0).max(4),
-  needsHumanNow: z.number().min(0).max(1),
-  capabilityBlocked: z.number().min(0).max(1),
+  sameOpenRequest: z.boolean(),
+  requestSettled: z.boolean(),
 });
 
 const offlineFixtureSchema = z.object({

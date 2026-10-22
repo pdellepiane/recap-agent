@@ -61,6 +61,11 @@ import {
   type PlanSnapshot,
   type ProviderNeed,
 } from '../core/plan';
+import {
+  advanceOpenRequests,
+  currentOpenRequest,
+  nextOpenRequestState,
+} from '../core/open-request';
 import { normalizeProviderSummary, type ProviderSummary } from '../core/provider';
 import type {
   ProviderNeedSubQuery,
@@ -234,7 +239,7 @@ import {
   type SupportHandoffReplyOutcome,
 } from './reply-evidence-projector';
 import {
-  conversationHealthFromRouter,
+  conversationHealthFromRecord,
   type SupportLaneRouterPort,
   type SupportLaneRouterResult,
 } from './decisions-router-lane';
@@ -249,7 +254,6 @@ import {
 } from './support-lane-flow';
 import {
   computeSupportOutcomeSignature,
-  deriveSupportLimitationMemory,
   nextSupportOutcomeRepeatCount,
   supportOutcomeComponentsFromSnapshot,
   type PriorReportedPayment,
@@ -850,6 +854,7 @@ export class AgentService {
         turnDecision: this.humanEscalationTurnDecision('human_escalation_soft_pause'),
         operationalNote: 'Conversation is soft-paused after human escalation.',
         responseClassifier: args.responseClassifierTrace,
+        openRequestState: currentOpenRequest(planToSave.open_requests)?.state ?? null,
       }),
     };
   }
@@ -964,23 +969,6 @@ export class AgentService {
     const routerOwnsTurn = routerEnabled && isCustomerAssistanceTurn(
       existingPlan ?? classifierPlan,
     );
-    if (routerOwnsTurn && existingPlan?.human_escalation.status === 'requested') {
-      // The soft-pause short-circuit stays BEFORE the router: once a
-      // takeover was requested the thread is paused, so no new router work
-      // happens on it. R6: a turn that carries a new receipt image is not
-      // dropped; the reference would be lost otherwise.
-      if (!this.turnCarriedReceiptMedia(inbound)) {
-        return await this.handleHumanEscalationSoftPause({
-          inbound,
-          existingPlan,
-          messageContext,
-          toolUsage,
-          timingMs,
-          tokenUsage,
-          handleTurnStartedAt,
-        });
-      }
-    }
     if (inbound.image) {
       return await this.handleImageTurn({
         inbound,
@@ -1039,12 +1027,18 @@ export class AgentService {
       });
       if (routerResult.status === 'ok') {
         // The classifier no longer provides the conversation health on this
-        // lane, so it is derived from the router's loop-risk level.
-        routerPlan = this.withRouterHealth(routerPlan, routerResult);
-        // R9: a healthy turn retires a stale help offer. The offer is
+        // lane: the open-request record is the only evidence.
+        routerPlan = mergePlan(routerPlan, {
+          conversation_health: conversationHealthFromRecord({
+            current: routerResult.current,
+            previous: routerPlan.conversation_health,
+            nowIso: new Date().toISOString(),
+          }),
+        });
+        // R9: a settled request retires a stale help offer. The offer is
         // consumed by the takeover, so it never stays open for the whole
         // life of the thread.
-        if (routerResult.answers.loopRisk === 0) {
+        if (routerResult.current?.state === 'answered') {
           routerPlan = this.clearRouterHelpOffer(routerPlan);
         }
         classifierPlan = routerPlan;
@@ -1215,6 +1209,7 @@ export class AgentService {
             userMessage: inbound.text,
             messageContext,
             plan: planToSave,
+            ...this.requestOpenFacts(planToSave),
             extraction,
             missingFields: [],
             searchReady: false,
@@ -1995,7 +1990,7 @@ export class AgentService {
         handleTurnStartedAt,
         searchStrategy,
         failureReason: 'explicit_human_request_composition_failed',
-        allowExplicitRetry: true,
+        retryFailedHandoff: true,
       });
     }
 
@@ -2648,7 +2643,7 @@ export class AgentService {
       capabilityDigest: buildCapabilityDigest(this.capabilityManifest),
       plan: {
         conversation_health: args.plan.conversation_health,
-        support_outcome: args.plan.support_outcome,
+        open_requests: args.plan.open_requests,
       },
     });
     args.timingMs.router += Date.now() - routerStartedAt;
@@ -2682,6 +2677,20 @@ export class AgentService {
     imageTurn?: ImageTurnContext;
   }): Promise<HandleTurnResponse> {
     const outcome = args.router.outcome;
+    // The record decides the pause; a receipt that arrived with it is kept.
+    const pausedWithReceiptMedia =
+      outcome.kind === 'pause' && this.turnCarriedReceiptMedia(args.inbound);
+    if (outcome.kind === 'pause' && !pausedWithReceiptMedia) {
+      return await this.handleHumanEscalationSoftPause({
+        inbound: args.inbound,
+        existingPlan: args.workingPlan,
+        messageContext: args.messageContext,
+        toolUsage: args.toolUsage,
+        timingMs: args.timingMs,
+        tokenUsage: args.tokenUsage,
+        handleTurnStartedAt: args.handleTurnStartedAt,
+      });
+    }
     if (outcome.kind === 'suppress_ack') {
       return await this.handleRouterSuppression(args);
     }
@@ -2693,16 +2702,26 @@ export class AgentService {
     }
     // answer / clarify / offer_human: the same deterministic reads and one
     // compose call; the offer additionally opens the typed help offer.
-    const workingPlan = outcome.kind === 'offer_human'
+    const planWithOffer = outcome.kind === 'offer_human'
       ? this.openRouterHelpOffer(args.workingPlan)
       : args.workingPlan;
+    // The record is written from the effect, never from a guess. A turn that
+    // fell through the pause on receipt media keeps the request parked.
+    const recordOutcome = pausedWithReceiptMedia ? 'pause' : outcome.kind;
+    const workingPlan = this.advanceOpenRequest({
+      plan: planWithOffer,
+      router: args.router,
+      inbound: args.inbound,
+      outcome: recordOutcome,
+      nowIso: new Date().toISOString(),
+    });
     const requests = this.supportLaneRequests(workingPlan, {
       messageContext: args.messageContext,
       preparedCustomerContext: args.preparedCustomerContext,
       route: args.router.answers.route,
     });
     const extraction = this.buildSupportLaneExtraction({ informationRequests: requests, plan: workingPlan });
-    return await this.handleInformationFlow({
+    const response = await this.handleInformationFlow({
       inbound: args.inbound,
       previousNode: args.previousNode,
       workingPlan,
@@ -2725,6 +2744,7 @@ export class AgentService {
         ...(outcome.kind === 'offer_human' ? { composeNode: 'ofrecer_agente_humano' as const } : {}),
       },
     });
+    return this.withOpenRequestState(response, workingPlan);
   }
 
   /**
@@ -2795,6 +2815,13 @@ export class AgentService {
       // substitute for the router reason.
       turnDecisionReason: `router_escalation:${args.escalationReason}`,
       acceptedHelpOffer: acceptedOffer,
+      // A failed handoff is retried when the request is still open and the
+      // guest asked again; the router states that fact.
+      // A failed takeover is retried when the record shows the request is
+      // still open and the guest asked again. The record states the fact, so
+      // the retry no longer depends on which reason fired.
+      retryFailedHandoff: args.router.current?.state === 'unresolved',
+      router: args.router,
     });
   }
 
@@ -2853,6 +2880,7 @@ export class AgentService {
         searchStrategy: 'none',
         operationalNote: 'Reply delivery was suppressed by the decisions router.',
         routerDecision: args.router.decision,
+        openRequestState: currentOpenRequest(planToSave.open_requests)?.state ?? null,
       }),
     };
   }
@@ -2891,17 +2919,23 @@ export class AgentService {
      */
     supportSidecar?: boolean;
     /**
-     * R7: an explicit customer request may retry a failed handoff. The
-     * router lane never sets it: a router escalation is not an explicit
-     * request, so a failing gateway is not retried on every turn.
+     * A failed handoff is retried when the request is still open and the guest
+     * asked again. The router states that fact, so the router lane no longer
+     * needs a separate opt-in; the explicit-request path retries it too.
      */
-    allowExplicitRetry?: boolean;
+    retryFailedHandoff?: boolean;
     /**
      * R9: the guest accepted the open help offer of a previous turn. The
      * fact rides the turn decision as a separate signal, never as a
      * substitute for the router reason.
      */
     acceptedHelpOffer?: boolean;
+    /**
+     * The router result of this turn. Only the router lane passes it, so only
+     * that path advances the open-request record with the real handoff
+     * outcome.
+     */
+    router?: SupportLaneRouterResult & { readonly status: 'ok' };
   }): Promise<HandleTurnResponse> {
     const currentNode: DecisionNode = 'solicitar_agente_humano';
     const phoneNumber = this.resolveEscalationPhone(args.inbound);
@@ -2915,10 +2949,9 @@ export class AgentService {
       inboundId: args.inbound.messageId, scope: 'protected_request', trustedPhone: phoneNumber,
       gatewayCapable: this.capabilityManifest['human.takeover.write'].available,
       prior: priorHelpReceipt,
-      // R7: only an explicit customer request may retry a failed handoff.
-      // A router escalation is not one, so a persistently failing gateway
-      // is not hit again on every following turn of the thread.
-      explicitRetry: args.allowExplicitRetry === true &&
+      // A failed handoff is retried only on a new turn of a request that is
+      // still open: the receipt dedupe alone would skip every retry.
+      explicitRetry: args.retryFailedHandoff === true &&
         priorHelpReceipt?.outcome === 'handoff_failed' &&
         priorHelpReceipt.inboundId !== args.inbound.messageId,
     });
@@ -2960,7 +2993,7 @@ export class AgentService {
         : gatewayResult.status === 'skipped'
           ? gatewayResult.message
           : (nextReceipt?.outcome ?? helpDecision.reason);
-    const planToSave = mergePlan(args.plan, {
+    let planToSave = mergePlan(args.plan, {
       current_node: currentNode,
       intent: 'solicitar_humano',
       human_help_receipt: nextReceipt,
@@ -2983,6 +3016,20 @@ export class AgentService {
         }
         : {}),
     });
+    // The record is written from the effect, never from a guess: a confirmed
+    // takeover parks the request with a person, a failed one leaves it open.
+    // The explicit-request path carries no router result, so it does not move
+    // the record.
+    if (args.router) {
+      planToSave = this.advanceOpenRequest({
+        plan: planToSave,
+        router: args.router,
+        inbound: args.inbound,
+        outcome: 'escalate',
+        handoffConfirmed: gatewayResult.status === 'success',
+        nowIso: requestedAt,
+      });
+    }
     const savePlanStartedAt = Date.now();
     await this.dependencies.planStore.save({
       plan: planToSave,
@@ -3016,6 +3063,7 @@ export class AgentService {
         userMessage: args.inbound.text,
         messageContext: args.messageContext,
         plan: planToSave,
+        ...this.requestOpenFacts(planToSave),
         extraction: args.extraction,
         missingFields: [],
         searchReady: false,
@@ -3069,6 +3117,7 @@ export class AgentService {
           turnDecision: this.humanEscalationTurnDecision(args.turnDecisionReason ?? currentNode),
           operationalNote: `Human escalation composition failed (${error instanceof Error ? error.name : 'unknown'}); typed operational failure delivered without prose.`,
           ...(args.routerDecision ? { routerDecision: args.routerDecision } : {}),
+          openRequestState: currentOpenRequest(planToSave.open_requests)?.state ?? null,
           humanTakeoverAttempted,
           humanTakeoverSucceeded,
         }),
@@ -3125,6 +3174,7 @@ export class AgentService {
             humanTakeoverSucceeded,
             operationalNote: 'The reply claimed a registered handoff without an in-turn receipt; the turn resolved without the claim.',
             ...(args.routerDecision ? { routerDecision: args.routerDecision } : {}),
+            openRequestState: currentOpenRequest(planToSave.open_requests)?.state ?? null,
           }),
         };
       }
@@ -3171,34 +3221,112 @@ export class AgentService {
         humanTakeoverAttempted,
         humanTakeoverSucceeded,
         ...(args.routerDecision ? { routerDecision: args.routerDecision } : {}),
+        openRequestState: currentOpenRequest(planToSave.open_requests)?.state ?? null,
       }),
     };
   }
 
   /**
-   * WP3 — the conversation health derived from the router's loop risk.
+   * WP3 — the conversation health derived from the open-request record.
    *
-   * The classifier no longer provides the health on this lane, so the state
-   * comes from the router level. The mapping is fixed and named in
-   * `decisions-router-lane.ts`.
+   * The classifier no longer provides the health on this lane: the record is
+   * the only evidence, and the mapping lives in `decisions-router-lane.ts`.
    */
-  private withRouterHealth(
+  private withRecordHealth(
     plan: PlanSnapshot,
     router: SupportLaneRouterResult & { readonly status: 'ok' },
   ): PlanSnapshot {
     return mergePlan(plan, {
-      conversation_health: {
-        ...conversationHealthFromRouter({
-          loopRisk: router.answers.loopRisk,
-          previous: plan.conversation_health,
-          nowIso: new Date().toISOString(),
-        }),
-        // The capability-blocked streak is the router's own count of the
-        // turns whose request depended on a capability the runtime cannot
-        // execute. It is persisted here so the next turn can count it.
-        capability_blocked_streak: router.capabilityBlockedStreak,
-      },
+      conversation_health: conversationHealthFromRecord({
+        current: router.current,
+        previous: plan.conversation_health,
+        nowIso: new Date().toISOString(),
+      }),
     });
+  }
+
+  /**
+   * WP3 — the open-request record advanced with the effect of this turn.
+   *
+   * The record is written from the effect, never from a guess: the outcome
+   * that really happened decides the new state. A refused record fact leaves
+   * it still, so a request never moves on an answer the router did not give.
+   */
+  private advanceOpenRequest(args: {
+    readonly plan: PlanSnapshot;
+    readonly router: SupportLaneRouterResult & { readonly status: 'ok' };
+    readonly inbound: NormalizedInboundMessage;
+    readonly outcome:
+      | 'pause'
+      | 'escalate'
+      | 'offer_human'
+      | 'answer'
+      | 'clarify'
+      | 'suppress_ack'
+      | 'planning'
+      | 'rsvp';
+    readonly handoffConfirmed?: boolean;
+    readonly nowIso: string;
+  }): PlanSnapshot {
+    const nextState = nextOpenRequestState({
+      outcome: args.outcome,
+      handoffConfirmed: args.handoffConfirmed === true,
+      requestSettled: args.router.answers.requestSettled,
+      unresolvedMoney: args.plan.support_outcome?.unresolved_money ?? false,
+    });
+    if (!args.router.recordFactsAnswered) {
+      return args.plan;
+    }
+    return mergePlan(args.plan, {
+      open_requests: [...advanceOpenRequests({
+        previous: args.plan.open_requests,
+        sameOpenRequest: args.router.sameOpenRequest,
+        openingText: args.inbound.text,
+        nextState,
+        nowIso: args.nowIso,
+        openingKey: args.inbound.messageId,
+      })],
+    });
+  }
+
+  /**
+   * The record state a support-lane turn leaves behind, carried in the trace:
+   * the single observable that explains why the turn escalated, paused or
+   * answered.
+   */
+  private withOpenRequestState(
+    response: HandleTurnResponse,
+    plan: PlanSnapshot,
+  ): HandleTurnResponse {
+    return {
+      ...response,
+      trace: {
+        ...response.trace,
+        open_request_state: currentOpenRequest(plan.open_requests)?.state ?? null,
+      },
+    };
+  }
+
+  /**
+   * The open-request facts of the reply composition.
+   *
+   * The reply lane reads the record, never a guess: the request is open while
+   * its state is `unresolved`, `needs_input` or `with_person`, and closed when
+   * it was answered or the thread holds no record. The turn count is zero for
+   * a closed request, so a settled turn never looks like a long open one.
+   */
+  private requestOpenFacts(plan: PlanSnapshot): {
+    requestOpen: boolean;
+    requestOpenTurns: number;
+  } {
+    const current = currentOpenRequest(plan.open_requests);
+    const state = current?.state ?? null;
+    const requestOpen =
+      state === 'unresolved' || state === 'needs_input' || state === 'with_person';
+    return {
+      requestOpen,
+      requestOpenTurns: requestOpen ? (current?.turns ?? 0) : 0,
+    };
   }
 
   /**
@@ -5538,6 +5666,7 @@ export class AgentService {
       userMessage: args.inbound.text,
       messageContext: args.messageContext,
       plan,
+      ...this.requestOpenFacts(plan),
       extraction: clarificationExtraction,
       missingFields: plan.missing_fields,
       searchReady: false,
@@ -5759,6 +5888,7 @@ export class AgentService {
           userMessage: args.inbound.text,
           messageContext: args.messageContext,
           plan,
+          ...this.requestOpenFacts(plan),
           extraction: args.extraction,
           missingFields: plan.missing_fields,
           searchReady: false,
@@ -5968,7 +6098,7 @@ export class AgentService {
         return await this.handleSupportLaneTurn({
           inbound: args.inbound,
           previousNode: args.plan.current_node,
-          workingPlan: this.withRouterHealth(routerPlan, router),
+          workingPlan: this.withRecordHealth(routerPlan, router),
           preparedCustomerContext,
           router,
           toolUsage: args.toolUsage,
@@ -5990,6 +6120,7 @@ export class AgentService {
       userMessage: args.inbound.text,
       messageContext: args.messageContext,
       plan,
+      ...this.requestOpenFacts(plan),
       extraction,
       missingFields: plan.missing_fields,
       searchReady: false,
@@ -6131,6 +6262,7 @@ export class AgentService {
         userMessage: caption,
         messageContext: args.messageContext,
         plan: unavailablePlan,
+        ...this.requestOpenFacts(unavailablePlan),
         extraction,
         missingFields: plan.missing_fields,
         searchReady: false,
@@ -6540,7 +6672,7 @@ export class AgentService {
       return await this.handleSupportLaneTurn({
         inbound: args.inbound,
         previousNode: args.previousNode,
-        workingPlan: this.withRouterHealth(args.plan, args.supportRouterResult),
+        workingPlan: this.withRecordHealth(args.plan, args.supportRouterResult),
         preparedCustomerContext,
         router: args.supportRouterResult,
         toolUsage: args.toolUsage,
@@ -6824,6 +6956,7 @@ export class AgentService {
       userMessage: args.caption,
       messageContext: args.messageContext,
       plan: unavailablePlan,
+      ...this.requestOpenFacts(unavailablePlan),
       extraction,
       missingFields: unavailablePlan.missing_fields,
       searchReady: false,
@@ -7192,7 +7325,7 @@ export class AgentService {
       return await this.handleSupportLaneTurn({
         inbound: args.inbound,
         previousNode: args.previousNode,
-        workingPlan: this.withRouterHealth(planWithRef, args.supportRouterResult),
+        workingPlan: this.withRecordHealth(planWithRef, args.supportRouterResult),
         preparedCustomerContext,
         router: args.supportRouterResult,
         toolUsage: args.toolUsage,
@@ -7347,6 +7480,7 @@ export class AgentService {
         userMessage: args.inbound.text,
         messageContext: args.messageContext,
         plan: args.workingPlan,
+        ...this.requestOpenFacts(args.workingPlan),
         extraction: args.extraction,
         missingFields: args.workingPlan.missing_fields,
         searchReady: false,
@@ -8502,6 +8636,7 @@ export class AgentService {
       userMessage: args.inbound.text,
       messageContext: args.messageContext,
       plan: planForInformation,
+      ...this.requestOpenFacts(planForInformation),
       extraction: overrides.extraction ?? replyExtraction,
       missingFields: [],
       searchReady: false,
@@ -8833,11 +8968,6 @@ export class AgentService {
       priorReportedPayment: args.priorReportedPayment,
     });
     const signature = computeSupportOutcomeSignature(components);
-    const limitationMemory = deriveSupportLimitationMemory({
-      priorSignature: args.plan.support_outcome?.signature ?? null,
-      priorRepeatCount: args.plan.support_outcome?.repeat_count ?? 0,
-      signature,
-    });
     const incomingRepeatCount = nextSupportOutcomeRepeatCount({
       currentSignature: args.plan.support_outcome?.signature ?? null,
       currentRepeatCount: args.plan.support_outcome?.repeat_count ?? 0,
@@ -8848,8 +8978,6 @@ export class AgentService {
         signature: signature.signature,
         repeat_count: incomingRepeatCount,
         unresolved_money: signature.unresolvedMoney,
-        limitation_already_stated: limitationMemory.limitationAlreadyStated,
-        prior_limitation_turns: limitationMemory.priorLimitationTurns,
         updated_at: new Date().toISOString(),
         reported_payment: args.plan.support_outcome?.reported_payment ?? null,
       },
@@ -8898,8 +9026,6 @@ export class AgentService {
           signature: null,
           repeat_count: 0,
           unresolved_money: false,
-          limitation_already_stated: false,
-          prior_limitation_turns: 0,
           updated_at: null,
         }),
         updated_at: new Date().toISOString(),
@@ -8949,6 +9075,7 @@ export class AgentService {
       userMessage: args.inbound.text,
       messageContext: args.messageContext,
       plan: planWithSupportContext,
+      ...this.requestOpenFacts(planWithSupportContext),
       extraction: args.extraction,
       missingFields: [],
       searchReady: false,
@@ -9284,6 +9411,7 @@ export class AgentService {
       userMessage: args.inbound.text,
       messageContext: args.messageContext,
       plan: planToSave,
+      ...this.requestOpenFacts(planToSave),
       extraction: args.extraction,
       missingFields: [],
       searchReady: false,
@@ -9493,6 +9621,7 @@ export class AgentService {
       userMessage: args.inbound.text,
       messageContext: args.messageContext,
       plan: planToSave,
+      ...this.requestOpenFacts(planToSave),
       extraction: args.extraction,
       missingFields: [],
       searchReady: false,
@@ -9609,6 +9738,7 @@ export class AgentService {
       userMessage: args.inbound.text,
       messageContext: args.messageContext,
       plan: planToSave,
+      ...this.requestOpenFacts(planToSave),
       extraction,
       missingFields: [],
       searchReady: false,
@@ -9754,6 +9884,7 @@ export class AgentService {
       userMessage: args.inbound.text,
       messageContext: args.messageContext,
       plan: planToSave,
+      ...this.requestOpenFacts(planToSave),
       extraction: args.extraction,
       missingFields: [],
       searchReady: false,
@@ -11262,7 +11393,6 @@ export class AgentService {
             status: 'progressing',
             reason: 'normal_progress',
             consecutive_non_progress_turns: 0,
-            capability_blocked_streak: previous.capability_blocked_streak,
             help_offer_status: 'declined',
             help_offered_at: previous.help_offered_at,
             last_assessed_at: assessedAt,
@@ -11302,9 +11432,6 @@ export class AgentService {
         status: trace.conversation_health,
         reason: trace.health_reason,
         consecutive_non_progress_turns: consecutiveNonProgressTurns,
-        // The classifier path never judges the capability, so the streak
-        // the router counted is carried through untouched.
-        capability_blocked_streak: previous.capability_blocked_streak,
         help_offer_status: shouldOfferHelp ? 'offered' : offerStatus,
         help_offered_at: shouldOfferHelp ? assessedAt : previous.help_offered_at,
         last_assessed_at: assessedAt,
@@ -12409,6 +12536,8 @@ export class AgentService {
     /** WP3: the redacted router decision of this turn. */
     routerDecision?: RouterDecisionTrace;
     routerFailure?: RouterFailureTrace;
+    /** The open-request record state after this turn. */
+    openRequestState?: TurnTrace['open_request_state'];
   }): TurnTrace {
     const contactValidationSummary = this.summarizeContactValidation(args.extraction, args.plan);
     const turnDecision = args.turnDecision ?? this.fallbackTurnDecision({
@@ -12503,6 +12632,9 @@ export class AgentService {
       human_takeover_succeeded: args.humanTakeoverSucceeded,
       ...(args.routerDecision ? { router_decision: args.routerDecision } : {}),
       ...(args.routerFailure ? { router_failure: args.routerFailure } : {}),
+      ...(args.openRequestState !== undefined
+        ? { open_request_state: args.openRequestState }
+        : {}),
     };
   }
 

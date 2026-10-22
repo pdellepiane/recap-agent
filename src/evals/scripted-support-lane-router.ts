@@ -3,13 +3,14 @@
  *
  * The offline target replays stored evidence with no model and no network.
  * A case that exercises the customer-assistance lane therefore needs the
- * router's answers to be typed data: this port answers with the scripted
- * probabilities and lets the deterministic policy decide the lane, exactly
- * as the production router does.
+ * router's answers to be typed data: this port states the three typed facts
+ * of a turn (route, same open request, request settled) and lets the
+ * deterministic policy decide the lane, exactly as the production router does.
  *
  * The port is a narrow seam: it never reads the customer message and never
  * writes a reply.
  */
+import { currentOpenRequest } from '../core/open-request';
 import type { RouterDecisionTrace } from '../core/trace';
 import type { OpenAiCallRef, TokenUsage } from '../runtime/contracts';
 import {
@@ -22,18 +23,16 @@ import {
   type RouterPolicyOutcome,
 } from '../runtime/decisions-router-policy';
 import type { RouterRoute } from '../runtime/decisions-router-questions';
-import {
-  nextCapabilityBlockedStreak,
-  type SupportLaneRouterPort,
-  type SupportLaneRouterResult,
+import type {
+  SupportLaneRouterPort,
+  SupportLaneRouterResult,
 } from '../runtime/decisions-router-lane';
 
-/** One scripted router answer: the probabilities the router returns. */
+/** One scripted router answer: the three facts the router states. */
 export type ScriptedRouterAnswer = {
   readonly route: RouterRoute;
-  readonly loopRisk: number;
-  readonly needsHumanNow: number;
-  readonly capabilityBlocked: number;
+  readonly sameOpenRequest: boolean;
+  readonly requestSettled: boolean;
 };
 
 /** The scripted answers of one offline case, in turn order. */
@@ -73,34 +72,21 @@ export class ScriptedSupportLaneRouter implements SupportLaneRouterPort {
         retryable: false,
       };
     }
-    const parsed: RouterParsedAnswers = {
-      needsHumanNow: answer.needsHumanNow,
-      capabilityBlocked: answer.capabilityBlocked,
-      route: answer.route,
-      routeProbabilities: [{ value: answer.route, probability: 0.9 }],
-      loopRisk: answer.loopRisk,
-      loopRiskScore: answer.loopRisk,
-      loopRiskProbabilities: [{ label: String(answer.loopRisk), probability: 0.9 }],
-      refusals: [],
-    };
-    const capabilityBlockedStreak = nextCapabilityBlockedStreak({
-      capabilityBlocked: parsed.capabilityBlocked,
-      previousStreak: args.plan.conversation_health.capability_blocked_streak,
-    });
+    const parsed = parsedFromAnswer(answer);
+    const current = currentOpenRequest(args.plan.open_requests);
     const outcome: RouterPolicyOutcome = decideRouterPolicy({
-      needsHumanNow: parsed.needsHumanNow,
-      capabilityBlocked: parsed.capabilityBlocked,
-      loopRisk: parsed.loopRisk,
       route: parsed.route,
-      repeatCount: args.plan.support_outcome?.repeat_count ?? 0,
-      unresolvedMoney: args.plan.support_outcome?.unresolved_money ?? false,
-      capabilityBlockedStreak,
+      sameOpenRequest: parsed.sameOpenRequest,
+      current,
+      helpOfferPending: args.plan.conversation_health.help_offer_status === 'offered',
     });
     return {
       status: 'ok',
       outcome,
       answers: parsed,
-      capabilityBlockedStreak,
+      current,
+      sameOpenRequest: parsed.sameOpenRequest,
+      recordFactsAnswered: true,
       decision: toRouterDecisionTrace(parsed),
       call: scriptedRouterCallRef(),
       tokenUsage: scriptedRouterTokenUsage(),
@@ -119,7 +105,7 @@ function scriptedRouterCallRef(): OpenAiCallRef {
       instructionBytes: 0,
       inputBytes: 0,
       toolCount: 0,
-      schemaPropertyCount: 4,
+      schemaPropertyCount: 3,
       transport: {
         observedRequestCount: 1,
         totalPayloadBytes: 0,
@@ -141,14 +127,21 @@ function scriptedRouterTokenUsage(): TokenUsage {
 export function scriptedRouterDecision(
   answer: ScriptedRouterAnswer,
 ): RouterDecisionTrace {
-  return toRouterDecisionTrace({
-    needsHumanNow: answer.needsHumanNow,
-    capabilityBlocked: answer.capabilityBlocked,
+  return toRouterDecisionTrace(parsedFromAnswer(answer));
+}
+
+/**
+ * A scripted answer as the router client would have parsed it: one certain
+ * route and one certain value for each of the two record facts.
+ */
+function parsedFromAnswer(answer: ScriptedRouterAnswer): RouterParsedAnswers {
+  return {
     route: answer.route,
-    routeProbabilities: [{ value: answer.route, probability: 0.9 }],
-    loopRisk: answer.loopRisk,
-    loopRiskScore: answer.loopRisk,
-    loopRiskProbabilities: [{ label: String(answer.loopRisk), probability: 0.9 }],
+    routeProbabilities: [{ value: answer.route, probability: 1 }],
+    sameOpenRequest: answer.sameOpenRequest,
+    sameOpenRequestProbability: answer.sameOpenRequest ? 1 : 0,
+    requestSettled: answer.requestSettled,
+    requestSettledProbability: answer.requestSettled ? 1 : 0,
     refusals: [],
-  });
+  };
 }

@@ -1,151 +1,153 @@
 import { describe, expect, it } from 'vitest';
 
+import type { OpenRequest, OpenRequestState } from '../src/core/open-request';
 import {
   decideRouterPolicy,
-  escalationReasonFor,
-  routerPolicyThresholds,
   type RouterPolicyInput,
+  type RouterPolicyOutcome,
 } from '../src/runtime/decisions-router-policy';
+import {
+  routerRouteValues,
+  type RouterRoute,
+} from '../src/runtime/decisions-router-questions';
 
-function policyInput(overrides: Partial<RouterPolicyInput> = {}): RouterPolicyInput {
+function openRequest(
+  state: OpenRequestState,
+  overrides: Partial<OpenRequest> = {},
+): OpenRequest {
   return {
-    needsHumanNow: 0,
-    capabilityBlocked: 0,
-    loopRisk: 0,
-    route: 'answer_with_records',
-    repeatCount: 0,
-    unresolvedMoney: false,
-    capabilityBlockedStreak: 0,
+    key: 'wamid.request-1',
+    opening_text: 'Quiero la devolución de mi compra',
+    state,
+    since: '2026-10-20T00:00:00.000Z',
+    turns: 2,
     ...overrides,
   };
 }
 
+function policyInput(overrides: Partial<RouterPolicyInput> = {}): RouterPolicyInput {
+  return {
+    route: 'answer_with_records',
+    sameOpenRequest: true,
+    current: null,
+    helpOfferPending: false,
+    ...overrides,
+  };
+}
+
+/** What the route alone decides when the record does not fire. */
+const routeOutcome: Record<RouterRoute, RouterPolicyOutcome> = {
+  answer_with_records: { kind: 'answer' },
+  ask_clarification: { kind: 'clarify' },
+  offer_human: { kind: 'offer_human' },
+  escalate_human: { kind: 'escalate', reason: 'explicit_person_request' },
+  rsvp_flow: { kind: 'rsvp' },
+  planning_flow: { kind: 'planning' },
+  suppress_ack: { kind: 'suppress_ack' },
+};
+
+// The policy has no thresholds: every input is a typed fact (the record state,
+// whether the turn is about that record, and the route), so each case below is
+// decided by the facts and never by a cut-off.
 describe('decisions router policy', () => {
-  it('keeps the Decision 2 constants verbatim', () => {
-    expect(routerPolicyThresholds).toEqual({
-      needsHumanNowEscalation: 0.70,
-      loopRiskEscalation: 3,
-      capabilityBlockedEscalation: 0.80,
-      escalateRouteNeedsHumanNow: 0.50,
-      repeatCountBackstop: 2,
-      // Added with the capability-blocked backstop: the same shape as the
-      // money backstop, for the other kind of unresolved request.
-      capabilityBlockedBackstop: 2,
-      offerHumanLoopRisk: 2,
-    });
-  });
+  it.each([...routerRouteValues])(
+    'pauses a turn about a request that is with a person, whatever the route (%s)',
+    (route) => {
+      expect(decideRouterPolicy(policyInput({
+        route,
+        sameOpenRequest: true,
+        current: openRequest('with_person'),
+      }))).toEqual({ kind: 'pause' });
+    },
+  );
 
-  it('escalates when needs_human_now reaches the threshold', () => {
-    expect(decideRouterPolicy(policyInput({ needsHumanNow: 0.70 }))).toEqual({
-      kind: 'escalate',
-      reason: 'needs_human_now_threshold',
-    });
-    expect(decideRouterPolicy(policyInput({ needsHumanNow: 0.69 })).kind).not.toBe('escalate');
-  });
+  it.each([...routerRouteValues])(
+    'escalates a repeated request that is still unresolved, whatever the route (%s)',
+    (route) => {
+      expect(decideRouterPolicy(policyInput({
+        route,
+        sameOpenRequest: true,
+        current: openRequest('unresolved', { turns: 3 }),
+      }))).toEqual({ kind: 'escalate', reason: 'unresolved_request_repeated' });
+    },
+  );
 
-  it('escalates when loop_risk reaches level 3', () => {
-    expect(decideRouterPolicy(policyInput({ loopRisk: 3 }))).toEqual({
-      kind: 'escalate',
-      reason: 'loop_risk_threshold',
-    });
-    expect(decideRouterPolicy(policyInput({ loopRisk: 2 })).kind).not.toBe('escalate');
-  });
+  it.each([...routerRouteValues])(
+    'never pauses an unrelated turn after a takeover: the route answers (%s)',
+    (route) => {
+      // The defect this design fixes: the previous turn parked a request with a
+      // person, and a later question that is not about that request must still
+      // be served. `same_open_request: false` falls through to the route.
+      expect(decideRouterPolicy(policyInput({
+        route,
+        sameOpenRequest: false,
+        current: openRequest('with_person'),
+      }))).toEqual(routeOutcome[route]);
+    },
+  );
 
-  it('escalates when capability_blocked is high and the route asks for a human', () => {
+  it.each([...routerRouteValues])(
+    'never escalates an unrelated request by the record rule (%s)',
+    (route) => {
+      const outcome = decideRouterPolicy(policyInput({
+        route,
+        sameOpenRequest: false,
+        current: openRequest('unresolved'),
+      }));
+      expect(outcome).toEqual(routeOutcome[route]);
+      expect(outcome).not.toEqual({
+        kind: 'escalate',
+        reason: 'unresolved_request_repeated',
+      });
+    },
+  );
+
+  it.each([...routerRouteValues])(
+    'never pauses or escalates by the record rule when there is no record (%s)',
+    (route) => {
+      expect(decideRouterPolicy(policyInput({
+        route,
+        sameOpenRequest: false,
+        current: null,
+      }))).toEqual(routeOutcome[route]);
+      // A `same` answer without a record still has no record to read: the
+      // route decides and nothing is paused.
+      expect(decideRouterPolicy(policyInput({
+        route,
+        sameOpenRequest: true,
+        current: null,
+      }))).toEqual(routeOutcome[route]);
+    },
+  );
+
+  it('escalates an explicit person request even without a record', () => {
     expect(decideRouterPolicy(policyInput({
-      capabilityBlocked: 0.80,
       route: 'escalate_human',
-    }))).toEqual({
-      kind: 'escalate',
-      reason: 'capability_blocked_threshold',
-    });
+      sameOpenRequest: false,
+      current: null,
+    }))).toEqual({ kind: 'escalate', reason: 'explicit_person_request' });
+  });
+
+  it('escalates an explicit person request over an answered record', () => {
     expect(decideRouterPolicy(policyInput({
-      capabilityBlocked: 0.80,
+      route: 'escalate_human',
+      sameOpenRequest: true,
+      current: openRequest('answered', { turns: 1 }),
+    }))).toEqual({ kind: 'escalate', reason: 'explicit_person_request' });
+  });
+
+  it('offers human help only while no offer is open', () => {
+    expect(decideRouterPolicy(policyInput({
       route: 'offer_human',
-    }))).toEqual({
-      kind: 'escalate',
-      reason: 'capability_blocked_threshold',
-    });
+      helpOfferPending: false,
+    }))).toEqual({ kind: 'offer_human' });
     expect(decideRouterPolicy(policyInput({
-      capabilityBlocked: 0.80,
-      route: 'answer_with_records',
-    })).kind).not.toBe('escalate');
+      route: 'offer_human',
+      helpOfferPending: true,
+    }))).toEqual({ kind: 'answer' });
   });
 
-  it('escalates on the repeat backstop even when the router proposes an answer', () => {
-    expect(decideRouterPolicy(policyInput({
-      route: 'answer_with_records',
-      repeatCount: 2,
-      unresolvedMoney: true,
-    }))).toEqual({
-      kind: 'escalate',
-      reason: 'repeat_count_backstop',
-    });
-  });
-
-  it('does not escalate on the backstop when the money outcome is resolved', () => {
-    expect(decideRouterPolicy(policyInput({
-      route: 'answer_with_records',
-      repeatCount: 4,
-      unresolvedMoney: false,
-    })).kind).not.toBe('escalate');
-  });
-
-  it('escalates on the capability-blocked backstop when the request the runtime cannot serve comes back', () => {
-    // The first capability-blocked turn may still be answered from the
-    // records; the second one means the answer is not moving.
-    expect(decideRouterPolicy(policyInput({
-      capabilityBlocked: 0.9,
-      capabilityBlockedStreak: 1,
-    })).kind).not.toBe('escalate');
-    expect(decideRouterPolicy(policyInput({
-      capabilityBlocked: 0.9,
-      capabilityBlockedStreak: 2,
-    }))).toEqual({ kind: 'escalate', reason: 'capability_blocked_repeat_backstop' });
-    // A settled money outcome does not matter here: the blocked request is
-    // the thing that is not moving.
-    expect(decideRouterPolicy(policyInput({
-      capabilityBlocked: 0.9,
-      capabilityBlockedStreak: 3,
-      repeatCount: 4,
-      unresolvedMoney: false,
-    })).kind).toBe('escalate');
-  });
-
-  it('escalates on an escalate_human route from needs_human_now 0.50 on', () => {
-    expect(decideRouterPolicy(policyInput({
-      route: 'escalate_human',
-      needsHumanNow: 0.50,
-    }))).toEqual({
-      kind: 'escalate',
-      reason: 'escalate_route_with_needs_human',
-    });
-    expect(decideRouterPolicy(policyInput({
-      route: 'escalate_human',
-      needsHumanNow: 0.49,
-    })).kind).not.toBe('escalate');
-  });
-
-  it('opens a human offer only at loop risk level 2', () => {
-    expect(decideRouterPolicy(policyInput({ route: 'offer_human', loopRisk: 2 }))).toEqual({
-      kind: 'offer_human',
-    });
-    expect(decideRouterPolicy(policyInput({ route: 'offer_human', loopRisk: 1 }))).toEqual({
-      kind: 'answer',
-    });
-    expect(decideRouterPolicy(policyInput({ route: 'offer_human', loopRisk: 3 }))).toEqual({
-      kind: 'escalate',
-      reason: 'loop_risk_threshold',
-    });
-  });
-
-  it('degrades an escalate_human route without a trigger to an answer', () => {
-    expect(decideRouterPolicy(policyInput({ route: 'escalate_human' }))).toEqual({
-      kind: 'answer',
-    });
-  });
-
-  it('maps the remaining routes to their outcomes', () => {
+  it('maps each remaining route to its outcome', () => {
     expect(decideRouterPolicy(policyInput({ route: 'answer_with_records' }))).toEqual({
       kind: 'answer',
     });
@@ -163,16 +165,22 @@ describe('decisions router policy', () => {
     });
   });
 
-  it('treats a refused question as no signal instead of an escalation trigger', () => {
-    // A refusal contributes the neutral defaults: probability 0, level 0 and
-    // the answer route. No refusal may escalate the turn.
-    const refused = policyInput({
-      needsHumanNow: 0,
-      capabilityBlocked: 0,
-      loopRisk: 0,
+  it('lets the record rule win over an answer route', () => {
+    expect(decideRouterPolicy(policyInput({
       route: 'answer_with_records',
-    });
-    expect(escalationReasonFor(refused)).toBeNull();
-    expect(decideRouterPolicy(refused)).toEqual({ kind: 'answer' });
+      sameOpenRequest: true,
+      current: openRequest('unresolved', { turns: 4 }),
+    }))).toEqual({ kind: 'escalate', reason: 'unresolved_request_repeated' });
+  });
+
+  it('lets the route decide when the record is already answered or needs input', () => {
+    expect(decideRouterPolicy(policyInput({
+      route: 'answer_with_records',
+      current: openRequest('answered'),
+    }))).toEqual({ kind: 'answer' });
+    expect(decideRouterPolicy(policyInput({
+      route: 'ask_clarification',
+      current: openRequest('needs_input'),
+    }))).toEqual({ kind: 'clarify' });
   });
 });

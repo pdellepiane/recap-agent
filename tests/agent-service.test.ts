@@ -8983,7 +8983,6 @@ describe('AgentService', () => {
             status: 'stalled',
             reason: 'repeated_question',
             consecutive_non_progress_turns: 1,
-            capability_blocked_streak: 0,
             help_offer_status: 'none',
             help_offered_at: null,
             last_assessed_at: '2026-07-10T10:00:00.000Z',
@@ -9020,7 +9019,6 @@ describe('AgentService', () => {
     expect(response.plan.current_node).toBe('ofrecer_agente_humano');
     expect(response.plan.conversation_health).toMatchObject({
       consecutive_non_progress_turns: 2,
-      capability_blocked_streak: 0,
       help_offer_status: 'offered',
     });
     expect(response.trace.route_kind).toBe('human_help_offer');
@@ -9050,7 +9048,6 @@ describe('AgentService', () => {
             status: 'frustrated',
             reason: 'explicit_frustration',
             consecutive_non_progress_turns: 1,
-            capability_blocked_streak: 0,
             help_offer_status: 'offered',
             help_offered_at: '2026-07-10T10:00:00.000Z',
             last_assessed_at: '2026-07-10T10:00:00.000Z',
@@ -9118,7 +9115,6 @@ describe('AgentService', () => {
             status: 'stalled',
             reason: 'repeated_question',
             consecutive_non_progress_turns: 1,
-            capability_blocked_streak: 0,
             help_offer_status: 'none',
             help_offered_at: null,
             last_assessed_at: '2026-07-10T10:00:00.000Z',
@@ -9183,7 +9179,6 @@ describe('AgentService', () => {
             status: 'frustrated',
             reason: 'explicit_frustration',
             consecutive_non_progress_turns: 1,
-            capability_blocked_streak: 0,
             help_offer_status: 'offered',
             help_offered_at: '2026-07-10T10:00:00.000Z',
             last_assessed_at: '2026-07-10T10:00:00.000Z',
@@ -9248,7 +9243,6 @@ describe('AgentService', () => {
             status: 'stalled',
             reason: 'circular_conversation',
             consecutive_non_progress_turns: 2,
-            capability_blocked_streak: 0,
             help_offer_status: 'offered',
             help_offered_at: '2026-07-10T10:00:00.000Z',
             last_assessed_at: '2026-07-10T10:00:00.000Z',

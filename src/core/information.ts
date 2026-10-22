@@ -274,8 +274,6 @@ export const supportOutcomeStateSchema = z.object({
   signature: z.string().nullable().default(null),
   repeat_count: z.number().int().min(0).default(0),
   unresolved_money: z.boolean().default(false),
-  limitation_already_stated: z.boolean().default(false),
-  prior_limitation_turns: z.number().int().min(0).default(0),
   updated_at: z.string().nullable().default(null),
   /**
    * The payment the guest reported on the previous turn, persisted from that
@@ -293,8 +291,6 @@ export function emptySupportOutcomeState(): SupportOutcomeState {
     signature: null,
     repeat_count: 0,
     unresolved_money: false,
-    limitation_already_stated: false,
-    prior_limitation_turns: 0,
     updated_at: null,
     reported_payment: null,
   };
@@ -327,8 +323,6 @@ export function mergeSupportOutcomeState(
       ? Math.max(current.repeat_count, incoming.repeat_count)
       : incoming.repeat_count,
     unresolved_money: incoming.unresolved_money,
-    limitation_already_stated: incoming.limitation_already_stated,
-    prior_limitation_turns: incoming.prior_limitation_turns,
     updated_at: incoming.updated_at,
     reported_payment: incoming.reported_payment ?? null,
   };

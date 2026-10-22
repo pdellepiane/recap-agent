@@ -1,0 +1,68 @@
+template: template.base-live
+id: live_behavior.question_after_takeover_is_answered
+suite: live_behavior_regression
+version: 1
+description: A confirmed takeover parks one request. A question about something else on the same thread is answered instead of being swallowed by the pause, and no second takeover is attempted.
+tags: [ live, behavior, purchase, escalation, intervention, decisions-router, whatsapp ]
+targetModes: [ live_lambda ]
+backendFixture:
+  scenario: purchase-approved-event-date
+inputs:
+  - text: "Quiero que me pase con una persona del equipo, por favor. Es sobre la compra del regalo."
+    channel: whatsapp
+    contactPhone: "+51900000406"
+    sessionId: live-question-after-takeover
+    backendFixture:
+      scenario: purchase-approved-event-date
+  - text: "Gracias. Una cosa aparte: ¿qué fecha tiene el evento del regalo? Quiero confirmarla antes de viajar."
+    channel: whatsapp
+    contactPhone: "+51900000406"
+    sessionId: live-question-after-takeover
+    backendFixture:
+      scenario: purchase-approved-event-date
+expectations:
+  - id: takeover-happens-once
+    type: fixture_effect_count
+    operation: handoff.write
+    expectedAttempts: 1
+    expectedSuccesses: 1
+    expectedReplays: 0
+    severity: hard
+  - id: the-record-parks-the-request-with-a-person
+    type: plan_field_equals
+    path: human_escalation.status
+    expected: requested
+    severity: hard
+  - id: the-second-turn-does-not-take-the-conversation-over-again
+    type: fixture_effect_count
+    operation: handoff.write
+    turnIndex: 1
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: the-parked-request-survives-an-unrelated-question
+    type: plan_field_equals
+    path: open_requests.0.state
+    expected: with_person
+    turnIndex: 1
+    severity: hard
+  - id: the-unrelated-question-is-handled-by-the-information-lane
+    type: trace_field_equals
+    path: next_node
+    expected: resolver_consultas_informativas
+    turnIndex: 1
+    severity: hard
+notes:
+  - "Runtime precondition: the deployed development Lambda must run the customer-assistance lane with AGENT_FEATURE_DECISIONS_ROUTER=true."
+  - "This asserts the objective that was already written down. `evals/e2e-supervision/objectives.md` OBJ-H says a genuinely new question after a takeover is answered while a same-thread money follow-up stays paused. On 2026-10-22 the deployed artifact answered the equivalent second message with delivery action suppress and stop reason human_escalation_soft_pause, because the pause ran before the router and knew nothing about what the guest had asked. The open-request record now decides, so the runtime matches its own specification."
+  - "The first turn asks for a person explicitly, so the escalation does not depend on any probability: the route alone escalates. That keeps the precondition of this case deterministic."
+  - "The fixture carries a readable event date for this guest, so the second question is answerable from the authorized records; the assertion is still structural (who handled the turn and what the record says), never the wording of the reply."
+budget:
+  maxTurns: 2
+  estimatedPromptTokensPerTurn: 2200
+  estimatedCompletionTokensPerTurn: 300
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1

@@ -2,15 +2,15 @@
  * WP2 — Decisions API router: the deterministic input builder.
  *
  * The rendered string is the exact `input` sent to `POST /v1/decisions`. It
- * projects only the fields Decision 1 fixes: the current message and its
+ * projects only the facts the questions need: the current message and its
  * image flag, the last five message previews, a profile digest, the
- * capability digest, the outcome signature with its repeat count, the
- * pending-derivation flag and the turns-since-progress count.
+ * capability digest, the pending-derivation flag and the open-request record.
  *
  * The builder is PURE: no I/O, no model call, no clock. It renders a tracked
  * prompt template and returns the string. The template is loaded separately
  * through the PromptLoader.
  */
+import { currentOpenRequest, type OpenRequest, type OpenRequestState } from '../core/open-request';
 import type { PlanSnapshot } from '../core/plan';
 import type { CapabilityDigest } from './capability-digest';
 import type { CustomerContextSnapshot } from './customer-context';
@@ -30,7 +30,7 @@ export type RouterMessagePreview = {
 };
 
 /** Plan facts the router reads. Structurally a `PlanSnapshot` subset. */
-export type RouterPlanState = Pick<PlanSnapshot, 'conversation_health' | 'support_outcome'>;
+export type RouterPlanState = Pick<PlanSnapshot, 'conversation_health' | 'open_requests'>;
 
 export type RouterInputArgs = {
   readonly currentMessage: RouterCurrentMessage;
@@ -112,16 +112,31 @@ export function buildRouterInput(args: RouterInputArgs, template: string): strin
         class: operation.class,
       })),
     ),
-    outcome: JSON.stringify({
-      signature: args.plan.support_outcome?.signature ?? null,
-      repeatCount: args.plan.support_outcome?.repeat_count ?? 0,
-    }),
     botClaimedDerivationPending: String(
       args.plan.conversation_health.help_offer_status === 'offered',
     ),
-    turnsSinceProgress: String(args.plan.conversation_health.consecutive_non_progress_turns),
+    openRequest: JSON.stringify(openRequestDigest(args.plan.open_requests)),
   };
   return renderTemplate(template, values);
+}
+
+/**
+ * The record the router reads: one request or none. It carries no
+ * interpretation, so the router can answer `same_open_request` from it instead
+ * of guessing whether the conversation feels repeated.
+ */
+function openRequestDigest(
+  requests: readonly OpenRequest[],
+): { texto_inicial: string; estado: OpenRequestState; turnos: number } | null {
+  const current = currentOpenRequest(requests);
+  if (current === null) {
+    return null;
+  }
+  return {
+    texto_inicial: current.opening_text,
+    estado: current.state,
+    turnos: current.turns,
+  };
 }
 
 /** Every authorized purchase, in snapshot order. Nothing is dropped. */

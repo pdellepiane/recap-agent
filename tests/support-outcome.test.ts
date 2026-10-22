@@ -8,7 +8,7 @@ import { createEmptyPlan, mergePlan } from '../src/core/plan';
 import {
   classifySupportOutcomeResultKind,
   computeSupportOutcomeSignature,
-  deriveSupportLimitationMemory,
+  deriveRequiresNextStep,
   nextSupportOutcomeRepeatCount,
   supportOutcomeComponentsFromSnapshot,
   type SupportOutcomeComponents,
@@ -182,35 +182,6 @@ describe('support outcome signature', () => {
 });
 
 describe('support outcome repeat counter', () => {
-  it('remembers only prior identical unresolved limitation turns', () => {
-    const signature = computeSupportOutcomeSignature({
-      ...baseComponents,
-      resultKind: 'reference_unavailable',
-    });
-    let priorSignature: string | null = null;
-    let priorRepeatCount = 0;
-    for (const priorTurns of [0, 1, 2]) {
-      expect(deriveSupportLimitationMemory({ priorSignature, priorRepeatCount, signature }))
-        .toEqual({ limitationAlreadyStated: priorTurns > 0, priorLimitationTurns: priorTurns });
-      priorRepeatCount = nextSupportOutcomeRepeatCount({
-        currentSignature: priorSignature,
-        currentRepeatCount: priorRepeatCount,
-        nextSignature: signature.signature,
-      });
-      expect(priorRepeatCount).toBe(priorTurns + 1);
-      priorSignature = signature.signature;
-    }
-    const changed = computeSupportOutcomeSignature({ ...signature.components, coverage: 'partial' });
-    expect(deriveSupportLimitationMemory({ priorSignature, priorRepeatCount, signature: changed }))
-      .toEqual({ limitationAlreadyStated: false, priorLimitationTurns: 0 });
-    const resolved = computeSupportOutcomeSignature(baseComponents);
-    expect(deriveSupportLimitationMemory({
-      priorSignature: resolved.signature,
-      priorRepeatCount: 2,
-      signature: resolved,
-    })).toEqual({ limitationAlreadyStated: false, priorLimitationTurns: 0 });
-  });
-
   it('increments on a repeated signature and restarts on a change', () => {
     const first = nextSupportOutcomeRepeatCount({
       currentSignature: null,
@@ -243,28 +214,72 @@ describe('support outcome repeat counter', () => {
   });
 });
 
+describe('support outcome next-step requirement', () => {
+  it('does not require a next step once the request was answered', () => {
+    expect(deriveRequiresNextStep({
+      requestState: 'answered',
+      paymentStatuses: ['approved'],
+    })).toBe(false);
+  });
+
+  it('requires a next step when the request is open in any of its states', () => {
+    for (const requestState of ['unresolved', 'needs_input', 'with_person'] as const) {
+      expect(deriveRequiresNextStep({
+        requestState,
+        paymentStatuses: ['approved'],
+      })).toBe(true);
+    }
+    // The code treats an absent record as not answered, so the thread still
+    // has to move. The reply layer only calls this with `answered` or
+    // `unresolved`, so this is a contract assertion rather than a live path.
+    expect(deriveRequiresNextStep({
+      requestState: null,
+      paymentStatuses: [],
+    })).toBe(true);
+  });
+
+  it('requires a next step for a payment status outside approved and pending', () => {
+    expect(deriveRequiresNextStep({
+      requestState: 'answered',
+      paymentStatuses: ['declined'],
+    })).toBe(true);
+    expect(deriveRequiresNextStep({
+      requestState: 'answered',
+      paymentStatuses: ['approved', 'pending'],
+    })).toBe(false);
+    expect(deriveRequiresNextStep({
+      requestState: 'answered',
+      paymentStatuses: [null, ''],
+    })).toBe(false);
+  });
+});
+
 describe('support outcome state merge', () => {
-  it('preserves limitation memory through partial and post-compose-shaped updates', () => {
+  it('keeps the repeat count through partial updates and resets on a new signature', () => {
     const plan = mergePlan(createEmptyPlan({
       planId: 'memory-plan', channel: 'whatsapp', externalUserId: 'memory-user',
     }), {
       support_outcome: {
         signature: 'sig-a', repeat_count: 2, unresolved_money: true,
-        limitation_already_stated: true, prior_limitation_turns: 1,
       },
     });
     const partial = mergePlan(plan, {
       support_outcome: { signature: 'sig-a', updated_at: '2026-10-21T00:00:00.000Z' },
     });
+    expect(partial.support_outcome).toMatchObject({
+      signature: 'sig-a', repeat_count: 2,
+    });
     const postCompose = mergePlan(partial, {
       support_outcome: { ...partial.support_outcome, reported_payment: null },
     });
     expect(postCompose.support_outcome).toMatchObject({
-      limitation_already_stated: true, prior_limitation_turns: 1,
+      signature: 'sig-a', repeat_count: 2,
     });
     expect(mergePlan(postCompose, {
-      support_outcome: { signature: 'sig-b', limitation_already_stated: false, prior_limitation_turns: 0 },
-    }).support_outcome).toMatchObject({ limitation_already_stated: false, prior_limitation_turns: 0 });
+      support_outcome: { signature: 'sig-b', repeat_count: 1, unresolved_money: false },
+    }).support_outcome).toMatchObject({
+      signature: 'sig-b', repeat_count: 1, unresolved_money: false,
+    });
   });
 
   it('keeps the larger repeat count for the same signature', () => {

@@ -16,6 +16,7 @@
  */
 import crypto from 'node:crypto';
 
+import type { OpenRequestState } from '../core/open-request';
 import type { CustomerContextSnapshot } from './customer-context';
 
 /**
@@ -179,45 +180,18 @@ export function computeSupportOutcomeSignature(
 }
 
 /**
- * Prior-turn limitation memory. Resolved facts must never be suppressed by
- * this unresolved-money-only gate, even when their signatures repeat.
- */
-export function deriveSupportLimitationMemory(args: {
-  readonly priorSignature: string | null;
-  readonly priorRepeatCount: number;
-  readonly signature: SupportOutcomeSignature;
-}): { limitationAlreadyStated: boolean; priorLimitationTurns: number } {
-  const sameSignature = args.priorSignature !== null &&
-    args.priorSignature === args.signature.signature;
-  const limitationAlreadyStated = sameSignature && args.signature.unresolvedMoney;
-  return {
-    limitationAlreadyStated,
-    priorLimitationTurns: limitationAlreadyStated ? args.priorRepeatCount : 0,
-  };
-}
-
-/**
  * Whether the turn's money evidence is settled.
  *
- * A next step is mandatory when it is not: the money stayed unresolved, a
- * purchase in the authorized profile carries a payment status that is neither
- * approved nor pending, or the request depends on a capability the runtime
- * cannot execute. The reply contract then requires a concrete next step,
- * instead of leaving it to the model's judgement about whether the turn
- * "resolved" the question — the judgement that let a reply end on the
- * record's negative with the guest left without a move.
- *
- * The facts are the ones the turn already computed: the support outcome's
- * unresolved-money classification, the router's capability-blocked
- * judgement, and the profile's payment statuses.
+ * The open-request record decides it now: a request that is not `answered`
+ * still needs a move, and so does a purchase in the authorized profile whose
+ * payment status is neither approved nor pending. The money classification
+ * plus a router probability no longer weigh in.
  */
 export function deriveRequiresNextStep(args: {
-  readonly unresolvedMoney: boolean;
-  readonly capabilityBlocked: boolean;
+  readonly requestState: OpenRequestState | null;
   readonly paymentStatuses: readonly (string | null | undefined)[];
 }): boolean {
-  if (args.unresolvedMoney) return true;
-  if (args.capabilityBlocked) return true;
+  if (args.requestState !== 'answered') return true;
   return args.paymentStatuses.some((status) => {
     const normalized = (status ?? '').trim().toLowerCase();
     return normalized.length > 0 && normalized !== 'approved' && normalized !== 'pending';

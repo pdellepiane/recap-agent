@@ -207,7 +207,6 @@ function summarize({ payload, plan, perf }) {
       reason: health.reason ?? null,
       help_offer_status: health.help_offer_status ?? null,
       consecutive_non_progress_turns: health.consecutive_non_progress_turns ?? null,
-      capability_blocked_streak: health.capability_blocked_streak ?? null,
     },
     support_outcome: {
       signature: outcome.signature ?? null,
@@ -258,6 +257,7 @@ function printSummary(summary) {
   line('token usage', JSON.stringify(summary.token_usage));
   line('models', JSON.stringify(summary.models));
   line('health', JSON.stringify(summary.conversation_health));
+  line('open_request', JSON.stringify(plan?.open_requests ?? []));
   line('support_outcome', JSON.stringify(summary.support_outcome));
   line('human_escalation', JSON.stringify(summary.human_escalation));
   line('help receipt', JSON.stringify(summary.human_help_receipt));

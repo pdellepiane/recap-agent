@@ -471,62 +471,48 @@ describe('actual extraction request owns its instructions', () => {
 });
 
 describe('actual reply request owns its instructions', () => {
-  it('projects limitation memory only on the two support contract nodes', async () => {
+  it('projects the open-request record only on the two support contract nodes', async () => {
     const runtime = testRuntime();
-    const plan = supportPlan({ support_outcome: {
-      signature: 'repeated', repeat_count: 2, unresolved_money: true,
-      limitation_already_stated: true, prior_limitation_turns: 1,
-    } });
+    const openRecord = { requestOpen: true, requestOpenTurns: 2 };
     for (const currentNode of ['resolver_consultas_informativas', 'solicitar_agente_humano'] as const) {
-      const repeated = await runtime.buildReplyRequestSpec(replyRequest(plan, { currentNode }));
-      expect(repeated.input).toContain('"limitationAlreadyStated": true');
-      expect(repeated.input).toContain('"priorLimitationTurns": 1');
-      console.log('Limitation memory prompt audit', {
+      const open = await runtime.buildReplyRequestSpec(
+        replyRequest(supportPlan(), { currentNode, ...openRecord }),
+      );
+      expect(open.input).toContain('"request_open": true');
+      expect(open.input).toContain('"request_open_turns": 2');
+      console.log('Open request prompt audit', {
         node: currentNode,
-        instructionBytes: Buffer.byteLength(repeated.instructions),
-        inputBytes: Buffer.byteLength(repeated.input),
+        instructionBytes: Buffer.byteLength(open.instructions),
+        inputBytes: Buffer.byteLength(open.input),
       });
       const first = await runtime.buildReplyRequestSpec(replyRequest(supportPlan(), { currentNode }));
-      expect(first.input).toContain('"limitationAlreadyStated": false');
-      expect(first.input).toContain('"priorLimitationTurns": 0');
-      // The unsettled-money fact is what makes the next step mandatory
-      // instead of a matter of the model's judgement.
-      expect(repeated.input).toContain('"requiresNextStep": true');
+      expect(first.input).toContain('"request_open": false');
+      expect(first.input).toContain('"request_open_turns": 0');
+      // The record is what makes the next step mandatory instead of a matter
+      // of the model's judgement: an open request cannot end on the record.
+      expect(open.input).toContain('"requiresNextStep": true');
       expect(first.input).toContain('"requiresNextStep": false');
     }
-    // A capability-blocked turn requires a next step too, even when the
-    // money is settled: the request depends on something the runtime cannot
-    // execute, so the reply cannot stop at the record.
-    const blocked = supportPlan({
-      support_outcome: {
-        signature: 'settled', repeat_count: 1, unresolved_money: false,
-        limitation_already_stated: false, prior_limitation_turns: 0,
-      },
-      conversation_health: {
-        status: 'progressing', reason: 'normal_progress',
-        consecutive_non_progress_turns: 0, capability_blocked_streak: 1,
-        help_offer_status: 'none', help_offered_at: null, last_assessed_at: null,
-      },
-    });
-    const blockedSpec = await runtime.buildReplyRequestSpec(
-      replyRequest(blocked, { currentNode: 'resolver_consultas_informativas' }),
+    // A request that stays open requires a next step even when the money
+    // evidence is consistent: the record, not a money classification, decides.
+    const settledMoney = supportPlan({ support_outcome: {
+      signature: 'settled', repeat_count: 1, unresolved_money: false,
+    } });
+    const settledMoneySpec = await runtime.buildReplyRequestSpec(
+      replyRequest(settledMoney, {
+        currentNode: 'resolver_consultas_informativas',
+        ...openRecord,
+      }),
     );
-    expect(blockedSpec.input).toContain('"requiresNextStep": true');
-    expect(blockedSpec.input).toContain('"capabilityBlocked": true');
-    const unrelated = await runtime.buildReplyRequestSpec(replyRequest(plan, { currentNode: 'entrevista' }));
+    expect(settledMoneySpec.input).toContain('"requiresNextStep": true');
+    const unrelated = await runtime.buildReplyRequestSpec(
+      replyRequest(supportPlan(), { currentNode: 'entrevista', ...openRecord }),
+    );
     const baseline = await runtime.buildReplyRequestSpec(replyRequest(supportPlan(), { currentNode: 'entrevista' }));
-    expect(unrelated.input).not.toContain('limitationAlreadyStated');
-    expect(unrelated.input).not.toContain('priorLimitationTurns');
+    expect(unrelated.input).not.toContain('request_open');
     expect(unrelated.input).not.toContain('requiresNextStep');
-    expect(unrelated.input).not.toContain('capabilityBlocked');
     expect(unrelated.input).toBe(baseline.input);
     expect(Buffer.byteLength(unrelated.input)).toBe(Buffer.byteLength(baseline.input));
-    console.log('Limitation memory prompt audit', {
-      node: 'entrevista',
-      instructionBytes: Buffer.byteLength(unrelated.instructions),
-      inputBytes: Buffer.byteLength(unrelated.input),
-      inputByteDelta: Buffer.byteLength(unrelated.input) - Buffer.byteLength(baseline.input),
-    });
   });
 
   it('names only evidence keys the support reply input actually carries', async () => {
@@ -535,13 +521,11 @@ describe('actual reply request owns its instructions', () => {
     const runtime = testRuntime();
     const plan = supportPlan({ support_outcome: {
       signature: 'repeated', repeat_count: 2, unresolved_money: true,
-      limitation_already_stated: true, prior_limitation_turns: 1,
     } });
     const evidenceKeys = [
-      'limitationAlreadyStated',
-      'priorLimitationTurns',
+      'request_open',
+      'request_open_turns',
       'requiresNextStep',
-      'capabilityBlocked',
       'handoff_outcome',
     ];
     for (const currentNode of ['resolver_consultas_informativas', 'solicitar_agente_humano'] as const) {

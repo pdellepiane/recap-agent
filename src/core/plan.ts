@@ -9,6 +9,7 @@ import {
   providerCategorySchema,
   type ProviderCategory,
 } from './provider-category';
+import { openRequestSchema, OPEN_REQUEST_LIMIT } from './open-request';
 import { providerSubQueryResultSchema } from './provider-sub-query';
 import {
   authRecoveryStateSchema,
@@ -212,17 +213,6 @@ export const conversationHealthStateSchema = z.object({
   status: z.enum(conversationHealthStatusValues),
   reason: z.enum(conversationHealthReasonValues),
   consecutive_non_progress_turns: z.number().int().min(0),
-  /**
-   * Consecutive turns in which the router judged the request to depend on a
-   * capability the runtime cannot execute. The count is the deterministic
-   * evidence that a request the runtime cannot serve is being asked again
-   * and again; the capability-blocked repeat backstop escalates on it.
-   *
-   * The default keeps a plan stored before this field existed loadable: the
-   * stored plan is parsed strictly, so a missing key would fail the whole
-   * record.
-   */
-  capability_blocked_streak: z.number().int().min(0).default(0),
   help_offer_status: z.enum(humanHelpOfferStatusValues),
   help_offered_at: z.string().nullable(),
   last_assessed_at: z.string().nullable(),
@@ -316,17 +306,23 @@ export const planSchema = z.object({
     status: 'uncertain',
     reason: 'insufficient_context',
     consecutive_non_progress_turns: 0,
-    capability_blocked_streak: 0,
     help_offer_status: 'none',
     help_offered_at: null,
     last_assessed_at: null,
   }),
+  /**
+   * One record per request the guest made that the runtime has not settled.
+   *
+   * This is the only source of escalation on the customer-assistance lane: the
+   * policy pauses on a request that is with a person, escalates a request the
+   * guest asked again while it was still open, and does nothing else. The
+   * default keeps a plan stored before the record existed loadable.
+   */
+  open_requests: z.array(openRequestSchema).max(OPEN_REQUEST_LIMIT).default([]),
   support_outcome: supportOutcomeStateSchema.default({
     signature: null,
     repeat_count: 0,
     unresolved_money: false,
-    limitation_already_stated: false,
-    prior_limitation_turns: 0,
     updated_at: null,
     reported_payment: null,
   }),
@@ -622,11 +618,11 @@ export function createEmptyPlan(args: {
     },
     auth_recovery: emptyAuthRecoveryState(),
     support_outcome: emptySupportOutcomeState(),
+    open_requests: [],
     conversation_health: {
       status: 'uncertain',
       reason: 'insufficient_context',
       consecutive_non_progress_turns: 0,
-      capability_blocked_streak: 0,
       help_offer_status: 'none',
       help_offered_at: null,
       last_assessed_at: null,
@@ -976,10 +972,6 @@ export function mergePlan(plan: PlanSnapshot, update: PlanUpdate): PlanSnapshot 
     ? mergeSupportOutcomeState(plan.support_outcome ?? emptySupportOutcomeState(), {
         ...emptySupportOutcomeState(),
         ...supportOutcomeUpdate,
-        limitation_already_stated: supportOutcomeUpdate.limitation_already_stated ??
-          (plan.support_outcome ?? emptySupportOutcomeState()).limitation_already_stated,
-        prior_limitation_turns: supportOutcomeUpdate.prior_limitation_turns ??
-          (plan.support_outcome ?? emptySupportOutcomeState()).prior_limitation_turns,
       })
     : (plan.support_outcome ?? emptySupportOutcomeState());
 

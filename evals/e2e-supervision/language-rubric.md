@@ -163,9 +163,11 @@ wrote, in natural Spanish, at the length the situation needs. No template
 menu, no repeated paragraph from a previous turn, no boilerplate that ignores
 the current message, and no silence where a reply was owed.
 
-**Note.** The soft pause is a legitimate silence: after a takeover the thread
-belongs to a person, and the runtime deliberately answers nothing. That is
-recorded as a suppression with its reason, not as a language failure.
+**Note.** Silence is legitimate only when the turn is about the request that is
+already with a person: the thread is parked for that request, and the runtime
+deliberately answers nothing. That is recorded as a suppression with its
+reason, not as a language failure. A turn that asks about something else is not
+covered by this note: it must be answered, even on a parked thread.
 
 ---
 
@@ -174,6 +176,26 @@ recorded as a suppression with its reason, not as a language failure.
 **The rule.** A reply that re-states a limitation already delivered on this thread, as its opening or closing move and without new evidence or a new action, is a FAIL.
 
 Worked example: dossier case D turns 2–4 ('no puedo verificar el correo ni confirmar que los fondos se hayan acreditado' x3).
+
+---
+
+## L11 — Who acted
+
+**The rule.** The reply keeps straight who did what. A record of something the
+guest did, or of something the host did, is never presented as something the
+store did, and a record of a thank-you is never presented as proof of a
+notification.
+
+**Check.** Take every sentence in which the store is the subject of an action
+("le avisamos", "se le notificó", "le enviamos"). The reply must be able to
+point at a record that shows the store doing it. The host receipt
+(`isThanked`, `thanks.message`, `thanks.sendMethod`) shows that a thank-you
+exists; it does not show that the store told the host anything.
+
+**FAIL.** Case B of the 2026-10-19 dossier read a guest thank-you receipt as a
+delivered host notification. A reply that says the host "ya fue avisada" while
+the only record is a thank-you the host sent is a FAIL, even when it is polite
+and even when it adds a next step.
 
 ---
 

@@ -12,16 +12,9 @@ import {
   runDecisionsRouter,
   type DecisionsRouterResult,
 } from '../src/runtime/decisions-router-client';
-import type {
-  RouterChoiceQuestion,
-  RouterQuestion,
-  RouterScoreQuestion,
-} from '../src/runtime/decisions-router-questions';
-import { decideRouterPolicy } from '../src/runtime/decisions-router-policy';
+import type { RouterQuestion } from '../src/runtime/decisions-router-questions';
 
 const questions: readonly RouterQuestion[] = [
-  { type: 'predicate', name: 'needs_human_now', instructions: 'needs_human_now instructions' },
-  { type: 'predicate', name: 'capability_blocked', instructions: 'capability_blocked instructions' },
   {
     type: 'choice',
     name: 'route',
@@ -35,20 +28,117 @@ const questions: readonly RouterQuestion[] = [
       { value: 'planning_flow', description: 'planning' },
       { value: 'suppress_ack', description: 'suppress' },
     ],
-  } satisfies RouterChoiceQuestion,
+  },
   {
-    type: 'score',
-    name: 'loop_risk',
-    instructions: 'loop_risk instructions',
-    levels: [
-      { label: '0', description: 'progressing' },
-      { label: '1', description: 'first unresolved outcome' },
-      { label: '2', description: 'same outcome repeated' },
-      { label: '3', description: 'repeated with frustration' },
-      { label: '4', description: 'repeated with money demand' },
+    type: 'choice',
+    name: 'same_open_request',
+    instructions: 'same_open_request instructions',
+    choices: [
+      { value: 'same', description: 'same request' },
+      { value: 'new', description: 'a different request' },
     ],
-  } satisfies RouterScoreQuestion,
+  },
+  {
+    type: 'choice',
+    name: 'request_settled',
+    instructions: 'request_settled instructions',
+    choices: [
+      { value: 'settled', description: 'settled' },
+      { value: 'open', description: 'still open' },
+    ],
+  },
 ];
+
+type ChoiceValue = {
+  readonly value: string;
+  readonly probability: number;
+};
+
+function choiceAnswer(
+  name: string,
+  choice: string,
+  probabilities: readonly ChoiceValue[],
+  confidence?: number,
+): Record<string, unknown> {
+  return {
+    type: 'choice',
+    name,
+    choice,
+    probabilities,
+    ...(confidence === undefined ? {} : { confidence }),
+  };
+}
+
+const routeProbabilities: readonly ChoiceValue[] = [
+  { value: 'answer_with_records', probability: 0.48 },
+  { value: 'ask_clarification', probability: 0.18 },
+  { value: 'offer_human', probability: 0.1 },
+  { value: 'escalate_human', probability: 0.21 },
+  { value: 'rsvp_flow', probability: 0.01 },
+  { value: 'planning_flow', probability: 0.01 },
+  { value: 'suppress_ack', probability: 0.01 },
+];
+
+/** A complete three-choice answer set with the values a test overrides. */
+function answerPayload(args: {
+  readonly route?: string;
+  readonly routeProbabilities?: readonly ChoiceValue[];
+  readonly sameOpenRequest?: string;
+  readonly sameOpenRequestProbability?: number;
+  readonly requestSettled?: string;
+  readonly requestSettledProbability?: number;
+  readonly usage?: unknown;
+  readonly id?: string;
+} = {}): Record<string, unknown> {
+  const route = args.route ?? 'answer_with_records';
+  const same = args.sameOpenRequest ?? 'same';
+  const settled = args.requestSettled ?? 'settled';
+  const sameProbability = args.sameOpenRequestProbability ?? 0.8;
+  const settledProbability = args.requestSettledProbability ?? 0.7;
+  return {
+    ...(args.id === undefined ? {} : { id: args.id }),
+    answers: [
+      choiceAnswer(
+        'route',
+        route,
+        args.routeProbabilities ?? [{ value: route, probability: 0.48 }],
+        0.48,
+      ),
+      choiceAnswer(
+        'same_open_request',
+        same,
+        [
+          { value: same, probability: sameProbability },
+          ...(same === 'same'
+            ? [{ value: 'new', probability: Number((1 - sameProbability).toFixed(2)) }]
+            : [{ value: 'same', probability: Number((1 - sameProbability).toFixed(2)) }]),
+        ],
+      ),
+      choiceAnswer(
+        'request_settled',
+        settled,
+        [
+          { value: settled, probability: settledProbability },
+          ...(settled === 'settled'
+            ? [{ value: 'open', probability: Number((1 - settledProbability).toFixed(2)) }]
+            : [{ value: 'settled', probability: Number((1 - settledProbability).toFixed(2)) }]),
+        ],
+      ),
+    ],
+    ...(args.usage === undefined ? { usage: { input_tokens: 1534 } } : { usage: args.usage }),
+  };
+}
+
+function expectedInstructionBytes(): number {
+  return questions.reduce(
+    (total, question) => total + Buffer.byteLength(question.instructions, 'utf8')
+      + question.choices.reduce(
+        (sum, choice) => sum + Buffer.byteLength(choice.description, 'utf8'),
+        0,
+      ),
+    0,
+  );
+}
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -86,59 +176,33 @@ describe('decisions router client', () => {
     vi.unstubAllGlobals();
   });
 
-  it('parses the live Decisions API answer shape, whose score level value is a number', async () => {
-    // Captured verbatim from a real POST /v1/decisions response (2026-10-21).
-    // The API returns the rubric LEVEL INDEX as the level value (a number),
-    // while the label is the rubric label. A parser that expects a string
-    // value rejects the whole answer set and the turn silently falls back to
-    // the classifier path, so this shape is pinned here.
-    const fetchMock = makeFetchMock(jsonResponse(200, {
-      model: 'gpt-6-luna',
-      answers: [
-        { type: 'predicate', name: 'needs_human_now', probability: 0.04 },
-        { type: 'predicate', name: 'capability_blocked', probability: 0.97 },
-        {
-          type: 'choice',
-          name: 'route',
-          choice: 'answer_with_records',
-          probabilities: [
-            { value: 'answer_with_records', probability: 0.48 },
-            { value: 'ask_clarification', probability: 0.18 },
-            { value: 'offer_human', probability: 0.1 },
-            { value: 'escalate_human', probability: 0.21 },
-            { value: 'rsvp_flow', probability: 0.01 },
-            { value: 'planning_flow', probability: 0.01 },
-            { value: 'suppress_ack', probability: 0.01 },
-          ],
-          confidence: 0.39,
-        },
-        {
-          type: 'score',
-          name: 'loop_risk',
-          score: 1.09,
-          probabilities: [
-            { value: 0, label: '0', probability: 0.06 },
-            { value: 1, label: '1', probability: 0.88 },
-            { value: 2, label: '2', probability: 0.01 },
-            { value: 3, label: '3', probability: 0.01 },
-            { value: 4, label: '4', probability: 0.04 },
-          ],
-          confidence: 0.83,
-        },
+  it('parses the three answers into the typed router answers', async () => {
+    const fetchMock = makeFetchMock(jsonResponse(200, answerPayload({
+      id: 'dec_router_1',
+      route: 'escalate_human',
+      routeProbabilities: [
+        { value: 'escalate_human', probability: 0.71 },
+        { value: 'answer_with_records', probability: 0.29 },
       ],
-      usage: { input_tokens: 1534, output_tokens: 0, total_tokens: 1534 },
-    }));
+      sameOpenRequest: 'same',
+      sameOpenRequestProbability: 0.82,
+      requestSettled: 'settled',
+      requestSettledProbability: 0.64,
+    })));
 
     const result = await runRouter(fetchMock);
 
     expect(result.status).toBe('ok');
     if (result.status !== 'ok') return;
-    expect(result.answers.needsHumanNow).toBe(0.04);
-    expect(result.answers.capabilityBlocked).toBe(0.97);
-    expect(result.answers.route).toBe('answer_with_records');
-    expect(result.answers.loopRisk).toBe(1);
-    expect(result.answers.loopRiskScore).toBe(1.09);
-    expect(result.answers.loopRiskProbabilities).toHaveLength(5);
+    expect(result.answers.route).toBe('escalate_human');
+    expect(result.answers.routeProbabilities).toEqual([
+      { value: 'escalate_human', probability: 0.71 },
+      { value: 'answer_with_records', probability: 0.29 },
+    ]);
+    expect(result.answers.sameOpenRequest).toBe(true);
+    expect(result.answers.sameOpenRequestProbability).toBe(0.82);
+    expect(result.answers.requestSettled).toBe(true);
+    expect(result.answers.requestSettledProbability).toBe(0.64);
     expect(result.answers.refusals).toEqual([]);
     // The measured input tokens come from the API, never from an estimate.
     expect(result.inputTokensEstimated).toBe(false);
@@ -146,82 +210,136 @@ describe('decisions router client', () => {
     expect(result.tokenUsage.output_tokens).toBe(0);
   });
 
-  it('reads the rubric level from the level index when the label is not numeric', async () => {
+  it.each([
+    ['same', 'settled', true, true],
+    ['same', 'open', true, false],
+    ['new', 'settled', false, true],
+    ['new', 'open', false, false],
+  ] as const)(
+    'maps same_open_request %s and request_settled %s onto booleans',
+    async (same, settled, expectedSame, expectedSettled) => {
+      const fetchMock = makeFetchMock(jsonResponse(200, answerPayload({
+        sameOpenRequest: same,
+        requestSettled: settled,
+      })));
+
+      const result = await runRouter(fetchMock);
+
+      expect(result.status).toBe('ok');
+      if (result.status !== 'ok') return;
+      expect(result.answers.sameOpenRequest).toBe(expectedSame);
+      expect(result.answers.requestSettled).toBe(expectedSettled);
+    },
+  );
+
+  it('fails closed when request_settled is missing from the answers', async () => {
+    const payload = answerPayload();
+    const [routeAnswer, sameAnswer] = payload.answers as Record<string, unknown>[];
     const fetchMock = makeFetchMock(jsonResponse(200, {
-      answers: [
-        { type: 'predicate', name: 'needs_human_now', probability: 0.1 },
-        { type: 'predicate', name: 'capability_blocked', probability: 0.2 },
-        {
-          type: 'choice',
-          name: 'route',
-          choice: 'answer_with_records',
-          probabilities: [{ value: 'answer_with_records', probability: 1 }],
-          confidence: 1,
-        },
-        {
-          type: 'score',
-          name: 'loop_risk',
-          score: 3,
-          probabilities: [
-            { value: 3, label: 'repeated', probability: 0.7 },
-            { value: 2, label: 'same outcome', probability: 0.3 },
-          ],
-          confidence: 0.7,
-        },
-      ],
+      ...payload,
+      answers: [routeAnswer, sameAnswer],
     }));
 
     const result = await runRouter(fetchMock);
 
-    expect(result.status).toBe('ok');
-    if (result.status !== 'ok') return;
-    expect(result.answers.loopRisk).toBe(3);
+    expect(result).toEqual({
+      status: 'unavailable',
+      reason: 'malformed_answers',
+      retryable: false,
+    });
   });
 
-  it('parses predicate, choice and score answers into typed router answers', async () => {
-    const fetchMock = makeFetchMock(jsonResponse(200, {
-      id: 'dec_router_1',
-      answers: [
-        { type: 'predicate', name: 'needs_human_now', probability: 0.82 },
-        { type: 'predicate', name: 'capability_blocked', probability: 0.1 },
-        {
-          type: 'choice',
-          name: 'route',
-          choice: 'escalate_human',
-          probabilities: [
-            { value: 'escalate_human', probability: 0.71 },
-            { value: 'answer_with_records', probability: 0.29 },
-          ],
-          confidence: 0.71,
-        },
-        {
-          type: 'score',
-          name: 'loop_risk',
-          score: 3,
-          probabilities: [
-            { value: '3', label: '3', probability: 0.8 },
-            { value: '2', label: '2', probability: 0.2 },
-          ],
-          confidence: 0.8,
-        },
-      ],
-    }));
+  it('fails closed on an unknown same_open_request value', async () => {
+    const fetchMock = makeFetchMock(jsonResponse(200, answerPayload({
+      sameOpenRequest: 'maybe',
+    })));
+
+    const result = await runRouter(fetchMock);
+
+    expect(result).toEqual({
+      status: 'unavailable',
+      reason: 'malformed_answers',
+      retryable: false,
+    });
+  });
+
+  it.each([
+    ['same_open_request', false, true],
+    ['request_settled', true, false],
+  ] as const)(
+    'records a refusal on %s and keeps only that fact neutral',
+    async (refusedName, expectedSame, expectedSettled) => {
+      const payload = answerPayload({ sameOpenRequest: 'same', requestSettled: 'settled' });
+      const answers = (payload.answers as Record<string, unknown>[])
+        .filter((answer) => answer.name !== refusedName);
+      const fetchMock = makeFetchMock(jsonResponse(200, {
+        ...payload,
+        answers: [...answers, { type: 'refusal', name: refusedName }],
+      }));
+
+      const result = await runRouter(fetchMock);
+
+      expect(result.status).toBe('ok');
+      if (result.status !== 'ok') return;
+      expect(result.answers.refusals).toEqual([refusedName]);
+      // A refusal is never an escalation trigger: that one fact answers with
+      // its neutral value, so the record opens a new request and nothing is
+      // reported as settled. The other fact keeps the value the API chose.
+      expect(result.answers.sameOpenRequest).toBe(expectedSame);
+      expect(result.answers.requestSettled).toBe(expectedSettled);
+      if (refusedName === 'same_open_request') {
+        expect(result.answers.sameOpenRequestProbability).toBe(0);
+        expect(result.answers.requestSettledProbability).toBe(0.7);
+      } else {
+        expect(result.answers.sameOpenRequestProbability).toBe(0.8);
+        expect(result.answers.requestSettledProbability).toBe(0);
+      }
+    },
+  );
+
+  it('reports route, same_open_request and request_settled in the decision trace', async () => {
+    const fetchMock = makeFetchMock(jsonResponse(200, answerPayload({
+      route: 'answer_with_records',
+      routeProbabilities,
+      sameOpenRequest: 'same',
+      sameOpenRequestProbability: 0.77,
+      requestSettled: 'open',
+      requestSettledProbability: 0.31,
+    })));
 
     const result = await runRouter(fetchMock);
 
     expect(result.status).toBe('ok');
     if (result.status !== 'ok') return;
-    expect(result.answers.needsHumanNow).toBe(0.82);
-    expect(result.answers.capabilityBlocked).toBe(0.1);
-    expect(result.answers.route).toBe('escalate_human');
-    expect(result.answers.loopRisk).toBe(3);
-    expect(result.answers.loopRiskScore).toBe(3);
-    expect(result.answers.refusals).toEqual([]);
-    expect(result.tokenUsage.output_tokens).toBe(0);
-    expect(result.tokenUsage.input_tokens).toBeGreaterThan(0);
-    expect(result.decision.route).toBe('escalate_human');
-    expect(result.decision.route_probability).toBe(0.71);
+    expect(result.decision.route).toBe('answer_with_records');
+    expect(result.decision.route_probability).toBe(0.48);
+    expect(result.decision.route_probabilities).toEqual(routeProbabilities);
+    expect(result.decision.same_open_request).toBe(true);
+    expect(result.decision.same_open_request_probability).toBe(0.77);
+    expect(result.decision.request_settled).toBe(false);
+    expect(result.decision.request_settled_probability).toBe(0.31);
+    expect(Object.keys(result.decision).sort()).toEqual([
+      'request_settled',
+      'request_settled_probability',
+      'route',
+      'route_probabilities',
+      'route_probability',
+      'same_open_request',
+      'same_open_request_probability',
+    ].sort());
+    expect(result.decision).not.toHaveProperty('needs_human_now');
+    expect(result.decision).not.toHaveProperty('capability_blocked');
+    expect(result.decision).not.toHaveProperty('loop_risk');
     expect(JSON.stringify(result.decision)).not.toContain('mensaje actual');
+  });
+
+  it('sends the three questions and records the transport metrics', async () => {
+    const fetchMock = makeFetchMock(jsonResponse(200, answerPayload()));
+
+    const result = await runRouter(fetchMock);
+
+    expect(result.status).toBe('ok');
+    if (result.status !== 'ok') return;
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe('https://api.example.test/v1/decisions');
@@ -236,48 +354,48 @@ describe('decisions router client', () => {
     };
     expect(body.model).toBe('gpt-6-luna');
     expect(body.input).toBe('mensaje actual');
-    expect(body.questions).toHaveLength(4);
-  });
+    expect(body.questions.map((question) => question.name)).toEqual([
+      'route',
+      'same_open_request',
+      'request_settled',
+    ]);
 
-  it('records a refusal and keeps it away from the escalation triggers', async () => {
-    const fetchMock = makeFetchMock(jsonResponse(200, {
-      answers: [
-        { type: 'refusal', name: 'needs_human_now' },
-        { type: 'predicate', name: 'capability_blocked', probability: 0.2 },
-        {
-          type: 'choice',
-          name: 'route',
-          choice: 'answer_with_records',
-          probabilities: [{ value: 'answer_with_records', probability: 0.6 }],
-        },
-        {
-          type: 'score',
-          name: 'loop_risk',
-          score: 0,
-          probabilities: [{ value: '0', label: '0', probability: 1 }],
-        },
-      ],
-    }));
-
-    const result = await runRouter(fetchMock);
-
-    expect(result.status).toBe('ok');
-    if (result.status !== 'ok') return;
-    expect(result.answers.refusals).toEqual(['needs_human_now']);
-    expect(result.answers.needsHumanNow).toBe(0);
-    expect(decideRouterPolicy({
-      needsHumanNow: result.answers.needsHumanNow,
-      capabilityBlocked: result.answers.capabilityBlocked,
-      loopRisk: result.answers.loopRisk,
-      route: result.answers.route,
-      repeatCount: 0,
-      unresolvedMoney: false,
-      capabilityBlockedStreak: 0,
-    })).toEqual({ kind: 'answer' });
+    const transport = result.call.requestMetrics.transport;
+    expect(transport?.observedRequestCount).toBe(1);
+    expect(transport?.requests).toHaveLength(1);
+    expect(result.call.requestMetrics.schemaPropertyCount).toBe(3);
+    // The instruction byte total is the question instructions plus every
+    // choice description, and it is reported, never estimated.
+    expect(result.call.requestMetrics.instructionBytes).toBe(expectedInstructionBytes());
+    expect(transport?.instructionBytes).toBe(expectedInstructionBytes());
+    expect(transport?.requests[0]?.instructionBytes).toBe(expectedInstructionBytes());
+    expect(result.call.attemptCount).toBe(1);
   });
 
   it('returns unavailable instead of throwing on a malformed response', async () => {
     const fetchMock = makeFetchMock(new Response('not json', { status: 200 }));
+
+    const result = await runRouter(fetchMock);
+
+    expect(result).toEqual({
+      status: 'unavailable',
+      reason: 'malformed_response',
+      retryable: false,
+    });
+  });
+
+  it('rejects the whole response when it carries an answer type the contract removed', async () => {
+    // The response schema is the union of `choice` and `refusal` only. A
+    // predicate or score answer is not a known member, so the schema fails and
+    // the response is reported as malformed instead of being partially read.
+    const payload = answerPayload();
+    const fetchMock = makeFetchMock(jsonResponse(200, {
+      ...payload,
+      answers: [
+        { type: 'predicate', name: 'needs_human_now', probability: 0.82 },
+        ...(payload.answers as Record<string, unknown>[]),
+      ],
+    }));
 
     const result = await runRouter(fetchMock);
 

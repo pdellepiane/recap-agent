@@ -2,16 +2,18 @@
  * WP3 — the customer-assistance lane router entry.
  *
  * One shared entry decides the lane of a turn: the Decisions API router
- * proposes a route, the deterministic policy owns the effect. The router is
- * injected as a narrow port so the turn flow never depends on the vendor
- * shape and so the lane can be switched off without touching the flow.
+ * proposes a route and two facts about the request; the deterministic policy
+ * owns the effect. The router is injected as a narrow port so the turn flow
+ * never depends on the vendor shape and so the lane can be switched off
+ * without touching the flow.
  *
  * When the lane is off, or the API is unavailable, the caller falls back to
  * the existing classifier path. Nothing here writes a reply, reads the
  * customer message or infers intent from text.
  */
-import type { RouterDecisionTrace } from '../core/trace';
+import { currentOpenRequest, type OpenRequest } from '../core/open-request';
 import type { ConversationHealthState } from '../core/plan';
+import type { RouterDecisionTrace } from '../core/trace';
 import type { OpenAiCallRef, TokenUsage } from './contracts';
 import {
   runDecisionsRouter,
@@ -23,11 +25,7 @@ import {
   type RouterInputArgs,
 } from './decisions-router-input';
 import { loadRouterQuestions, type RouterQuestions } from './decisions-router-questions';
-import {
-  decideRouterPolicy,
-  routerPolicyThresholds,
-  type RouterPolicyOutcome,
-} from './decisions-router-policy';
+import { decideRouterPolicy, type RouterPolicyOutcome } from './decisions-router-policy';
 import type { PromptLoader } from './prompt-loader';
 
 /**
@@ -47,12 +45,21 @@ export type SupportLaneRouterResult = {
   readonly outcome: RouterPolicyOutcome;
   readonly answers: RouterParsedAnswers;
   /**
-   * Consecutive turns in which the request depended on a capability the
-   * runtime cannot execute, including this turn. The turn flow persists it
-   * so the next turn can count the streak.
+   * The request the policy decided on: the record the thread held before this
+   * turn. The turn flow advances it once the effect is known.
    */
-  readonly capabilityBlockedStreak: number;
-  /** Redacted decision evidence: route names and numbers only. */
+  readonly current: OpenRequest | null;
+  /**
+   * Whether the record is about this turn. False means the turn opened a new
+   * request, so it can never inherit a parked or unresolved state.
+   */
+  readonly sameOpenRequest: boolean;
+  /**
+   * False when the router refused one of the two record facts. The record then
+   * stays exactly as it was: an unanswered question never moves it.
+   */
+  readonly recordFactsAnswered: boolean;
+  /** Redacted decision evidence: route names, two booleans and numbers. */
   readonly decision: RouterDecisionTrace;
   readonly call: OpenAiCallRef;
   readonly tokenUsage: TokenUsage;
@@ -121,23 +128,25 @@ export class OpenAiSupportLaneRouter implements SupportLaneRouterPort {
         retryable: result.retryable,
       };
     }
-    const capabilityBlockedStreak = nextCapabilityBlockedStreak({
-      capabilityBlocked: result.answers.capabilityBlocked,
-      previousStreak: args.plan.conversation_health.capability_blocked_streak,
-    });
+    const current = currentOpenRequest(args.plan.open_requests);
+    const recordFactsAnswered =
+      !result.answers.refusals.includes('same_open_request') &&
+      !result.answers.refusals.includes('request_settled');
+    // A refused or missing record fact is never read as "same request": the
+    // turn opens nothing and the record stays as it was.
+    const sameOpenRequest = result.answers.sameOpenRequest;
     return {
       status: 'ok',
       outcome: decideRouterPolicy({
-        needsHumanNow: result.answers.needsHumanNow,
-        capabilityBlocked: result.answers.capabilityBlocked,
-        loopRisk: result.answers.loopRisk,
         route: result.answers.route,
-        repeatCount: args.plan.support_outcome?.repeat_count ?? 0,
-        unresolvedMoney: args.plan.support_outcome?.unresolved_money ?? false,
-        capabilityBlockedStreak,
+        sameOpenRequest,
+        current,
+        helpOfferPending: args.plan.conversation_health.help_offer_status === 'offered',
       }),
       answers: result.answers,
-      capabilityBlockedStreak,
+      current,
+      sameOpenRequest,
+      recordFactsAnswered,
       decision: result.decision,
       call: result.call,
       tokenUsage: result.tokenUsage,
@@ -154,86 +163,40 @@ export class OpenAiSupportLaneRouter implements SupportLaneRouterPort {
 }
 
 /**
- * WP3 — the router's `loop_risk` rubric mapped onto the conversation-health
- * state.
+ * Conversation health derived from the open-request record.
  *
- * The classifier no longer provides `conversation_health` on this lane, so
- * the health state is derived from the router level. The mapping is fixed
- * and named: 0 progressing, 1 uncertain, 2 stalled by a repeated question,
- * 3 frustrated by a repeated correction, 4 frustrated by an explicit
- * money-action demand.
+ * The classifier lane still writes its own health from the response
+ * classifier. On this lane the record is the only evidence: a request that
+ * stays open is the non-progress, and nothing else is.
  */
-export const routerLoopRiskHealth: Readonly<Record<number, {
-  readonly status: ConversationHealthState['status'];
-  readonly reason: ConversationHealthState['reason'];
-}>> = {
-  0: { status: 'progressing', reason: 'normal_progress' },
-  1: { status: 'uncertain', reason: 'insufficient_context' },
-  2: { status: 'stalled', reason: 'repeated_question' },
-  3: { status: 'frustrated', reason: 'repeated_correction' },
-  4: { status: 'frustrated', reason: 'explicit_frustration' },
-};
-
-/** The highest rubric level the mapping defines. */
-export const ROUTER_LOOP_RISK_MAX_LEVEL = 4;
-
-/**
- * Health state derived from the router level.
- *
- * `consecutive_non_progress_turns` stays monotonic: a stalled or frustrated
- * level grows the streak, a progressing level resets it, and an uncertain
- * level keeps it. The stored help-offer state is preserved: the router
- * decides when an offer is opened, never the health reduction.
- */
-export function conversationHealthFromRouter(args: {
-  readonly loopRisk: number;
+export function conversationHealthFromRecord(args: {
+  readonly current: OpenRequest | null;
   readonly previous: ConversationHealthState;
   readonly nowIso: string;
 }): ConversationHealthState {
-  const level = clampLoopRisk(args.loopRisk);
-  const mapped = routerLoopRiskHealth[level];
-  const isNonProgress = mapped.status === 'stalled' || mapped.status === 'frustrated';
-  const consecutiveNonProgressTurns = isNonProgress
-    ? args.previous.consecutive_non_progress_turns + 1
-    : mapped.status === 'progressing'
-      ? 0
-      : args.previous.consecutive_non_progress_turns;
+  const state = args.current?.state ?? null;
+  const unresolved = state === 'unresolved';
+  const turnsOpen = unresolved ? (args.current?.turns ?? 0) : 0;
+  const status: ConversationHealthState['status'] = unresolved
+    ? turnsOpen >= 2
+      ? 'stalled'
+      : 'uncertain'
+    : state === 'needs_input'
+      ? 'uncertain'
+      : 'progressing';
+  const reason: ConversationHealthState['reason'] = unresolved
+    ? turnsOpen >= 2
+      ? 'repeated_question'
+      : 'insufficient_context'
+    : state === 'needs_input'
+      ? 'insufficient_context'
+      : 'normal_progress';
   return {
-    status: mapped.status,
-    reason: mapped.reason,
-    consecutive_non_progress_turns: consecutiveNonProgressTurns,
-    capability_blocked_streak: args.previous.capability_blocked_streak,
+    status,
+    reason,
+    consecutive_non_progress_turns: turnsOpen,
     help_offer_status: args.previous.help_offer_status,
     help_offered_at: args.previous.help_offered_at,
     last_assessed_at: args.nowIso,
   };
-}
-
-/**
- * The capability-blocked streak of the turn, including this turn.
- *
- * A request that depends on a capability the runtime cannot execute is
- * counted while it keeps coming back: a turn the router judges
- * capability-blocked grows the streak, a turn it does not resets it. The
- * streak is the deterministic evidence that the request is not moving, and
- * the capability-blocked repeat backstop escalates on the second one.
- */
-export function nextCapabilityBlockedStreak(args: {
-  readonly capabilityBlocked: number;
-  readonly previousStreak: number;
-}): number {
-  return args.capabilityBlocked >= routerPolicyThresholds.capabilityBlockedEscalation
-    ? Math.max(0, args.previousStreak) + 1
-    : 0;
-}
-
-function clampLoopRisk(loopRisk: number): number {
-  if (!Number.isFinite(loopRisk)) {
-    return 0;
-  }
-  const level = Math.trunc(loopRisk);
-  if (level < 0) {
-    return 0;
-  }
-  return Math.min(level, ROUTER_LOOP_RISK_MAX_LEVEL);
 }

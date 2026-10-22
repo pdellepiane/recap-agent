@@ -282,6 +282,15 @@ export type ComposeReplyRequest = {
   /** Typed outcome facts for clarification, media, and access branches. */
   capabilityDecision?: CapabilityDecision | null;
   handoffOutcome?: 'handoff_requested' | 'handoff_failed' | 'handoff_unknown' | 'handoff_failed_not_retried' | 'handoff_unknown_not_retried' | 'handoff_duplicate' | 'handoff_skipped_missing_phone' | 'handoff_skipped_unavailable' | null;
+  /**
+   * The open-request record after this turn: true when the guest's request is
+   * still open ('unresolved', 'needs_input' or 'with_person'), false when it
+   * was answered or the thread has no record. `requestOpenTurns` is how many
+   * turns it has been open, so the reply can avoid re-stating a limitation
+   * that is already on the thread.
+   */
+  requestOpen?: boolean;
+  requestOpenTurns?: number;
   imageEvidence?: {
     status: 'available' | 'unavailable';
     reason: string | null;
