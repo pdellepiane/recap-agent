@@ -629,20 +629,22 @@ describe('decisions router: customer-assistance lane', () => {
     {
       scenario: 'purchase-support-handoff-failed',
       phone: '+51900000407',
-      replyOutcome: 'handoff_failed',
+      replyOutcome: 'handoff_failed_not_retried',
+      attemptOutcome: 'handoff_failed',
       receiptOutcome: 'handoff_failed',
       lastError: 'failed_no_auto_retry',
     },
     {
       scenario: 'purchase-support-handoff-unknown',
       phone: '+51900000408',
-      replyOutcome: 'handoff_unknown',
+      replyOutcome: 'handoff_unknown_not_retried',
+      attemptOutcome: 'handoff_unknown',
       receiptOutcome: 'outcome_unknown',
       lastError: 'unknown_stays_unretried',
     },
   ] as const)(
     'reports the real $replyOutcome takeover outcome on the turn that does not retry it ($scenario)',
-    async ({ scenario, phone, replyOutcome, receiptOutcome, lastError }) => {
+    async ({ scenario, phone, replyOutcome, attemptOutcome, receiptOutcome, lastError }) => {
       const gateway = await FixtureAgentConversationGateway.create(scenario);
       const runtime = new ScriptedAgentRuntime(
         [emptyExtraction()],
@@ -664,9 +666,11 @@ describe('decisions router: customer-assistance lane', () => {
         text: 'Quiero que me devuelvan el dinero y hablen con una persona.',
       });
 
-      // The first turn attempts the takeover once and the world decides its outcome.
+      // The first turn attempts the takeover once and the world decides its
+      // outcome: the attempt really happened, so the reply evidence carries
+      // the plain outcome, not the not-retried one.
       expect(gateway.getFixtureCallCount('handoff.write')).toBe(1);
-      expect(runtime.composeRequests[0]?.handoffOutcome).toBe(replyOutcome);
+      expect(runtime.composeRequests[0]?.handoffOutcome).toBe(attemptOutcome);
       expect(first.plan.human_escalation.status).toBe('none');
       expect(first.plan.human_help_receipt).toMatchObject({
         outcome: receiptOutcome,
@@ -686,10 +690,12 @@ describe('decisions router: customer-assistance lane', () => {
       // The takeover is never retried automatically: the effect ledger keeps
       // exactly one attempt.
       expect(gateway.getFixtureCallCount('handoff.write')).toBe(1);
-      // The reply evidence keeps the real outcome: a skipped retry is not an
-      // unavailable capability, so the reply can report what happened.
+      // The reply evidence keeps the real outcome and says this turn sent no
+      // request: a skipped retry is not an unavailable capability, and it is
+      // not a fresh attempt either, so the reply cannot narrate one.
       expect(runtime.composeRequests[1]?.handoffOutcome).toBe(replyOutcome);
       expect(runtime.composeRequests[1]?.handoffOutcome).not.toBe('handoff_skipped_unavailable');
+      expect(runtime.composeRequests[1]?.handoffOutcome).not.toBe(attemptOutcome);
       // The plan state, the node and the stop reason do not change.
       expect(second.plan.current_node).toBe('solicitar_agente_humano');
       expect(second.plan.human_escalation.status).toBe('none');

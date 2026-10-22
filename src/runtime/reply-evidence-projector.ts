@@ -158,6 +158,8 @@ export type SupportHandoffReplyOutcome =
   | 'handoff_requested'
   | 'handoff_failed'
   | 'handoff_unknown'
+  | 'handoff_failed_not_retried'
+  | 'handoff_unknown_not_retried'
   | 'handoff_duplicate'
   | 'handoff_skipped_missing_phone'
   | 'handoff_skipped_unavailable'
@@ -265,22 +267,22 @@ export function projectSupportHandoffEvidence(args: {
     (args.result.reason === 'missing_phone_number' ? 'missing_phone' : 'capability_unavailable');
   if (skipCause === 'prior_attempt_failed') {
     return {
-      handoffOutcome: 'handoff_failed',
+      handoffOutcome: 'handoff_failed_not_retried',
       identityAvailable: args.phonePresent,
       effectConfirmed: false,
       receiptPresent: false,
       requiresReplyModel: true,
-      operationalNote: `Human takeover was not retried after a failed attempt: ${args.result.message}.`,
+      operationalNote: `Takeover requests sent this turn: 0. The earlier request failed: ${args.result.message}`,
     };
   }
   if (skipCause === 'prior_outcome_unknown') {
     return {
-      handoffOutcome: 'handoff_unknown',
+      handoffOutcome: 'handoff_unknown_not_retried',
       identityAvailable: args.phonePresent,
       effectConfirmed: false,
       receiptPresent: false,
       requiresReplyModel: true,
-      operationalNote: `Human takeover was not retried after an unknown outcome: ${args.result.message}.`,
+      operationalNote: `Takeover requests sent this turn: 0. The earlier request outcome is unknown: ${args.result.message}`,
     };
   }
   return {

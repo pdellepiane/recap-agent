@@ -271,10 +271,13 @@ describe('S10 reply evidence projector', () => {
       }),
     });
 
-    // The failed attempt stays failed: it never collapses into an
-    // unavailable capability the guest never had.
-    expect(evidence.handoffOutcome).toBe('handoff_failed');
+    // The failed attempt stays failed, and the value says the turn sent no
+    // request: it never collapses into an unavailable capability the guest
+    // never had, and it never reads as a fresh attempt either.
+    expect(evidence.handoffOutcome).toBe('handoff_failed_not_retried');
     expect(evidence.handoffOutcome).not.toBe('handoff_skipped_unavailable');
+    expect(evidence.handoffOutcome).not.toBe('handoff_failed');
+    expect(evidence.operationalNote).toContain('Takeover requests sent this turn: 0');
     expect(evidence.effectConfirmed).toBe(false);
     expect(evidence.receiptPresent).toBe(false);
     expect(evidence.requiresReplyModel).toBe(true);
@@ -312,8 +315,10 @@ describe('S10 reply evidence projector', () => {
       }),
     });
 
-    expect(evidence.handoffOutcome).toBe('handoff_unknown');
+    expect(evidence.handoffOutcome).toBe('handoff_unknown_not_retried');
     expect(evidence.handoffOutcome).not.toBe('handoff_skipped_unavailable');
+    expect(evidence.handoffOutcome).not.toBe('handoff_unknown');
+    expect(evidence.operationalNote).toContain('Takeover requests sent this turn: 0');
     expect(evidence.effectConfirmed).toBe(false);
     expect(evidence.receiptPresent).toBe(false);
   });

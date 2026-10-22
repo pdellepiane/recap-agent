@@ -281,7 +281,7 @@ export type ComposeReplyRequest = {
   informationResults?: InformationTaskResult[];
   /** Typed outcome facts for clarification, media, and access branches. */
   capabilityDecision?: CapabilityDecision | null;
-  handoffOutcome?: 'handoff_requested' | 'handoff_failed' | 'handoff_unknown' | 'handoff_duplicate' | 'handoff_skipped_missing_phone' | 'handoff_skipped_unavailable' | null;
+  handoffOutcome?: 'handoff_requested' | 'handoff_failed' | 'handoff_unknown' | 'handoff_failed_not_retried' | 'handoff_unknown_not_retried' | 'handoff_duplicate' | 'handoff_skipped_missing_phone' | 'handoff_skipped_unavailable' | null;
   imageEvidence?: {
     status: 'available' | 'unavailable';
     reason: string | null;
@@ -305,7 +305,7 @@ export type ComposeReplyRequest = {
     reason: string;
     protectedRequestsClosed: boolean;
     publicInformationRequestsRemaining: number;
-    handoffOutcome: 'handoff_requested' | 'handoff_failed' | 'handoff_unknown' | 'handoff_duplicate' | 'handoff_skipped_missing_phone' | 'handoff_skipped_unavailable' | null;
+    handoffOutcome: 'handoff_requested' | 'handoff_failed' | 'handoff_unknown' | 'handoff_failed_not_retried' | 'handoff_unknown_not_retried' | 'handoff_duplicate' | 'handoff_skipped_missing_phone' | 'handoff_skipped_unavailable' | null;
     noFurtherCredentialRequests?: boolean;
   } | null;
   rsvpPhoneEvidence?: RsvpPhoneReplyEvidence | null;
