@@ -105,9 +105,10 @@ export function nextOpenRequestState(args: {
  * Advance the record list with this turn.
  *
  * `sameOpenRequest` false opens a new record, so a question that is not the
- * parked one can never inherit its state. The list keeps the most recent
- * three records and never drops one that is with a person: a parked takeover
- * is the record the thread must still honour.
+ * parked one can never inherit its state. The list keeps three records: a
+ * record parked with a person outlives a settled one, and a parked record is
+ * only dropped when every slot is already parked, because the list is bounded
+ * and the plan schema rejects a fourth.
  */
 export function advanceOpenRequests(args: {
   readonly previous: readonly OpenRequest[];
@@ -143,20 +144,19 @@ export function advanceOpenRequests(args: {
   return prune([...args.previous, opened]);
 }
 
-/** Keep the newest records, and always the ones parked with a person. */
+/** Keep the newest records, and prefer a parked one over a settled one. */
 function prune(requests: readonly OpenRequest[]): readonly OpenRequest[] {
-  if (requests.length <= OPEN_REQUEST_LIMIT) {
-    return requests;
+  const kept = [...requests];
+  while (kept.length > OPEN_REQUEST_LIMIT) {
+    // The newest record is the request this turn is about, so it never gives up
+    // its slot. Among the older ones a settled record goes first; a list that
+    // is entirely parked loses its oldest parked record, because the list is
+    // bounded and the plan schema rejects a fourth.
+    const older = kept.slice(0, -1);
+    const settled = older.findIndex((request) => request.state !== 'with_person');
+    kept.splice(settled >= 0 ? settled : 0, 1);
   }
-  const parked = requests.filter((request) => request.state === 'with_person');
-  const others = requests.filter((request) => request.state !== 'with_person');
-  const keep = [
-    ...others.slice(-Math.max(0, OPEN_REQUEST_LIMIT - parked.length)),
-    ...parked,
-  ];
-  // Preserve chronological order: the newest record stays last.
-  const order = new Map(requests.map((request, index) => [request.key, index]));
-  return keep.sort((a, b) => (order.get(a.key) ?? 0) - (order.get(b.key) ?? 0));
+  return kept;
 }
 
 function boundText(text: string): string {

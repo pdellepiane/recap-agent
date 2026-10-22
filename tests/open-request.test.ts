@@ -158,6 +158,28 @@ describe('advanceOpenRequests', () => {
     expect(next.map((entry) => entry.key)).toEqual(['a', 'c', 'd']);
   });
 
+  it('stays bounded when every slot is already parked with a person', () => {
+    const previous: OpenRequest[] = [
+      record({ key: 'a', state: 'with_person', opening_text: 'primera' }),
+      record({ key: 'b', state: 'with_person', opening_text: 'segunda' }),
+      record({ key: 'c', state: 'with_person', opening_text: 'tercera' }),
+    ];
+    const next = advanceOpenRequests({
+      previous,
+      sameOpenRequest: false,
+      openingText: '¿A qué hora empieza el evento?',
+      nextState: 'answered',
+      nowIso: LATER,
+      openingKey: 'd',
+    });
+    // The list is bounded, so a settled turn cannot push a fourth record in.
+    // The newest record is the request the turn was about, so it stays and the
+    // oldest parked one makes room.
+    expect(next).toHaveLength(OPEN_REQUEST_LIMIT);
+    expect(next.map((entry) => entry.key)).toEqual(['b', 'c', 'd']);
+    expect(currentOpenRequest(next)?.key).toBe('d');
+  });
+
   it('bounds the opening text and keeps the current record last', () => {
     const next = advanceOpenRequests({
       previous: [],
