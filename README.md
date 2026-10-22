@@ -111,6 +111,52 @@ After every turn the CLI can show:
 
 Use `/plan` when you specifically want to fetch the current DynamoDB plan row out of band.
 
+## Browser demo
+
+A cute, interactive, WhatsApp-style demo view with the same live Lambda path as
+the terminal, plus plan progress, shortlist, and trace panels:
+
+```bash
+bun run demo
+```
+
+Node fallback:
+
+```bash
+npm run demo:node
+```
+
+Then open `http://localhost:4173` (override with `DEMO_PORT`).
+
+- `Simulado` mode runs three scripted scenarios with zero cost and no
+  credentials: wedding, birthday, and a quick FAQ consult.
+- `En vivo · Lambda` mode posts the same payload shape as the terminal
+  (`terminal_whatsapp` channel, `client_mode=cli`) through a local proxy, so
+  the channel key stays server-side and the browser receives the same `plan`,
+  `trace`, and `perf` diagnostics the CLI renders. Live credentials resolve
+  exactly like the terminal: `DEV_AGENT_FUNCTION_URL`/`AGENT_FUNCTION_URL`
+  when set, otherwise the verified development CloudFormation stack outputs
+  (`DEV_STACK_NAME`, default `recap-agent-runtime-dev`) under the required
+  `se-dev` / `us-east-1` login, with `DEV_CHANNEL_API_KEY` as the channel key.
+  Refresh the login with `aws login --profile se-signin` when it expires; if
+  AWS is unreachable the server stays up in Simulado mode.
+- The left panel projects plan progress (six stages mapped from the real
+  decision nodes), known facts, missing-field chips, and per-need status; the
+  right panel renders the shortlist with filters, match bars, and selection.
+  In live mode, `Elegir` sends the choice back to the runtime as a chat turn
+  so the demo never diverges from the persisted plan.
+- `Traza` shows the node transition, tools, recommendation funnel,
+  classifier outcome, token usage, and timing waterfall for the last turn;
+  `Plan JSON` shows the full persisted plan.
+- The user pill (`👤`) and `?user_id=` query param switch the live identity
+  for parallel demos.
+- `↺ Nueva demo` in live mode purges the configured number's persisted plan
+  from DynamoDB (`POST /api/purge`, same scope as `purge:terminal-plans`
+  narrowed to that single `terminal_whatsapp` user, including turn lock and
+  session items) before restarting, so each demo starts from zero. Purge is
+  fail-closed: only the terminal demo channel, only with the verified
+  development stack table, never production data.
+
 ## Channel-Agnostic Runtime and Telemetry
 
 The core runtime is channel-agnostic:

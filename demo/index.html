@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recap — Demo en vivo · Sin Envolturas</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23c2502a'/%3E%3Ctext x='32' y='44' font-family='Georgia' font-size='36' font-weight='bold' fill='white' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#2b2118; --ink2:#6f6154; --line:#eadfd2; --paper:#f6f1e9; --card:#fffdfa;
+  --terra:#c2502a; --terra-d:#9c3d1f; --sage:#4f7a58; --sage-bg:#edf4ec;
+  --amber:#b97f1f; --amber-bg:#fdf3dd; --rose-bg:#fdeeea; --wa:#e9e2d5; --wa-in:#ffffff;
+  --r:16px; --shadow:0 10px 30px rgba(60,35,15,.10), 0 2px 6px rgba(60,35,15,.06);
+}
+*{box-sizing:border-box} html,body{height:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"DM Sans",system-ui,-apple-system,"Segoe UI",sans-serif;font-size:15px;line-height:1.45}
+h1,h2,h3,.serif{font-family:"Fraunces",Georgia,"Times New Roman",serif}
+button{font:inherit;cursor:pointer} :focus-visible{outline:3px solid #e9a13b;outline-offset:2px}
+.topbar{position:sticky;top:0;z-index:20;background:rgba(255,253,250,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.topbar-in{max-width:1560px;margin:0 auto;padding:10px 18px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.brand{display:flex;gap:11px;align-items:center;margin-right:auto}
+.logo{width:42px;height:42px;border-radius:13px;background:var(--terra);color:#fff;display:grid;place-items:center;font-family:"Fraunces",serif;font-weight:700;font-size:21px;box-shadow:var(--shadow)}
+.brand b{font-family:"Fraunces",serif;font-size:19px;display:block;line-height:1.05}
+.brand span{font-size:12px;color:var(--ink2)}
+.pill{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 11px;font-size:12.5px;font-weight:600}
+button.pill{cursor:pointer} button.pill:hover{border-color:#d8c3a5}
+.dot{width:9px;height:9px;border-radius:50%;background:#c9bda9}.dot.on{background:#3d9a5f;box-shadow:0 0 0 4px #dff0e2}.dot.busy{background:var(--amber);box-shadow:0 0 0 4px var(--amber-bg)}
+.seg{display:flex;background:#efe6d8;border-radius:999px;padding:3px}
+.seg button{border:0;background:transparent;border-radius:999px;padding:7px 14px;font-weight:700;font-size:13px;color:var(--ink2)}
+.seg button[aria-pressed="true"]{background:#fff;color:var(--ink);box-shadow:0 2px 8px rgba(60,35,15,.15)}
+.btn{border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 14px;font-weight:700;font-size:13px}
+.btn:hover{border-color:#d8c3a5}.btn.primary{background:var(--terra);border-color:var(--terra);color:#fff}.btn.primary:hover{background:var(--terra-d)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.layout{max-width:1560px;margin:0 auto;padding:16px 18px 28px;display:grid;grid-template-columns:308px minmax(0,1fr) 356px;gap:16px;align-items:start}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow)}
+.card-h{padding:15px 17px 10px;display:flex;align-items:baseline;gap:8px}
+.card-h h2{font-size:17px;margin:0}.card-h small{color:var(--ink2);margin-left:auto;font-size:12px}
+.scenarios{display:flex;gap:8px;flex-wrap:wrap;padding:0 18px 14px}
+.scen{border:1.5px solid var(--line);background:#fff;border-radius:14px;padding:10px 12px;text-align:left;flex:1 1 150px}
+.scen[aria-pressed="true"]{border-color:var(--terra);background:#fff7f2}
+.scen b{display:block;font-size:13.5px}.scen span{font-size:12px;color:var(--ink2)}
+.ring-wrap{display:flex;gap:14px;align-items:center;padding:4px 17px 12px}
+.ring{--p:0;width:74px;height:74px;border-radius:50%;flex:none;display:grid;place-items:center;background:conic-gradient(var(--terra) calc(var(--p)*1%),#efe3d2 0)}
+.ring i{width:58px;height:58px;border-radius:50%;background:#fff;display:grid;place-items:center;font-style:normal;font-weight:700;font-family:"Fraunces",serif;font-size:17px}
+.ring-wrap p{margin:0;font-size:13px;color:var(--ink2)}.ring-wrap b{color:var(--ink)}
+.steps{list-style:none;margin:4px 0 8px;padding:0 12px}
+.steps li{display:flex;gap:11px;padding:8px 6px;border-radius:12px;align-items:flex-start}
+.steps li.cur{background:#fff3ea}
+.st-ic{width:26px;height:26px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:12px;font-weight:700;background:#efe6d8;color:var(--ink2);border:1px solid var(--line)}
+li.done .st-ic{background:var(--sage);border-color:var(--sage);color:#fff}
+li.cur .st-ic{background:var(--terra);border-color:var(--terra);color:#fff}
+.steps b{font-size:13.5px;display:block}.steps span{font-size:12px;color:var(--ink2);display:block}
+.facts{padding:6px 17px 14px;display:grid;gap:7px}
+.fact{display:flex;justify-content:space-between;gap:10px;font-size:13px;border-top:1px dashed var(--line);padding-top:7px}
+.fact span{color:var(--ink2)}.fact b{text-align:right}
+.chips{display:flex;gap:6px;flex-wrap:wrap;padding:2px 17px 15px}
+.chip{font-size:12px;font-weight:700;border-radius:999px;padding:5px 10px;background:var(--amber-bg);color:#7a5410;border:1px solid #ecd9a8}
+.chip.ok{background:var(--sage-bg);color:var(--sage);border-color:#cfe3cf}
+.need{display:flex;gap:9px;align-items:flex-start;padding:9px 10px;border:1px solid var(--line);border-radius:13px;margin:0 12px 8px;background:#fff}
+.need b{font-size:13px;display:block}.need span{font-size:12px;color:var(--ink2)}
+.badge{margin-left:auto;flex:none;font-size:11px;font-weight:700;border-radius:999px;padding:3px 8px;background:#efe6d8;color:var(--ink2)}
+.badge.shortlisted{background:var(--amber-bg);color:#7a5410}.badge.selected{background:var(--sage-bg);color:var(--sage)}.badge.search_ready{background:#e7eef7;color:#33536e}
+/* ---- chat ---- */
+.chat{display:flex;flex-direction:column;height:min(780px,calc(100vh - 150px));min-height:520px;overflow:hidden}
+.chat-head{padding:13px 17px;border-bottom:1px solid var(--line);display:flex;gap:11px;align-items:center;background:#fff}
+.avatar{width:40px;height:40px;border-radius:50%;background:var(--sage);color:#fff;display:grid;place-items:center;font-weight:700;font-family:"Fraunces",serif}
+.chat-head b{display:block;font-size:14.5px}.chat-head span{font-size:12px;color:var(--ink2)}
+.chat-head .sp{margin-left:auto;display:flex;gap:8px}
+.icon-btn{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:#fff;font-size:16px}
+.icon-btn[aria-pressed="false"]{opacity:.45}
+.msgs{flex:1;overflow-y:auto;padding:18px 16px;background:var(--wa);background-image:radial-gradient(rgba(120,90,40,.10) 1px,transparent 1px);background-size:18px 18px;display:flex;flex-direction:column;gap:9px}
+.day{align-self:center;background:#fff;border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:11.5px;color:var(--ink2);font-weight:700}
+.msg{max-width:78%;padding:9px 12px 7px;border-radius:14px;font-size:14.5px;white-space:pre-wrap;word-break:break-word;box-shadow:0 1px 2px rgba(60,35,15,.10);animation:pop .22s ease}
+.msg small{display:block;text-align:right;font-size:10.5px;color:#9a8a76;margin-top:4px}
+.msg .meta{display:block;text-align:right;font-size:10.5px;color:#a08a6d;margin-top:2px}
+.msg.agent{align-self:flex-start;background:var(--wa-in);border-top-left-radius:4px}
+.msg.user{align-self:flex-end;background:#d9eecb;border-top-right-radius:4px}
+.msg.sys{align-self:center;background:#fff8e6;border:1px solid #ecd9a8;font-size:12.5px;max-width:92%}
+.msg.flash{box-shadow:0 0 0 3px #e9a13b}
+@keyframes pop{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.msg{animation:none}.steps li,.pcard{transition:none}}
+.typing{align-self:flex-start;background:#fff;border-radius:14px;border-top-left-radius:4px;padding:12px 14px;display:none;gap:5px;box-shadow:0 1px 2px rgba(60,35,15,.10)}
+.typing.on{display:flex}.typing i{width:7px;height:7px;border-radius:50%;background:#c3b198;animation:bl 1s infinite}.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes bl{0%,100%{opacity:.35}50%{opacity:1}}
+.suggest{display:flex;gap:8px;flex-wrap:wrap;padding:11px 14px 4px;background:var(--wa)}
+.suggest button{border:1.5px solid var(--terra);color:var(--terra-d);background:#fff;border-radius:999px;padding:8px 13px;font-weight:700;font-size:13px}
+.suggest button:hover{background:#fff1e8}
+.composer{display:flex;gap:9px;padding:12px 14px;background:#f3ece0;border-top:1px solid var(--line)}
+.composer input{flex:1;border:1px solid var(--line);border-radius:999px;padding:12px 16px;font:inherit;background:#fff;min-width:0}
+.send{width:46px;height:46px;border-radius:50%;border:0;background:var(--terra);color:#fff;font-size:18px;flex:none}
+.send:disabled{background:#cdbda6}
+/* ---- shortlist ---- */
+.filters{display:flex;gap:6px;flex-wrap:wrap;padding:0 17px 11px}
+.filters button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 11px;font-size:12px;font-weight:700;color:var(--ink2)}
+.filters button[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.plist{padding:2px 14px 16px;display:grid;gap:11px;max-height:560px;overflow-y:auto}
+.pcard{border:1.5px solid var(--line);border-radius:17px;padding:13px 14px;background:#fff;transition:border-color .15s}
+.pcard.sel{border-color:var(--sage);background:#fbfefb}
+.pcard h3{margin:0 22px 3px 0;font-size:15.5px}
+.p-top{display:flex;gap:8px;align-items:flex-start}
+.p-meta{font-size:12px;color:var(--ink2)}
+.p-reason{font-size:13px;margin:8px 0;color:#55463a}
+.p-price{font-size:12.5px;color:var(--ink2);margin:6px 0 0}
+.p-desc{font-size:12.5px;color:var(--ink2);margin:6px 0 0}
+.pcard details{font-size:12.5px;color:var(--ink2);margin-top:8px}
+.pcard details summary{cursor:pointer;font-weight:700;color:var(--ink)}
+.pcard details ul{margin:6px 0 0;padding-left:18px}
+.p-links{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap}
+.p-links a{font-size:12px;font-weight:700;color:var(--terra-d)}
+.fit{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:700;color:var(--ink2)}
+.fitbar{flex:1;height:7px;border-radius:99px;background:#efe6d8;overflow:hidden}.fitbar i{display:block;height:100%;background:var(--sage);border-radius:99px}
+.tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}.tags span{font-size:11px;background:#f4ecdf;border-radius:999px;padding:3px 8px;color:#6a573f}
+.tags.warn span{background:var(--rose-bg);color:var(--terra-d)}
+.promo{font-size:11.5px;font-weight:700;color:var(--terra-d);background:var(--rose-bg);border-radius:8px;padding:5px 8px;margin-top:8px;display:inline-block}
+.pick{margin-left:auto;flex:none;border:1.5px solid var(--sage);color:var(--sage);background:#fff;border-radius:999px;padding:7px 12px;font-weight:700;font-size:12.5px}
+.pick[aria-pressed="true"]{background:var(--sage);color:#fff}
+.empty{border:1.5px dashed #dccbb2;border-radius:17px;padding:22px 16px;text-align:center;color:var(--ink2);font-size:13.5px}
+.empty b{display:block;font-family:"Fraunces",serif;font-size:16px;color:var(--ink);margin-bottom:5px}
+details.trace{margin:0 14px 16px;border:1px solid var(--line);border-radius:14px;background:#fff}
+details.trace summary{cursor:pointer;font-weight:700;font-size:13px;padding:11px 14px}
+.trace-body{padding:0 14px 13px;font-size:12px;color:var(--ink2);display:grid;gap:5px}
+.trace-body code{color:var(--ink);word-break:break-all}
+.trace-kv{display:flex;gap:8px;flex-wrap:wrap}
+.tchip{font-size:11px;font-weight:700;border-radius:999px;padding:3px 9px;background:#f4ecdf;color:#6a573f;border:1px solid var(--line)}
+.tchip.tool{background:#e7eef7;color:#33536e;border-color:#ccd9ea}
+.tchip.clf{background:var(--rose-bg);color:var(--terra-d);border-color:#f0c9c2}
+.water{display:grid;gap:4px;margin-top:5px}.water div{display:flex;gap:8px;align-items:center;font-size:11px}
+.water .bar{height:8px;border-radius:99px;background:var(--terra);min-width:3px}
+.mobile-tabs{display:none}
+@media(max-width:1120px){.layout{grid-template-columns:270px minmax(0,1fr)}.col-short{grid-column:1/-1}.plist{max-height:none;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}}
+@media(max-width:760px){.layout{grid-template-columns:1fr;padding:10px}.chat{height:calc(100vh - 210px)}.mobile-tabs{display:flex;gap:7px;margin-bottom:10px}.mobile-tabs button{flex:1}.col{display:none}.col.on{display:block}.msg{max-width:88%}}
+</style>
+</head>
+<body>
+<header class="topbar"><div class="topbar-in">
+  <div class="brand"><div class="logo">S</div><div><b>Sin Envolturas · Recap</b><span>Demo interactiva del agente de eventos</span></div></div>
+  <span class="pill" title="Estado del servidor local"><i class="dot" id="connDot"></i><span id="connText">Comprobando…</span></span>
+  <button class="pill" id="userPill" title="Identidad usada en modo En vivo (clic para cambiar)">👤 <span id="userLabel">51999999999</span></button>
+  <div class="seg" role="group" aria-label="Modo de datos">
+    <button id="modeMock" aria-pressed="true">Simulado</button>
+    <button id="modeLive" aria-pressed="false">En vivo · Lambda</button>
+  </div>
+  <button class="btn" id="btnTrace" aria-pressed="false">Traza</button>
+  <button class="btn" id="btnJson">Plan JSON</button>
+  <button class="btn primary" id="btnReset">↺ Nueva demo</button>
+</div></header>
+
+<main class="layout">
+  <div class="mobile-tabs" role="tablist">
+    <button class="btn" data-tab="plan" aria-pressed="false">Plan</button>
+    <button class="btn" data-tab="chat" aria-pressed="true">Chat</button>
+    <button class="btn" data-tab="short" aria-pressed="false">Shortlist</button>
+  </div>
+
+  <aside class="card col col-plan" data-col="plan" aria-label="Progreso del plan">
+    <div class="card-h"><h2>Tu evento, paso a paso</h2><small id="planId">—</small></div>
+    <div class="scenarios" id="scenarios"></div>
+    <div class="ring-wrap"><div class="ring" id="ring"><i id="ringPct">0%</i></div>
+      <p><b id="ringTitle">Empecemos</b><br><span id="ringHint">Contanos qué querés celebrar.</span></p></div>
+    <ol class="steps" id="steps"></ol>
+    <div class="card-h"><h2>Lo que ya sabemos</h2></div>
+    <div class="facts" id="facts"></div>
+    <div class="card-h"><h2>Todavía falta</h2></div>
+    <div class="chips" id="missing"></div>
+    <div class="card-h"><h2>Necesidades</h2><small id="needCount"></small></div>
+    <div id="needs" style="padding-bottom:12px"></div>
+  </aside>
+
+  <section class="card chat col col-chat on" data-col="chat" aria-label="Conversación">
+    <div class="chat-head"><div class="avatar">S</div>
+      <div><b>Asistente Sin Envolturas</b><span id="chatSub">en línea · responde en español</span></div>
+      <div class="sp"><button class="icon-btn" id="btnSound" aria-pressed="true" title="Resaltar mensajes nuevos">●</button></div></div>
+    <div class="msgs" id="msgs"><div class="day">HOY</div><div class="typing" id="typing"><i></i><i></i><i></i></div></div>
+    <div class="suggest" id="suggest" aria-label="Respuestas sugeridas"></div>
+    <form class="composer" id="composer">
+      <input id="input" autocomplete="off" placeholder="Escribí un mensaje…" aria-label="Escribí un mensaje">
+      <button class="send" id="sendBtn" aria-label="Enviar">➤</button>
+    </form>
+  </section>
+
+  <aside class="card col col-short" data-col="short" aria-label="Shortlist de proveedores">
+    <div class="card-h"><h2>Shortlist</h2><small id="shortCount">0 opciones</small></div>
+    <div class="filters" id="filters"></div>
+    <div class="plist" id="plist"></div>
+    <details class="trace" id="traceBox" hidden>
+      <summary>Traza del último turno</summary>
+      <div class="trace-body" id="traceBody"></div>
+    </details>
+  </aside>
+</main>
+
+<dialog id="jsonDialog" style="border:1px solid var(--line);border-radius:18px;max-width:min(760px,92vw);width:760px;padding:0;box-shadow:var(--shadow)">
+  <div style="padding:16px 18px;display:flex;align-items:center;gap:8px"><h2 class="serif" style="margin:0;font-size:18px">Plan actual (JSON)</h2>
+  <button class="btn" id="btnCopy" style="margin-left:auto">Copiar</button>
+  <button class="btn" id="btnCloseJson">Cerrar</button></div>
+  <pre id="jsonPre" style="margin:0;padding:0 18px 18px;overflow:auto;max-height:60vh;font-size:12px"></pre>
+</dialog>
+
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const now=()=>new Date().toLocaleTimeString("es-PE",{hour:"2-digit",minute:"2-digit"});
+const fmtMs=v=>typeof v==="number"&&Number.isFinite(v)?v+" ms":"—";
+// Seis etapas amables mapeadas a los nodos reales de decisión.
+// Incluye los nodos de error y reintento para no caer en Descubrimiento.
+const STAGES=[
+ {id:"inicio",label:"Descubrimiento",hint:"Tipo de evento y contexto",nodes:["contacto_inicial","deteccion_intencion","existe_plan_guardado","reset_plan"]},
+ {id:"entrevista",label:"Necesidades",hint:"Fecha, lugar, invitados y presupuesto",nodes:["entrevista","elicitacion_necesidades","aclarar_pedir_faltante","usuario_responde","minimos_para_buscar"]},
+ {id:"busqueda",label:"Búsqueda",hint:"Buscamos proveedores reales",nodes:["buscar_proveedores","busqueda_exitosa","hay_resultados"]},
+ {id:"recomendar",label:"Recomendaciones",hint:"Shortlist curada para vos",nodes:["recomendar","refinar_criterios"]},
+ {id:"seleccion",label:"Tu selección",hint:"Elegís y guardamos tu plan",nodes:["usuario_elige_proveedor","anadir_a_proveedores_recomendados","seguir_refinando_guardar_plan","necesidad_cubierta","continua"]},
+ {id:"cierre",label:"Cierre",hint:"Cotización y próximos pasos",nodes:["accion_final_exitosa","crear_lead_cerrar","guardar_seleccion_reintentar_luego","guardar_cerrar_temporalmente","resolver_consultas_informativas","responder_invitacion","ofrecer_agente_humano","solicitar_agente_humano","informar_error_reintento","reintentar"]}];
+const MISSING_LABEL={vendor_category:"Categoría",location:"Zona / ciudad",budget_or_guest_range:"Presupuesto o invitados",event_type:"Tipo de evento",budget_signal:"Presupuesto",guest_range:"Invitados"};
+const NEED_STATUS={identified:"Identificada",search_ready:"Lista para buscar",shortlisted:"Con shortlist",selected:"Seleccionada",deferred:"Postergada",no_providers_available:"Sin resultados"};
+const labelForMissing=m=>MISSING_LABEL[m]||String(m).replace(/_/g," ");
+let mode="mock", busy=false, filterCat="Todas", showTrace=false, soundOn=true;
+let state=null, scenIdx=0, stepIdx=0, liveSession=crypto.randomUUID(), liveUser="51999999999", lastTurnMs=null;
+
+const PROVIDERS={
+ catering:[
+  {id:101,title:"Sabores de Lima Catering",category:"Catering",location:"Miraflores, Lima",priceLevel:"$$",rating:"4.9",fitScore:96,reason:"Menú criollo e internacional para 120 invitados, incluye menaje y mozos.",tags:["Menú degustación","Incluye menaje"],promoBadge:"−15% en octubre"},
+  {id:102,title:"La Casona Gourmet",category:"Catering",location:"Barranco, Lima",priceLevel:"$$$",rating:"4.8",fitScore:91,reason:"Propuesta de autor con estaciones en vivo y opción vegana.",tags:["Estaciones en vivo","Opción vegana"]},
+  {id:103,title:"Delicias Andinas",category:"Catering",location:"Surco, Lima",priceLevel:"$",rating:"4.7",fitScore:86,reason:"La mejor relación precio-calidad para eventos familiares grandes.",tags:["Económico","Porciones generosas"]}],
+ foto:[
+  {id:201,title:"Luz & Recuerdo Studio",category:"Fotografía y video",location:"Lima Metropolitana",priceLevel:"$$",rating:"5.0",fitScore:95,reason:"Foto y video 4K con entrega en 7 días y álbum premium.",tags:["4K","Álbum premium"],promoBadge:"2ª cámara sin costo"},
+  {id:202,title:"Enfoque Natural",category:"Fotografía y video",location:"Lima Metropolitana",priceLevel:"$",rating:"4.8",fitScore:89,reason:"Estilo documental, ideal si no quieren fotos posadas.",tags:["Documental","Entrega rápida"]}],
+ locales:[
+  {id:301,title:"Casa Jardín Barranco",category:"Locales",location:"Barranco, Lima",priceLevel:"$$",rating:"4.9",fitScore:94,reason:"Jardín para 150 personas, casa colonial y plan B bajo techo.",tags:["Jardín","Plan B techado"]},
+  {id:302,title:"Salón Vista Pacífico",category:"Locales",location:"Miraflores, Lima",priceLevel:"$$$",rating:"4.8",fitScore:88,reason:"Vista al mar, valet parking y cocina propia.",tags:["Vista al mar","Valet"]}]};
+
+const SCENARIOS=[
+ {id:"boda",name:"Boda completa",desc:"120 invitados · Barranco",steps:[
+  {user:"Hola, quiero organizar mi boda",reply:"¡Qué lindo, felicidades! Para armarte un plan a medida contame: ¿ya tienen fecha tentativa, zona y cuántos invitados serían?",node:"entrevista",plan:{event_type:"Boda",missing:["location","budget_or_guest_range"]},suggest:["Será en Lima, unos 120 invitados"]},
+  {user:"Será en Lima, unos 120 invitados",reply:"Perfecto: boda en Lima para 120 invitados. ¿Qué es lo primero que querés resolver: el local, el catering o la foto y video?",node:"elicitacion_necesidades",plan:{location:"Lima",guest_range:"101-200",missing:["vendor_category"]},needs:[{category:"Locales",status:"identified"},{category:"Catering",status:"identified"},{category:"Fotografía y video",status:"identified"}],suggest:["Empecemos por el catering"]},
+  {user:"Empecemos por el catering",reply:"Dale. Con 120 invitados en Lima ya puedo buscar catering. ¿Algún estilo de comida o presupuesto por persona en mente?",node:"minimos_para_buscar",plan:{missing:[]},needs:[{category:"Catering",status:"search_ready"},{category:"Locales",status:"identified"},{category:"Fotografía y video",status:"identified"}],suggest:["Comida criolla, presupuesto medio"]},
+  {user:"Comida criolla, presupuesto medio",reply:"Encontré 3 caterings que encajan con comida criolla y presupuesto medio para 120 personas. Te dejé la shortlist a la derecha: mi favorito es Sabores de Lima (96% de match). Tocá «Elegir» en el que más te guste.",node:"recomendar",plan:{budget_signal:"medio"},needs:[{category:"Catering",status:"shortlisted"},{category:"Locales",status:"identified"},{category:"Fotografía y video",status:"identified"}],providers:"catering",suggest:["Me gusta Sabores de Lima","Ahora busquemos el local"]},
+  {user:"Ahora busquemos el local",reply:"¡Buena elección de orden! Para 120 invitados en Lima te recomiendo estos 2 locales con jardín. Casa Jardín Barranco tiene plan B bajo techo, clave en Lima.",node:"recomendar",needs:[{category:"Catering",status:"shortlisted"},{category:"Locales",status:"shortlisted"},{category:"Fotografía y video",status:"identified"}],providers:"locales",suggest:["Quiero ver foto y video también"]},
+  {user:"Quiero ver foto y video también",reply:"Sumé foto y video a tu shortlist. Cuando elijas uno por categoría, te armo el resumen del plan y pedimos las cotizaciones formales. Sin apuro: tu plan queda guardado.",node:"seguir_refinando_guardar_plan",needs:[{category:"Catering",status:"shortlisted"},{category:"Locales",status:"shortlisted"},{category:"Fotografía y video",status:"shortlisted"}],providers:"foto",suggest:["Ya elegí, armame el resumen"]},
+  {user:"Ya elegí, armame el resumen",reply:"Listo: tu plan de boda en Lima para 120 invitados ya tiene shortlist de catering, local y foto/video. El siguiente paso es pedir cotización a los que elegiste. ¿Querés que lo dejemos así y te avisemos?",node:"continua",needs:[{category:"Catering",status:"shortlisted"},{category:"Locales",status:"shortlisted"},{category:"Fotografía y video",status:"shortlisted"}],suggest:["Sí, dejalo guardado"]}]},
+ {id:"cumple",name:"Cumpleaños 50",desc:"50 invitados · Surco",steps:[
+  {user:"Quiero festejar mis 50 en Lima",reply:"¡Feliz 50! ¿En qué zona de Lima y para cuántas personas lo imaginás?",node:"entrevista",plan:{event_type:"Cumpleaños",missing:["location","budget_or_guest_range"]},suggest:["En Surco, 50 personas"]},
+  {user:"En Surco, 50 personas",reply:"Genial: cumple de 50 en Surco para 50 personas. Te busco catering primero, que es lo que más rápido se reserva.",node:"buscar_proveedores",plan:{location:"Surco, Lima",guest_range:"21-50",missing:[]},needs:[{category:"Catering",status:"shortlisted"}],providers:"catering",suggest:["¿Y foto y video?"]},
+  {user:"¿Y foto y video?",reply:"Acá van 2 estudios con muy buenas reseñas para cumpleaños. Elegí el que quieras y te dejo el plan guardado.",node:"recomendar",needs:[{category:"Catering",status:"shortlisted"},{category:"Fotografía y video",status:"shortlisted"}],providers:"foto",suggest:["Perfecto, gracias"]}]},
+ {id:"faq",name:"Consulta rápida",desc:"Sin plan, solo información",steps:[
+  {user:"¿Cuánto cuesta en promedio un catering en Lima?",reply:"En Lima, un catering completo ronda entre S/ 80 y S/ 180 por persona según menú y servicios incluidos. Si me contás tu evento, te muestro opciones reales con precio.",node:"resolver_consultas_informativas",plan:{event_type:null},suggest:["Quiero organizar una boda"]},
+  {user:"Quiero organizar una boda",reply:"¡Vamos! ¿Ya tienen zona e invitados estimados?",node:"entrevista",plan:{event_type:"Boda",missing:["location","budget_or_guest_range"]},suggest:["Será en Lima, unos 120 invitados"]}]}];
+
+function freshPlan(){return{plan_id:"demo-"+Math.random().toString(36).slice(2,8),current_node:"contacto_inicial",event_type:null,location:null,budget_signal:null,guest_range:null,vendor_category:null,active_need_category:null,missing_fields:["vendor_category","location","budget_or_guest_range"],provider_needs:[],recommended_providers:[],selected_provider_ids:[],intent:null,conversation_summary:""}}
+function reset(scen){
+ state={plan:freshPlan(),messages:[],trace:null,perf:null,delivery:null}; scenIdx=SCENARIOS.findIndex(s=>s.id===scen); if(scenIdx<0)scenIdx=0; stepIdx=0; filterCat="Todas";
+ $("#msgs").innerHTML='<div class="day">HOY</div><div class="typing" id="typing"><i></i><i></i><i></i></div>';
+ renderScenarios(); renderAll();
+ const s=SCENARIOS[scenIdx];
+ addMsg("agent","Hola, soy tu asistente de Sin Envolturas. Contame qué querés celebrar y te armo el plan paso a paso: a la izquierda ves el avance y a la derecha, tu shortlist.");
+ renderSuggest(s.steps[0]?[s.steps[0].user]:[]);
+}
+function renderScenarios(){$("#scenarios").innerHTML=SCENARIOS.map((s,i)=>'<button class="scen" data-scen="'+s.id+'" aria-pressed="'+(i===scenIdx)+'"><b>'+esc(s.name)+'</b><span>'+esc(s.desc)+'</span></button>').join("");
+ document.querySelectorAll("[data-scen]").forEach(b=>b.onclick=()=>reset(b.dataset.scen));}
+function addMsg(kind,text,meta){
+ state.messages.push({kind,text});
+ const d=document.createElement("div");d.className="msg "+kind;
+ const body=document.createElement("span");body.textContent=text;d.appendChild(body);
+ if(meta){const m=document.createElement("span");m.className="meta";m.textContent=meta;d.appendChild(m);}
+ const t=document.createElement("small");t.textContent=now()+(kind==="agent"?" · Asistente":kind==="user"?" · Vos":"");d.appendChild(t);
+ const box=$("#msgs");box.insertBefore(d,$("#typing"));box.scrollTop=box.scrollHeight;
+ if(kind==="agent"&&soundOn){d.classList.add("flash");setTimeout(()=>d.classList.remove("flash"),900);
+  if(document.hidden){const old=document.title;document.title="💬 Nueva respuesta · Recap";setTimeout(()=>{document.title=old;},2500);}}
+ return d;}
+function renderSuggest(list){$("#suggest").innerHTML=(list||[]).map(t=>'<button type="button">'+esc(t)+"</button>").join("");document.querySelectorAll("#suggest button").forEach(b=>b.onclick=()=>{ $("#input").value=b.textContent; send(); });}
+function liveSuggest(){
+ const p=state.plan,miss=p.missing_fields||[],needs=p.provider_needs||[];
+ if(needs.some(n=>n.status==="shortlisted"))return["Me quedo con la primera opción","Ya elegí, armame el resumen"];
+ if(miss.includes("location"))return["Será en Lima, unos 120 invitados"];
+ if(miss.includes("vendor_category")||miss.includes("budget_or_guest_range"))return["Empecemos por el catering","Quiero ver las opciones"];
+ return needs.length?["Quiero ver las opciones","Ya elegí, armame el resumen"]:["Será en Lima, unos 120 invitados"];}
+function stageIndex(node){const i=STAGES.findIndex(s=>s.nodes.includes(node));return i<0?0:i;}
+function progressPct(p){let n=0;const t=6;if(p.event_type)n++;if(p.location)n++;if(p.budget_signal||p.guest_range)n++;if(p.provider_needs&&p.provider_needs.length)n++;if((p.recommended_providers&&p.recommended_providers.length)||(p.provider_needs||[]).some(x=>x.recommended_providers&&x.recommended_providers.length))n++;if((p.selected_provider_ids&&p.selected_provider_ids.length)||(p.provider_needs||[]).some(x=>x.selected_provider_ids&&x.selected_provider_ids.length))n++;return Math.round(n/t*100);}
+function renderAll(){const p=state.plan,cur=stageIndex(p.current_node),pct=progressPct(p);
+ $("#ring").style.setProperty("--p",pct);$("#ringPct").textContent=pct+"%";$("#planId").textContent=p.plan_id||"—";
+ $("#ringTitle").textContent=pct===0?"Empecemos":pct===100?"¡Plan completo!":STAGES[cur].label;
+ $("#ringHint").textContent=pct===100?"Ya podés pedir cotizaciones.":STAGES[cur].hint;
+ $("#steps").innerHTML=STAGES.map((s,i)=>'<li class="'+(i<cur?"done":i===cur?"cur":"")+'"><span class="st-ic">'+(i<cur?"✓":i+1)+'</span><div><b>'+esc(s.label)+'</b><span>'+esc(s.hint)+"</span></div></li>").join("");
+ const cat=p.vendor_category||p.active_need_category;
+ const facts=[["Evento",p.event_type],["Zona",p.location],["Invitados",p.guest_range],["Presupuesto",p.budget_signal],["Categoría",cat],["Etapa",STAGES[cur].label],["Nodo",p.current_node]];
+ $("#facts").innerHTML=facts.map(([k,v])=>'<div class="fact"><span>'+k+'</span><b>'+esc(v||"—")+"</b></div>").join("");
+ const miss=p.missing_fields||[];$("#missing").innerHTML=miss.length?miss.map(m=>'<span class="chip">'+esc(labelForMissing(m))+"</span>").join(""):'<span class="chip ok">Todo listo para buscar ✓</span>';
+ const needs=p.provider_needs||[];$("#needCount").textContent=needs.length?needs.length+" en curso":"";
+ $("#needs").innerHTML=needs.length?needs.map(n=>'<div class="need"><div><b>'+esc(n.category)+'</b><span>'+((n.recommended_providers||[]).length||"")+' opciones · '+((n.selected_provider_ids||[]).length?n.selected_provider_ids.length+" elegida(s)":"sin elegir")+'</span></div><span class="badge '+esc(n.status)+'">'+esc(NEED_STATUS[n.status]||n.status)+"</span></div>").join(""):'<div style="padding:0 17px;font-size:13px;color:var(--ink2)">Todavía no definimos categorías. Aparecen acá a medida que avancemos.</div>';
+ renderShortlist(); renderTrace();}
+function allProviders(){const p=state.plan,map=new Map();(p.recommended_providers||[]).forEach(x=>map.set(x.id,x));(p.provider_needs||[]).forEach(n=>(n.recommended_providers||[]).forEach(x=>map.set(x.id,{...x,category:x.category||n.category})));return[...map.values()];}
+function isSelected(id){return(state.plan.selected_provider_ids||[]).includes(id)||(state.plan.provider_needs||[]).some(n=>(n.selected_provider_ids||[]).includes(id));}
+function providerExtras(x){
+ const rows=[];
+ if(x.minPrice||x.maxPrice)rows.push("<li>Precio: "+esc([x.minPrice,x.maxPrice].filter(Boolean).join(" – ")||"—")+"</li>");
+ if(x.descriptionSnippet)rows.push("<li>"+esc(x.descriptionSnippet)+"</li>");
+ if(x.description&&x.description!==x.descriptionSnippet)rows.push("<li>"+esc(String(x.description).slice(0,220))+"</li>");
+ (x.termsHighlights||[]).forEach(t=>rows.push("<li>Condiciones: "+esc(t)+"</li>"));
+ (x.providerNotes||[]).slice(0,3).forEach(t=>rows.push("<li>"+esc(t)+"</li>"));
+ if(x.retrievalSource)rows.push("<li>Fuente: "+esc(x.retrievalSource)+"</li>");
+ return rows.length?"<details><summary>Ver más</summary><ul>"+rows.join("")+"</ul></details>":"";}
+function providerLinks(x){
+ const links=[];
+ if(x.detailUrl)links.push('<a href="'+esc(x.detailUrl)+'" target="_blank" rel="noopener">Ficha</a>');
+ if(x.websiteUrl&&x.websiteUrl!==x.detailUrl)links.push('<a href="'+esc(x.websiteUrl)+'" target="_blank" rel="noopener">Web</a>');
+ return links.length?'<div class="p-links">'+links.join("")+"</div>":"";}
+function renderShortlist(){const all=allProviders(),cats=["Todas",...new Set(all.map(x=>x.category).filter(Boolean))];if(!cats.includes(filterCat))filterCat="Todas";
+ $("#filters").innerHTML=all.length?cats.map(c=>'<button data-cat="'+esc(c)+'" aria-pressed="'+(c===filterCat)+'">'+esc(c)+"</button>").join(""):"";
+ document.querySelectorAll("[data-cat]").forEach(b=>b.onclick=()=>{filterCat=b.dataset.cat;renderShortlist();});
+ const list=all.filter(x=>filterCat==="Todas"||x.category===filterCat);$("#shortCount").textContent=all.length+(" opción")+(all.length===1?"":"es");
+ $("#plist").innerHTML=all.length?list.map(x=>{const sel=isSelected(x.id);
+  const price=x.minPrice||x.maxPrice?'<p class="p-price">'+esc([x.minPrice,x.maxPrice].filter(Boolean).join(" – "))+"</p>":"";
+  const highlights=[...(x.serviceHighlights||[]),...(x.tags||[])].filter(Boolean);
+  return '<article class="pcard'+(sel?" sel":"")+'"><div class="p-top"><div><h3>'+esc(x.title)+'</h3><div class="p-meta">'+esc(x.category||"")+" · "+esc(x.location||"Lima")+" · "+esc(x.priceLevel||"")+(x.rating?" · ★ "+esc(x.rating):"")+'</div></div></div>'
+  +(x.reason?'<p class="p-reason">'+esc(x.reason)+"</p>":"")
+  +(x.fitScore!=null?'<div class="fit"><span>Match</span><span class="fitbar"><i style="width:'+Math.max(0,Math.min(100,x.fitScore))+'%"></i></span><span>'+x.fitScore+"%</span></div>":"")
+  +price
+  +(x.promoBadge||x.promoSummary?'<span class="promo">'+esc(x.promoBadge||x.promoSummary)+"</span>":"")
+  +(highlights.length?'<div class="tags">'+highlights.slice(0,6).map(t=>"<span>"+esc(t)+"</span>").join("")+"</div>":"")
+  +((x.fitWarnings||x.fitTags||[]).length?'<div class="tags warn">'+[...(x.fitTags||[]),...(x.fitWarnings||[])].slice(0,4).map(t=>"<span>"+esc(t)+"</span>").join("")+"</div>":"")
+  +providerExtras(x)+providerLinks(x)
+  +'<div style="margin-top:11px;display:flex"><button class="pick" data-pick="'+x.id+'" data-title="'+esc(x.title)+'" aria-pressed="'+sel+'">'+(sel?"✓ Elegido":"Elegir este")+"</button></div></article>";}).join("")
+ :'<div class="empty"><b>Tu shortlist está vacía</b>Cuando busquemos proveedores, las mejores opciones aparecen acá para comparar y elegir.</div>';
+ document.querySelectorAll("[data-pick]").forEach(b=>b.onclick=()=>pickProvider(Number(b.dataset.pick),b.dataset.title));}
+function pickProvider(id,title){
+ if(mode==="live"){
+  // En vivo la selección real la confirma el runtime: lo pedimos por chat
+  // para no divergir del plan persistido en Lambda.
+  $("#input").value="Me quedo con "+(title||"la primera opción")+". ¿La anotás en mi plan?";
+  send();return;}
+ const p=state.plan;p.selected_provider_ids=p.selected_provider_ids||[];const i=p.selected_provider_ids.indexOf(id);
+ if(i>=0)p.selected_provider_ids.splice(i,1);else p.selected_provider_ids.push(id);
+ (p.provider_needs||[]).forEach(n=>{if((n.recommended_providers||[]).some(x=>x.id===id)){n.selected_provider_ids=i>=0?[]:[id];n.status=i>=0?"shortlisted":"selected";}});
+ if(i<0)addMsg("sys","Selección guardada en tu plan. La shortlist y el progreso ya están actualizados.");
+ renderAll();}
+function traceTokens(t){
+ const u=t.token_usage||{};const parts=[];
+ const one=(k,v)=>v?k+": "+(v.total_tokens??"—")+" toks":"";
+ ["extraction","reply"].forEach(k=>{if(u[k])parts.push(one(k,u[k]));});
+ if(u.total)parts.push("total: "+(u.total.total_tokens??"—"));
+ return parts.join(" · ");}
+function renderTrace(){const box=$("#traceBox");if(!showTrace||!state.trace){box.hidden=!showTrace;if(showTrace)$("#traceBody").innerHTML="Todavía no hay un turno registrado.";return;}
+ box.hidden=false;const t=state.trace,tm=t.timing_ms||{};
+ const max=Math.max(1,...Object.values(tm).filter(v=>typeof v==="number"));
+ const tools=(t.tools_called||[]);
+ const funnel=t.recommendation_funnel;
+ const clf=t.response_classifier;
+ const nodeLine="Nodo: <code>"+esc(t.previous_node||"")+" → "+esc(t.next_node||t.current_node||"")+"</code>";
+ const path=(t.node_path||[]).length?"<div>Ruta: <code>"+esc(t.node_path.join(" → "))+"</code></div>":"";
+ const intentLine="<div>Intent: <code>"+esc(t.intent||t.route_kind||"—")+"</code> · Búsqueda lista: <code>"+esc(String(t.search_ready??"—"))+"</code> · Faltantes: <code>"+esc((t.missing_fields||[]).join(", ")||"ninguno")+"</code></div>";
+ const traceLine="<div>Trace: <code>"+esc(t.trace_id||"—")+"</code>"+(traceTokens(t)?" · <code>"+esc(traceTokens(t))+"</code>":"")+(lastTurnMs!=null?" · <code>"+lastTurnMs+" ms ida y vuelta</code>":"")+"</div>";
+ const toolsLine="<div>Herramientas: "+(tools.length?tools.map(x=>'<span class="tchip tool">'+esc(x)+"</span>").join(" "):"<code>ninguna</code>")+"</div>";
+ const funnelLine=funnel?"<div>Embudo: <code>"+funnel.context_candidates+"/"+funnel.available_candidates+" candidatas · tope "+funnel.presentation_limit+"</code></div>":"";
+ const clfLine=clf?'<div>Clasificador: <span class="tchip clf">'+esc(clf.action||(clf.would_suppress?"SUPPRESS":"SEND"))+"</span> <code>"+esc(clf.reason||"")+"</code></div>":"";
+ const del=state.delivery?'<div>Entrega: <code>'+esc(state.delivery.action||"—")+" · "+esc(state.delivery.reason||"")+"</code></div>":"";
+ const perf=state.perf?'<div>Rendimiento: <code>runtime '+esc(state.perf.runtime_latency_ms??"—")+" ms · herramientas "+esc(state.perf.tools_called_count??"—")+" · proveedores "+esc(state.perf.provider_results_count??"—")+"</code></div>":"";
+ const water='<div class="water">'+Object.entries(tm).filter(([,v])=>typeof v==="number"&&v>0).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([k,v])=>"<div><span style='width:150px'>"+esc(k)+'</span><span class="bar" style="width:'+Math.max(4,Math.round(v/max*130))+'px"></span><span>'+v+" ms</span></div>").join("")+"</div>";
+ $("#traceBody").innerHTML="<div>"+nodeLine+"</div>"+path+intentLine+traceLine+toolsLine+funnelLine+clfLine+del+perf+water;}
+async function typingWait(ms){$("#typing").classList.add("on");$("#msgs").scrollTop=$("#msgs").scrollHeight;await new Promise(r=>setTimeout(r,ms));$("#typing").classList.remove("on");}
+async function send(){const inp=$("#input"),text=inp.value.trim();if(!text||busy)return;busy=true;$("#sendBtn").disabled=true;inp.value="";addMsg("user",text);renderSuggest([]);
+ try{ if(mode==="mock")await sendMock(text); else await sendLive(text);}catch(e){addMsg("sys","Hubo un problema: "+(e.message||e));}
+ busy=false;$("#sendBtn").disabled=false;inp.focus();}
+async function sendMock(text){await typingWait(650+Math.random()*450);const scen=SCENARIOS[scenIdx];let step=scen.steps[stepIdx];
+ if(!step){addMsg("agent","Tu plan ya está guardado. Si querés, tocá «Nueva demo» para probar otro escenario o pasá a modo En vivo para hablar con el agente real.");renderSuggest(scen.steps[scen.steps.length-1]?.suggest||[]);return;}
+ // El texto libre también avanza la demo guiada; las sugerencias son el camino feliz.
+ stepIdx++;const p=state.plan;p.current_node=step.node||p.current_node;
+ if(step.plan)Object.assign(p,step.plan); if(step.needs){const prev=new Map((p.provider_needs||[]).map(n=>[n.category,n]));p.provider_needs=step.needs.map(n=>{const o=prev.get(n.category);return{...n,preferences:[],hard_constraints:[],missing_fields:[],recommended_provider_ids:o?.recommended_provider_ids||[],recommended_providers:o?.recommended_providers||[],selected_provider_ids:o?.selected_provider_ids||[],selected_provider_hints:[]};});}
+ if(step.providers){const provs=PROVIDERS[step.providers];p.recommended_providers=[...new Map([...(p.recommended_providers||[]),...provs].map(x=>[x.id,x])).values()];
+  p.provider_needs.forEach(n=>{if(n.category===provs[0].category){n.recommended_providers=provs;n.recommended_provider_ids=provs.map(x=>x.id);if(n.status==="identified"||n.status==="search_ready")n.status="shortlisted";}});}
+ if(step.plan&&step.plan.missing!==undefined)p.missing_fields=step.plan.missing;
+ lastTurnMs=null;
+ state.trace={intent:p.event_type?"elicitar_necesidades":"deteccion_intencion",previous_node:"demo",next_node:p.current_node,node_path:["demo",p.current_node],search_ready:(p.missing_fields||[]).length===0,missing_fields:p.missing_fields||[],tools_called:step.providers?["provider.search"]:[],recommendation_funnel:step.providers?{available_candidates:PROVIDERS[step.providers].length,context_candidates:PROVIDERS[step.providers].length,presentation_limit:5}:null,trace_id:"demo-"+Date.now().toString(36),timing_ms:{total:820,extraction:310,compose_reply:390,provider_search:step.providers?260:0},token_usage:{total:{total_tokens:1240}}};
+ addMsg("agent",step.reply);renderSuggest(step.suggest||scen.steps[stepIdx]?.suggest||[]);renderAll();}
+async function sendLive(text){$("#connDot").className="dot busy";const started=Date.now();await typingWait(250);
+ const r=await fetch("/api/turn",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({channel:"terminal_whatsapp",user_id:liveUser,contact_phone:null,text,session_id:liveSession,client_mode:"cli"})});
+ const body=await r.json().catch(()=>({}));lastTurnMs=Date.now()-started;
+ if(!r.ok||body.error){$("#connDot").className="dot";$("#connText").textContent="En vivo · error";throw new Error(body.error||("Lambda respondió "+r.status));}
+ state.plan=body.plan||{...state.plan,current_node:body.current_node};state.plan.current_node=body.current_node||state.plan.current_node;
+ state.trace={...(body.trace||{}),current_node:body.current_node};
+ state.perf=body.perf||null;state.delivery=body.delivery||null;
+ const toks=body.trace?.token_usage?.total?.total_tokens;
+ addMsg("agent",body.message||"Sin respuesta para este turno.","nodo "+(body.current_node||"—")+(toks?" · "+toks+" toks":"")+" · "+lastTurnMs+" ms");
+ $("#connDot").className="dot on";$("#connText").textContent="En vivo · conectado";
+ renderAll();renderSuggest(liveSuggest());
+ // Ticks de lectura en el último mensaje propio, como en WhatsApp.
+ document.querySelectorAll(".msg.user small").forEach(el=>{if(!el.textContent.includes("✓✓"))el.textContent+=" ✓✓";});}
+$("#composer").addEventListener("submit",e=>{e.preventDefault();send();});
+$("#modeMock").onclick=()=>setMode("mock");$("#modeLive").onclick=()=>setMode("live");
+function setMode(m){mode=m;$("#modeMock").setAttribute("aria-pressed",m==="mock");$("#modeLive").setAttribute("aria-pressed",m==="live");
+ $("#chatSub").textContent=m==="mock"?"modo simulado · sin costo, ideal para presentar":"en vivo · Lambda de desarrollo · "+liveUser;
+ if(m==="live")checkHealth();}
+$("#btnReset").onclick=async()=>{
+ if(busy)return;
+ if(mode==="live"){
+  // En vivo el plan persiste en DynamoDB: purgamos el número configurado
+  // (igual que purge:terminal-plans, pero solo ese usuario) para empezar de cero.
+  busy=true;$("#sendBtn").disabled=true;
+  try{
+   const r=await fetch("/api/purge",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({channel:"terminal_whatsapp",user_id:liveUser})});
+   const body=await r.json().catch(()=>({}));
+   liveSession=crypto.randomUUID();reset(SCENARIOS[scenIdx].id);
+   if(!r.ok||body.error)addMsg("sys","No se pudo purgar el plan en vivo ("+(body.error||("error "+r.status))+"). La demo local se reinició igual.");
+   else addMsg("sys","Plan en vivo purgado para "+liveUser+" ("+(body.deleted??0)+" registros). Empezamos de cero.");
+  }catch(e){liveSession=crypto.randomUUID();reset(SCENARIOS[scenIdx].id);addMsg("sys","No se pudo purgar el plan en vivo ("+(e.message||e)+"). La demo local se reinició igual.");}
+  busy=false;$("#sendBtn").disabled=false;return;}
+ liveSession=crypto.randomUUID();reset(SCENARIOS[scenIdx].id);};
+$("#btnTrace").onclick=()=>{showTrace=!showTrace;$("#btnTrace").setAttribute("aria-pressed",showTrace);renderTrace();};
+$("#btnJson").onclick=()=>{$("#jsonPre").textContent=JSON.stringify(state.plan,null,2);$("#jsonDialog").showModal();};
+$("#btnCloseJson").onclick=()=>$("#jsonDialog").close();
+$("#btnCopy").onclick=async()=>{await navigator.clipboard.writeText($("#jsonPre").textContent);$("#btnCopy").textContent="Copiado ✓";setTimeout(()=>$("#btnCopy").textContent="Copiar",1200);};
+$("#btnSound").onclick=()=>{soundOn=!soundOn;$("#btnSound").setAttribute("aria-pressed",soundOn);};
+$("#userPill").onclick=()=>{
+ const next=prompt("Identidad para el modo En vivo (user_id del canal terminal_whatsapp):",liveUser);
+ if(next&&next.trim()){liveUser=next.trim();$("#userLabel").textContent=liveUser;liveSession=crypto.randomUUID();
+  if(mode==="live")$("#chatSub").textContent="en vivo · Lambda de desarrollo · "+liveUser;
+  addMsg("sys","Cambiaste de identidad a "+liveUser+". La conversación en vivo empieza de cero para ese usuario.");}};
+document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-tab]").forEach(x=>x.setAttribute("aria-pressed",x===b));document.querySelectorAll(".col").forEach(c=>c.classList.toggle("on",c.dataset.col===b.dataset.tab||innerWidth>760));});
+async function checkHealth(){try{const r=await fetch("/api/health");const h=await r.json();
+ $("#connDot").className="dot "+(h.liveConfigured?"on":"");$("#connText").textContent=h.liveConfigured?"Listo · simulado y en vivo disponibles":"Simulado listo · falta configurar Lambda";
+ if(mode==="live"&&!h.liveConfigured)addMsg("sys","El modo En vivo todavía no está configurado en el servidor local. Usá Simulado o definí DEV_AGENT_FUNCTION_URL y DEV_CHANNEL_API_KEY.");}
+ catch{$("#connText").textContent="Simulado listo · servidor local sin respuesta";}}
+$("#input").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();send();}});
+// Identidad inicial desde la URL para demos paralelas (?user_id=...).
+try{const q=new URLSearchParams(location.search);const u=q.get("user_id");if(u&&u.trim()){liveUser=u.trim();$("#userLabel").textContent=liveUser;}}catch{}
+reset("boda");checkHealth();
+</script>
+</body>
+</html>
