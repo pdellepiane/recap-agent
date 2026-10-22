@@ -175,6 +175,7 @@ describe('capability boundary evidence', () => {
       result: { status: 'success', message: 'Requested.' },
       phonePresent: true,
       confirmedReceipt: true,
+      skipCause: null,
     });
     expect(requested.handoffOutcome).toBe('handoff_requested');
     expect(requested.effectConfirmed).toBe(true);
@@ -183,6 +184,7 @@ describe('capability boundary evidence', () => {
       result: { status: 'failed', error: 'unavailable', retryable: true },
       phonePresent: true,
       confirmedReceipt: false,
+      skipCause: null,
     });
     expect(failed.handoffOutcome).toBe('handoff_failed');
     expect(failed.effectConfirmed).toBe(false);
@@ -191,12 +193,14 @@ describe('capability boundary evidence', () => {
       result: { status: 'failed', error: 'timeout', retryable: true, outcome: 'unknown' },
       phonePresent: true,
       confirmedReceipt: false,
+      skipCause: null,
     });
     expect(unknown.handoffOutcome).toBe('handoff_unknown');
     const skipped = projectSupportHandoffEvidence({
       result: { status: 'skipped', reason: 'missing_phone_number', message: 'Missing.' },
       phonePresent: false,
       confirmedReceipt: false,
+      skipCause: null,
     });
     expect(skipped.handoffOutcome).toBe('handoff_skipped_missing_phone');
     expect(skipped.identityAvailable).toBe(false);

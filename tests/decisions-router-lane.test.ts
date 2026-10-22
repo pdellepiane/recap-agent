@@ -625,6 +625,80 @@ describe('decisions router: customer-assistance lane', () => {
     expect(runtime.composeRequests[0]?.handoffOutcome).toBe('handoff_requested');
   });
 
+  it.each([
+    {
+      scenario: 'purchase-support-handoff-failed',
+      phone: '+51900000407',
+      replyOutcome: 'handoff_failed',
+      receiptOutcome: 'handoff_failed',
+      lastError: 'failed_no_auto_retry',
+    },
+    {
+      scenario: 'purchase-support-handoff-unknown',
+      phone: '+51900000408',
+      replyOutcome: 'handoff_unknown',
+      receiptOutcome: 'outcome_unknown',
+      lastError: 'unknown_stays_unretried',
+    },
+  ] as const)(
+    'reports the real $replyOutcome takeover outcome on the turn that does not retry it ($scenario)',
+    async ({ scenario, phone, replyOutcome, receiptOutcome, lastError }) => {
+      const gateway = await FixtureAgentConversationGateway.create(scenario);
+      const runtime = new ScriptedAgentRuntime(
+        [emptyExtraction()],
+        () => ({ text: 'Respuesta informativa.' }),
+      );
+      const { router } = buildRouter({
+        enabled: true,
+        answers: { route: 'escalate_human', loopRisk: 4, needsHumanNow: 0.9, capabilityBlocked: 0.9 },
+      });
+      const planStore = new InMemoryPlanStore();
+      const service = await createService({ runtime, gateway, router, planStore });
+
+      const first = await service.handleTurn({
+        channel: 'whatsapp',
+        externalUserId: `router-${scenario}`,
+        contactPhone: phone,
+        messageId: `router-${scenario}-1`,
+        receivedAt: new Date().toISOString(),
+        text: 'Quiero que me devuelvan el dinero y hablen con una persona.',
+      });
+
+      // The first turn attempts the takeover once and the world decides its outcome.
+      expect(gateway.getFixtureCallCount('handoff.write')).toBe(1);
+      expect(runtime.composeRequests[0]?.handoffOutcome).toBe(replyOutcome);
+      expect(first.plan.human_escalation.status).toBe('none');
+      expect(first.plan.human_help_receipt).toMatchObject({
+        outcome: receiptOutcome,
+        requested: false,
+        softPaused: false,
+      });
+
+      const second = await service.handleTurn({
+        channel: 'whatsapp',
+        externalUserId: `router-${scenario}`,
+        contactPhone: phone,
+        messageId: `router-${scenario}-2`,
+        receivedAt: new Date().toISOString(),
+        text: 'Necesito que alguien me atienda esto, por favor.',
+      });
+
+      // The takeover is never retried automatically: the effect ledger keeps
+      // exactly one attempt.
+      expect(gateway.getFixtureCallCount('handoff.write')).toBe(1);
+      // The reply evidence keeps the real outcome: a skipped retry is not an
+      // unavailable capability, so the reply can report what happened.
+      expect(runtime.composeRequests[1]?.handoffOutcome).toBe(replyOutcome);
+      expect(runtime.composeRequests[1]?.handoffOutcome).not.toBe('handoff_skipped_unavailable');
+      // The plan state, the node and the stop reason do not change.
+      expect(second.plan.current_node).toBe('solicitar_agente_humano');
+      expect(second.plan.human_escalation.status).toBe('none');
+      expect(second.plan.human_escalation.last_error).toBe(lastError);
+      expect(second.plan.human_help_receipt?.outcome).toBe(receiptOutcome);
+      expect(second.trace.turn_decision.stopReason).toBe('router_escalation:needs_human_now_threshold');
+    },
+  );
+
   it('opens the typed help offer on a purchase thread in the same turn', async () => {
     const gateway = await FixtureAgentConversationGateway.create(CASE_C_SCENARIO);
     const runtime = new ScriptedAgentRuntime(

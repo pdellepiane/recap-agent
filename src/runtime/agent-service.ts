@@ -229,6 +229,7 @@ import {
 import {
   projectSupportHandoffEvidence,
   resolveComposedReply,
+  resolveSupportHandoffSkipCause,
   type SupportHandoffEvidence,
   type SupportHandoffReplyOutcome,
 } from './reply-evidence-projector';
@@ -1199,6 +1200,7 @@ export class AgentService {
           result: gatewayResult,
           phonePresent: phoneNumber !== null,
           confirmedReceipt: gatewayResult.status === 'success',
+          skipCause: null,
         });
         const earlyCustomerContext = await this.prepareCustomerContextForTurn({
           plan: planToSave,
@@ -2989,10 +2991,21 @@ export class AgentService {
     args.timingMs.save_plan += Date.now() - savePlanStartedAt;
     const planPersistReason = currentNode;
     args.timingMs.total = Date.now() - args.handleTurnStartedAt;
+    // The takeover evidence travels with the turn on every path, so the perf
+    // record can tell a takeover that was requested and confirmed from a
+    // turn that never attempted one. A turn that skipped the takeover keeps
+    // the reason it really skipped for: a previous attempt that failed (or
+    // ended with an unknown outcome) is never retried automatically, and
+    // that outcome is what the reply reports. Only a genuinely unavailable
+    // capability or a missing phone projects a skipped outcome.
     const handoffEvidence = projectSupportHandoffEvidence({
       result: gatewayResult,
       phonePresent: phoneNumber !== null,
       confirmedReceipt: nextReceipt?.outcome === 'handoff_requested',
+      skipCause: resolveSupportHandoffSkipCause({
+        decision: helpDecision,
+        priorOutcome: priorHelpReceipt?.outcome ?? null,
+      }),
     });
     const composeReplyStartedAt = Date.now();
     let reply: ComposeReplyResult;
@@ -3671,6 +3684,7 @@ export class AgentService {
         result: handoffGatewayResult ?? { status: 'success', message: 'retained_confirmed_handoff' },
         phonePresent: handoffPhoneNumber !== null,
         confirmedReceipt: handoffStatus === 'registered',
+        skipCause: null,
       });
       const handoffOperationalNote = JSON.stringify({
         outcome: 'rsvp_multi_person_handoff',
@@ -9171,6 +9185,7 @@ export class AgentService {
       ? result.hostWithdrawalPolicy : null;
     let handoff: AgentGatewayResult | null = null;
     let receipt = plan.human_help_receipt ?? null;
+    let handoffDecision: ReturnType<typeof decideHumanHelpAttempt> | null = null;
     const phone = this.resolveEscalationPhone(args.inbound);
     if (needsHandoff) {
       const decision = decideHumanHelpAttempt({
@@ -9179,6 +9194,7 @@ export class AgentService {
         gatewayCapable: this.capabilityManifest['human.takeover.write'].available,
         prior: receipt, explicitRetry: this.isExplicitHumanRequest(plan, args.extraction),
       });
+      handoffDecision = decision;
       if (decision.action === 'attempt' && phone) {
         receipt = applyHandoffResult({ dedupeKey: decision.dedupeKey,
           inboundId: args.inbound.messageId, phone, gatewayStatus: 'unknown' });
@@ -9212,6 +9228,13 @@ export class AgentService {
         result: handoff,
         phonePresent: phone !== null,
         confirmedReceipt: handedOff,
+        // The host-withdrawal lane shares the support lane's defect: a prior
+        // failed or unknown attempt that is not retried must keep its real
+        // outcome instead of collapsing into the unavailable-capability fact.
+        skipCause: handoffDecision === null ? null : resolveSupportHandoffSkipCause({
+          decision: handoffDecision,
+          priorOutcome: receipt?.outcome ?? null,
+        }),
       })
       : null;
     const handoffOutcome = handoffEvidence?.handoffOutcome ?? null;

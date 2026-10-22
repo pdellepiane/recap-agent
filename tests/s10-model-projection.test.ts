@@ -18,7 +18,13 @@ import {
   projectReply,
   projectSupportHandoffEvidence,
   resolveComposedReply,
+  resolveSupportHandoffSkipCause,
 } from '../src/runtime/reply-evidence-projector';
+import {
+  buildHandoffDedupeKey,
+  decideHumanHelpAttempt,
+  type HandoffPersistedRecord,
+} from '../src/runtime/human-help-policy';
 
 function emptyPlan() {
   return createEmptyPlan({
@@ -184,6 +190,7 @@ describe('S10 reply evidence projector', () => {
       result: { status: 'success', message: 'Requested.' },
       phonePresent: true,
       confirmedReceipt: true,
+      skipCause: null,
     });
     expect(requested.handoffOutcome).toBe('handoff_requested');
     expect(requested.identityAvailable).toBe(true);
@@ -194,6 +201,7 @@ describe('S10 reply evidence projector', () => {
       result: { status: 'failed', error: 'unavailable', retryable: false },
       phonePresent: true,
       confirmedReceipt: false,
+      skipCause: null,
     });
     expect(failed.handoffOutcome).toBe('handoff_failed');
     expect(failed.effectConfirmed).toBe(false);
@@ -202,6 +210,7 @@ describe('S10 reply evidence projector', () => {
       result: { status: 'failed', error: 'timeout', retryable: true, outcome: 'unknown' },
       phonePresent: true,
       confirmedReceipt: false,
+      skipCause: null,
     });
     expect(unknown.handoffOutcome).toBe('handoff_unknown');
     expect(unknown.effectConfirmed).toBe(false);
@@ -209,6 +218,7 @@ describe('S10 reply evidence projector', () => {
       result: { status: 'skipped', reason: 'missing_phone_number', message: 'Missing.' },
       phonePresent: false,
       confirmedReceipt: false,
+      skipCause: null,
     });
     expect(skipped.handoffOutcome).toBe('handoff_skipped_missing_phone');
     expect(skipped.identityAvailable).toBe(false);
@@ -217,6 +227,7 @@ describe('S10 reply evidence projector', () => {
       result: { status: 'skipped', reason: 'not_configured', message: 'Disabled.' },
       phonePresent: true,
       confirmedReceipt: false,
+      skipCause: null,
     });
     expect(skippedUnavailable.handoffOutcome).toBe('handoff_skipped_unavailable');
     // No non-requested outcome claims success, confirmation, or a receipt.
@@ -226,6 +237,129 @@ describe('S10 reply evidence projector', () => {
       expect(evidence.receiptPresent).toBe(false);
       expect(evidence.requiresReplyModel).toBe(true);
     }
+  });
+
+  it('keeps the real prior outcome when a failed takeover is not retried', () => {
+    const prior: HandoffPersistedRecord = {
+      dedupeKey: buildHandoffDedupeKey('plan-s10', 'protected_request'),
+      inboundId: 'inbound-1',
+      phone: '+51900000407',
+      outcome: 'handoff_failed',
+      requested: false,
+      softPaused: false,
+      updatedAt: '2026-10-21T00:00:00.000Z',
+    };
+    const decision = decideHumanHelpAttempt({
+      conversationId: 'plan-s10',
+      inboundId: 'inbound-2',
+      scope: 'protected_request',
+      trustedPhone: '+51900000407',
+      gatewayCapable: true,
+      prior,
+      explicitRetry: false,
+    });
+    expect(decision.action).toBe('skip_duplicate');
+    expect(decision.reason).toBe('failed_no_auto_retry');
+
+    const evidence = projectSupportHandoffEvidence({
+      result: { status: 'skipped', reason: 'not_configured', message: decision.reason },
+      phonePresent: true,
+      confirmedReceipt: false,
+      skipCause: resolveSupportHandoffSkipCause({
+        decision,
+        priorOutcome: prior.outcome,
+      }),
+    });
+
+    // The failed attempt stays failed: it never collapses into an
+    // unavailable capability the guest never had.
+    expect(evidence.handoffOutcome).toBe('handoff_failed');
+    expect(evidence.handoffOutcome).not.toBe('handoff_skipped_unavailable');
+    expect(evidence.effectConfirmed).toBe(false);
+    expect(evidence.receiptPresent).toBe(false);
+    expect(evidence.requiresReplyModel).toBe(true);
+  });
+
+  it('keeps an unknown takeover outcome unknown when it is not retried', () => {
+    const prior: HandoffPersistedRecord = {
+      dedupeKey: buildHandoffDedupeKey('plan-s10', 'protected_request'),
+      inboundId: 'inbound-1',
+      phone: '+51900000408',
+      outcome: 'outcome_unknown',
+      requested: false,
+      softPaused: false,
+      updatedAt: '2026-10-21T00:00:00.000Z',
+    };
+    const decision = decideHumanHelpAttempt({
+      conversationId: 'plan-s10',
+      inboundId: 'inbound-2',
+      scope: 'protected_request',
+      trustedPhone: '+51900000408',
+      gatewayCapable: true,
+      prior,
+      explicitRetry: false,
+    });
+    expect(decision.action).toBe('skip_unknown_unretried');
+    expect(decision.reason).toBe('unknown_stays_unretried');
+
+    const evidence = projectSupportHandoffEvidence({
+      result: { status: 'skipped', reason: 'not_configured', message: decision.reason },
+      phonePresent: true,
+      confirmedReceipt: false,
+      skipCause: resolveSupportHandoffSkipCause({
+        decision,
+        priorOutcome: prior.outcome,
+      }),
+    });
+
+    expect(evidence.handoffOutcome).toBe('handoff_unknown');
+    expect(evidence.handoffOutcome).not.toBe('handoff_skipped_unavailable');
+    expect(evidence.effectConfirmed).toBe(false);
+    expect(evidence.receiptPresent).toBe(false);
+  });
+
+  it('reserves the skipped outcomes for a missing phone and an unavailable capability', () => {
+    const unavailableDecision = decideHumanHelpAttempt({
+      conversationId: 'plan-s10',
+      inboundId: 'inbound-1',
+      scope: 'protected_request',
+      trustedPhone: '+51900000407',
+      gatewayCapable: false,
+      prior: null,
+      explicitRetry: false,
+    });
+    expect(unavailableDecision.action).toBe('skip_unavailable');
+    const unavailable = projectSupportHandoffEvidence({
+      result: { status: 'skipped', reason: 'not_configured', message: unavailableDecision.reason },
+      phonePresent: true,
+      confirmedReceipt: false,
+      skipCause: resolveSupportHandoffSkipCause({
+        decision: unavailableDecision,
+        priorOutcome: null,
+      }),
+    });
+    expect(unavailable.handoffOutcome).toBe('handoff_skipped_unavailable');
+
+    const missingPhoneDecision = decideHumanHelpAttempt({
+      conversationId: 'plan-s10',
+      inboundId: 'inbound-1',
+      scope: 'protected_request',
+      trustedPhone: null,
+      gatewayCapable: true,
+      prior: null,
+      explicitRetry: false,
+    });
+    expect(missingPhoneDecision.action).toBe('skip_no_phone');
+    const missingPhone = projectSupportHandoffEvidence({
+      result: { status: 'skipped', reason: 'missing_phone_number', message: missingPhoneDecision.reason },
+      phonePresent: false,
+      confirmedReceipt: false,
+      skipCause: resolveSupportHandoffSkipCause({
+        decision: missingPhoneDecision,
+        priorOutcome: null,
+      }),
+    });
+    expect(missingPhone.handoffOutcome).toBe('handoff_skipped_missing_phone');
   });
 });
 

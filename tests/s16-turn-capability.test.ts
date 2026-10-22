@@ -185,6 +185,7 @@ describe('S16 turn capability authority', () => {
         result: { status: 'success', message: 'Requested.' },
         phonePresent: true,
         confirmedReceipt: true,
+        skipCause: null,
       });
       expect(requested.handoffOutcome).toBe('handoff_requested');
       expect(requested.effectConfirmed).toBe(true);
@@ -193,6 +194,7 @@ describe('S16 turn capability authority', () => {
         result: { status: 'failed', error: 'unavailable', retryable: false },
         phonePresent: true,
         confirmedReceipt: false,
+        skipCause: null,
       });
       expect(failed.handoffOutcome).toBe('handoff_failed');
       expect(failed.effectConfirmed).toBe(false);
@@ -201,6 +203,7 @@ describe('S16 turn capability authority', () => {
         result: { status: 'failed', error: 'timeout', retryable: true, outcome: 'unknown' },
         phonePresent: true,
         confirmedReceipt: false,
+        skipCause: null,
       });
       expect(unknown.handoffOutcome).toBe('handoff_unknown');
       expect(unknown.effectConfirmed).toBe(false);
@@ -211,6 +214,7 @@ describe('S16 turn capability authority', () => {
         result: { status: 'skipped', reason: 'missing_phone_number', message: 'Missing.' },
         phonePresent: false,
         confirmedReceipt: false,
+        skipCause: null,
       });
       expect(missingIdentity.handoffOutcome).not.toBe('handoff_requested');
       expect(missingIdentity.identityAvailable).toBe(false);
@@ -220,6 +224,7 @@ describe('S16 turn capability authority', () => {
         result: { status: 'skipped', reason: 'not_configured', message: 'Disabled.' },
         phonePresent: true,
         confirmedReceipt: false,
+        skipCause: null,
       });
       expect(unavailable.handoffOutcome).not.toBe('handoff_requested');
       expect(unavailable.effectConfirmed).toBe(false);

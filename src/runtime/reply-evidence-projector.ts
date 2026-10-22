@@ -1,5 +1,5 @@
 import type { AgentGatewayResult } from './agent-conversation-gateway';
-import type { HandoffOutcome } from './human-help-policy';
+import type { HandoffOutcome, HumanHelpAttemptDecision } from './human-help-policy';
 import type { TurnCapabilityOutcome } from './turn-capability-policy';
 import type { TurnWaitEvidence } from '../core/messages';
 import type { LastOutboundContext } from '../core/plan';
@@ -173,19 +173,63 @@ export type SupportHandoffEvidence = {
 };
 
 /**
+ * Why a turn did not attempt a takeover.
+ *
+ * A skipped attempt is not one fact. The capability may be unavailable, the
+ * contact phone may be missing, or a previous attempt may have failed (or
+ * ended with an unknown outcome) and is not retried automatically. The last
+ * two keep the real prior outcome, so the reply reports what happened
+ * instead of a capability that was never missing.
+ */
+export type SupportHandoffSkipCause =
+  | 'capability_unavailable'
+  | 'missing_phone'
+  | 'prior_attempt_failed'
+  | 'prior_outcome_unknown';
+
+/**
+ * Maps the typed attempt decision to the reason the takeover was skipped.
+ *
+ * The decision already owns the runtime precedence: a missing phone and an
+ * unavailable capability come first, and only then the prior attempt that
+ * kept a failed or unknown takeover from being retried. A turn that attempted
+ * the takeover has no skip cause; its gateway result carries the outcome.
+ */
+export function resolveSupportHandoffSkipCause(args: {
+  readonly decision: HumanHelpAttemptDecision;
+  readonly priorOutcome: HandoffOutcome | null;
+}): SupportHandoffSkipCause | null {
+  if (args.decision.action === 'attempt') return null;
+  if (args.decision.action === 'skip_no_phone') return 'missing_phone';
+  if (args.decision.action === 'skip_unavailable') return 'capability_unavailable';
+  if (args.decision.action === 'skip_unknown_unretried') return 'prior_outcome_unknown';
+  // A duplicate skip carries the prior attempt's own outcome: a failed
+  // attempt stays failed and an unknown outcome stays unknown. A confirmed
+  // prior request is a handoff that already happened, so it needs no skip
+  // cause.
+  if (args.priorOutcome === 'handoff_failed') return 'prior_attempt_failed';
+  if (args.priorOutcome === 'outcome_unknown') return 'prior_outcome_unknown';
+  return null;
+}
+
+/**
  * Projects a human-takeover gateway result into typed reply evidence before
  * generation. Success is claimed only from an actual gateway success;
  * failed, unknown and unattempted (skipped) results stay distinct and every
- * branch still requires this turn's model composition. Skipped attempts
- * project a typed skipped outcome that preserves the reason family
- * (missing-phone vs unavailable capability) so the model distinguishes
- * them from evidence without prose. The operational note carries facts
+ * branch still requires this turn's model composition. A skipped attempt
+ * keeps the reason family it really has: a missing phone, a genuinely
+ * unavailable capability, or a previous attempt that failed (or ended
+ * unknown) and was not retried. A not-retried failure never collapses into
+ * an unavailable capability, so the model never reports a capability that
+ * was there as one that is missing. The operational note carries facts
  * (status, reason) for traces, never reply prose.
  */
 export function projectSupportHandoffEvidence(args: {
   readonly result: AgentGatewayResult;
   readonly phonePresent: boolean;
   readonly confirmedReceipt: boolean;
+  /** Why this turn did not attempt a takeover; null when the reason is the gateway result alone. */
+  readonly skipCause: SupportHandoffSkipCause | null;
 }): SupportHandoffEvidence {
   if (args.result.status === 'success') {
     return {
@@ -217,8 +261,30 @@ export function projectSupportHandoffEvidence(args: {
       operationalNote: `Human escalation API call failed: ${args.result.error}`,
     };
   }
+  const skipCause = args.skipCause ??
+    (args.result.reason === 'missing_phone_number' ? 'missing_phone' : 'capability_unavailable');
+  if (skipCause === 'prior_attempt_failed') {
+    return {
+      handoffOutcome: 'handoff_failed',
+      identityAvailable: args.phonePresent,
+      effectConfirmed: false,
+      receiptPresent: false,
+      requiresReplyModel: true,
+      operationalNote: `Human takeover was not retried after a failed attempt: ${args.result.message}.`,
+    };
+  }
+  if (skipCause === 'prior_outcome_unknown') {
+    return {
+      handoffOutcome: 'handoff_unknown',
+      identityAvailable: args.phonePresent,
+      effectConfirmed: false,
+      receiptPresent: false,
+      requiresReplyModel: true,
+      operationalNote: `Human takeover was not retried after an unknown outcome: ${args.result.message}.`,
+    };
+  }
   return {
-    handoffOutcome: args.result.reason === 'missing_phone_number'
+    handoffOutcome: skipCause === 'missing_phone'
       ? 'handoff_skipped_missing_phone'
       : 'handoff_skipped_unavailable',
     identityAvailable: args.phonePresent,

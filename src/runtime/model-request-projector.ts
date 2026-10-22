@@ -651,6 +651,7 @@ export {
   projectReply,
   projectSupportHandoffEvidence,
   resolveComposedReply,
+  resolveSupportHandoffSkipCause,
   resolveWaitFollowupEvidence,
   type ReplyContinuitySummary,
   type ReplyDisposition,
@@ -660,6 +661,7 @@ export {
   type ResolvedComposedReply,
   type SupportHandoffEvidence,
   type SupportHandoffReplyOutcome,
+  type SupportHandoffSkipCause,
   type WaitFollowupEvidence,
 } from './reply-evidence-projector';
 export {

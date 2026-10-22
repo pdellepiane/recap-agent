@@ -10,6 +10,8 @@ describe('eval runner caseIds filtering', () => {
   const outputDir = path.resolve(process.cwd(), '.eval-runs-test');
 
   // Catalog-loading test: needs headroom under full-suite parallel load (trips the 5s default).
+  // The sibling tests below load the same catalog and the whole live suite, so they
+  // carry the same headroom: the assertions are unchanged, only the budget.
   it('selects cases by caseIds: single, multiple, unknown, and empty filters', { timeout: 30_000 }, async () => {
     const unfiltered = await runEvaluation({
       evalsDir,
@@ -68,7 +70,7 @@ describe('eval runner caseIds filtering', () => {
     expect(empty.report.totalCases).toBe(3);
   });
 
-  it('intersects caseIds with the suite, dropping outside-suite cases', async () => {
+  it('intersects caseIds with the suite, dropping outside-suite cases', { timeout: 30_000 }, async () => {
     // One id belongs to smoke, one belongs to live_behavior_regression but not smoke.
     const partial = await runEvaluation({
       evalsDir,
@@ -92,7 +94,7 @@ describe('eval runner caseIds filtering', () => {
     expect(outside.report.totalCases).toBe(0);
   });
 
-  it('preserves single caseId behavior and intersects it with caseIds', async () => {
+  it('preserves single caseId behavior and intersects it with caseIds', { timeout: 30_000 }, async () => {
     const single = await runEvaluation({
       evalsDir,
       outputDir,
@@ -115,7 +117,7 @@ describe('eval runner caseIds filtering', () => {
     expect(both.report.totalCases).toBe(1);
   });
 
-  it('selects the complete current manifest when unfiltered, never a hardcoded count', async () => {
+  it('selects the complete current manifest when unfiltered, never a hardcoded count', { timeout: 30_000 }, async () => {
     const catalog = await new EvalLoader(evalsDir).loadCatalog();
     const suiteManifest = catalog.suites.find((suite) => suite.id === 'smoke');
     expect(suiteManifest).toBeDefined();
