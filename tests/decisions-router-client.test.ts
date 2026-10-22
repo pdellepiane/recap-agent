@@ -272,6 +272,7 @@ describe('decisions router client', () => {
       route: result.answers.route,
       repeatCount: 0,
       unresolvedMoney: false,
+      capabilityBlockedStreak: 0,
     })).toEqual({ kind: 'answer' });
   });
 

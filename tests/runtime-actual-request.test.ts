@@ -494,11 +494,31 @@ describe('actual reply request owns its instructions', () => {
       expect(repeated.input).toContain('"requiresNextStep": true');
       expect(first.input).toContain('"requiresNextStep": false');
     }
+    // A capability-blocked turn requires a next step too, even when the
+    // money is settled: the request depends on something the runtime cannot
+    // execute, so the reply cannot stop at the record.
+    const blocked = supportPlan({
+      support_outcome: {
+        signature: 'settled', repeat_count: 1, unresolved_money: false,
+        limitation_already_stated: false, prior_limitation_turns: 0,
+      },
+      conversation_health: {
+        status: 'progressing', reason: 'normal_progress',
+        consecutive_non_progress_turns: 0, capability_blocked_streak: 1,
+        help_offer_status: 'none', help_offered_at: null, last_assessed_at: null,
+      },
+    });
+    const blockedSpec = await runtime.buildReplyRequestSpec(
+      replyRequest(blocked, { currentNode: 'resolver_consultas_informativas' }),
+    );
+    expect(blockedSpec.input).toContain('"requiresNextStep": true');
+    expect(blockedSpec.input).toContain('"capabilityBlocked": true');
     const unrelated = await runtime.buildReplyRequestSpec(replyRequest(plan, { currentNode: 'entrevista' }));
     const baseline = await runtime.buildReplyRequestSpec(replyRequest(supportPlan(), { currentNode: 'entrevista' }));
     expect(unrelated.input).not.toContain('limitationAlreadyStated');
     expect(unrelated.input).not.toContain('priorLimitationTurns');
     expect(unrelated.input).not.toContain('requiresNextStep');
+    expect(unrelated.input).not.toContain('capabilityBlocked');
     expect(unrelated.input).toBe(baseline.input);
     expect(Buffer.byteLength(unrelated.input)).toBe(Buffer.byteLength(baseline.input));
     console.log('Limitation memory prompt audit', {
@@ -521,6 +541,7 @@ describe('actual reply request owns its instructions', () => {
       'limitationAlreadyStated',
       'priorLimitationTurns',
       'requiresNextStep',
+      'capabilityBlocked',
       'handoff_outcome',
     ];
     for (const currentNode of ['resolver_consultas_informativas', 'solicitar_agente_humano'] as const) {

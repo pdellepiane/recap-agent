@@ -25,6 +25,7 @@ import {
 import { loadRouterQuestions, type RouterQuestions } from './decisions-router-questions';
 import {
   decideRouterPolicy,
+  routerPolicyThresholds,
   type RouterPolicyOutcome,
 } from './decisions-router-policy';
 import type { PromptLoader } from './prompt-loader';
@@ -45,6 +46,12 @@ export type SupportLaneRouterResult = {
   /** The deterministic policy outcome that owns this turn. */
   readonly outcome: RouterPolicyOutcome;
   readonly answers: RouterParsedAnswers;
+  /**
+   * Consecutive turns in which the request depended on a capability the
+   * runtime cannot execute, including this turn. The turn flow persists it
+   * so the next turn can count the streak.
+   */
+  readonly capabilityBlockedStreak: number;
   /** Redacted decision evidence: route names and numbers only. */
   readonly decision: RouterDecisionTrace;
   readonly call: OpenAiCallRef;
@@ -114,6 +121,10 @@ export class OpenAiSupportLaneRouter implements SupportLaneRouterPort {
         retryable: result.retryable,
       };
     }
+    const capabilityBlockedStreak = nextCapabilityBlockedStreak({
+      capabilityBlocked: result.answers.capabilityBlocked,
+      previousStreak: args.plan.conversation_health.capability_blocked_streak,
+    });
     return {
       status: 'ok',
       outcome: decideRouterPolicy({
@@ -123,8 +134,10 @@ export class OpenAiSupportLaneRouter implements SupportLaneRouterPort {
         route: result.answers.route,
         repeatCount: args.plan.support_outcome?.repeat_count ?? 0,
         unresolvedMoney: args.plan.support_outcome?.unresolved_money ?? false,
+        capabilityBlockedStreak,
       }),
       answers: result.answers,
+      capabilityBlockedStreak,
       decision: result.decision,
       call: result.call,
       tokenUsage: result.tokenUsage,
@@ -189,10 +202,29 @@ export function conversationHealthFromRouter(args: {
     status: mapped.status,
     reason: mapped.reason,
     consecutive_non_progress_turns: consecutiveNonProgressTurns,
+    capability_blocked_streak: args.previous.capability_blocked_streak,
     help_offer_status: args.previous.help_offer_status,
     help_offered_at: args.previous.help_offered_at,
     last_assessed_at: args.nowIso,
   };
+}
+
+/**
+ * The capability-blocked streak of the turn, including this turn.
+ *
+ * A request that depends on a capability the runtime cannot execute is
+ * counted while it keeps coming back: a turn the router judges
+ * capability-blocked grows the streak, a turn it does not resets it. The
+ * streak is the deterministic evidence that the request is not moving, and
+ * the capability-blocked repeat backstop escalates on the second one.
+ */
+export function nextCapabilityBlockedStreak(args: {
+  readonly capabilityBlocked: number;
+  readonly previousStreak: number;
+}): number {
+  return args.capabilityBlocked >= routerPolicyThresholds.capabilityBlockedEscalation
+    ? Math.max(0, args.previousStreak) + 1
+    : 0;
 }
 
 function clampLoopRisk(loopRisk: number): number {

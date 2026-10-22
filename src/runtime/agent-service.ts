@@ -3187,11 +3187,17 @@ export class AgentService {
     router: SupportLaneRouterResult & { readonly status: 'ok' },
   ): PlanSnapshot {
     return mergePlan(plan, {
-      conversation_health: conversationHealthFromRouter({
-        loopRisk: router.answers.loopRisk,
-        previous: plan.conversation_health,
-        nowIso: new Date().toISOString(),
-      }),
+      conversation_health: {
+        ...conversationHealthFromRouter({
+          loopRisk: router.answers.loopRisk,
+          previous: plan.conversation_health,
+          nowIso: new Date().toISOString(),
+        }),
+        // The capability-blocked streak is the router's own count of the
+        // turns whose request depended on a capability the runtime cannot
+        // execute. It is persisted here so the next turn can count it.
+        capability_blocked_streak: router.capabilityBlockedStreak,
+      },
     });
   }
 
@@ -11256,6 +11262,7 @@ export class AgentService {
             status: 'progressing',
             reason: 'normal_progress',
             consecutive_non_progress_turns: 0,
+            capability_blocked_streak: previous.capability_blocked_streak,
             help_offer_status: 'declined',
             help_offered_at: previous.help_offered_at,
             last_assessed_at: assessedAt,
@@ -11295,6 +11302,9 @@ export class AgentService {
         status: trace.conversation_health,
         reason: trace.health_reason,
         consecutive_non_progress_turns: consecutiveNonProgressTurns,
+        // The classifier path never judges the capability, so the streak
+        // the router counted is carried through untouched.
+        capability_blocked_streak: previous.capability_blocked_streak,
         help_offer_status: shouldOfferHelp ? 'offered' : offerStatus,
         help_offered_at: shouldOfferHelp ? assessedAt : previous.help_offered_at,
         last_assessed_at: assessedAt,

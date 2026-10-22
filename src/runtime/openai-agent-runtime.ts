@@ -514,6 +514,14 @@ type ReplyTurnEvidence = {
      */
     requiresNextStep?: boolean;
     /**
+     * The request depends on a capability the runtime cannot execute. The
+     * router's own classification, carried as a fact so the reply contract
+     * can require a next step that transfers the task instead of a promise
+     * the runtime cannot keep. Present only on the two support contract
+     * nodes. Facts only.
+     */
+    capabilityBlocked?: boolean;
+    /**
      * W1-04 L1 evidence-only facts. Verbatim user-reported support names from
      * the extraction raw strings (never the normalized event_type), the open
      * support-query flag, and the voucher/backend validation flags. Present
@@ -2938,9 +2946,13 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
             priorLimitationTurns: args.request.plan.support_outcome.prior_limitation_turns,
             requiresNextStep: deriveRequiresNextStep({
               unresolvedMoney: args.request.plan.support_outcome.unresolved_money,
+              capabilityBlocked:
+                args.request.plan.conversation_health.capability_blocked_streak >= 1,
               paymentStatuses: (args.request.customerContext?.purchases ?? [])
                 .map((purchase) => purchase.paymentStatus),
             }),
+            capabilityBlocked:
+              args.request.plan.conversation_health.capability_blocked_streak >= 1,
           }
           : {}),
         ...supportContinuity,

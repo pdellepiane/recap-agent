@@ -97,6 +97,7 @@ function routerArgs(overrides: Partial<RouterInputArgs> = {}): RouterInputArgs {
       conversation_health: {
         ...plan.conversation_health,
         consecutive_non_progress_turns: 3,
+        capability_blocked_streak: 0,
         help_offer_status: 'offered',
       },
       support_outcome: {

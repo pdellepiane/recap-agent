@@ -22,9 +22,10 @@ import {
   type RouterPolicyOutcome,
 } from '../runtime/decisions-router-policy';
 import type { RouterRoute } from '../runtime/decisions-router-questions';
-import type {
-  SupportLaneRouterPort,
-  SupportLaneRouterResult,
+import {
+  nextCapabilityBlockedStreak,
+  type SupportLaneRouterPort,
+  type SupportLaneRouterResult,
 } from '../runtime/decisions-router-lane';
 
 /** One scripted router answer: the probabilities the router returns. */
@@ -82,6 +83,10 @@ export class ScriptedSupportLaneRouter implements SupportLaneRouterPort {
       loopRiskProbabilities: [{ label: String(answer.loopRisk), probability: 0.9 }],
       refusals: [],
     };
+    const capabilityBlockedStreak = nextCapabilityBlockedStreak({
+      capabilityBlocked: parsed.capabilityBlocked,
+      previousStreak: args.plan.conversation_health.capability_blocked_streak,
+    });
     const outcome: RouterPolicyOutcome = decideRouterPolicy({
       needsHumanNow: parsed.needsHumanNow,
       capabilityBlocked: parsed.capabilityBlocked,
@@ -89,11 +94,13 @@ export class ScriptedSupportLaneRouter implements SupportLaneRouterPort {
       route: parsed.route,
       repeatCount: args.plan.support_outcome?.repeat_count ?? 0,
       unresolvedMoney: args.plan.support_outcome?.unresolved_money ?? false,
+      capabilityBlockedStreak,
     });
     return {
       status: 'ok',
       outcome,
       answers: parsed,
+      capabilityBlockedStreak,
       decision: toRouterDecisionTrace(parsed),
       call: scriptedRouterCallRef(),
       tokenUsage: scriptedRouterTokenUsage(),

@@ -1066,6 +1066,7 @@ function createComposeRequest(
       status: 'uncertain',
       reason: 'insufficient_context',
       consecutive_non_progress_turns: 0,
+      capability_blocked_streak: 0,
       help_offer_status: 'none',
       help_offered_at: null,
       last_assessed_at: null,

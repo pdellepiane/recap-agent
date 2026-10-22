@@ -591,6 +591,76 @@ describe('decisions router: customer-assistance lane', () => {
     expect(purchaseSummary?.outcomeCode).toBe('completed_without_results');
   });
 
+  it('escalates the second consecutive capability-blocked turn, whatever the router proposed', async () => {
+    // The router keeps answering a request the runtime cannot execute. The
+    // first turn may still be answered from the records; the second one is
+    // a loop, and the deterministic backstop escalates it.
+    const gateway = await FixtureAgentConversationGateway.create(CASE_C_SCENARIO);
+    const runtime = new ScriptedAgentRuntime(
+      [emptyExtraction()],
+      () => ({ text: 'Respuesta informativa.' }),
+    );
+    const { router } = buildRouter({
+      enabled: true,
+      answers: { route: 'answer_with_records', loopRisk: 0, needsHumanNow: 0.1, capabilityBlocked: 0.95 },
+    });
+    const planStore = new InMemoryPlanStore();
+    const service = await createService({ runtime, gateway, router, planStore });
+
+    const first = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'router-capability-streak',
+      contactPhone: CASE_C_PHONE,
+      messageId: 'router-capability-streak-1',
+      receivedAt: new Date().toISOString(),
+      text: 'Quiero que me devuelvan el dinero de mi regalo.',
+    });
+
+    // The first blocked turn is still answered, and the streak is persisted.
+    expect(first.trace.turn_decision.stopReason).toBeNull();
+    expect(first.plan.conversation_health.capability_blocked_streak).toBe(1);
+    expect(runtime.composeRequests[0]?.plan.conversation_health.capability_blocked_streak).toBe(1);
+
+    const second = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'router-capability-streak',
+      contactPhone: CASE_C_PHONE,
+      messageId: 'router-capability-streak-2',
+      receivedAt: new Date().toISOString(),
+      text: 'Sigo sin recibir la devolución, quiero mi dinero de vuelta.',
+    });
+
+    expect(second.trace.turn_decision.stopReason)
+      .toBe('router_escalation:capability_blocked_repeat_backstop');
+    expect(gateway.getFixtureCallCount('handoff.write')).toBe(1);
+    expect(second.plan.human_escalation.status).toBe('requested');
+  });
+
+  it('does not escalate a single capability-blocked turn', async () => {
+    const gateway = await FixtureAgentConversationGateway.create(CASE_C_SCENARIO);
+    const runtime = new ScriptedAgentRuntime(
+      [emptyExtraction()],
+      () => ({ text: 'Respuesta informativa.' }),
+    );
+    const { router } = buildRouter({
+      enabled: true,
+      answers: { route: 'answer_with_records', loopRisk: 0, needsHumanNow: 0.1, capabilityBlocked: 0.95 },
+    });
+    const service = await createService({ runtime, gateway, router });
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'router-capability-single',
+      contactPhone: CASE_C_PHONE,
+      messageId: 'router-capability-single-1',
+      receivedAt: new Date().toISOString(),
+      text: 'Quiero que me devuelvan el dinero de mi regalo.',
+    });
+
+    expect(response.trace.turn_decision.stopReason).toBeNull();
+    expect(gateway.getFixtureCallCount('handoff.write')).toBe(0);
+  });
+
   it('escalates through the takeover gateway and persists the receipt', async () => {
     const gateway = await FixtureAgentConversationGateway.create(CASE_C_SCENARIO);
     const runtime = new ScriptedAgentRuntime(
@@ -779,6 +849,7 @@ describe('decisions router: customer-assistance lane', () => {
           status: 'frustrated',
           reason: 'explicit_frustration',
           consecutive_non_progress_turns: 2,
+          capability_blocked_streak: 0,
           help_offer_status: 'offered',
           help_offered_at: '2026-10-20T00:00:00.000Z',
           last_assessed_at: '2026-10-20T00:00:00.000Z',

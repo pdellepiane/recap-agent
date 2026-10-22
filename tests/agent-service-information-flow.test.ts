@@ -539,6 +539,7 @@ describe('AgentService first-class information flow', () => {
             status: 'frustrated',
             reason: 'explicit_frustration',
             consecutive_non_progress_turns: 1,
+            capability_blocked_streak: 0,
             help_offer_status: 'offered',
             help_offered_at: '2026-09-21T12:00:00.000Z',
             last_assessed_at: '2026-09-21T12:00:00.000Z',

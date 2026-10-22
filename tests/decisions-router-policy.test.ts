@@ -15,6 +15,7 @@ function policyInput(overrides: Partial<RouterPolicyInput> = {}): RouterPolicyIn
     route: 'answer_with_records',
     repeatCount: 0,
     unresolvedMoney: false,
+    capabilityBlockedStreak: 0,
     ...overrides,
   };
 }
@@ -27,6 +28,9 @@ describe('decisions router policy', () => {
       capabilityBlockedEscalation: 0.80,
       escalateRouteNeedsHumanNow: 0.50,
       repeatCountBackstop: 2,
+      // Added with the capability-blocked backstop: the same shape as the
+      // money backstop, for the other kind of unresolved request.
+      capabilityBlockedBackstop: 2,
       offerHumanLoopRisk: 2,
     });
   });
@@ -85,6 +89,27 @@ describe('decisions router policy', () => {
       repeatCount: 4,
       unresolvedMoney: false,
     })).kind).not.toBe('escalate');
+  });
+
+  it('escalates on the capability-blocked backstop when the request the runtime cannot serve comes back', () => {
+    // The first capability-blocked turn may still be answered from the
+    // records; the second one means the answer is not moving.
+    expect(decideRouterPolicy(policyInput({
+      capabilityBlocked: 0.9,
+      capabilityBlockedStreak: 1,
+    })).kind).not.toBe('escalate');
+    expect(decideRouterPolicy(policyInput({
+      capabilityBlocked: 0.9,
+      capabilityBlockedStreak: 2,
+    }))).toEqual({ kind: 'escalate', reason: 'capability_blocked_repeat_backstop' });
+    // A settled money outcome does not matter here: the blocked request is
+    // the thing that is not moving.
+    expect(decideRouterPolicy(policyInput({
+      capabilityBlocked: 0.9,
+      capabilityBlockedStreak: 3,
+      repeatCount: 4,
+      unresolvedMoney: false,
+    })).kind).toBe('escalate');
   });
 
   it('escalates on an escalate_human route from needs_human_now 0.50 on', () => {

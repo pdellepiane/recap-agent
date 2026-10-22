@@ -23,6 +23,15 @@ export const routerPolicyThresholds = {
   escalateRouteNeedsHumanNow: 0.50,
   /** Repeat count on an unresolved money signature that escalates. */
   repeatCountBackstop: 2,
+  /**
+   * Consecutive capability-blocked turns that escalate.
+   *
+   * The same shape as the money backstop, for the other kind of
+   * unresolved request: one the runtime is told it cannot serve, asked
+   * again and again. The first turn may still be answered from the
+   * records; the second one means the answer is not moving.
+   */
+  capabilityBlockedBackstop: 2,
   /** The only rubric level that may open a human offer. */
   offerHumanLoopRisk: 2,
 } as const;
@@ -33,6 +42,7 @@ export type RouterEscalationReason =
   | 'loop_risk_threshold'
   | 'capability_blocked_threshold'
   | 'repeat_count_backstop'
+  | 'capability_blocked_repeat_backstop'
   | 'escalate_route_with_needs_human';
 
 export type RouterPolicyOutcome =
@@ -57,6 +67,13 @@ export type RouterPolicyInput = {
   readonly repeatCount: number;
   /** True when the current outcome signature is an unresolved money outcome. */
   readonly unresolvedMoney: boolean;
+  /**
+   * Consecutive turns in which the request depended on a capability the
+   * runtime cannot execute, including this turn. The capability-blocked
+   * repeat backstop uses it: a request the runtime is told it cannot
+   * serve, asked again, is a loop the router's own answer may not see.
+   */
+  readonly capabilityBlockedStreak: number;
 };
 
 /**
@@ -64,7 +81,9 @@ export type RouterPolicyInput = {
  *
  * Escalation order follows Decision 2. The repeat-count backstop overrides
  * the router output: a router that keeps proposing an answer on an
- * unresolved money signature still escalates on the second repetition.
+ * unresolved money signature still escalates on the second repetition. The
+ * capability-blocked backstop is its twin for the other kind of unresolved
+ * request: one the runtime is told it cannot serve.
  *
  * Degrade rules (deterministic, documented):
  * - A route of `offer_human` is honored only at rubric level 2 with no
@@ -122,6 +141,11 @@ export function escalationReasonFor(
     input.unresolvedMoney
   ) {
     return 'repeat_count_backstop';
+  }
+  if (
+    input.capabilityBlockedStreak >= routerPolicyThresholds.capabilityBlockedBackstop
+  ) {
+    return 'capability_blocked_repeat_backstop';
   }
   if (
     input.route === 'escalate_human' &&
