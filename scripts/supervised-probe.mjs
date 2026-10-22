@@ -175,6 +175,7 @@ function summarize({ payload, plan, perf }) {
   const calls = perf?.openai_calls ?? {};
   const stages = ['classifier', 'extraction', 'reply', 'router'];
   const health = plan?.conversation_health ?? {};
+  const openRequest = plan?.open_requests ?? [];
   const outcome = plan?.support_outcome ?? {};
   const escalation = plan?.human_escalation ?? {};
   const receipt = plan?.human_help_receipt ?? null;
@@ -202,6 +203,11 @@ function summarize({ payload, plan, perf }) {
     models: Object.fromEntries(
       stages.filter((stage) => calls[stage] != null).map((stage) => [stage, calls[stage].model]),
     ),
+    open_request: openRequest.map((entry) => ({
+      state: entry.state,
+      turns: entry.turns,
+      opening_text: entry.opening_text,
+    })),
     conversation_health: {
       status: health.status ?? null,
       reason: health.reason ?? null,
@@ -257,7 +263,7 @@ function printSummary(summary) {
   line('token usage', JSON.stringify(summary.token_usage));
   line('models', JSON.stringify(summary.models));
   line('health', JSON.stringify(summary.conversation_health));
-  line('open_request', JSON.stringify(plan?.open_requests ?? []));
+  line('open_request', JSON.stringify(summary.open_request));
   line('support_outcome', JSON.stringify(summary.support_outcome));
   line('human_escalation', JSON.stringify(summary.human_escalation));
   line('help receipt', JSON.stringify(summary.human_help_receipt));
