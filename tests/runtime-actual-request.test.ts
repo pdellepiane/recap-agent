@@ -489,11 +489,16 @@ describe('actual reply request owns its instructions', () => {
       const first = await runtime.buildReplyRequestSpec(replyRequest(supportPlan(), { currentNode }));
       expect(first.input).toContain('"limitationAlreadyStated": false');
       expect(first.input).toContain('"priorLimitationTurns": 0');
+      // The unsettled-money fact is what makes the next step mandatory
+      // instead of a matter of the model's judgement.
+      expect(repeated.input).toContain('"requiresNextStep": true');
+      expect(first.input).toContain('"requiresNextStep": false');
     }
     const unrelated = await runtime.buildReplyRequestSpec(replyRequest(plan, { currentNode: 'entrevista' }));
     const baseline = await runtime.buildReplyRequestSpec(replyRequest(supportPlan(), { currentNode: 'entrevista' }));
     expect(unrelated.input).not.toContain('limitationAlreadyStated');
     expect(unrelated.input).not.toContain('priorLimitationTurns');
+    expect(unrelated.input).not.toContain('requiresNextStep');
     expect(unrelated.input).toBe(baseline.input);
     expect(Buffer.byteLength(unrelated.input)).toBe(Buffer.byteLength(baseline.input));
     console.log('Limitation memory prompt audit', {

@@ -132,6 +132,7 @@ import {
 } from './turn-message-context';
 import { openAiRetryPolicy } from './openai-retry';
 import { executeOpenAiStage } from './openai-stage-execution';
+import { deriveRequiresNextStep } from './support-outcome';
 import { DEFAULT_PROMPT_CACHE_OPTIONS } from './openai-model-defaults';
 import {
   captureOpenAiTransport,
@@ -503,6 +504,15 @@ type ReplyTurnEvidence = {
     search_ready: boolean;
     limitationAlreadyStated?: boolean;
     priorLimitationTurns?: number;
+    /**
+     * The turn's money evidence is not settled: the money stayed unresolved,
+     * or a purchase in the authorized profile carries a payment status that
+     * is neither approved nor pending. Present only on the two support
+     * contract nodes, so the reply contract can require a real next step on
+     * exactly those turns instead of leaving the decision to the model's
+     * judgement about whether it "resolved" the question. Facts only.
+     */
+    requiresNextStep?: boolean;
     /**
      * W1-04 L1 evidence-only facts. Verbatim user-reported support names from
      * the extraction raw strings (never the normalized event_type), the open
@@ -2926,6 +2936,11 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
           ? {
             limitationAlreadyStated: args.request.plan.support_outcome.limitation_already_stated,
             priorLimitationTurns: args.request.plan.support_outcome.prior_limitation_turns,
+            requiresNextStep: deriveRequiresNextStep({
+              unresolvedMoney: args.request.plan.support_outcome.unresolved_money,
+              paymentStatuses: (args.request.customerContext?.purchases ?? [])
+                .map((purchase) => purchase.paymentStatus),
+            }),
           }
           : {}),
         ...supportContinuity,

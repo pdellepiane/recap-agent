@@ -197,6 +197,30 @@ export function deriveSupportLimitationMemory(args: {
 }
 
 /**
+ * Whether the turn's money evidence is settled.
+ *
+ * A next step is mandatory when it is not: the money stayed unresolved, or a
+ * purchase in the authorized profile carries a payment status that is neither
+ * approved nor pending. The reply contract then requires a concrete next
+ * step, instead of leaving it to the model's judgement about whether the
+ * turn "resolved" the question — the judgement that let a reply end on the
+ * record's negative with the guest left without a move.
+ *
+ * The facts are the ones the turn already computed: the support outcome's
+ * unresolved-money classification and the profile's payment statuses.
+ */
+export function deriveRequiresNextStep(args: {
+  readonly unresolvedMoney: boolean;
+  readonly paymentStatuses: readonly (string | null | undefined)[];
+}): boolean {
+  if (args.unresolvedMoney) return true;
+  return args.paymentStatuses.some((status) => {
+    const normalized = (status ?? '').trim().toLowerCase();
+    return normalized.length > 0 && normalized !== 'approved' && normalized !== 'pending';
+  });
+}
+
+/**
  * The caller computes the incoming count before merging. The same signature
  * grows the streak; a different signature restarts it at one.
  */
