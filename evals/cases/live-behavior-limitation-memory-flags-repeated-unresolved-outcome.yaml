@@ -2,8 +2,8 @@ template: template.base-live
 id: live_behavior.limitation_memory_flags_repeated_unresolved_outcome
 suite: live_behavior_regression
 version: 1
-description: The typed limitation memory flags a repeated unresolved money outcome. A payment receipt arrives with no purchase record on the backend, the guest repeats the same unresolved demand with different wording, and the plan records that the limitation was already stated; the repeat backstop takes the case over, the takeover succeeds, and no other effect is produced.
-tags: [ live, behavior, purchase, limitation-memory, repeat-signature, unresolved-money, whatsapp ]
+description: The open-request record takes a repeated unresolved money request to a person. A payment receipt arrives with no purchase record on the backend, the guest repeats the same unresolved demand with different wording, the record keeps the request open, and the repeat escalates, so the takeover succeeds once and no other effect is produced.
+tags: [ live, behavior, purchase, open-request, repeat, unresolved-money, whatsapp ]
 targetModes: [ live_lambda ]
 backendFixture:
   scenario: purchase-yape-receipt-no-match
@@ -36,16 +36,6 @@ inputs:
     backendFixture:
       scenario: purchase-yape-receipt-no-match
 expectations:
-  - id: limitation-memory-flags-the-repeated-unresolved-outcome
-    type: plan_field_equals
-    path: support_outcome.limitation_already_stated
-    expected: true
-    severity: hard
-  - id: limitation-memory-counts-one-prior-limitation-turn
-    type: plan_field_equals
-    path: support_outcome.prior_limitation_turns
-    expected: 1
-    severity: hard
   - id: limitation-memory-money-outcome-stays-unresolved
     type: plan_field_equals
     path: support_outcome.unresolved_money
@@ -98,16 +88,17 @@ expectations:
     expectedReplays: 0
     severity: hard
 notes:
-  - "Runtime precondition: the deployed development Lambda must run the customer-assistance lane with AGENT_FEATURE_DECISIONS_ROUTER=true and must carry the typed limitation memory (commit 7e863332). With the flag off the classifier path owns the turn, and without that commit the plan carries no limitation fields, so neither is the behavior under test."
-  - "Scope of this case: it asserts the TYPED EVIDENCE STATE and the effects of the thread, never the reply wording. The single-frame escalation reply and the no-repeated-limitation wording are the supervisor's job (evals/e2e-supervision/, rubric check L10), not this case's: a wording verdict is a semantic judgement and this gate carries only hard objective assertions."
-  - "Fixture choice, and why it is not the dossier case C world: the limitation memory is gated on unresolved money (deriveSupportLimitationMemory returns limitationAlreadyStated only when the current outcome signature is an unresolved money outcome). The dossier case C fixture purchase-approved-host-receipt-refund carries one APPROVED purchase, so its outcome kind is 'resolved' and the limitation flag is deterministically FALSE on every turn of that thread, whatever the guest asks. The case therefore runs on the committed fixture world where an unresolved money outcome is reachable without any model decision: purchase-yape-receipt-no-match with the receipt image, where the money evidence is an empty purchase read on a thread that carries a receipt (empty_read_with_receipt). The synthetic phone is that scenario's own phone, +51900000401."
+  - "Runtime precondition: the deployed development Lambda must run the customer-assistance lane with AGENT_FEATURE_DECISIONS_ROUTER=true and must carry the open-request record (commit 5f2429ff). With the flag off the classifier path owns the turn, and without that commit the plan carries no open_requests, so neither is the behavior under test."
+  - "Scope of this case: it asserts the typed money evidence and the effects of the thread, never the reply wording. The no-repeated-limitation wording is the supervisor's job (evals/e2e-supervision/, rubric check L10), not this case's: a wording verdict is a semantic judgement and this gate carries only hard objective assertions."
+  - "Fixture choice, and why it is not the dossier case C world: this case needs an unresolved money outcome that is reachable without any model decision. The dossier case C fixture purchase-approved-host-receipt-refund carries one APPROVED purchase, so its outcome kind is 'resolved' on every turn of that thread. The committed fixture purchase-yape-receipt-no-match with a receipt image produces an empty purchase read on a turn that carries a receipt (empty_read_with_receipt), which is deterministically unresolved. The synthetic phone is that scenario's own phone, +51900000401."
   - "Reconstruction of analysis/2026-10-19-whatsapp-behavior-cases dossier case A (Wilfredo, turn table rows A1-A7, 2026-10-06): the guest sends a Yape receipt, then repeats the same unresolved question with different wording (A2, A3, A6) and closes asking for the payment to be investigated (A7). The fixture purchase-yape-receipt-no-match holds no purchase record at all, so the receipt can never be matched."
-  - "support_outcome.unresolved_money is the typed classification of the turn money evidence (the receipt cannot be matched to any record), and it is the hard, objective precondition of both the repeat backstop and the limitation memory."
-  - "limitation_already_stated is asserted on the conversation's final turn, with no turnIndex: the flag engages on the first turn that repeats the signature while the money evidence stays unresolved, and the plan keeps it for the rest of the thread. The escalation turn itself is NOT pinned: the router answers probabilities, so the takeover may land on any turn."
-  - "prior_limitation_turns is asserted as 1 because it is deterministic here, not a fragile pin: the deterministic repeat-count backstop (repeat_count >= 2 with unresolved money) escalates on the very turn where the signature first repeats, so exactly one prior turn carries that signature, and the soft pause that follows preserves the merged state for the remaining turns. A thread that kept answering would grow the counter, which is why the case asserts the count only on the backstop path it provably takes."
+  - "support_outcome.unresolved_money is the typed classification of the turn money evidence (the receipt cannot be matched to any record), and it is the hard, objective precondition here: the answer turn cannot settle a request whose money evidence is unresolved, so it is written to the open-request record as 'unresolved'."
+  - "The record itself is not pinned by index. `same_open_request` is a model answer about the conversation, and a thread that words the repeat differently may open a second record; pinning `open_requests.0.state` would then assert the model's identity decision instead of the behaviour. What this case pins is the behaviour that matters: the repeat reaches a person exactly once (one handoff attempt, one success, no replay) and no other effect is produced."
+  - "The escalation turn is deliberately not pinned. The record rule escalates on the first turn whose request comes back still open, and which turn that is depends on the router's two facts, so a turn-index pin would be a fragile assertion rather than a contract."
+
   - "Image substitution: the dossier screenshot is a private customer document, so the turn carries the repository's synthetic payment-receipt asset (evals/fixtures/images/receipt-amount-obscured.png, amount and date deliberately inked over). The asserted contract is the receipt-without-record effect, never a pixel amount; the guest states S/ 464.86 in text, exactly as in the dossier."
   - "The effect ledger is cumulative from the case baseline, so the un-indexed fixture_effect_count expectations cover the whole conversation: exactly one handoff attempt, one success, no replay, and no RSVP, OTP request or OTP verification anywhere in the thread."
-  - "No text_semantic, style or vocabulary expectation: this case asserts effects, the typed limitation memory state and plan state only."
+  - "No text_semantic, style or vocabulary expectation: this case asserts effects, the typed money evidence and plan state only."
 budget:
   maxTurns: 4
   estimatedPromptTokensPerTurn: 2300

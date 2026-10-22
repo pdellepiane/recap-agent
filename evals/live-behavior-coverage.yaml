@@ -2531,3 +2531,16 @@ behaviorChanges:
   - id: limitation-memory-flags-a-repeated-unresolved-outcome
     implementedBy: "7e863332"
     liveCaseIds: [ live_behavior.limitation_memory_flags_repeated_unresolved_outcome ]
+  - id: one-open-request-record-drives-escalation-2026-10-22
+    implementedBy: "5f2429ff"
+    liveCaseIds:
+      - live_behavior.question_after_takeover_is_answered
+      - live_behavior.limitation_memory_flags_repeated_unresolved_outcome
+  - id: an-unrelated-question-is-answered-on-a-parked-thread-2026-10-22
+    implementedBy: "5f2429ff"
+    liveCaseIds: [ live_behavior.question_after_takeover_is_answered ]
+  - id: an-open-request-retries-a-failed-takeover-2026-10-22
+    implementedBy: "5f2429ff"
+    liveCaseIds: [ live_behavior.question_after_takeover_is_answered ]
+    status: retired
+    retirementReason: 2026-10-22 the development fixture gateway cannot fail a takeover except by failing to load the fixture, which would also break the purchase reads the turn needs. A previously failed handoff therefore cannot be constructed on the live harness. No live coverage is claimed; the retry is verified deterministically offline in tests/decisions-router-lane.test.ts (purchase-support-handoff-failed retries, purchase-support-handoff-unknown does not).
