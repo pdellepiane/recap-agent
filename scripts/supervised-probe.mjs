@@ -207,6 +207,7 @@ function summarize({ payload, plan, perf }) {
       reason: health.reason ?? null,
       help_offer_status: health.help_offer_status ?? null,
       consecutive_non_progress_turns: health.consecutive_non_progress_turns ?? null,
+      capability_blocked_streak: health.capability_blocked_streak ?? null,
     },
     support_outcome: {
       signature: outcome.signature ?? null,
