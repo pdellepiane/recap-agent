@@ -4,6 +4,7 @@
 
 ## Final-delivery reports
 
+- [Thesis evidence handoff, 4 October 2026](thesis/thesis-evidence-handoff-2026-10-04.md): detailed English chapter-by-chapter handoff based on the supplied thesis template, current code, exact schemas/configuration, source hashes and dated empirical results. Extends the September reports without changing their issue dates; final thesis testing remains WIP.
 - [Technical implementation report (PDF)](thesis/architecture-report/recap-agent-architecture-report.pdf) and [editable LaTeX source](thesis/architecture-report/recap-agent-architecture-report.tex): Spanish report in the established thesis format, issued **30 September 2026**, presenting architecture, measured approval rates and functional coverage. Evidence remains dated 30 September.
 - [Chronological implementation activity report (PDF)](thesis/architecture-report/recap-agent-activity-report.pdf) and [editable LaTeX source](thesis/architecture-report/recap-agent-activity-report.tex): March–September implementation activities, in the same report template.
 - [Testing and validation](testing.md): the current internal testing contract, measured scope and results; the evaluation framework is its operating guide.
