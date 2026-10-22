@@ -19,9 +19,28 @@ are the honest record of what the customer read at that time.
 | `2026-10-21-obj-c-mirta-refund-rerun.md` | OBJ-C | `df72d58f` | PASS WITH FINDINGS |
 | `2026-10-21-obj-d-silvia-transfer-rerun.md` | OBJ-D | `df72d58f` | PASS WITH FINDINGS |
 | `2026-10-21-obj-m-wrong-recipient-transfer.md` | OBJ-M | `df72d58f` | PASS WITH FINDINGS |
-| `2026-10-21-obj-c-mirta-refund-rerun2.md` | OBJ-C | `53a1ff31` | PASS WITH FINDINGS |
-| `2026-10-21-obj-d-silvia-transfer-rerun2.md` | OBJ-D | `53a1ff31` | PASS WITH FINDINGS |
-| `2026-10-21-obj-m-wrong-recipient-transfer-rerun2.md` | OBJ-M | `53a1ff31` | PASS WITH FINDINGS |
 | `2026-10-21-obj-h-post-handoff-new-question.md` | OBJ-H | `df72d58f` | FAIL |
 | `2026-10-21-obj-i-handoff-failure.md` | OBJ-I | `df72d58f` | FAIL |
 | `2026-10-21-obj-o-repeatability.md` | OBJ-O (OBJ-E half) | `df72d58f` | PASS |
+| `2026-10-21-obj-c-mirta-refund-rerun2.md` | OBJ-C | `53a1ff31` | PASS WITH FINDINGS |
+| `2026-10-21-obj-d-silvia-transfer-rerun2.md` | OBJ-D | `53a1ff31` | PASS WITH FINDINGS |
+| `2026-10-21-obj-m-wrong-recipient-transfer-rerun2.md` | OBJ-M | `53a1ff31` | PASS WITH FINDINGS |
+| `2026-10-21-obj-i-handoff-failure-rerun.md` | OBJ-I | `8dab1ac6` | PASS WITH FINDINGS |
+| `2026-10-21-obj-c-mirta-refund-rerun3.md` | OBJ-C | `8dab1ac6` | PASS WITH FINDINGS |
+| `2026-10-21-obj-d-silvia-transfer-rerun3.md` | OBJ-D | `8dab1ac6` | FAIL |
+| `2026-10-21-obj-m-wrong-recipient-transfer-rerun3.md` | OBJ-M | `8dab1ac6` | PASS WITH FINDINGS |
+| `2026-10-21-obj-f-persistent-guest.md` | OBJ-F | `8dab1ac6` | FAIL |
+| `2026-10-21-obj-o-repeatability-obj-c-runs.md` | OBJ-O (OBJ-C half) | `8dab1ac6` | PASS WITH FINDINGS |
+| `2026-10-21-obj-j-happy-path.md` | OBJ-J | `8dab1ac6` | PASS |
+| `2026-10-21-obj-k-notification-question.md` | OBJ-K | `8dab1ac6` | FAIL |
+| `2026-10-21-obj-l-brevity.md` | OBJ-L | `8dab1ac6` | PASS WITH FINDINGS |
+| `2026-10-21-obj-n-de-escalation.md` | OBJ-N | `8dab1ac6` | FAIL |
+| `2026-10-21-obj-g-correction.md` | OBJ-G | `8dab1ac6` | PASS |
+
+The artifacts, in order: `df72d58f` (the reply contracts), `53a1ff31` (the
+first next-step rule), `8dab1ac6` (the customer-anchored next step, the
+truthful handoff outcomes), `805d56b1` (the dead-key fix, the no-derivation
+rule, the escalation frame order, the not-retried handoff values).
+
+A FAIL is a defect report, not a score: it names the phrase, the harm and
+the turn, and it says whether the disposition is open or fixed.
