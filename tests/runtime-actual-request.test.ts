@@ -509,6 +509,40 @@ describe('actual reply request owns its instructions', () => {
     });
   });
 
+  it('names only evidence keys the support reply input actually carries', async () => {
+    // A contract that names a key the evidence does not emit is a dead
+    // branch: the model is told to obey a flag that is never there.
+    const runtime = testRuntime();
+    const plan = supportPlan({ support_outcome: {
+      signature: 'repeated', repeat_count: 2, unresolved_money: true,
+      limitation_already_stated: true, prior_limitation_turns: 1,
+    } });
+    const evidenceKeys = [
+      'limitationAlreadyStated',
+      'priorLimitationTurns',
+      'requiresNextStep',
+      'handoff_outcome',
+    ];
+    for (const currentNode of ['resolver_consultas_informativas', 'solicitar_agente_humano'] as const) {
+      const spec = await runtime.buildReplyRequestSpec(replyRequest(plan, { currentNode }));
+      const contract = await readFile(
+        path.resolve(process.cwd(), `prompts/nodes/${currentNode}/response_contract.txt`),
+        'utf8',
+      );
+      const system = await readFile(
+        path.resolve(process.cwd(), `prompts/nodes/${currentNode}/system.txt`),
+        'utf8',
+      );
+      for (const key of evidenceKeys) {
+        if (!contract.includes(key) && !system.includes(key)) continue;
+        expect(
+          spec.input,
+          `the ${currentNode} contract names ${key} but the reply input does not carry it`,
+        ).toContain(`"${key}"`);
+      }
+    }
+  });
+
   it('sends exactly the selected module files as instructions', async () => {
     const runtime = testRuntime();
     const { customerContext, informationResults } = venueRequest(702201);
