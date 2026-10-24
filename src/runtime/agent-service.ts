@@ -2667,6 +2667,7 @@ export class AgentService {
   }): Promise<HandleTurnResponse> {
     const startedAt = Date.now();
     const result = await this.dependencies.runtime.extract({
+      scope: 'support_information',
       userMessage: args.inbound.text, plan: args.plan, messageContext: args.messageContext,
       customerContext: args.preparedCustomerContext.projection, currentMessageId: args.inbound.messageId,
     });
@@ -3225,10 +3226,27 @@ export class AgentService {
         };
       }
     }
-    // R1: the reported payment of the escalation turn is not persisted:
-    // the takeover pauses the thread, so the next turn is suppressed and
-    // never computes an outcome signature. The signature and the repeat
-    // count merged before the router are untouched here.
+    // A takeover parks execution, not customer evidence. Keep this turn's
+    // model-extracted claim on the addressed request even when the next turn
+    // will be silent; unrelated parked requests retain their own evidence.
+    if (args.supportSidecar === true && args.router) {
+      const previous = args.router.current?.reported_payment;
+      planToSave = this.mergeSupportLaneOutcome({
+        plan: planToSave,
+        snapshot: args.preparedCustomerContext.snapshot,
+        reportedPayment: reply.sidecar?.reportedPayment ?? null,
+        priorReportedPayment: previous ? { amount: previous.amount, currency: previous.currency,
+          method: previous.method, claimedSuccess: previous.claimed_success } : null,
+        citedOrderIds: reply.sidecar?.citedOrderIds ?? [],
+        financialReconciliationRequired: reply.sidecar?.financialReconciliationRequired === true,
+        toolUsage: args.toolUsage,
+      });
+      const key = args.router.current?.key ?? args.inbound.messageId;
+      planToSave = mergePlan(planToSave, { open_requests: planToSave.open_requests.map((entry) =>
+        entry.key === key ? { ...entry, reported_payment: planToSave.support_outcome.reported_payment,
+          financial_reconciliation_required: planToSave.support_outcome.unresolved_money } : entry) });
+      await this.dependencies.planStore.save({ plan: planToSave, reason: planPersistReason });
+    }
     const outbound = this.renderOutbound(
       reply,
       [],

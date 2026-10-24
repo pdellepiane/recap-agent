@@ -1,0 +1,290 @@
+[
+  {
+    "turn": 1,
+    "responseId": "resp_0c6c384f287668ce006adc0a0ae12c87d2a3bba0d0bd6e5ec6",
+    "instructions": "## shared/reply_core.txt\nResponde en español natural a la solicitud actual, como una persona de atención al cliente por WhatsApp: directo, cercano y breve. Normalmente bastan dos o tres frases: respuesta y siguiente paso si hace falta. Usa solo hechos autorizados y resultados verificados; no inventes datos ni reveles secretos o nombres internos.\nNo recites el perfil ni expliques cómo verificas los datos. Evita «el registro disponible», «no permite confirmar» y otras salvedades de informe. Explica una diferencia relevante una sola vez. Si ya comunicaste una limitación, continúa con la ayuda concreta; no repitas saludos, importes ni políticas que ya están claros.\n\n## shared/customer_context_fields.txt\nSignificado de los datos del cliente\n\n- `order.grandTotal` es el total registrado de la orden; `payment.amount` es el monto del registro de pago, no un total recibido por sí solo: su estado determina si está aprobado o pendiente. El monto dicho por la persona conserva esa procedencia. El saldo restante solo existe si el registro lo informa; no lo calcules ni conviertas null en cero.\n- Un producto físico describe el artículo. El estado de envío describe su despacho. Una tarjeta física tiene su propio estado, independiente del tipo de regalo.\n- Crédito de anfitrión describe un mecanismo de crédito, no la liquidación ni disponibilidad de fondos.\n- Conserva la fecha, hora y offset tal como constan. La zona del evento es metadato; nunca conviertas ni reetiquetes la hora registrada.\n- En mensajes de campaña, enviado, entregado y leído son estados diferentes.\n- La asistencia existente y una escritura recién solicitada son hechos distintos. Afirma un cambio solo con resultado verificado.\n- La cobertura de fuentes distingue datos disponibles, fuente vacía, no disponible, fallida o parcial. Un error o una página pendiente no demuestra ausencia completa.\n\n## nodes/resolver_consultas_informativas/payment_disclosure.txt\nLas tarifas públicas pueden comunicarse con su fuente. Una FAQ no autoriza cuentas privadas ni destinos de pago: estos requieren una compra identificada y pendiente. Distingue una tarifa publicada de un monto pagado, saldo o estado de una compra.",
+    "schema": {
+      "required": [
+        "type",
+        "paragraphs_es",
+        "cited_order_ids",
+        "reported_payment",
+        "claimed_handoff",
+        "request_outcome",
+        "financial_reconciliation_required"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "claimed_handoff": {
+          "description": "True only when the reply states that a human handoff or a manual review was registered. False when no such success is claimed.",
+          "type": "boolean"
+        },
+        "cited_order_ids": {
+          "items": {
+            "type": "string"
+          },
+          "description": "The order ids this answer relies on, copied verbatim from the order ids of the authorized profile. Empty when the answer relies on no order.",
+          "type": "array"
+        },
+        "financial_reconciliation_required": {
+          "description": "True only when THIS request disputes a payment, amount, missing transfer or balance requiring reconciliation. Pending status alone is not a dispute. Other purchases do not make this request disputed.",
+          "type": "boolean"
+        },
+        "paragraphs_es": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "reported_payment": {
+          "description": "The payment the CLIENT reported in this turn (for example a transfer the client says they made). This is NOT the payment of the record in the profile. Null when the client reported no payment.",
+          "anyOf": [
+            {
+              "required": [
+                "amount",
+                "currency",
+                "method",
+                "claimed_success"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "currency": {
+                  "description": "The currency of the reported amount, as the client stated it. Null when unknown.",
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "amount": {
+                  "description": "The amount the client reported, in the currency the client used. Null when the client named no amount.",
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "claimed_success": {
+                  "description": "True when the client stated that the payment succeeded. False when the client reported a pending, failed or uncertain payment.",
+                  "type": "boolean"
+                },
+                "method": {
+                  "description": "The payment method the client reported (for example a wallet or a transfer). Null when the client named no method.",
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "type": {
+          "type": "string",
+          "const": "generic"
+        },
+        "request_outcome": {
+          "description": "Outcome of THIS request after the actual evidence and this reply: answered only when the reply fully answers it, including public-search guidance after an associated-event not_found; needs_input when one missing customer datum blocks it; unresolved when reconciliation or an unexecuted operation remains; withdrawn only when the customer explicitly withdrew it. A public FAQ answer or event fact is independent of other requests money.",
+          "enum": [
+            "answered",
+            "needs_input",
+            "unresolved",
+            "withdrawn"
+          ],
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "output": [
+      {
+        "id": "msg_0c6c384f287668ce006adc0a0b63e487d2bee54bced009a550",
+        "type": "message",
+        "status": "completed",
+        "content": [
+          {
+            "type": "output_text",
+            "annotations": [],
+            "logprobs": [],
+            "text": "{\"type\":\"generic\",\"paragraphs_es\":[\"Para el Baby Shower de prueba figura una compra pendiente por S/ 161,20, con pago por Yape o Plin; el pago todavía aparece como pendiente, no aprobado. Si ya lo realizaste, envíame el comprobante o el número de operación para revisar qué ocurrió.\"],\"cited_order_ids\":[\"ORD_partial_420\"],\"reported_payment\":null,\"claimed_handoff\":false,\"request_outcome\":\"unresolved\",\"financial_reconciliation_required\":true}"
+          }
+        ],
+        "phase": "final_answer",
+        "role": "assistant"
+      }
+    ],
+    "inputItems": [
+      {
+        "id": "msg_0c6c384f287668ce006adc0a0ae7e887d2861d7c5f81543396",
+        "type": "message",
+        "status": "completed",
+        "content": [
+          {
+            "type": "input_text",
+            "text": "Evidencia canónica del turno (JSON): {\n  \"nodes\": {\n    \"previous\": \"contacto_inicial\",\n    \"current\": \"resolver_consultas_informativas\"\n  },\n  \"history\": {\n    \"status\": \"empty\",\n    \"recent_messages\": []\n  },\n  \"user_message\": \"Hola, me llegó un aviso de saldo pendiente del Baby Shower de prueba. ¿Qué me están cobrando si ya hice mi pago?\",\n  \"decision\": {\n    \"route_kind\": \"information_batch\",\n    \"presentation_scope\": \"information_batch\",\n    \"provider_search_mode\": \"none\",\n    \"focus_need_category\": null,\n    \"needs_to_present\": [],\n    \"stop_reason\": null\n  },\n  \"extraction\": {\n    \"action_intent\": null,\n    \"requested_operation\": null,\n    \"information_requests\": [\n      {\n        \"kind\": \"purchase\",\n        \"resource\": \"purchase_discovery\",\n        \"query\": \"Estado de tus compras y regalos.\",\n        \"orderId\": null,\n        \"authAction\": \"none\",\n        \"requestId\": \"information-1\"\n      }\n    ],\n    \"support_act\": null,\n    \"phone_confirmation\": null,\n    \"ambiguity\": null\n  },\n  \"plan\": {\n    \"current_node\": \"resolver_consultas_informativas\",\n    \"information_state\": {\n      \"pending_requests\": [],\n      \"selection_candidates\": [],\n      \"authentication_status\": \"none\",\n      \"failed_code_attempts\": 0\n    }\n  },\n  \"information_results\": [\n    {\n      \"requestId\": \"information-1\",\n      \"kind\": \"purchase\",\n      \"status\": \"completed\",\n      \"accessMethod\": \"trusted_phone_purchase\",\n      \"recordReferences\": [\n        {\n          \"orderId\": \"ORD_partial_420\",\n          \"source\": \"orders\"\n        },\n        {\n          \"orderId\": \"ORD_old_420\",\n          \"source\": \"orders\"\n        },\n        {\n          \"orderId\": \"ORD_partial_420\",\n          \"source\": \"gift_purchases\"\n        }\n      ],\n      \"cartReferences\": [],\n      \"needsSelection\": false\n    }\n  ],\n  \"capability_outcome\": null,\n  \"handoff_outcome\": null,\n  \"support_availability\": {\n    \"handoff_available\": true\n  },\n  \"image_evidence\": null,\n  \"authentication_outcome\": null,\n  \"rsvp_phone_evidence\": null,\n  \"rsvp_party\": null,\n  \"turn_state\": {\n    \"focus_need_category\": null,\n    \"missing_fields\": [],\n    \"search_ready\": false,\n    \"request_open\": true,\n    \"request_open_turns\": 1,\n    \"requiresNextStep\": true\n  },\n  \"provider_candidates\": [],\n  \"recommendation_funnel\": null,\n  \"customer_context\": {\n    \"identityAccess\": {\n      \"section\": \"identity_access\",\n      \"status\": \"ready\",\n      \"source\": \"channel_contact_phone\",\n      \"fetchedAt\": \"2026-10-24T01:29:46.651Z\",\n      \"scope\": \"trusted_phone_purchase\",\n      \"completeness\": \"complete\",\n      \"paginationExhausted\": null,\n      \"historyLimit\": null,\n      \"customerRef\": \"+51900000420\",\n      \"displayName\": null,\n      \"email\": null,\n      \"phone\": \"+51900000420\",\n      \"authorizedScopes\": [\n        \"trusted_phone_purchase\"\n      ],\n      \"guestEventIds\": [],\n      \"hostEventIds\": []\n    },\n    \"currentContext\": {\n      \"section\": \"current_context\",\n      \"status\": \"ready\",\n      \"source\": \"plan_domain_state\",\n      \"fetchedAt\": \"2026-10-24T01:29:46.787Z\",\n      \"scope\": \"trusted_phone_purchase\",\n      \"completeness\": \"complete\",\n      \"paginationExhausted\": null,\n      \"historyLimit\": null,\n      \"relevantEventIds\": [],\n      \"relevantOrderIds\": [],\n      \"pendingQuestion\": null,\n      \"unresolvedCandidateOrderIds\": [],\n      \"unresolvedCandidateEventIds\": []\n    },\n    \"purchases\": [\n      {\n        \"orderId\": \"ORD_partial_420\",\n        \"recordSource\": \"orders\",\n        \"partition\": \"pending_orders\",\n        \"eventId\": 90420,\n        \"currency\": \"PEN\",\n        \"currencySymbol\": null,\n        \"currencyConflict\": false,\n        \"paymentStatus\": \"pending\",\n        \"shippingStatus\": null,\n        \"grandTotal\": 161.2,\n        \"paymentMethod\": null,\n        \"eventName\": \"Baby Shower de prueba\",\n        \"eventDate\": null,\n        \"eventUrl\": null,\n        \"createdAt\": null,\n        \"items\": [],\n        \"accessScope\": \"trusted_phone_purchase\",\n        \"customerTransactionNumber\": null,\n        \"dedication\": null,\n        \"paymentValidationExpectation\": {\n          \"maxBusinessHours\": 72,\n          \"appliesTo\": \"indexed_validation_methods\"\n        },\n        \"payment\": {\n          \"method\": \"Yape o Plin\",\n          \"amount\": 161.2,\n          \"paidAt\": null,\n          \"transactionStatus\": \"pending\",\n          \"gatewayMessage\": null,\n          \"operationCode\": null,\n          \"originBank\": null,\n          \"voucherProvided\": null,\n          \"destinationAccount\": null\n        }\n      },\n      {\n        \"orderId\": \"ORD_old_420\",\n        \"recordSource\": \"orders\",\n        \"partition\": \"completed_orders\",\n        \"eventId\": null,\n        \"currency\": \"USD\",\n        \"currencySymbol\": null,\n        \"currencyConflict\": false,\n        \"paymentStatus\": \"approved\",\n        \"shippingStatus\": null,\n        \"grandTotal\": 107.52,\n        \"paymentMethod\": null,\n        \"eventName\": \"Evento anterior\",\n        \"eventDate\": \"2022-09-24\",\n        \"eventUrl\": null,\n        \"createdAt\": null,\n        \"items\": [],\n        \"accessScope\": \"trusted_phone_purchase\",\n        \"customerTransactionNumber\": null,\n        \"dedication\": null,\n        \"paymentValidationExpectation\": null\n      },\n      {\n        \"orderId\": \"ORD_partial_420\",\n        \"recordSource\": \"gift_purchases\",\n        \"eventId\": 90420,\n        \"currency\": \"PEN\",\n        \"currencySymbol\": null,\n        \"currencyConflict\": false,\n        \"paymentStatus\": \"pending\",\n        \"shippingStatus\": null,\n        \"grandTotal\": 161.2,\n        \"paymentMethod\": \"Yape o Plin\",\n        \"eventName\": \"Baby Shower de prueba\",\n        \"eventDate\": null,\n        \"eventUrl\": null,\n        \"createdAt\": null,\n        \"items\": [],\n        \"declineCode\": null,\n        \"dedication\": null,\n        \"thanks\": null,\n        \"isThanked\": null,\n        \"partition\": \"legacy_orders\",\n        \"accessScope\": \"trusted_phone_purchase\",\n        \"customerTransactionNumber\": null,\n        \"paymentValidationExpectation\": {\n          \"maxBusinessHours\": 72,\n          \"appliesTo\": \"indexed_validation_methods\"\n        },\n        \"payment\": {\n          \"method\": \"Yape o Plin\",\n          \"amount\": 161.2,\n          \"paidAt\": null,\n          \"transactionStatus\": \"pending\",\n          \"gatewayMessage\": null,\n          \"operationCode\": null,\n          \"originBank\": null,\n          \"voucherProvided\": null,\n          \"destinationAccount\": null\n        }\n      }\n    ],\n    \"carts\": [],\n    \"invitations\": [],\n    \"actionOutcomes\": [],\n    \"coverage\": {\n      \"purchasesCarts\": {\n        \"status\": \"ready\",\n        \"source\": \"agent_api\",\n        \"fetchedAt\": \"2026-10-24T01:29:46.787Z\",\n        \"scope\": \"trusted_phone_purchase\",\n        \"completeness\": null,\n        \"paginationExhausted\": null,\n        \"historyLimit\": null,\n        \"sourceCoverage\": [\n          {\n            \"source\": \"orders\",\n            \"childId\": \"customer-context-phone-purchases:orders\",\n            \"status\": \"completed\",\n            \"count\": 2\n          },\n          {\n            \"source\": \"gift_purchases\",\n            \"childId\": \"customer-context-phone-purchases:gift_purchases\",\n            \"status\": \"completed\",\n            \"count\": 1\n          },\n          {\n            \"source\": \"orders\",\n            \"childId\": \"information-1:orders\",\n            \"status\": \"completed\",\n            \"count\": 2\n          },\n          {\n            \"source\": \"gift_purchases\",\n            \"childId\": \"information-1:gift_purchases\",\n            \"status\": \"completed\",\n            \"count\": 1\n          }\n        ]\n      },\n      \"invitationsEvents\": {\n        \"status\": \"not_found\",\n        \"source\": \"agent_api\",\n        \"fetchedAt\": \"2026-10-24T01:29:46.651Z\",\n        \"scope\": \"trusted_phone_purchase\",\n        \"completeness\": null,\n        \"paginationExhausted\": null,\n        \"historyLimit\": null\n      }\n    }\n  }\n}"
+          }
+        ],
+        "role": "user"
+      }
+    ]
+  },
+  {
+    "turn": 2,
+    "responseId": "resp_047a7a3f7a04ce3f006adc0a1b81b487d2b48b2337965f4f8b",
+    "instructions": "## shared/reply_core.txt\nResponde en español natural a la solicitud actual, como una persona de atención al cliente por WhatsApp: directo, cercano y breve. Normalmente bastan dos o tres frases: respuesta y siguiente paso si hace falta. Usa solo hechos autorizados y resultados verificados; no inventes datos ni reveles secretos o nombres internos.\nNo recites el perfil ni expliques cómo verificas los datos. Evita «el registro disponible», «no permite confirmar» y otras salvedades de informe. Explica una diferencia relevante una sola vez. Si ya comunicaste una limitación, continúa con la ayuda concreta; no repitas saludos, importes ni políticas que ya están claros.\n\n## nodes/solicitar_agente_humano/system.txt\nResponde breve y con empatía, en español, según el motivo y el handoff_outcome del contexto operativo. Distingue una solicitud explícita de un escalamiento automático: nunca atribuyas al usuario una petición que no hizo. No prometas tiempos ni afirmes que el registro o la incorporación de una persona ocurrió sin evidencia. Si hay hechos completados de política o lugar, puedes responderlos con su evidencia; no inicies búsquedas ni cierres el plan.\nSi `request_open` es verdadero y `request_open_turns` es mayor que 1,\nno repitas como conclusión la limitación ya comunicada en este hilo:\nabre con la acción realizada en este turno.\nSi la derivación está solicitada, anuncia primero el resultado real de\nla derivación y después, en una sola cláusula, los hechos verificados\nque se revisan: lo que no se resolvió se transfiere a la revisión y\nno se anuncia como un veredicto aparte.\n\n## nodes/solicitar_agente_humano/response_contract.txt\n- Usa type=generic. Normalmente bastan una o dos frases: anuncia lo que ocurrió con la derivación y qué sigue. No vuelvas a explicar el problema ni añadas el total de la compra si no ayuda a entender la revisión.\n- Comunica solo el resultado real: solicitado, no gestionado, incierto o no solicitado ahora. No afirmes que alguien se unirá salvo que esté confirmado.\n- Si la integración no está conectada, comunica que queda para revisión manual; nunca afirmes que se registró en un panel.\n- \"Queda para revisión manual\" y \"queda pendiente de revisión manual\" se reservan para el caso en que la integración no está conectada. Si la derivación falló, comunícala como no gestionada y di que la solicitud no llegó a gestionarse; si su resultado es incierto, comunícalo como incierto y di que no está confirmado que la solicitud llegara a gestionarse. En ninguno de esos dos casos anuncies una revisión pendiente, una cola ni una espera de revisión manual. Si el resultado es handoff_failed_not_retried o handoff_unknown_not_retried, este turno no envió ninguna solicitud de derivación: coméntalo como un resultado anterior que sigue sin resolverse y no digas que la intentaste de nuevo.\n- Omite detalles internos, proveedores, precios y pasos técnicos, salvo hechos completados relevantes. No cierres el plan.\n- Un solo marco: hechos verificados en una cláusula, derivación\n  solicitada con su estado real, y qué debe hacer la persona\n  ahora. Lo no resuelto se transfiere a la revisión; nunca lo\n  anuncies como un segundo veredicto (\"no puedo confirmar…\")\n  en la misma respuesta que anuncia la derivación.\n- Si la derivación fue automática, dilo sin atribuirla a la\n  persona. No prometas plazos ni incorporación de nadie.\n\n## nodes/resolver_consultas_informativas/support_continuity.txt\nUsa el mensaje actual y el historial para continuar el problema que sigue pendiente. Trata los datos aportados por la persona como información reportada, no como verificación ni gestión. Responde desde los hechos disponibles, mantén la identidad autenticada y no reinicies preguntas ya resueltas. Describe un cambio solo cuando exista un resultado confirmado.",
+    "schema": {
+      "required": [
+        "type",
+        "paragraphs_es",
+        "cited_order_ids",
+        "reported_payment",
+        "claimed_handoff",
+        "request_outcome",
+        "financial_reconciliation_required"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "claimed_handoff": {
+          "description": "True only when the reply states that a human handoff or a manual review was registered. False when no such success is claimed.",
+          "type": "boolean"
+        },
+        "cited_order_ids": {
+          "items": {
+            "type": "string"
+          },
+          "description": "The order ids this answer relies on, copied verbatim from the order ids of the authorized profile. Empty when the answer relies on no order.",
+          "type": "array"
+        },
+        "financial_reconciliation_required": {
+          "description": "True only when THIS request disputes a payment, amount, missing transfer or balance requiring reconciliation. Pending status alone is not a dispute. Other purchases do not make this request disputed.",
+          "type": "boolean"
+        },
+        "paragraphs_es": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "reported_payment": {
+          "description": "The payment the CLIENT reported in this turn (for example a transfer the client says they made). This is NOT the payment of the record in the profile. Null when the client reported no payment.",
+          "anyOf": [
+            {
+              "required": [
+                "amount",
+                "currency",
+                "method",
+                "claimed_success"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "currency": {
+                  "description": "The currency of the reported amount, as the client stated it. Null when unknown.",
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "amount": {
+                  "description": "The amount the client reported, in the currency the client used. Null when the client named no amount.",
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "claimed_success": {
+                  "description": "True when the client stated that the payment succeeded. False when the client reported a pending, failed or uncertain payment.",
+                  "type": "boolean"
+                },
+                "method": {
+                  "description": "The payment method the client reported (for example a wallet or a transfer). Null when the client named no method.",
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "type": {
+          "type": "string",
+          "const": "generic"
+        },
+        "request_outcome": {
+          "description": "Outcome of THIS request after the actual evidence and this reply: answered only when the reply fully answers it, including public-search guidance after an associated-event not_found; needs_input when one missing customer datum blocks it; unresolved when reconciliation or an unexecuted operation remains; withdrawn only when the customer explicitly withdrew it. A public FAQ answer or event fact is independent of other requests money.",
+          "enum": [
+            "answered",
+            "needs_input",
+            "unresolved",
+            "withdrawn"
+          ],
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "output": [
+      {
+        "id": "msg_047a7a3f7a04ce3f006adc0a1c239087d2ad0438b62c33ca6a",
+        "type": "message",
+        "status": "completed",
+        "content": [
+          {
+            "type": "output_text",
+            "annotations": [],
+            "logprobs": [],
+            "text": "{\"type\":\"generic\",\"paragraphs_es\":[\"La solicitud para que una persona revise el pago quedó derivada. El pago de S/ 161.20 por Yape o Plin figura pendiente; comparte el comprobante con el equipo para que puedan revisarlo.\"],\"cited_order_ids\":[\"ORD_partial_420\"],\"reported_payment\":{\"amount\":null,\"currency\":null,\"method\":\"Yape\",\"claimed_success\":true},\"claimed_handoff\":true,\"request_outcome\":\"unresolved\",\"financial_reconciliation_required\":true}"
+          }
+        ],
+        "phase": "final_answer",
+        "role": "assistant"
+      }
+    ],
+    "inputItems": [
+      {
+        "id": "msg_047a7a3f7a04ce3f006adc0a1b889c87d2aca7b4990f32b002",
+        "type": "message",
+        "status": "completed",
+        "content": [
+          {
+            "type": "input_text",
+            "text": "Evidencia canónica del turno (JSON): {\n  \"nodes\": {\n    \"previous\": \"resolver_consultas_informativas\",\n    \"current\": \"solicitar_agente_humano\"\n  },\n  \"history\": {\n    \"status\": \"available\",\n    \"recent_messages\": [\n      {\n        \"direction\": \"inbound\",\n        \"source\": null,\n        \"body\": \"Hola, me llegó un aviso de saldo pendiente del Baby Shower de prueba. ¿Qué me están cobrando si ya hice mi pago?\",\n        \"sent_at\": \"2026-10-24T01:29:46.213Z\"\n      }\n    ]\n  },\n  \"user_message\": \"Lo pagué completo por Yape. Sí, por favor, que lo revise una persona del equipo.\",\n  \"decision\": {\n    \"route_kind\": \"human_escalation\",\n    \"presentation_scope\": \"human_escalation\",\n    \"provider_search_mode\": \"none\",\n    \"focus_need_category\": null,\n    \"needs_to_present\": [],\n    \"stop_reason\": \"router_escalation:unresolved_request_repeated\"\n  },\n  \"extraction\": {\n    \"action_intent\": null,\n    \"intent_confidence\": null,\n    \"ambiguity\": null,\n    \"information_requests\": [],\n    \"phone_confirmation\": null,\n    \"rsvp_action\": null,\n    \"rsvp_candidate_guest_id\": null,\n    \"rsvp_event_reference\": null,\n    \"event_type\": null,\n    \"vendor_category\": null,\n    \"vendor_categories\": [],\n    \"active_need_category\": null,\n    \"location\": null,\n    \"budget_signal\": null,\n    \"guest_range\": null,\n    \"preferences\": [],\n    \"hard_constraints\": [],\n    \"assumptions\": [],\n    \"conversation_summary\": \"Turno de asistencia decidido por el router.\",\n    \"selected_provider_hints\": [],\n    \"selected_provider_references\": [],\n    \"close_action\": null,\n    \"pause_requested\": false,\n    \"contact\": {\n      \"name\": null,\n      \"email\": null,\n      \"phone\": null\n    },\n    \"provider_fit_criteria\": null,\n    \"provider_explanation_request\": null,\n    \"provider_detail_request\": null,\n    \"provider_plan_operations\": [],\n    \"provider_query_intents\": []\n  },\n  \"plan\": {\n    \"current_node\": \"solicitar_agente_humano\",\n    \"information_state\": {\n      \"pending_requests\": [],\n      \"selection_candidates\": [],\n      \"authentication_status\": \"none\",\n      \"failed_code_attempts\": 0\n    }\n  },\n  \"information_results\": [],\n  \"capability_outcome\": null,\n  \"handoff_outcome\": \"handoff_requested\",\n  \"image_evidence\": null,\n  \"authentication_outcome\": null,\n  \"rsvp_phone_evidence\": null,\n  \"rsvp_party\": null,\n  \"turn_state\": {\n    \"focus_need_category\": null,\n    \"missing_fields\": [],\n    \"search_ready\": false,\n    \"request_open\": true,\n    \"request_open_turns\": 2,\n    \"requiresNextStep\": true\n  },\n  \"provider_candidates\": [],\n  \"recommendation_funnel\": {\n    \"available_candidates\": 0,\n    \"context_candidates\": 0,\n    \"context_candidate_ids\": [],\n    \"presentation_limit\": 6\n  },\n  \"customer_context\": {\n    \"identityAccess\": {\n      \"section\": \"identity_access\",\n      \"status\": \"ready\",\n      \"source\": \"channel_contact_phone\",\n      \"fetchedAt\": \"2026-10-24T01:30:03.055Z\",\n      \"scope\": \"trusted_phone_purchase\",\n      \"completeness\": \"complete\",\n      \"paginationExhausted\": null,\n      \"historyLimit\": null,\n      \"customerRef\": \"+51900000420\",\n      \"displayName\": null,\n      \"email\": null,\n      \"phone\": \"+51900000420\",\n      \"authorizedScopes\": [\n        \"trusted_phone_purchase\"\n      ],\n      \"guestEventIds\": [],\n      \"hostEventIds\": []\n    },\n    \"currentContext\": {\n      \"section\": \"current_context\",\n      \"status\": \"ready\",\n      \"source\": \"plan_domain_state\",\n      \"fetchedAt\": \"2026-10-24T01:30:03.055Z\",\n      \"scope\": \"trusted_phone_purchase\",\n      \"completeness\": \"complete\",\n      \"paginationExhausted\": null,\n      \"historyLimit\": null,\n      \"relevantEventIds\": [],\n      \"relevantOrderIds\": [],\n      \"pendingQuestion\": null,\n      \"unresolvedCandidateOrderIds\": [],\n      \"unresolvedCandidateEventIds\": []\n    },\n    \"purchases\": [\n      {\n        \"orderId\": \"ORD_partial_420\",\n        \"recordSource\": \"orders\",\n        \"partition\": \"pending_orders\",\n        \"eventId\": 90420,\n        \"currency\": \"PEN\",\n        \"currencySymbol\": null,\n        \"currencyConflict\": false,\n        \"paymentStatus\": \"pending\",\n        \"shippingStatus\": null,\n        \"grandTotal\": 161.2,\n        \"paymentMethod\": null,\n        \"eventName\": \"Baby Shower de prueba\",\n        \"eventDate\": null,\n        \"eventUrl\": null,\n        \"createdAt\": null,\n        \"items\": [],\n        \"accessScope\": \"trusted_phone_purchase\",\n        \"customerTransactionNumber\": null,\n        \"dedication\": null,\n        \"paymentValidationExpectation\": {\n          \"maxBusinessHours\": 72,\n          \"appliesTo\": \"indexed_validation_methods\"\n        },\n        \"payment\": {\n          \"method\": \"Yape o Plin\",\n          \"amount\": 161.2,\n          \"paidAt\": null,\n          \"transactionStatus\": \"pending\",\n          \"gatewayMessage\": null,\n          \"operationCode\": null,\n          \"originBank\": null,\n          \"voucherProvided\": null,\n          \"destinationAccount\": null\n        }\n      },\n      {\n        \"orderId\": \"ORD_old_420\",\n        \"recordSource\": \"orders\",\n        \"partition\": \"completed_orders\",\n        \"eventId\": null,\n        \"currency\": \"USD\",\n        \"currencySymbol\": null,\n        \"currencyConflict\": false,\n        \"paymentStatus\": \"approved\",\n        \"shippingStatus\": null,\n        \"grandTotal\": 107.52,\n        \"paymentMethod\": null,\n        \"eventName\": \"Evento anterior\",\n        \"eventDate\": \"2022-09-24\",\n        \"eventUrl\": null,\n        \"createdAt\": null,\n        \"items\": [],\n        \"accessScope\": \"trusted_phone_purchase\",\n        \"customerTransactionNumber\": null,\n        \"dedication\": null,\n        \"paymentValidationExpectation\": null\n      },\n      {\n        \"orderId\": \"ORD_partial_420\",\n        \"recordSource\": \"gift_purchases\",\n        \"eventId\": 90420,\n        \"currency\": \"PEN\",\n        \"currencySymbol\": null,\n        \"currencyConflict\": false,\n        \"paymentStatus\": \"pending\",\n        \"shippingStatus\": null,\n        \"grandTotal\": 161.2,\n        \"paymentMethod\": \"Yape o Plin\",\n        \"eventName\": \"Baby Shower de prueba\",\n        \"eventDate\": null,\n        \"eventUrl\": null,\n        \"createdAt\": null,\n        \"items\": [],\n        \"declineCode\": null,\n        \"dedication\": null,\n        \"thanks\": null,\n        \"isThanked\": null,\n        \"partition\": \"legacy_orders\",\n        \"accessScope\": \"trusted_phone_purchase\",\n        \"customerTransactionNumber\": null,\n        \"paymentValidationExpectation\": {\n          \"maxBusinessHours\": 72,\n          \"appliesTo\": \"indexed_validation_methods\"\n        },\n        \"payment\": {\n          \"method\": \"Yape o Plin\",\n          \"amount\": 161.2,\n          \"paidAt\": null,\n          \"transactionStatus\": \"pending\",\n          \"gatewayMessage\": null,\n          \"operationCode\": null,\n          \"originBank\": null,\n          \"voucherProvided\": null,\n          \"destinationAccount\": null\n        }\n      }\n    ],\n    \"carts\": [],\n    \"invitations\": [],\n    \"actionOutcomes\": [],\n    \"coverage\": {\n      \"purchasesCarts\": {\n        \"status\": \"ready\",\n        \"source\": \"agent_api\",\n        \"fetchedAt\": \"2026-10-24T01:30:03.055Z\",\n        \"scope\": \"trusted_phone_purchase\",\n        \"completeness\": null,\n        \"paginationExhausted\": null,\n        \"historyLimit\": null,\n        \"sourceCoverage\": [\n          {\n            \"source\": \"orders\",\n            \"childId\": \"customer-context-phone-purchases:orders\",\n            \"status\": \"completed\",\n            \"count\": 2\n          },\n          {\n            \"source\": \"gift_purchases\",\n            \"childId\": \"customer-context-phone-purchases:gift_purchases\",\n            \"status\": \"completed\",\n            \"count\": 1\n          }\n        ]\n      },\n      \"invitationsEvents\": {\n        \"status\": \"not_found\",\n        \"source\": \"agent_api\",\n        \"fetchedAt\": \"2026-10-24T01:30:03.055Z\",\n        \"scope\": \"trusted_phone_purchase\",\n        \"completeness\": null,\n        \"paginationExhausted\": null,\n        \"historyLimit\": null\n      }\n    }\n  }\n}"
+          }
+        ],
+        "role": "user"
+      }
+    ]
+  }
+]

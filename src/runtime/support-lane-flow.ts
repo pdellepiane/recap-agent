@@ -64,7 +64,7 @@ export const supportReplySidecarSchema = z.object({
     'The order ids this answer relies on, copied verbatim from the order ids of the authorized profile. Empty when the answer relies on no order.',
   ),
   reported_payment: reportedPaymentSchema.nullable().describe(
-    'The payment the CLIENT reported in this turn (for example a transfer the client says they made). This is NOT the payment of the record in the profile. Null when the client reported no payment.',
+    'The payment the CLIENT reported in this message, including a paid-in-full claim with no amount or method. Use unknown fields; NOT the payment of the record or the backend total. Null only when the client reported no payment.',
   ),
   request_outcome: z.enum(['answered', 'needs_input', 'unresolved', 'withdrawn']).describe(
     'Outcome of THIS request after the actual evidence and this reply: answered only when the reply fully answers it, including public-search guidance after an associated-event not_found; needs_input when one missing customer datum blocks it; unresolved when reconciliation or an unexecuted operation remains; withdrawn only when the customer explicitly withdrew it. A public FAQ answer or event fact is independent of other requests money.',

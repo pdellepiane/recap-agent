@@ -383,6 +383,7 @@ export const instructionModuleIds = [
   'reply_planning_owner',
   'reply_planning_interview',
   'reply_purchase_facts',
+  'reply_pending_payment',
   'reply_thank_you_provenance',
   'reply_purchase_partial_failure',
   'reply_customer_reference_matched',
@@ -556,6 +557,11 @@ export const instructionModuleRegistry: Record<InstructionModuleId, InstructionM
     owners: ['customer_assistance', 'unknown'],
     tasks: ['purchase'],
     consumer: 'openai-agent-runtime composeReply (purchase evidence, no prose)',
+  },
+  reply_pending_payment: {
+    files: ['nodes/resolver_consultas_informativas/pending_payment.txt'],
+    stages: ['reply'], owners: ['customer_assistance', 'unknown'], tasks: ['purchase'],
+    consumer: 'composeReply (authorized pending purchase only)',
   },
   reply_purchase_partial_failure: {
     files: ['nodes/resolver_consultas_informativas/purchase_partial_failure.txt'],

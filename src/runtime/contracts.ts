@@ -137,6 +137,8 @@ export type ExtractionResult = {
 };
 
 export type ExtractRequest = {
+  /** Validated router work; narrows first-turn extraction without persisting a fabricated node. */
+  scope?: 'support_information';
   userMessage: string;
   plan: PersistedPlan;
   messageContext: TurnMessageContext;

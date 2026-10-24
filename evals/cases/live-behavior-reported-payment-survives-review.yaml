@@ -1,0 +1,180 @@
+{
+  "template": "template.base-live",
+  "id": "live_behavior.reported_payment_survives_review",
+  "suite": "live_behavior_regression",
+  "version": 1,
+  "description": "Reconstructs the exact October 23 supervised payment interaction with the pending PEN161.20 order and unrelated historical USD order. Customer claims remain claims with unknown amount; confirmed review occurs once and preserves the Yape evidence through the parked acknowledgment.",
+  "tags": [
+    "live",
+    "behavior",
+    "reported-interaction",
+    "payment-review"
+  ],
+  "targetModes": [
+    "live_lambda"
+  ],
+  "backendFixture": {
+    "scenario": "purchase-partial-payment-review"
+  },
+  "inputs": [
+    {
+      "text": "Hola, me llegó un aviso de saldo pendiente del Baby Shower de prueba. ¿Qué me están cobrando si ya hice mi pago?",
+      "channel": "whatsapp",
+      "contactPhone": "+51900000420",
+      "sessionId": "reported-payment-survives-review",
+      "backendFixture": {
+        "scenario": "purchase-partial-payment-review"
+      }
+    },
+    {
+      "text": "Lo pagué completo por Yape. Sí, por favor, que lo revise una persona del equipo.",
+      "channel": "whatsapp",
+      "contactPhone": "+51900000420",
+      "sessionId": "reported-payment-survives-review",
+      "backendFixture": {
+        "scenario": "purchase-partial-payment-review"
+      }
+    },
+    {
+      "text": "De acuerdo, quedo esperando que revisen ese pago.",
+      "channel": "whatsapp",
+      "contactPhone": "+51900000420",
+      "sessionId": "reported-payment-survives-review",
+      "backendFixture": {
+        "scenario": "purchase-partial-payment-review"
+      }
+    }
+  ],
+  "expectations": [
+    {
+      "id": "turn-1-support_outcome-reported_payment-claimed_success",
+      "type": "plan_field_equals",
+      "path": "support_outcome.reported_payment.claimed_success",
+      "expected": true,
+      "turnIndex": 0,
+      "severity": "hard"
+    },
+    {
+      "id": "turn-1-support_outcome-reported_payment-amount",
+      "type": "plan_field_equals",
+      "path": "support_outcome.reported_payment.amount",
+      "expected": null,
+      "turnIndex": 0,
+      "severity": "hard"
+    },
+    {
+      "id": "turn-1-open_requests-0-reported_payment-claimed_success",
+      "type": "plan_field_equals",
+      "path": "open_requests.0.reported_payment.claimed_success",
+      "expected": true,
+      "turnIndex": 0,
+      "severity": "hard"
+    },
+    {
+      "id": "turn-2-support_outcome-reported_payment-claimed_success",
+      "type": "plan_field_equals",
+      "path": "support_outcome.reported_payment.claimed_success",
+      "expected": true,
+      "turnIndex": 1,
+      "severity": "hard"
+    },
+    {
+      "id": "turn-2-support_outcome-reported_payment-amount",
+      "type": "plan_field_equals",
+      "path": "support_outcome.reported_payment.amount",
+      "expected": null,
+      "turnIndex": 1,
+      "severity": "hard"
+    },
+    {
+      "id": "turn-2-open_requests-0-reported_payment-claimed_success",
+      "type": "plan_field_equals",
+      "path": "open_requests.0.reported_payment.claimed_success",
+      "expected": true,
+      "turnIndex": 1,
+      "severity": "hard"
+    },
+    {
+      "id": "turn-3-support_outcome-reported_payment-claimed_success",
+      "type": "plan_field_equals",
+      "path": "support_outcome.reported_payment.claimed_success",
+      "expected": true,
+      "turnIndex": 2,
+      "severity": "hard"
+    },
+    {
+      "id": "turn-3-support_outcome-reported_payment-amount",
+      "type": "plan_field_equals",
+      "path": "support_outcome.reported_payment.amount",
+      "expected": null,
+      "turnIndex": 2,
+      "severity": "hard"
+    },
+    {
+      "id": "turn-3-open_requests-0-reported_payment-claimed_success",
+      "type": "plan_field_equals",
+      "path": "open_requests.0.reported_payment.claimed_success",
+      "expected": true,
+      "turnIndex": 2,
+      "severity": "hard"
+    },
+    {
+      "id": "yape-claim-retained-1",
+      "type": "plan_field_equals",
+      "path": "open_requests.0.reported_payment.method",
+      "expected": "Yape",
+      "turnIndex": 1,
+      "severity": "hard"
+    },
+    {
+      "id": "yape-claim-retained-2",
+      "type": "plan_field_equals",
+      "path": "open_requests.0.reported_payment.method",
+      "expected": "Yape",
+      "turnIndex": 2,
+      "severity": "hard"
+    },
+    {
+      "id": "one-real-review",
+      "type": "fixture_effect_count",
+      "operation": "handoff.write",
+      "expectedAttempts": 1,
+      "expectedSuccesses": 1,
+      "expectedReplays": 0,
+      "severity": "hard"
+    },
+    {
+      "id": "confirmed-review-receipt",
+      "type": "plan_field_equals",
+      "path": "human_help_receipt.outcome",
+      "expected": "handoff_requested",
+      "severity": "hard"
+    },
+    {
+      "id": "no-auth-or-attendance-effects",
+      "type": "tool_usage",
+      "mustNotCall": [
+        "auth_by_phone",
+        "request_user_login_code",
+        "verify_user_login_code",
+        "guest_rsvp"
+      ],
+      "severity": "hard"
+    }
+  ],
+  "budget": {
+    "maxTurns": 3,
+    "estimatedPromptTokensPerTurn": 4500,
+    "estimatedCompletionTokensPerTurn": 300
+  },
+  "scorers": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "weight": 1
+    }
+  ],
+  "notes": [
+    "Full original traces, replies, model inputs/output sidecars and plans: docs/plan/2026-10-23-consolidated-supervisor-audit/artifacts/final-local-check/evidence.json; exact stored Responses retrieval diagnosis in docs/plan/2026-10-23-payment-prompt-repair/diagnosis.md. Natural acknowledgment and no invented balance are manually supervised; the live gate contains objective facts and effect assertions only."
+  ]
+}

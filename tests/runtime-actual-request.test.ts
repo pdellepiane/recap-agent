@@ -2182,3 +2182,47 @@ describe('source-bound thank-you instruction applicability', () => {
     expect(withThanks.compilerContext.hasThankYouRecord).toBe(true);
   });
 });
+
+describe('October 23 production prompt wiring regression', () => {
+  it('loads pending-payment guidance on the actual call, without sending it to approved purchases or public FAQ', async () => {
+    const runtime = testRuntime();
+    const request = replyRequest(supportPlan(), { supportSidecar: true,
+      informationResults: [purchaseResult('pending', [purchase('ORD_partial_420')])] });
+    const pending = await runtime.buildReplyRequestSpec(request);
+    expect(pending.filePaths).toContain('nodes/resolver_consultas_informativas/pending_payment.txt');
+    expect(pending.instructions).toContain('no un saldo adeudado');
+    expect(pending.instructions).toContain('no pidas comprobantes');
+    expect(pending.filePaths).not.toContain('nodes/resolver_consultas_informativas/response_contract.txt');
+    const approved = await runtime.buildReplyRequestSpec({ ...request,
+      informationResults: [purchaseResult('approved', [{ ...purchase('approved'), paymentStatus: 'approved' }])] });
+    const faq = await runtime.buildReplyRequestSpec(replyRequest(supportPlan()));
+    for (const spec of [approved, faq]) {
+      expect(spec.filePaths).not.toContain('nodes/resolver_consultas_informativas/pending_payment.txt');
+      expect(spec.instructions).not.toContain('no un saldo adeudado');
+    }
+    expect(auditActualRequestContract({ spec: pending, context: pending.compilerContext, evidence: request })).toEqual([]);
+  });
+
+  it('narrows the routed first-turn extraction schema and instructions while preserving the full customer profile', async () => {
+    const runtime = testRuntime();
+    const initialPlan = createEmptyPlan({ planId: 'routed', channel: 'whatsapp', externalUserId: '51900000422' });
+    const complete = venueRequest(987).customerContext;
+    const request = { ...extractRequest('¿Qué comisión cobran al retirar mis fondos?', initialPlan), customerContext: complete };
+    const broad = await runtime.buildExtractionRequestSpec(request);
+    const narrow = await runtime.buildExtractionRequestSpec({ ...request, scope: 'support_information' });
+    expect(initialPlan.current_node).toBe('contacto_inicial');
+    expect(narrow.input).toContain(JSON.stringify(complete));
+    expect(narrow.outputSchema.shape).not.toHaveProperty('rsvpAction');
+    expect(narrow.outputSchema.shape).not.toHaveProperty('contactEmail');
+    expect(narrow.outputSchema.shape).not.toHaveProperty('eventType');
+    expect(narrow.filePaths).not.toContain('extractors/rsvp.txt');
+    expect(narrow.filePaths).not.toContain('extractors/planning.txt');
+    expect(narrow.filePaths).not.toContain('extractors/contact.txt');
+    expect(Buffer.byteLength(narrow.instructions)).toBeLessThan(Buffer.byteLength(broad.instructions));
+    expect(Buffer.byteLength(narrow.input)).toBeLessThan(Buffer.byteLength(broad.input));
+    expect(auditActualRequestContract({ spec: narrow, context: narrow.compilerContext,
+      evidence: request, outputSchema: narrow.outputSchema })).toEqual([]);
+    console.log('Routed extraction bytes', { before: { instructions: Buffer.byteLength(broad.instructions), input: Buffer.byteLength(broad.input) },
+      after: { instructions: Buffer.byteLength(narrow.instructions), input: Buffer.byteLength(narrow.input) } });
+  });
+});

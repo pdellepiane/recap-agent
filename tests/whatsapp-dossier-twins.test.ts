@@ -288,6 +288,7 @@ function phoneOf(scenario: string): string {
     [SCENARIO_C]: PHONE_C,
     [SCENARIO_D]: PHONE_D,
     [SCENARIO_E]: PHONE_E,
+    'purchase-partial-payment-review': '+51900000420',
   };
   return phones[scenario] ?? PHONE_A;
 }
@@ -942,5 +943,35 @@ describe('offline eval target — the customer-assistance lane can be replayed',
     const openAiCalls = turn?.trace.openai_calls;
     expect(openAiCalls?.router).not.toBeNull();
     expect(openAiCalls?.extraction).toBeNull();
+  });
+});
+
+describe('October 23 payment-claim persistence regression', () => {
+  it('retains the model-reported Yape claim on takeover and keeps it through the parked acknowledgment', async () => {
+    const gateway = await createGateway('purchase-partial-payment-review');
+    const harness = await createHarness({ gateway, answers: [
+      { route: 'answer_with_records', sameOpenRequest: false, requestSettled: false },
+      { route: 'escalate_human', sameOpenRequest: true, requestSettled: false },
+      { route: 'suppress_ack', sameOpenRequest: true, requestSettled: false },
+    ] });
+    // The stored original first output missed the claim; the second output
+    // correctly extracted it, but the old takeover path discarded it.
+    harness.sidecar = { ...neutralSidecar(), financialReconciliationRequired: true };
+    await harness.replay([{ text: 'Hola, me llegó un aviso de saldo pendiente del Baby Shower de prueba. ¿Qué me están cobrando si ya hice mi pago?' }]);
+    harness.sidecar = { ...neutralSidecar(), financialReconciliationRequired: true,
+      reportedPayment: { amount: null, currency: null, method: 'Yape', claimedSuccess: true } };
+    const [takeover, pause] = await harness.replay([
+      { text: 'Lo pagué completo por Yape. Sí, por favor, que lo revise una persona del equipo.' },
+      { text: 'De acuerdo, quedo esperando que revisen ese pago.' },
+    ]);
+    for (const result of [takeover, pause]) {
+      expect(result.response.plan.support_outcome.reported_payment).toEqual({
+        amount: null, currency: null, method: 'Yape', claimed_success: true,
+      });
+      expect(result.response.plan.open_requests[0]).toMatchObject({ state: 'with_person',
+        reported_payment: { amount: null, currency: null, method: 'Yape', claimed_success: true } });
+    }
+    expect(gateway.getFixtureCallCount('handoff.write')).toBe(1);
+    expect(pause.response.outbound.delivery?.action).toBe('suppress');
   });
 });

@@ -1,0 +1,59 @@
+{
+  "status": "frozen_before_paid_execution",
+  "additionalSpendCeilingUsd": 0.25,
+  "previousRecordedUsd": 0.120045,
+  "maxExecutionsPerCase": 1,
+  "concurrency": 1,
+  "semanticJudgeCalls": 0,
+  "semanticRetries": false,
+  "cases": [
+    {
+      "id": "live_behavior.reported_payment_survives_review",
+      "path": "evals/cases/live-behavior-reported-payment-survives-review.yaml",
+      "sha256": "d66f1be4d096faa57dc682c982df2055f3def6e0098f70cd9d926c7dfd2a05eb"
+    },
+    {
+      "id": "live_behavior.pending_total_dispute_is_reviewed",
+      "path": "evals/cases/live-behavior-pending-total-dispute-is-reviewed.yaml",
+      "sha256": "0a260646d5e27aa4e8036fb9c176c6457c704c5ce2b8ac8a76c3d52e3f1e0f3b"
+    },
+    {
+      "id": "live_behavior.unrelated_answer_isolates_money",
+      "path": "evals/cases/live-behavior-unrelated-answer-isolates-money.yaml",
+      "sha256": "5a35ea956ce63132fbbe15baf097615132f601731416e33e8f250a3cd56a44ba"
+    },
+    {
+      "id": "live_behavior.question_after_takeover_is_answered",
+      "path": "evals/cases/live-behavior-question-after-takeover-is-answered.yaml",
+      "sha256": "31de4f3ed10ebf28b5a85979cfebf4962555e7eae509e84bbe6b6794754ad683"
+    },
+    {
+      "id": "live_behavior.unassociated_event_has_public_search",
+      "path": "evals/cases/live-behavior-unassociated-event-has-public-search.yaml",
+      "sha256": "6553883d8c22ff131a92dc880566b6eac24078a6ab174e77556a25ba59cab589"
+    },
+    {
+      "id": "live_behavior.withdrawal_fee_policy_and_calculator",
+      "path": "evals/cases/live-behavior-withdrawal-fee-policy-and-calculator.yaml",
+      "sha256": "31687c3619c64e589e3971a8b36f7b61927b882d000a4cd9db3fe71bd245f8ed"
+    }
+  ],
+  "supervision": {
+    "maxTurns": 10,
+    "maxPerConversation": 4,
+    "fixtures": [
+      {
+        "scenario": "purchase-partial-payment-review",
+        "phone": "51900000420"
+      },
+      {
+        "scenario": "public-event-unassociated",
+        "phone": "51900000421"
+      },
+      {
+        "scenario": "withdrawal-fee-policy",
+        "phone": "51900000422"
+      }
+    ]
+  }
+}

@@ -2606,3 +2606,23 @@ behaviorChanges:
     implementedBy: working-tree
     implementationEvidence: [ prompts/router/same_open_request.txt ]
     liveCaseIds: [ live_behavior.question_after_takeover_is_answered ]
+  - id: wire-pending-payment-guidance-to-production-2026-10-23
+    implementedBy: working-tree
+    implementationEvidence: [ src/runtime/model-request-projector.ts, prompts/nodes/resolver_consultas_informativas/pending_payment.txt ]
+    liveCaseIds: [ live_behavior.reported_payment_survives_review ]
+  - id: retain-reported-payment-on-confirmed-takeover-2026-10-23
+    implementedBy: working-tree
+    implementationEvidence: [ src/runtime/agent-service.ts ]
+    liveCaseIds: [ live_behavior.reported_payment_survives_review, live_behavior.unrelated_answer_isolates_money ]
+  - id: compose-support-facts-before-prose-2026-10-23
+    implementedBy: working-tree
+    implementationEvidence: [ src/runtime/openai-agent-runtime.ts, src/runtime/support-lane-flow.ts ]
+    liveCaseIds: [ live_behavior.reported_payment_survives_review ]
+  - id: consolidate-handoff-voice-and-outcome-instructions-2026-10-23
+    implementedBy: working-tree
+    implementationEvidence: [ prompts/nodes/solicitar_agente_humano/system.txt, prompts/nodes/solicitar_agente_humano/response_contract.txt ]
+    liveCaseIds: [ live_behavior.reported_payment_survives_review, live_behavior.question_after_takeover_is_answered ]
+  - id: narrow-routed-information-extraction-2026-10-23
+    implementedBy: working-tree
+    implementationEvidence: [ src/runtime/extraction-projection.ts, src/runtime/openai-agent-runtime.ts ]
+    liveCaseIds: [ live_behavior.unassociated_event_has_public_search, live_behavior.withdrawal_fee_policy_and_calculator ]

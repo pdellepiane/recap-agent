@@ -1161,6 +1161,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
   }
 
   async extract(request: ExtractRequest): Promise<ExtractResult> {
+    request = this.projectRoutedExtractionRequest(request);
     const policy = deriveDynamicAgentPolicy(request.plan);
     const features = this.resolveFeatureFlags();
     // L3 single production request builder: the established lane (derived
@@ -1169,7 +1170,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     // projectExtraction. Established purchase/support/RSVP turns omit
     // planning-only fields; unsupported operations stay expressible through
     // the capabilityBoundary field.
-    const projection = this.buildExtractionProjection(request.plan, policy, features);
+    const projection = this.buildExtractionProjection(request.plan, policy, features, request.scope);
     const runExtraction = async (): Promise<ExtractResult> => {
       // G1/G2 single construction boundary: the compiler-selected modules
       // loaded via PromptLoader are the instructions actually sent.
@@ -1262,6 +1263,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     plan: PersistedPlan,
     policy: DynamicAgentPolicy,
     features: AgentFeatureFlags,
+    scope?: ExtractRequest['scope'],
   ): ExtractionProjection {
     const featureAllowedIntents = policy.allowedActionIntents.filter(
       (actionIntent) =>
@@ -1284,6 +1286,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       plan,
       manifest,
       allowedActionIntents: featureAllowedIntents,
+      routedInformation: scope === 'support_information',
     });
   }
 
@@ -1886,14 +1889,22 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
    * Production path for extract(): selected module files load here and
    * become the instructions actually sent. Tests exercise this directly.
    */
+  private projectRoutedExtractionRequest(request: ExtractRequest): ExtractRequest {
+    if (request.scope !== 'support_information') return request;
+    // The router has already selected information work. Only the model
+    // projection uses this established domain; the persisted plan is untouched.
+    return { ...request, plan: { ...request.plan, current_node: 'resolver_consultas_informativas' } };
+  }
+
   async buildExtractionRequestSpec(
     request: ExtractRequest,
     policy?: DynamicAgentPolicy,
     projection?: ExtractionProjection,
   ): Promise<ExtractionRequestSpec> {
+    request = this.projectRoutedExtractionRequest(request);
     const resolvedPolicy = policy ?? deriveDynamicAgentPolicy(request.plan);
     const resolvedProjection = projection ??
-      this.buildExtractionProjection(request.plan, resolvedPolicy, this.resolveFeatureFlags());
+      this.buildExtractionProjection(request.plan, resolvedPolicy, this.resolveFeatureFlags(), request.scope);
     const compilerContext = this.deriveExtractionCompilerContext(request.plan, resolvedProjection, request.customerContext != null);
     const modules = selectExtractionModules(compilerContext);
     const includeImageReference = (request.plan.image_attachments?.length ?? 0) > 0;
@@ -3629,14 +3640,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     if (request.supportSidecar !== true) {
       return Object.keys(pending).length > 0 ? base.extend(pending) : base;
     }
-    return base.extend({
-      ...pending,
-      cited_order_ids: supportReplySidecarSchema.shape.cited_order_ids,
-      reported_payment: supportReplySidecarSchema.shape.reported_payment,
-      claimed_handoff: supportReplySidecarSchema.shape.claimed_handoff,
-      request_outcome: supportReplySidecarSchema.shape.request_outcome,
-      financial_reconciliation_required: supportReplySidecarSchema.shape.financial_reconciliation_required,
-    });
+    return supportReplySidecarSchema.extend({ ...base.shape, ...pending });
   }
 
   /**

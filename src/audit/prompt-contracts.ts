@@ -46,6 +46,7 @@ export const instructionContracts: Readonly<Record<string, InstructionContract>>
   reply_planning_owner: { owns: ['reply.planning_guidance'], evidencePaths: ['plan'] },
   reply_thank_you_provenance: { owns: ['reply.thank_you_actor_provenance'], requiresContext: { hasThankYouRecord: true } },
   reply_purchase_facts: { owns: ['reply.purchase_fact_labels'], evidencePaths: ['plan'] },
+  reply_pending_payment: { owns: ['reply.pending_total_review'], requiresContext: { hasPendingPurchase: true } },
   reply_purchase_partial_failure: { owns: ['reply.purchase_source_incompleteness'], requiresContext: { hasPartialPurchaseFailure: true } },
   reply_customer_reference_matched: { owns: ['reply.customer_reference_match'], requiresContext: { customerReferenceResolution: 'matched' }, incompatibleWith: ['reply_customer_reference_unavailable'] },
   reply_customer_reference_unavailable: { owns: ['reply.customer_reference_unavailable'], requiresContext: { customerReferenceResolution: 'unavailable' }, incompatibleWith: ['reply_customer_reference_matched'] },

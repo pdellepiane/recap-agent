@@ -76,6 +76,7 @@ export type ModuleSelectionContext = {
   /** Exact typed lookup outcomes; no inference from the customer's words. */
   readonly hasPartialPurchaseFailure?: boolean;
   readonly hasThankYouRecord?: boolean;
+  readonly hasPendingPurchase?: boolean;
   readonly hasNoAssociatedEvent?: boolean;
   readonly hasPlanningQuestion?: boolean;
   readonly hasFailedRsvpLookup?: boolean;
@@ -371,6 +372,9 @@ export function deriveReplyCompilerContext(
     customerReferenceResolution,
     hasRejectedRsvpCompanion: request.rsvpCompanionOutcome?.saved === false,
     hasPartialPurchaseFailure,
+    hasPendingPurchase: (request.customerContext?.purchases ?? []).some((purchase) => purchase.paymentStatus === 'pending') ||
+      (request.informationResults ?? []).some((result) => result.kind === 'purchase' && result.status === 'completed' &&
+        result.purchases.some((purchase) => purchase.paymentStatus === 'pending')),
     hasThankYouRecord: (request.customerContext?.purchases ?? []).some((purchase) =>
       purchase.isThanked === true || purchase.thanks != null) ||
       (request.informationResults ?? []).some((result) => result.kind === 'purchase' &&
@@ -422,6 +426,9 @@ export function selectReplyModules(
     candidates.push(
       selected('reply_purchase_facts', 'canonical purchase records and typed outcomes', ['customerContext.purchases', 'customerContext.actionOutcomes', 'informationResults.purchase.references']),
     );
+    if (context.hasPendingPurchase === true) {
+      candidates.push(selected('reply_pending_payment', 'pending total is not a remaining balance', ['customerContext.purchases']));
+    }
     if (context.hasPartialPurchaseFailure === true) {
       candidates.push(selected(
         'reply_purchase_partial_failure', 'a purchase source failed during this lookup',
