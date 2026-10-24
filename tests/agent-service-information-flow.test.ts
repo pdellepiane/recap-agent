@@ -17,6 +17,8 @@ import {
   type AgentPurchaseLookupResult,
 } from '../src/runtime/agent-conversation-gateway';
 import { AgentService } from '../src/runtime/agent-service';
+import { ScriptedSupportLaneRouter } from '../src/evals/scripted-support-lane-router';
+import type { SupportLaneRouterPort } from '../src/runtime/decisions-router-lane';
 import { OpenAiAgentRuntime } from '../src/runtime/openai-agent-runtime';
 import type {
   AgentRuntime,
@@ -26,6 +28,7 @@ import type {
   ExtractionResult,
 } from '../src/runtime/contracts';
 import { InformationOrchestrator } from '../src/runtime/information-orchestrator';
+import { FixtureAgentConversationGateway } from '../src/runtime/eval-fixture-gateway';
 import type {
   KnowledgeRetrievalGateway,
   KnowledgeRetrievalResult,
@@ -70,6 +73,43 @@ const renderers = {
 };
 
 describe('AgentService first-class information flow', () => {
+  it.each(['not_found', 'request_failed'] as const)(
+    'keeps public search guidance answered only for a genuine empty lookup (%s)', async (lookupStatus) => {
+      const request = { kind: 'associated_event' as const, query: 'Boda Valeria y Diego', eventHint: 'Valeria y Diego' };
+      const runtime = new InformationRuntime([extraction([request]), extraction([request])]);
+      const compose = runtime.composeReply.bind(runtime);
+      vi.spyOn(runtime, 'composeReply').mockImplementation(async (input) => ({
+        ...await compose(input), sidecar: { citedOrderIds: [], reportedPayment: null,
+          requestOutcome: 'answered', financialReconciliationRequired: false, claimedHandoff: false },
+      }));
+      const gateway = await FixtureAgentConversationGateway.create('public-event-unassociated');
+      if (lookupStatus === 'request_failed') vi.spyOn(gateway, 'getGuestEventsByPhone')
+        .mockResolvedValue({ status: 'failed', error: 'source unavailable', retryable: true });
+      const router = new ScriptedSupportLaneRouter({ answers: [
+        { route: 'information_flow', sameOpenRequest: false, requestSettled: false },
+        { route: 'information_flow', sameOpenRequest: true, requestSettled: false },
+      ] });
+      const provider = providerGateway();
+      provider.gateway.lookupUserEventContext = async () => null;
+      const service = createService({ runtime, purchaseGateway: gateway,
+        knowledgeGateway: new FakeKnowledgeGateway(), providerGateway: provider, supportLaneRouter: router });
+      const inbound = { channel: 'whatsapp', externalUserId: `public-search-${lookupStatus}`,
+        contactPhone: '+51900000421', receivedAt: new Date().toISOString() };
+      const first = await service.handleTurn({ ...inbound, messageId: 'search-1', text: 'Busco la boda de Valeria y Diego.' });
+      expect(first.trace.information_execution_summary.some((entry) => entry.kind === 'associated_event' && entry.status === 'failed')).toBe(true);
+      expect(first.plan.open_requests.at(-1)?.state).toBe(lookupStatus === 'not_found' ? 'answered' : 'unresolved');
+      if (lookupStatus === 'not_found') {
+        expect(first.plan.information_state.pending_requests).toEqual([]);
+        const followup = await service.handleTurn({ ...inbound, messageId: 'search-2', text: 'No tengo código, ¿puedo buscar con los nombres?' });
+        expect(followup.outbound.delivery.action).toBe('send');
+        expect(gateway.getFixtureCallCount('handoff.write')).toBe(0);
+        expect(followup.plan.open_requests.at(-1)?.state).toBe('answered');
+      } else {
+        expect(first.plan.information_state.pending_requests.length).toBeGreaterThan(0);
+      }
+    },
+  );
+
   it('verifies a word OTP once and keeps recall read-only after a failed purchase read and session expiry', async () => {
     const store = new InMemoryPlanStore();
     const request = { ...purchaseRequest(null), authAction: 'provide_otp' as const };
@@ -651,8 +691,62 @@ describe('AgentService first-class information flow', () => {
       status: 'completed',
       hostWithdrawalPolicy: { maxBusinessHours: 72 },
     });
-    expect(JSON.stringify(policyCompose?.informationResults?.[0])).not.toMatch(/USD5|mañana|Cuenta privada/u);
+    // A general policy keeps the complete retrieved article, rather than
+    // deleting its fee information when optional hours are parsed.
+    expect(JSON.stringify(policyCompose?.informationResults?.[0])).toContain('USD5');
     expect(policyResult.outbound.text).toBe('Respuesta informativa.');
+  });
+
+  it('completes a sourced withdrawal-fee policy with no processing-hours claim or private operation', async () => {
+    const feeQuestion: ExtractedInformationRequest = { kind: 'faq', hostWithdrawal: 'policy_only',
+      feeTopic: 'host_withdrawal', query: '¿Cobran por el primer retiro y por los siguientes?' };
+    const runtime = new InformationRuntime([extraction([feeQuestion])]);
+    const knowledge = hostKnowledge();
+    const feeText = 'La primera transferencia no tiene descuento. Desde la segunda, se descuenta $5 o su equivalente en la moneda de la lista.';
+    knowledge.search.mockResolvedValue({ status: 'success', evidence: [{
+      fileId: 'official-fee', filename: 'donde-va-el-dinero.md', score: 1,
+      sourceUrl: 'https://sinenvolturas.tawk.help/article/donde-va-el-dinero', fullArticle: true,
+      text: feeText,
+    }] });
+    const gateway = new FakePurchaseGateway();
+    const store = new InMemoryPlanStore();
+    const service = createService({ runtime, knowledgeGateway: knowledge.gateway, purchaseGateway: gateway,
+      providerGateway: providerGateway(), planStore: store });
+    const result = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'fee-policy-no-hours',
+      text: feeQuestion.query, messageId: 'fee-question', receivedAt: new Date().toISOString() });
+    expect(knowledge.search).toHaveBeenCalledWith(feeQuestion.query);
+    expect(gateway.takeoverCalls).toBe(0);
+    expect(gateway.authByPhoneCalls).toBe(0);
+    expect(result.plan.information_state.pending_requests).toEqual([]);
+    expect(result.plan.information_state.last_completed_request).toMatchObject(feeQuestion);
+    expect(runtime.composeRequests.at(-1)?.informationResults?.[0]).toMatchObject({
+      kind: 'faq', status: 'completed', feeTopic: 'host_withdrawal', hostWithdrawalPolicy: null,
+      evidence: [{ text: feeText }],
+    });
+    expect(JSON.stringify(runtime.composeRequests.at(-1))).not.toContain('72');
+  });
+
+  it('retrieves withdrawal fees with the actual policy question and retains the fee article', async () => {
+    const query = '¿Cuánto cuestan los retiros de mis fondos?';
+    const runtime = new InformationRuntime([extraction([{ kind: 'faq', query, hostWithdrawal: 'policy_only' }])]);
+    const knowledge = hostKnowledge();
+    knowledge.search.mockResolvedValue({ status: 'success', evidence: [{
+      fileId: 'fee-policy', filename: 'cuanto-cuesta.md', score: 0.9,
+      fullArticle: true, sourceUrl: 'https://sinenvolturas.tawk.help/article/cuanto-cuesta',
+      text: 'La primera solicitud de transferencia es gratuita. US$5 por cada transferencia adicional.',
+    }] });
+    const gateway = new FakePurchaseGateway();
+    const service = createService({ runtime, knowledgeGateway: knowledge.gateway,
+      purchaseGateway: gateway, providerGateway: providerGateway() });
+    await service.handleTurn({ channel: 'whatsapp', externalUserId: 'withdrawal-fees',
+      text: query, messageId: 'fees', receivedAt: new Date().toISOString() });
+    expect(knowledge.search).toHaveBeenCalledWith(query);
+    expect(gateway.takeoverCalls + gateway.authByPhoneCalls).toBe(0);
+    const result = runtime.composeRequests.at(-1)?.informationResults?.[0];
+    expect(result).toMatchObject({ kind: 'faq', status: 'completed', hostWithdrawalPolicy: null });
+    if (result?.kind !== 'faq' || result.status !== 'completed') throw new Error('Expected completed FAQ');
+    expect(result.evidence[0]?.filename).toBe('cuanto-cuesta.md');
+    expect(result.evidence[0]?.text).toContain('US$5');
   });
 
   it('retains pending support and does not enter RSVP for a bare event reference after failed handoff', async () => {
@@ -1636,6 +1730,54 @@ describe('AgentService first-class information flow', () => {
     expect(runtime.composeRequests.at(-1)?.handoffOutcome ?? null).toBeNull();
     expect(response.plan.human_help_receipt).toBeUndefined();
     expect(response.trace.tools_called).toContain('lookup_guest_events_by_phone');
+  });
+
+  it.each(['+51900000681', '+12025550123'])('reaches public search before private authentication from router-owned event inquiry on %s', async (phone) => {
+    const runtime = new InformationRuntime([extraction([{
+      kind: 'associated_event', query: 'Busco la boda de Alexandra y Alejandro', eventHint: 'Alexandra y Alejandro',
+    }])]);
+    const gateway = new FakePurchaseGateway();
+    gateway.guestEventsResult = { status: 'success', events: [] };
+    const provider = providerGateway();
+    provider.gateway.lookupUserEventContext = async () => null;
+    const router = new ScriptedSupportLaneRouter({ answers: [{ route: 'information_flow',
+      sameOpenRequest: false, requestSettled: false }] });
+    const response = await createService({ runtime, knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway, providerGateway: provider, supportLaneRouter: router,
+    }).handleTurn({ channel: 'whatsapp', externalUserId: `public-search-${phone}`,
+      text: 'Busco la boda de Alexandra y Alejandro, ¿a qué hora es?', contactPhone: phone,
+      messageId: 'public-search-router', receivedAt: new Date().toISOString() });
+    expect(router.inputs).toHaveLength(1);
+    expect(runtime.extractRequests).toHaveLength(1);
+    expect(gateway.authByPhoneCalls + gateway.takeoverCalls).toBe(0);
+    expect(provider.requestCodeCalls + provider.verifyCodeCalls + provider.eventLookupCalls).toBe(0);
+    expect(response.plan.human_help_receipt).toBeUndefined();
+    const composition = runtime.composeRequests.at(-1);
+    expect(composition?.authenticationOutcome ?? null).toBeNull();
+    expect(composition?.extraction.informationRequests).toMatchObject([{ eventHint: 'Alexandra y Alejandro' }]);
+    expect(composition?.informationResults).toMatchObject([{ kind: 'associated_event', status: 'failed', failureKind: 'not_found' }]);
+    expect(response.trace.prompt_file_paths).toContain('nodes/resolver_consultas_informativas/public_event_search.txt');
+  });
+
+  it('keeps event transport failure distinct from a successful empty search in the router information flow', async () => {
+    const runtime = new InformationRuntime([extraction([{
+      kind: 'associated_event', query: 'Horario de Alexandra y Alejandro', eventHint: 'Alexandra y Alejandro',
+    }])]);
+    const gateway = new FakePurchaseGateway();
+    gateway.guestEventsResult = { status: 'failed', error: 'Synthetic transport failure', retryable: true };
+    const provider = providerGateway();
+    provider.gateway.lookupUserEventContext = async () => null;
+    const router = new ScriptedSupportLaneRouter({ answers: [{ route: 'information_flow',
+      sameOpenRequest: false, requestSettled: false }] });
+    const response = await createService({ runtime, knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway, providerGateway: provider, supportLaneRouter: router,
+    }).handleTurn({ channel: 'whatsapp', externalUserId: 'public-search-failed', contactPhone: '+51900000682',
+      text: 'Horario de Alexandra y Alejandro', messageId: 'public-search-failure', receivedAt: new Date().toISOString() });
+    expect(runtime.composeRequests.at(-1)?.informationResults).toMatchObject([
+      { kind: 'associated_event', status: 'failed', failureKind: 'request_failed' },
+    ]);
+    expect(response.trace.prompt_file_paths).not.toContain('nodes/resolver_consultas_informativas/public_event_search.txt');
+    expect(provider.requestCodeCalls + provider.verifyCodeCalls).toBe(0);
   });
 
   it('keeps usable phone purchase context when another requested lookup has no event match', async () => {
@@ -3042,6 +3184,7 @@ function createService(args: {
   purchaseGateway: AgentConversationGateway;
   providerGateway: ReturnType<typeof providerGateway>;
   planStore?: InMemoryPlanStore;
+  supportLaneRouter?: SupportLaneRouterPort;
 }): AgentService {
   const provider = args.providerGateway.gateway;
   return new AgentService({
@@ -3056,6 +3199,7 @@ function createService(args: {
       agentGateway: args.purchaseGateway,
     }),
     agentConversationGateway: args.purchaseGateway,
+    supportLaneRouter: args.supportLaneRouter,
   });
 }
 

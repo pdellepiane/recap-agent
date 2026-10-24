@@ -1,0 +1,97 @@
+{
+  "template": "template.base-live",
+  "id": "live_behavior.fourth_request_keeps_plan_valid",
+  "suite": "live_behavior_regression",
+  "version": 1,
+  "description": "Three parked requests are seeded explicitly. An unrelated fourth request must return the authorized event date and persist a valid bounded plan rather than HTTP500. The scripted offline twin pins the pruning branch.",
+  "tags": [
+    "live",
+    "behavior",
+    "reported-interaction",
+    "october-20-review"
+  ],
+  "targetModes": [
+    "live_lambda"
+  ],
+  "backendFixture": {
+    "scenario": "purchase-approved-event-date"
+  },
+  "inputs": [
+    {
+      "text": "Otra consulta, ¿qué fecha tiene el evento Celebración de prueba?",
+      "channel": "whatsapp",
+      "contactPhone": "+51900000406",
+      "sessionId": "fourth_request_keeps_plan_valid",
+      "backendFixture": {
+        "scenario": "purchase-approved-event-date"
+      }
+    }
+  ],
+  "expectations": [
+    {
+      "id": "authorized-event-date",
+      "type": "text_contains",
+      "anyOf": [
+        "12 de diciembre",
+        "12/12/2026",
+        "2026-12-12"
+      ],
+      "turnIndex": 0,
+      "severity": "hard"
+    },
+    {
+      "id": "handoff-effects",
+      "type": "fixture_effect_count",
+      "operation": "handoff.write",
+      "expectedAttempts": 0,
+      "expectedSuccesses": 0,
+      "expectedReplays": 0,
+      "severity": "hard"
+    },
+    {
+      "id": "reply-and-state-persist-successfully",
+      "type": "trace_field_equals",
+      "path": "plan_persisted",
+      "expected": true,
+      "turnIndex": 0,
+      "severity": "hard"
+    }
+  ],
+  "budget": {
+    "maxTurns": 1,
+    "estimatedPromptTokensPerTurn": 3500,
+    "estimatedCompletionTokensPerTurn": 300
+  },
+  "scorers": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "weight": 1
+    }
+  ],
+  "seedPlan": {
+    "open_requests": [
+      {
+        "key": "parked-0",
+        "opening_text": "Revisar una devolución",
+        "state": "with_person",
+        "since": "2026-10-22T00:00:00.000Z",
+        "turns": 1
+      },
+      {
+        "key": "parked-1",
+        "opening_text": "Revisar una entrega",
+        "state": "with_person",
+        "since": "2026-10-22T00:00:00.000Z",
+        "turns": 1
+      },
+      {
+        "key": "parked-2",
+        "opening_text": "Corregir una dedicatoria",
+        "state": "with_person",
+        "since": "2026-10-22T00:00:00.000Z",
+        "turns": 1
+      }
+    ]
+  }
+}

@@ -478,8 +478,6 @@ describe('structured extraction schemas', () => {
     const projected = projectExtraction({
       plan: purchase,
       manifest,
-      requestedDomain: 'purchase',
-      candidateOperations: [],
       allowedActionIntents: actionIntentValues,
     });
     const properties = Object.keys(
@@ -504,8 +502,6 @@ describe('structured extraction schemas', () => {
     const rsvpProjected = projectExtraction({
       plan: rsvpPlan,
       manifest,
-      requestedDomain: 'rsvp',
-      candidateOperations: [],
       allowedActionIntents: actionIntentValues,
     });
     const rsvpProperties = Object.keys(

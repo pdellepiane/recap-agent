@@ -1080,7 +1080,7 @@ export class InformationOrchestrator {
           message: 'La consulta de información general no está disponible en este momento. Puedo comunicarte con una persona del equipo.',
         };
       }
-      const retrieval = request.hostWithdrawal
+      const retrieval = request.hostWithdrawal === 'individual_status'
         ? await this.dependencies.knowledgeGateway.search(hostWithdrawalPolicyQuery, { rewriteQuery: false })
         : await this.dependencies.knowledgeGateway.search(request.query);
       if (retrieval.status === 'success') {
@@ -1088,7 +1088,10 @@ export class InformationOrchestrator {
           const parsed = parseHostWithdrawalPolicy(retrieval.evidence);
           return {
             requestId: request.requestId, kind: 'faq', status: 'completed',
-            evidence: parsed.policy ? parsed.evidence : retrieval.evidence, hostWithdrawalPolicy: parsed.policy,
+            feeTopic: request.feeTopic ?? (request.hostWithdrawal ? 'host_withdrawal' : null),
+            evidence: request.hostWithdrawal === 'individual_status' && parsed.policy
+              ? [...parsed.evidence, ...retrieval.evidence.filter((entry) => entry.filename !== 'donde-va-el-dinero.md')]
+              : retrieval.evidence, hostWithdrawalPolicy: parsed.policy,
             citationUrl: firstFullArticleSourceUrl(retrieval.evidence),
             openAiTransport: retrieval.openAiTransport,
           };
@@ -1097,6 +1100,7 @@ export class InformationOrchestrator {
           requestId: request.requestId,
           kind: 'faq',
           status: 'completed',
+          feeTopic: request.feeTopic ?? null,
           evidence: retrieval.evidence,
           citationUrl: firstFullArticleSourceUrl(retrieval.evidence),
           openAiTransport: retrieval.openAiTransport,

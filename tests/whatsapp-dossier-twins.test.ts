@@ -89,7 +89,7 @@ type TwinTurnResult = {
 
 /** The sidecar the scripted model reports on the turn being replayed. */
 function neutralSidecar(): SupportReplySidecar {
-  return { citedOrderIds: [], reportedPayment: null, claimedHandoff: false };
+  return { citedOrderIds: [], reportedPayment: null, requestOutcome: 'unresolved', financialReconciliationRequired: false, claimedHandoff: false };
 }
 
 function knowledgeGateway(): KnowledgeRetrievalGateway {
@@ -198,17 +198,23 @@ async function createHarness(args: {
   readonly gateway: FixtureAgentConversationGateway;
   readonly answers: readonly ScriptedAnswer[];
   readonly planStore?: InMemoryPlanStore;
+  readonly replyFailures?: readonly Error[];
 }): Promise<TwinHarness> {
   const router = new ScriptedSupportLaneRouter({ answers: args.answers });
   const harness: {
     sidecar: SupportReplySidecar;
   } = { sidecar: neutralSidecar() };
+  const replyFailures = [...(args.replyFailures ?? [])];
   const runtime = new ScriptedAgentRuntime(
     [neutralExtraction()],
-    () => ({
+    () => {
+      const failure = replyFailures.shift();
+      if (failure) throw failure;
+      return {
       text: 'Respuesta generada por el modelo.',
       sidecar: harness.sidecar,
-    }),
+      };
+    },
   );
   const provider = providerGateway();
   const planStore = args.planStore ?? new InMemoryPlanStore();
@@ -363,6 +369,7 @@ describe('offline twin A — Wilfredo: settlement latency and the repeated open 
       })),
     });
 
+    harness.sidecar = { ...neutralSidecar(), financialReconciliationRequired: true };
     const results = await harness.replay(TURNS_A);
 
     // The record, not the money classification, drives the escalation: the
@@ -696,7 +703,7 @@ describe('offline twin D — Silvia: the terse loop escalates from the unresolve
       answers: TURNS_D.map((_turn, index) => ({
         route: 'answer_with_records' as const,
         sameOpenRequest: index > 0,
-        requestSettled: true,
+        requestSettled: false,
       })),
     });
     // The guest reports the Plin payment on the receipt turn: the model
@@ -709,7 +716,7 @@ describe('offline twin D — Silvia: the terse loop escalates from the unresolve
         method: 'Plin',
         claimedSuccess: true,
       },
-      claimedHandoff: false,
+      requestOutcome: 'unresolved', financialReconciliationRequired: true, claimedHandoff: false,
     };
 
     const results = await harness.replay(TURNS_D);
@@ -718,7 +725,7 @@ describe('offline twin D — Silvia: the terse loop escalates from the unresolve
     // payment: the payment is the client's claim, and it only reaches the
     // runtime after the compose of that turn. The outcome of the receipt
     // turn is therefore the resolved one.
-    expect(results[0]?.response.plan.support_outcome.unresolved_money).toBe(false);
+    expect(results[0]?.response.plan.support_outcome.unresolved_money).toBe(true);
     const purchaseSummaries = results[0]?.response.trace.information_execution_summary ?? [];
     expect(
       purchaseSummaries.some((summary) => summary.kind === 'purchase' && summary.status === 'completed'),
@@ -755,7 +762,7 @@ describe('offline twin D — Silvia: the terse loop escalates from the unresolve
     const escalationInput = harness.router.inputs[escalationIndex];
     expect(escalationInput?.plan.open_requests.at(-1)).toMatchObject({
       state: 'unresolved',
-      turns: 2,
+      turns: 1,
     });
     expect(results[escalationIndex]?.response.plan.human_escalation.status).toBe('requested');
     expect(gateway.getFixtureCallCount('handoff.write')).toBe(1);
@@ -764,13 +771,10 @@ describe('offline twin D — Silvia: the terse loop escalates from the unresolve
         ?.resultStatus,
     ).toBe('success');
 
-    // The health is derived from the record: the request is already on its
-    // second unresolved turn, so the turn is stalled and the record itself
-    // escalated the thread.
+    // The first delivered compose already recorded the financial dispute;
+    // its next continuation escalates without requiring a second limitation reply.
     expect(results[escalationIndex]?.response.plan.conversation_health).toMatchObject({
-      status: 'stalled',
-      reason: 'repeated_question',
-      consecutive_non_progress_turns: 2,
+      status: 'uncertain', reason: 'insufficient_context', consecutive_non_progress_turns: 1,
     });
     expect(harness.runtime.extractRequests).toHaveLength(0);
     for (const result of results) {
@@ -802,7 +806,7 @@ describe('offline twin E — multi-purchase ambiguity: the clarification claims 
     harness.sidecar = {
       citedOrderIds: targetOrderIds,
       reportedPayment: null,
-      claimedHandoff: false,
+      requestOutcome: 'unresolved', financialReconciliationRequired: false, claimedHandoff: false,
     };
 
     const results = await harness.replay(TURNS_E);
@@ -847,7 +851,7 @@ describe('offline twin — a failed handoff never carries a success claim', () =
     harness.sidecar = {
       citedOrderIds: [],
       reportedPayment: null,
-      claimedHandoff: true,
+      requestOutcome: 'unresolved', financialReconciliationRequired: false, claimedHandoff: true,
     };
 
     const results = await harness.replay([
@@ -868,6 +872,30 @@ describe('offline twin — a failed handoff never carries a success claim', () =
       gateway.getFixtureReceipts().find((receipt) => receipt.operation === 'handoff.write')
         ?.resultStatus,
     ).toBe('failed');
+  });
+});
+
+describe('handoff reply schema recovery', () => {
+  it.each([
+    { failures: ['ModelBehaviorError'], calls: 2, delivery: 'send' },
+    { failures: ['ModelBehaviorError', 'ModelBehaviorError'], calls: 2, delivery: 'failure' },
+    { failures: ['TimeoutError'], calls: 1, delivery: 'failure' },
+    { failures: ['OutputGuardrailTripwireTriggered'], calls: 1, delivery: 'failure' },
+  ])('bounds composition recovery for $failures', async ({ failures, calls, delivery }) => {
+    const gateway = await createGateway(SCENARIO_A);
+    const harness = await createHarness({ gateway,
+      answers: [{ route: 'escalate_human', sameOpenRequest: false, requestSettled: false }],
+      replyFailures: failures.map((name) => Object.assign(new Error('test failure'), { name })),
+    });
+    const [{ response }] = await harness.replay([{ text: 'Quiero que una persona revise mi pago.' }]);
+    expect(harness.runtime.composeRequests).toHaveLength(calls);
+    expect(gateway.getFixtureCallCount('handoff.write')).toBe(1);
+    expect(response.plan.human_escalation.status).toBe('requested');
+    expect(response.outbound.delivery.action).toBe(delivery);
+    if (calls === 2) {
+      expect(harness.runtime.composeRequests[1]).toEqual(harness.runtime.composeRequests[0]);
+      expect(harness.runtime.composeRequests[1]?.handoffOutcome).toBe('handoff_requested');
+    }
   });
 });
 

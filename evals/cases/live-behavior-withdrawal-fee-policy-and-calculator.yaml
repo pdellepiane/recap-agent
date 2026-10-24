@@ -1,0 +1,111 @@
+{
+  "template": "template.base-live",
+  "id": "live_behavior.withdrawal_fee_policy_and_calculator",
+  "suite": "live_behavior_regression",
+  "version": 2,
+  "description": "Reconstructs October 20 withdrawal-cost question. Public FAQ permits fee explanation; the published fee is USD5, not an invented PEN20 conversion. A separate gift-commission calculation uses the public calculator without claiming it converts withdrawal charges.",
+  "tags": [
+    "live",
+    "behavior",
+    "reported-interaction",
+    "october-20-review"
+  ],
+  "targetModes": [
+    "live_lambda"
+  ],
+  "backendFixture": {
+    "scenario": "withdrawal-fee-policy"
+  },
+  "inputs": [
+    {
+      "text": "¿Cuánto cuestan los retiros de mis fondos? Me dijeron que el primero era gratis.",
+      "channel": "whatsapp",
+      "contactPhone": "+51900000422",
+      "sessionId": "withdrawal_fee_policy_and_calculator",
+      "backendFixture": {
+        "scenario": "withdrawal-fee-policy"
+      }
+    },
+    {
+      "text": "¿Y cuánto sería en soles para retirar 1500?",
+      "channel": "whatsapp",
+      "contactPhone": "+51900000422",
+      "sessionId": "withdrawal_fee_policy_and_calculator",
+      "backendFixture": {
+        "scenario": "withdrawal-fee-policy"
+      }
+    },
+    {
+      "text": "Otra consulta: para un regalo de 50 soles, ¿cuánto pagaría mi invitado de comisión?",
+      "channel": "whatsapp",
+      "contactPhone": "+51900000422",
+      "sessionId": "withdrawal_fee_policy_and_calculator",
+      "backendFixture": {
+        "scenario": "withdrawal-fee-policy"
+      }
+    }
+  ],
+  "expectations": [
+    {
+      "id": "handoff-effects",
+      "type": "fixture_effect_count",
+      "operation": "handoff.write",
+      "expectedAttempts": 0,
+      "expectedSuccesses": 0,
+      "expectedReplays": 0,
+      "severity": "hard"
+    },
+    {
+      "id": "published-additional-fee",
+      "type": "text_contains",
+      "regex": [
+        "(?:US\\$|USD\\s*|\\$)\\s*5(?:\\D|$)"
+      ],
+      "turnIndex": 0,
+      "severity": "hard"
+    },
+    {
+      "id": "calculator-for-separate-gift-commission",
+      "type": "text_contains",
+      "allOf": [
+        "https://sinenvolturas.com/coste-del-servicio"
+      ],
+      "turnIndex": 2,
+      "severity": "hard"
+    },
+    {
+      "id": "no-invented-pen-equivalent",
+      "type": "text_not_contains",
+      "phrases": [
+        "S/20",
+        "S/ 20",
+        "20 soles"
+      ],
+      "turnIndex": 1,
+      "severity": "hard"
+    },
+    {
+      "id": "no-private-auth-or-withdrawal-effects",
+      "type": "tool_usage",
+      "mustNotCall": [
+        "auth_by_phone",
+        "request_user_login_code",
+        "verify_user_login_code",
+        "guest_rsvp"
+      ],
+      "severity": "hard"
+    }
+  ],
+  "budget": {
+    "maxTurns": 3,
+    "estimatedPromptTokensPerTurn": 3500,
+    "estimatedCompletionTokensPerTurn": 300
+  },
+  "scorers": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "weight": 1
+    }
+  ]
+}

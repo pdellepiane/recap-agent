@@ -2,12 +2,23 @@ import { describe, expect, it } from 'vitest';
 import type { InformationTaskResult } from '../src/core/information';
 import {
   unsupportedCommissionNumericClaims,
+  requestedFeeTopics,
   verifiedCommissionArticle,
 } from '../src/runtime/commission-grounding';
 
 const article = 'Si el regalo es US$100, el invitado paga $105 y el anfitrión recibe $95. Tarjeta: 3.59% y 0.50 en soles.';
 
 describe('commission numeric grounding', () => {
+  it('keeps the question topic distinct from article identity and merges explicit mixed requests', () => {
+    expect([...requestedFeeTopics([{ kind: 'faq', query: 'What does the withdrawal cost?',
+      hostWithdrawal: 'policy_only' }], undefined)]).toEqual(['host_withdrawal']);
+    expect([...requestedFeeTopics([{ kind: 'faq', query: 'Compare both policies', feeTopic: 'mixed' }], undefined)])
+      .toEqual(['gift_commission', 'host_withdrawal']);
+    expect(requestedFeeTopics([{ kind: 'faq', query: 'General policy' }], [{
+      kind: 'faq', status: 'completed', requestId: 'faq', citationUrl: 'https://sinenvolturas.tawk.help/article/cuanto-cuesta',
+      evidence: [{ fileId: 'f', filename: 'cuanto-cuesta.md', score: 1, text: article }],
+    }]).size).toBe(0);
+  });
   it('allows only source, user-stated or verified quote values', () => {
     const base = { articleText: article, userMessage: '¿Y si aporta S/50?' };
     expect(unsupportedCommissionNumericClaims({

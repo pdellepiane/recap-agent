@@ -3,7 +3,6 @@ import path from 'node:path';
 
 import YAML from 'yaml';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { z } from 'zod';
 
 import { hashPrivateOutput } from '../src/audit/output-origin';
 import { createEmptyPlan } from '../src/core/plan';
@@ -13,6 +12,7 @@ import {
   buildFixtureEffectSummariesFromReceipts,
   snapshotEvaluationTurns,
 } from '../src/evals/evaluation-state';
+import { liveBehaviorCoverageSchema, validateCoverageImplementationEvidence } from '../src/evals/live-behavior-coverage';
 import { EvalLoader } from '../src/evals/loader';
 import {
   adjudicateDiagnosticCause,
@@ -397,15 +397,10 @@ describe('packet E2 bounded runner and complete fixture preflight need no extern
 describe('packet E2 coverage linkage', () => {
   it('every e2 entry points at a mandatory-suite case with hard structure and no semantic judge', async () => {
     const evalDirectory = path.resolve(process.cwd(), 'evals');
-    const registry = z.object({
-      behaviorChanges: z.array(z.object({
-        id: z.string().min(1),
-        implementedBy: z.string().regex(/^[0-9a-f]{7,40}$/u),
-        liveCaseIds: z.array(z.string().min(1)).min(1),
-      })).min(1),
-    }).parse(YAML.parse(
+    const registry = liveBehaviorCoverageSchema.parse(YAML.parse(
       await fs.readFile(path.join(evalDirectory, 'live-behavior-coverage.yaml'), 'utf8'),
     ) as unknown);
+    expect(await validateCoverageImplementationEvidence(registry, process.cwd())).toEqual([]);
     const catalog = await new EvalLoader(evalDirectory).loadCatalog();
     const suite = catalog.suites.find((candidate) => candidate.id === 'live_behavior_regression');
     const registered = new Set(suite?.caseIds ?? []);

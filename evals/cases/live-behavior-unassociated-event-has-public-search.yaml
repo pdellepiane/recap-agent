@@ -1,0 +1,73 @@
+{
+  "template": "template.base-live",
+  "id": "live_behavior.unassociated_event_has_public_search",
+  "suite": "live_behavior_regression",
+  "version": 1,
+  "description": "Reconstructs Bonnie feedback with supplied names and no phone association. Provide public search without inventing event details, requiring login or changing attendance.",
+  "tags": [
+    "live",
+    "behavior",
+    "reported-interaction",
+    "october-20-review"
+  ],
+  "targetModes": [
+    "live_lambda"
+  ],
+  "backendFixture": {
+    "scenario": "public-event-unassociated"
+  },
+  "inputs": [
+    {
+      "text": "Soy prima de la novia, mi número no es peruano. Quiero confirmar hora y lugar de la boda de Alexandra Toledo y Alejandro Castillo. ¿Es en Molino Blanco?",
+      "channel": "whatsapp",
+      "contactPhone": "+51900000421",
+      "sessionId": "unassociated_event_has_public_search",
+      "backendFixture": {
+        "scenario": "public-event-unassociated"
+      }
+    }
+  ],
+  "expectations": [
+    {
+      "id": "public-search-destination",
+      "type": "text_contains",
+      "allOf": [
+        "https://sinenvolturas.com/buscar"
+      ],
+      "turnIndex": 0,
+      "severity": "hard"
+    },
+    {
+      "id": "handoff-effects",
+      "type": "fixture_effect_count",
+      "operation": "handoff.write",
+      "expectedAttempts": 0,
+      "expectedSuccesses": 0,
+      "expectedReplays": 0,
+      "severity": "hard"
+    },
+    {
+      "id": "no-private-auth-or-mutations",
+      "type": "tool_usage",
+      "mustNotCall": [
+        "auth_by_phone",
+        "request_user_login_code",
+        "verify_user_login_code",
+        "guest_rsvp"
+      ],
+      "severity": "hard"
+    }
+  ],
+  "budget": {
+    "maxTurns": 1,
+    "estimatedPromptTokensPerTurn": 3500,
+    "estimatedCompletionTokensPerTurn": 300
+  },
+  "scorers": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "weight": 1
+    }
+  ]
+}

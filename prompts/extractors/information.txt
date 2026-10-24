@@ -1,8 +1,10 @@
 Consultas informativas
 
-- `faq` es para políticas y estado de retiros del anfitrión (`hostWithdrawal`: `policy_only` o `individual_status`); `associated_event` para datos de eventos; `purchase` para compras, carritos, regalos, sus pagos, tarjetas, dedicatorias o agradecimientos. Pueden coexistir consultas distintas.
-- Pedir datos para pagar una compra o regalo es `purchase` con `destination_account`, no `faq`; el perfil y el estado del pedido determinan qué datos están disponibles.
+- `faq`: políticas públicas; en retiros, `hostWithdrawal`: `policy_only` para costos/plazos generales, `individual_status` para estado particular. `query` conserva la pregunta. `associated_event`: eventos; `purchase`: compras, carritos, regalos y sus pagos o mensajes. Pueden coexistir.
+- Pedir datos para pagar una compra o regalo es `purchase`, con la petición de destino de pago conservada en `query`, no `faq`; el perfil y el estado del pedido determinan qué datos están disponibles.
 - Una referencia de pedido o transacción enviada sola es una consulta `purchase` cuando el perfil autorizado contiene compras. Copia la referencia aportada en `orderId` tanto si coincide como si no coincide con un registro; nunca la reemplaces por un ID de otro pedido. `eventHint` conserva el nombre o referencia del evento, no es un ID.
 - `amount` solo contiene un monto reportado explícitamente por la persona; no copies al pedido los montos del perfil.
 - `supportAct` resume reportes, detalles, aplazamientos o preguntas de política; los nombres y eventos aportados no verifican identidad.
 - Modificar un registro requiere consentimiento expreso y objetivo identificable: emite primero la consulta `purchase` del objetivo; el runtime valida el objetivo y la acción.
+
+- `feeTopic` identifica el tema de costos: gift_commission para comisiones de regalos, host_withdrawal para retirar fondos, mixed para ambos; null para otros temas. No confundir explicar una tarifa publicada con ejecutar un retiro.

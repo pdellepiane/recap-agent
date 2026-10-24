@@ -670,7 +670,7 @@ export function redactPublicResponseText(
     .replace(/https?:\/\/[^\s"'<>]+/giu, (match) => {
       const suffix = match.match(/[.,;:!?)]+$/u)?.[0] ?? '';
       const url = match.slice(0, match.length - suffix.length);
-      return url === publicCalculatorUrl || url.startsWith(publicProviderDirectoryUrlPrefix) || prefixes.some((prefix) => url.startsWith(prefix))
+      return (url === publicCalculatorUrl || url === 'https://sinenvolturas.com/buscar') || url.startsWith(publicProviderDirectoryUrlPrefix) || prefixes.some((prefix) => url.startsWith(prefix))
         ? match
         : `[redacted-url]${suffix}`;
     })

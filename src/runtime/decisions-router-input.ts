@@ -10,7 +10,6 @@
  * prompt template and returns the string. The template is loaded separately
  * through the PromptLoader.
  */
-import { currentOpenRequest, type OpenRequest, type OpenRequestState } from '../core/open-request';
 import type { PlanSnapshot } from '../core/plan';
 import type { CapabilityDigest } from './capability-digest';
 import type { CustomerContextSnapshot } from './customer-context';
@@ -30,7 +29,7 @@ export type RouterMessagePreview = {
 };
 
 /** Plan facts the router reads. Structurally a `PlanSnapshot` subset. */
-export type RouterPlanState = Pick<PlanSnapshot, 'conversation_health' | 'open_requests'>;
+export type RouterPlanState = Pick<PlanSnapshot, 'conversation_health' | 'open_requests'> & Partial<Pick<PlanSnapshot, 'human_help_receipt'>>;
 
 export type RouterInputArgs = {
   readonly currentMessage: RouterCurrentMessage;
@@ -115,28 +114,11 @@ export function buildRouterInput(args: RouterInputArgs, template: string): strin
     botClaimedDerivationPending: String(
       args.plan.conversation_health.help_offer_status === 'offered',
     ),
-    openRequest: JSON.stringify(openRequestDigest(args.plan.open_requests)),
+    openRequest: JSON.stringify(args.plan.open_requests.map((request) => ({
+      clave: request.key, texto_inicial: request.opening_text, estado: request.state, turnos: request.turns,
+    }))),
   };
   return renderTemplate(template, values);
-}
-
-/**
- * The record the router reads: one request or none. It carries no
- * interpretation, so the router can answer `same_open_request` from it instead
- * of guessing whether the conversation feels repeated.
- */
-function openRequestDigest(
-  requests: readonly OpenRequest[],
-): { texto_inicial: string; estado: OpenRequestState; turnos: number } | null {
-  const current = currentOpenRequest(requests);
-  if (current === null) {
-    return null;
-  }
-  return {
-    texto_inicial: current.opening_text,
-    estado: current.state,
-    turnos: current.turns,
-  };
 }
 
 /** Every authorized purchase, in snapshot order. Nothing is dropped. */

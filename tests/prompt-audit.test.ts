@@ -37,15 +37,16 @@ describe('prompt audit', () => {
 });
 
 describe('prompt inventory', () => {
-  it('maps every prompt file to at least one consumer and zero unmapped', async () => {
+  it('maps real consumers and exposes unwired historical files honestly', async () => {
     const inventory = await buildPromptInventory({
       promptsDir: path.resolve(process.cwd(), 'prompts'),
     });
     expect(inventory.totalFiles).toBe(inventory.entries.length); // 2026-09-22 Owner B B9: +shared/reply_core.txt (production reply core)
     expect(inventory.unmappedFiles).toEqual([]);
+    expect(inventory.entries.filter((entry) => entry.classification === 'archived')).toHaveLength(2);
     expect(inventory.entries.length).toBeGreaterThan(0);
     for (const entry of inventory.entries) {
-      expect(entry.consumers.length).toBeGreaterThan(0);
+      expect(entry.consumers.length > 0).toBe(entry.classification === 'production' || entry.classification === 'audit_only');
       expect(entry.filePath).toBeTruthy();
     }
     const sharedBase = inventory.entries.find((entry) => entry.filePath === 'shared/base_system.txt');

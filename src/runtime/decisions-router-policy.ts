@@ -30,6 +30,7 @@ export type RouterPolicyOutcome =
   | { readonly kind: 'escalate'; readonly reason: RouterEscalationReason }
   | { readonly kind: 'offer_human' }
   | { readonly kind: 'answer' }
+  | { readonly kind: 'information' }
   | { readonly kind: 'clarify' }
   | { readonly kind: 'suppress_ack' }
   | { readonly kind: 'planning' }
@@ -48,6 +49,9 @@ export type RouterPolicyInput = {
   readonly current: OpenRequest | null;
   /** True when an offer of human help is already open on this thread. */
   readonly helpOfferPending: boolean;
+  /** New evidence or explicit withdrawal can resolve the old request without escalation. */
+  readonly requestSettled?: boolean;
+  readonly takeoverConfirmed?: boolean;
 };
 
 /**
@@ -74,8 +78,10 @@ export function decideRouterPolicy(input: RouterPolicyInput): RouterPolicyOutcom
   if (sameRequest && current.state === 'with_person') {
     return { kind: 'pause' };
   }
-  if (sameRequest && current.state === 'unresolved') {
-    return { kind: 'escalate', reason: 'unresolved_request_repeated' };
+  if (sameRequest && current.state === 'unresolved' && !input.requestSettled) {
+    return input.takeoverConfirmed
+      ? { kind: 'pause' }
+      : { kind: 'escalate', reason: 'unresolved_request_repeated' };
   }
   switch (input.route) {
     case 'escalate_human':
@@ -84,11 +90,13 @@ export function decideRouterPolicy(input: RouterPolicyInput): RouterPolicyOutcom
       // about something else. That case cannot be escalated: the conversation
       // already has a person, and repeating the handoff would only let the
       // reply claim a review instead of answering what was asked.
-      return current?.state === 'with_person'
+      return input.takeoverConfirmed || current?.state === 'with_person'
         ? { kind: 'answer' }
         : { kind: 'escalate', reason: 'explicit_person_request' };
     case 'offer_human':
       return input.helpOfferPending ? { kind: 'answer' } : { kind: 'offer_human' };
+    case 'information_flow':
+      return { kind: 'information' };
     case 'answer_with_records':
       return { kind: 'answer' };
     case 'ask_clarification':

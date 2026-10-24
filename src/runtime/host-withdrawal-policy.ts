@@ -1,5 +1,17 @@
 import type { KnowledgeEvidence } from '../core/information';
 
+const publicWithdrawalSources = new Map([
+  ['donde-va-el-dinero.md', 'https://sinenvolturas.tawk.help/article/donde-va-el-dinero'],
+  ['cuanto-cuesta.md', 'https://sinenvolturas.tawk.help/article/cuanto-cuesta'],
+  ['cuanto-cuesta-invitados.md', 'https://sinenvolturas.tawk.help/article/cuanto-cuesta-invitados'],
+]);
+
+/** Public fee text must retain the identity validated by full-article retrieval. */
+export function verifiedPublicWithdrawalEvidence(evidence: readonly KnowledgeEvidence[]): KnowledgeEvidence[] {
+  return evidence.filter((entry) => entry.fullArticle === true && publicWithdrawalSources.has(entry.filename) &&
+    entry.sourceUrl === publicWithdrawalSources.get(entry.filename));
+}
+
 export const hostWithdrawalPolicyQuery =
   'Plazo solicitud de transferencia de fondos al anfitrión: días hábiles hasta recibir el retiro en la cuenta bancaria';
 

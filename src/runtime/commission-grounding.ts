@@ -1,4 +1,27 @@
-import type { InformationTaskResult } from '../core/information';
+import type { ExtractedInformationRequest, FaqFeeTopic, InformationTaskResult } from '../core/information';
+
+/** The structured question selects fee rules; a shared article cannot identify the topic. */
+export function requestedFeeTopics(
+  requests: readonly ExtractedInformationRequest[],
+  results: readonly InformationTaskResult[] | undefined,
+): ReadonlySet<Exclude<FaqFeeTopic, 'mixed'>> {
+  const topics = new Set<Exclude<FaqFeeTopic, 'mixed'>>();
+  const add = (topic: FaqFeeTopic | null | undefined): void => {
+    if (topic === 'mixed') {
+      topics.add('gift_commission');
+      topics.add('host_withdrawal');
+    } else if (topic) topics.add(topic);
+  };
+  for (const request of requests) {
+    if (request.kind !== 'faq') continue;
+    add(request.feeTopic);
+    if (request.hostWithdrawal) topics.add('host_withdrawal');
+  }
+  for (const result of results ?? []) {
+    if (result.kind === 'faq' && result.status === 'completed') add(result.feeTopic);
+  }
+  return topics;
+}
 
 const commissionArticleUrls = new Set([
   'https://sinenvolturas.tawk.help/article/cuanto-cuesta',

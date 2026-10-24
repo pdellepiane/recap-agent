@@ -38,6 +38,7 @@ function policyInput(overrides: Partial<RouterPolicyInput> = {}): RouterPolicyIn
 /** What the route alone decides when the record does not fire. */
 const routeOutcome: Record<RouterRoute, RouterPolicyOutcome> = {
   answer_with_records: { kind: 'answer' },
+  information_flow: { kind: 'information' },
   ask_clarification: { kind: 'clarify' },
   offer_human: { kind: 'offer_human' },
   escalate_human: { kind: 'escalate', reason: 'explicit_person_request' },
@@ -206,4 +207,9 @@ describe('decisions router policy', () => {
       current: openRequest('needs_input'),
     }))).toEqual({ kind: 'clarify' });
   });
+});
+
+it('does not recompose a repeated escalation when a confirmed thread receipt already owns an unresolved request', () => {
+  expect(decideRouterPolicy(policyInput({ current: openRequest('unresolved'), sameOpenRequest: true,
+    route: 'escalate_human', takeoverConfirmed: true, requestSettled: false }))).toEqual({ kind: 'pause' });
 });

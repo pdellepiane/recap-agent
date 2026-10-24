@@ -35,7 +35,7 @@ function createRuntimeForTokenUsageTests(
     replyProviderLimit: 4,
     presentationProviderLimit: 5,
     providerDetailLookupLimit: 3,
-    promptLoader: {} as never,
+    promptLoader: new PromptLoader(path.resolve('prompts')),
     providerGateway: {} as never,
     features,
   });
@@ -143,6 +143,20 @@ describe('host withdrawal minimum disclosure and role correction', () => {
     expect(JSON.stringify(unsupportedWindow)).toContain('hasta que el anfitrión solicita su retiro');
     expect(Buffer.byteLength(JSON.stringify(policy))).toBeLessThan(210);
     expect(JSON.stringify(policy)).not.toMatch(/Raw|123|USD5|approved|tomorrow|evidence|private/u);
+
+    const publicFeeText = 'Primera transferencia sin descuento; las siguientes cuestan USD5. Las solicitudes se procesan en hasta 72 horas hábiles.';
+    const verifiedFee = runtime.projectInformationResultForReply({
+      requestId: 'public-fee', kind: 'faq', status: 'completed', feeTopic: 'host_withdrawal',
+      hostWithdrawalPolicy: { maxBusinessHours: 72 }, evidence: [
+        { fileId: 'official', filename: 'donde-va-el-dinero.md', score: 1, fullArticle: true,
+          sourceUrl: 'https://sinenvolturas.tawk.help/article/donde-va-el-dinero', text: publicFeeText },
+        { fileId: 'operational', filename: 'atc-template-new-solicitud-de-fondos.md', score: 1,
+          text: 'Account 123; payment approved; delivery tomorrow.' },
+      ],
+    });
+    expect(JSON.stringify(verifiedFee)).toContain(publicFeeText);
+    expect(verifiedFee).toMatchObject({ processingPolicy: { maxBusinessHours: 72 }, feeTopic: 'host_withdrawal' });
+    expect(JSON.stringify(verifiedFee)).not.toMatch(/Account|123|approved|tomorrow/u);
   });
 });
 
@@ -520,7 +534,7 @@ describe('OpenAiAgentRuntime token usage parsing', () => {
 });
 
 describe('OpenAiAgentRuntime capability context', () => {
-  it('carries curated channel history in extractor and reply inputs with inference-first guidance', () => {
+  it('carries curated history facts and tracked conditional follow-up guidance', async () => {
     const runtime = createRuntimeForTokenUsageTests();
     const request = createComposeRequest('resolver_consultas_informativas');
     request.userMessage = 'No ha llegado nada';
@@ -619,7 +633,12 @@ describe('OpenAiAgentRuntime capability context', () => {
     );
     expect(packetCInput).toContain('¿Cuándo es el cumpleaños de Marta?');
     expect(packetCInput).toContain('El cumpleaños de Marta es el 20 de septiembre.');
-    expect(packetCInput).toContain('en lugar de marcar ambiguedad');
+    expect(packetCInput).toContain('"interpretation_scope":"unanchored_followup"');
+    const actualSpec = await runtime.buildExtractionRequestSpec({
+      userMessage: '¿Y la Boda Ana y Luis?', plan: packetCRequest.plan, messageContext: packetCRequest.messageContext,
+    });
+    expect(actualSpec.filePaths).toContain('extractors/continuity.txt');
+    expect(actualSpec.input).not.toContain('extrae el tema');
     expect(packetCInput).not.toContain('devuelve ambiguedad con UNA sola pregunta contextual');
   });
 
@@ -1153,7 +1172,7 @@ function createRuntimeWithKnowledgeBase(): OpenAiAgentRuntime {
     replyProviderLimit: 4,
     presentationProviderLimit: 5,
     providerDetailLookupLimit: 3,
-    promptLoader: {} as never,
+    promptLoader: new PromptLoader(path.resolve('prompts')),
     providerGateway: {} as never,
     knowledgeBase: {
       enabled: true,

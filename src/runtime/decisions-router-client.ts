@@ -1,10 +1,9 @@
 /**
  * WP2 — Decisions API router: the isolated client.
  *
- * The installed `openai` SDK has no `decisions` resource, so the router uses
- * its own raw-fetch client instead of upgrading the SDK or touching the
- * agents runtime. The vendor shape stops here: everything downstream sees
- * typed answers and a discriminated result.
+ * The Decisions API is GA and the installed `openai` SDK exposes it as
+ * `client.decisions.create`. The vendor shape stops here: everything
+ * downstream sees typed answers and a discriminated result.
  *
  * The client NEVER throws upstream errors to its caller. A failure becomes
  * the `unavailable` branch so the turn flow can fall back to the existing
@@ -12,6 +11,8 @@
  */
 import crypto from 'node:crypto';
 
+import OpenAI from 'openai';
+import type { Decision, DecisionCreateParams } from 'openai/resources/decisions';
 import { z } from 'zod';
 
 import type { RouterDecisionTrace } from '../core/trace';
@@ -24,12 +25,10 @@ import type {
 import {
   isRouterRoute,
   routerRequestSettledValues,
-  routerSameOpenRequestValues,
   type RouterQuestion,
   type RouterQuestionName,
   type RouterRequestSettledAnswer,
   type RouterRoute,
-  type RouterSameOpenRequestAnswer,
 } from './decisions-router-questions';
 import { executeOpenAiStage, type OpenAiStageLog } from './openai-stage-execution';
 import { classifyOpenAiRetry } from './openai-retry';
@@ -61,6 +60,7 @@ export type RouterParsedAnswers = {
   readonly routeProbabilities: readonly RouterRouteProbability[];
   /** Whether this turn is about the request the record already holds. */
   readonly sameOpenRequest: boolean;
+  readonly selectedRequestKey: string | null;
   /** Probability the API assigned to the chosen value. */
   readonly sameOpenRequestProbability: number;
   /** Whether the turn leaves the request settled. */
@@ -157,24 +157,58 @@ export async function runDecisionsRouter(
   if (options.questions.length === 0) {
     return unavailable('missing_questions', false);
   }
+  // GA invariant: every choice question carries between 2 and 255 options.
+  // The binding omits same_open_request when nothing is retained, so a
+  // single-choice question here is a programming error, not a conversation.
+  if (options.questions.some((question) => question.choices.length < 2 || question.choices.length > 255)) {
+    return unavailable('invalid_question_choices', false);
+  }
 
-  const body = JSON.stringify({
+  const params: DecisionCreateParams = {
     model: options.model,
     input: options.input,
-    questions: options.questions,
-  });
-  const url = `${options.baseUrl.replace(/\/+$/u, '')}/decisions`;
+    questions: options.questions.map((question) => ({
+      type: 'choice',
+      name: question.name,
+      instructions: question.instructions,
+      choices: question.choices.map((choice) => ({
+        value: choice.value,
+        description: choice.description,
+      })),
+    })),
+  };
+  // The request body the SDK sends is the serialized params. The metrics and
+  // the request digest are measured from it, never estimated.
+  const body = JSON.stringify(params);
   const instructionBytes = instructionBytesFor(options.questions);
   const inputBytes = Buffer.byteLength(options.input, 'utf8');
   const totalPayloadBytes = Buffer.byteLength(body, 'utf8');
   const maxAttempts = Math.max(1, options.maxAttempts ?? DECISIONS_ROUTER_MAX_ATTEMPTS);
 
+  const client = new OpenAI({
+    apiKey,
+    baseURL: options.baseUrl.replace(/\/+$/u, ''),
+    // The SDK types its fetch port as string | URL | Request. The router only
+    // ever receives the absolute URL string the SDK builds from baseURL.
+    fetch: (input, init) => fetchImpl(
+      typeof input === 'string'
+        ? input
+        : input instanceof URL
+          ? input.toString()
+          : input.url,
+      init,
+    ),
+    maxRetries: 0,
+    timeout: options.timeoutMs,
+  });
+
   let attemptCount = 0;
   let statusCode: number | null = null;
   let requestId: string | null = null;
+  let stageTimedOut = false;
 
   try {
-    const response = await executeOpenAiStage({
+    const decision = await executeOpenAiStage({
       stage: 'router',
       model: options.model,
       timeoutMs: options.timeoutMs,
@@ -183,27 +217,21 @@ export async function runDecisionsRouter(
         for (let attempt = 1; ; attempt += 1) {
           attemptCount = attempt;
           try {
-            const raw = await fetchImpl(url, {
-              method: 'POST',
-              headers: {
-                authorization: `Bearer ${apiKey}`,
-                'content-type': 'application/json',
-              },
-              body,
+            const response = await client.decisions.create(params, {
               signal,
+              maxRetries: 0,
+              timeout: options.timeoutMs,
             });
-            statusCode = raw.status;
-            requestId = raw.headers.get('x-request-id')
-              ?? raw.headers.get('openai-request-id');
-            const payloadText = await raw.text();
-            if (!raw.ok) {
-              throw new DecisionsRouterHttpError(raw.status);
-            }
-            return { payloadText };
+            statusCode = 200;
+            requestId = readRequestId(response) ?? requestId;
+            return response;
           } catch (error) {
             if (signal.aborted) {
+              stageTimedOut = true;
               throw error;
             }
+            statusCode = readStatusCode(error) ?? statusCode;
+            requestId = readErrorRequestId(error) ?? requestId;
             const classification = classifyOpenAiRetry(error, {
               statusCode: statusCode ?? undefined,
             });
@@ -216,11 +244,11 @@ export async function runDecisionsRouter(
       },
     });
 
-    const parsed = parseDecisionsResponse(response.payloadText);
+    const parsed = parseDecisionsResponse(decision);
     if (parsed === null) {
       return unavailable('malformed_response', false);
     }
-    const answers = parseRouterAnswers(parsed.answers);
+    const answers = parseRouterAnswers(parsed.answers, options.questions);
     if (answers === null) {
       return unavailable('malformed_answers', false);
     }
@@ -287,6 +315,15 @@ export async function runDecisionsRouter(
       decision: toRouterDecisionTrace(answers),
     };
   } catch (error) {
+    // The SDK parses the response body itself; an unparsable body reaches
+    // this boundary as a SyntaxError and stays a malformed response instead
+    // of being reported as a transport failure.
+    if (error instanceof SyntaxError) {
+      return unavailable('malformed_response', false);
+    }
+    if (stageTimedOut) {
+      return unavailable('transient_timeout', true);
+    }
     const classification = classifyOpenAiRetry(error, {
       statusCode: statusCode ?? undefined,
     });
@@ -316,39 +353,58 @@ export function toRouterDecisionTrace(answers: RouterParsedAnswers): RouterDecis
   };
 }
 
-function parseDecisionsResponse(payloadText: string): z.infer<typeof decisionsResponseSchema> | null {
-  let raw: unknown;
-  try {
-    raw = JSON.parse(payloadText);
-  } catch {
-    return null;
-  }
+function parseDecisionsResponse(raw: unknown): z.infer<typeof decisionsResponseSchema> | null {
   const parsed = decisionsResponseSchema.safeParse(raw);
   return parsed.success ? parsed.data : null;
 }
 
 /**
- * Map the three answers onto the typed router answers.
+ * Map the answers onto the typed router answers.
  *
  * A refusal is never an escalation trigger: the refused question contributes
  * its neutral value (route `answer_with_records`, `same_open_request` false so
  * the record opens a new request, `request_settled` false so the reply is not
  * told the turn settled anything) and is listed in `refusals` so the turn flow
  * can report it and keep the record still.
+ *
+ * `same_open_request` is only asked when the plan retains at least one
+ * request: the GA API rejects a choice question with fewer than two options,
+ * and with nothing retained the only truthful answer is `new`.
  */
 function parseRouterAnswers(
   answers: readonly z.infer<typeof answerSchema>[],
+  questions: readonly RouterQuestion[],
 ): RouterParsedAnswers | null {
+  if (answers.length !== questions.length) return null;
+  const seen = new Set<string>();
+  for (const answer of answers) {
+    const question = questions.find((entry) => entry.name === answer.name);
+    if (!question || seen.has(answer.name)) return null;
+    seen.add(answer.name);
+    if (answer.type === 'choice') {
+      const allowed = new Set(question.choices.map((entry) => entry.value));
+      if (!allowed.has(answer.choice)) return null;
+      const probabilities = new Set<string>();
+      for (const entry of answer.probabilities) {
+        if (!allowed.has(entry.value) || probabilities.has(entry.value)) return null;
+        probabilities.add(entry.value);
+      }
+      if (answer.probabilities.length > 0 && !probabilities.has(answer.choice)) return null;
+    }
+  }
+  const sameOpenRequestQuestion = questions.find(
+    (question) => question.name === 'same_open_request',
+  );
   const refusals: RouterQuestionName[] = [];
   let route: RouterRoute = 'answer_with_records';
   let routeProbabilities: readonly RouterRouteProbability[] = [];
-  let sameOpenRequest: RouterSameOpenRequestAnswer = 'new';
+  let sameOpenRequest = 'new';
   let sameOpenRequestProbability = 0;
   let requestSettled: RouterRequestSettledAnswer = 'open';
   let requestSettledProbability = 0;
 
   let sawRoute = false;
-  let sawSameOpenRequest = false;
+  let sawSameOpenRequest = sameOpenRequestQuestion === undefined;
   let sawRequestSettled = false;
 
   for (const answer of answers) {
@@ -372,7 +428,11 @@ function parseRouterAnswers(
         sawRoute = true;
         break;
       case 'same_open_request': {
-        const parsed = parseChoiceValue(answer, routerSameOpenRequestValues);
+        if (sameOpenRequestQuestion === undefined) return null;
+        const parsed = parseChoiceValue(
+          answer,
+          sameOpenRequestQuestion.choices.map((choice) => choice.value),
+        );
         if (parsed === null) return null;
         sameOpenRequest = parsed.value;
         sameOpenRequestProbability = parsed.probability;
@@ -399,7 +459,8 @@ function parseRouterAnswers(
   return {
     route,
     routeProbabilities,
-    sameOpenRequest: sameOpenRequest === 'same',
+    sameOpenRequest: sameOpenRequest !== 'new',
+    selectedRequestKey: sameOpenRequest === 'new' ? null : sameOpenRequest.replace(/^request:/u, ''),
     sameOpenRequestProbability,
     requestSettled: requestSettled === 'settled',
     requestSettledProbability,
@@ -435,6 +496,21 @@ function instructionBytesFor(questions: readonly RouterQuestion[]): number {
   return total;
 }
 
+function readRequestId(decision: Decision): string | null {
+  const value = (decision as { readonly _request_id?: unknown })._request_id;
+  return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+function readStatusCode(error: unknown): number | null {
+  const value = (error as { readonly status?: unknown }).status;
+  return typeof value === 'number' ? value : null;
+}
+
+function readErrorRequestId(error: unknown): string | null {
+  const value = (error as { readonly request_id?: unknown }).request_id;
+  return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
 function unavailable(reason: string, retryable: boolean): DecisionsRouterResult {
   return { status: 'unavailable', reason, retryable };
 }
@@ -443,15 +519,4 @@ async function delay(ms: number): Promise<void> {
   await new Promise<void>((resolve) => {
     setTimeout(resolve, ms);
   });
-}
-
-/** Non-retryable upstream status. The body never travels into the message. */
-class DecisionsRouterHttpError extends Error {
-  readonly status: number;
-
-  constructor(status: number) {
-    super(`Decisions API responded with HTTP ${status}`);
-    this.name = 'DecisionsRouterHttpError';
-    this.status = status;
-  }
 }

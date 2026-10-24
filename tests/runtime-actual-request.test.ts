@@ -30,6 +30,7 @@ import { PromptLoader } from '../src/runtime/prompt-loader';
 import { WAIT_FOLLOWUP_PRIOR_SUMMARY_MAX_CHARS } from '../src/runtime/reply-evidence-projector';
 import { localTurnMessageContext } from '../src/runtime/turn-message-context';
 import { instructionModuleRegistry } from '../src/runtime/prompt-manifest';
+import { auditActualRequestContract } from '../src/audit/prompt-contracts';
 import {
   assembleCustomerContext,
   projectCustomerContext,
@@ -1326,7 +1327,9 @@ describe('actual support continuity and extraction detail', () => {
       ],
     }) as PersistedPlan;
     const detailed = await runtime.buildExtractionRequestSpec(extractRequest('Hola', progressed));
-    expect(detailed.filePaths).toContain('extractors/provider_management.txt');
+    expect(detailed.filePaths).toContain('extractors/provider_operations.txt');
+    expect(detailed.filePaths).toContain('extractors/provider_selection.txt');
+    expect(detailed.filePaths).toContain('extractors/provider_inspection.txt');
     expect(detailed.filePaths).toContain('extractors/contact.txt');
     expect(detailed.filePaths).toContain('extractors/close_pause.txt');
   });
@@ -2065,5 +2068,117 @@ describe('fixture knowledge retrieval seam', () => {
     expect(spec.input).toContain('Lunes a sábado');
     expect(spec.input).toContain('7:30 p.m.');
     expect(spec.input).toContain('horarios-y-canales-de-atención.md');
+  });
+});
+
+describe('fee topics and mixed reply instruction contracts', () => {
+  const published = 'Primera transferencia sin descuento; desde la segunda US$5 o su equivalente en la moneda de la lista.';
+  const feeResult = (feeTopic: 'gift_commission' | 'host_withdrawal' | 'mixed'): InformationTaskResult => ({
+    requestId: 'fee', kind: 'faq', status: 'completed', feeTopic,
+    citationUrl: 'https://sinenvolturas.tawk.help/article/cuanto-cuesta',
+    evidence: [{ fileId: 'fees', filename: 'cuanto-cuesta.md', text: published, score: 1, fullArticle: true,
+      sourceUrl: 'https://sinenvolturas.tawk.help/article/cuanto-cuesta' }],
+    ...(feeTopic !== 'gift_commission' ? { hostWithdrawalPolicy: { maxBusinessHours: 72 } } : {}),
+  });
+
+  it('selects fee contracts by structured topic even when the same article covers both services', async () => {
+    const runtime = testRuntime();
+    for (const topic of ['gift_commission', 'host_withdrawal', 'mixed'] as const) {
+      const spec = await runtime.buildReplyRequestSpec(replyRequest(supportPlan(), {
+        informationResults: [feeResult(topic)],
+      }));
+      const ids = spec.modules.map((module) => module.id);
+      expect(auditActualRequestContract({ spec, context: spec.compilerContext, evidence: { plan: supportPlan() } })).toEqual([]);
+      expect(ids.includes('reply_faq_commission')).toBe(topic !== 'host_withdrawal');
+      expect(ids.includes('reply_withdrawal_fee')).toBe(topic !== 'gift_commission');
+      expect(spec.instructions.includes('https://sinenvolturas.com/coste-del-servicio')).toBe(topic !== 'host_withdrawal');
+      expect(spec.instructions).not.toContain('la FAQ no autoriza cifras');
+      // Optional processing hours cannot displace the fee policy text.
+      expect(spec.input).toContain(published);
+      expect(spec.input.includes('processingPolicy')).toBe(topic !== 'gift_commission');
+      console.info('fee-contract-bytes', JSON.stringify({ topic,
+        instructions: Buffer.byteLength(spec.instructions), input: Buffer.byteLength(spec.input) }));
+    }
+    const unknown = feeResult('gift_commission');
+    if (unknown.kind !== 'faq' || unknown.status !== 'completed') throw new Error('Expected FAQ result');
+    delete unknown.feeTopic;
+    const spec = await runtime.buildReplyRequestSpec(replyRequest(supportPlan(), { informationResults: [unknown] }));
+    expect(spec.modules.map((module) => module.id)).not.toContain('reply_faq_commission');
+  });
+
+  it('allows verified public resources with image evidence while retaining private access restrictions', async () => {
+    const runtime = testRuntime();
+    const missingEvent: InformationTaskResult = { requestId: 'event', kind: 'associated_event',
+      status: 'failed', retryable: false, failureKind: 'not_found', message: 'Scoped absence.' };
+    const spec = await runtime.buildReplyRequestSpec(replyRequest(supportPlan(), {
+      informationResults: [feeResult('gift_commission'), missingEvent],
+      imageEvidence: { status: 'available', reason: null, captionPresent: true },
+    }));
+    expect(spec.modules.map((module) => module.id)).toEqual(expect.arrayContaining([
+      'reply_image_context', 'reply_faq_commission', 'reply_public_event_search',
+    ]));
+    expect(spec.instructions).toContain('https://sinenvolturas.com/buscar');
+    expect(spec.instructions).toContain('https://sinenvolturas.com/coste-del-servicio');
+    expect(spec.instructions).toContain('enlaces privados de acceso');
+    expect(spec.instructions).not.toContain('No reveles enlaces,');
+    expect(spec.scopedTools).toEqual([]);
+    expect(auditActualRequestContract({ spec, context: spec.compilerContext, evidence: { plan: supportPlan() } })).toEqual([]);
+    console.info('mixed-public-image-bytes', JSON.stringify({
+      instructions: Buffer.byteLength(spec.instructions), input: Buffer.byteLength(spec.input) }));
+  });
+
+  it('qualifies completed purchases whose other source failed without hiding ready records', async () => {
+    const partial = purchaseResult('purchase', [purchase('known-order')]);
+    if (partial.kind !== 'purchase' || partial.status !== 'completed') throw new Error('Expected purchase result');
+    partial.coverage = 'partial';
+    partial.sourceCoverage = [
+      { source: 'orders', childId: 'purchase:orders', status: 'completed', count: 1 },
+      { source: 'gift_purchases', childId: 'purchase:gifts', status: 'failed', count: 0 },
+    ];
+    const snapshot = assembleCustomerContext({
+      execution: { results: [partial], summaries: [purchaseSummary('purchase')] },
+      identity: { customerRef: '+51900000001', scope: 'trusted_phone', source: 'agent_api' },
+      currentContext: null, nowIso: NOW,
+    });
+    const spec = await testRuntime().buildReplyRequestSpec(replyRequest(supportPlan(), {
+      informationResults: [partial], customerContext: projectCustomerContext(snapshot),
+    }));
+    expect(spec.modules.map((module) => module.id)).toContain('reply_purchase_partial_failure');
+    expect(spec.input).toContain('known-order');
+    expect(spec.input).toContain('gift_purchases');
+    expect(spec.input).toContain('failed');
+  });
+
+  it('keeps interview collection off pause, final-close and receipt replies', async () => {
+    const runtime = testRuntime();
+    const interview = await runtime.buildReplyRequestSpec(replyRequest(supportPlan(), { currentNode: 'entrevista' }));
+    expect(interview.modules.map((module) => module.id)).toContain('reply_planning_interview');
+    for (const currentNode of ['crear_lead_cerrar', 'guardar_seleccion_reintentar_luego', 'accion_final_exitosa'] as const) {
+      const spec = await runtime.buildReplyRequestSpec(replyRequest(supportPlan(), { currentNode }));
+      expect(spec.modules.map((module) => module.id)).not.toContain('reply_planning_interview');
+      expect(spec.instructions).not.toContain('Prioriza recolectar en un solo mensaje inicial');
+      expect(spec.instructions).not.toContain('pausar o cerrar, confirma guardado temporal');
+    }
+    const paused = await runtime.buildReplyRequestSpec(replyRequest(supportPlan(), {
+      currentNode: 'entrevista', extraction: baseExtraction({ pauseRequested: true }),
+    }));
+    expect(paused.modules.map((module) => module.id)).not.toContain('reply_planning_interview');
+    expect(Buffer.byteLength(paused.instructions)).toBeLessThan(Buffer.byteLength(interview.instructions));
+  });
+});
+
+
+describe('source-bound thank-you instruction applicability', () => {
+  it('loads actor semantics only when a purchase thank-you exists', async () => {
+    const runtime = testRuntime();
+    const without = await runtime.buildReplyRequestSpec(replyRequest(supportPlan(), {
+      informationResults: [purchaseResult('no-thanks', [purchase('ordinary')])],
+    }));
+    const withThanks = await runtime.buildReplyRequestSpec(replyRequest(supportPlan(), {
+      informationResults: [purchaseResult('with-thanks', [{ ...purchase('approved'), isThanked: true }])],
+    }));
+    expect(without.filePaths).not.toContain('nodes/resolver_consultas_informativas/thank_you_provenance.txt');
+    expect(withThanks.filePaths).toContain('nodes/resolver_consultas_informativas/thank_you_provenance.txt');
+    expect(withThanks.compilerContext.hasThankYouRecord).toBe(true);
   });
 });

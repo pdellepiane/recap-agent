@@ -37,6 +37,10 @@ export const openRequestSchema = z.object({
   since: z.string(),
   /** Turns this request has been open, including the turn that opened it. */
   turns: z.number().int().min(1),
+  /** Customer report scoped to this request, never a backend payment receipt. */
+  financial_reconciliation_required: z.boolean().optional(),
+  reported_payment: z.object({ amount: z.number().nullable(), currency: z.string().nullable(),
+    method: z.string().nullable(), claimed_success: z.boolean() }).nullable().optional(),
 });
 
 export type OpenRequest = z.infer<typeof openRequestSchema>;
@@ -112,13 +116,19 @@ export function nextOpenRequestState(args: {
  */
 export function advanceOpenRequests(args: {
   readonly previous: readonly OpenRequest[];
+  readonly selectedRequestKey?: string | null;
   readonly sameOpenRequest: boolean;
   readonly openingText: string;
   readonly nextState: OpenRequestState | null;
   readonly nowIso: string;
   readonly openingKey: string;
 }): readonly OpenRequest[] {
-  const current = currentOpenRequest(args.previous);
+  if (args.selectedRequestKey != null && !args.previous.some((request) => request.key === args.selectedRequestKey)) {
+    throw new Error('Selected request identity does not belong to the retained request set.');
+  }
+  const current = args.selectedRequestKey !== undefined
+    ? args.previous.find((request) => request.key === args.selectedRequestKey) ?? null
+    : currentOpenRequest(args.previous);
   if (args.sameOpenRequest && current !== null) {
     if (args.nextState === null) {
       return args.previous;
@@ -129,7 +139,7 @@ export function advanceOpenRequests(args: {
       since: args.nextState === current.state ? current.since : args.nowIso,
       turns: current.turns + 1,
     };
-    return [...args.previous.slice(0, -1), updated];
+    return args.previous.map((request) => request.key === current.key ? updated : request);
   }
   if (args.nextState === null) {
     return args.previous;

@@ -333,6 +333,61 @@ describe('decisions router client', () => {
     expect(JSON.stringify(result.decision)).not.toContain('mensaje actual');
   });
 
+  it('parses a zero-request question set without same_open_request as a new request', async () => {
+    const zeroRequestQuestions = questions.filter(
+      (question) => question.name !== 'same_open_request',
+    );
+    const payload = answerPayload();
+    const answers = (payload.answers as Record<string, unknown>[])
+      .filter((answer) => answer.name !== 'same_open_request');
+    const fetchMock = makeFetchMock(jsonResponse(200, { ...payload, answers }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await runDecisionsRouter({
+      apiKey: 'test-key',
+      baseUrl: 'https://api.example.test/v1',
+      model: 'gpt-6-luna',
+      timeoutMs: 5_000,
+      input: 'mensaje actual',
+      questions: zeroRequestQuestions,
+    });
+
+    expect(result.status).toBe('ok');
+    if (result.status !== 'ok') return;
+    expect(result.answers.sameOpenRequest).toBe(false);
+    expect(result.answers.selectedRequestKey).toBeNull();
+    expect(result.answers.refusals).toEqual([]);
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    const body = JSON.parse(init.body as string) as { questions: { name: string }[] };
+    expect(body.questions.map((question) => question.name)).toEqual([
+      'route',
+      'request_settled',
+    ]);
+  });
+
+  it('fails closed without a request when a choice question has fewer than two options', async () => {
+    const fetchMock = makeFetchMock(jsonResponse(200, answerPayload()));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await runDecisionsRouter({
+      apiKey: 'test-key',
+      baseUrl: 'https://api.example.test/v1',
+      model: 'gpt-6-luna',
+      timeoutMs: 5_000,
+      input: 'mensaje actual',
+      questions: questions.map((question) => question.name === 'same_open_request'
+        ? { ...question, choices: question.choices.slice(0, 1) }
+        : question),
+    });
+
+    expect(result).toEqual({
+      status: 'unavailable',
+      reason: 'invalid_question_choices',
+      retryable: false,
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('sends the three questions and records the transport metrics', async () => {
     const fetchMock = makeFetchMock(jsonResponse(200, answerPayload()));
 
@@ -342,9 +397,10 @@ describe('decisions router client', () => {
     if (result.status !== 'ok') return;
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe('https://api.example.test/v1/decisions');
-    expect((init.headers as Record<string, string>)['authorization']).toBe('Bearer test-key');
-    expect((init.headers as Record<string, string>)['content-type']).toBe('application/json');
+    const headers = new Headers(init.headers);
+    expect(String(url)).toBe('https://api.example.test/v1/decisions');
+    expect(headers.get('authorization')).toBe('Bearer test-key');
+    expect(headers.get('content-type')).toBe('application/json');
     const rawBody = init.body;
     expect(typeof rawBody).toBe('string');
     const body = JSON.parse(rawBody as string) as {
@@ -447,5 +503,19 @@ describe('decisions router client', () => {
       retryable: false,
     });
     expect(fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe('router exact answer-set contract', () => {
+  it.each(['duplicate', 'unknown', 'unknown-refusal', 'duplicate-probability', 'missing-chosen-probability'])('rejects %s without inventing a route', async (variant) => {
+    const payload = answerPayload() as { answers: Record<string, unknown>[] };
+    if (variant === 'duplicate') payload.answers[1] = { ...payload.answers[0] };
+    if (variant === 'unknown') payload.answers.push({ type: 'choice', name: 'ghost', choice: 'x', probabilities: [] });
+    if (variant === 'unknown-refusal') payload.answers[1] = { type: 'refusal', name: 'ghost' };
+    if (variant === 'duplicate-probability') payload.answers[0].probabilities = [{ value: 'answer_with_records', probability: 0.5 }, { value: 'answer_with_records', probability: 0.5 }];
+    if (variant === 'missing-chosen-probability') payload.answers[0].probabilities = [{ value: 'escalate_human', probability: 1 }];
+    const result = await runRouter(makeFetchMock(jsonResponse(200, payload)));
+    expect(result).toMatchObject({ status: 'unavailable', reason: 'malformed_answers', retryable: false });
+    vi.unstubAllGlobals();
   });
 });

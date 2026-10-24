@@ -72,7 +72,8 @@ export function derivePlanCapabilities(plan: PersistedPlan): PlanCapabilities {
     plan.contact_phone?.trim(),
   );
   const canClose = hasActivePlan;
-  const canPause = hasActivePlan;
+  // Explicit pause was retired by the runtime; do not advertise a discarded action.
+  const canPause = false;
 
   return {
     hasActivePlan,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseHostWithdrawalPolicy } from '../src/runtime/host-withdrawal-policy';
+import { parseHostWithdrawalPolicy, verifiedPublicWithdrawalEvidence } from '../src/runtime/host-withdrawal-policy';
 import type { KnowledgeEvidence } from '../src/core/information';
 
 const article = (text: string): KnowledgeEvidence => ({
@@ -9,6 +9,15 @@ const article = (text: string): KnowledgeEvidence => ({
 const policyText = 'Las solicitudes se procesan en hasta 72 horas hábiles.';
 
 describe('host withdrawal policy boundary', () => {
+  it('preserves only complete canonical public fee articles when hours coexist with fee questions', () => {
+    const official = article('First transfer free; further transfers USD5.');
+    expect(verifiedPublicWithdrawalEvidence([
+      official,
+      { ...official, filename: 'raw-operations.md', sourceUrl: undefined },
+      { ...official, sourceUrl: 'https://example.test/donde-va-el-dinero' },
+      { ...official, fullArticle: false },
+    ])).toEqual([official]);
+  });
   it('projects only an explicit window from a validated official article', () => {
     const result = parseHostWithdrawalPolicy([article(`${policyText}\nTu retiro llega mañana.`)]);
     expect(result.policy).toEqual({ maxBusinessHours: 72 });

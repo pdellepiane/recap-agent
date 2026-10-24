@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { createEmptyPlan } from '../src/core/plan';
 import { auditProjectionPromptOwnership } from '../src/audit/prompt-audit';
 import { buildRuntimeCapabilityManifest } from '../src/runtime/capability-manifest';
-import { createDynamicExtractionSchema } from '../src/runtime/extraction-schemas';
+import { createDynamicExtractionSchema, requestedOperationSchema } from '../src/runtime/extraction-schemas';
 import { nodePromptManifest } from '../src/runtime/prompt-manifest';
 import {
   measureBundle,
@@ -59,8 +59,6 @@ describe('S10 extraction projection owns schema and text', () => {
     const projection = projectExtraction({
       plan: emptyPlan(),
       manifest: fullManifest(),
-      requestedDomain: 'purchase',
-      candidateOperations: ['purchase.orders.read', 'purchase.gift_detail.read'],
       allowedActionIntents: ['responder_invitacion', 'buscar_proveedores'],
     });
     const schema = createDynamicExtractionSchema({
@@ -79,8 +77,6 @@ describe('S10 extraction projection owns schema and text', () => {
     const projection = projectExtraction({
       plan: emptyPlan(),
       manifest: fullManifest(),
-      requestedDomain: null,
-      candidateOperations: [],
       allowedActionIntents: ['buscar_proveedores'],
     });
     expect(projection.profile.providerOperations).toBe(false);
@@ -88,7 +84,7 @@ describe('S10 extraction projection owns schema and text', () => {
     expect(projection.profile.providerInspection).toBe(false);
     expect(projection.profile.close).toBe(false);
     expect(projection.profile.pause).toBe(false);
-    expect(projection.allowedOperations).toEqual([]);
+    expect(projection.allowedOperations).toEqual(requestedOperationSchema.options);
 
     const manifest = buildRuntimeCapabilityManifest({
       configured: true,
@@ -99,8 +95,6 @@ describe('S10 extraction projection owns schema and text', () => {
     const filtered = projectExtraction({
       plan: emptyPlan(),
       manifest,
-      requestedDomain: 'rsvp',
-      candidateOperations: ['rsvp.response.write'],
       allowedActionIntents: ['responder_invitacion', 'buscar_proveedores'],
     });
     expect(filtered.allowedActionIntents).not.toContain('responder_invitacion');

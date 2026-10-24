@@ -139,13 +139,13 @@ function placeholderNames(template: string): string[] {
     .map((match) => match[1] ?? '');
 }
 
-/** Read the rendered `solicitud_actual` line back as JSON. */
+/** Read the rendered `solicitudes_retenidas` line back as JSON. */
 function solicitudActual(rendered: string): unknown {
   const line = rendered
     .split('\n')
-    .find((entry) => entry.startsWith('solicitud_actual: ') === true);
+    .find((entry) => entry.startsWith('solicitudes_retenidas: ') === true);
   expect(line).toBeDefined();
-  return JSON.parse((line ?? '').slice('solicitud_actual: '.length));
+  return JSON.parse((line ?? '').slice('solicitudes_retenidas: '.length));
 }
 
 describe('decisions router input builder', () => {
@@ -163,11 +163,11 @@ describe('decisions router input builder', () => {
       'carritos',
       'capacidades',
       'derivacion_pendiente',
-      'solicitud_actual',
+      'solicitudes_retenidas',
     ]);
   });
 
-  it('renders the open-request record as solicitud_actual', async () => {
+  it('renders the open-request record as solicitudes_retenidas', async () => {
     const template = await loadTemplate();
     const rendered = buildRouterInput(
       routerArgs({}, [withPersonRequest]),
@@ -175,19 +175,20 @@ describe('decisions router input builder', () => {
     );
 
     // The record is one object, not a list: the router reads one request.
-    expect(solicitudActual(rendered)).toEqual({
+    expect(solicitudActual(rendered)).toEqual([{
+      clave: withPersonRequest.key,
       texto_inicial: 'Quiero la devolución de mi compra ORD_6ad637da04583',
       estado: 'with_person',
       turnos: 3,
-    });
+    }]);
   });
 
   it('renders a null record when the thread has none', async () => {
     const template = await loadTemplate();
     const rendered = buildRouterInput(routerArgs(), template);
 
-    expect(rendered).toContain('solicitud_actual: null');
-    expect(solicitudActual(rendered)).toBeNull();
+    expect(rendered).toContain('solicitudes_retenidas: []');
+    expect(solicitudActual(rendered)).toEqual([]);
   });
 
   it('never renders the removed decision keys', async () => {
@@ -341,6 +342,7 @@ describe('decisions router input builder', () => {
     const route = loaded.questions[0];
     expect(route?.choices.map((choice) => choice.value)).toEqual([
       'answer_with_records',
+      'information_flow',
       'ask_clarification',
       'offer_human',
       'escalate_human',
@@ -348,7 +350,7 @@ describe('decisions router input builder', () => {
       'planning_flow',
       'suppress_ack',
     ]);
-    expect(new Set(route?.choices.map((choice) => choice.description)).size).toBe(7);
+    expect(new Set(route?.choices.map((choice) => choice.description)).size).toBe(8);
 
     expect(loaded.questions[1]?.choices.map((choice) => choice.value)).toEqual([
       'same',

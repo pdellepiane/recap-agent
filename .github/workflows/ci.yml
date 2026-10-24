@@ -36,6 +36,8 @@ jobs:
         run: npm run build
       - name: Unit tests
         run: npx vitest run
+      - name: Prompt review freshness
+        run: npm run audit:prompt-freshness
       - name: Validate CloudFormation template structure
         run: |
           set -euo pipefail

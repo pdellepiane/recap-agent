@@ -445,6 +445,8 @@ describe('S3 public plan projection: image refs and last-response text', () => {
   });
 
   it('applies the public-response redaction policy to prose, URLs, handles, and PII', () => {
+    expect(redactPublicResponseText('https://sinenvolturas.com/buscar')).toBe('https://sinenvolturas.com/buscar');
+    expect(redactPublicResponseText('https://sinenvolturas.com/buscar?token=secret')).toBe('[redacted-url]');
     const prose = redactPublicResponseText(
       'Tu pedido esta confirmado para el 12 de septiembre de 2026. Referencia ABC-123.',
     );

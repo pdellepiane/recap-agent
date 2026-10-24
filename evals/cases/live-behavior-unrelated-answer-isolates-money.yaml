@@ -1,0 +1,114 @@
+{
+  "template": "template.base-live",
+  "suite": "live_behavior_regression",
+  "version": 1,
+  "tags": [
+    "live",
+    "behavior",
+    "purchase",
+    "escalation",
+    "decisions-router"
+  ],
+  "targetModes": [
+    "live_lambda"
+  ],
+  "backendFixture": {
+    "scenario": "purchase-approved-event-date"
+  },
+  "scorers": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "weight": 1
+    }
+  ],
+  "id": "live_behavior.unrelated_answer_isolates_money",
+  "description": "An authorized event-date question and its repeat are answered independently of an earlier financial discrepancy. The initial discrepancy may legitimately escalate; neither factual question attempts a takeover.",
+  "inputs": [
+    {
+      "text": "Mi regalo figura aprobado, pero el monto que veo no coincide con la transferencia que hice. Necesito que se revise esa diferencia.",
+      "channel": "whatsapp",
+      "contactPhone": "+51900000406",
+      "sessionId": "unrelated_answer_isolates_money",
+      "backendFixture": {
+        "scenario": "purchase-approved-event-date"
+      }
+    },
+    {
+      "text": "Una pregunta aparte: ¿qué fecha tiene el evento del regalo?",
+      "channel": "whatsapp",
+      "contactPhone": "+51900000406",
+      "sessionId": "unrelated_answer_isolates_money",
+      "backendFixture": {
+        "scenario": "purchase-approved-event-date"
+      }
+    },
+    {
+      "text": "¿Me repites esa fecha? Solo necesito ese dato.",
+      "channel": "whatsapp",
+      "contactPhone": "+51900000406",
+      "sessionId": "unrelated_answer_isolates_money",
+      "backendFixture": {
+        "scenario": "purchase-approved-event-date"
+      }
+    }
+  ],
+  "expectations": [
+    {
+      "id": "authorized-event-date-1",
+      "type": "text_contains",
+      "anyOf": [
+        "12 de diciembre",
+        "12/12/2026",
+        "2026-12-12"
+      ],
+      "turnIndex": 1,
+      "severity": "hard"
+    },
+    {
+      "id": "authorized-event-date-2",
+      "type": "text_contains",
+      "anyOf": [
+        "12 de diciembre",
+        "12/12/2026",
+        "2026-12-12"
+      ],
+      "turnIndex": 2,
+      "severity": "hard"
+    },
+    {
+      "id": "no-repeat-handoff-1",
+      "type": "fixture_effect_count",
+      "operation": "handoff.write",
+      "turnIndex": 1,
+      "expectedAttempts": 0,
+      "expectedSuccesses": 0,
+      "expectedReplays": 0,
+      "severity": "hard"
+    },
+    {
+      "id": "no-repeat-handoff-2",
+      "type": "fixture_effect_count",
+      "operation": "handoff.write",
+      "turnIndex": 2,
+      "expectedAttempts": 0,
+      "expectedSuccesses": 0,
+      "expectedReplays": 0,
+      "severity": "hard"
+    },
+    {
+      "id": "no-rsvp-mutation",
+      "type": "fixture_effect_count",
+      "operation": "rsvp.write",
+      "expectedAttempts": 0,
+      "expectedSuccesses": 0,
+      "expectedReplays": 0,
+      "severity": "hard"
+    }
+  ],
+  "budget": {
+    "maxTurns": 3,
+    "estimatedPromptTokensPerTurn": 3500,
+    "estimatedCompletionTokensPerTurn": 300
+  }
+}
