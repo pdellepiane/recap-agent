@@ -1,5 +1,7 @@
 # Local continuation handoff — start here
 
+**Local session: read [LOCAL-SESSION-HANDOFF.md](LOCAL-SESSION-HANDOFF.md) first.** It consolidates the pushed commits, safe checkout recovery, all implementation and validation evidence, exact remaining development deployment/final check, budget, historical failures and limitations. Older status paragraphs below are historical.
+
 **Latest correction:** [final-language-fix.md](final-language-fix.md) records the final wording/follow-up fixes, offline evidence and the current AWS cache-access deployment blocker. These changes are newer than the deployed artifact below. The final live check has not run.
 
 **Continuation update:** implementation, full offline validation, development deployment, the targeted live panel and four supervised conversations are recorded in [continuation-status.md](continuation-status.md). The final artifact passed 6 of 6 targeted cases. One supervised public-search follow-up failed and remains open. Production was not changed. The original handoff below is preserved as historical context.
