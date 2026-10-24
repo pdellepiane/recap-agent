@@ -1,3 +1,5 @@
+> Subsequent user instruction explicitly authorized production promotion. The tested artifact was promoted on October 23, 2026; see [production-result.md](production-result.md). Six targeted cases passed, payment supervision passed, and public-search follow-up supervision failed. The latter was disclosed and retained. The initial authorization boundaries below are historical; the review lock is still unapproved.
+
 # Payment prompt and lean-path repair
 
 Date: October 23, 2026, America/Lima. Baseline source d44bfa8f; runtime source 2866333a. This is a new user-authorized repair after the completed final check, not a retry of the previous artifact.

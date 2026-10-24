@@ -1,3 +1,5 @@
+> Latest user-authorized outcome: source `61969c85` was promoted to production on October 23, 2026, after six targeted development cases passed. Public-search follow-up supervision failed and remains open. See [production result](../2026-10-23-payment-prompt-repair/production-result.md). The review lock remains unapproved; earlier deployment boundaries below are historical.
+
 > Completed locally on October 23, 2026 (America/Lima): development deployment and the single final focused check are finished. Read [FINAL-LOCAL-RESULT.md](FINAL-LOCAL-RESULT.md) for full Spanish transcripts, timings, receipts and retained failures. Four targeted hard-assertion cases passed; payment language still has findings. Original working tree preserved; production and review lock unchanged. The remaining-execution instructions below are historical and must not be replayed as authorization for another paid run.
 
 # Local session handoff: final development deployment and WhatsApp check

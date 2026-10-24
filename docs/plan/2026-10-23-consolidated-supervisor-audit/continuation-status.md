@@ -1,3 +1,5 @@
+> Latest user-authorized outcome: source `61969c85` was promoted to production on October 23, 2026, after six targeted development cases passed. Public-search follow-up supervision failed and remains open. See [production result](../2026-10-23-payment-prompt-repair/production-result.md). The review lock remains unapproved; earlier deployment boundaries below are historical.
+
 ## Completed local continuation — October 23, 2026 (America/Lima)
 
 The development deployment and single final focused check are complete. See [FINAL-LOCAL-RESULT.md](FINAL-LOCAL-RESULT.md) for exact Spanish conversations, timings, effects, failures and cost. Source `2866333a`; deployed ZIP SHA-256 `f5161f93b625901aca62d1bf8d6bbafc5a4b3ffd26ae484d0896add7bc187408`; Lambda hash verified before paid calls and again after supervision. Original local HEAD and all 143 changed/untracked files remain intact in the original checkout.

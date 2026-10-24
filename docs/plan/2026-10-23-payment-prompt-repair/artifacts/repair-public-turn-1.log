@@ -1,0 +1,23 @@
+--- turn (8982 ms wall) ------------------------------------
+--- delivered ---------------------------------------------
+Puedes buscar la boda de Valeria y Diego en https://sinenvolturas.com/buscar usando sus nombres.
+--- observed ---------------------------------------------
+  delivery                 {"action":"send","reason":"reply_composed"}
+  node                     resolver_consultas_informativas
+  route_kind               information_batch
+  next_node                resolver_consultas_informativas
+  stop_reason              null
+  operational_note         null
+  model stages             extraction, reply, router
+  timing ms                {"total":8509,"router":306,"classifier":37,"extraction":6566,"reply":1582}
+  token usage              {"extraction":{"cache_write_input_tokens":641,"cached_input_tokens":1541,"input_tokens":2185,"output_tokens":643,"total_tokens":2828},"reply":{"cache_write_input_tokens":2420,"cached_input_tokens":0,"input_tokens":2423,"output_tokens":72,"total_tokens":2495},"router":{"input_tokens":1484,"output_tokens":0,"total_tokens":1484}}
+  models                   {"extraction":"gpt-6-luna","reply":"gpt-6-luna","router":"gpt-6-luna"}
+  health                   {"status":"progressing","reason":"normal_progress","help_offer_status":"none","consecutive_non_progress_turns":0}
+  open_request             [{"state":"answered","turns":1,"opening_text":"Busco la boda de Valeria y Diego para ver la hora y la dirección. Mi teléfono es extranjero y no me aparece ningún event…"}]
+  support_outcome          {"signature":"305c5325d93bd79d","repeat_count":1,"unresolved_money":false,"reported_payment":null}
+  human_escalation         {"status":"none","requested_at":null,"last_error":null}
+  help receipt             null
+  takeover                 {"attempted":null,"succeeded":null}
+  information              [{"kind":"associated_event","status":"failed","outcomeCode":"not_found"}]
+  feedback                 {"model_call_stages":["router","extraction","reply"],"model_call_count":3,"decision_source":"model_assisted","next_node":"resolver_consultas_informativas"}
+  runtime latency ms       8509

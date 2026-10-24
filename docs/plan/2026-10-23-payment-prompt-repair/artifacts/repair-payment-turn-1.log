@@ -1,0 +1,23 @@
+--- turn (4717 ms wall) ------------------------------------
+--- delivered ---------------------------------------------
+El aviso parece venir de la compra del Baby Shower de prueba: figura pendiente por S/ 161,20. Ese importe es el total de la compra, no necesariamente un saldo por pagar; tomo en cuenta que ya la pagaste. Puedo ofrecerte que el equipo revise el pago.
+--- observed ---------------------------------------------
+  delivery                 {"action":"send","reason":"reply_composed"}
+  node                     resolver_consultas_informativas
+  route_kind               information_batch
+  next_node                resolver_consultas_informativas
+  stop_reason              null
+  operational_note         null
+  model stages             reply, router
+  timing ms                {"total":4300,"router":591,"classifier":56,"extraction":0,"reply":3633}
+  token usage              {"reply":{"cache_write_input_tokens":1972,"cached_input_tokens":1073,"input_tokens":3048,"output_tokens":222,"total_tokens":3270},"router":{"input_tokens":1639,"output_tokens":0,"total_tokens":1639}}
+  models                   {"reply":"gpt-6-luna","router":"gpt-6-luna"}
+  health                   {"status":"progressing","reason":"normal_progress","help_offer_status":"none","consecutive_non_progress_turns":0}
+  open_request             [{"state":"unresolved","turns":1,"opening_text":"Me acaba de llegar un mensaje por saldo pendiente del Baby Shower de prueba, pero yo ya lo pagué. ¿De dónde sale ese cob…"}]
+  support_outcome          {"signature":"17fc70d47ea0a864","repeat_count":1,"unresolved_money":true,"reported_payment":{"amount":null,"claimed_success":true,"currency":null,"method":null}}
+  human_escalation         {"status":"none","requested_at":null,"last_error":null}
+  help receipt             null
+  takeover                 {"attempted":null,"succeeded":null}
+  information              [{"kind":"purchase","status":"completed","outcomeCode":"completed_with_results"}]
+  feedback                 {"model_call_stages":["router","reply"],"model_call_count":2,"decision_source":"model_assisted","next_node":"resolver_consultas_informativas"}
+  runtime latency ms       4300

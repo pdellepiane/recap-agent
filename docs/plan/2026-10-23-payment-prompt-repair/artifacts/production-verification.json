@@ -1,0 +1,45 @@
+{
+  "sourceCommit": "61969c85edccc4d663ee27e8cd2c2ec98c4ae945",
+  "artifactSha256": "778c8f8c9aa18193d18f17e96878427b20091e0ef44ead8f93d6f8c36237edcf",
+  "before": {
+    "CodeSha256": "EmUdnFYbVGnHxmgjc1Rtoy+eEMuHKDSZ76ScZd0KF/0=",
+    "LastModified": "2026-10-02T16:05:06.000+0000",
+    "State": "Active",
+    "Update": "Successful",
+    "Deployment": "production",
+    "Router": null,
+    "ReplyModel": "gpt-6-luna",
+    "ExtractorModel": "gpt-6-luna",
+    "ClassifierModel": "gpt-6-luna"
+  },
+  "after": {
+    "CodeSha256": "d4yPjJqhgZPRjxfpaHhCeyAJHg70Tq2Pk9b4w2I37c8=",
+    "LastModified": "2026-10-24T03:10:07.000+0000",
+    "State": "Active",
+    "Update": "Successful",
+    "Deployment": "production",
+    "Router": "true",
+    "ReplyModel": "gpt-6-luna",
+    "ExtractorModel": "gpt-6-luna",
+    "ClassifierModel": "gpt-6-luna"
+  },
+  "functionUrlUnchanged": true,
+  "existingProductionParametersPreservedExceptArtifactAndRouter": true,
+  "credentialBindingsPreserved": true,
+  "smoke": {
+    "unauthenticatedInvalidPayload": {
+      "status": 401,
+      "body": "{\n  \"error\": \"Unauthorized.\",\n  \"correlation_id\": \"5a8fb671-d3dd-43bd-bebd-050fd7d340d7\",\n  \"request_id\": \"5a8fb671-d3dd-43bd-bebd-050fd7d340d7\"\n}"
+    },
+    "authenticatedInvalidPayload": {
+      "status": 400,
+      "body": "{\n  \"error\": \"Invalid request body.\",\n  \"issues\": [\n    {\n      \"path\": \"user_id\",\n      \"message\": \"Invalid input: expected string, received undefined\"\n    },\n    {\n      \"path\": \"channel\",\n      \"message\": \"Invalid input: expected string, received undefined\"\n    }\n  ],\n  \"correlation_id\": \"e4a8f16e-113b-4bcc-b915-96e53492d64a\",\n  \"request_id\": \"e4a8f16e-113b-4bcc-b915-96e53492d64a\"\n}"
+    },
+    "modelCalls": 0,
+    "customerConversationCreated": false
+  },
+  "changeSet": {
+    "Id": "arn:aws:cloudformation:us-east-1:684516060775:changeSet/promote-payment-repair-61969c85-20261024/b237a72d-1885-4060-a72f-330de7a37e5c",
+    "StackId": "arn:aws:cloudformation:us-east-1:684516060775:stack/recap-agent-runtime/717b37e0-3163-11f1-acea-0afff02a3145"
+  }
+}

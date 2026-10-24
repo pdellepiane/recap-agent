@@ -1,0 +1,23 @@
+--- turn (8506 ms wall) ------------------------------------
+--- delivered ---------------------------------------------
+Sí, puedes buscar por los nombres si el evento es público y sus anfitriones no lo ocultaron del buscador. Si no aparece, es posible que no esté publicado o que esté oculto; necesitarías pedirles el enlace directo.
+--- observed ---------------------------------------------
+  delivery                 {"action":"send","reason":"reply_composed"}
+  node                     resolver_consultas_informativas
+  route_kind               information_batch
+  next_node                resolver_consultas_informativas
+  stop_reason              null
+  operational_note         null
+  model stages             extraction, reply, router
+  timing ms                {"total":7827,"router":195,"classifier":53,"extraction":3787,"reply":1832}
+  token usage              {"extraction":{"cache_write_input_tokens":834,"cached_input_tokens":1541,"input_tokens":2378,"output_tokens":294,"total_tokens":2672},"reply":{"cache_write_input_tokens":3515,"cached_input_tokens":0,"input_tokens":3518,"output_tokens":97,"total_tokens":3615},"router":{"input_tokens":1883,"output_tokens":0,"total_tokens":1883}}
+  models                   {"extraction":"gpt-6-luna","reply":"gpt-6-luna","router":"gpt-6-luna"}
+  health                   {"status":"progressing","reason":"normal_progress","help_offer_status":"none","consecutive_non_progress_turns":0}
+  open_request             [{"state":"answered","turns":3,"opening_text":"Busco la boda de Valeria y Diego para ver la hora y la dirección. Mi teléfono es extranjero y no me aparece ningún event…"}]
+  support_outcome          {"signature":"305c5325d93bd79d","repeat_count":3,"unresolved_money":false,"reported_payment":null}
+  human_escalation         {"status":"none","requested_at":null,"last_error":null}
+  help receipt             null
+  takeover                 {"attempted":null,"succeeded":null}
+  information              [{"kind":"faq","status":"completed","outcomeCode":"completed_with_results"}]
+  feedback                 {"model_call_stages":["router","extraction","reply"],"model_call_count":3,"decision_source":"model_assisted","next_node":"resolver_consultas_informativas"}
+  runtime latency ms       7827

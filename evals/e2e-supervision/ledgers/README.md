@@ -67,3 +67,10 @@ the turn, and it says whether the disposition is open or fixed.
 - [Withdrawal and gift fees — PASS](2026-10-23-final-local-fees.md)
 
 These are nine new turns on source `2866333a` deployed to development. Public and fee turns also ran extraction and are not router-only evidence under the strict ledger criterion. Earlier failed ledgers remain unchanged.
+
+## Payment repair promoted to production, October 23, 2026
+
+- [Payment — PASS](2026-10-23-repair-payment.md)
+- [Public search follow-up — FAIL](2026-10-23-repair-public.md)
+
+Six selected development cases passed on 61969c85. The user explicitly requested production promotion after disclosure of the supervised public failure. No semantic retry or new fee supervision followed.
