@@ -1,3 +1,13 @@
+## Completed local continuation — October 23, 2026 (America/Lima)
+
+The development deployment and single final focused check are complete. See [FINAL-LOCAL-RESULT.md](FINAL-LOCAL-RESULT.md) for exact Spanish conversations, timings, effects, failures and cost. Source `2866333a`; deployed ZIP SHA-256 `f5161f93b625901aca62d1bf8d6bbafc5a4b3ffd26ae484d0896add7bc187408`; Lambda hash verified before paid calls and again after supervision. Original local HEAD and all 143 changed/untracked files remain intact in the original checkout.
+
+Targeted run `eval-2026-10-24T01-27-46-207Z-0772f6e3`: 4/4 hard-assertion cases passed once, concurrency 1, zero judges. Nine supervised turns: payment PASS WITH FINDINGS, public search PASS, withdrawal/gift policy PASS. The payment live case still inferred a balance from a pending total; supervised payment still used hypothetical acknowledgment, stiff handoff wording and null structured reported-payment state. Those defects remain open. No semantic retries or follow-on fixes were run. New usage estimate USD0.016656; cumulative recorded USD0.120045. Prompt freshness remains failed/pending; lock unchanged. Production remains undeployed.
+
+The historical status below predates this final run and is preserved as historical evidence. It does not authorize a full panel or another improvement cycle.
+
+---
+
 # Continuation status — 23 October 2026
 
 **Superseded candidate:** [final-language-fix.md](final-language-fix.md) records newer local wording and follow-up repairs, passing offline checks and the session restriction blocking their deployment. The deployment and live evidence below apply to the earlier artifact only.

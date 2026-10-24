@@ -1,0 +1,23 @@
+--- turn (7747 ms wall) ------------------------------------
+--- delivered ---------------------------------------------
+Puedes buscar la boda de Valeria y Diego en https://sinenvolturas.com/buscar usando sus nombres. Si aparece publicada, allí encontrarás los detalles disponibles de lugar y hora.
+--- observed ---------------------------------------------
+  delivery                 {"action":"send","reason":"reply_composed"}
+  node                     resolver_consultas_informativas
+  route_kind               information_batch
+  next_node                resolver_consultas_informativas
+  stop_reason              null
+  operational_note         null
+  model stages             extraction, reply, router
+  timing ms                {"total":7357,"router":160,"classifier":41,"extraction":4602,"reply":2524}
+  token usage              {"extraction":{"cache_write_input_tokens":772,"cached_input_tokens":3636,"input_tokens":4411,"output_tokens":431,"total_tokens":4842},"reply":{"cache_write_input_tokens":1139,"cached_input_tokens":1110,"input_tokens":2252,"output_tokens":85,"total_tokens":2337},"router":{"input_tokens":1485,"output_tokens":0,"total_tokens":1485}}
+  models                   {"extraction":"gpt-6-luna","reply":"gpt-6-luna","router":"gpt-6-luna"}
+  health                   {"status":"progressing","reason":"normal_progress","help_offer_status":"none","consecutive_non_progress_turns":0}
+  open_request             [{"state":"answered","turns":1,"opening_text":"Hola, quiero saber dónde y a qué hora es la boda de Valeria y Diego. Soy prima de ella y mi teléfono es del extranjero."}]
+  support_outcome          {"signature":"305c5325d93bd79d","repeat_count":1,"unresolved_money":false,"reported_payment":null}
+  human_escalation         {"status":"none","requested_at":null,"last_error":null}
+  help receipt             null
+  takeover                 {"attempted":null,"succeeded":null}
+  information              [{"kind":"associated_event","status":"failed","outcomeCode":"not_found"}]
+  feedback                 {"model_call_stages":["router","extraction","reply"],"model_call_count":3,"decision_source":"model_assisted","next_node":"resolver_consultas_informativas"}
+  runtime latency ms       7357

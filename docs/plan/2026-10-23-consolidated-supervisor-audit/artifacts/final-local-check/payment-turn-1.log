@@ -1,0 +1,23 @@
+--- turn (2573 ms wall) ------------------------------------
+--- delivered ---------------------------------------------
+Para el Baby Shower de prueba figura una compra pendiente por S/ 161,20, con pago por Yape o Plin; el pago todavía aparece como pendiente, no aprobado. Si ya lo realizaste, envíame el comprobante o el número de operación para revisar qué ocurrió.
+--- observed ---------------------------------------------
+  delivery                 {"action":"send","reason":"reply_composed"}
+  node                     resolver_consultas_informativas
+  route_kind               information_batch
+  next_node                resolver_consultas_informativas
+  stop_reason              null
+  operational_note         null
+  model stages             reply, router
+  timing ms                {"total":2149,"router":131,"classifier":41,"extraction":0,"reply":1957}
+  token usage              {"reply":{"cache_write_input_tokens":2916,"cached_input_tokens":0,"input_tokens":2919,"output_tokens":112,"total_tokens":3031},"router":{"input_tokens":1636,"output_tokens":0,"total_tokens":1636}}
+  models                   {"reply":"gpt-6-luna","router":"gpt-6-luna"}
+  health                   {"status":"progressing","reason":"normal_progress","help_offer_status":"none","consecutive_non_progress_turns":0}
+  open_request             [{"state":"unresolved","turns":1,"opening_text":"Hola, me llegó un aviso de saldo pendiente del Baby Shower de prueba. ¿Qué me están cobrando si ya hice mi pago?"}]
+  support_outcome          {"signature":"17fc70d47ea0a864","repeat_count":1,"unresolved_money":true,"reported_payment":null}
+  human_escalation         {"status":"none","requested_at":null,"last_error":null}
+  help receipt             null
+  takeover                 {"attempted":null,"succeeded":null}
+  information              [{"kind":"purchase","status":"completed","outcomeCode":"completed_with_results"}]
+  feedback                 {"model_call_stages":["router","reply"],"model_call_count":2,"decision_source":"model_assisted","next_node":"resolver_consultas_informativas"}
+  runtime latency ms       2149

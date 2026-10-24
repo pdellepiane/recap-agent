@@ -1,0 +1,25 @@
+--- turn (8800 ms wall) ------------------------------------
+--- delivered ---------------------------------------------
+Depende del medio de pago y de si tú o tu invitado asumen la comisión; por eso el importe puede variar. Ingresa los S/50 en el [simulador de comisiones](https://sinenvolturas.com/cost-of-service) para ver el costo según esas opciones.
+
+Fuente: https://sinenvolturas.tawk.help/article/cuanto-cuesta
+--- observed ---------------------------------------------
+  delivery                 {"action":"send","reason":"reply_composed"}
+  node                     resolver_consultas_informativas
+  route_kind               information_batch
+  next_node                resolver_consultas_informativas
+  stop_reason              null
+  operational_note         null
+  model stages             extraction, reply, router
+  timing ms                {"total":8376,"router":158,"classifier":38,"extraction":3954,"reply":2563}
+  token usage              {"extraction":{"cache_write_input_tokens":780,"cached_input_tokens":2140,"input_tokens":2923,"output_tokens":313,"total_tokens":3236},"reply":{"cache_write_input_tokens":3848,"cached_input_tokens":0,"input_tokens":3851,"output_tokens":149,"total_tokens":4000},"router":{"input_tokens":1508,"output_tokens":0,"total_tokens":1508}}
+  models                   {"extraction":"gpt-6-luna","reply":"gpt-6-luna","router":"gpt-6-luna"}
+  health                   {"status":"progressing","reason":"normal_progress","help_offer_status":"none","consecutive_non_progress_turns":0}
+  open_request             [{"state":"answered","turns":1,"opening_text":"Entiendo. Aparte del retiro, si mi invitado me regala 50 soles, ¿cuánto paga de comisión?"}]
+  support_outcome          {"signature":"305c5325d93bd79d","repeat_count":2,"unresolved_money":false,"reported_payment":null}
+  human_escalation         {"status":"none","requested_at":null,"last_error":null}
+  help receipt             null
+  takeover                 {"attempted":null,"succeeded":null}
+  information              [{"kind":"faq","status":"completed","outcomeCode":"completed_with_results"}]
+  feedback                 {"model_call_stages":["router","extraction","reply"],"model_call_count":3,"decision_source":"model_assisted","next_node":"resolver_consultas_informativas"}
+  runtime latency ms       8376

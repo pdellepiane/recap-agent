@@ -59,3 +59,11 @@ passed and a two-turn check of the loop shape produced the same replies.
 
 A FAIL is a defect report, not a score: it names the phrase, the harm and
 the turn, and it says whether the disposition is open or fixed.
+
+## Final local check, October 23, 2026
+
+- [Payment — PASS WITH FINDINGS](2026-10-23-final-local-payment.md)
+- [Public search — PASS](2026-10-23-final-local-public.md)
+- [Withdrawal and gift fees — PASS](2026-10-23-final-local-fees.md)
+
+These are nine new turns on source `2866333a` deployed to development. Public and fee turns also ran extraction and are not router-only evidence under the strict ledger criterion. Earlier failed ledgers remain unchanged.

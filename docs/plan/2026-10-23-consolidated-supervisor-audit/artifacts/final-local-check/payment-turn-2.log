@@ -1,0 +1,23 @@
+--- turn (2992 ms wall) ------------------------------------
+--- delivered ---------------------------------------------
+La solicitud para que una persona revise el pago quedó derivada. El pago de S/ 161.20 por Yape o Plin figura pendiente; comparte el comprobante con el equipo para que puedan revisarlo.
+--- observed ---------------------------------------------
+  delivery                 {"action":"send","reason":"reply_composed"}
+  node                     solicitar_agente_humano
+  route_kind               human_escalation
+  next_node                solicitar_agente_humano
+  stop_reason              router_escalation:unresolved_request_repeated
+  operational_note         Human takeover was requested through the Agent API.
+  model stages             reply, router
+  timing ms                {"total":2497,"router":299,"classifier":32,"extraction":0,"reply":2119}
+  token usage              {"reply":{"cache_write_input_tokens":2006,"cached_input_tokens":1350,"input_tokens":3359,"output_tokens":113,"total_tokens":3472},"router":{"input_tokens":2002,"output_tokens":0,"total_tokens":2002}}
+  models                   {"reply":"gpt-6-luna","router":"gpt-6-luna"}
+  health                   {"status":"uncertain","reason":"insufficient_context","help_offer_status":"none","consecutive_non_progress_turns":1}
+  open_request             [{"state":"with_person","turns":2,"opening_text":"Hola, me llegó un aviso de saldo pendiente del Baby Shower de prueba. ¿Qué me están cobrando si ya hice mi pago?"}]
+  support_outcome          {"signature":"17fc70d47ea0a864","repeat_count":2,"unresolved_money":true,"reported_payment":null}
+  human_escalation         {"status":"requested","requested_at":"2026-10-24T01:30:03.370Z","last_error":null}
+  help receipt             {"outcome":"handoff_requested","requested":true,"softPaused":true}
+  takeover                 {"attempted":true,"succeeded":true}
+  information              []
+  feedback                 {"model_call_stages":["router","reply"],"model_call_count":2,"decision_source":"model_assisted","next_node":"solicitar_agente_humano"}
+  runtime latency ms       2497

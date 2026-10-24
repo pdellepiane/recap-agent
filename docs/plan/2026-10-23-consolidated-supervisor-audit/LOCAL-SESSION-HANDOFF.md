@@ -1,3 +1,5 @@
+> Completed locally on October 23, 2026 (America/Lima): development deployment and the single final focused check are finished. Read [FINAL-LOCAL-RESULT.md](FINAL-LOCAL-RESULT.md) for full Spanish transcripts, timings, receipts and retained failures. Four targeted hard-assertion cases passed; payment language still has findings. Original working tree preserved; production and review lock unchanged. The remaining-execution instructions below are historical and must not be replayed as authorization for another paid run.
+
 # Local session handoff: final development deployment and WhatsApp check
 
 This is the current entry point. Read this file before acting on older status notes.
