@@ -1,0 +1,68 @@
+id: live_behavior.master_provider_live_multi_need
+suite: live_behavior_regression
+version: 1
+description: Live independent Catering and Música needs
+tags:
+  - live
+  - behavior
+  - master-study
+  - provider
+  - live-public-read
+targetModes:
+  - live_lambda
+backendFixture:
+  scenario: master-provider-live-public
+inputs:
+  - text: Para una boda en Lima con 100 invitados necesito Catering y Música. No
+      tengo tope de presupuesto. Recomiéndame opciones para las dos necesidades.
+    sessionId: live_behavior.master_provider_live_multi_need
+    backendFixture:
+      scenario: master-provider-live-public
+expectations:
+  - id: no-real-or-requested-submission
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - create_quote_request
+      - finish_plan
+      - request_human_takeover
+      - guest_rsvp
+      - request_user_login_code
+      - verify_user_login_code
+      - add_vendor_to_event_favorites
+      - create_provider_review
+    severity: hard
+  - id: both-needs-retained
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: Catering
+      - category: Música
+    severity: hard
+  - id: live-multi-need-has-candidates
+    type: provider_result_count
+    min: 1
+    severity: hard
+  - id: reply-has-catalog-link
+    type: text_contains
+    regex:
+      - https://sinenvolturas\.com/proveedores/[\p{L}\p{N}%_-]+
+    severity: hard
+scorers:
+  - id: objective-obligations
+    type: expectation_pass_rate
+    weight: 1
+budget:
+  maxTurns: 1
+notes:
+  - Explicit live public provider reads on the current hybrid/vector
+    configuration; all customer data, authentication and effects remain
+    fixtures. No real tracking/write permitted.
+  - Real catalog changes can affect outcomes; retain contemporaneous
+    tool/candidate/detail evidence. Do not replace failed searches with fixture
+    success.
+  - IDs for seeded detail/selection were captured through GET-only public reads
+    before the study; these are context-seeded tasks, not retrieval-recall
+    trials.
+  - Source-link format/field presence are bounded checks, not complete response
+    entailment.

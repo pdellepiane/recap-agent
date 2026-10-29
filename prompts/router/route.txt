@@ -4,11 +4,18 @@ Usa el mensaje completo, el historial reciente, el resumen del perfil, el resume
 
 Cuando `derivacion_pendiente` es verdadero y el cliente acepta la ayuda ofrecida, la ruta es `escalate_human`.
 
+Si la persona retira una solicitud o rechaza una oferta pendiente, responde para reconocer el cierre; no es un acuse sin trabajo pendiente.
+
+Una petición de ejecutar una acción que los registros no pueden ejecutar, como un reembolso, una devolución, una anulación o una revisión manual, no es una consulta de registros: la ruta es `escalate_human`.
+
+Dar el buscador público tras no encontrar un evento responde la consulta; no deja una búsqueda manual pendiente. Que la persona aporte más datos o pregunte cómo buscar sin código no es por sí solo un motivo de escalamiento. Continúa la orientación pública mediante `information_flow`, sin exigir asociación del teléfono.
+
 --- choices ---
-answer_with_records | El turno se responde con los registros autorizados: hay una compra, un carrito o un evento que sustentan la respuesta y no falta ningún dato.
+answer_with_records | La consulta de compra o regalo se responde con los registros autorizados ya disponibles, sin buscar una política ni un evento nuevo. No aplica cuando la persona pide ejecutar una acción.
+information_flow | La consulta requiere recuperar una política pública, comisiones o retiros, o identificar un evento a partir de datos de la persona, incluido orientar al buscador cuando no hay asociación.
 ask_clarification | Falta un dato para continuar y la duda se resuelve con una sola pregunta al cliente, sin repetir la información que ya se le dio.
-offer_human | El cliente no avanza pero todavía no pide una persona: conviene ofrecerle explícitamente el apoyo de un asesor y dejar la oferta abierta para que la acepte.
-escalate_human | El cliente pide una persona o el caso no puede seguir sin ella: corresponde entregar la conversación a un asesor ahora.
+offer_human | El cliente no avanza y todavía no pide una persona ni una acción concreta: conviene ofrecerle explícitamente el apoyo de un asesor y dejar la oferta abierta para que la acepte.
+escalate_human | La persona pide una persona, o pide una acción que los registros no pueden ejecutar, o el caso no puede seguir sin un asesor. Corresponde entregar la conversación a un asesor ahora.
 rsvp_flow | El turno es una respuesta de asistencia a una invitación y debe seguir el flujo de RSVP con su validación de identidad.
 planning_flow | El turno pertenece al flujo de proveedores: recolección de datos, búsqueda, propuesta o cierre de un plan de servicios.
 suppress_ack | El turno es solo un acuse de recibo o una confirmación sin trabajo pendiente que no requiere respuesta.

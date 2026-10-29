@@ -34,7 +34,8 @@ import {
 import { executeFinishPlanTool } from './finish-plan-tool';
 import type { ProviderQuoteEffect } from './plan-completion-executor';
 import { ModelComposedFailureError } from './model-composition';
-import { unsupportedCommissionNumericClaims, verifiedCommissionArticle } from './commission-grounding';
+import { requestedFeeTopics, unsupportedCommissionNumericClaims, verifiedCommissionArticle } from './commission-grounding';
+import { verifiedPublicWithdrawalEvidence } from './host-withdrawal-policy';
 import {
   buildCloseSubmissionReceipt,
   resolveCloseBlockers,
@@ -174,9 +175,17 @@ function stripSupportSidecar(
   parsed: StructuredMessage & {
     readonly cited_order_ids?: unknown;
     readonly reported_payment?: unknown;
+    readonly claimed_handoff?: unknown;
+    readonly request_outcome?: unknown;
+    readonly financial_reconciliation_required?: unknown;
   },
 ): StructuredMessage {
-  const { cited_order_ids: citedOrderIds, reported_payment: reportedPayment, ...message } = parsed;
+  const { cited_order_ids: citedOrderIds, reported_payment: reportedPayment,
+    claimed_handoff: claimedHandoff, request_outcome: requestOutcome,
+    financial_reconciliation_required: reconciliation, ...message } = parsed;
+  void claimedHandoff;
+  void requestOutcome;
+  void reconciliation;
   void citedOrderIds;
   void reportedPayment;
   return message;
@@ -670,7 +679,7 @@ export function otpContinuationEvidence(args: {
   if (args.authStatus !== 'code_requested' || !args.hasPendingProtectedRequest) {
     return null;
   }
-  return 'Verificación pendiente: hay un código solicitado para la consulta protegida. Si el mensaje no trae el código ni un correo, continúa esa consulta en informationRequests con el authAction que corresponda (report_otp_not_received, resend_otp, change_email, decline_authentication o provide_otp); en ese caso no devuelvas un delta vacío.';
+  return JSON.stringify({ verification_status: 'code_requested', protected_request_pending: true });
 }
 
 /**
@@ -1030,6 +1039,9 @@ export type ExtractionRequestSpec = {
   readonly modules: readonly SelectedModule[];
   readonly input: string;
   readonly manifest: CompilerRequestManifest;
+  readonly outputSchema: ReturnType<typeof createDynamicExtractionSchema>;
+  readonly extractionProjection: ExtractionProjection;
+  readonly compilerContext: ModuleSelectionContext;
   /**
    * Native image attachments resolved for this decision call from the
    * already-uploaded file ref or backend URL on the ExtractRequest. Empty
@@ -1048,6 +1060,7 @@ export type ReplyRequestSpec = {
   readonly instructions: string;
   readonly modules: readonly SelectedModule[];
   readonly input: string;
+  readonly compilerContext: ModuleSelectionContext;
   readonly scopedTools: readonly ToolName[];
   readonly manifest: CompilerRequestManifest;
 };
@@ -1157,8 +1170,6 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     // planning-only fields; unsupported operations stay expressible through
     // the capabilityBoundary field.
     const projection = this.buildExtractionProjection(request.plan, policy, features);
-    const capabilities = projection.profile;
-    const allowedActionIntents = projection.allowedActionIntents;
     const runExtraction = async (): Promise<ExtractResult> => {
       // G1/G2 single construction boundary: the compiler-selected modules
       // loaded via PromptLoader are the instructions actually sent.
@@ -1168,13 +1179,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       // stage carries only its own scoped limitation wording.
       const spec = await this.buildExtractionRequestSpec(request, policy, projection);
       const bundle = { id: spec.bundleId, instructions: spec.instructions };
-      const outputSchema = createDynamicExtractionSchema({
-        allowedActionIntents,
-        capabilities,
-        // Minimum disclosure: follow-up image linkage is expressible only
-        // while the plan stores image attachments.
-        includeImageReference: (request.plan.image_attachments?.length ?? 0) > 0,
-      });
+      const outputSchema = spec.outputSchema;
       const extractor = new Agent({
         name: 'plan_extractor',
         model: this.options.extractorModel,
@@ -1275,16 +1280,9 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
           providerQuoteRequests: features.providerQuoteRequests,
         },
       });
-    const established = deriveEstablishedExtractionDomain(plan);
     return projectExtraction({
       plan,
       manifest,
-      requestedDomain: established === 'purchase'
-        ? 'purchase'
-        : established === 'rsvp'
-          ? 'rsvp'
-          : null,
-      candidateOperations: [],
       allowedActionIntents: featureAllowedIntents,
     });
   }
@@ -1353,6 +1351,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
   ): ExtractResult['extraction']['informationRequests'] {
     if (request.kind === 'faq') {
       return [{ kind: 'faq', query: request.query,
+        ...(request.feeTopic ? { feeTopic: request.feeTopic } : {}),
         ...(request.hostWithdrawal ? {
           hostWithdrawal: request.hostWithdrawal,
           eventHint: request.eventHint,
@@ -1487,7 +1486,9 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       ? stripSupportSidecar(parsed)
       : parsed;
     const commissionArticle = verifiedCommissionArticle(request.informationResults);
-    if (commissionArticle !== null) {
+    if (commissionArticle !== null && requestedFeeTopics(
+      request.extraction.informationRequests, request.informationResults,
+    ).has('gift_commission')) {
       if (structured.type !== 'generic' || !Array.isArray(structured.paragraphs_es)) {
         throw new ModelComposedFailureError('model_error');
       }
@@ -1864,7 +1865,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
    * shortlist). Single derivation shared by instruction loading and input
    * category gating.
    */
-  private deriveExtractionCompilerContext(plan: PersistedPlan): ModuleSelectionContext {
+  private deriveExtractionCompilerContext(plan: PersistedPlan, projection?: ExtractionProjection, hasCustomerRecords = false): ModuleSelectionContext {
     const established = deriveEstablishedExtractionDomain(plan);
     const capabilities = derivePlanCapabilities(plan);
     return {
@@ -1875,6 +1876,8 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
         ? ['purchase', 'venue', 'rsvp', 'faq_policy', 'planning']
         : ['purchase', 'venue', 'rsvp', 'faq_policy'],
       hasPlanningDetail: capabilities.hasActivePlan || capabilities.hasShortlist,
+      ...(projection ? { extractionProfile: projection.profile } : {}),
+      hasCustomerRecords,
     };
   }
 
@@ -1891,7 +1894,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     const resolvedPolicy = policy ?? deriveDynamicAgentPolicy(request.plan);
     const resolvedProjection = projection ??
       this.buildExtractionProjection(request.plan, resolvedPolicy, this.resolveFeatureFlags());
-    const compilerContext = this.deriveExtractionCompilerContext(request.plan);
+    const compilerContext = this.deriveExtractionCompilerContext(request.plan, resolvedProjection, request.customerContext != null);
     const modules = selectExtractionModules(compilerContext);
     const includeImageReference = (request.plan.image_attachments?.length ?? 0) > 0;
     const files = moduleFilesFor(modules);
@@ -1899,10 +1902,22 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     // while the plan stores image attachments. Imageless turns stay
     // byte-identical; the conditional file is attributed to the
     // cross-domain module in the manifest.
-    const instructionFiles = includeImageReference &&
-        !files.includes('extractors/image_reference.txt')
-      ? [...files, 'extractors/image_reference.txt']
-      : files;
+    const conditionalFiles = [
+      ...(includeImageReference ? ['extractors/image_reference.txt'] : []),
+      ...(buildCampaignReferenceProjection(request.messageContext.recentMessages).length > 0
+        ? ['extractors/campaign_reference.txt'] : []),
+      ...(this.extractorContinuityNeedsGuidance(request) ? ['extractors/continuity.txt'] : []),
+      ...(request.plan.user_auth.status === 'code_requested' && resolvedProjection.profile.information &&
+        request.plan.information_state.pending_requests.some((pending) =>
+          pending.kind === 'purchase' || pending.kind === 'associated_event')
+        ? ['extractors/otp_continuation.txt'] : []),
+    ];
+    const instructionFiles = [...new Set([...files, ...conditionalFiles])];
+    const outputSchema = createDynamicExtractionSchema({
+      allowedActionIntents: resolvedProjection.allowedActionIntents,
+      capabilities: resolvedProjection.profile,
+      includeImageReference,
+    });
     const bundle = await this.options.promptLoader.loadModuleFilesBundle(
       instructionFiles,
       selectExtractionTools(),
@@ -1918,15 +1933,13 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     const bytesByFile = new Map(
       bundle.filePaths.map((file, index) => [file, bundle.fileBytes[index] ?? 0] as const),
     );
-    const imageReferenceBytes = includeImageReference
-      ? bytesByFile.get('extractors/image_reference.txt') ?? 0
-      : 0;
+    const conditionalBytes = conditionalFiles.reduce((total, file) => total + (bytesByFile.get(file) ?? 0), 0);
     const manifest = buildCompilerRequestManifest({
       selectedModules: modules,
       byteSizeOf: (id) =>
         instructionModuleRegistry[id].files.reduce(
           (total, file) => total + (bytesByFile.get(file) ?? 0),
-          id === 'extraction_cross_domain' ? imageReferenceBytes : 0,
+          id === 'extraction_cross_domain' ? conditionalBytes : 0,
         ),
       tools: [],
       factGroups: sections.map((section) => ({
@@ -1943,6 +1956,9 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       modules,
       input,
       manifest,
+      outputSchema,
+      extractionProjection: resolvedProjection,
+      compilerContext,
       imageUrlAttachments,
       imageFileAttachments,
     };
@@ -1967,21 +1983,21 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     // priorities and no planning module; the model reads the current lane
     // from the plan snapshot and pending work, not planning suggestions.
     const extractionModules = selectExtractionModules(
-      this.deriveExtractionCompilerContext(request.plan),
+      this.deriveExtractionCompilerContext(request.plan, projection, request.customerContext != null),
     );
     const extractionModuleIds = new Set(extractionModules.map((module) => module.id));
     const suggestedCategories = extractionModuleIds.has('extraction_planning') &&
       this.deriveExtractionCompilerContext(request.plan).hasPlanningDetail
       ? this.buildEventCategoryPromptContext(
         request.plan.event_type,
-        'extractor',
       )
       : null;
     const allowedActionsLine = projection != null
-      ? `${projection.textualAllowedActions} No extraigas acciones fuera de esta lista.`
-      : `Acciones disponibles en este turno: ${policy.allowedActionIntents.join(', ')}. No extraigas acciones fuera de esta lista.`;
+      ? projection.textualAllowedActions
+      : `Valores de actionIntent: ${policy.allowedActionIntents.join(', ')}.`;
     const continuityEvidence = this.buildExtractorContinuityEvidence(request);
-    const imagePresence = this.buildExtractorImagePresence(request);    const otpEvidence = otpContinuationEvidence({
+    const imagePresence = this.buildExtractorImagePresence(request);
+    const otpEvidence = otpContinuationEvidence({
       authStatus: request.plan.user_auth.status,
       hasPendingProtectedRequest: request.plan.information_state.pending_requests.some(
         (pending) => pending.kind === 'purchase' || pending.kind === 'associated_event',
@@ -1999,7 +2015,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       {
         key: 'media_metadata',
         content: request.media && request.media.length > 0
-          ? `Metadatos de archivos recibidos (no se pueden abrir ni interpretar; JSON): ${JSON.stringify(request.media.map((item) => ({ kind: item.kind, mimeType: item.mimeType, filename: item.fileName })))}.`
+          ? `Metadatos de archivos recibidos (interpretación no disponible; JSON): ${JSON.stringify(request.media.map((item) => ({ kind: item.kind, mimeType: item.mimeType, filename: item.fileName })))}.`
           : null,
       },
       { key: 'plan_snapshot', content: `Plan base (JSON compacto): ${JSON.stringify(planSnapshot)}` },
@@ -2063,7 +2079,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     if (campaigns.length === 0) {
       return null;
     }
-    return `Referencia de campana saliente con procedencia verificada, ordenada por hora del servidor (JSON, excerpt nulo cuando el historial ya trae el texto; unir por sourceMessageId/message_id): ${JSON.stringify(campaigns)}. Solo contexto de referencia para interpretar respuestas elipticas: nunca asistencia, autorizacion ni consentimiento.`;
+    return `Referencia de campana saliente con procedencia verificada, ordenada por hora del servidor (JSON, excerpt nulo cuando el historial ya trae el texto; referencias sourceMessageId/message_id): ${JSON.stringify(campaigns)}.`;
   }
 
   private buildExtractorContinuityEvidence(
@@ -2150,18 +2166,23 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       };
     }
 
-    // The follow-up decision sentence stays limited to the established,
-    // anchorless lane it was written for (no pending work, no completed
-    // topic, FAQ-style lane with prior context). Pending-carrying turns
-    // travel as facts only; the plan snapshot already scopes the task.
-    const followupLane = pending.length === 0 &&
-      lastCompleted === null &&
+    evidence.interpretation_scope = this.extractorContinuityNeedsGuidance(request)
+      ? 'unanchored_followup' : 'anchored_context';
+    return `Evidencia condicional de continuidad (JSON): ${JSON.stringify(evidence)}`;
+  }
+
+  private extractorContinuityNeedsGuidance(request: ExtractRequest): boolean {
+    if (request.plan.current_node !== 'resolver_consultas_informativas' ||
+        request.plan.user_auth.status !== 'none') return false;
+    const continuity = request.messageContext.continuity ?? deriveConversationContinuity({
+      plan: request.plan,
+      recentMessages: request.messageContext.recentMessages,
+      historyStatus: request.messageContext.historyStatus,
+    });
+    return request.plan.information_state.pending_requests.length === 0 &&
+      request.plan.information_state.last_completed_request == null &&
       (continuity.lane === 'public_faq' || continuity.lane === 'unresolved') &&
       continuity.hasPriorContext;
-    if (!followupLane) {
-      return `Evidencia condicional de continuidad (JSON): ${JSON.stringify(evidence)}`;
-    }
-    return `Evidencia condicional de continuidad (JSON): ${JSON.stringify(evidence)}. El mensaje actual es un seguimiento de esta ruta: extrae el tema que el historial reciente permita sostener como solicitud concreta (incluida la pregunta pendiente que siga sin respuesta) en lugar de marcar ambiguedad; solo cuando el historial no permita sostener ningun tema devuelve ambiguedad con una sola pregunta util. Si el turno es solo agradecimiento o cierre sin peticion, devuelve un delta vacio. No saludes, no reinicies y no inventes una nueva intencion o consulta. El saludo solo esta permitido cuando welcome_allowed es true.`;
   }
 
   private buildExtractorImagePresence(
@@ -2386,9 +2407,13 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
   ): ModuleSelectionContext {
     const base = deriveReplyCompilerContext(request);
     const tasks = [...base.tasks];
-    if (verifiedCommissionArticle(request.informationResults) !== null) {
+    const feeTopics = requestedFeeTopics(request.extraction.informationRequests, request.informationResults);
+    if (feeTopics.has('gift_commission') && verifiedCommissionArticle(request.informationResults) !== null) {
       tasks.push('faq_commission');
     }
+    if (feeTopics.has('host_withdrawal') && (request.informationResults ?? []).some(
+      (result) => result.kind === 'faq' && result.status === 'completed' && result.evidence.length > 0,
+    )) tasks.push('withdrawal_fee');
     const hostWithdrawalHours = this.buildHostWithdrawalFacts(request)
       .host_withdrawal_policy_hours;
     if (typeof hostWithdrawalHours === 'number' && hostWithdrawalHours > 0) {
@@ -2511,6 +2536,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       instructions: bundle.instructions,
       modules,
       input,
+      compilerContext: replyCompiler,
       scopedTools,
       manifest,
     };
@@ -2629,7 +2655,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
         source: 'plan.event_type',
         content: omitBroadCatalogue
           ? null
-          : this.buildEventCategoryPromptContext(request.plan.event_type, 'reply'),
+          : this.buildEventCategoryPromptContext(request.plan.event_type),
       },
       {
         key: 'capability_catalogue',
@@ -2647,7 +2673,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       parts.push({
         key: 'interview_categories',
         source: 'providerCategoryBuckets',
-        content: `Categorías de proveedores disponibles: ${categoryBucketNames.join(', ')}. No inventar categorías fuera de esta lista.`,
+        content: `Categorías de proveedores disponibles: ${categoryBucketNames.join(', ')}.` ,
       });
     }
 
@@ -2945,8 +2971,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
             request_open_turns: args.request.requestOpenTurns ?? 0,
             requiresNextStep: deriveRequiresNextStep({
               requestState: args.request.requestOpen === true ? 'unresolved' : 'answered',
-              paymentStatuses: (args.request.customerContext?.purchases ?? [])
-                .map((purchase) => purchase.paymentStatus),
+              paymentStatuses: [],
             }),
           }
           : {}),
@@ -3423,20 +3448,13 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
 
   private buildEventCategoryPromptContext(
     eventType: PersistedPlan['event_type'],
-    mode: 'extractor' | 'reply',
   ): string {
     const starterCategories = starterProviderCategoriesForEvent(eventType);
     const prioritizedCategories = prioritizedProviderCategoriesForEvent(eventType);
     const normalizedEvent = eventType ?? 'otro';
-    const instruction =
-      mode === 'extractor'
-        ? 'Para necesidades sugeridas o inferidas, usa primero estas categorías. Mantén una categoría fuera de esta lista solo si el usuario la pide de forma explícita.'
-        : 'Cuando sugieras próximos frentes al usuario, muestra primero estas categorías. No presentes categorías fuera de esta lista como sugerencias iniciales; sí puedes aceptarlas si el usuario las pide explícitamente.';
-
     return [
       `Categorías sugeridas para event_type=${normalizedEvent}: ${starterCategories.join(', ')}`,
       `Prioridad completa para event_type=${normalizedEvent}: ${prioritizedCategories.join(', ')}`,
-      instruction,
     ].join('\n');
   }
 
@@ -3615,6 +3633,9 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       ...pending,
       cited_order_ids: supportReplySidecarSchema.shape.cited_order_ids,
       reported_payment: supportReplySidecarSchema.shape.reported_payment,
+      claimed_handoff: supportReplySidecarSchema.shape.claimed_handoff,
+      request_outcome: supportReplySidecarSchema.shape.request_outcome,
+      financial_reconciliation_required: supportReplySidecarSchema.shape.financial_reconciliation_required,
     });
   }
 
@@ -4746,11 +4767,12 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       return this.stripRawFields(facts);
     }
     if (result.status === 'completed' && result.kind === 'faq') {
-      if (result.hostWithdrawalPolicy != null) {
+      const publicFeeEvidence = result.feeTopic === 'host_withdrawal' || result.feeTopic === 'mixed'
+        ? verifiedPublicWithdrawalEvidence(result.evidence) : [];
+      if (result.hostWithdrawalPolicy != null && publicFeeEvidence.length === 0) {
         return {
           requestId: result.requestId, kind: result.kind, status: result.status,
-          subject: 'host_withdrawal',
-          processingPolicy: result.hostWithdrawalPolicy,
+          subject: 'host_withdrawal', processingPolicy: result.hostWithdrawalPolicy,
           individualStatus: 'not_available',
         };
       }
@@ -4758,11 +4780,14 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       // renders it deterministically at delivery, and the agent must never
       // see, generate or preempt the link. resolveFaqCitationUrl reads the
       // typed result, not this projection.
-      const faqProjection = this.projectFaqEvidenceForReply(result.evidence);
+      const faqProjection = this.projectFaqEvidenceForReply(result.hostWithdrawalPolicy != null
+        ? publicFeeEvidence : result.evidence);
       return {
         requestId: result.requestId,
         kind: result.kind,
         status: result.status,
+        ...(result.feeTopic ? { feeTopic: result.feeTopic } : {}),
+        ...(result.hostWithdrawalPolicy ? { processingPolicy: result.hostWithdrawalPolicy } : {}),
         evidence: faqProjection.evidence,
         coverage: faqProjection.coverage,
       };

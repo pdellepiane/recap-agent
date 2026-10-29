@@ -52,7 +52,7 @@ const planningNodes = new Set<DecisionNode>([
   'reintentar',
 ]);
 
-const questionStrategyNodes = new Set<DecisionNode>([
+export const questionStrategyNodes = new Set<DecisionNode>([
   'entrevista',
   'elicitacion_necesidades',
   'minimos_para_buscar',
@@ -371,6 +371,9 @@ export const instructionModuleIds = [
   'shared_invariants',
   'reply_customer_context_fields',
   'extraction_cross_domain',
+  'extraction_customer_fields',
+  'extraction_provider_selection',
+  'extraction_provider_inspection',
   'extraction_information',
   'extraction_rsvp',
   'extraction_planning',
@@ -378,17 +381,21 @@ export const instructionModuleIds = [
   'extraction_provider_management',
   'extraction_close_pause',
   'reply_planning_owner',
+  'reply_planning_interview',
   'reply_purchase_facts',
+  'reply_thank_you_provenance',
   'reply_purchase_partial_failure',
   'reply_customer_reference_matched',
   'reply_customer_reference_unavailable',
   'reply_venue_facts',
+  'reply_public_event_search',
   'reply_rsvp_facts',
   'reply_rsvp_lookup_failed',
   'reply_rsvp_candidate_states',
   'reply_rsvp_companion_rejected',
   'reply_faq_policy',
   'reply_faq_commission',
+  'reply_withdrawal_fee',
   'reply_host_withdrawal_policy',
   'reply_handoff_outcome',
   'reply_auth_limitation',
@@ -409,6 +416,7 @@ export type InstructionModuleTask =
   | 'rsvp'
   | 'faq_policy'
   | 'faq_commission'
+  | 'withdrawal_fee'
   | 'host_withdrawal_policy'
   | 'handoff'
   | 'auth'
@@ -449,11 +457,32 @@ export const instructionModuleRegistry: Record<InstructionModuleId, InstructionM
     consumer: 'openai-agent-runtime composeReply (record-field semantics on record-bearing turns only)',
   },
   extraction_cross_domain: {
-    files: ['extractors/base_system.txt', 'extractors/capability_boundary.txt', 'shared/customer_context_fields.txt'],
+    files: ['extractors/base_system.txt', 'extractors/capability_boundary.txt'],
     stages: ['extraction'],
     owners: ['planning', 'faq', 'customer_assistance', 'unknown'],
     tasks: ['purchase', 'venue', 'rsvp', 'faq_policy', 'handoff', 'auth', 'image', 'planning'],
     consumer: 'openai-agent-runtime extract (all lanes)',
+  },
+  extraction_customer_fields: {
+    files: ['extractors/customer_fields.txt'],
+    stages: ['extraction'],
+    owners: ['planning', 'customer_assistance', 'unknown'],
+    tasks: ['purchase', 'venue', 'rsvp', 'planning', 'faq_policy'],
+    consumer: 'openai-agent-runtime extract (typed schema and evidence applicability)',
+  },
+  extraction_provider_selection: {
+    files: ['extractors/provider_selection.txt'],
+    stages: ['extraction'],
+    owners: ['planning', 'customer_assistance', 'unknown'],
+    tasks: ['purchase', 'venue', 'rsvp', 'planning', 'faq_policy'],
+    consumer: 'openai-agent-runtime extract (typed schema and evidence applicability)',
+  },
+  extraction_provider_inspection: {
+    files: ['extractors/provider_inspection.txt'],
+    stages: ['extraction'],
+    owners: ['planning', 'customer_assistance', 'unknown'],
+    tasks: ['purchase', 'venue', 'rsvp', 'planning', 'faq_policy'],
+    consumer: 'openai-agent-runtime extract (typed schema and evidence applicability)',
   },
   extraction_information: {
     files: ['extractors/information.txt', 'nodes/resolver_consultas_informativas/auth_control.txt'],
@@ -484,7 +513,7 @@ export const instructionModuleRegistry: Record<InstructionModuleId, InstructionM
     consumer: 'openai-agent-runtime extract (established support lanes + transient turns with planning detail only)',
   },
   extraction_provider_management: {
-    files: ['extractors/provider_management.txt'],
+    files: ['extractors/provider_operations.txt'],
     stages: ['extraction'],
     owners: ['planning', 'unknown'],
     tasks: ['planning'],
@@ -500,14 +529,26 @@ export const instructionModuleRegistry: Record<InstructionModuleId, InstructionM
   reply_planning_owner: {
     files: [
       'shared/domain_scope.txt',
-      'shared/domain_knowledge.txt',
       'shared/flow_discipline.txt',
-      'shared/question_strategy.txt',
     ],
     stages: ['reply'],
     owners: ['planning'],
     tasks: ['planning'],
     consumer: 'openai-agent-runtime composeReply (planning nodes only)',
+  },
+  reply_planning_interview: {
+    files: ['shared/domain_knowledge.txt', 'shared/question_strategy.txt'],
+    stages: ['reply'],
+    owners: ['planning'],
+    tasks: ['planning'],
+    consumer: 'openai-agent-runtime composeReply (typed planning question nodes without pause or close)',
+  },
+  reply_thank_you_provenance: {
+    files: ['nodes/resolver_consultas_informativas/thank_you_provenance.txt'],
+    stages: ['reply'],
+    owners: ['customer_assistance', 'unknown'],
+    tasks: ['purchase'],
+    consumer: 'openai-agent-runtime composeReply (purchase thank-you record present)',
   },
   reply_purchase_facts: {
     files: ['nodes/resolver_consultas_informativas/payment_disclosure.txt'],
@@ -536,6 +577,13 @@ export const instructionModuleRegistry: Record<InstructionModuleId, InstructionM
     owners: ['customer_assistance', 'unknown'],
     tasks: ['purchase'],
     consumer: 'openai-agent-runtime composeReply (validated unavailable customer reference only)',
+  },
+  reply_public_event_search: {
+    files: ['nodes/resolver_consultas_informativas/public_event_search.txt'],
+    stages: ['reply'],
+    owners: ['customer_assistance', 'unknown'],
+    tasks: ['venue'],
+    consumer: 'openai-agent-runtime composeReply (no associated event found)',
   },
   reply_venue_facts: {
     files: [],
@@ -592,6 +640,13 @@ export const instructionModuleRegistry: Record<InstructionModuleId, InstructionM
     owners: ['faq', 'customer_assistance', 'unknown'],
     tasks: ['host_withdrawal_policy'],
     consumer: 'openai-agent-runtime composeReply (completed typed host-withdrawal policy only)',
+  },
+  reply_withdrawal_fee: {
+    files: ['nodes/resolver_consultas_informativas/withdrawal_fee.txt'],
+    stages: ['reply'],
+    owners: ['faq', 'customer_assistance', 'unknown'],
+    tasks: ['withdrawal_fee'],
+    consumer: 'openai-agent-runtime composeReply (structured withdrawal FAQ topic with source evidence)',
   },
   reply_handoff_outcome: {
     files: [

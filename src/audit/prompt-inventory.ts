@@ -1,14 +1,17 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { decisionNodes, type DecisionNode } from '../core/decision-nodes';
+import { decisionNodes } from '../core/decision-nodes';
 import {
   conversationPromptFilesForNode,
   extractorPromptFilesForCapabilities,
   instructionModuleRegistry,
+  responseClassifierPromptFiles,
   nodePromptManifest,
 } from '../runtime/prompt-manifest';
 import { extractorAuditProfiles } from './prompt-audit';
+import { routerInputTemplatePath } from '../runtime/decisions-router-input';
+import { routerQuestionPromptFiles } from '../runtime/decisions-router-questions';
 
 export type PromptInventoryConsumer = {
   callType: 'classifier' | 'extraction' | 'reply' | 'deterministic_reply' | 'router';
@@ -16,12 +19,15 @@ export type PromptInventoryConsumer = {
   profiles: string[];
   transitions: string[];
   loader: string;
+  reachability: 'production' | 'audit_only';
 };
 
 export type PromptInventoryEntry = {
   filePath: string;
   consumers: PromptInventoryConsumer[];
   isOrphaned: boolean;
+  classification: 'production' | 'audit_only' | 'archived' | 'orphan';
+  retirementReason?: string;
 };
 
 export type PromptInventory = {
@@ -34,6 +40,12 @@ export type PromptInventory = {
   unmappedFiles: string[];
 };
 
+/** Explicit historical retention is different from a fabricated loader chain. */
+export const archivedPromptFiles: Readonly<Record<string, string>> = {
+  'nodes/resolver_consultas_informativas/approval_limits.txt': 'Retained historical purchase guidance; production now uses typed payment evidence and payment_disclosure.txt.',
+  'nodes/resolver_consultas_informativas/gift_fulfillment.txt': 'Retained historical fulfillment prose; production carries typed fulfillment facts without this module.',
+};
+
 export async function buildPromptInventory(args: {
   promptsDir: string;
   anchorRef?: string | null;
@@ -44,11 +56,15 @@ export async function buildPromptInventory(args: {
 
   for (const filePath of allFiles) {
     const consumers = deriveConsumers(filePath);
-    const isOrphaned = consumers.length === 0;
+    const retirementReason = archivedPromptFiles[filePath];
+    const isOrphaned = consumers.length === 0 && !retirementReason;
     entries.push({
       filePath,
       consumers,
       isOrphaned,
+      classification: consumers.some((consumer) => consumer.reachability === 'production')
+        ? 'production' : consumers.length > 0 ? 'audit_only' : retirementReason ? 'archived' : 'orphan',
+      ...(retirementReason ? { retirementReason } : {}),
     });
   }
 
@@ -65,233 +81,85 @@ export async function buildPromptInventory(args: {
   };
 }
 
+/** Only executable compiler/loader registries establish production reachability. */
 function deriveConsumers(filePath: string): PromptInventoryConsumer[] {
   const consumers: PromptInventoryConsumer[] = [];
+  for (const [moduleId, meta] of Object.entries(instructionModuleRegistry)) {
+    if (!meta.files.includes(filePath)) continue;
+    for (const stage of meta.stages) {
+      consumers.push({
+        callType: stage,
+        nodes: [], profiles: [], transitions: [`compiler:${moduleId}`],
+        loader: `PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:${moduleId} (${meta.consumer})`,
+        reachability: 'production',
+      });
+    }
+  }
+  const conditionalExtractionFiles: Readonly<Record<string, string>> = {
+    'extractors/image_reference.txt': 'stored image attachment references exist',
+    'extractors/campaign_reference.txt': 'provenance-bound campaign reference exists',
+    'extractors/continuity.txt': 'unanchored conversation continuity needs structured interpretation',
+    'extractors/otp_continuation.txt': 'protected pending OTP continuation exists',
+  };
+  const conditional = conditionalExtractionFiles[filePath];
+  if (conditional) {
+    consumers.push({
+      callType: 'extraction', nodes: [], profiles: [conditional],
+      transitions: [`extraction:${filePath}`],
+      loader: `OpenAiAgentRuntime.buildExtractionRequestSpec -> PromptLoader.loadModuleFilesBundle (${conditional})`,
+      reachability: 'production',
+    });
+  }
+  const routerFiles: readonly string[] = [...Object.values(routerQuestionPromptFiles), routerInputTemplatePath];
+  if (routerFiles.includes(filePath)) {
+    consumers.push({
+      callType: 'router', nodes: [], profiles: [], transitions: ['router:decisions_router'],
+      loader: 'loadRouterQuestions / loadRouterInputTemplate -> PromptLoader.loadModuleFilesBundle',
+      reachability: 'production',
+    });
+  }
+  for (const [profile, files] of Object.entries(responseClassifierPromptFiles)) {
+    if (!(files as readonly string[]).includes(filePath)) continue;
+    consumers.push({
+      callType: 'classifier', nodes: ['deteccion_intencion'], profiles: [profile],
+      transitions: [`classifier:${profile}`],
+      loader: 'PromptLoader.loadResponseClassifierBundle -> responseClassifierPromptFiles',
+      reachability: 'production',
+    });
+  }
+  // Legacy bundles remain inspectable for historical comparisons. They do not
+  // establish that a file reaches production's module-selected model request.
+  const legacyNodes = decisionNodes.filter((node) =>
+    [...conversationPromptFilesForNode(node), ...nodePromptManifest[node].files].includes(filePath),
+  );
+  if (legacyNodes.length > 0) {
+    consumers.push({
+      callType: 'reply', nodes: [...legacyNodes], profiles: [],
+      transitions: legacyNodes.map((node) => `audit:reply:${node}`),
+      loader: 'retired from production reply; audit measurement only via PromptLoader.loadNodeBundle',
+      reachability: 'audit_only',
+    });
+  }
+  const legacyProfiles = extractorAuditProfiles.filter((profile) =>
+    extractorPromptFilesForCapabilities(profile.capabilities).includes(filePath),
+  );
+  if (legacyProfiles.length > 0) {
+    consumers.push({
+      callType: 'extraction', nodes: [], profiles: legacyProfiles.map((profile) => profile.name),
+      transitions: legacyProfiles.map((profile) => `audit:extraction:${profile.name}`),
+      loader: 'retired from production extraction; audit measurement only via PromptLoader.loadExtractorBundle',
+      reachability: 'audit_only',
+    });
+  }
   if (filePath === 'nodes/resolver_consultas_informativas/image_inspection.txt') {
-    consumers.push({ callType: 'reply',
-      nodes: ['resolver_consultas_informativas'], profiles: ['image'],
-      transitions: ['media:image_turn'],
-      loader: 'PromptLoader.loadImageBundle -> OpenAiAgentRuntime.inspectImage (retired describe-by-default; zero service callers since persistent-image amendment, explicit-describe-only fallback)' });
-  }
-  if (filePath === 'nodes/resolver_consultas_informativas/support_continuity.txt') {
-    consumers.push({ callType: 'reply',
-      nodes: ['resolver_consultas_informativas'], profiles: ['support'],
-      transitions: ['information:support_acknowledgment'],
-      loader: 'PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry reply_support_continuity via composeModelReply (pending task + prior answer only; auth outcomes travel in auth_limitation.txt)' });
-  }
-  if (filePath === 'nodes/resolver_consultas_informativas/auth_limitation.txt') {
-    consumers.push({ callType: 'reply',
-      nodes: ['resolver_consultas_informativas'], profiles: ['auth'],
-      transitions: ['information:auth_terminal_limitation'],
-      loader: 'PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry reply_auth_limitation via composeModelReply (validated terminal/declined outcomes only)' });
-  }
-  if (filePath === 'nodes/resolver_consultas_informativas/image_limits.txt') {
-    consumers.push({ callType: 'reply',
-      nodes: ['resolver_consultas_informativas'], profiles: ['image'],
-      transitions: ['media:image_limits'],
-      loader: 'PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry reply_image_context via composeModelReply (image/media turns only; never venue/purchase reads without image evidence)' });
-  }
-  if (filePath === 'nodes/resolver_consultas_informativas/approval_limits.txt') {
-    consumers.push({ callType: 'reply',
-      nodes: ['resolver_consultas_informativas'], profiles: ['approval_boundary'],
-      transitions: ['information:approval_boundary'],
-      loader: 'PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry reply_approval_boundary via composeModelReply (purchase validation/payment-status aspects only; receipt never proves approval)' });
-  }
-  if (filePath === 'nodes/resolver_consultas_informativas/gift_fulfillment.txt') {
-    consumers.push({ callType: 'reply',
-      nodes: ['resolver_consultas_informativas'], profiles: ['gift_fulfillment'],
-      transitions: ['information:gift_fulfillment'],
-      loader: 'PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry reply_gift_fulfillment via composeModelReply (purchase turns with gift fulfillment evidence only; natural business meaning, no internal code citations)' });
-  }
-  if (filePath === 'nodes/resolver_consultas_informativas/auth_control.txt') {
     consumers.push({
-      callType: 'extraction', nodes: ['resolver_consultas_informativas'],
-      profiles: [], transitions: ['extraction:auth_control'],
-      loader: 'PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry extraction_information via OpenAiAgentRuntime.extract (extraction-decision guidance only; reply uses the scoped continuity wording)',
+      callType: 'reply', nodes: ['resolver_consultas_informativas'], profiles: ['image'],
+      transitions: ['audit:retired_image_inspection'],
+      loader: 'retired describe-by-default; PromptLoader.loadImageBundle (no service call sites)',
+      reachability: 'audit_only',
     });
   }
-  if (filePath.startsWith('shared/')) {
-    const nodes = decisionNodes.filter((node) =>
-      conversationPromptFilesForNode(node).includes(filePath as never),
-    );
-    if (nodes.length > 0) {
-      consumers.push({
-        callType: 'reply',
-        nodes: [...nodes],
-        profiles: [],
-        transitions: nodes.map((node) => `reply:${node}`),
-        loader: 'PromptLoader.loadNodeBundle -> conversationPromptFilesForNode',
-      });
-    }
-    // B9: production reply loads the reply-core file through the typed
-    // compiler, not the legacy node bundle; map registry consumers here so
-    // compiler-only shared files are never reported as unmapped.
-    const registryModules = Object.entries(instructionModuleRegistry).filter(([, meta]) =>
-      meta.files.includes(filePath as never),
-    );
-    for (const [moduleId, meta] of registryModules) {
-      consumers.push({
-        callType: 'reply',
-        nodes: [],
-        profiles: [],
-        transitions: [`compiler:${moduleId} (${meta.consumer})`],
-        loader: `PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:${moduleId}`,
-      });
-    }
-  }
-
-  if (filePath.startsWith('extractors/')) {
-    if (filePath === 'extractors/capability_boundary.txt') {
-      consumers.push({
-        callType: 'extraction',
-        nodes: [],
-        profiles: ['initial_planning_information', 'active_plan', 'shortlist'],
-        transitions: ['extraction:capability_boundary'],
-        loader: 'OpenAiAgentRuntime.extract -> extractorPromptFilesForCapabilities(capabilityBoundary)',
-      });
-    }
-    if (filePath === 'extractors/image_reference.txt') {
-      consumers.push({
-        callType: 'extraction',
-        nodes: [],
-        profiles: ['image_followup'],
-        transitions: ['extraction:image_followup (stored refs present)'],
-        loader: 'PromptLoader.loadExtractorBundle(capabilities, { includeImageReference: true }) -> OpenAiAgentRuntime.extract (plan has image attachments)',
-      });
-    }
-    const profiles = extractorAuditProfiles.filter((profile) =>
-      extractorPromptFilesForCapabilities(profile.capabilities).includes(filePath as never),
-    );
-    if (profiles.length > 0) {
-      consumers.push({
-        callType: 'extraction',
-        nodes: [],
-        profiles: profiles.map((profile) => `extractor:${profile.name}`),
-        transitions: profiles.map((profile) => `extraction:${profile.name}`),
-        loader: 'PromptLoader.loadExtractorBundle -> extractorPromptFilesForCapabilities',
-      });
-    }
-    // also extractor base files are used via extractorPromptFilesForCapabilities
-    // ensure shared extractor files map even if not in profile? Already covered.
-    // Lane B: production extraction runs through the typed compiler
-    // (loadModuleFilesBundle), so detail files gated out of the coarse
-    // legacy capability mapping (e.g. extractors/contact.txt via
-    // extraction_contact) still map to their live registry consumer here.
-    const registryModules = Object.entries(instructionModuleRegistry).filter(([, meta]) =>
-      meta.files.includes(filePath as never),
-    );
-    for (const [moduleId, meta] of registryModules) {
-      consumers.push({
-        callType: meta.stages.includes('extraction') && !meta.stages.includes('reply')
-          ? 'extraction'
-          : 'reply',
-        nodes: [],
-        profiles: [],
-        transitions: [`compiler:${moduleId} (${meta.consumer})`],
-        loader: `PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:${moduleId}`,
-      });
-    }
-  }
-
-  if (filePath.startsWith('router/')) {
-    // WP2 Decisions API router: the four question instruction files and the
-    // input template are loaded through the module-files loader and travel
-    // with the router request, never with the reply composer.
-    consumers.push({
-      callType: 'router',
-      nodes: [],
-      profiles: [],
-      transitions: ['router:decisions_router'],
-      loader: 'PromptLoader.loadModuleFilesBundle -> loadRouterQuestions / loadRouterInputTemplate -> Decisions API router (POST /v1/decisions)',
-    });
-  }
-
-  if (filePath.startsWith('nodes/deteccion_intencion/response_classifier')) {
-    const isGeneral = filePath === 'nodes/deteccion_intencion/response_classifier.txt';
-    const isCampaign = filePath === 'nodes/deteccion_intencion/response_classifier_campaign.txt';
-    if (isGeneral) {
-      consumers.push({
-        callType: 'classifier',
-        nodes: ['deteccion_intencion'],
-        profiles: ['general'],
-        transitions: ['classifier:general'],
-        loader: 'PromptLoader.loadResponseClassifierBundle("general") -> responseClassifierPromptFiles.general',
-      });
-    }
-    if (isCampaign) {
-      consumers.push({
-        callType: 'classifier',
-        nodes: ['deteccion_intencion'],
-        profiles: ['campaign_reply'],
-        transitions: ['classifier:campaign_reply'],
-        loader: 'PromptLoader.loadResponseClassifierBundle("campaign_reply") -> responseClassifierPromptFiles.campaign_reply',
-      });
-    }
-  }
-
-  if (filePath.startsWith('nodes/')) {
-    const registryModules = Object.entries(instructionModuleRegistry).filter(([, meta]) =>
-      meta.files.includes(filePath),
-    );
-    if (registryModules.length > 0) {
-      for (const [moduleId, meta] of registryModules) {
-        consumers.push({
-          callType: meta.stages.includes('extraction') && !meta.stages.includes('reply') ? 'extraction' : 'reply',
-          nodes: [],
-          profiles: [],
-          transitions: [`compiler:${moduleId} (${meta.consumer})`],
-          loader: `PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:${moduleId}`,
-        });
-      }
-      return consumers;
-    }
-    const parts = filePath.split('/');
-    const nodeName = parts[1] as DecisionNode | undefined;
-    if (nodeName && isDecisionNode(nodeName)) {
-      const manifestFiles = nodePromptManifest[nodeName]?.files ?? [];
-      if (manifestFiles.includes(filePath as never)) {
-        const transitions =
-          nodeName === 'responder_invitacion'
-            ? [
-                `reply:${nodeName}`,
-                `reply:${nodeName}:resolved_single (rsvp_phone_evidence.state via projectRsvpPhoneEvidenceForReply)`,
-                `reply:${nodeName}:needs_event_selection (rsvp_phone_evidence.state via projectRsvpPhoneEvidenceForReply)`,
-                `reply:${nodeName}:unavailable (rsvp_phone_evidence.state via projectRsvpPhoneEvidenceForReply)`,
-              ]
-            : [`reply:${nodeName}`];
-        consumers.push({
-          callType: 'reply',
-          nodes: [nodeName],
-          profiles: [],
-          transitions,
-          loader: 'retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)',
-        });
-      } else if (filePath.endsWith('response_classifier.txt') || filePath.endsWith('response_classifier_campaign.txt')) {
-        // already handled above, skip
-      } else if (filePath.includes('/')) {
-        // File exists on disk but not in manifest (e.g., transition_policy.txt)
-        // Still map to its node for inventory completeness, flagged via isOrphaned=false by adding consumer
-        // This ensures zero unmapped files while documenting the gap.
-        const isTransitionPolicy = filePath.endsWith('transition_policy.txt');
-        if (isTransitionPolicy) {
-          consumers.push({
-            callType: 'reply',
-            nodes: [nodeName],
-            profiles: [],
-            transitions: [`reply:${nodeName}:transition_policy (orphaned: not in nodePromptManifest)`],
-            loader: 'filesystem: prompts/nodes/<node>/transition_policy.txt exists but not wired in PromptLoader',
-          });
-        }
-      }
-    }
-  }
-
-  // Deduplicate consumers by callType+nodes signature
   return consumers;
-}
-
-function isDecisionNode(value: string): value is DecisionNode {
-  return (decisionNodes as readonly string[]).includes(value);
 }
 
 async function listAllPromptFiles(promptsDir: string): Promise<string[]> {

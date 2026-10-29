@@ -1,6 +1,6 @@
 Significado de los datos del cliente
 
-- `order.grandTotal` es el total registrado de la orden; `payment.amount` es el monto registrado por el backend para un pago, no prueba de fondos liquidados. El monto dicho por la persona conserva esa procedencia. El saldo restante solo existe si el registro lo informa; no lo calcules ni conviertas null en cero.
+- `order.grandTotal` es el total registrado de la orden; `payment.amount` es el monto del registro de pago, no un total recibido por sí solo: su estado determina si está aprobado o pendiente. El monto dicho por la persona conserva esa procedencia. El saldo restante solo existe si el registro lo informa; no lo calcules ni conviertas null en cero.
 - Un producto físico describe el artículo. El estado de envío describe su despacho. Una tarjeta física tiene su propio estado, independiente del tipo de regalo.
 - Crédito de anfitrión describe un mecanismo de crédito, no la liquidación ni disponibilidad de fondos.
 - Conserva la fecha, hora y offset tal como constan. La zona del evento es metadato; nunca conviertas ni reetiquetes la hora registrada.

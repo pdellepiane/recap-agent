@@ -47,10 +47,9 @@ expectations:
     expected: with_person
     turnIndex: 1
     severity: hard
-  - id: the-unrelated-question-is-handled-by-the-information-lane
-    type: trace_field_equals
-    path: next_node
-    expected: resolver_consultas_informativas
+  - id: the-unrelated-question-answers-the-authorized-event-date
+    type: text_contains
+    anyOf: ["12 de diciembre", "12/12/2026", "2026-12-12"]
     turnIndex: 1
     severity: hard
 notes:

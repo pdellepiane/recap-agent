@@ -249,6 +249,7 @@ import { buildCapabilityDigest } from './capability-digest';
 import {
   checkSupportLaneHandoffClaim,
   isCustomerAssistanceTurn,
+  isPublicEventSearchMiss,
   supportLaneInformationRequests,
   validateCitedOrderIds,
 } from './support-lane-flow';
@@ -627,25 +628,7 @@ const UNREPORTED_COMPILER_PROMPT_ID = 'compiler:unreported';
  * no extractor, deterministic reads and one compose call.
  */
 function isExtractorLaneOutcome(outcome: { readonly kind: string }): boolean {
-  return outcome.kind === 'planning' || outcome.kind === 'rsvp';
-}
-
-/**
- * WP3 — the reported payment persisted by the previous turn's compose
- * sidecar. It is the `priorReportedPayment` input of this turn's outcome
- * signature. Never derived from the message text.
- */
-function priorReportedPaymentFromPlan(plan: PlanSnapshot): PriorReportedPayment | null {
-  const stored = plan.support_outcome?.reported_payment ?? null;
-  if (stored === null) {
-    return null;
-  }
-  return {
-    amount: stored.amount,
-    currency: stored.currency,
-    method: stored.method,
-    claimedSuccess: stored.claimed_success,
-  };
+  return outcome.kind === 'planning' || outcome.kind === 'rsvp' || outcome.kind === 'information';
 }
 
 export class AgentService {
@@ -1054,10 +1037,23 @@ export class AgentService {
       routerResult?.status === 'unavailable'
         ? { reason: routerResult.reason, retryable: routerResult.retryable }
         : undefined;
+    if (routerResult?.status === 'ok' && routerResult.outcome.kind === 'information' && turnCustomerContext) {
+      return await this.handleSupportInformationTurn({
+        inbound, plan: routerPlan, router: routerResult, preparedCustomerContext: turnCustomerContext,
+        toolUsage, timingMs, tokenUsage, messageContext, handleTurnStartedAt,
+      });
+    }
+    // A pending information request is still an active obligation. A router
+    // acknowledgement decision cannot discard its next turn without allowing
+    // extraction to establish whether the customer is withdrawing or answering it.
+    const routerSuppressionWithPendingRequest = routerResult?.status === 'ok' &&
+      routerResult.outcome.kind === 'suppress_ack' &&
+      routerPlan.information_state.pending_requests.length > 0;
     if (
       routerResult !== null &&
       routerResult.status === 'ok' &&
-      !isExtractorLaneOutcome(routerResult.outcome)
+      !isExtractorLaneOutcome(routerResult.outcome) &&
+      !routerSuppressionWithPendingRequest
     ) {
       return await this.handleSupportLaneTurn({
         inbound,
@@ -2397,14 +2393,16 @@ export class AgentService {
             extraction.providerFitCriteria,
             planAfterFlow,
           );
+          const activeNeed = getActiveNeed(planAfterFlow);
+          const searchedCategory = activeNeed?.category ?? planAfterFlow.vendor_category;
           providerResults = rankProvidersForCriteria(
             enrichedProviders,
             completeFitCriteria,
           ).filter((provider) =>
+            (!searchedCategory || normalizeToProviderCategory(provider.category) === searchedCategory) &&
             isProviderEligibleForCriteria(provider, completeFitCriteria),
           );
           timingMs.provider_enrichment += Date.now() - providerEnrichmentStartedAt;
-          const activeNeed = getActiveNeed(planAfterFlow);
           planAfterFlow = mergePlan(planAfterFlow, {
             active_need_category:
               activeNeed?.category ?? planAfterFlow.active_need_category,
@@ -2644,6 +2642,7 @@ export class AgentService {
       plan: {
         conversation_health: args.plan.conversation_health,
         open_requests: args.plan.open_requests,
+        human_help_receipt: args.plan.human_help_receipt,
       },
     });
     args.timingMs.router += Date.now() - routerStartedAt;
@@ -2662,7 +2661,43 @@ export class AgentService {
    * never runs, the phone-scoped reads are deterministic and the reply is
    * ONE model composition whose sidecar carries the cited records and the
    * reported payment.
+   * Recover a structured FAQ/event task once after the router selected that work.
    */
+  private async handleSupportInformationTurn(args: {
+    inbound: NormalizedInboundMessage;
+    plan: PlanSnapshot;
+    router: SupportLaneRouterResult & { readonly status: 'ok' };
+    preparedCustomerContext: PreparedCustomerContext;
+    toolUsage: ToolUsage;
+    timingMs: TurnTiming;
+    tokenUsage: TurnTokenUsage;
+    messageContext: TurnMessageContext;
+    handleTurnStartedAt: number;
+  }): Promise<HandleTurnResponse> {
+    const startedAt = Date.now();
+    const result = await this.dependencies.runtime.extract({
+      userMessage: args.inbound.text, plan: args.plan, messageContext: args.messageContext,
+      customerContext: args.preparedCustomerContext.projection, currentMessageId: args.inbound.messageId,
+    });
+    const extraction = this.normalizeInformationExtractionAmbiguity('extraction' in result ? result.extraction : result);
+    args.tokenUsage.extraction = 'tokenUsage' in result ? result.tokenUsage ?? null : null;
+    args.tokenUsage.openAiCalls.extraction = 'openAiCall' in result ? result.openAiCall ?? null : null;
+    args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage);
+    args.timingMs.extraction += Date.now() - startedAt;
+    const response = await this.handleInformationFlow({
+      inbound: args.inbound, previousNode: args.plan.current_node, workingPlan: args.plan, extraction,
+      preparedCustomerContext: args.preparedCustomerContext, toolUsage: args.toolUsage,
+      timingMs: args.timingMs, tokenUsage: args.tokenUsage, messageContext: args.messageContext,
+      handleTurnStartedAt: args.handleTurnStartedAt, routerDecision: args.router.decision,
+      supportLane: {
+        requests: this.mergeInformationRequests([], extraction.informationRequests), router: args.router, recordOutcome: 'answer',
+        turnCarriedReceiptMedia: this.turnCarriedReceiptMedia(args.inbound),
+        priorReportedPayment: null,
+      },
+    });
+    return this.withOpenRequestState(response, response.plan, args.router.current?.key ?? args.inbound.messageId);
+  }
+
   private async handleSupportLaneTurn(args: {
     inbound: NormalizedInboundMessage;
     previousNode: DecisionNode;
@@ -2677,6 +2712,14 @@ export class AgentService {
     imageTurn?: ImageTurnContext;
   }): Promise<HandleTurnResponse> {
     const outcome = args.router.outcome;
+    if (outcome.kind === 'information') {
+      return await this.handleSupportInformationTurn({ ...args, plan: args.workingPlan,
+        preparedCustomerContext: args.preparedCustomerContext ?? await this.prepareCustomerContextForTurn({
+          plan: args.workingPlan, contactPhone: args.inbound.contactPhone, messageContext: args.messageContext,
+        }),
+      });
+    }
+
     // The record decides the pause; a receipt that arrived with it is kept.
     const pausedWithReceiptMedia =
       outcome.kind === 'pause' && this.turnCarriedReceiptMedia(args.inbound);
@@ -2708,13 +2751,8 @@ export class AgentService {
     // The record is written from the effect, never from a guess. A turn that
     // fell through the pause on receipt media keeps the request parked.
     const recordOutcome = pausedWithReceiptMedia ? 'pause' : outcome.kind;
-    const workingPlan = this.advanceOpenRequest({
-      plan: planWithOffer,
-      router: args.router,
-      inbound: args.inbound,
-      outcome: recordOutcome,
-      nowIso: new Date().toISOString(),
-    });
+    // Settlement is committed only after actual information execution and delivery.
+    const workingPlan = planWithOffer;
     const requests = this.supportLaneRequests(workingPlan, {
       messageContext: args.messageContext,
       preparedCustomerContext: args.preparedCustomerContext,
@@ -2736,15 +2774,20 @@ export class AgentService {
       routerDecision: args.router.decision,
       supportLane: {
         requests,
+        router: args.router,
+        recordOutcome,
         turnCarriedReceiptMedia: this.threadCarriesReceiptEvidence({
           inbound: args.inbound,
           plan: workingPlan,
         }),
-        priorReportedPayment: priorReportedPaymentFromPlan(workingPlan),
+        priorReportedPayment: args.router.current?.reported_payment
+          ? { amount: args.router.current.reported_payment.amount, currency: args.router.current.reported_payment.currency,
+            method: args.router.current.reported_payment.method, claimedSuccess: args.router.current.reported_payment.claimed_success }
+          : null,
         ...(outcome.kind === 'offer_human' ? { composeNode: 'ofrecer_agente_humano' as const } : {}),
       },
     });
-    return this.withOpenRequestState(response, workingPlan);
+    return this.withOpenRequestState(response, response.plan, args.router.current?.key ?? args.inbound.messageId);
   }
 
   /**
@@ -3057,13 +3100,13 @@ export class AgentService {
     const composeReplyStartedAt = Date.now();
     let reply: ComposeReplyResult;
     try {
-      reply = await composeModelReply(this.dependencies.runtime, {
+      const composeRequest: ComposeReplyRequest = {
         currentNode: 'solicitar_agente_humano',
         previousNode: args.previousNode,
         userMessage: args.inbound.text,
         messageContext: args.messageContext,
         plan: planToSave,
-        ...this.requestOpenFacts(planToSave),
+        ...this.requestOpenFacts(planToSave, args.router?.current?.key ?? args.inbound.messageId),
         extraction: args.extraction,
         missingFields: [],
         searchReady: false,
@@ -3078,7 +3121,19 @@ export class AgentService {
         // WP5: the support lane asks for the sidecar, so the claim about a
         // registered handoff can be checked against the in-turn receipt.
         ...(args.supportSidecar === true ? { supportSidecar: true } : {}),
-      });
+      };
+      try {
+        reply = await composeModelReply(this.dependencies.runtime, composeRequest);
+      } catch (error) {
+        // A schema-invalid composition is safe to regenerate once: the real
+        // takeover has already been persisted and must never execute again.
+        // Do not retry guardrails, transport errors or unsupported claims.
+        if (!(error instanceof Error) || error.name !== 'ModelBehaviorError') throw error;
+        args.toolUsage.outputs.push({ tool: 'handoff_reply_composition',
+          output: JSON.stringify({ status: 'schema_retry', attempt: 2, failed_attempt_token_usage: 'unavailable' }) });
+        reply = this.withFallbackCallEvidence(error,
+          await composeModelReply(this.dependencies.runtime, composeRequest));
+      }
     } catch (error) {
       args.timingMs.compose_reply += Date.now() - composeReplyStartedAt;
       args.timingMs.total = Date.now() - args.handleTurnStartedAt;
@@ -3117,7 +3172,7 @@ export class AgentService {
           turnDecision: this.humanEscalationTurnDecision(args.turnDecisionReason ?? currentNode),
           operationalNote: `Human escalation composition failed (${error instanceof Error ? error.name : 'unknown'}); typed operational failure delivered without prose.`,
           ...(args.routerDecision ? { routerDecision: args.routerDecision } : {}),
-          openRequestState: currentOpenRequest(planToSave.open_requests)?.state ?? null,
+          openRequestState: planToSave.open_requests.find((request) => request.key === (args.router?.current?.key ?? args.inbound.messageId))?.state ?? null,
           humanTakeoverAttempted,
           humanTakeoverSucceeded,
         }),
@@ -3174,7 +3229,7 @@ export class AgentService {
             humanTakeoverSucceeded,
             operationalNote: 'The reply claimed a registered handoff without an in-turn receipt; the turn resolved without the claim.',
             ...(args.routerDecision ? { routerDecision: args.routerDecision } : {}),
-            openRequestState: currentOpenRequest(planToSave.open_requests)?.state ?? null,
+            openRequestState: planToSave.open_requests.find((request) => request.key === (args.router?.current?.key ?? args.inbound.messageId))?.state ?? null,
           }),
         };
       }
@@ -3221,7 +3276,7 @@ export class AgentService {
         humanTakeoverAttempted,
         humanTakeoverSucceeded,
         ...(args.routerDecision ? { routerDecision: args.routerDecision } : {}),
-        openRequestState: currentOpenRequest(planToSave.open_requests)?.state ?? null,
+        openRequestState: planToSave.open_requests.find((request) => request.key === (args.router?.current?.key ?? args.inbound.messageId))?.state ?? null,
       }),
     };
   }
@@ -3281,6 +3336,7 @@ export class AgentService {
       open_requests: [...advanceOpenRequests({
         previous: args.plan.open_requests,
         sameOpenRequest: args.router.sameOpenRequest,
+        selectedRequestKey: args.router.current?.key ?? null,
         openingText: args.inbound.text,
         nextState,
         nowIso: args.nowIso,
@@ -3297,12 +3353,14 @@ export class AgentService {
   private withOpenRequestState(
     response: HandleTurnResponse,
     plan: PlanSnapshot,
+    selectedKey?: string,
   ): HandleTurnResponse {
+    const addressed = selectedKey ? plan.open_requests.find((request) => request.key === selectedKey) : currentOpenRequest(plan.open_requests);
     return {
       ...response,
       trace: {
         ...response.trace,
-        open_request_state: currentOpenRequest(plan.open_requests)?.state ?? null,
+        open_request_state: addressed?.state ?? null,
       },
     };
   }
@@ -3315,11 +3373,11 @@ export class AgentService {
    * it was answered or the thread holds no record. The turn count is zero for
    * a closed request, so a settled turn never looks like a long open one.
    */
-  private requestOpenFacts(plan: PlanSnapshot): {
+  private requestOpenFacts(plan: PlanSnapshot, selectedKey?: string): {
     requestOpen: boolean;
     requestOpenTurns: number;
   } {
-    const current = currentOpenRequest(plan.open_requests);
+    const current = selectedKey ? plan.open_requests.find((request) => request.key === selectedKey) : currentOpenRequest(plan.open_requests);
     const state = current?.state ?? null;
     const requestOpen =
       state === 'unresolved' || state === 'needs_input' || state === 'with_person';
@@ -3421,7 +3479,7 @@ export class AgentService {
     return {
       ...this.buildNeutralMediaExtraction('Support lane turn; the router decided the lane.'),
       conversationSummary:
-        'Turno de asistencia decidido por el router; las lecturas y la respuesta son deterministas.',
+        'Turno de asistencia decidido por el router.',
       informationRequests: args.informationRequests,
       imageReference: this.storedImageReferenceForFollowUp(args.plan),
     };
@@ -8118,6 +8176,8 @@ export class AgentService {
      */
     supportLane?: {
       readonly requests: PendingInformationRequest[];
+      readonly router: SupportLaneRouterResult & { readonly status: 'ok' };
+      readonly recordOutcome: 'pause' | 'answer' | 'clarify' | 'offer_human' | 'planning' | 'rsvp';
       readonly turnCarriedReceiptMedia: boolean;
       readonly priorReportedPayment: PriorReportedPayment | null;
       readonly composeNode?: DecisionNode;
@@ -8636,7 +8696,10 @@ export class AgentService {
       userMessage: args.inbound.text,
       messageContext: args.messageContext,
       plan: planForInformation,
-      ...this.requestOpenFacts(planForInformation),
+      ...(args.supportLane ? {
+        requestOpen: args.supportLane.router.current?.state !== 'answered',
+        requestOpenTurns: (args.supportLane.router.current?.turns ?? 0) + 1,
+      } : this.requestOpenFacts(planForInformation)),
       extraction: overrides.extraction ?? replyExtraction,
       missingFields: [],
       searchReady: false,
@@ -8857,6 +8920,7 @@ export class AgentService {
         priorReportedPayment: args.supportLane.priorReportedPayment,
         reportedPayment: reply.sidecar?.reportedPayment ?? null,
         citedOrderIds: reply.sidecar?.citedOrderIds ?? [],
+        financialReconciliationRequired: reply.sidecar?.financialReconciliationRequired === true,
         toolUsage: args.toolUsage,
       });
     }
@@ -8869,6 +8933,32 @@ export class AgentService {
       planToSave.conversation_id,
       planToSave,
     );
+    if (args.supportLane && outbound.delivery?.action === 'send') {
+      const sidecar = reply.sidecar;
+      const actualOutcome = sidecar?.requestOutcome;
+      const financialConflict = sidecar?.financialReconciliationRequired === true;
+      const outcomeBlocked = informationResults.some((result) => result.status !== 'completed' && !isPublicEventSearchMiss(result)) ||
+        planToSave.information_state.pending_requests.length > 0;
+      const nextState = args.supportLane.recordOutcome === 'pause'
+        ? null
+        : actualOutcome === 'withdrawn' || actualOutcome === 'answered' && !financialConflict && !outcomeBlocked
+          ? 'answered' as const
+          : actualOutcome === 'needs_input' ? 'needs_input' as const : 'unresolved' as const;
+      if (args.supportLane.router.recordFactsAnswered) {
+        planToSave = mergePlan(planToSave, { open_requests: [...advanceOpenRequests({
+          previous: planToSave.open_requests,
+          sameOpenRequest: args.supportLane.router.sameOpenRequest,
+          selectedRequestKey: args.supportLane.router.current?.key ?? null,
+          openingText: args.inbound.text, nextState, nowIso: new Date().toISOString(),
+          openingKey: args.inbound.messageId,
+        })] });
+        const addressedKey = args.supportLane.router.current?.key ?? args.inbound.messageId;
+        planToSave = mergePlan(planToSave, { open_requests: planToSave.open_requests.map((request) =>
+          request.key === addressedKey ? { ...request, reported_payment: planToSave.support_outcome.reported_payment,
+            financial_reconciliation_required: financialConflict } : request) });
+        if (actualOutcome === 'withdrawn' || actualOutcome === 'answered') planToSave = this.clearRouterHelpOffer(planToSave);
+      }
+    }
     const savePlanStartedAt = Date.now();
     await this.dependencies.planStore.save({
       plan: planToSave,
@@ -8931,7 +9021,7 @@ export class AgentService {
         inbound: args.inbound,
         plan: args.plan,
       }),
-      priorReportedPayment: priorReportedPaymentFromPlan(args.plan),
+      priorReportedPayment: null,
     });
   }
 
@@ -8977,7 +9067,7 @@ export class AgentService {
       support_outcome: {
         signature: signature.signature,
         repeat_count: incomingRepeatCount,
-        unresolved_money: signature.unresolvedMoney,
+        unresolved_money: args.plan.support_outcome?.unresolved_money ?? false,
         updated_at: new Date().toISOString(),
         reported_payment: args.plan.support_outcome?.reported_payment ?? null,
       },
@@ -9001,6 +9091,7 @@ export class AgentService {
     reportedPayment: PriorReportedPayment | null;
     priorReportedPayment: PriorReportedPayment | null;
     citedOrderIds: readonly string[];
+    financialReconciliationRequired: boolean;
     toolUsage: ToolUsage;
   }): PlanSnapshot {
     // The cited order ids are validated against the authorized profile. A
@@ -9029,6 +9120,7 @@ export class AgentService {
           updated_at: null,
         }),
         updated_at: new Date().toISOString(),
+        unresolved_money: args.financialReconciliationRequired,
         reported_payment: effectiveReportedPayment === null
           ? null
           : {
@@ -9379,8 +9471,8 @@ export class AgentService {
       ...(handedOff ? { intent: 'solicitar_humano' as const } : {}),
       information_state: {
         ...plan.information_state,
-        pending_requests: needsHandoff || !policy ? requests : [],
-        ...(!needsHandoff && policy ? { last_completed_request: first } : {}),
+        pending_requests: needsHandoff || result?.status !== 'completed' ? requests : [],
+        ...(!needsHandoff && result?.status === 'completed' ? { last_completed_request: first } : {}),
       },
       ...(handoff ? { human_escalation: {
         status: handedOff ? 'requested' as const : 'none' as const,
@@ -10723,11 +10815,12 @@ export class AgentService {
         pendingRequests.push(request);
         continue;
       }
-      if (result.status === 'needs_input' || result.status === 'failed') {
+      if (result.status === 'needs_input' || result.status === 'failed' && !isPublicEventSearchMiss(result)) {
         pendingRequests.push(request);
         continue;
       }
       if (
+        result.status === 'completed' &&
         result.kind === 'purchase' &&
         result.needsSelection
       ) {
@@ -14026,6 +14119,10 @@ export class AgentService {
     ).length;
 
     return (
+      // An explicit structured search for a small set of ready needs is
+      // sufficient even when the customer has no stylistic preferences.
+      (extraction.actionIntent === 'buscar_proveedores' && queryIntentCount >= 2 &&
+        queryIntentCount <= 3 && readyNeedCount === queryIntentCount) ||
       (extraction.hardConstraints?.length ?? 0) > 0 ||
       (extraction.preferences?.length ?? 0) >= 3 ||
       (multiQueryNeedCount > 0 && queryIntentDetails.size >= 2) ||

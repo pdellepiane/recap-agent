@@ -4,8 +4,7 @@ import {
   type RuntimeOperationId,
 } from './capability-manifest';
 import { baseActionIntents, derivePlanCapabilities } from './dynamic-agent-policy';
-import { createDynamicExtractionSchema, type ExtractionCapabilityProfile } from './extraction-schemas';
-import { projectExtractionOperations } from './turn-capability-policy';
+import { createDynamicExtractionSchema, requestedOperationSchema, type ExtractionCapabilityProfile } from './extraction-schemas';
 
 /**
  * S10 single owner of extraction projection.
@@ -29,8 +28,6 @@ export type EstablishedExtractionDomain = 'purchase' | 'support' | 'rsvp' | null
 export type ExtractionProjectionInput = {
   readonly plan: PersistedPlan;
   readonly manifest: RuntimeCapabilityManifest;
-  readonly requestedDomain: string | null;
-  readonly candidateOperations: readonly RuntimeOperationId[];
   readonly allowedActionIntents: readonly ActionIntent[];
 };
 
@@ -112,7 +109,8 @@ function profileFromManifestAndPlan(
     providerInspection: !laneNarrowed && providerSearch && lane.hasShortlist,
     contact: information || lane.canClose,
     close: !laneNarrowed && lane.canClose && manifestAvailable(manifest, 'provider.quote.write'),
-    pause: !laneNarrowed && lane.canPause && providerPlanning,
+    // The runtime deliberately retired explicit pause; persistence is automatic.
+    pause: false,
     capabilityBoundary: true,
   };
 }
@@ -123,7 +121,6 @@ function intentAllowedByManifest(
   hasActivePlan: boolean,
   hasShortlist: boolean,
   canClose: boolean,
-  canPause: boolean,
 ): boolean {
   switch (intent) {
     case 'responder_invitacion':
@@ -147,7 +144,7 @@ function intentAllowedByManifest(
     case 'cerrar':
       return manifestAvailable(manifest, 'provider.quote.write') && canClose;
     case 'pausar':
-      return manifestAvailable(manifest, 'provider.plan') && canPause;
+      return false;
   }
 }
 
@@ -172,21 +169,17 @@ export function projectExtraction(input: ExtractionProjectionInput): ExtractionP
       lane.hasActivePlan,
       lane.hasShortlist,
       lane.canClose,
-      lane.canPause,
     ),
   );
-  const allowedOperations = projectExtractionOperations({
-    requestedDomain: input.requestedDomain,
-    candidateOperations: input.candidateOperations,
-  }).filter((operation) =>
-    operation !== 'purchase.orders.read' && operation !== 'purchase.gift_detail.read',
-  );
+  // Requested operations remain expressible even when execution is unavailable.
+  // Use the exact schema enum rather than advertising the executable tool set.
+  const allowedOperations = [...requestedOperationSchema.options];
   const schemaPropertyCount = Object.keys(
     createDynamicExtractionSchema({ allowedActionIntents, capabilities: profile }).shape,
   ).length;
   const textualAllowedActions =
-    `Acciones disponibles en este turno: ${allowedActionIntents.join(', ') || 'ninguna'}. ` +
-    `Operaciones del dominio: ${allowedOperations.join(', ') || 'ninguna'}.`;
+    `Valores de actionIntent: ${allowedActionIntents.join(', ') || 'ninguna'}. ` +
+    `Valores de requestedOperation (solicitud, no autorización): ${allowedOperations.join(', ') || 'ninguna'}.`;
   return {
     profile,
     allowedActionIntents,

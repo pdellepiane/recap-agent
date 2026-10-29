@@ -39,6 +39,29 @@ export function parseBudgetAmount(raw: string | null | undefined): number | null
     return null;
   }
 
+  // This value is an extracted budget field, not conversational intent.
+  // Validate numeric punctuation before converting so cents never become hundreds.
+  const numericTokens = raw.match(/[+-]?\d[\d.,]*/gu);
+  if (numericTokens) {
+    if (numericTokens.length !== 1) return null;
+    const token = numericTokens[0];
+    if (!token || token.startsWith('-')) return null;
+    let numeric: string;
+    if (/^\+?\d+$/u.test(token)) {
+      numeric = token;
+    } else if (/^\+?\d+[.,]\d{1,2}$/u.test(token)) {
+      numeric = token.replace(',', '.');
+    } else if (/^\+?\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?$/u.test(token)) {
+      numeric = token.replace(/,/gu, '');
+    } else if (/^\+?\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?$/u.test(token)) {
+      numeric = token.replace(/\./gu, '').replace(',', '.');
+    } else {
+      return null;
+    }
+    const value = Number(numeric);
+    return Number.isFinite(value) && value > 0 ? value : null;
+  }
+
   const normalized = normalizeText(raw);
   const qualitativeAmount = qualitativeBudgetAmount(normalized);
   if (qualitativeAmount !== null) {
@@ -48,23 +71,7 @@ export function parseBudgetAmount(raw: string | null | undefined): number | null
     return 1000;
   }
 
-  const cleaned = raw
-    .replace(/S\//gi, '')
-    .replace(/soles/gi, '')
-    .replace(/pen/gi, '')
-    .replace(/usd/gi, '')
-    .replace(/\s+/g, ' ')
-    .replace(/\./g, '')
-    .replace(/,/g, '')
-    .trim();
-
-  const match = cleaned.match(/(\d+)/);
-  if (!match) {
-    return null;
-  }
-
-  const value = Number.parseInt(match[1], 10);
-  return Number.isFinite(value) && value > 0 ? value : null;
+  return null;
 }
 
 function qualitativeBudgetAmount(normalized: string): number | null {

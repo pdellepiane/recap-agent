@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
@@ -106,5 +107,29 @@ describe('FAQ prompt economy', () => {
     expect(spec.input).toContain('¿Cuánto cuesta?');
     expect(spec.input).not.toContain('tawk.help');
     expect(spec.input).not.toContain('citationUrl');
+  });
+});
+
+describe('October feedback prompt scope', () => {
+  it('projects public search only after an event lookup reports no association', async () => {
+    const request = replyRequest([{ requestId: 'event', kind: 'associated_event',
+      status: 'failed', retryable: false, failureKind: 'not_found', message: 'No association.' }]);
+    request.extraction = { ...request.extraction, informationRequests: [{ kind: 'associated_event', query: 'Hora de la boda', eventHint: 'Alexandra y Alejandro' }] };
+    const missing = await testRuntime().buildReplyRequestSpec(request);
+    const ordinary = await testRuntime().buildReplyRequestSpec(replyRequest([faqResult()]));
+    expect(JSON.stringify(missing)).toContain('https://sinenvolturas.com/buscar');
+    expect(JSON.stringify(ordinary)).not.toContain('https://sinenvolturas.com/buscar');
+    expect(JSON.stringify(ordinary)).not.toContain('Para el monto que preguntó');
+    console.info('feedback-request-bytes', JSON.stringify({
+      missingEvent: { instructions: Buffer.byteLength(missing.instructions), input: Buffer.byteLength(missing.input) },
+      commission: { instructions: Buffer.byteLength(ordinary.instructions), input: Buffer.byteLength(ordinary.input) },
+    }));
+  });
+
+  it('replaces the compulsory commission walkthrough with a smaller question-scoped contract', () => {
+    const guidance = readFileSync(path.resolve('prompts/nodes/resolver_consultas_informativas/commission.txt'), 'utf8');
+    expect(Buffer.byteLength(guidance)).toBeLessThan(700);
+    expect(guidance).not.toContain('incluye los valores de transferencia');
+    expect(guidance).toContain('sin calcular');
   });
 });

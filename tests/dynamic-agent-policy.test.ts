@@ -102,7 +102,8 @@ describe('dynamic agent policy', () => {
     const policy = deriveDynamicAgentPolicy(plan);
 
     expect(policy.allowedActionIntents).toContain('cerrar');
-    expect(policy.allowedActionIntents).toContain('pausar');
+    // The service retires explicit pause; automatic persistence does not expose a discarded action.
+    expect(policy.allowedActionIntents).not.toContain('pausar');
     expect(policy.allowedActionIntents).toContain('modificar_plan_proveedores');
     expect(policy.allowedActionIntents).not.toContain('confirmar_proveedor');
   });

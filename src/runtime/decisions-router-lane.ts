@@ -11,7 +11,7 @@
  * the existing classifier path. Nothing here writes a reply, reads the
  * customer message or infers intent from text.
  */
-import { currentOpenRequest, type OpenRequest } from '../core/open-request';
+import { type OpenRequest } from '../core/open-request';
 import type { ConversationHealthState } from '../core/plan';
 import type { RouterDecisionTrace } from '../core/trace';
 import type { OpenAiCallRef, TokenUsage } from './contracts';
@@ -24,7 +24,7 @@ import {
   loadRouterInputTemplate,
   type RouterInputArgs,
 } from './decisions-router-input';
-import { loadRouterQuestions, type RouterQuestions } from './decisions-router-questions';
+import { bindRouterRequestChoices, loadRouterQuestions, type RouterQuestions } from './decisions-router-questions';
 import { decideRouterPolicy, type RouterPolicyOutcome } from './decisions-router-policy';
 import type { PromptLoader } from './prompt-loader';
 
@@ -118,7 +118,7 @@ export class OpenAiSupportLaneRouter implements SupportLaneRouterPort {
       model: this.options.model,
       timeoutMs: this.options.timeoutMs,
       input,
-      questions: loaded.questions.questions,
+      questions: bindRouterRequestChoices(loaded.questions.questions, args.plan.open_requests),
       ...(this.options.fetchImpl ? { fetchImpl: this.options.fetchImpl } : {}),
     });
     if (result.status === 'unavailable') {
@@ -128,7 +128,7 @@ export class OpenAiSupportLaneRouter implements SupportLaneRouterPort {
         retryable: result.retryable,
       };
     }
-    const current = currentOpenRequest(args.plan.open_requests);
+    const current = args.plan.open_requests.find((request) => request.key === result.answers.selectedRequestKey) ?? null;
     const recordFactsAnswered =
       !result.answers.refusals.includes('same_open_request') &&
       !result.answers.refusals.includes('request_settled');
@@ -141,6 +141,8 @@ export class OpenAiSupportLaneRouter implements SupportLaneRouterPort {
         route: result.answers.route,
         sameOpenRequest,
         current,
+        requestSettled: result.answers.requestSettled,
+        takeoverConfirmed: args.plan.human_help_receipt?.outcome === 'handoff_requested',
         helpOfferPending: args.plan.conversation_health.help_offer_status === 'offered',
       }),
       answers: result.answers,

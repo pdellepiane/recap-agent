@@ -3,20 +3,10 @@ import path from 'node:path';
 
 import YAML from 'yaml';
 import { describe, expect, it } from 'vitest';
-import { z } from 'zod';
 
+import { liveBehaviorCoverageSchema, validateCoverageImplementationEvidence } from '../src/evals/live-behavior-coverage';
 import { EvalLoader } from '../src/evals/loader';
 
-const coverageSchema = z.object({
-  version: z.literal(1),
-  behaviorChanges: z.array(z.object({
-    id: z.string().min(1),
-    implementedBy: z.string().regex(/^[0-9a-f]{7,40}$/u),
-    liveCaseIds: z.array(z.string().min(1)).min(1),
-    status: z.enum(['active', 'retired']).default('active'),
-    retirementReason: z.string().min(1).optional(),
-  })).min(1),
-});
 
 const nonStructuralExpectationTypes = new Set([
   'budget_constraints',
@@ -25,11 +15,19 @@ const nonStructuralExpectationTypes = new Set([
 ]);
 
 describe('live behavior coverage registry', () => {
+  it('rejects uncommitted changes with missing or invalid source provenance', async () => {
+    const change = { id: 'new-change', implementedBy: 'working-tree', liveCaseIds: ['live.case'] };
+    expect(() => liveBehaviorCoverageSchema.parse({ version: 1, behaviorChanges: [change] })).toThrow();
+    const registry = liveBehaviorCoverageSchema.parse({ version: 1, behaviorChanges: [{ ...change,
+      implementationEvidence: ['missing-source.ts', '../outside-source.ts'] }] });
+    expect(await validateCoverageImplementationEvidence(registry, process.cwd())).toHaveLength(2);
+  });
   it('maps every registered behavior change to fail-closed live Lambda cases', async () => {
     const evalDirectory = path.resolve(process.cwd(), 'evals');
-    const registry = coverageSchema.parse(YAML.parse(
+    const registry = liveBehaviorCoverageSchema.parse(YAML.parse(
       await fs.readFile(path.join(evalDirectory, 'live-behavior-coverage.yaml'), 'utf8'),
     ) as unknown);
+    expect(await validateCoverageImplementationEvidence(registry, process.cwd())).toEqual([]);
     const catalog = await new EvalLoader(evalDirectory).loadCatalog();
     const suite = catalog.suites.find(
       (candidate) => candidate.id === 'live_behavior_regression',

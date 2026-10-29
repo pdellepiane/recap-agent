@@ -68,6 +68,16 @@ export function validateSilenceExemption(turn: SilenceCandidate): SilenceExempti
     return { exempt: true, reason: `established suppression: ${reason}` };
   }
   if ((MODEL_SELECTED_SUPPRESSION_REASONS as readonly string[]).includes(reason)) {
+    // Router-selected silence has its own typed trace and persisted-plan
+    // receipt. This establishes origin only; cases must separately assert
+    // delivery when an answer is required.
+    const router = turn.trace['router_decision'];
+    if (reason === 'suppress_acknowledgement' && router !== null &&
+        typeof router === 'object' && !Array.isArray(router) &&
+        'route' in router && router.route === 'suppress_ack' &&
+        turn.trace.plan_persisted === true && turn.trace.plan_persist_reason === 'router_suppress_ack') {
+      return { exempt: true, reason: 'model-selected router suppression' };
+    }
     const classifier = turn.trace.response_classifier;
     if (classifier?.would_suppress === true && classifier.mode === 'enforce') {
       return { exempt: true, reason: `model-selected suppression: ${reason}` };

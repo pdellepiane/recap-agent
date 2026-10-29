@@ -1,0 +1,71 @@
+id: live_behavior.master_provider_live_catering
+suite: live_behavior_regression
+version: 1
+description: Live Catering recommendation and refinement in Lima
+tags:
+  - live
+  - behavior
+  - master-study
+  - provider
+  - live-public-read
+targetModes:
+  - live_lambda
+backendFixture:
+  scenario: master-provider-live-public
+inputs:
+  - text: Busco catering para mi boda en Lima, para 100 invitados, sin un
+      presupuesto máximo por ahora. Recomiéndame proveedores.
+    sessionId: live_behavior.master_provider_live_catering
+    backendFixture:
+      scenario: master-provider-live-public
+  - text: Mantén catering en Lima. Ahora prefiero alternativas más económicas;
+      muéstrame las opciones que encuentres.
+    sessionId: live_behavior.master_provider_live_catering
+    backendFixture:
+      scenario: master-provider-live-public
+expectations:
+  - id: no-real-or-requested-submission
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - create_quote_request
+      - finish_plan
+      - request_human_takeover
+      - guest_rsvp
+      - request_user_login_code
+      - verify_user_login_code
+      - add_vendor_to_event_favorites
+      - create_provider_review
+    severity: hard
+  - id: requested-category-preserved
+    type: plan_field_equals
+    path: active_need_category
+    expected: Catering
+    severity: hard
+  - id: live-catalog-yields-candidates
+    type: provider_result_count
+    min: 1
+    severity: hard
+  - id: reply-presents-provider-source-link
+    type: text_contains
+    regex:
+      - https://sinenvolturas\.com/proveedores/[\p{L}\p{N}%_-]+
+    severity: hard
+scorers:
+  - id: objective-obligations
+    type: expectation_pass_rate
+    weight: 1
+budget:
+  maxTurns: 2
+notes:
+  - Explicit live public provider reads on the current hybrid/vector
+    configuration; all customer data, authentication and effects remain
+    fixtures. No real tracking/write permitted.
+  - Real catalog changes can affect outcomes; retain contemporaneous
+    tool/candidate/detail evidence. Do not replace failed searches with fixture
+    success.
+  - IDs for seeded detail/selection were captured through GET-only public reads
+    before the study; these are context-seeded tasks, not retrieval-recall
+    trials.
+  - Source-link format/field presence are bounded checks, not complete response
+    entailment.

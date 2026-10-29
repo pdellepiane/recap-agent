@@ -663,21 +663,30 @@ export function redactPublicResponseText(
   options?: { preserveUrlPrefixes?: readonly string[] },
 ): string {
   const prefixes = options?.preserveUrlPrefixes ?? [];
-  // The public commission calculator is an exact diagnostics assertion target.
-  // Keep query strings, alternate paths and lookalike hosts under redaction.
-  const publicCalculatorUrl = 'https://sinenvolturas.com/coste-del-servicio';
-  return redactArtifactText(value)
+  // Both published calculator paths are public; query strings and lookalike
+  // hosts remain excluded because they can contain access-control data.
+  const publicCalculatorUrls = new Set([
+    'https://sinenvolturas.com/coste-del-servicio',
+    'https://sinenvolturas.com/cost-of-service',
+  ]);
+  // The public support URL is an exact published constant; protect only an
+  // exact standalone occurrence from the generic phone scrubber.
+  const supportUrl = 'https://wa.me/51915092358';
+  const supportPlaceholder = `PUBLIC_SUPPORT_${Array.from(crypto.randomBytes(16), byte => String.fromCharCode(65 + (byte & 15))).join('')}_MARKER`;
+  const protectedValue = value.replace(/https:\/\/wa\.me\/51915092358(?=$|[\s)\]}>.,;:!])/gu, supportPlaceholder);
+  return redactArtifactText(protectedValue)
     .replace(/https?:\/\/[^\s"'<>]+/giu, (match) => {
       const suffix = match.match(/[.,;:!?)]+$/u)?.[0] ?? '';
       const url = match.slice(0, match.length - suffix.length);
-      return url === publicCalculatorUrl || url.startsWith(publicProviderDirectoryUrlPrefix) || prefixes.some((prefix) => url.startsWith(prefix))
+      return (publicCalculatorUrls.has(url) || url === 'https://sinenvolturas.com/buscar') || url.startsWith(publicProviderDirectoryUrlPrefix) || prefixes.some((prefix) => url.startsWith(prefix))
         ? match
         : `[redacted-url]${suffix}`;
     })
     .replace(/\bwww\.[^\s"'<>]+/giu, '[redacted-url]')
     .replace(/\bfile-[A-Za-z0-9_-]{3,}\b/gu, '[redacted-file]')
     .replace(/\bsynth-[a-z0-9-]{8,}\b/giu, '[redacted-reference]')
-    .replace(/\b[a-f0-9]{64}\b/giu, '[redacted-digest]');
+    .replace(/\b[a-f0-9]{64}\b/giu, '[redacted-digest]')
+    .replaceAll(supportPlaceholder, supportUrl);
 }
 
 function fingerprintImageRefKey(value: string): string {

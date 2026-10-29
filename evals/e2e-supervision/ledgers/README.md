@@ -37,13 +37,18 @@ are the honest record of what the customer read at that time.
 | `2026-10-21-obj-l-brevity.md` | OBJ-L | `8dab1ac6` | PASS WITH FINDINGS |
 | `2026-10-21-obj-n-de-escalation.md` | OBJ-N | `8dab1ac6` | FAIL |
 | `2026-10-21-obj-g-correction.md` | OBJ-G | `8dab1ac6` | PASS |
+| `2026-10-23-supervision-partial-payment-review.md` | partial-payment-review | `a38b7f5a` | PASS WITH FINDINGS |
+| `2026-10-23-supervision-public-search.md` | public-search-without-association | `a38b7f5a` | FAIL |
+| `2026-10-23-supervision-withdrawal-and-gift-policy.md` | withdrawal-and-gift-policy | `a38b7f5a` | PASS WITH FINDINGS |
+| `2026-10-23-supervision-return-to-parked-refund.md` | return-to-parked-refund | `a38b7f5a` | PASS |
 
 The artifacts, in order: `df72d58f` (the reply contracts), `53a1ff31` (the
 first next-step rule), `8dab1ac6` (the customer-anchored next step, the
 truthful handoff outcomes), `805d56b1` (the dead-key fix, the no-derivation
 rule, the escalation frame order, the not-retried handoff values), `ae0514d6`
-(the offer-as-question rule and the capability-blocked backstop) and
-`ec20056c` (the legacy-plan load fix).
+(the offer-as-question rule and the capability-blocked backstop), `ec20056c`
+(the legacy-plan load fix) and `a38b7f5a` (the Decisions GA router migration,
+the zero-request question binding, and the escalation receipt forwarding).
 
 Two ledgers name an artifact that is no longer the deployed one. The OBJ-F
 re-run names `ae0514d6`, the artifact deployed when that lane started;

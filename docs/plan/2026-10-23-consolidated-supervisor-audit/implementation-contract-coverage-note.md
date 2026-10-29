@@ -1,0 +1,23 @@
+# Prompt contract and regression coverage implementation
+
+Status: uncommitted candidate; offline checks only. No AWS operations, deployment, paid evaluations or production changes were performed by this lane. The existing review lock remains pending and deliberately fails release acceptance.
+
+## Decisions
+
+- Inventory now derives production reachability from exact compiler-module stages, exact classifier registry paths and exported router loader paths. Historical node bundles are `audit_only`, never evidence that production consumes their prose. Conditional extraction files name their separate image/campaign/continuity/OTP preconditions. Two retained unwired historical files (`approval_limits.txt`, `gift_fulfillment.txt`) have explicit archived reasons and no fabricated consumers. Unknown router/transition files remain orphans.
+- `src/audit/prompt-contracts.ts` declares stable invariant ownership and output/evidence bindings for every production compiler module. It checks module selection against the actual compiler context, registry stage/owner, exact emitted file set, manifest tools/modules and conditional evidence. A companion loader check verifies the actual instruction string equals the selected tracked file contents.
+- Dynamic output binding validation uses the real schema serialized by OpenAI's Zod converter. Nested paths and enums traverse nullable unions, arrays and local schema references. Requested operations, RSVP actions, planning event/category values and final-close action types bind to exported domain schemas rather than independently guessed enum lists. Runtime extraction now exposes the exact schema/context; the root lane exercises 64 mixed capability/active-plan combinations through the actual request builder.
+- Mutation tests reject coherent module omission, renamed output fields, enum drift, duplicate invariant ownership, unsupported outcome guidance and changed serialized instruction text. These checks prove declared contract consistency, not semantic correctness of arbitrary prose. Human review freshness and supervised language review remain necessary.
+- The freshness dependency graph now also fingerprints the contract and inventory audit sources. No hashes/statuses in `evals/prompt-review-lock.json` were approved or refreshed.
+- Historical changes `34051051` and `02d23684` receive separate coverage entries. New uncommitted changes use explicit `working-tree` provenance plus existing source-file evidence, without invented hashes or attribution to the baseline commit. Registry validation recognizes and verifies that provenance.
+- The bounded-request live candidate now asserts successful persistence rather than a positional internal list state. The pending-order candidate no longer assumes that a pending order alone deterministically sets unresolved-money state; dispute wording is supervised, backend amounts and effect receipts remain objective.
+
+## Verification
+
+Focused execution after initial integration: `tests/prompt-contracts.test.ts`, `tests/prompt-audit.test.ts`, `tests/schema-bound-actual-extraction.test.ts`: 17 tests passed. A later prompt-contracts/prompt-audit/prompt-freshness/coverage check passed 18 tests in four files. Scoped ESLint passed for the contract/inventory/freshness files and their changed tests. Final combined results belong in the root implementation log; these focused runs do not claim full-suite or development runtime acceptance.
+
+## Remaining acceptance
+
+A reviewed lock is still pending. No static check can conclude the reported production failures cannot recur. Development artifact identity, explicitly selected live results and L1–L11 delivered-language supervision are still required. The future panel records the root-selected USD1 operational stop budget for the already authorized targeted checks, including supervision. The CLI reports cost; it does not enforce dollar admission. Development access and fresh artifact verification remain blockers.
+
+Final lane checks: coverage registry plus run manifest passed 17 tests in two files; future-panel source/turn freeze passed its test. The catalog is 60 total / 57 support; the separately frozen future panel is 15 selected cases / 53 scripted turns and at most 16 supervised turns. Its operator-selected USD1 operational cap covers targeted runs and supervision; execution remains blocked pending development access and fresh artifact verification. No CLI-enforced dollar ceiling is claimed. These limits are a proposed future execution package, not completed live evidence or an authorization override. Final scoped ESLint and TypeScript checks passed before root full-suite integration.

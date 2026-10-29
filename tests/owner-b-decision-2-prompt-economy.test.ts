@@ -329,9 +329,10 @@ describe('Owner B B8 single extractor continuity object', () => {
     });
     expect(spec.input).not.toContain('Evidencia condicional de continuidad');
     expect(spec.input).not.toContain('Estado del historial');
-    // Baseline first-turn input measured 1,249 bytes; the identical fact
-    // set must decline once empty-history boilerplate is gone.
-    expect(bytes(spec.input)).toBeLessThan(1_249);
+    // The operation advertisement now covers the actual requested-operation enum;
+    // absence of continuation instructions is the contract, not the old input-only byte count.
+    expect(spec.filePaths).not.toContain('extractors/continuity.txt');
+    expect(spec.input).not.toContain('No extraigas acciones fuera');
     expect(spec.input).toContain('Mensaje del usuario: Hola');
   });
 
@@ -537,8 +538,8 @@ describe('Owner B B9 single reply core', () => {
     const core = readFileSync(path.join(promptsDir, 'shared/reply_core.txt'), 'utf8');
     expect(bytes(core)).toBeLessThanOrEqual(2_000);
     expect(core).toContain('Responde en español natural a la solicitud actual');
-    expect(core).toContain('Afirma una consulta o cambio únicamente según su resultado verificado');
-    expect(core).toContain('no los enumeres si no ayudan a responder');
+    expect(core).toContain('Usa solo hechos autorizados y resultados verificados');
+    expect(core).toContain('No recites el perfil');
     // The legacy files stay on disk for the static audit inventory only.
     for (const legacy of [
       'shared/base_system.txt',

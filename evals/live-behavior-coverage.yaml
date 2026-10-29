@@ -1,5 +1,25 @@
 version: 1
 behaviorChanges:
+  - id: fixture-provider-default-isolation-all-customer-and-mutation-routes-2026-10-27
+    implementedBy: working-tree
+    implementationEvidence: [src/lambda/handler.ts, src/lambda/fixture-provider-boundary.ts, tests/handler-fixture-provider-boundary.test.ts]
+    liveCaseIds: [live_behavior.master_provider_direct_search]
+  - id: explicit-public-provider-read-only-source-with-simulated-effects-2026-10-27
+    implementedBy: working-tree
+    implementationEvidence: [src/lambda/fixture-provider-boundary.ts, src/runtime/eval-fixture-gateway.ts, tests/handler-fixture-provider-boundary.test.ts]
+    liveCaseIds: [live_behavior.master_provider_live_catering]
+  - id: public-category-event-types-json-wire-normalization-2026-10-27
+    implementedBy: working-tree
+    implementationEvidence: [src/runtime/sinenvolturas-gateway.ts, tests/sinenvolturas-gateway.test.ts]
+    liveCaseIds: [live_behavior.master_provider_live_category_catalog]
+  - id: single-need-enriched-provider-category-must-match-active-need-2026-10-27
+    implementedBy: working-tree
+    implementationEvidence: [src/runtime/agent-service.ts, tests/agent-service.test.ts]
+    liveCaseIds: [live_behavior.master_provider_direct_search]
+  - id: preserve-decimal-provider-budget-without-cent-multiplication-2026-10-26
+    implementedBy: working-tree
+    implementationEvidence: [src/runtime/provider-fit.ts, tests/provider-fit.test.ts]
+    liveCaseIds: [live_behavior.provider_decimal_budget_excludes_expensive_candidates]
   - id: retain-authorized-customer-transaction-reference-in-model-profile
     implementedBy: e8f6d3fe
     liveCaseIds: [ live_behavior.customer_transaction_reference_matched ]
@@ -2048,6 +2068,7 @@ behaviorChanges:
     liveCaseIds: [ live_behavior.gift_mixed_order_distinguishes_items, live_behavior.receipt_explicit_older_target_wins ]
   - id: subject-based-extractor-source-contract
     implementedBy: "5974e6f5"
+    implementationEvidence: [ src/runtime/decisions-router-policy.ts ]
     liveCaseIds: [ live_behavior.gift_mixed_order_distinguishes_items ]
   - id: count-driven-selection-removed
     implementedBy: "5974e6f5"
@@ -2060,6 +2081,7 @@ behaviorChanges:
     liveCaseIds: [ live_behavior.gift_mixed_order_distinguishes_items, live_behavior.receipt_text_pending_then_receipt_alone ]
   - id: prompt-relevance-extraction-support-bundles
     implementedBy: "5974e6f5"
+    implementationEvidence: [ src/runtime/decisions-router-policy.ts ]
     liveCaseIds: [ live_behavior.gift_mixed_order_distinguishes_items ]
   - id: multi-purchase-outcome-never-labels-first-candidate-unique
     implementedBy: "6cbbe01f"
@@ -2321,6 +2343,7 @@ behaviorChanges:
     liveCaseIds: [ live_behavior.accountless_guest_event_uses_phone_without_otp, live_behavior.host_withdrawal_diana_policy_and_support, live_behavior.ambiguous_confirmation_clarifies ]
   - id: emit-typed-purchasefact-evidence-on-completed-purchase-summaries-2026-09-30
     implementedBy: "0000000"
+    implementationEvidence: [ src/runtime/decisions-router-policy.ts ]
     liveCaseIds: [ live_behavior.gift_mixed_order_distinguishes_items ]
   - id: merge-active-cart-checkout-continuity-alex-into-survivor-2026-09-30
     implementedBy: "0000000"
@@ -2544,3 +2567,78 @@ behaviorChanges:
     liveCaseIds: [ live_behavior.question_after_takeover_is_answered ]
     status: retired
     retirementReason: 2026-10-22 the eval harness cannot construct a previously failed handoff, because its fixture gateway either completes the takeover or fails in a way that also breaks the purchase reads the turn needs. No gate coverage is claimed; the retry is verified deterministically offline in tests/decisions-router-lane.test.ts (purchase-support-handoff-failed retries, purchase-support-handoff-unknown does not) and was observed live by the supervised probe on phone 51900000407, where turn 1 escalated, the handoff failed with the gateway not configured, turn 2 escalated for unresolved_request_repeated, retried the handoff and succeeded.
+  - id: parked-router-escalation-guard-2026-10-22
+    implementedBy: "34051051"
+    liveCaseIds: [ live_behavior.question_after_takeover_is_answered ]
+  - id: bounded-all-parked-request-list-2026-10-22
+    implementedBy: "02d23684"
+    liveCaseIds: [ live_behavior.fourth_request_keeps_plan_valid ]
+  - id: pending-total-is-not-received-funds-2026-10-23
+    implementedBy: working-tree
+    implementationEvidence: [ src/runtime/agent-service.ts, prompts/shared/customer_context_fields.txt, prompts/extractors/customer_fields.txt ]
+    liveCaseIds: [ live_behavior.pending_total_dispute_is_reviewed ]
+  - id: public-search-without-phone-association-2026-10-23
+    implementedBy: working-tree
+    implementationEvidence: [ src/runtime/model-request-projector.ts, prompts/nodes/resolver_consultas_informativas/public_event_search.txt ]
+    liveCaseIds: [ live_behavior.unassociated_event_has_public_search ]
+  - id: withdrawal-fees-distinct-from-gift-commission-2026-10-23
+    implementedBy: working-tree
+    implementationEvidence: [ src/runtime/model-request-projector.ts, prompts/nodes/resolver_consultas_informativas/withdrawal_fee.txt ]
+    liveCaseIds: [ live_behavior.withdrawal_fee_policy_and_calculator ]
+  - id: gift-commission-calculator-remains-no-arithmetic-2026-10-23
+    implementedBy: working-tree
+    implementationEvidence: [ prompts/nodes/resolver_consultas_informativas/commission.txt ]
+    liveCaseIds: [ live_behavior.faq_commission_full_article_citation ]
+  - id: extraction-guidance-bound-to-actual-schema-2026-10-23
+    implementedBy: working-tree
+    implementationEvidence: [ src/runtime/openai-agent-runtime.ts, src/audit/prompt-contracts.ts ]
+    liveCaseIds: [ live_behavior.pending_total_dispute_is_reviewed, live_behavior.unassociated_event_has_public_search ]
+  - id: scoped-reply-evidence-and-mixed-public-links-2026-10-23
+    implementedBy: working-tree
+    implementationEvidence: [ src/runtime/model-request-projector.ts, src/audit/prompt-contracts.ts ]
+    liveCaseIds: [ live_behavior.unassociated_event_has_public_search, live_behavior.withdrawal_fee_policy_and_calculator ]
+  - id: return-to-original-parked-request-after-unrelated-answer-2026-10-23
+    implementedBy: working-tree
+    implementationEvidence: [ src/core/open-request.ts, src/runtime/decisions-router-policy.ts ]
+    liveCaseIds: [ live_behavior.returned_refund_stays_with_person ]
+  - id: request-scoped-financial-reconciliation-after-completed-reply-2026-10-23
+    implementedBy: working-tree
+    implementationEvidence: [ src/runtime/agent-service.ts, src/core/open-request.ts ]
+    liveCaseIds: [ live_behavior.unrelated_answer_isolates_money, live_behavior.pending_total_dispute_is_reviewed ]
+  - id: thank-you-source-does-not-establish-platform-notification-2026-10-23
+    implementedBy: working-tree
+    implementationEvidence: [ src/runtime/model-request-projector.ts, prompts/nodes/resolver_consultas_informativas/thank_you_provenance.txt ]
+    liveCaseIds: [ live_behavior.host_receipt_fact_in_judge_evidence ]
+  - id: decisions-ga-native-client-2026-10-23
+    implementedBy: working-tree
+    implementationEvidence: [ src/runtime/decisions-router-client.ts, package.json, package-lock.json ]
+    liveCaseIds: [ live_behavior.decisions_router_escalates_frustrated_purchase_support, live_behavior.pending_total_dispute_is_reviewed ]
+  - id: decisions-zero-retained-request-binding-2026-10-23
+    implementedBy: working-tree
+    implementationEvidence: [ src/runtime/decisions-router-questions.ts ]
+    liveCaseIds: [ live_behavior.pending_total_dispute_is_reviewed ]
+  - id: router-human-help-receipt-forwarding-2026-10-23
+    implementedBy: working-tree
+    implementationEvidence: [ src/runtime/agent-service.ts ]
+    liveCaseIds: [ live_behavior.host_receipt_fact_in_judge_evidence, live_behavior.question_after_takeover_is_answered ]
+  - id: router-unexecutable-action-escalates-2026-10-23
+    implementedBy: working-tree
+    implementationEvidence: [ prompts/router/route.txt ]
+    liveCaseIds: [ live_behavior.host_receipt_fact_in_judge_evidence ]
+  - id: router-different-datum-is-new-request-2026-10-23
+    implementedBy: working-tree
+    implementationEvidence: [ prompts/router/same_open_request.txt ]
+    liveCaseIds: [ live_behavior.question_after_takeover_is_answered ]
+
+  - id: explicit-ready-multi-need-search-without-extra-preferences
+    implementedBy: working-tree
+    implementationEvidence: [ src/runtime/agent-service.ts ]
+    liveCaseIds: [ live_behavior.master_provider_live_multi_need ]
+  - id: answer-first-nonfinancial-record-followup-before-loop-escalation
+    implementedBy: working-tree
+    implementationEvidence: [ src/runtime/decisions-router-policy.ts ]
+    liveCaseIds: [ live_behavior.gift_mixed_order_distinguishes_items ]
+  - id: pending-protected-request-cannot-be-suppressed-before-extraction
+    implementedBy: working-tree
+    implementationEvidence: [ src/runtime/agent-service.ts ]
+    liveCaseIds: [ live_behavior.master_v2_auth_refusal ]

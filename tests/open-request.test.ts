@@ -201,3 +201,9 @@ describe('currentOpenRequest', () => {
     expect(currentOpenRequest([record({ key: 'a' }), record({ key: 'b' })])?.key).toBe('b');
   });
 });
+
+it('rejects an unretained selected request identity rather than opening a different request', () => {
+  expect(() => advanceOpenRequests({ previous: [record()], selectedRequestKey: 'not-retained',
+    sameOpenRequest: true, openingText: 'Seguimiento', nextState: 'answered', nowIso: LATER,
+    openingKey: 'followup' })).toThrow('Selected request identity');
+});

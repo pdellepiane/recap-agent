@@ -1,0 +1,58 @@
+id: live_behavior.master_provider_live_category_catalog
+suite: live_behavior_regression
+version: 1
+description: Public category catalog
+tags:
+  - live
+  - behavior
+  - master-study
+  - provider
+  - live-public-read
+targetModes:
+  - live_lambda
+backendFixture:
+  scenario: master-provider-live-public
+inputs:
+  - text: ¿Qué categorías de proveedores tienen? Quisiera saber si puedo buscar
+      Catering, Música y Fotografía y video.
+    sessionId: live_behavior.master_provider_live_category_catalog
+    backendFixture:
+      scenario: master-provider-live-public
+expectations:
+  - id: no-real-or-requested-submission
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - create_quote_request
+      - finish_plan
+      - request_human_takeover
+      - guest_rsvp
+      - request_user_login_code
+      - verify_user_login_code
+      - add_vendor_to_event_favorites
+      - create_provider_review
+    severity: hard
+  - id: canonical-public-category-present
+    type: text_contains
+    anyOf:
+      - Catering
+      - catering
+    severity: hard
+scorers:
+  - id: objective-obligations
+    type: expectation_pass_rate
+    weight: 1
+budget:
+  maxTurns: 1
+notes:
+  - Explicit live public provider reads on the current hybrid/vector
+    configuration; all customer data, authentication and effects remain
+    fixtures. No real tracking/write permitted.
+  - Real catalog changes can affect outcomes; retain contemporaneous
+    tool/candidate/detail evidence. Do not replace failed searches with fixture
+    success.
+  - IDs for seeded detail/selection were captured through GET-only public reads
+    before the study; these are context-seeded tasks, not retrieval-recall
+    trials.
+  - Source-link format/field presence are bounded checks, not complete response
+    entailment.

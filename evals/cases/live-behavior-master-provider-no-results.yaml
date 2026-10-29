@@ -1,0 +1,67 @@
+template: template.base-live
+id: live_behavior.master_provider_no_results
+suite: live_behavior_regression
+version: 1
+description: A complete request against an empty provider world leaves the need
+  unavailable rather than fabricating a shortlist.
+tags:
+  - live
+  - behavior
+  - provider
+  - thesis-master
+targetModes:
+  - live_lambda
+backendFixture:
+  scenario: master-provider-empty
+inputs:
+  - text: Busco catering para mi cumpleaños en Lima para 20 invitados, presupuesto
+      máximo 500 soles. ¿Qué opciones hay?
+    sessionId: master-provider-no_results
+    backendFixture:
+      scenario: master-provider-empty
+expectations:
+  - id: empty-catalog-has-no-recommendations
+    type: plan_field_equals
+    path: recommended_provider_ids
+    expected: []
+    severity: hard
+  - id: need-records-unavailability
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: Catering
+        status: no_providers_available
+        recommended_provider_ids: []
+    severity: hard
+  - id: no-provider-from-another-world
+    type: text_not_contains
+    phrases:
+      - Mesa Accesible
+      - Mesa Premium
+      - Luz Musical
+    severity: hard
+  - id: read-only-provider-conversation-has-no-submission
+    type: tool_usage
+    mustNotCall:
+      - create_quote_request
+      - finish_plan
+      - request_human_takeover
+      - guest_rsvp
+      - request_user_login_code
+      - verify_user_login_code
+    severity: hard
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 12000
+  estimatedCompletionTokensPerTurn: 600
+notes:
+  - Frozen synthetic capability question for the master thesis study. These
+    fixtures test the deployed orchestration and model against a declared
+    provider world; they do not test real marketplace/vector retrieval recall.
+  - All replies remain model-generated. Assertions pin independently declared
+    provider identities, facts and effects rather than prose style or internal
+    node paths.

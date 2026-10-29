@@ -38,6 +38,7 @@ function policyInput(overrides: Partial<RouterPolicyInput> = {}): RouterPolicyIn
 /** What the route alone decides when the record does not fire. */
 const routeOutcome: Record<RouterRoute, RouterPolicyOutcome> = {
   answer_with_records: { kind: 'answer' },
+  information_flow: { kind: 'information' },
   ask_clarification: { kind: 'clarify' },
   offer_human: { kind: 'offer_human' },
   escalate_human: { kind: 'escalate', reason: 'explicit_person_request' },
@@ -188,6 +189,14 @@ describe('decisions router policy', () => {
     });
   });
 
+  it('answers the first record-grounded follow-up to a nonfinancial unresolved request before escalating a loop', () => {
+    const base = openRequest('unresolved', { turns: 1, financial_reconciliation_required: false });
+    expect(decideRouterPolicy(policyInput({ route: 'answer_with_records', sameOpenRequest: true, current: base }))).toEqual({ kind: 'answer' });
+    expect(decideRouterPolicy(policyInput({ route: 'answer_with_records', sameOpenRequest: true, current: { ...base, turns: 2 } }))).toEqual({ kind: 'escalate', reason: 'unresolved_request_repeated' });
+    expect(decideRouterPolicy(policyInput({ route: 'answer_with_records', sameOpenRequest: true, current: { ...base, financial_reconciliation_required: true } }))).toEqual({ kind: 'escalate', reason: 'unresolved_request_repeated' });
+    expect(decideRouterPolicy(policyInput({ route: 'escalate_human', sameOpenRequest: true, current: base }))).toEqual({ kind: 'escalate', reason: 'unresolved_request_repeated' });
+  });
+
   it('lets the record rule win over an answer route', () => {
     expect(decideRouterPolicy(policyInput({
       route: 'answer_with_records',
@@ -206,4 +215,9 @@ describe('decisions router policy', () => {
       current: openRequest('needs_input'),
     }))).toEqual({ kind: 'clarify' });
   });
+});
+
+it('does not recompose a repeated escalation when a confirmed thread receipt already owns an unresolved request', () => {
+  expect(decideRouterPolicy(policyInput({ current: openRequest('unresolved'), sameOpenRequest: true,
+    route: 'escalate_human', takeoverConfirmed: true, requestSettled: false }))).toEqual({ kind: 'pause' });
 });

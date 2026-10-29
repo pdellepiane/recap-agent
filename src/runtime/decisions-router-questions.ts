@@ -13,11 +13,13 @@
  * Nothing here is a conversational reply: the router decides, the reply model
  * writes. The instructions never name a reply, a promise or a wording.
  */
+import type { OpenRequest } from '../core/open-request';
 import type { PromptLoader } from './prompt-loader';
 
 /** The seven routes fixed by Decision 1. Order is the contract order. */
 export const routerRouteValues = [
   'answer_with_records',
+  'information_flow',
   'ask_clarification',
   'offer_human',
   'escalate_human',
@@ -225,4 +227,26 @@ function parseEntry(entry: string, relativePath: string): { value: string; descr
     throw new Error(`Router prompt entry must have a value and a description: ${relativePath}`);
   }
   return { value, description };
+}
+
+/**
+ * Bind the reference choices to the exact retained, validated request identities.
+ *
+ * The GA Decisions API requires every choice question to carry at least two
+ * options. With no retained request there is nothing to compare against, so
+ * the question is omitted and the client reads the absent answer as `new`.
+ */
+export function bindRouterRequestChoices(
+  questions: readonly RouterQuestion[], requests: readonly OpenRequest[],
+): readonly RouterQuestion[] {
+  if (requests.length === 0) {
+    return questions.filter((question) => question.name !== 'same_open_request');
+  }
+  return questions.map((question) => question.name !== 'same_open_request' ? question : ({
+    ...question,
+    choices: [
+      ...requests.map((request) => ({ value: `request:${request.key}`, description: question.choices[0].description })),
+      { value: 'new', description: question.choices[1].description },
+    ],
+  }));
 }

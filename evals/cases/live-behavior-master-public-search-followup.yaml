@@ -1,0 +1,69 @@
+id: live_behavior.master_public_search_followup
+suite: live_behavior_regression
+version: 1
+description: "Two-turn public search and clarification with no association:
+  repeat stays answerable with public search, no authentication or takeover, and
+  a delivered second message."
+tags:
+  - live
+  - behavior
+  - master-study
+  - public-search
+targetModes:
+  - live_lambda
+backendFixture:
+  scenario: public-event-unassociated
+inputs:
+  - text: Soy prima de la novia, mi número no es peruano. Quiero confirmar hora y
+      lugar de la boda de Alexandra Toledo y Alejandro Castillo. ¿Es en Molino
+      Blanco?
+    channel: whatsapp
+    contactPhone: "+51900000421"
+    sessionId: live_behavior.master_public_search_followup
+    backendFixture: &a1
+      scenario: public-event-unassociated
+  - text: No tengo ningún código. Son Alexandra Toledo y Alejandro Castillo, la boda
+      sería en Molino Blanco. ¿Cómo puedo buscarla con esos datos?
+    channel: whatsapp
+    contactPhone: "+51900000421"
+    sessionId: live_behavior.master_public_search_followup
+    backendFixture: *a1
+expectations:
+  - id: public-search-destination
+    type: text_contains
+    allOf:
+      - https://sinenvolturas.com/buscar
+    turnIndex: 0
+    severity: hard
+  - id: handoff-effects
+    type: fixture_effect_count
+    operation: handoff.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: no-private-auth-or-mutations
+    type: tool_usage
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - guest_rsvp
+    severity: hard
+  - id: followup-public-search-destination
+    type: text_contains
+    allOf:
+      - https://sinenvolturas.com/buscar
+    turnIndex: 1
+    severity: hard
+budget:
+  maxTurns: 2
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1
+notes:
+  - New two-turn study reconstruction of the retained public-search follow-up
+    failure; no change to original one-turn case or historical scores.
+  - Search URL is a contractual destination; no exact conversational prose or
+    internal route required.

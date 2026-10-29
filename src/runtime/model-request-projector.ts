@@ -1,3 +1,4 @@
+import type { ExtractionCapabilityProfile } from './extraction-schemas';
 import type { EstablishedExtractionDomain } from './extraction-projection';
 import type { DecisionNode } from '../core/decision-nodes';
 import { operationDomain } from './turn-capability-policy';
@@ -6,6 +7,7 @@ import {
   instructionModuleRegistry,
   nodePromptManifest,
   ownerNodeSets,
+  questionStrategyNodes,
   type InstructionModuleId,
   type InstructionModuleMetadata,
   type ToolName,
@@ -35,6 +37,7 @@ export type CompilerTask =
   | 'rsvp'
   | 'faq_policy'
   | 'faq_commission'
+  | 'withdrawal_fee'
   | 'host_withdrawal_policy'
   | 'handoff'
   | 'auth'
@@ -55,6 +58,8 @@ export type ModuleSelectionContext = {
    * transient/unknown extraction so topic detection stays compact.
    */
   readonly hasPlanningDetail: boolean;
+  readonly extractionProfile?: ExtractionCapabilityProfile;
+  readonly hasCustomerRecords?: boolean;
   /**
    * Typed real-continuation flag for the reply stage. True when the turn
    * continues prior delivered context (owner pending question/task,
@@ -70,6 +75,9 @@ export type ModuleSelectionContext = {
   readonly hasRejectedRsvpCompanion?: boolean;
   /** Exact typed lookup outcomes; no inference from the customer's words. */
   readonly hasPartialPurchaseFailure?: boolean;
+  readonly hasThankYouRecord?: boolean;
+  readonly hasNoAssociatedEvent?: boolean;
+  readonly hasPlanningQuestion?: boolean;
   readonly hasFailedRsvpLookup?: boolean;
   readonly hasKnownRsvpCandidateStates?: boolean;
 };
@@ -139,6 +147,25 @@ export function selectExtractionModules(
       ['allowedActionIntents', 'candidateOperations'],
     ),
   ];
+  if (context.hasCustomerRecords === true) {
+    modules.push(selected('extraction_customer_fields', 'authorized record interpretation', ['customerContext']));
+  }
+  const applicable = (module: SelectedModule): boolean => {
+    if (!registrySupports(module.id, 'extraction', context.owner, context.tasks)) return false;
+    const profile = context.extractionProfile;
+    if (profile === undefined) return true;
+    switch (module.id) {
+      case 'extraction_information': return profile.information;
+      case 'extraction_rsvp': return profile.rsvp;
+      case 'extraction_planning': return profile.providerPlanning;
+      case 'extraction_contact': return profile.contact;
+      case 'extraction_provider_management': return profile.providerOperations;
+      case 'extraction_provider_selection': return profile.providerSelection;
+      case 'extraction_provider_inspection': return profile.providerInspection;
+      case 'extraction_close_pause': return profile.close;
+      default: return true;
+    }
+  };
   const established = context.establishedDomain;
   if (established === null || context.owner === 'unknown') {
     if (registrySupports('extraction_information', 'extraction', context.owner, context.tasks)) {
@@ -164,10 +191,10 @@ export function selectExtractionModules(
       modules.push(
         selected('extraction_close_pause', 'transient turn with planning progress may close or pause', ['plan.provider_needs']),
       );
+      modules.push(selected('extraction_provider_selection', 'shortlist selection schema', ['plan.provider_shortlist']));
+      modules.push(selected('extraction_provider_inspection', 'shortlist inspection schema', ['plan.provider_shortlist']));
     }
-    return modules.filter((module) =>
-      registrySupports(module.id, 'extraction', context.owner, context.tasks),
-    );
+    return modules.filter(applicable);
   }
   if (established === 'purchase' || established === 'support') {
     modules.push(
@@ -179,9 +206,7 @@ export function selectExtractionModules(
     modules.push(
       selected('extraction_contact', 'established support lane keeps contact capture for auth continuation', ['plan.contact_email']),
     );
-    return modules.filter((module) =>
-      registrySupports(module.id, 'extraction', context.owner, context.tasks),
-    );
+    return modules.filter(applicable);
   }
   modules.push(
     selected('extraction_rsvp', 'established invitation lane', ['plan.rsvp_state']),
@@ -189,9 +214,7 @@ export function selectExtractionModules(
   modules.push(
     selected('extraction_information', 'event-fact readability preserved across invitation lanes', ['plan.information_state']),
   );
-  return modules.filter((module) =>
-    registrySupports(module.id, 'extraction', context.owner, context.tasks),
-  );
+  return modules.filter(applicable);
 }
 
 /**
@@ -323,7 +346,7 @@ export function deriveReplyCompilerContext(
     request.plan.last_outbound_context != null ||
     (request.plan.information_state.pending_requests ?? []).length > 0;
   const hasPartialPurchaseFailure = (request.informationResults ?? []).some((result) =>
-    result.kind === 'purchase' && result.status === 'failed' &&
+    result.kind === 'purchase' && (result.status === 'failed' || result.status === 'completed') &&
     (result.sourceCoverage ?? []).some((source) => source.status === 'failed'));
   let hasFailedRsvpLookup = false;
   if (request.currentNode === 'responder_invitacion' && request.errorMessage) {
@@ -348,6 +371,17 @@ export function deriveReplyCompilerContext(
     customerReferenceResolution,
     hasRejectedRsvpCompanion: request.rsvpCompanionOutcome?.saved === false,
     hasPartialPurchaseFailure,
+    hasThankYouRecord: (request.customerContext?.purchases ?? []).some((purchase) =>
+      purchase.isThanked === true || purchase.thanks != null) ||
+      (request.informationResults ?? []).some((result) => result.kind === 'purchase' &&
+        result.status === 'completed' && result.purchases.some((purchase) =>
+          purchase.isThanked === true || purchase.thanks != null)),
+    hasPlanningQuestion: questionStrategyNodes.has(request.currentNode) &&
+      request.extraction.pauseRequested !== true && request.extraction.closeAction == null,
+    hasNoAssociatedEvent: (request.informationResults ?? []).some((result) =>
+      result.kind === 'associated_event' &&
+      ((result.status === 'completed' && result.result.events.length === 0) ||
+       (result.status === 'failed' && result.failureKind === 'not_found'))),
     hasFailedRsvpLookup,
     hasKnownRsvpCandidateStates,
   };
@@ -376,6 +410,13 @@ export function selectReplyModules(
     candidates.push(
       selected('reply_planning_owner', 'planning owner task on this turn', ['plan.provider_needs', 'turnDecision']),
     );
+    if (context.hasPlanningQuestion === true) candidates.push(
+      selected('reply_planning_interview', 'typed planning question without a pause or closure',
+        ['missingFields', 'plan.provider_needs']),
+    );
+  }
+  if (has('purchase') && context.hasThankYouRecord === true) {
+    candidates.push(selected('reply_thank_you_provenance', 'thank-you source and actor semantics', ['customerContext.purchases.thanks']));
   }
   if (has('purchase')) {
     candidates.push(
@@ -405,6 +446,12 @@ export function selectReplyModules(
     candidates.push(
       selected('reply_venue_facts', 'canonical invitation and event records', ['customerContext.invitations', 'informationResults.associated_event.references']),
     );
+  }
+  if (has('venue') && context.hasNoAssociatedEvent === true) {
+    candidates.push(selected(
+      'reply_public_event_search', 'authorized lookup found no associated event',
+      ['informationResults.associated_event'],
+    ));
   }
   if (has('rsvp')) {
     candidates.push(
@@ -437,6 +484,12 @@ export function selectReplyModules(
     candidates.push(
       selected('reply_faq_commission', 'commission guidance for a verified commission article', ['informationResults.faq.citationUrl']),
     );
+  }
+  if (has('withdrawal_fee')) {
+    candidates.push(selected(
+      'reply_withdrawal_fee', 'structured withdrawal topic with published FAQ evidence',
+      ['informationResults.faq.feeTopic', 'informationResults.faq.evidence'],
+    ));
   }
   if (has('host_withdrawal_policy')) {
     candidates.push(

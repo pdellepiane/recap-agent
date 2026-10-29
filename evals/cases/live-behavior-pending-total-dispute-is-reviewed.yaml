@@ -1,0 +1,91 @@
+{
+  "template": "template.base-live",
+  "id": "live_behavior.pending_total_dispute_is_reviewed",
+  "suite": "live_behavior_regression",
+  "version": 1,
+  "description": "Reconstructs Francesca feedback with a pending PEN161.20 order and a separate old USD order. Explain the order total without claiming receipt; dispute moves to one confirmed review. No invented balance or approval.",
+  "tags": [
+    "live",
+    "behavior",
+    "reported-interaction",
+    "october-20-review"
+  ],
+  "targetModes": [
+    "live_lambda"
+  ],
+  "backendFixture": {
+    "scenario": "purchase-partial-payment-review"
+  },
+  "inputs": [
+    {
+      "text": "Me avisaron que hay saldo pendiente del Baby Shower de prueba. No entendí, ¿por qué?",
+      "channel": "whatsapp",
+      "contactPhone": "+51900000420",
+      "sessionId": "pending_total_dispute_is_reviewed",
+      "backendFixture": {
+        "scenario": "purchase-partial-payment-review"
+      }
+    },
+    {
+      "text": "Yo pagué todo, ¿me puedes confirmar?",
+      "channel": "whatsapp",
+      "contactPhone": "+51900000420",
+      "sessionId": "pending_total_dispute_is_reviewed",
+      "backendFixture": {
+        "scenario": "purchase-partial-payment-review"
+      }
+    },
+    {
+      "text": "Sigo esperando, que lo revise una persona del equipo por favor.",
+      "channel": "whatsapp",
+      "contactPhone": "+51900000420",
+      "sessionId": "pending_total_dispute_is_reviewed",
+      "backendFixture": {
+        "scenario": "purchase-partial-payment-review"
+      }
+    }
+  ],
+  "expectations": [
+    {
+      "id": "pending-order-total",
+      "type": "text_contains",
+      "anyOf": [
+        "161.20",
+        "161,20"
+      ],
+      "turnIndex": 0,
+      "severity": "hard"
+    },
+    {
+      "id": "handoff-effects",
+      "type": "fixture_effect_count",
+      "operation": "handoff.write",
+      "expectedAttempts": 1,
+      "expectedSuccesses": 1,
+      "expectedReplays": 0,
+      "severity": "hard"
+    },
+    {
+      "id": "review-is-recorded",
+      "type": "plan_field_equals",
+      "path": "human_escalation.status",
+      "expected": "requested",
+      "severity": "hard"
+    }
+  ],
+  "budget": {
+    "maxTurns": 3,
+    "estimatedPromptTokensPerTurn": 3500,
+    "estimatedCompletionTokensPerTurn": 300
+  },
+  "scorers": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "weight": 1
+    }
+  ],
+  "notes": [
+    "Pending source records establish expected total PEN161.20, not received funds or a verified PEN11.20 balance. Dispute language and acknowledgement of reported payment are qualified under the supervision rubric; deterministic twins exercise the financial reconciliation sidecar."
+  ]
+}

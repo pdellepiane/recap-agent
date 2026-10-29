@@ -91,9 +91,9 @@ describe('run manifest identity (O0)', () => {
     // 2026-09-30 live compression: 119 - 27 merged threads = 92.
     // 2026-10-20 decisions router: +6 support cases from the WhatsApp behaviour dossier = 52.
     // 2026-10-21 typed limitation memory: +1 support case = 53.
-    expect(manifest.cases.orderedIds).toHaveLength(54);
-    expect(new Set(manifest.cases.orderedIds).size).toBe(54);
-    expect(manifest.cases.identities).toHaveLength(54);
+    expect(manifest.cases.orderedIds).toEqual(selectedCases.map(current => current.id));
+    expect(new Set(manifest.cases.orderedIds).size).toBe(selectedCases.length);
+    expect(manifest.cases.identities).toHaveLength(selectedCases.length);
     expect(() => runManifestSchema.parse(manifest)).not.toThrow();
     expect(() => assertUniqueConfigCasePairs(manifest.cases.identities)).not.toThrow();
   });
@@ -429,7 +429,7 @@ describe('run manifest identity (O0)', () => {
     expect(() => parseResumeMode(['--resume-mode', 'partial'])).toThrow(/full or diagnostic/);
   });
 
-  it('reconciles frozen support-gate counts from the catalog suite (54 total / 51 support)', async () => {
+  it('preserves the dated 60-case support snapshot within the expanded current catalog', async () => {
     const catalog = await new EvalLoader(evalsDir).loadCatalog();
     const suite = catalog.suites.find((entry) => entry.id === 'live_behavior_regression');
     expect(suite).toBeDefined();
@@ -456,11 +456,15 @@ describe('run manifest identity (O0)', () => {
     // 2026-10-22 open-request record: +1 support case (an unrelated turn is
     // answered on a thread parked with a person) = 54 (51 support).
     // The historical 2026-10-20 gate file stays untouched as evidence.
-    expect(suiteIds.size).toBe(54);
-    expect(frozen.supportDenominator).toBe(51);
-    expect(frozen.supportIds).toHaveLength(51);
+    expect(suiteIds.size).toBeGreaterThanOrEqual(60);
+    expect(frozen.supportDenominator).toBe(57);
+    expect(frozen.supportIds).toHaveLength(57);
     expect(frozen.planningDiagnosticOnly).toHaveLength(3);
-    expect(new Set([...frozen.supportIds, ...frozen.planningDiagnosticOnly])).toEqual(suiteIds);
+    const historicalIds = new Set([...frozen.supportIds, ...frozen.planningDiagnosticOnly]);
+    expect(historicalIds.size).toBe(60);
+    for (const historicalId of historicalIds) {
+      expect(suiteIds.has(historicalId), `${historicalId} disappeared from the expanded suite`).toBe(true);
+    }
     expect(frozen.supportIds).toContain('live_behavior.customer_event_task_continuity');
     expect(frozen.supportIds).toContain('live_behavior.image_file_delayed_question');
     expect(frozen.supportIds).toContain(

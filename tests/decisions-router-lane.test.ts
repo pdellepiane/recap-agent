@@ -66,6 +66,7 @@ const CASE_D_PHONE = '+51900000404';
 type RouterAnswers = {
   readonly route: RouterRoute;
   readonly sameOpenRequest: boolean;
+  readonly selectedRequestKey?: string;
   readonly requestSettled: boolean;
 };
 
@@ -75,31 +76,29 @@ type RouterScript =
   | readonly RouterAnswers[]
   | { readonly unavailable: true };
 
-function decisionsPayload(answers: RouterAnswers): unknown {
-  const sameOpenRequest = answers.sameOpenRequest ? 'same' : 'new';
+function decisionsPayload(answers: RouterAnswers, requestBody: string): unknown {
+  const request = JSON.parse(requestBody) as { questions: { name: string; choices: { value: string }[] }[] };
+  const requestChoices = request.questions.find((question) => question.name === 'same_open_request')?.choices ?? [];
+  const sameOpenRequest = (answers.selectedRequestKey ? `request:${answers.selectedRequestKey}` : undefined) ?? (answers.sameOpenRequest ? requestChoices.filter((choice) => choice.value !== 'new').at(-1)?.value ?? 'new' : 'new');
   const requestSettled = answers.requestSettled ? 'settled' : 'open';
+  const values: Record<string, string> = {
+    route: answers.route,
+    same_open_request: sameOpenRequest,
+    request_settled: requestSettled,
+  };
+  // The GA API requires 2-255 choices, so the client omits same_open_request
+  // when no request is retained. The stub answers exactly the questions sent.
   return {
     id: 'dec_router_test',
-    answers: [
-      {
+    answers: request.questions.map((question) => {
+      const choice = values[question.name] ?? 'new';
+      return {
         type: 'choice',
-        name: 'route',
-        choice: answers.route,
-        probabilities: [{ value: answers.route, probability: 0.9 }],
-      },
-      {
-        type: 'choice',
-        name: 'same_open_request',
-        choice: sameOpenRequest,
-        probabilities: [{ value: sameOpenRequest, probability: 0.9 }],
-      },
-      {
-        type: 'choice',
-        name: 'request_settled',
-        choice: requestSettled,
-        probabilities: [{ value: requestSettled, probability: 0.9 }],
-      },
-    ],
+        name: question.name,
+        choice,
+        probabilities: [{ value: choice, probability: 0.9 }],
+      };
+    }),
   };
 }
 
@@ -128,7 +127,7 @@ function routerFetch(script: RouterScript) {
     if (next === undefined || 'unavailable' in next) {
       return new Response(JSON.stringify({ error: 'bad request' }), { status: 400 });
     }
-    return new Response(JSON.stringify(decisionsPayload(next)), {
+    return new Response(JSON.stringify(decisionsPayload(next, typeof init?.body === 'string' ? init.body : '')), {
       status: 200,
       headers: { 'content-type': 'application/json' },
     });
@@ -993,7 +992,7 @@ describe('decisions router: customer-assistance lane', () => {
             method: 'Yape o Plin',
             claimedSuccess: true,
           },
-          claimedHandoff: false,
+          requestOutcome: 'unresolved', financialReconciliationRequired: false, claimedHandoff: false,
         },
       }),
     );
@@ -1198,7 +1197,7 @@ describe('decisions router: customer-assistance lane', () => {
             method: 'Yape o Plin',
             claimedSuccess: true,
           },
-          claimedHandoff: false,
+          requestOutcome: 'unresolved', financialReconciliationRequired: true, claimedHandoff: false,
         },
       }),
     );
@@ -1235,11 +1234,116 @@ describe('decisions router: customer-assistance lane', () => {
     // turn. The signature and the repeat count no longer travel to the
     // router: the record is the only state the policy reads.
     expect(bodies.length).toBeGreaterThan(1);
-    expect(bodies[1]).toContain('solicitud_actual:');
+    expect(bodies[1]).toContain('solicitudes_retenidas:');
     expect(bodies[1]).toContain('Aquí sí se ha cobrado el Plin.');
-    expect(first.plan.open_requests.at(-1)?.state).toBe('answered');
+    expect(first.plan.open_requests.at(-1)?.state).toBe('unresolved');
     // The declined record plus the reported successful payment is an
     // unresolved money outcome: the model-side signal, never a keyword.
     expect(second.plan.support_outcome.unresolved_money).toBe(true);
+  });
+});
+
+describe('request-scoped support outcomes', () => {
+  const phone = '+51900000406';
+  const scenario = 'purchase-approved-event-date';
+  const inbound = { channel: 'whatsapp' as const, contactPhone: phone, receivedAt: '2026-10-23T12:00:00.000Z' };
+  const answeredSidecar = { citedOrderIds: [], reportedPayment: null, claimedHandoff: false,
+    requestOutcome: 'answered' as const, financialReconciliationRequired: false };
+
+  it('selects the older parked refund after an unrelated answered date', async () => {
+    const gateway = await FixtureAgentConversationGateway.create(scenario);
+    const runtime = new ScriptedAgentRuntime([emptyExtraction()], () => ({ text: 'El evento es el 12 de diciembre de 2026.', sidecar: answeredSidecar }));
+    const { router, bodies } = buildRouter({ enabled: true, answers: [
+      { route: 'escalate_human', sameOpenRequest: false, requestSettled: false },
+      { route: 'answer_with_records', sameOpenRequest: false, requestSettled: true },
+      { route: 'escalate_human', sameOpenRequest: true, selectedRequestKey: 'parked-refund', requestSettled: false },
+    ] });
+    const service = await createService({ runtime, gateway, router });
+    const base = { ...inbound, externalUserId: 'stable-retained-refund' };
+    await service.handleTurn({ ...base, messageId: 'parked-refund', text: 'Que una persona revise la devolución.' });
+    const date = await service.handleTurn({ ...base, messageId: 'independent-date', text: '¿Qué fecha tiene el evento?' });
+    const followup = await service.handleTurn({ ...base, messageId: 'refund-return', text: '¿Ya revisaron la devolución?' });
+    expect(date.plan.open_requests.find((request) => request.key === 'independent-date')?.state).toBe('answered');
+    expect(followup.outbound.delivery?.action).toBe('suppress');
+    expect(followup.plan.open_requests.map((request) => request.key)).toEqual(['parked-refund', 'independent-date']);
+    expect(followup.plan.open_requests[0]?.state).toBe('with_person');
+    expect(gateway.getFixtureCallCount('handoff.write')).toBe(1);
+    expect(runtime.composeRequests).toHaveLength(2);
+    expect(bodies[2]).toContain('parked-refund');
+  });
+
+  it('settles a factual answer independently of an earlier financial dispute and keeps its report scoped', async () => {
+    const gateway = await FixtureAgentConversationGateway.create(scenario);
+    let composeIndex = 0;
+    const runtime = new ScriptedAgentRuntime([emptyExtraction()], () => ({ text: 'Respuesta del turno.', sidecar: composeIndex++ === 0
+      ? { ...answeredSidecar, requestOutcome: 'unresolved', financialReconciliationRequired: true,
+        reportedPayment: { amount: 140, currency: 'PEN', method: 'Plin', claimedSuccess: true } }
+      : answeredSidecar }));
+    const { router } = buildRouter({ enabled: true, answers: [
+      { route: 'answer_with_records', sameOpenRequest: false, requestSettled: false },
+      { route: 'answer_with_records', sameOpenRequest: false, requestSettled: true },
+      { route: 'answer_with_records', sameOpenRequest: true, selectedRequestKey: 'date-answer', requestSettled: true },
+    ] });
+    const service = await createService({ runtime, gateway, router });
+    const base = { ...inbound, externalUserId: 'scoped-money-dispute' };
+    const dispute = await service.handleTurn({ ...base, messageId: 'money-dispute', text: 'Pagué 140 y no coincide, revisen la diferencia.' });
+    expect(dispute.plan.support_outcome.unresolved_money).toBe(true);
+    await service.handleTurn({ ...base, messageId: 'date-answer', text: '¿Qué fecha tiene el evento?' });
+    const repeat = await service.handleTurn({ ...base, messageId: 'date-repeat', text: '¿Me repites esa fecha?' });
+    expect(repeat.plan.open_requests.find((request) => request.key === 'date-answer')).toMatchObject({ state: 'answered', reported_payment: null });
+    expect(repeat.plan.open_requests.find((request) => request.key === 'money-dispute')).toMatchObject({ state: 'unresolved',
+      financial_reconciliation_required: true, reported_payment: { amount: 140 } });
+    expect(gateway.getFixtureCallCount('handoff.write')).toBe(0);
+    expect(runtime.composeRequests).toHaveLength(3);
+  });
+
+  it('uses actual compose outcome rather than the router prediction and recognizes withdrawal', async () => {
+    const gateway = await FixtureAgentConversationGateway.create(scenario);
+    let composeIndex = 0;
+    const runtime = new ScriptedAgentRuntime([emptyExtraction()], () => ({ text: 'Respuesta del turno.',
+      sidecar: { ...answeredSidecar, requestOutcome: composeIndex++ === 0 ? 'unresolved' : 'withdrawn' } }));
+    const { router } = buildRouter({ enabled: true, answers: [
+      { route: 'answer_with_records', sameOpenRequest: false, requestSettled: true },
+      { route: 'answer_with_records', sameOpenRequest: true, requestSettled: true },
+    ] });
+    const service = await createService({ runtime, gateway, router });
+    const base = { ...inbound, externalUserId: 'actual-settlement' };
+    const first = await service.handleTurn({ ...base, messageId: 'request-not-settled', text: 'Quiero una devolución.' });
+    expect(first.plan.open_requests[0]?.state).toBe('unresolved');
+    const second = await service.handleTurn({ ...base, messageId: 'withdraw-request', text: 'Ya no quiero devolución, dejémoslo así.' });
+    expect(second.plan.open_requests[0]?.state).toBe('answered');
+    expect(gateway.getFixtureCallCount('handoff.write')).toBe(0);
+  });
+
+  it('runs one structured FAQ extraction after takeover without a second classifier call', async () => {
+    const gateway = await FixtureAgentConversationGateway.create(scenario);
+    const extraction = { ...emptyExtraction(), informationRequests: [{ kind: 'faq' as const, query: '¿Cuánto cuestan los retiros?', hostWithdrawal: 'policy_only' as const }] };
+    const runtime = new ScriptedAgentRuntime([extraction], () => ({ text: 'Respuesta de la política disponible.', sidecar: answeredSidecar }));
+    const classifier = new RecordingClassifier();
+    const { router } = buildRouter({ enabled: true, answers: [
+      { route: 'escalate_human', sameOpenRequest: false, requestSettled: false },
+      { route: 'information_flow', sameOpenRequest: false, requestSettled: false },
+    ] });
+    const service = await createService({ runtime, gateway, router, responseClassifier: classifier });
+    const base = { ...inbound, externalUserId: 'faq-after-takeover' };
+    await service.handleTurn({ ...base, messageId: 'request-person', text: 'Quiero una persona para la devolución.' });
+    const response = await service.handleTurn({ ...base, messageId: 'public-policy', text: 'Aparte, ¿cuánto cuestan los retiros?' });
+    expect(classifier.calls).toBe(0);
+    expect(runtime.extractRequests).toHaveLength(1);
+    expect(runtime.composeRequests[1]?.informationResults?.some((result) => result.kind === 'faq')).toBe(true);
+    expect(response.outbound.delivery?.action).toBe('send');
+    expect(gateway.getFixtureCallCount('handoff.write')).toBe(1);
+  });
+
+  it('does not settle a request when the composition fails before delivery', async () => {
+    const gateway = await FixtureAgentConversationGateway.create(scenario);
+    const runtime = new ScriptedAgentRuntime([emptyExtraction()], () => { throw new Error('composition failed'); });
+    const { router } = buildRouter({ enabled: true, answers: { route: 'answer_with_records', sameOpenRequest: false, requestSettled: true } });
+    const planStore = new InMemoryPlanStore();
+    const service = await createService({ runtime, gateway, router, planStore });
+    await expect(service.handleTurn({ ...inbound, externalUserId: 'failed-settlement', messageId: 'not-delivered', text: '¿Cuál es la fecha?' })).rejects.toThrow('composition failed');
+    expect(runtime.composeRequests).toHaveLength(1);
+    expect((await planStore.getByExternalUser('whatsapp', 'failed-settlement'))?.open_requests ?? []).toEqual([]);
+    expect(gateway.getFixtureCallCount('handoff.write')).toBe(0);
   });
 });

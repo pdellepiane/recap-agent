@@ -1,0 +1,2746 @@
+{
+  "generatedAt": "2026-10-23T15:04:16.448Z",
+  "anchorRef": null,
+  "totalFiles": 130,
+  "totalNodes": 29,
+  "callTypes": [
+    "classifier",
+    "extraction",
+    "reply",
+    "deterministic_reply",
+    "router"
+  ],
+  "entries": [
+    {
+      "filePath": "extractors/base_system.txt",
+      "consumers": [
+        {
+          "callType": "extraction",
+          "nodes": [],
+          "profiles": [
+            "extractor:conversation_only",
+            "extractor:rsvp",
+            "extractor:initial_planning_information",
+            "extractor:active_plan",
+            "extractor:shortlist"
+          ],
+          "transitions": [
+            "extraction:conversation_only",
+            "extraction:rsvp",
+            "extraction:initial_planning_information",
+            "extraction:active_plan",
+            "extraction:shortlist"
+          ],
+          "loader": "PromptLoader.loadExtractorBundle -> extractorPromptFilesForCapabilities"
+        },
+        {
+          "callType": "extraction",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "compiler:extraction_cross_domain (openai-agent-runtime extract (all lanes))"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:extraction_cross_domain"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "extractors/capability_boundary.txt",
+      "consumers": [
+        {
+          "callType": "extraction",
+          "nodes": [],
+          "profiles": [
+            "initial_planning_information",
+            "active_plan",
+            "shortlist"
+          ],
+          "transitions": [
+            "extraction:capability_boundary"
+          ],
+          "loader": "OpenAiAgentRuntime.extract -> extractorPromptFilesForCapabilities(capabilityBoundary)"
+        },
+        {
+          "callType": "extraction",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "compiler:extraction_cross_domain (openai-agent-runtime extract (all lanes))"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:extraction_cross_domain"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "extractors/close_pause.txt",
+      "consumers": [
+        {
+          "callType": "extraction",
+          "nodes": [],
+          "profiles": [
+            "extractor:active_plan",
+            "extractor:shortlist"
+          ],
+          "transitions": [
+            "extraction:active_plan",
+            "extraction:shortlist"
+          ],
+          "loader": "PromptLoader.loadExtractorBundle -> extractorPromptFilesForCapabilities"
+        },
+        {
+          "callType": "extraction",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "compiler:extraction_close_pause (openai-agent-runtime extract (transient turns with active plan or shortlist only))"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:extraction_close_pause"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "extractors/contact.txt",
+      "consumers": [
+        {
+          "callType": "extraction",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "compiler:extraction_contact (openai-agent-runtime extract (established support lanes + transient turns with planning detail only))"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:extraction_contact"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "extractors/image_reference.txt",
+      "consumers": [
+        {
+          "callType": "extraction",
+          "nodes": [],
+          "profiles": [
+            "image_followup"
+          ],
+          "transitions": [
+            "extraction:image_followup (stored refs present)"
+          ],
+          "loader": "PromptLoader.loadExtractorBundle(capabilities, { includeImageReference: true }) -> OpenAiAgentRuntime.extract (plan has image attachments)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "extractors/information.txt",
+      "consumers": [
+        {
+          "callType": "extraction",
+          "nodes": [],
+          "profiles": [
+            "extractor:initial_planning_information",
+            "extractor:active_plan",
+            "extractor:shortlist"
+          ],
+          "transitions": [
+            "extraction:initial_planning_information",
+            "extraction:active_plan",
+            "extraction:shortlist"
+          ],
+          "loader": "PromptLoader.loadExtractorBundle -> extractorPromptFilesForCapabilities"
+        },
+        {
+          "callType": "extraction",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "compiler:extraction_information (openai-agent-runtime extract (unknown + information lanes; auth_control carries extraction-decision guidance only))"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:extraction_information"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "extractors/planning.txt",
+      "consumers": [
+        {
+          "callType": "extraction",
+          "nodes": [],
+          "profiles": [
+            "extractor:initial_planning_information",
+            "extractor:active_plan",
+            "extractor:shortlist"
+          ],
+          "transitions": [
+            "extraction:initial_planning_information",
+            "extraction:active_plan",
+            "extraction:shortlist"
+          ],
+          "loader": "PromptLoader.loadExtractorBundle -> extractorPromptFilesForCapabilities"
+        },
+        {
+          "callType": "extraction",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "compiler:extraction_planning (openai-agent-runtime extract (unknown owner + planning lanes only; compact recognition))"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:extraction_planning"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "extractors/provider_management.txt",
+      "consumers": [
+        {
+          "callType": "extraction",
+          "nodes": [],
+          "profiles": [
+            "extractor:active_plan",
+            "extractor:shortlist"
+          ],
+          "transitions": [
+            "extraction:active_plan",
+            "extraction:shortlist"
+          ],
+          "loader": "PromptLoader.loadExtractorBundle -> extractorPromptFilesForCapabilities"
+        },
+        {
+          "callType": "extraction",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "compiler:extraction_provider_management (openai-agent-runtime extract (transient turns with active plan or shortlist only))"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:extraction_provider_management"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "extractors/rsvp.txt",
+      "consumers": [
+        {
+          "callType": "extraction",
+          "nodes": [],
+          "profiles": [
+            "extractor:rsvp"
+          ],
+          "transitions": [
+            "extraction:rsvp"
+          ],
+          "loader": "PromptLoader.loadExtractorBundle -> extractorPromptFilesForCapabilities"
+        },
+        {
+          "callType": "extraction",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "compiler:extraction_rsvp (openai-agent-runtime extract (unknown + RSVP lanes))"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:extraction_rsvp"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/accion_final_exitosa/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "accion_final_exitosa"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:accion_final_exitosa"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/accion_final_exitosa/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "accion_final_exitosa"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:accion_final_exitosa"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/accion_final_exitosa/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "accion_final_exitosa"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:accion_final_exitosa"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/aclarar_pedir_faltante/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "aclarar_pedir_faltante"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:aclarar_pedir_faltante"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/aclarar_pedir_faltante/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "aclarar_pedir_faltante"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:aclarar_pedir_faltante"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/aclarar_pedir_faltante/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "aclarar_pedir_faltante"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:aclarar_pedir_faltante"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/anadir_a_proveedores_recomendados/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "anadir_a_proveedores_recomendados"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:anadir_a_proveedores_recomendados"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/anadir_a_proveedores_recomendados/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "anadir_a_proveedores_recomendados"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:anadir_a_proveedores_recomendados"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/anadir_a_proveedores_recomendados/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "anadir_a_proveedores_recomendados"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:anadir_a_proveedores_recomendados"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/buscar_proveedores/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "buscar_proveedores"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:buscar_proveedores"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/buscar_proveedores/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "buscar_proveedores"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:buscar_proveedores"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/buscar_proveedores/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "buscar_proveedores"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:buscar_proveedores"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/busqueda_exitosa/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "busqueda_exitosa"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:busqueda_exitosa"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/busqueda_exitosa/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "busqueda_exitosa"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:busqueda_exitosa"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/busqueda_exitosa/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "busqueda_exitosa"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:busqueda_exitosa"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/contacto_inicial/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "contacto_inicial"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:contacto_inicial"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/contacto_inicial/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "contacto_inicial"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:contacto_inicial"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/contacto_inicial/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "contacto_inicial"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:contacto_inicial"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/continua/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "continua"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:continua"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/continua/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "continua"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:continua"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/continua/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "continua"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:continua"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/crear_lead_cerrar/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "crear_lead_cerrar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:crear_lead_cerrar"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/crear_lead_cerrar/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "crear_lead_cerrar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:crear_lead_cerrar"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/crear_lead_cerrar/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "crear_lead_cerrar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:crear_lead_cerrar"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/deteccion_intencion/response_classifier_campaign.txt",
+      "consumers": [
+        {
+          "callType": "classifier",
+          "nodes": [
+            "deteccion_intencion"
+          ],
+          "profiles": [
+            "campaign_reply"
+          ],
+          "transitions": [
+            "classifier:campaign_reply"
+          ],
+          "loader": "PromptLoader.loadResponseClassifierBundle(\"campaign_reply\") -> responseClassifierPromptFiles.campaign_reply"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/deteccion_intencion/response_classifier.txt",
+      "consumers": [
+        {
+          "callType": "classifier",
+          "nodes": [
+            "deteccion_intencion"
+          ],
+          "profiles": [
+            "general"
+          ],
+          "transitions": [
+            "classifier:general"
+          ],
+          "loader": "PromptLoader.loadResponseClassifierBundle(\"general\") -> responseClassifierPromptFiles.general"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/deteccion_intencion/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "deteccion_intencion"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:deteccion_intencion"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/deteccion_intencion/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "deteccion_intencion"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:deteccion_intencion"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/deteccion_intencion/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "deteccion_intencion"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:deteccion_intencion"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/elicitacion_necesidades/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "elicitacion_necesidades"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:elicitacion_necesidades"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/elicitacion_necesidades/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "elicitacion_necesidades"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:elicitacion_necesidades"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/elicitacion_necesidades/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "elicitacion_necesidades"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:elicitacion_necesidades"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/entrevista/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "entrevista"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:entrevista"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/entrevista/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "entrevista"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:entrevista"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/entrevista/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "entrevista"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:entrevista"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/existe_plan_guardado/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "existe_plan_guardado"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:existe_plan_guardado"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/existe_plan_guardado/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "existe_plan_guardado"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:existe_plan_guardado"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/existe_plan_guardado/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "existe_plan_guardado"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:existe_plan_guardado"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/guardar_cerrar_temporalmente/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "guardar_cerrar_temporalmente"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:guardar_cerrar_temporalmente"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/guardar_cerrar_temporalmente/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "guardar_cerrar_temporalmente"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:guardar_cerrar_temporalmente"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/guardar_cerrar_temporalmente/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "guardar_cerrar_temporalmente"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:guardar_cerrar_temporalmente"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/guardar_seleccion_reintentar_luego/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "guardar_seleccion_reintentar_luego"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:guardar_seleccion_reintentar_luego"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/guardar_seleccion_reintentar_luego/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "guardar_seleccion_reintentar_luego"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:guardar_seleccion_reintentar_luego"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/guardar_seleccion_reintentar_luego/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "guardar_seleccion_reintentar_luego"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:guardar_seleccion_reintentar_luego"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/hay_resultados/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "hay_resultados"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:hay_resultados"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/hay_resultados/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "hay_resultados"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:hay_resultados"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/hay_resultados/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "hay_resultados"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:hay_resultados"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/informar_error_reintento/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "informar_error_reintento"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:informar_error_reintento"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/informar_error_reintento/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "informar_error_reintento"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:informar_error_reintento"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/informar_error_reintento/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "informar_error_reintento"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:informar_error_reintento"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/minimos_para_buscar/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "minimos_para_buscar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:minimos_para_buscar"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/minimos_para_buscar/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "minimos_para_buscar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:minimos_para_buscar"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/minimos_para_buscar/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "minimos_para_buscar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:minimos_para_buscar"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/necesidad_cubierta/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "necesidad_cubierta"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:necesidad_cubierta"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/necesidad_cubierta/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "necesidad_cubierta"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:necesidad_cubierta"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/necesidad_cubierta/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "necesidad_cubierta"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:necesidad_cubierta"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/ofrecer_agente_humano/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "ofrecer_agente_humano"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:ofrecer_agente_humano"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/ofrecer_agente_humano/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "ofrecer_agente_humano"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:ofrecer_agente_humano"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/ofrecer_agente_humano/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "ofrecer_agente_humano"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:ofrecer_agente_humano"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/recomendar/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "recomendar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:recomendar"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/recomendar/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "recomendar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:recomendar"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/recomendar/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "recomendar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:recomendar"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/refinar_criterios/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "refinar_criterios"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:refinar_criterios"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/refinar_criterios/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "refinar_criterios"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:refinar_criterios"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/refinar_criterios/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "refinar_criterios"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:refinar_criterios"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/reintentar/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "reintentar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:reintentar"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/reintentar/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "reintentar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:reintentar"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/reintentar/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "reintentar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:reintentar"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/reset_plan/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "reset_plan"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:reset_plan"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/reset_plan/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "reset_plan"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:reset_plan"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/reset_plan/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "reset_plan"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:reset_plan"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/resolver_consultas_informativas/approval_limits.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "resolver_consultas_informativas"
+          ],
+          "profiles": [
+            "approval_boundary"
+          ],
+          "transitions": [
+            "information:approval_boundary"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry reply_approval_boundary via composeModelReply (purchase validation/payment-status aspects only; receipt never proves approval)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/resolver_consultas_informativas/auth_control.txt",
+      "consumers": [
+        {
+          "callType": "extraction",
+          "nodes": [
+            "resolver_consultas_informativas"
+          ],
+          "profiles": [],
+          "transitions": [
+            "extraction:auth_control"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry extraction_information via OpenAiAgentRuntime.extract (extraction-decision guidance only; reply uses the scoped continuity wording)"
+        },
+        {
+          "callType": "extraction",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "compiler:extraction_information (openai-agent-runtime extract (unknown + information lanes; auth_control carries extraction-decision guidance only))"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:extraction_information"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/resolver_consultas_informativas/auth_limitation.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "resolver_consultas_informativas"
+          ],
+          "profiles": [
+            "auth"
+          ],
+          "transitions": [
+            "information:auth_terminal_limitation"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry reply_auth_limitation via composeModelReply (validated terminal/declined outcomes only)"
+        },
+        {
+          "callType": "reply",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "compiler:reply_auth_limitation (agent-service auth terminal paths (validated terminal/declined outcome only; never venue/purchase reads))"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:reply_auth_limitation"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/resolver_consultas_informativas/commission.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "compiler:reply_faq_commission (openai-agent-runtime composeReply (verified commission FAQ source only))"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:reply_faq_commission"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/resolver_consultas_informativas/customer_reference_matched.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "compiler:reply_customer_reference_matched (openai-agent-runtime composeReply (validated matched customer reference only))"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:reply_customer_reference_matched"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/resolver_consultas_informativas/customer_reference_unavailable.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "compiler:reply_customer_reference_unavailable (openai-agent-runtime composeReply (validated unavailable customer reference only))"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:reply_customer_reference_unavailable"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/resolver_consultas_informativas/gift_fulfillment.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "resolver_consultas_informativas"
+          ],
+          "profiles": [
+            "gift_fulfillment"
+          ],
+          "transitions": [
+            "information:gift_fulfillment"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry reply_gift_fulfillment via composeModelReply (purchase turns with gift fulfillment evidence only; natural business meaning, no internal code citations)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/resolver_consultas_informativas/host_withdrawal_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "compiler:reply_host_withdrawal_policy (openai-agent-runtime composeReply (completed typed host-withdrawal policy only))"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:reply_host_withdrawal_policy"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/resolver_consultas_informativas/image_inspection.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "resolver_consultas_informativas"
+          ],
+          "profiles": [
+            "image"
+          ],
+          "transitions": [
+            "media:image_turn"
+          ],
+          "loader": "PromptLoader.loadImageBundle -> OpenAiAgentRuntime.inspectImage (retired describe-by-default; zero service callers since persistent-image amendment, explicit-describe-only fallback)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/resolver_consultas_informativas/image_limits.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "resolver_consultas_informativas"
+          ],
+          "profiles": [
+            "image"
+          ],
+          "transitions": [
+            "media:image_limits"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry reply_image_context via composeModelReply (image/media turns only; never venue/purchase reads without image evidence)"
+        },
+        {
+          "callType": "reply",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "compiler:reply_image_context (openai-agent-runtime composeReply (native image evidence plus resend/URL/description limits, no inspection prose))"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:reply_image_context"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/resolver_consultas_informativas/payment_disclosure.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "compiler:reply_purchase_facts (openai-agent-runtime composeReply (purchase evidence, no prose))"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:reply_purchase_facts"
+        },
+        {
+          "callType": "reply",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "compiler:reply_faq_policy (knowledge retrieval projection (source-backed policy facts only))"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:reply_faq_policy"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/resolver_consultas_informativas/public_event_search.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "compiler:reply_public_event_search (openai-agent-runtime composeReply (no associated event found))"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:reply_public_event_search"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/resolver_consultas_informativas/purchase_partial_failure.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "compiler:reply_purchase_partial_failure (openai-agent-runtime composeReply (failed purchase source only))"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:reply_purchase_partial_failure"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/resolver_consultas_informativas/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "resolver_consultas_informativas"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:resolver_consultas_informativas"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/resolver_consultas_informativas/support_continuity.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "resolver_consultas_informativas"
+          ],
+          "profiles": [
+            "support"
+          ],
+          "transitions": [
+            "information:support_acknowledgment"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry reply_support_continuity via composeModelReply (pending task + prior answer only; auth outcomes travel in auth_limitation.txt)"
+        },
+        {
+          "callType": "reply",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "compiler:reply_support_continuity (agent-service support continuity (pending task + prior answer only; never auth outcomes))"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:reply_support_continuity"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/resolver_consultas_informativas/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "resolver_consultas_informativas"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:resolver_consultas_informativas"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/resolver_consultas_informativas/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "resolver_consultas_informativas"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:resolver_consultas_informativas"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/resolver_consultas_informativas/wait_followup.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "compiler:reply_wait_followup (openai-agent-runtime composeReply (waited turn behind a fresh prior reply; extend only with new information, never resend))"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:reply_wait_followup"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/responder_invitacion/candidate_states.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "compiler:reply_rsvp_candidate_states (openai-agent-runtime composeReply (known candidate RSVP states only))"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:reply_rsvp_candidate_states"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/responder_invitacion/companion_rejected.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "compiler:reply_rsvp_companion_rejected (openai-agent-runtime composeReply (rejected companion receipt only))"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:reply_rsvp_companion_rejected"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/responder_invitacion/lookup_failed.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "compiler:reply_rsvp_lookup_failed (openai-agent-runtime composeReply (failed invitation lookup only))"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:reply_rsvp_lookup_failed"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/responder_invitacion/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "responder_invitacion"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:responder_invitacion",
+            "reply:responder_invitacion:resolved_single (rsvp_phone_evidence.state via projectRsvpPhoneEvidenceForReply)",
+            "reply:responder_invitacion:needs_event_selection (rsvp_phone_evidence.state via projectRsvpPhoneEvidenceForReply)",
+            "reply:responder_invitacion:unavailable (rsvp_phone_evidence.state via projectRsvpPhoneEvidenceForReply)"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/responder_invitacion/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "responder_invitacion"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:responder_invitacion",
+            "reply:responder_invitacion:resolved_single (rsvp_phone_evidence.state via projectRsvpPhoneEvidenceForReply)",
+            "reply:responder_invitacion:needs_event_selection (rsvp_phone_evidence.state via projectRsvpPhoneEvidenceForReply)",
+            "reply:responder_invitacion:unavailable (rsvp_phone_evidence.state via projectRsvpPhoneEvidenceForReply)"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/responder_invitacion/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "responder_invitacion"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:responder_invitacion",
+            "reply:responder_invitacion:resolved_single (rsvp_phone_evidence.state via projectRsvpPhoneEvidenceForReply)",
+            "reply:responder_invitacion:needs_event_selection (rsvp_phone_evidence.state via projectRsvpPhoneEvidenceForReply)",
+            "reply:responder_invitacion:unavailable (rsvp_phone_evidence.state via projectRsvpPhoneEvidenceForReply)"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/seguir_refinando_guardar_plan/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "seguir_refinando_guardar_plan"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:seguir_refinando_guardar_plan"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/seguir_refinando_guardar_plan/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "seguir_refinando_guardar_plan"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:seguir_refinando_guardar_plan"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/seguir_refinando_guardar_plan/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "seguir_refinando_guardar_plan"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:seguir_refinando_guardar_plan"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/solicitar_agente_humano/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "compiler:reply_handoff_outcome (agent-service handoff paths (actual outcome only))"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:reply_handoff_outcome"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/solicitar_agente_humano/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "compiler:reply_handoff_outcome (agent-service handoff paths (actual outcome only))"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:reply_handoff_outcome"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/solicitar_agente_humano/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "solicitar_agente_humano"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:solicitar_agente_humano"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/usuario_elige_proveedor/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "usuario_elige_proveedor"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:usuario_elige_proveedor"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/usuario_elige_proveedor/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "usuario_elige_proveedor"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:usuario_elige_proveedor"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/usuario_elige_proveedor/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "usuario_elige_proveedor"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:usuario_elige_proveedor"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/usuario_responde/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "usuario_responde"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:usuario_responde"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/usuario_responde/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "usuario_responde"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:usuario_responde"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/usuario_responde/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "usuario_responde"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:usuario_responde"
+          ],
+          "loader": "retired from production reply; audit measurement only via PromptLoader.loadNodeBundle (no registry module loads this file; executable tool scope lives in prompt-manifest.ts allowlists)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "router/input_template.txt",
+      "consumers": [
+        {
+          "callType": "router",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "router:decisions_router"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> loadRouterQuestions / loadRouterInputTemplate -> Decisions API router (POST /v1/decisions)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "router/request_settled.txt",
+      "consumers": [
+        {
+          "callType": "router",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "router:decisions_router"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> loadRouterQuestions / loadRouterInputTemplate -> Decisions API router (POST /v1/decisions)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "router/route.txt",
+      "consumers": [
+        {
+          "callType": "router",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "router:decisions_router"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> loadRouterQuestions / loadRouterInputTemplate -> Decisions API router (POST /v1/decisions)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "router/same_open_request.txt",
+      "consumers": [
+        {
+          "callType": "router",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "router:decisions_router"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> loadRouterQuestions / loadRouterInputTemplate -> Decisions API router (POST /v1/decisions)"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "shared/agent_personality.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "existe_plan_guardado",
+            "reset_plan",
+            "entrevista",
+            "elicitacion_necesidades",
+            "minimos_para_buscar",
+            "aclarar_pedir_faltante",
+            "usuario_responde",
+            "buscar_proveedores",
+            "busqueda_exitosa",
+            "hay_resultados",
+            "recomendar",
+            "refinar_criterios",
+            "usuario_elige_proveedor",
+            "anadir_a_proveedores_recomendados",
+            "seguir_refinando_guardar_plan",
+            "continua",
+            "accion_final_exitosa",
+            "necesidad_cubierta",
+            "crear_lead_cerrar",
+            "guardar_seleccion_reintentar_luego",
+            "guardar_cerrar_temporalmente",
+            "ofrecer_agente_humano",
+            "solicitar_agente_humano",
+            "informar_error_reintento",
+            "reintentar",
+            "resolver_consultas_informativas",
+            "responder_invitacion"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:contacto_inicial",
+            "reply:deteccion_intencion",
+            "reply:existe_plan_guardado",
+            "reply:reset_plan",
+            "reply:entrevista",
+            "reply:elicitacion_necesidades",
+            "reply:minimos_para_buscar",
+            "reply:aclarar_pedir_faltante",
+            "reply:usuario_responde",
+            "reply:buscar_proveedores",
+            "reply:busqueda_exitosa",
+            "reply:hay_resultados",
+            "reply:recomendar",
+            "reply:refinar_criterios",
+            "reply:usuario_elige_proveedor",
+            "reply:anadir_a_proveedores_recomendados",
+            "reply:seguir_refinando_guardar_plan",
+            "reply:continua",
+            "reply:accion_final_exitosa",
+            "reply:necesidad_cubierta",
+            "reply:crear_lead_cerrar",
+            "reply:guardar_seleccion_reintentar_luego",
+            "reply:guardar_cerrar_temporalmente",
+            "reply:ofrecer_agente_humano",
+            "reply:solicitar_agente_humano",
+            "reply:informar_error_reintento",
+            "reply:reintentar",
+            "reply:resolver_consultas_informativas",
+            "reply:responder_invitacion"
+          ],
+          "loader": "PromptLoader.loadNodeBundle -> conversationPromptFilesForNode"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "shared/base_system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "existe_plan_guardado",
+            "reset_plan",
+            "entrevista",
+            "elicitacion_necesidades",
+            "minimos_para_buscar",
+            "aclarar_pedir_faltante",
+            "usuario_responde",
+            "buscar_proveedores",
+            "busqueda_exitosa",
+            "hay_resultados",
+            "recomendar",
+            "refinar_criterios",
+            "usuario_elige_proveedor",
+            "anadir_a_proveedores_recomendados",
+            "seguir_refinando_guardar_plan",
+            "continua",
+            "accion_final_exitosa",
+            "necesidad_cubierta",
+            "crear_lead_cerrar",
+            "guardar_seleccion_reintentar_luego",
+            "guardar_cerrar_temporalmente",
+            "ofrecer_agente_humano",
+            "solicitar_agente_humano",
+            "informar_error_reintento",
+            "reintentar",
+            "resolver_consultas_informativas",
+            "responder_invitacion"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:contacto_inicial",
+            "reply:deteccion_intencion",
+            "reply:existe_plan_guardado",
+            "reply:reset_plan",
+            "reply:entrevista",
+            "reply:elicitacion_necesidades",
+            "reply:minimos_para_buscar",
+            "reply:aclarar_pedir_faltante",
+            "reply:usuario_responde",
+            "reply:buscar_proveedores",
+            "reply:busqueda_exitosa",
+            "reply:hay_resultados",
+            "reply:recomendar",
+            "reply:refinar_criterios",
+            "reply:usuario_elige_proveedor",
+            "reply:anadir_a_proveedores_recomendados",
+            "reply:seguir_refinando_guardar_plan",
+            "reply:continua",
+            "reply:accion_final_exitosa",
+            "reply:necesidad_cubierta",
+            "reply:crear_lead_cerrar",
+            "reply:guardar_seleccion_reintentar_luego",
+            "reply:guardar_cerrar_temporalmente",
+            "reply:ofrecer_agente_humano",
+            "reply:solicitar_agente_humano",
+            "reply:informar_error_reintento",
+            "reply:reintentar",
+            "reply:resolver_consultas_informativas",
+            "reply:responder_invitacion"
+          ],
+          "loader": "PromptLoader.loadNodeBundle -> conversationPromptFilesForNode"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "shared/common_anti_patterns.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "existe_plan_guardado",
+            "reset_plan",
+            "entrevista",
+            "elicitacion_necesidades",
+            "minimos_para_buscar",
+            "aclarar_pedir_faltante",
+            "usuario_responde",
+            "buscar_proveedores",
+            "busqueda_exitosa",
+            "hay_resultados",
+            "recomendar",
+            "refinar_criterios",
+            "usuario_elige_proveedor",
+            "anadir_a_proveedores_recomendados",
+            "seguir_refinando_guardar_plan",
+            "continua",
+            "accion_final_exitosa",
+            "necesidad_cubierta",
+            "crear_lead_cerrar",
+            "guardar_seleccion_reintentar_luego",
+            "guardar_cerrar_temporalmente",
+            "ofrecer_agente_humano",
+            "solicitar_agente_humano",
+            "informar_error_reintento",
+            "reintentar",
+            "resolver_consultas_informativas",
+            "responder_invitacion"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:contacto_inicial",
+            "reply:deteccion_intencion",
+            "reply:existe_plan_guardado",
+            "reply:reset_plan",
+            "reply:entrevista",
+            "reply:elicitacion_necesidades",
+            "reply:minimos_para_buscar",
+            "reply:aclarar_pedir_faltante",
+            "reply:usuario_responde",
+            "reply:buscar_proveedores",
+            "reply:busqueda_exitosa",
+            "reply:hay_resultados",
+            "reply:recomendar",
+            "reply:refinar_criterios",
+            "reply:usuario_elige_proveedor",
+            "reply:anadir_a_proveedores_recomendados",
+            "reply:seguir_refinando_guardar_plan",
+            "reply:continua",
+            "reply:accion_final_exitosa",
+            "reply:necesidad_cubierta",
+            "reply:crear_lead_cerrar",
+            "reply:guardar_seleccion_reintentar_luego",
+            "reply:guardar_cerrar_temporalmente",
+            "reply:ofrecer_agente_humano",
+            "reply:solicitar_agente_humano",
+            "reply:informar_error_reintento",
+            "reply:reintentar",
+            "reply:resolver_consultas_informativas",
+            "reply:responder_invitacion"
+          ],
+          "loader": "PromptLoader.loadNodeBundle -> conversationPromptFilesForNode"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "shared/customer_context_fields.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "compiler:reply_customer_context_fields (openai-agent-runtime composeReply (record-field semantics on record-bearing turns only))"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:reply_customer_context_fields"
+        },
+        {
+          "callType": "reply",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "compiler:extraction_cross_domain (openai-agent-runtime extract (all lanes))"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:extraction_cross_domain"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "shared/domain_knowledge.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "existe_plan_guardado",
+            "reset_plan",
+            "entrevista",
+            "elicitacion_necesidades",
+            "minimos_para_buscar",
+            "aclarar_pedir_faltante",
+            "usuario_responde",
+            "buscar_proveedores",
+            "busqueda_exitosa",
+            "hay_resultados",
+            "recomendar",
+            "refinar_criterios",
+            "usuario_elige_proveedor",
+            "anadir_a_proveedores_recomendados",
+            "seguir_refinando_guardar_plan",
+            "continua",
+            "accion_final_exitosa",
+            "necesidad_cubierta",
+            "crear_lead_cerrar",
+            "guardar_seleccion_reintentar_luego",
+            "guardar_cerrar_temporalmente",
+            "reintentar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:existe_plan_guardado",
+            "reply:reset_plan",
+            "reply:entrevista",
+            "reply:elicitacion_necesidades",
+            "reply:minimos_para_buscar",
+            "reply:aclarar_pedir_faltante",
+            "reply:usuario_responde",
+            "reply:buscar_proveedores",
+            "reply:busqueda_exitosa",
+            "reply:hay_resultados",
+            "reply:recomendar",
+            "reply:refinar_criterios",
+            "reply:usuario_elige_proveedor",
+            "reply:anadir_a_proveedores_recomendados",
+            "reply:seguir_refinando_guardar_plan",
+            "reply:continua",
+            "reply:accion_final_exitosa",
+            "reply:necesidad_cubierta",
+            "reply:crear_lead_cerrar",
+            "reply:guardar_seleccion_reintentar_luego",
+            "reply:guardar_cerrar_temporalmente",
+            "reply:reintentar"
+          ],
+          "loader": "PromptLoader.loadNodeBundle -> conversationPromptFilesForNode"
+        },
+        {
+          "callType": "reply",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "compiler:reply_planning_owner (openai-agent-runtime composeReply (planning nodes only))"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:reply_planning_owner"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "shared/domain_scope.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "existe_plan_guardado",
+            "reset_plan",
+            "entrevista",
+            "elicitacion_necesidades",
+            "minimos_para_buscar",
+            "aclarar_pedir_faltante",
+            "usuario_responde",
+            "buscar_proveedores",
+            "busqueda_exitosa",
+            "hay_resultados",
+            "recomendar",
+            "refinar_criterios",
+            "usuario_elige_proveedor",
+            "anadir_a_proveedores_recomendados",
+            "seguir_refinando_guardar_plan",
+            "continua",
+            "accion_final_exitosa",
+            "necesidad_cubierta",
+            "crear_lead_cerrar",
+            "guardar_seleccion_reintentar_luego",
+            "guardar_cerrar_temporalmente",
+            "reintentar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:existe_plan_guardado",
+            "reply:reset_plan",
+            "reply:entrevista",
+            "reply:elicitacion_necesidades",
+            "reply:minimos_para_buscar",
+            "reply:aclarar_pedir_faltante",
+            "reply:usuario_responde",
+            "reply:buscar_proveedores",
+            "reply:busqueda_exitosa",
+            "reply:hay_resultados",
+            "reply:recomendar",
+            "reply:refinar_criterios",
+            "reply:usuario_elige_proveedor",
+            "reply:anadir_a_proveedores_recomendados",
+            "reply:seguir_refinando_guardar_plan",
+            "reply:continua",
+            "reply:accion_final_exitosa",
+            "reply:necesidad_cubierta",
+            "reply:crear_lead_cerrar",
+            "reply:guardar_seleccion_reintentar_luego",
+            "reply:guardar_cerrar_temporalmente",
+            "reply:reintentar"
+          ],
+          "loader": "PromptLoader.loadNodeBundle -> conversationPromptFilesForNode"
+        },
+        {
+          "callType": "reply",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "compiler:reply_planning_owner (openai-agent-runtime composeReply (planning nodes only))"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:reply_planning_owner"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "shared/flow_discipline.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "existe_plan_guardado",
+            "reset_plan",
+            "entrevista",
+            "elicitacion_necesidades",
+            "minimos_para_buscar",
+            "aclarar_pedir_faltante",
+            "usuario_responde",
+            "buscar_proveedores",
+            "busqueda_exitosa",
+            "hay_resultados",
+            "recomendar",
+            "refinar_criterios",
+            "usuario_elige_proveedor",
+            "anadir_a_proveedores_recomendados",
+            "seguir_refinando_guardar_plan",
+            "continua",
+            "accion_final_exitosa",
+            "necesidad_cubierta",
+            "crear_lead_cerrar",
+            "guardar_seleccion_reintentar_luego",
+            "guardar_cerrar_temporalmente",
+            "reintentar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:existe_plan_guardado",
+            "reply:reset_plan",
+            "reply:entrevista",
+            "reply:elicitacion_necesidades",
+            "reply:minimos_para_buscar",
+            "reply:aclarar_pedir_faltante",
+            "reply:usuario_responde",
+            "reply:buscar_proveedores",
+            "reply:busqueda_exitosa",
+            "reply:hay_resultados",
+            "reply:recomendar",
+            "reply:refinar_criterios",
+            "reply:usuario_elige_proveedor",
+            "reply:anadir_a_proveedores_recomendados",
+            "reply:seguir_refinando_guardar_plan",
+            "reply:continua",
+            "reply:accion_final_exitosa",
+            "reply:necesidad_cubierta",
+            "reply:crear_lead_cerrar",
+            "reply:guardar_seleccion_reintentar_luego",
+            "reply:guardar_cerrar_temporalmente",
+            "reply:reintentar"
+          ],
+          "loader": "PromptLoader.loadNodeBundle -> conversationPromptFilesForNode"
+        },
+        {
+          "callType": "reply",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "compiler:reply_planning_owner (openai-agent-runtime composeReply (planning nodes only))"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:reply_planning_owner"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "shared/output_style.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "existe_plan_guardado",
+            "reset_plan",
+            "entrevista",
+            "elicitacion_necesidades",
+            "minimos_para_buscar",
+            "aclarar_pedir_faltante",
+            "usuario_responde",
+            "buscar_proveedores",
+            "busqueda_exitosa",
+            "hay_resultados",
+            "recomendar",
+            "refinar_criterios",
+            "usuario_elige_proveedor",
+            "anadir_a_proveedores_recomendados",
+            "seguir_refinando_guardar_plan",
+            "continua",
+            "accion_final_exitosa",
+            "necesidad_cubierta",
+            "crear_lead_cerrar",
+            "guardar_seleccion_reintentar_luego",
+            "guardar_cerrar_temporalmente",
+            "ofrecer_agente_humano",
+            "solicitar_agente_humano",
+            "informar_error_reintento",
+            "reintentar",
+            "resolver_consultas_informativas",
+            "responder_invitacion"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:contacto_inicial",
+            "reply:deteccion_intencion",
+            "reply:existe_plan_guardado",
+            "reply:reset_plan",
+            "reply:entrevista",
+            "reply:elicitacion_necesidades",
+            "reply:minimos_para_buscar",
+            "reply:aclarar_pedir_faltante",
+            "reply:usuario_responde",
+            "reply:buscar_proveedores",
+            "reply:busqueda_exitosa",
+            "reply:hay_resultados",
+            "reply:recomendar",
+            "reply:refinar_criterios",
+            "reply:usuario_elige_proveedor",
+            "reply:anadir_a_proveedores_recomendados",
+            "reply:seguir_refinando_guardar_plan",
+            "reply:continua",
+            "reply:accion_final_exitosa",
+            "reply:necesidad_cubierta",
+            "reply:crear_lead_cerrar",
+            "reply:guardar_seleccion_reintentar_luego",
+            "reply:guardar_cerrar_temporalmente",
+            "reply:ofrecer_agente_humano",
+            "reply:solicitar_agente_humano",
+            "reply:informar_error_reintento",
+            "reply:reintentar",
+            "reply:resolver_consultas_informativas",
+            "reply:responder_invitacion"
+          ],
+          "loader": "PromptLoader.loadNodeBundle -> conversationPromptFilesForNode"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "shared/question_strategy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "entrevista",
+            "elicitacion_necesidades",
+            "minimos_para_buscar",
+            "aclarar_pedir_faltante",
+            "usuario_responde",
+            "refinar_criterios"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:entrevista",
+            "reply:elicitacion_necesidades",
+            "reply:minimos_para_buscar",
+            "reply:aclarar_pedir_faltante",
+            "reply:usuario_responde",
+            "reply:refinar_criterios"
+          ],
+          "loader": "PromptLoader.loadNodeBundle -> conversationPromptFilesForNode"
+        },
+        {
+          "callType": "reply",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "compiler:reply_planning_owner (openai-agent-runtime composeReply (planning nodes only))"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:reply_planning_owner"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "shared/reply_core.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [],
+          "profiles": [],
+          "transitions": [
+            "compiler:shared_invariants (openai-agent-runtime composeReply (every reply call))"
+          ],
+          "loader": "PromptLoader.loadModuleFilesBundle -> instructionModuleRegistry:shared_invariants"
+        }
+      ],
+      "isOrphaned": false
+    }
+  ],
+  "unmappedFiles": []
+}

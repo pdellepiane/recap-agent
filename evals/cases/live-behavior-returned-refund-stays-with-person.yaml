@@ -1,0 +1,111 @@
+{
+  "template": "template.base-live",
+  "suite": "live_behavior_regression",
+  "version": 1,
+  "tags": [
+    "live",
+    "behavior",
+    "purchase",
+    "escalation",
+    "decisions-router"
+  ],
+  "targetModes": [
+    "live_lambda"
+  ],
+  "backendFixture": {
+    "scenario": "purchase-approved-event-date"
+  },
+  "scorers": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "weight": 1
+    }
+  ],
+  "id": "live_behavior.returned_refund_stays_with_person",
+  "description": "A refund handed to a person remains with that confirmed handoff after an unrelated authorized date answer and return to the refund; no repeated takeover.",
+  "inputs": [
+    {
+      "text": "Quiero que una persona del equipo revise la devolución de mi regalo, por favor.",
+      "channel": "whatsapp",
+      "contactPhone": "+51900000406",
+      "sessionId": "returned_refund_stays_with_person",
+      "backendFixture": {
+        "scenario": "purchase-approved-event-date"
+      }
+    },
+    {
+      "text": "Otra consulta: ¿qué fecha tiene el evento de mi regalo?",
+      "channel": "whatsapp",
+      "contactPhone": "+51900000406",
+      "sessionId": "returned_refund_stays_with_person",
+      "backendFixture": {
+        "scenario": "purchase-approved-event-date"
+      }
+    },
+    {
+      "text": "Volviendo a la devolución, ¿ya la revisó la persona del equipo?",
+      "channel": "whatsapp",
+      "contactPhone": "+51900000406",
+      "sessionId": "returned_refund_stays_with_person",
+      "backendFixture": {
+        "scenario": "purchase-approved-event-date"
+      }
+    }
+  ],
+  "expectations": [
+    {
+      "id": "one-confirmed-takeover",
+      "type": "fixture_effect_count",
+      "operation": "handoff.write",
+      "expectedAttempts": 1,
+      "expectedSuccesses": 1,
+      "expectedReplays": 0,
+      "severity": "hard"
+    },
+    {
+      "id": "authorized-event-date-1",
+      "type": "text_contains",
+      "anyOf": [
+        "12 de diciembre",
+        "12/12/2026",
+        "2026-12-12"
+      ],
+      "turnIndex": 1,
+      "severity": "hard"
+    },
+    {
+      "id": "no-repeat-handoff-1",
+      "type": "fixture_effect_count",
+      "operation": "handoff.write",
+      "turnIndex": 1,
+      "expectedAttempts": 0,
+      "expectedSuccesses": 0,
+      "expectedReplays": 0,
+      "severity": "hard"
+    },
+    {
+      "id": "no-repeat-handoff-2",
+      "type": "fixture_effect_count",
+      "operation": "handoff.write",
+      "turnIndex": 2,
+      "expectedAttempts": 0,
+      "expectedSuccesses": 0,
+      "expectedReplays": 0,
+      "severity": "hard"
+    },
+    {
+      "id": "confirmed-receipt-retained",
+      "type": "plan_field_equals",
+      "path": "human_help_receipt.outcome",
+      "expected": "handoff_requested",
+      "turnIndex": 2,
+      "severity": "hard"
+    }
+  ],
+  "budget": {
+    "maxTurns": 3,
+    "estimatedPromptTokensPerTurn": 3500,
+    "estimatedCompletionTokensPerTurn": 300
+  }
+}

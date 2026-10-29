@@ -52,6 +52,7 @@ function parseArgs(argv) {
     caseId: null,
     stackName: DEFAULT_STACK_NAME,
     json: false,
+    allowUnseededPhone: false,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index];
@@ -72,6 +73,7 @@ function parseArgs(argv) {
       case '--case-id': args.caseId = next(); break;
       case '--stack-name': args.stackName = next(); break;
       case '--json': args.json = true; break;
+      case '--allow-unseeded-phone': args.allowUnseededPhone = true; break;
       case '--help':
       case '-h':
         process.stdout.write(usage());
@@ -88,6 +90,18 @@ function parseArgs(argv) {
       '--scenario is required: the probe runs only against a mocked development fixture, never a real backend.',
     );
   }
+  if (!/^51900\d{6}$/u.test(args.userId)) {
+    throw new Error('--user-id must be a synthetic 51900xxxxxx phone.');
+  }
+  const phone = (args.contactPhone ?? args.userId).replace(/^\+/u, '');
+  if (phone !== args.userId) throw new Error('--contact-phone must match --user-id.');
+  if (!/^[a-z0-9-]+$/u.test(args.scenario)) throw new Error('Invalid fixture scenario.');
+  const fixture = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'evals/fixtures', `${args.scenario}.json`), 'utf8'));
+  const seeded = ['guestOrders', 'guestGiftPurchases', 'guestEvents'].some((source) =>
+    Object.hasOwn(fixture[source] ?? {}, phone));
+  if (!seeded && !args.allowUnseededPhone) {
+    throw new Error('Phone is not seeded in this fixture; use --allow-unseeded-phone only for an intentional empty-profile objective.');
+  }
   return args;
 }
 
@@ -103,6 +117,7 @@ function usage() {
     '  --image <path>    Local image file to send with the turn (base64).',
     '  --channel <name>  Channel (default: whatsapp).',
     '  --stack-name <s>  CloudFormation stack (default: recap-agent-runtime-dev).',
+    '  --allow-unseeded-phone  Explicit empty-profile objective override.',
     '  --json            Print the raw Lambda payload instead of the summary.',
     '',
   ].join('\n');

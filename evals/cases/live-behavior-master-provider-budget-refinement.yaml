@@ -1,0 +1,81 @@
+template: template.base-live
+id: live_behavior.master_provider_budget_refinement
+suite: live_behavior_regression
+version: 1
+description: A newly tightened budget removes the formerly available high-price
+  option without inventing providers.
+tags:
+  - live
+  - behavior
+  - provider
+  - thesis-master
+targetModes:
+  - live_lambda
+backendFixture:
+  scenario: provider-decimal-budget
+inputs:
+  - text: Busco catering para mi cumpleaños en Lima para 20 invitados, con
+      presupuesto de 20000 soles. Muéstrame las opciones.
+    sessionId: master-provider-budget_refinement
+    backendFixture:
+      scenario: provider-decimal-budget
+  - text: "Cambié de idea: mi presupuesto máximo para el catering es 500 soles.
+      Actualiza las opciones."
+    sessionId: master-provider-budget_refinement
+    backendFixture:
+      scenario: provider-decimal-budget
+expectations:
+  - id: initial-catering-options
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: Catering
+        recommended_provider_ids:
+          - 9101
+          - 9102
+    turnIndex: 0
+    severity: hard
+  - id: refined-accessible-only
+    type: plan_field_equals
+    path: recommended_provider_ids
+    expected:
+      - 9101
+    turnIndex: 1
+    severity: hard
+  - id: refined-provider-delivered
+    type: text_contains
+    allOf:
+      - Mesa Accesible
+    turnIndex: 1
+    severity: hard
+  - id: expensive-provider-not-presented-after-refinement
+    type: text_not_contains
+    phrases:
+      - https://fixture.example/catering/mesa-premium-9102
+    turnIndex: 1
+    severity: hard
+  - id: read-only-provider-conversation-has-no-submission
+    type: tool_usage
+    mustNotCall:
+      - create_quote_request
+      - finish_plan
+      - request_human_takeover
+      - guest_rsvp
+      - request_user_login_code
+      - verify_user_login_code
+    severity: hard
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1
+budget:
+  maxTurns: 2
+  estimatedPromptTokensPerTurn: 12000
+  estimatedCompletionTokensPerTurn: 600
+notes:
+  - Frozen synthetic capability question for the master thesis study. These
+    fixtures test the deployed orchestration and model against a declared
+    provider world; they do not test real marketplace/vector retrieval recall.
+  - All replies remain model-generated. Assertions pin independently declared
+    provider identities, facts and effects rather than prose style or internal
+    node paths.

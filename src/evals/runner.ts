@@ -128,6 +128,8 @@ export type CaseCostEvent = {
   caseCostUsd: number;
   runningCostUsd: number;
   priced: boolean;
+  /** Missing usage/model pricing must not silently consume a study budget. */
+  unpriced?: boolean;
 };
 
 export type EvalRunnerOptions = {
@@ -1055,6 +1057,7 @@ export async function runEvaluation(
           caseCostUsd: roundUsd(settled.totalUsd),
           runningCostUsd: roundUsd(runCost.runningUsd),
           priced: pricing !== null,
+          unpriced: settled.unpricedCases.length > 0 || settled.unpricedModels.length > 0,
         });
       },
     });

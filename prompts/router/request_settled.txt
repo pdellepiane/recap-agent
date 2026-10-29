@@ -1,7 +1,6 @@
-Decide si este turno deja la solicitud de la persona respondida o si sigue abierta. El criterio es lo que el runtime puede entregar en este turno con los registros autorizados, no lo que se le ofrezca para más adelante.
-
-Responde `open` cuando el runtime no puede responderla del todo con lo que tiene: los registros contradicen lo que la persona informa, falta un dato o un registro, la respuesta necesita una operación que el runtime no puede ejecutar, o la solicitud solo puede avanzar con una persona. Ofrecer una revisión manual, un asesor o una derivación no deja la solicitud resuelta: en ese caso sigue abierta. Responde `settled` cuando los registros autorizados la responden por completo.
+Indica si la solicitud identificada puede dejar de tratarse como un pedido operativo pendiente con la evidencia disponible ahora. Elige `settled` si la persona la retira explícitamente o los hechos actuales la resuelven. Elige `open` si mantiene una discrepancia, exige una operación no realizada o falta evidencia. Una oferta de ayuda no es resolución. Esta decisión permite revisar hechos nuevos; no confirma que la respuesta futura ya se haya entregado.
+Orientar al buscador público cuando no hay evento asociado resuelve la orientación, aunque no se haya encontrado el evento. Una aclaración sobre cómo usar ese buscador no demuestra una operación pendiente ni una discrepancia de pago.
 
 --- choices ---
-settled | Los registros autorizados responden la solicitud por completo en este turno.
-open | El runtime no puede responderla del todo: los registros contradicen el relato, falta un dato o un registro, hace falta una operación no ejecutable o solo puede avanzar con una persona, aunque se ofrezca una revisión o un asesor.
+settled | La persona retiró el pedido o la evidencia actual permite resolverlo sin una operación pendiente.
+open | La solicitud sigue requiriendo evidencia, datos o una operación pendiente.

@@ -1,0 +1,137 @@
+id: live_behavior.master_provider_live_details
+suite: live_behavior_regression
+version: 1
+description: Public provider detail and canonical source URL
+tags:
+  - live
+  - behavior
+  - master-study
+  - provider
+  - live-public-read
+targetModes:
+  - live_lambda
+backendFixture:
+  scenario: master-provider-live-public
+inputs:
+  - text: ¿En qué ciudad está Carla Muñoz Wedding Planner y cuál es el enlace de su
+      ficha?
+    sessionId: live_behavior.master_provider_live_details
+    backendFixture:
+      scenario: master-provider-live-public
+seedPlan:
+  current_node: recomendar
+  event_type: boda
+  location: Lima
+  guest_range: 51-100
+  vendor_category: Wedding planners
+  active_need_category: Wedding planners
+  recommended_provider_ids:
+    - 43
+  recommended_providers:
+    - &a1
+      id: 43
+      title: Carla Muñoz Wedding Planner
+      slug: carla-munoz-wedding-planner
+      category: Wedding planners
+      location: Lima, Perú
+      priceLevel: very_high
+      rating: "5.0"
+      detailUrl: https://sinenvolturas.com/proveedores/carla-munoz-wedding-planner
+      websiteUrl: null
+      minPrice: null
+      maxPrice: null
+      promoBadge: 10 off y 15 off
+      promoSummary: "20% de descuento en Full Wedding y Half Wedding\r
+
+        \r
+
+        15% de descuento en Wedding Month y Wedding day"
+      descriptionSnippet: Carla Muñoz es una wedding planner especializada en crear
+        celebraciones inolvidables, cuidando cada detalle para que cada pareja
+        disfrute una experiencia personalizada y sin preocupaciones.
+      serviceHighlights:
+        - Wedding Month
+        - Half Wedding
+        - Wedding day
+        - Full wedding
+        - y más
+      termsHighlights:
+        - Preguntar por términos y condiciones
+      providerNotes:
+        - "Acerca del proveedor: Carla Muñoz es una wedding planner especializada en
+          crear celebraciones inolvidables, cuidando cada detalle para que cada
+          pareja disfrute una experiencia personalizada y sin preocupaciones."
+        - "Servicios que ofrece: Wedding Month"
+        - "Servicios que ofrece: Half Wedding"
+        - "Servicios que ofrece: Wedding day"
+        - "Servicios que ofrece: Full wedding"
+        - "Servicios que ofrece: y más"
+        - "Términos  y condiciones: Preguntar por términos y condiciones"
+        - "About the provider: Carla Muñoz es una wedding planner especializada en
+          crear celebraciones inolvidables, cuidando cada detalle para que cada
+          pareja disfrute una experiencia personalizada y sin preocupaciones."
+        - "Services offered: Wedding Month"
+        - "Services offered: Half Wedding"
+        - "Services offered: Wedding Day"
+        - "Services offered: Full Wedding"
+        - "Services offered: and more"
+        - "Terms and conditions: Ask for terms and conditions"
+      description: Carla Muñoz es una wedding planner especializada en crear
+        celebraciones inolvidables, cuidando cada detalle para que cada pareja
+        disfrute una experiencia personalizada y sin preocupaciones.
+      eventTypes: []
+  provider_needs:
+    - category: Wedding planners
+      status: shortlisted
+      preferences: []
+      hard_constraints: []
+      missing_fields: []
+      recommended_provider_ids:
+        - 43
+      recommended_providers:
+        - *a1
+      selected_provider_ids: []
+      selected_provider_hints: []
+  selected_provider_ids: []
+expectations:
+  - id: no-real-or-requested-submission
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - create_quote_request
+      - finish_plan
+      - request_human_takeover
+      - guest_rsvp
+      - request_user_login_code
+      - verify_user_login_code
+      - add_vendor_to_event_favorites
+      - create_provider_review
+    severity: hard
+  - id: recorded-detail-url
+    type: text_contains
+    allOf:
+      - https://sinenvolturas.com/proveedores/carla-munoz-wedding-planner
+    severity: hard
+  - id: recorded-city
+    type: text_contains
+    allOf:
+      - Lima
+    severity: hard
+scorers:
+  - id: objective-obligations
+    type: expectation_pass_rate
+    weight: 1
+budget:
+  maxTurns: 1
+notes:
+  - Explicit live public provider reads on the current hybrid/vector
+    configuration; all customer data, authentication and effects remain
+    fixtures. No real tracking/write permitted.
+  - Real catalog changes can affect outcomes; retain contemporaneous
+    tool/candidate/detail evidence. Do not replace failed searches with fixture
+    success.
+  - IDs for seeded detail/selection were captured through GET-only public reads
+    before the study; these are context-seeded tasks, not retrieval-recall
+    trials.
+  - Source-link format/field presence are bounded checks, not complete response
+    entailment.

@@ -9,6 +9,8 @@ import type { EvalCase } from './case-schema';
 import { EvalLoader, type LoadedEvalCatalog } from './loader';
 import type { FixtureLoadResult } from '../runtime/eval-fixture-gateway';
 import { loadFixtureData } from '../runtime/eval-fixture-gateway';
+import { describeMasterDeployment, expandMasterCases, readFrozenMaster } from './master-study';
+import { digestJson } from './run-manifest';
 import type { CaseCostEvent, EvalRunnerOptions } from './runner';
 import {
   isCleanGate,
@@ -55,6 +57,7 @@ const USAGE = `Usage: npm run eval:behavior-live [options]
 Options:
   --case <id>   Run a specific regression case (repeatable, required; at least one).
   --label <name>  Reference/candidate label recorded in the run manifest (default: candidate).
+  --master-study <file>  Execute the exact frozen master schedule for the explicitly selected cases.
   --case-concurrency <1..4>  Bounded case workers (default: 4).
   --judge-concurrency <1..2>  Judge API requests in flight (default: 2).
   --resume-mode <full|diagnostic>  Diagnostic labels an interrupted resume; never a clean gate (default: full).
@@ -67,6 +70,7 @@ carries only the final JSON summary.
 const KNOWN_FLAGS = new Set([
   '--case',
   '--label',
+  '--master-study',
   '--case-concurrency',
   '--judge-concurrency',
   '--resume-mode',
@@ -336,6 +340,21 @@ export async function main(
     : await new EvalLoader(evalsDir).loadCatalog();
   const selectedCases = resolveSelectedLiveBehaviorCases(catalog, caseIds);
   await assertLiveBehaviorPrerequisites(selectedCases, deps.loadFixture ?? loadFixtureData);
+  const masterPath = parseSingleFlagValue(argv, '--master-study');
+  const master = masterPath ? await readFrozenMaster(masterPath, catalog.cases) : null;
+  if (master) {
+    const expected = new Set(master.protocol.population.map(c => c.id));
+    if (caseIds.length !== expected.size || new Set(caseIds).size !== expected.size || caseIds.some(id => !expected.has(id))) {
+      throw new Error('Master study requires each frozen base case exactly once as an explicit --case selector.');
+    }
+    if (caseConcurrency !== 1 || judgeConcurrency !== 1 || resumeMode !== 'full') {
+      throw new Error('Master study requires case/judge concurrency 1 and no diagnostic resume.');
+    }
+    if (digestJson(await describeMasterDeployment()) !== digestJson(master.deployment)) {
+      throw new Error('Development deployment/configuration changed after the master freeze.');
+    }
+    fs.writeFileSync(`${masterPath}.started.json`, `${JSON.stringify({ startedAt: new Date().toISOString(), label: runLabel, scheduled: master.schedule.length })}\n`, { flag: 'wx' });
+  }
 
   if (!process.env.OPENAI_API_KEY && selectedCases.some((evalCase) =>
     evalCase.expectations?.some((expectation) => expectation.type === 'text_semantic') ||
@@ -354,6 +373,7 @@ export async function main(
     suite: 'live_behavior_regression',
     target: 'live_lambda',
     caseIds,
+    ...(master ? { caseOverrides: expandMasterCases(master.protocol, selectedCases) } : {}),
     runLabel,
     requestedCaseConcurrency: caseConcurrency,
     requestedJudgeConcurrency: judgeConcurrency,
@@ -361,8 +381,19 @@ export async function main(
     pricingPath,
     onCaseComplete: (event) => {
       process.stderr.write(`${formatCaseProgressLine(event)}\n`);
+      if (master && (!event.priced || event.unpriced || event.runningCostUsd >= master.protocol.budget.admissionStopEstimatedUsd)) {
+        process.stderr.write('Master study stopped admissions at its estimated-spend guard; retaining partial results.\n');
+        process.emit('SIGINT');
+      }
     },
   });
+  if (master && masterPath) {
+    const after = await describeMasterDeployment();
+    fs.writeFileSync(`${masterPath}.finished.json`, `${JSON.stringify({ completedAt: new Date().toISOString(), runId: result.runId, runDir: result.runDir, deploymentUnchanged: digestJson(after) === digestJson(master.deployment), deploymentAfter: after })}\n`, { flag: 'wx' });
+    if (digestJson(after) !== digestJson(master.deployment)) {
+      throw new Error('Master deployment/configuration drift: retained results are invalid for a single-artifact study.');
+    }
+  }
   const summary = summarizeGateReport({
     totalCases: result.report.totalCases,
     passedCases: result.report.passedCases,

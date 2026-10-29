@@ -7,6 +7,7 @@ import { providerNeedSubQuerySchema } from '../core/provider-sub-query';
 import { closeActionSchema, closeActionWireSchema } from './close-flow-schemas';
 import { providerFitCriteriaSchema } from './provider-fit';
 import {
+  faqFeeTopicValues,
   purchaseAuthActionValues,
   phoneConfirmationValues,
   humanHelpIntentSchema,
@@ -165,6 +166,7 @@ export const openAiInformationRequestSchema = z.object({
   amount: z.number().nonnegative().nullable(),
   authAction: z.enum(purchaseAuthActionValues).nullable(),
   hostWithdrawal: z.enum(['policy_only', 'individual_status']).nullable().optional(),
+  feeTopic: z.enum(faqFeeTopicValues).nullable().optional(),
 });
 
 export type OpenAiInformationRequest = z.infer<

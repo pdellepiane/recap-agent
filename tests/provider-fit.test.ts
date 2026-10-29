@@ -50,6 +50,30 @@ describe('provider fit normalization', () => {
     expect(normalizeBudgetTier(null)).toBe('unknown');
   });
 
+  it('preserves decimal monetary values and validates grouping instead of multiplying cents', () => {
+    for (const signal of ['S/ 500.00', 'PEN 500,00', 'S/ 500.5', '500,5 soles']) {
+      expect(parseBudgetAmount(signal)).toBe(signal.includes('500.5') || signal.includes('500,5') ? 500.5 : 500);
+    }
+    expect(parseBudgetAmount('S/ 1,500.50')).toBe(1500.5);
+    expect(parseBudgetAmount('S/ 1.500,50')).toBe(1500.5);
+    expect(parseBudgetAmount('S/ 1.500')).toBe(1500);
+    expect(parseBudgetAmount('12,34,56 soles')).toBeNull();
+    expect(parseBudgetAmount('-500 soles')).toBeNull();
+  });
+
+  it('keeps high-price candidates ineligible under an extracted decimal budget signal', () => {
+    const criteria = createProviderFitCriteria({
+      eventType: 'cumpleanos', needCategory: 'Catering', location: 'Lima',
+      budgetSignal: 'S/ 500.00', preferences: [], hardConstraints: [],
+    });
+    const ranked = rankProvidersForCriteria([
+      createProvider({ id: 1, priceLevel: 'low' }),
+      createProvider({ id: 2, priceLevel: 'high' }),
+    ], criteria);
+    expect(criteria.budgetAmount).toBe(500);
+    expect(ranked.filter((provider) => isProviderEligibleForCriteria(provider, criteria)).map((provider) => provider.id)).toEqual([1]);
+  });
+
   it('builds criteria from extractor fields', () => {
     expect(createProviderFitCriteria({
       eventType: 'cumpleanos',

@@ -465,8 +465,11 @@ describe('otpContinuationEvidence route-specific extraction section', () => {
       authStatus: 'code_requested',
       hasPendingProtectedRequest: true,
     });
-    expect(active).toContain('report_otp_not_received');
-    expect(active).toContain('no devuelvas un delta vacío');
+    expect(JSON.parse(active ?? 'null') as unknown).toEqual({
+      verification_status: 'code_requested', protected_request_pending: true,
+    });
+    // Action guidance belongs to the tracked conditional instruction file, not factual input.
+    expect(active).not.toContain('devuelvas');
     expect(
       otpContinuationEvidence({ authStatus: 'code_requested', hasPendingProtectedRequest: false }),
     ).toBeNull();

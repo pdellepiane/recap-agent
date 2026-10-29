@@ -1,0 +1,82 @@
+id: live_behavior.target_calculator_public_link_r2
+suite: live_behavior_regression
+version: 2
+description: "Master study public FAQ: calculator. Checks explicitly requested
+  published values, not general prose faithfulness."
+tags:
+  - live
+  - behavior
+  - master-study
+  - faq
+  - live-kb
+targetModes:
+  - live_lambda
+backendFixture:
+  scenario: master-faq-public-empty
+inputs:
+  - text: ¿Me compartes el enlace oficial de la calculadora para revisar la comisión
+      de un regalo de 37.42 soles?
+    channel: whatsapp
+    contactPhone: "+51900007000"
+    sessionId: live_behavior.target_calculator_public_link_r2
+    backendFixture:
+      scenario: master-faq-public-empty
+expectations:
+  - id: requested-published-value-delivered
+    type: text_contains
+    allOf:
+      - https://sinenvolturas.com/cost-of-service
+    turnIndex: 0
+    severity: hard
+  - id: no-private-auth-or-side-effect
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - guest_rsvp
+      - request_human_takeover
+      - create_quote_request
+      - finish_plan
+    turnIndex: 0
+    severity: hard
+  - id: no-rsvp.write
+    type: fixture_effect_count
+    operation: rsvp.write
+    turnIndex: 0
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: no-handoff.write
+    type: fixture_effect_count
+    operation: handoff.write
+    turnIndex: 0
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: no-provider.quote.write
+    type: fixture_effect_count
+    operation: provider.quote.write
+    turnIndex: 0
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+scorers:
+  - id: objective-obligations
+    type: expectation_pass_rate
+    weight: 1
+budget:
+  maxTurns: 1
+notes:
+  - "Independent oracle source: knowledge-base/articles/cuanto-cuesta.md. Freeze
+    its exact bytes before study execution."
+  - No knowledgeBase fixture passages are supplied; the deployed live KB
+    retrieves evidence. Value-presence checks are bounded and do not prove
+    complete attribution, absence of contradiction, or full response
+    faithfulness.
+  - Synthetic private backend world; no real customer effect authorized. New
+    study scenario, no historical case is regraded.

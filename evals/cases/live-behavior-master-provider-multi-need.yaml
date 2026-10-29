@@ -1,0 +1,65 @@
+template: template.base-live
+id: live_behavior.master_provider_multi_need
+suite: live_behavior_regression
+version: 1
+description: A complete two-category request retains independent catering and
+  music recommendations.
+tags:
+  - live
+  - behavior
+  - provider
+  - thesis-master
+targetModes:
+  - live_lambda
+backendFixture:
+  scenario: master-provider-catalog
+inputs:
+  - text: Organizo mi cumpleaños en Lima para 20 invitados. Necesito catering y
+      música en vivo, con presupuesto máximo de 500 soles para cada servicio.
+      Recomiéndame una opción para cada uno.
+    sessionId: master-provider-multi_need
+    backendFixture:
+      scenario: master-provider-catalog
+expectations:
+  - id: independent-category-shortlists
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: Catering
+        recommended_provider_ids:
+          - 9101
+      - category: Música
+        recommended_provider_ids:
+          - 9301
+    severity: hard
+  - id: both-source-providers-delivered
+    type: text_contains
+    allOf:
+      - Mesa Accesible
+      - Luz Musical
+    severity: hard
+  - id: read-only-provider-conversation-has-no-submission
+    type: tool_usage
+    mustNotCall:
+      - create_quote_request
+      - finish_plan
+      - request_human_takeover
+      - guest_rsvp
+      - request_user_login_code
+      - verify_user_login_code
+    severity: hard
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 12000
+  estimatedCompletionTokensPerTurn: 600
+notes:
+  - Frozen synthetic capability question for the master thesis study. These
+    fixtures test the deployed orchestration and model against a declared
+    provider world; they do not test real marketplace/vector retrieval recall.
+  - All replies remain model-generated. Assertions pin independently declared
+    provider identities, facts and effects rather than prose style or internal
+    node paths.

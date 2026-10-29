@@ -180,10 +180,10 @@ describe('native wire shape', () => {
     expect(content[1]).toEqual({ type: 'input_image', image: URL_A, detail: 'auto' });
     const wire = content.map(toResponsesWireImageItem);
     expect(wire[1]).toEqual({ type: 'input_image', image_url: URL_A, detail: 'auto' });
-    // Installed SDK converter (agents-openai openaiResponsesModel.js):
+    // Installed SDK converter (agents-openai openaiResponsesConverter.js):
     // input_image reads item.image ?? item.imageUrl into image_url.
     const converterPath = path.resolve(
-      process.cwd(), 'node_modules', '@openai', 'agents-openai', 'dist', 'openaiResponsesModel.js',
+      process.cwd(), 'node_modules', '@openai', 'agents-openai', 'dist', 'openaiResponsesConverter.js',
     );
     const source = fs.readFileSync(converterPath, 'utf8');
     expect(source).toContain('result.image_url = imageValue');

@@ -32,6 +32,7 @@ import type {
 export type ScriptedRouterAnswer = {
   readonly route: RouterRoute;
   readonly sameOpenRequest: boolean;
+  readonly selectedRequestKey?: string | null;
   readonly requestSettled: boolean;
 };
 
@@ -72,12 +73,15 @@ export class ScriptedSupportLaneRouter implements SupportLaneRouterPort {
         retryable: false,
       };
     }
-    const parsed = parsedFromAnswer(answer);
-    const current = currentOpenRequest(args.plan.open_requests);
+    const selectedKey = answer.selectedRequestKey ?? (answer.sameOpenRequest ? currentOpenRequest(args.plan.open_requests)?.key ?? null : null);
+    const parsed = { ...parsedFromAnswer(answer), selectedRequestKey: selectedKey };
+    const current = args.plan.open_requests.find((request) => request.key === selectedKey) ?? null;
     const outcome: RouterPolicyOutcome = decideRouterPolicy({
       route: parsed.route,
       sameOpenRequest: parsed.sameOpenRequest,
       current,
+      requestSettled: parsed.requestSettled,
+      takeoverConfirmed: args.plan.human_help_receipt?.outcome === 'handoff_requested',
       helpOfferPending: args.plan.conversation_health.help_offer_status === 'offered',
     });
     return {
@@ -139,6 +143,7 @@ function parsedFromAnswer(answer: ScriptedRouterAnswer): RouterParsedAnswers {
     route: answer.route,
     routeProbabilities: [{ value: answer.route, probability: 1 }],
     sameOpenRequest: answer.sameOpenRequest,
+    selectedRequestKey: answer.selectedRequestKey ?? null,
     sameOpenRequestProbability: answer.sameOpenRequest ? 1 : 0,
     requestSettled: answer.requestSettled,
     requestSettledProbability: answer.requestSettled ? 1 : 0,

@@ -86,10 +86,14 @@ export type InformationNormalizationIssue = {
   reason: InformationNormalizationIssueReason;
 };
 
+export const faqFeeTopicValues = ['gift_commission', 'host_withdrawal', 'mixed'] as const;
+export type FaqFeeTopic = (typeof faqFeeTopicValues)[number];
+
 export const faqInformationRequestSchema = z.object({
   kind: z.literal('faq'),
   query: z.string().min(1),
   hostWithdrawal: z.enum(['policy_only', 'individual_status']).nullable().optional(),
+  feeTopic: z.enum(faqFeeTopicValues).nullable().optional(),
   eventHint: z.string().nullable().optional(),
 });
 
@@ -737,6 +741,7 @@ export type InformationTaskResult =
       kind: 'faq';
       status: 'completed';
       evidence: KnowledgeEvidence[];
+      feeTopic?: FaqFeeTopic | null;
       hostWithdrawalPolicy?: { maxBusinessHours: number } | null;
       /**
        * Deterministic citation URL from the first full-article evidence

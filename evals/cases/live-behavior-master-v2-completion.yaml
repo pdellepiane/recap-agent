@@ -1,0 +1,120 @@
+template: template.base-live
+id: live_behavior.master_v2_provider_completion
+suite: live_behavior_regression
+version: 4
+description: S12 per-provider quote completion with an explicitly captured event date. Two selected providers across two needs close with the user-supplied date sent verbatim to every quote, per-provider outcomes persisted, and no today substitution or silent partial finish.
+tags: [ live, behavior, provider, quote, completion, s12 ]
+targetModes: [ live_lambda ]
+inputs:
+  - text: Mi evento es el 18 de octubre de 2028. Por favor envía las cotizaciones a los dos proveedores elegidos para cerrar el plan.
+    channel: whatsapp
+    contactPhone: "+51999111222"
+    sessionId: live-master-v2-provider-completion-session
+    backendFixture:
+      scenario: master-v2-provider-completion
+  - text: Perdona, ¿me repites lo último que me dijiste?
+    channel: whatsapp
+    contactPhone: "+51999111222"
+    sessionId: live-master-v2-provider-completion-session
+    backendFixture:
+      scenario: master-v2-provider-completion
+  - text: Gracias, eso era todo.
+    channel: whatsapp
+    contactPhone: "+51999111222"
+    sessionId: live-master-v2-provider-completion-session
+    backendFixture:
+      scenario: master-v2-provider-completion
+seedPlan:
+  current_node: crear_lead_cerrar
+  intent: cerrar
+  event_type: boda
+  location: Lima
+  guest_range: 51-100
+  contact_name: Carolina Sintetica
+  contact_email: carolina.sintetica@example.com
+  contact_phone: "+51999111222"
+  active_need_category: Catering
+  vendor_category: Catering
+  provider_needs:
+    - category: Catering
+      status: selected
+      preferences: []
+      hard_constraints: []
+      missing_fields: []
+      recommended_provider_ids: [ 101 ]
+      recommended_providers:
+        - { id: 101, title: EDO, category: Catering, location: Lima, serviceHighlights: [], termsHighlights: [] }
+      selected_provider_ids: [ 101 ]
+      selected_provider_hints: [ EDO ]
+    - category: Música
+      status: selected
+      preferences: []
+      hard_constraints: []
+      missing_fields: []
+      recommended_provider_ids: [ 202 ]
+      recommended_providers:
+        - { id: 202, title: Orquesta Sintetica, category: Música, location: Lima, serviceHighlights: [], termsHighlights: [] }
+      selected_provider_ids: [ 202 ]
+      selected_provider_hints: [ Orquesta Sintetica ]
+backendFixture:
+  scenario: master-v2-provider-completion
+notes:
+  - "IMGMISC lane merge surgery 2026-09-30: extended 1 to 3 turns with a repeat-from-history continuity turn and a thanks closure; existing expectations pinned to turn 0 with rubric bytes unchanged."
+expectations:
+  - id: both-quote-receipts-match-selected-providers-and-date
+    turnIndex: 0
+    type: trace_field_subset
+    path: provider_quote_receipts
+    expected:
+      - { providerId: 101, eventDate: '2028-10-18', resultStatus: confirmed }
+      - { providerId: 202, eventDate: '2028-10-18', resultStatus: confirmed }
+    severity: hard
+  - id: submits-quotes-through-finish-plan
+    turnIndex: 0
+    type: tool_usage
+    mustCall: [ finish_plan ]
+    mustNotCall: []
+    severity: hard
+  - id: multi-need-selection-preserved
+    turnIndex: 0
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: Catering
+        selected_provider_ids: [ 101 ]
+      - category: Música
+        selected_provider_ids: [ 202 ]
+    severity: hard
+  - id: recall-performs-no-new-effect
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+      - guest_rsvp
+      - create_quote_request
+      - finish_plan
+    turnIndex: 1
+    severity: hard
+  - id: thanks-performs-no-new-effect
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+      - guest_rsvp
+      - create_quote_request
+    turnIndex: 2
+    severity: hard
+budget:
+  maxTurns: 3
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 300
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1

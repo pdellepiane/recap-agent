@@ -445,6 +445,11 @@ describe('S3 public plan projection: image refs and last-response text', () => {
   });
 
   it('applies the public-response redaction policy to prose, URLs, handles, and PII', () => {
+    expect(redactPublicResponseText('https://sinenvolturas.com/buscar')).toBe('https://sinenvolturas.com/buscar');
+    expect(redactPublicResponseText('Contact: https://wa.me/51915092358')).toBe('Contact: https://wa.me/51915092358');
+    expect(redactPublicResponseText('https://wa.me/51915092358?token=secret')).not.toContain('51915092358');
+    expect(redactPublicResponseText('https://wa.me/51915092359')).not.toContain('51915092359');
+    expect(redactPublicResponseText('https://sinenvolturas.com/buscar?token=secret')).toBe('[redacted-url]');
     const prose = redactPublicResponseText(
       'Tu pedido esta confirmado para el 12 de septiembre de 2026. Referencia ABC-123.',
     );
@@ -454,8 +459,9 @@ describe('S3 public plan projection: image refs and last-response text', () => {
     const defaultScrub = redactPublicResponseText(
       'Calcula aquí https://sinenvolturas.com/cost-of-service. Fuente: https://sinenvolturas.tawk.help/article/cuanto-cuesta',
     );
-    expect(defaultScrub).not.toContain('https://');
-    expect(defaultScrub.match(/\[redacted-url\]/gu)).toHaveLength(2);
+    expect(defaultScrub).toContain('https://sinenvolturas.com/cost-of-service');
+    expect(defaultScrub.match(/\[redacted-url\]/gu)).toHaveLength(1);
+    expect(redactPublicResponseText('https://sinenvolturas.com/cost-of-service?token=secret')).toBe('[redacted-url]');
 
     const calculator = redactPublicResponseText(
       'Calcula: https://sinenvolturas.com/coste-del-servicio. ' +
@@ -483,8 +489,7 @@ describe('S3 public plan projection: image refs and last-response text', () => {
       { preserveUrlPrefixes: ['https://sinenvolturas.tawk.help/article/'] },
     );
     expect(allowlisted).toContain('https://sinenvolturas.tawk.help/article/cuanto-cuesta');
-    expect(allowlisted).toContain('[redacted-url]');
-    expect(allowlisted).not.toContain('cost-of-service');
+    expect(allowlisted).toContain('https://sinenvolturas.com/cost-of-service');
 
     const nonArticle = redactPublicResponseText(
       'Mira https://sinenvolturas.tawk.help/kb/listado y https://sinenvolturas.tawk.help/article/cuanto-cuesta',

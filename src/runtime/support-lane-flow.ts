@@ -13,11 +13,19 @@
  */
 import { z } from 'zod';
 
-import type { ExtractedInformationRequest } from '../core/information';
+import type { ExtractedInformationRequest, InformationTaskResult } from '../core/information';
 import type { PlanSnapshot } from '../core/plan';
 import type { RouterRoute } from './decisions-router-questions';
 import { checkReplyNarrativeClaims } from './reply-evidence-projector';
 import type { PriorReportedPayment } from './support-outcome';
+
+/** An empty associated-event lookup can be answered with public search guidance.
+ * Keep its source status intact: this is not a found event or an outage recovery.
+ */
+export function isPublicEventSearchMiss(result: InformationTaskResult): boolean {
+  return result.kind === 'associated_event' && result.status === 'failed' &&
+    result.failureKind === 'not_found';
+}
 
 /**
  * The payment the client reported, as the model states it.
@@ -58,6 +66,12 @@ export const supportReplySidecarSchema = z.object({
   reported_payment: reportedPaymentSchema.nullable().describe(
     'The payment the CLIENT reported in this turn (for example a transfer the client says they made). This is NOT the payment of the record in the profile. Null when the client reported no payment.',
   ),
+  request_outcome: z.enum(['answered', 'needs_input', 'unresolved', 'withdrawn']).describe(
+    'Outcome of THIS request after the actual evidence and this reply: answered only when the reply fully answers it, including public-search guidance after an associated-event not_found; needs_input when one missing customer datum blocks it; unresolved when reconciliation or an unexecuted operation remains; withdrawn only when the customer explicitly withdrew it. A public FAQ answer or event fact is independent of other requests money.',
+  ),
+  financial_reconciliation_required: z.boolean().describe(
+    'True only when THIS request disputes a payment, amount, missing transfer or balance requiring reconciliation. Pending status alone is not a dispute. Other purchases do not make this request disputed.',
+  ),
   claimed_handoff: z.boolean().describe(
     'True only when the reply states that a human handoff or a manual review was registered. False when no such success is claimed.',
   ),
@@ -73,6 +87,8 @@ export type SupportReplySidecar = {
    * claim is never taken on trust.
    */
   readonly claimedHandoff: boolean;
+  readonly requestOutcome: 'answered' | 'needs_input' | 'unresolved' | 'withdrawn';
+  readonly financialReconciliationRequired: boolean;
 };
 
 /**
@@ -194,13 +210,16 @@ export function supportLaneInformationRequests(args: {
  */
 export function supportReplySidecarFromOutput(output: unknown): SupportReplySidecar {
   if (typeof output !== 'object' || output === null) {
-    return { citedOrderIds: [], reportedPayment: null, claimedHandoff: false };
+    return { citedOrderIds: [], reportedPayment: null, claimedHandoff: false, requestOutcome: 'unresolved', financialReconciliationRequired: false };
   }
   const record = output as Record<string, unknown>;
   return {
     citedOrderIds: normalizeCitedOrderIds(record.cited_order_ids),
     reportedPayment: normalizeReportedPayment(record.reported_payment),
     claimedHandoff: record.claimed_handoff === true,
+    requestOutcome: record.request_outcome === 'answered' || record.request_outcome === 'needs_input' || record.request_outcome === 'withdrawn'
+      ? record.request_outcome : 'unresolved',
+    financialReconciliationRequired: record.financial_reconciliation_required === true,
   };
 }
 
