@@ -1,0 +1,595 @@
+{
+  "runId": "eval-2026-10-28T02-18-49-459Z-91b952cc",
+  "caseId": "live_behavior.master_faq_additional_transfer.master_r3",
+  "suite": "live_behavior_regression",
+  "target": "live_lambda",
+  "configLabel": "live_lambda",
+  "status": "passed",
+  "hardGatePassed": true,
+  "finalScore": 1,
+  "totalLatencyMs": 11704,
+  "totalToolCalls": 3,
+  "nodeTransitions": [
+    "contacto_inicial->resolver_consultas_informativas"
+  ],
+  "planDiffSummary": [
+    "current_node=\"resolver_consultas_informativas\""
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/.eval-runs/eval-2026-10-28T02-18-49-459Z-91b952cc/artifacts/live_lambda/live_behavior.master_faq_additional_transfer.master_r3.json"
+  },
+  "expectationResults": [
+    {
+      "id": "requested-published-value-delivered",
+      "type": "text_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Text containment checks passed."
+    },
+    {
+      "id": "no-private-auth-or-side-effect",
+      "type": "tool_usage",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Tool usage matched expectations."
+    },
+    {
+      "id": "no-rsvp.write",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture rsvp.write turn=0 delta attempts=0 successes=0 replays=0 (cumulative 0/0/0) outcome=none."
+    },
+    {
+      "id": "no-handoff.write",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture handoff.write turn=0 delta attempts=0 successes=0 replays=0 (cumulative 0/0/0) outcome=none."
+    },
+    {
+      "id": "no-provider.quote.write",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture provider.quote.write turn=0 delta attempts=0 successes=0 replays=0 (cumulative 0/0/0) outcome=none."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "objective-obligations",
+      "type": "expectation_pass_rate",
+      "score": 1,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 5 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 1,
+    "avg_latency_ms": 11704,
+    "p95_latency_ms": 11704,
+    "tool_calls_total": 3,
+    "unique_tools_called": 3,
+    "tool_call_rate_per_turn": 3,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.06896551724137931,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 9586,
+    "cache_hit_rate": 0.39633747547416615,
+    "input_tokens": 9174,
+    "cached_input_tokens": 3636,
+    "cache_write_input_tokens": 4054,
+    "uncached_input_tokens": 5538,
+    "usage_known": true
+  },
+  "timing": {
+    "queueWaitMs": 2025946,
+    "setupMs": 0,
+    "turnMs": 14032,
+    "snapshotMs": 8,
+    "teardownMs": 0,
+    "judgeWaitMs": 0,
+    "judgeApiMs": 0,
+    "reportWriteMs": 0,
+    "makespanMs": 0
+  },
+  "judgeMetrics": {
+    "modelCalls": 0,
+    "retryCount": 0,
+    "rateLimitCount": 0,
+    "tokensUnknown": false,
+    "openaiSdk": "7.43.0",
+    "judgeModels": []
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Ya pedí mi primera transferencia de fondos. ¿Cuál es el fee publicado en dólares para una transferencia adicional?",
+        "channel": "whatsapp",
+        "sessionId": "live_behavior.master_faq_additional_transfer",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "master-faq-public-empty"
+        }
+      },
+      "outputText": "El fee publicado por cada transferencia adicional es de US$5, o su equivalente en soles o pesos.\n\nFuente: https://sinenvolturas.tawk.help/article/cuanto-cuesta",
+      "deliveredText": "El fee publicado por cada transferencia adicional es de US$5, o su equivalente en soles o pesos.\n\nFuente: https://sinenvolturas.tawk.help/article/cuanto-cuesta",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "645d41fdafc714869b2572fbc5002e4ceeaee3217881c4e7c0d9c1442fb8f9b8",
+        "deliveredSha256": "645d41fdafc714869b2572fbc5002e4ceeaee3217881c4e7c0d9c1442fb8f9b8",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "resolver_consultas_informativas",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 6,
+          "attempts": 1
+        },
+        "trace_id": "01M606SC47RA4XTE3YJBN3YEXY",
+        "conversation_id": null,
+        "plan_id": "01M606S1PK20VZHSTBETN7Z6DY",
+        "previous_node": "contacto_inicial",
+        "next_node": "resolver_consultas_informativas",
+        "node_path": [
+          "contacto_inicial",
+          "resolver_consultas_informativas"
+        ],
+        "intent": null,
+        "missing_fields": [],
+        "search_ready": false,
+        "prompt_bundle_id": "2cc830058108",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "nodes/resolver_consultas_informativas/payment_disclosure.txt",
+          "nodes/resolver_consultas_informativas/withdrawal_fee.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "knowledge_base_search"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "knowledge_base_search"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "knowledge_base_search",
+            "input": "{\"projection_version\":1,\"status\":null,\"kind\":null,\"request_present\":false}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "knowledge_base_search",
+            "output": "{\"projection_version\":1,\"status\":\"completed\",\"kind\":\"faq\",\"result_count\":6}"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [
+          {
+            "requestId": "information-1",
+            "kind": "faq",
+            "status": "completed",
+            "source": "knowledge_base",
+            "outcomeCode": "completed_with_results",
+            "retryable": null,
+            "queryHash": "65dc1bdae93124333243706716645f214c4493e7c27d940f0ed5189371aa5dde",
+            "evidence": [
+              {
+                "fileId": "file-33FTnnCVvLRdLHzYKkA5xq",
+                "filename": "cuanto-cuesta.md",
+                "score": 0.9507027088018926,
+                "contentHash": "7035687d376e305df6b5df651a95092c26e1dfb8e4163552b8d37ad6b4c28752"
+              },
+              {
+                "fileId": "file-KdNxy91PV3VDN7EeLGmhFc",
+                "filename": "cuanto-cuesta-invitados.md",
+                "score": 0.7950096253047233,
+                "contentHash": "7abd4ddaa2989a540a0e281f28d4944ded21d3086f79d3d304cd588e0097c8fc"
+              },
+              {
+                "fileId": "file-33FTnnCVvLRdLHzYKkA5xq",
+                "filename": "cuanto-cuesta.md",
+                "score": 0.9182786886347393,
+                "contentHash": "853b68922a4ecb394ed115408e00f3462de6444e2cdc263fdbd9f6933866cfc5"
+              },
+              {
+                "fileId": "file-33FTnnCVvLRdLHzYKkA5xq",
+                "filename": "cuanto-cuesta.md",
+                "score": 0.7063384466863466,
+                "contentHash": "f6f7d3988613bacdef4f17964579d299f3752b7e5ab6356d7b35b903eb7637fc"
+              },
+              {
+                "fileId": "file-UCAmBqYtg53Qs9FEV6pjrc",
+                "filename": "donde-va-el-dinero.md",
+                "score": 0.4355845019146827,
+                "contentHash": "6676023a7081f187a086044f9b2b163d9a427c1e81d09aad1f6646e52baadbb6"
+              },
+              {
+                "fileId": "file-MpgXFXtxpBeVvZBKSGyCBK",
+                "filename": "medios-de-pago.md",
+                "score": 0.2654471516690044,
+                "contentHash": "c259f0e6591be47dcb677411e3a60c8b0d359656c3a7d30c22522706f27c2aab"
+              }
+            ],
+            "resultCount": 6,
+            "durationMs": 1046,
+            "openAiTransport": {
+              "observedRequestCount": 1,
+              "totalPayloadBytes": 362,
+              "instructionBytes": 0,
+              "inputBytes": 0,
+              "toolBytes": 0,
+              "outputSchemaBytes": 0,
+              "requests": [
+                {
+                  "sequence": 0,
+                  "stage": "knowledge_retrieval",
+                  "requestId": "req_2afbafb0f14947959dcd3a60a56ea517",
+                  "responseId": null,
+                  "statusCode": 200,
+                  "succeeded": true,
+                  "totalPayloadBytes": 362,
+                  "instructionBytes": 0,
+                  "inputBytes": 0,
+                  "toolBytes": 0,
+                  "outputSchemaBytes": 0,
+                  "requestBodySha256": "5b558fe0771b1b1e112d17e51410dd49f3cac04072eb7591d42e52e40b155c0c"
+                }
+              ]
+            }
+          }
+        ],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": null,
+          "extraction": {
+            "responseId": "resp_08402f5866abf3dc006ae16377313c87d2b2cca4b54f8487c9",
+            "requestId": "req_61e52929c5ba4ba480b1d983e4e687dd",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 6855,
+              "inputBytes": 3175,
+              "toolCount": 0,
+              "schemaPropertyCount": 30,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 20862,
+                "instructionBytes": 6932,
+                "inputBytes": 3459,
+                "toolBytes": 2,
+                "outputSchemaBytes": 10207,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_07dbef3a8aa144cf006ae1637b8d1887d2a4560ab9670319b7",
+            "requestId": "req_909127e3a87b4abc849aed6e77d94ef7",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 1911,
+              "inputBytes": 10449,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 13689,
+                "instructionBytes": 1922,
+                "inputBytes": 11162,
+                "toolBytes": 2,
+                "outputSchemaBytes": 313,
+                "requests": []
+              }
+            }
+          },
+          "router": {
+            "responseId": null,
+            "requestId": "req_6ceb4b93f2cd418f827f8304a15737b4",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 3321,
+              "inputBytes": 2578,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 6860,
+                "instructionBytes": 3321,
+                "inputBytes": 2578,
+                "toolBytes": 0,
+                "outputSchemaBytes": 0,
+                "requests": []
+              }
+            }
+          }
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 5
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "host_withdrawal_policy_and_support",
+        "timing_ms": {
+          "total": 10783,
+          "load_plan": 107,
+          "response_classification": 260,
+          "prepare_working_plan": 0,
+          "extraction": 3367,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 5699,
+          "save_plan": 0,
+          "router": 295,
+          "information_execution": 1046,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": null,
+          "router": {
+            "input_tokens": 1478,
+            "output_tokens": 0,
+            "total_tokens": 1478
+          },
+          "extraction": {
+            "input_tokens": 4404,
+            "output_tokens": 373,
+            "total_tokens": 4777,
+            "cached_input_tokens": 3636,
+            "cache_write_input_tokens": 765
+          },
+          "reply": {
+            "input_tokens": 3292,
+            "output_tokens": 39,
+            "total_tokens": 3331,
+            "cached_input_tokens": 0,
+            "cache_write_input_tokens": 3289
+          },
+          "total": {
+            "input_tokens": 9174,
+            "output_tokens": 412,
+            "total_tokens": 9586,
+            "cached_input_tokens": 3636,
+            "cache_write_input_tokens": 4054
+          }
+        },
+        "turn_decision": {
+          "nextNode": "resolver_consultas_informativas",
+          "routeKind": "information_batch",
+          "providerSearchMode": "none",
+          "presentationScope": "information_batch",
+          "focusNeedCategory": null,
+          "needsToSearch": [],
+          "needsToPresent": [],
+          "stopReason": null,
+          "persistReason": "host_withdrawal_policy_and_support",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "information_batch",
+        "presentation_scope": "information_batch",
+        "session_focus_used": false,
+        "session_focus_key_present": false,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.99,
+          "information_request_count": 1,
+          "information_request_kinds": [
+            "faq"
+          ],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": null,
+          "vendor_category": null,
+          "vendor_categories": [],
+          "active_need_category": null,
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 0,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Consulta el fee publicado en dólares para una transferencia adicional de fondos; indica que ya pidió la primera transferencia.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "resolver_consultas_informativas",
+          "lifecycle_state": "active",
+          "event_type": null,
+          "vendor_category": null,
+          "active_need_category": null,
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "provider_need_categories": [],
+          "provider_need_count": 0,
+          "provider_need_statuses": [],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "empty",
+          "context_source": "agent_api",
+          "retrieved_message_count": 0,
+          "recent_message_count": 0,
+          "excluded_current_message_count": 0,
+          "directions": [],
+          "sources": [],
+          "entry_source": null
+        },
+        "continuity_state": "new",
+        "welcome_allowed": true,
+        "history_status": "empty",
+        "has_prior_outbound": false,
+        "requested_operation": "faq.read",
+        "capability_decision": null,
+        "capability_reason": null,
+        "open_request_state": null,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 8853,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M606SC47RA4XTE3YJBN3YEXY",
+        "conversation_hash": "f36d2ee199ab23aa2ce7a4a9135b82e39c137064846d3d4a4a6e7558d20f567d",
+        "runtime_latency_ms": 10783,
+        "extraction_latency_ms": 3367,
+        "compose_latency_ms": 5699,
+        "tools_called_count": 3,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 5,
+        "response_classifier_action": null,
+        "response_classifier_would_suppress": null,
+        "conversation_health_status": null,
+        "conversation_health_reason": null,
+        "human_help_response": null,
+        "total_tokens": 9586,
+        "cached_input_tokens": 3636,
+        "cache_hit_rate": 0.39633747547416615,
+        "extraction_to_compose_ratio": 0.5908054044569223,
+        "captured_at": "2026-10-28T02:52:49.166Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "resolver_consultas_informativas",
+        "lifecycle_state": "active",
+        "event_type": null,
+        "vendor_category": null,
+        "active_need_category": null,
+        "location": null,
+        "budget_signal": null,
+        "guest_range": null,
+        "provider_needs": [],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": true
+        }
+      },
+      "latencyMs": 11704
+    }
+  ],
+  "startedAt": "2026-10-28T02:52:50.862Z",
+  "completedAt": "2026-10-28T02:52:50.862Z"
+}

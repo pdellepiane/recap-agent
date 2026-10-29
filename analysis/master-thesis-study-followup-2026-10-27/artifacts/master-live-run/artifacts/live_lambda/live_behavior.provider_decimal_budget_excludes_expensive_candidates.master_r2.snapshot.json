@@ -1,0 +1,532 @@
+{
+  "runId": "eval-2026-10-27T22-19-42-463Z-78589b85",
+  "caseId": "live_behavior.provider_decimal_budget_excludes_expensive_candidates.master_r2",
+  "configLabel": "live_lambda",
+  "lane": "parallel",
+  "phase": "snapshot",
+  "status": "passed",
+  "executionUncertain": false,
+  "writtenAt": "2026-10-27T22:42:14.641Z",
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Busco catering para mi cumpleaños en Lima, para 20 invitados. Mi presupuesto máximo para el catering es S/ 500.00. ¿Qué opción tienes dentro de ese presupuesto?",
+        "sessionId": "provider-decimal-budget",
+        "backendFixture": {
+          "scenario": "provider-decimal-budget"
+        }
+      },
+      "outputText": "Para tu cumpleaños en Lima y 20 invitados, Mesa Accesible parece ajustarse: su rango publicado es S/ 100–400, dentro de tu máximo de S/ 500. La atención está sujeta a disponibilidad; puedes pedir una cotización para confirmar qué incluye y el precio final.\n\n1. Mesa Accesible\n Ofrece catering para cumpleaños y celebraciones sociales de 20 invitados, con un rango publicado de S/ 100 a S/ 400.\n Ubicación: Lima.\n Precio: $.\n Nota: Sujeto a disponibilidad; confirma en la cotización qué incluye el servicio y el precio final.\n\n Ficha: [redacted-url]",
+      "deliveredText": "Para tu cumpleaños en Lima y 20 invitados, Mesa Accesible parece ajustarse: su rango publicado es S/ 100–400, dentro de tu máximo de S/ 500. La atención está sujeta a disponibilidad; puedes pedir una cotización para confirmar qué incluye y el precio final.\n\n1. Mesa Accesible\n Ofrece catering para cumpleaños y celebraciones sociales de 20 invitados, con un rango publicado de S/ 100 a S/ 400.\n Ubicación: Lima.\n Precio: $.\n Nota: Sujeto a disponibilidad; confirma en la cotización qué incluye el servicio y el precio final.\n\n Ficha: [redacted-url]",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "f5ca516f7aa517d9eadb7d5c7c1adff303cf3fe0f34fb5433bfbc93fd2d2f977",
+        "deliveredSha256": "f5ca516f7aa517d9eadb7d5c7c1adff303cf3fe0f34fb5433bfbc93fd2d2f977",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "recomendar",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 6,
+          "attempts": 1
+        },
+        "trace_id": "01M5ZREGZ67KC9H2W84JBTNVJK",
+        "conversation_id": null,
+        "plan_id": "01M5ZRE6HB528JN8PBYANS4XSZ",
+        "previous_node": "contacto_inicial",
+        "next_node": "recomendar",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "minimos_para_buscar",
+          "buscar_proveedores",
+          "busqueda_exitosa",
+          "hay_resultados",
+          "recomendar"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "9579d9dcb7c9",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/domain_scope.txt",
+          "shared/flow_discipline.txt"
+        ],
+        "tools_considered": [
+          "classify_reply_delivery",
+          "search_providers_from_plan",
+          "get_provider_detail",
+          "get_related_providers",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "classify_reply_delivery",
+          "search_providers_from_plan",
+          "get_provider_detail"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "search_providers_from_plan",
+            "input": "{\"projection_version\":1}"
+          },
+          {
+            "tool": "get_provider_detail",
+            "input": "{\"projection_version\":1,\"provider_id\":9101}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "search_providers_from_plan",
+            "output": "{\"projection_version\":1,\"result_kind\":\"collection\",\"count\":2,\"provider_ids\":[9101,9102]}"
+          },
+          {
+            "tool": "get_provider_detail",
+            "output": "{\"projection_version\":1,\"result_kind\":\"detail\",\"provider_id\":9101,\"found\":true}"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 9101,
+            "title": "Mesa Accesible",
+            "slug": "mesa-accesible-9101",
+            "category": "Catering",
+            "location": "Lima",
+            "priceLevel": "low",
+            "reason": "Mesa Accesible encaja con Catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://fixture.example/catering/mesa-accesible-9101",
+            "minPrice": "100.00",
+            "maxPrice": "400.00",
+            "serviceHighlights": [
+              "Catering para cumpleaños y celebraciones sociales de 20 invitados"
+            ],
+            "termsHighlights": [
+              "Sujeto a disponibilidad"
+            ],
+            "providerNotes": [],
+            "eventTypes": [
+              "others"
+            ],
+            "description": "Catering para cumpleaños y celebraciones sociales.",
+            "fitScore": 100,
+            "fitWarnings": [],
+            "fitTags": [
+              "budget_match",
+              "event_match",
+              "need_match"
+            ]
+          }
+        ],
+        "search_strategy": "search_from_plan",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 9101,
+            "category": "Catering",
+            "location": "Lima",
+            "retrieval_source": null,
+            "retrieval_score": null,
+            "fit_score": 100
+          }
+        ],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_015d809b6c37cf32006ae128bb2fdc87d2b23dd777e0d4607f",
+            "requestId": "req_5074016d266d4e83aaac2083402f0b04",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 799,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 7676,
+                "instructionBytes": 0,
+                "inputBytes": 5849,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_04abd5ad269c1159006ae128bc686c87d2917cd0a307b550cd",
+            "requestId": "req_fa82254de9284f23a7df4837181b00b9",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 6855,
+              "inputBytes": 2801,
+              "toolCount": 0,
+              "schemaPropertyCount": 30,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 20434,
+                "instructionBytes": 6932,
+                "inputBytes": 3031,
+                "toolBytes": 2,
+                "outputSchemaBytes": 10207,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_035315933ce7f219006ae128c36a7087d291ce0d354b7f6269",
+            "requestId": "req_afc627c920934f58a021995ce50d50f5",
+            "model": "gpt-6-luna",
+            "attemptCount": 2,
+            "requestMetrics": {
+              "instructionBytes": 2588,
+              "inputBytes": 8715,
+              "toolCount": 3,
+              "schemaPropertyCount": 3,
+              "transport": {
+                "observedRequestCount": 2,
+                "totalPayloadBytes": 31071,
+                "instructionBytes": 5248,
+                "inputBytes": 21897,
+                "toolBytes": 2054,
+                "outputSchemaBytes": 1334,
+                "requests": []
+              }
+            }
+          },
+          "router": {
+            "responseId": null,
+            "requestId": "req_f6a86dcc68224450b1867b3fa00ba3ce",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 3321,
+              "inputBytes": 2625,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 6907,
+                "instructionBytes": 3321,
+                "inputBytes": 2625,
+                "toolBytes": 0,
+                "outputSchemaBytes": 0,
+                "requests": []
+              }
+            }
+          }
+        },
+        "recommendation_funnel": {
+          "available_candidates": 1,
+          "context_candidates": 1,
+          "context_candidate_ids": [
+            9101
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "recomendar",
+        "timing_ms": {
+          "total": 10690,
+          "load_plan": 7,
+          "response_classification": 1159,
+          "prepare_working_plan": 0,
+          "extraction": 5500,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 1,
+          "prompt_bundle_load": 0,
+          "compose_reply": 3821,
+          "save_plan": 20,
+          "router": 174,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1536,
+            "output_tokens": 70,
+            "total_tokens": 1606,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 191
+          },
+          "router": {
+            "input_tokens": 1493,
+            "output_tokens": 0,
+            "total_tokens": 1493
+          },
+          "extraction": {
+            "input_tokens": 4298,
+            "output_tokens": 587,
+            "total_tokens": 4885,
+            "cached_input_tokens": 3636,
+            "cache_write_input_tokens": 659
+          },
+          "reply": {
+            "input_tokens": 6040,
+            "output_tokens": 207,
+            "total_tokens": 6247,
+            "cached_input_tokens": 2927,
+            "cache_write_input_tokens": 3107
+          },
+          "total": {
+            "input_tokens": 13367,
+            "output_tokens": 864,
+            "total_tokens": 14231,
+            "cached_input_tokens": 7905,
+            "cache_write_input_tokens": 3957
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "local_plan",
+          "has_prior_outbound_message": false,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "question_or_request",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "recomendar",
+          "routeKind": "single_need_search",
+          "providerSearchMode": "single_need_from_plan",
+          "presentationScope": "single_need",
+          "focusNeedCategory": "Catering",
+          "needsToSearch": [
+            "Catering"
+          ],
+          "needsToPresent": [
+            "Catering"
+          ],
+          "stopReason": null,
+          "persistReason": "recomendar",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "single_need_search",
+        "presentation_scope": "single_need",
+        "session_focus_used": false,
+        "session_focus_key_present": true,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.99,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": "cumpleanos",
+          "vendor_category": "Catering",
+          "vendor_categories": [
+            "Catering"
+          ],
+          "active_need_category": "Catering",
+          "location": "Lima",
+          "budget_signal": "Máximo S/ 500.00 para catering",
+          "guest_range": "1-20",
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [
+            "Presupuesto máximo de S/ 500 para catering"
+          ],
+          "assumptions": [],
+          "provider_query_intents_count": 1,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Busca opciones de catering para un cumpleaños en Lima, para 20 invitados, con presupuesto máximo de S/ 500.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "recomendar",
+          "lifecycle_state": "active",
+          "event_type": "cumpleanos",
+          "vendor_category": "Catering",
+          "active_need_category": "Catering",
+          "location": "Lima",
+          "budget_signal": "Máximo S/ 500.00 para catering",
+          "guest_range": "1-20",
+          "provider_need_categories": [
+            "Catering"
+          ],
+          "provider_need_count": 1,
+          "provider_need_statuses": [
+            {
+              "category": "Catering",
+              "status": "shortlisted",
+              "has_recommendations": true,
+              "selected_provider_ids": []
+            }
+          ],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "Busca opciones de catering para un cumpleaños en Lima, para 20 invitados, con presupuesto máximo de S/ 500.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "missing_phone_number",
+          "context_source": "local_plan",
+          "retrieved_message_count": 0,
+          "recent_message_count": 0,
+          "excluded_current_message_count": 0,
+          "directions": [],
+          "sources": [],
+          "entry_source": null
+        },
+        "continuity_state": "degraded",
+        "welcome_allowed": false,
+        "history_status": "missing_phone_number",
+        "has_prior_outbound": false,
+        "requested_operation": "provider.search",
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 9314,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M5ZREGZ67KC9H2W84JBTNVJK",
+        "conversation_hash": "193e8d268133da664164dc02b1b6f2c9ac3e5652f933c5fe07e5de48513fb628",
+        "runtime_latency_ms": 10690,
+        "extraction_latency_ms": 5500,
+        "compose_latency_ms": 3821,
+        "tools_called_count": 3,
+        "provider_results_count": 1,
+        "recommendation_context_candidates": 1,
+        "recommendation_presentation_limit": 6,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 14231,
+        "cached_input_tokens": 7905,
+        "cache_hit_rate": 0.5913817610533403,
+        "extraction_to_compose_ratio": 1.4394137660298352,
+        "captured_at": "2026-10-27T22:42:13.614Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "recomendar",
+        "lifecycle_state": "active",
+        "event_type": "cumpleanos",
+        "vendor_category": "Catering",
+        "active_need_category": "Catering",
+        "location": "Lima",
+        "budget_signal": "Máximo S/ 500.00 para catering",
+        "guest_range": "1-20",
+        "provider_needs": [
+          {
+            "category": "Catering",
+            "status": "shortlisted",
+            "recommended_provider_ids": [
+              9101
+            ],
+            "selected_provider_ids": []
+          }
+        ],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": false
+        }
+      },
+      "latencyMs": 11756
+    }
+  ]
+}

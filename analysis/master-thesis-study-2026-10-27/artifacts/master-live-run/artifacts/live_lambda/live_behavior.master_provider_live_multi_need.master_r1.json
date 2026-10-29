@@ -1,0 +1,585 @@
+{
+  "runId": "eval-2026-10-27T05-31-20-436Z-edb558f3",
+  "caseId": "live_behavior.master_provider_live_multi_need.master_r1",
+  "suite": "live_behavior_regression",
+  "target": "live_lambda",
+  "configLabel": "live_lambda",
+  "status": "failed",
+  "hardGatePassed": false,
+  "primaryFailureReason": "product_fact_completeness",
+  "finalScore": 0.5,
+  "totalLatencyMs": 14329,
+  "totalToolCalls": 1,
+  "nodeTransitions": [
+    "contacto_inicial->elicitacion_necesidades"
+  ],
+  "planDiffSummary": [
+    "current_node=\"elicitacion_necesidades\"",
+    "intent=\"buscar_proveedores\"",
+    "event_type=\"boda\"",
+    "vendor_category=\"Catering\"",
+    "active_need_category=\"Catering\"",
+    "location=\"Lima\"",
+    "budget_signal=\"Sin tope de presupuesto\"",
+    "guest_range=\"51-100\"",
+    "provider_needs=Catering:identified, Música:identified"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/.eval-runs/eval-2026-10-27T05-31-20-436Z-edb558f3/artifacts/live_lambda/live_behavior.master_provider_live_multi_need.master_r1.json"
+  },
+  "expectationResults": [
+    {
+      "id": "no-real-or-requested-submission",
+      "type": "tool_usage",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Tool usage matched expectations."
+    },
+    {
+      "id": "both-needs-retained",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "live-multi-need-has-candidates",
+      "type": "provider_result_count",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Provider result count 0 outside expected range min=1 max=*."
+    },
+    {
+      "id": "reply-has-catalog-link",
+      "type": "text_contains",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Text containment checks failed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "objective-obligations",
+      "type": "expectation_pass_rate",
+      "score": 0.5,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 4 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 1,
+    "avg_latency_ms": 14329,
+    "p95_latency_ms": 14329,
+    "tool_calls_total": 1,
+    "unique_tools_called": 1,
+    "tool_call_rate_per_turn": 1,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.10344827586206896,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 11390,
+    "cache_hit_rate": 0.47999228618262463,
+    "input_tokens": 10371,
+    "cached_input_tokens": 4978,
+    "cache_write_input_tokens": 3898,
+    "uncached_input_tokens": 5393,
+    "usage_known": true
+  },
+  "timing": {
+    "queueWaitMs": 181880,
+    "setupMs": 0,
+    "turnMs": 15922,
+    "snapshotMs": 11,
+    "teardownMs": 0,
+    "judgeWaitMs": 1,
+    "judgeApiMs": 0,
+    "reportWriteMs": 0,
+    "makespanMs": 0
+  },
+  "judgeMetrics": {
+    "modelCalls": 0,
+    "retryCount": 0,
+    "rateLimitCount": 0,
+    "tokensUnknown": false,
+    "openaiSdk": "7.43.0",
+    "judgeModels": []
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Para una boda en Lima con 100 invitados necesito Catering y Música. No tengo tope de presupuesto. Recomiéndame opciones para las dos necesidades.",
+        "sessionId": "live_behavior.master_provider_live_multi_need",
+        "backendFixture": {
+          "scenario": "master-provider-live-public"
+        }
+      },
+      "outputText": "Ya tengo los datos para buscar catering y música para tu boda en Lima, con 100 invitados. Aún no tengo opciones concretas para recomendarte; ¿qué estilo de comida prefieres para el catering? Así puedo afinar la búsqueda y luego vemos también música.",
+      "deliveredText": "Ya tengo los datos para buscar catering y música para tu boda en Lima, con 100 invitados. Aún no tengo opciones concretas para recomendarte; ¿qué estilo de comida prefieres para el catering? Así puedo afinar la búsqueda y luego vemos también música.",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "9ec8ee926b6e1af4f87351d5c2987901a32136bb6f2e70ec8f0cf507c4bae0e3",
+        "deliveredSha256": "9ec8ee926b6e1af4f87351d5c2987901a32136bb6f2e70ec8f0cf507c4bae0e3",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "elicitacion_necesidades",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 121,
+          "attempts": 1
+        },
+        "trace_id": "01M5XXMYSTKZ2NDXWYBTFFB0WW",
+        "conversation_id": null,
+        "plan_id": "01M5XXMJ1YSYBMVHCQ8EDF32F4",
+        "previous_node": "contacto_inicial",
+        "next_node": "elicitacion_necesidades",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "elicitacion_necesidades"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "d4c67dedd44b",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/domain_scope.txt",
+          "shared/flow_discipline.txt",
+          "shared/domain_knowledge.txt",
+          "shared/question_strategy.txt"
+        ],
+        "tools_considered": [
+          "classify_reply_delivery"
+        ],
+        "tools_called": [
+          "classify_reply_delivery"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_04592e660abf5e09006ae037e19fe087d1af85c666c022ba90",
+            "requestId": "req_193b67cb65b04cc5902ab044fe43d0a5",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 781,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 7658,
+                "instructionBytes": 0,
+                "inputBytes": 5831,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_05ac130e1a9bd522006ae037e3610887d1b053a97231f327aa",
+            "requestId": "req_bbfffbb9c3f94d3391f8d85bc5a1e0da",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 6855,
+              "inputBytes": 2783,
+              "toolCount": 0,
+              "schemaPropertyCount": 30,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 20416,
+                "instructionBytes": 6932,
+                "inputBytes": 3013,
+                "toolBytes": 2,
+                "outputSchemaBytes": 10207,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_08d40696ba810e0a006ae037eb868887d194011b5871797992",
+            "requestId": "req_0944f6361b21407a91662800be41c174",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4789,
+              "inputBytes": 8349,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 14612,
+                "instructionBytes": 4854,
+                "inputBytes": 9161,
+                "toolBytes": 2,
+                "outputSchemaBytes": 313,
+                "requests": []
+              }
+            }
+          },
+          "router": {
+            "responseId": null,
+            "requestId": "req_2fee5fe6f1ee4fe2ba52a7c157b4e5f5",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 3321,
+              "inputBytes": 2607,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 6889,
+                "instructionBytes": 3321,
+                "inputBytes": 2607,
+                "toolBytes": 0,
+                "outputSchemaBytes": 0,
+                "requests": []
+              }
+            }
+          }
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "elicitacion_necesidades",
+        "timing_ms": {
+          "total": 13058,
+          "load_plan": 7,
+          "response_classification": 1701,
+          "prepare_working_plan": 1,
+          "extraction": 8174,
+          "apply_extraction": 2,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 2958,
+          "save_plan": 13,
+          "router": 195,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1528,
+            "output_tokens": 99,
+            "total_tokens": 1627,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 183
+          },
+          "router": {
+            "input_tokens": 1486,
+            "output_tokens": 0,
+            "total_tokens": 1486
+          },
+          "extraction": {
+            "input_tokens": 4291,
+            "output_tokens": 749,
+            "total_tokens": 5040,
+            "cached_input_tokens": 3636,
+            "cache_write_input_tokens": 652
+          },
+          "reply": {
+            "input_tokens": 3066,
+            "output_tokens": 171,
+            "total_tokens": 3237,
+            "cached_input_tokens": 0,
+            "cache_write_input_tokens": 3063
+          },
+          "total": {
+            "input_tokens": 10371,
+            "output_tokens": 1019,
+            "total_tokens": 11390,
+            "cached_input_tokens": 4978,
+            "cache_write_input_tokens": 3898
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "local_plan",
+          "has_prior_outbound_message": false,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "question_or_request",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "elicitacion_necesidades",
+          "routeKind": "multi_need_search",
+          "providerSearchMode": "multi_need_query_intents",
+          "presentationScope": "multi_need",
+          "focusNeedCategory": "Catering",
+          "needsToSearch": [
+            "Catering",
+            "Música"
+          ],
+          "needsToPresent": [
+            "Catering",
+            "Música"
+          ],
+          "stopReason": null,
+          "persistReason": "elicitacion_necesidades",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "multi_need_search",
+        "presentation_scope": "multi_need",
+        "session_focus_used": false,
+        "session_focus_key_present": true,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.99,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": "boda",
+          "vendor_category": "Catering",
+          "vendor_categories": [
+            "Catering",
+            "Música"
+          ],
+          "active_need_category": "Catering",
+          "location": "Lima",
+          "budget_signal": "Sin tope de presupuesto",
+          "guest_range": "51-100",
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 2,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Busca opciones de catering y música para una boda en Lima con 100 invitados; no tiene un límite de presupuesto.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "elicitacion_necesidades",
+          "lifecycle_state": "active",
+          "event_type": "boda",
+          "vendor_category": "Catering",
+          "active_need_category": "Catering",
+          "location": "Lima",
+          "budget_signal": "Sin tope de presupuesto",
+          "guest_range": "51-100",
+          "provider_need_categories": [
+            "Catering",
+            "Música"
+          ],
+          "provider_need_count": 2,
+          "provider_need_statuses": [
+            {
+              "category": "Catering",
+              "status": "identified",
+              "has_recommendations": false,
+              "selected_provider_ids": []
+            },
+            {
+              "category": "Música",
+              "status": "identified",
+              "has_recommendations": false,
+              "selected_provider_ids": []
+            }
+          ],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "Busca opciones de catering y música para una boda en Lima con 100 invitados; no tiene un límite de presupuesto.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "missing_phone_number",
+          "context_source": "local_plan",
+          "retrieved_message_count": 0,
+          "recent_message_count": 0,
+          "excluded_current_message_count": 0,
+          "directions": [],
+          "sources": [],
+          "entry_source": null
+        },
+        "continuity_state": "degraded",
+        "welcome_allowed": false,
+        "history_status": "missing_phone_number",
+        "has_prior_outbound": false,
+        "requested_operation": "provider.search",
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 8058,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M5XXMYSTKZ2NDXWYBTFFB0WW",
+        "conversation_hash": "852d1e0d0557b7222b7979548265bdc8a9ffea1b49332e69be0cad7e3c9b1d6b",
+        "runtime_latency_ms": 13058,
+        "extraction_latency_ms": 8174,
+        "compose_latency_ms": 2958,
+        "tools_called_count": 1,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 11390,
+        "cached_input_tokens": 4978,
+        "cache_hit_rate": 0.47999228618262463,
+        "extraction_to_compose_ratio": 2.7633536173089928,
+        "captured_at": "2026-10-27T05:34:38.399Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "elicitacion_necesidades",
+        "lifecycle_state": "active",
+        "event_type": "boda",
+        "vendor_category": "Catering",
+        "active_need_category": "Catering",
+        "location": "Lima",
+        "budget_signal": "Sin tope de presupuesto",
+        "guest_range": "51-100",
+        "provider_needs": [
+          {
+            "category": "Catering",
+            "status": "identified",
+            "recommended_provider_ids": [],
+            "selected_provider_ids": []
+          },
+          {
+            "category": "Música",
+            "status": "identified",
+            "recommended_provider_ids": [],
+            "selected_provider_ids": []
+          }
+        ],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": false
+        }
+      },
+      "latencyMs": 14329
+    }
+  ],
+  "startedAt": "2026-10-27T05:34:39.475Z",
+  "completedAt": "2026-10-27T05:34:39.492Z"
+}

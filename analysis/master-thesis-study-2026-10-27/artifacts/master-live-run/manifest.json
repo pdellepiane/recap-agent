@@ -1,0 +1,976 @@
+{
+  "schemaVersion": 1,
+  "runId": "eval-2026-10-27T05-31-20-436Z-edb558f3",
+  "label": "current-master-2026-10-27",
+  "dryRun": false,
+  "releaseReadyClaim": false,
+  "referenceStatus": "red",
+  "source": {
+    "commit": "8b69c341f6a8e50e965fa16afbc0fb427b0a8c6f",
+    "gitAvailable": true,
+    "dirty": true,
+    "dirtyPatchDigest": "fc4c4f979e6b226f56bdd5cea6e891a758e391fdb34c459980b00be03799231a",
+    "untrackedContentDigest": "43621f2234d382efcef55af87235176122c24f6819786d90d18cb3bf68821095"
+  },
+  "deploymentBefore": {
+    "functionArn": "arn:aws:lambda:us-east-1:684516060775:function:recap-agent-runtime-dev",
+    "codeSha256": "184bUW2Le1kyrdLEI8AaxMw5GSXsbSeSHb0c/Vce6/Q=",
+    "version": "$LATEST",
+    "lastModified": "2026-10-27T05:27:34.000+0000",
+    "artifactSha256": "d7ce1b516d8b7b5932add2c423c01ac4cc391925ec6d27921dbd1cfd571eebf4",
+    "artifactProvenance": "verified-aws",
+    "checkedAt": "2026-10-27T05:31:21.388Z"
+  },
+  "deploymentAfter": {
+    "functionArn": "arn:aws:lambda:us-east-1:684516060775:function:recap-agent-runtime-dev",
+    "codeSha256": "184bUW2Le1kyrdLEI8AaxMw5GSXsbSeSHb0c/Vce6/Q=",
+    "version": "$LATEST",
+    "lastModified": "2026-10-27T05:27:34.000+0000",
+    "artifactSha256": "d7ce1b516d8b7b5932add2c423c01ac4cc391925ec6d27921dbd1cfd571eebf4",
+    "artifactProvenance": "verified-aws",
+    "checkedAt": "2026-10-27T06:02:05.076Z"
+  },
+  "artifact": {
+    "artifactSha256": "d7ce1b516d8b7b5932add2c423c01ac4cc391925ec6d27921dbd1cfd571eebf4",
+    "codeSha256": "184bUW2Le1kyrdLEI8AaxMw5GSXsbSeSHb0c/Vce6/Q=",
+    "version": "$LATEST",
+    "lastModified": "2026-10-27T05:27:34.000+0000",
+    "provenance": "verified-aws"
+  },
+  "lockfiles": {
+    "package-lock.json": "a2cff053ce5a610df685e68f9030ce750f54f45b38963a39f2eee45670b0d57b",
+    "bun.lock": "a4438419b1dbe9dd6decb2ac28a483b76f08e7b25122661be0ecd8a6f8ba173f"
+  },
+  "prompts": {
+    "digest": "6c74ab072f8c5a1ffb676529a9ea884b5b5afe96b5f03038a702f7dc8cba234d",
+    "fileCount": 139
+  },
+  "evaluator": {
+    "commit": "8b69c341f6a8e50e965fa16afbc0fb427b0a8c6f",
+    "contentDigest": "443a78f097f5b20b807e753ede47cfa83f2c7d43dfb399fb8a46fbc94785f6a8"
+  },
+  "cases": {
+    "orderedIds": [
+      "live_behavior.master_provider_live_category_catalog.master_r1",
+      "live_behavior.returned_refund_stays_with_person.master_r1",
+      "live_behavior.master_provider_live_details.master_r1",
+      "live_behavior.otp_number_words_are_verified.master_r1",
+      "live_behavior.pending_total_dispute_is_reviewed.master_r1",
+      "live_behavior.rsvp_explicit_mutation_targets_requested_event.master_r1",
+      "live_behavior.gift_mixed_order_distinguishes_items.master_r1",
+      "live_behavior.master_faq_additional_transfer.master_r1",
+      "live_behavior.master_public_search_followup.master_r1",
+      "live_behavior.master_provider_live_multi_need.master_r1",
+      "live_behavior.unrelated_answer_isolates_money.master_r1",
+      "live_behavior.master_provider_live_wedding_planner.master_r1",
+      "live_behavior.master_faq_validation_window.master_r1",
+      "live_behavior.otp_terminal_handoff_failed.master_r1",
+      "live_behavior.s12_provider_completion_truthful_event_date.master_r1",
+      "live_behavior.master_provider_live_catering.master_r1",
+      "live_behavior.s11_rsvp_durability_confirms_once.master_r1",
+      "live_behavior.master_faq_support_contact.master_r1",
+      "live_behavior.master_faq_transfer_example.master_r1",
+      "live_behavior.provider_decimal_budget_excludes_expensive_candidates.master_r1",
+      "live_behavior.master_provider_live_selection.master_r1",
+      "live_behavior.master_faq_calculator.master_r1",
+      "live_behavior.master_provider_no_results.master_r1",
+      "live_behavior.master_faq_card_example.master_r1",
+      "live_behavior.question_after_takeover_is_answered.master_r1",
+      "live_behavior.master_provider_live_photography.master_r1",
+      "live_behavior.master_faq_support_hours.master_r1",
+      "live_behavior.authentication_refusal_closes_protected_query.master_r1",
+      "live_behavior.master_faq_paypal_example.master_r1",
+      "live_behavior.master_provider_live_venues.master_r1",
+      "live_behavior.master_faq_paypal_example.master_r2",
+      "live_behavior.unrelated_answer_isolates_money.master_r2",
+      "live_behavior.pending_total_dispute_is_reviewed.master_r2",
+      "live_behavior.question_after_takeover_is_answered.master_r2",
+      "live_behavior.s11_rsvp_durability_confirms_once.master_r2",
+      "live_behavior.master_provider_live_category_catalog.master_r2",
+      "live_behavior.master_provider_live_wedding_planner.master_r2",
+      "live_behavior.gift_mixed_order_distinguishes_items.master_r2",
+      "live_behavior.master_faq_support_contact.master_r2",
+      "live_behavior.master_faq_card_example.master_r2",
+      "live_behavior.returned_refund_stays_with_person.master_r2",
+      "live_behavior.s12_provider_completion_truthful_event_date.master_r2",
+      "live_behavior.master_public_search_followup.master_r2",
+      "live_behavior.master_provider_live_catering.master_r2",
+      "live_behavior.master_faq_transfer_example.master_r2",
+      "live_behavior.master_faq_support_hours.master_r2",
+      "live_behavior.otp_number_words_are_verified.master_r2",
+      "live_behavior.provider_decimal_budget_excludes_expensive_candidates.master_r2",
+      "live_behavior.master_provider_live_photography.master_r2",
+      "live_behavior.authentication_refusal_closes_protected_query.master_r2",
+      "live_behavior.master_faq_calculator.master_r2",
+      "live_behavior.otp_terminal_handoff_failed.master_r2",
+      "live_behavior.master_provider_no_results.master_r2",
+      "live_behavior.master_provider_live_multi_need.master_r2",
+      "live_behavior.rsvp_explicit_mutation_targets_requested_event.master_r2",
+      "live_behavior.master_provider_live_selection.master_r2",
+      "live_behavior.master_faq_validation_window.master_r2",
+      "live_behavior.master_provider_live_venues.master_r2",
+      "live_behavior.master_faq_additional_transfer.master_r2",
+      "live_behavior.master_provider_live_details.master_r2",
+      "live_behavior.master_provider_live_details.master_r3",
+      "live_behavior.master_public_search_followup.master_r3",
+      "live_behavior.provider_decimal_budget_excludes_expensive_candidates.master_r3",
+      "live_behavior.master_faq_paypal_example.master_r3",
+      "live_behavior.master_provider_live_venues.master_r3",
+      "live_behavior.master_faq_calculator.master_r3",
+      "live_behavior.master_faq_card_example.master_r3",
+      "live_behavior.master_faq_transfer_example.master_r3",
+      "live_behavior.pending_total_dispute_is_reviewed.master_r3",
+      "live_behavior.rsvp_explicit_mutation_targets_requested_event.master_r3",
+      "live_behavior.otp_number_words_are_verified.master_r3",
+      "live_behavior.master_faq_support_contact.master_r3",
+      "live_behavior.master_provider_live_category_catalog.master_r3",
+      "live_behavior.master_provider_live_catering.master_r3",
+      "live_behavior.master_provider_no_results.master_r3",
+      "live_behavior.question_after_takeover_is_answered.master_r3",
+      "live_behavior.master_provider_live_wedding_planner.master_r3",
+      "live_behavior.s12_provider_completion_truthful_event_date.master_r3",
+      "live_behavior.gift_mixed_order_distinguishes_items.master_r3",
+      "live_behavior.master_faq_additional_transfer.master_r3",
+      "live_behavior.otp_terminal_handoff_failed.master_r3",
+      "live_behavior.unrelated_answer_isolates_money.master_r3",
+      "live_behavior.master_provider_live_photography.master_r3",
+      "live_behavior.master_provider_live_selection.master_r3",
+      "live_behavior.master_faq_support_hours.master_r3",
+      "live_behavior.s11_rsvp_durability_confirms_once.master_r3",
+      "live_behavior.master_faq_validation_window.master_r3",
+      "live_behavior.authentication_refusal_closes_protected_query.master_r3",
+      "live_behavior.returned_refund_stays_with_person.master_r3",
+      "live_behavior.master_provider_live_multi_need.master_r3"
+    ],
+    "identities": [
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_provider_live_category_catalog.master_r1",
+        "pairId": "520a1faa6cde6ad8558371e08dbf8bfde1fc29eefeef653199e71ad9b92943c1",
+        "caseDigest": "5d052a7d96d9eb6ff9b08ed9d47777088e1839e39fa1fb51a52aa9ce5a0bd36a",
+        "fixtureDigest": "5201756f402f42740b2bfe4a57872c5d93e55a2636dd2756d340319dd6d04085",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.returned_refund_stays_with_person.master_r1",
+        "pairId": "a138dbf017c237991ee87ed99737b8bd7dd127e4984dee759c212e2c1104ce91",
+        "caseDigest": "6613203ea9051b23696b82954fe96d59b96e03cf197f3be74ab6a2743b5f3b28",
+        "fixtureDigest": "b0f189ab4f4b5f3ee67b3c6cf834c0097042d040e30d29ab4e4bb355dad29bff",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_provider_live_details.master_r1",
+        "pairId": "9df2739d11a276a8ac5ba97703407f505393968bfdc60125f9cdf749d014517b",
+        "caseDigest": "04de37f277199e72eef6423a7693a3b73ad5ae3cdda1c2b2a1fe6f7c0b249bec",
+        "fixtureDigest": "5201756f402f42740b2bfe4a57872c5d93e55a2636dd2756d340319dd6d04085",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.otp_number_words_are_verified.master_r1",
+        "pairId": "ecaa912f90bb4b1bb732aa9863a78a0891852647c71bba34061a729030bf95e6",
+        "caseDigest": "6da8bf0ff3d09195c2cb14532569c7be4a5bcaad4762fe177bd72eed30397bb1",
+        "fixtureDigest": "8f7fffd85f9b9734b45b9697b50f5aca038ec5203a7c44a36ad007df7353ce80",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.pending_total_dispute_is_reviewed.master_r1",
+        "pairId": "850c5df382289560159975f5649e42de915cf8c829ee71ba7731e33be46e4605",
+        "caseDigest": "0357028faf05219e314e7cbd662696b09e74454262d396e44d30df67c01bffa4",
+        "fixtureDigest": "73e48f5dda0bdebee9e3b717aac7edef0d4c04127ae95a899b5180679d7e3c30",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.rsvp_explicit_mutation_targets_requested_event.master_r1",
+        "pairId": "e1eeba9f2ae4bc09dab2f674a34767e009a2321471c3326ca201a1bb68009cbc",
+        "caseDigest": "1a7747f5fc6a08d1c6652edb4794a1a64fafba75b650c764471b968acb527424",
+        "fixtureDigest": "80f62dc5e14951cdbb69fb3e71566ae2c1557419fd39abe07f7f0b387e307768",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.gift_mixed_order_distinguishes_items.master_r1",
+        "pairId": "b521fed6cff09c3d3df29c3fb9cd19b9d097aed61cdb7d5825d1f3eeb93da69d",
+        "caseDigest": "59d37a77271c43696d96cedadad4fd2428e90b2228c554915163acf4336b0f2e",
+        "fixtureDigest": "2dbd7975df2dcbf8a6192f1fd8da90fedfe927ae8963700222d0a76099897ebe",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_faq_additional_transfer.master_r1",
+        "pairId": "d032e44b525b809020adc759111e1e8b4f46c39bcca32d6f7e9c71efb8995c17",
+        "caseDigest": "2fa206465709827aa291dc860d93ca45dbd8bbb9b6e3f92f25bf9afa8828adcc",
+        "fixtureDigest": "dfc794556d09d8d7b867a492342c1d37d8c7bf295053ab9908c2085ca0065938",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_public_search_followup.master_r1",
+        "pairId": "3be59dc6b1cac3cd4995726acab91306fcb5639028bcfd42eef517ef2685c6f1",
+        "caseDigest": "958465c2a365aa44a0d3d00516c6e82a71dca7e4430d4017cc4c898d03aed1ae",
+        "fixtureDigest": "3077df61599c1e144054b3d299a17b9f77532ec9b79e8f3b1dba0d02c843034a",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_provider_live_multi_need.master_r1",
+        "pairId": "d8854d622e0001697ec7168724d52900a762ea02d2116fe58343e72664edddaa",
+        "caseDigest": "d3309a9f0d0b12deec2fe8bcbe2252c32b56c71588c5e9d1f73b6f2846c85ce4",
+        "fixtureDigest": "5201756f402f42740b2bfe4a57872c5d93e55a2636dd2756d340319dd6d04085",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.unrelated_answer_isolates_money.master_r1",
+        "pairId": "650e0e09528cc69bbcdb1288a244d086408f0602988080513cb7d962724831ce",
+        "caseDigest": "6a36554265b60a03fc61f68b80465c9d1ff541ca6c6af00317800f87f9b7d560",
+        "fixtureDigest": "b0f189ab4f4b5f3ee67b3c6cf834c0097042d040e30d29ab4e4bb355dad29bff",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_provider_live_wedding_planner.master_r1",
+        "pairId": "58ef3b13e0b4af01fad9f4e0eb977ca48e5bb59d9ab8f8d1e00f1a6bbd922838",
+        "caseDigest": "4b78204e248d87726763a3f38e661bfae260b8fdb2dc747a97bbf9d5a2e9f4f7",
+        "fixtureDigest": "5201756f402f42740b2bfe4a57872c5d93e55a2636dd2756d340319dd6d04085",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_faq_validation_window.master_r1",
+        "pairId": "f391f4da605fe47ac00c784841f34aca8220ccf9e93fac343ea5b6c32575c647",
+        "caseDigest": "8aa2582a9794fa4800839d1c3a1145cb57ebefcc8590ae358c393e6094add07f",
+        "fixtureDigest": "dfc794556d09d8d7b867a492342c1d37d8c7bf295053ab9908c2085ca0065938",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.otp_terminal_handoff_failed.master_r1",
+        "pairId": "c9e09402dbeb0b97dd6bdb3e64790f718fae967b0dcf1fce81599ef3408dcd79",
+        "caseDigest": "9f1ea396877b46e132c8e64ca8b8539af49758da741b5e80e1723acac17f5302",
+        "fixtureDigest": "864a9bde3d48a8558dee2bd3ffb074cbeb61936ed711c30abf201f9601fc5e05",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.s12_provider_completion_truthful_event_date.master_r1",
+        "pairId": "1a39ce6073a606ecfe8988b22e9b118b5ad505f16a746550acddc9910199c3bd",
+        "caseDigest": "ed724993025cf761bf4025b81e33c4129d3d0c4b6c0d3c518a16d834c64e1e46",
+        "fixtureDigest": "7ade4c480dc0df65848cbb9f479a6213c02f3ad64cafedfa0e34ac3036d2902c",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_provider_live_catering.master_r1",
+        "pairId": "961123673b4626cff44671a6eccc5619a1fa7315dd3bab4bab817e08022bd4e6",
+        "caseDigest": "c6933b783acbd9738f179121313213337ea3decff40c37b4695191b5606e7304",
+        "fixtureDigest": "bc83786a52ceec1ed3864adeca801119fd1b65cb60ea6d5c9080a79f6c24d278",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.s11_rsvp_durability_confirms_once.master_r1",
+        "pairId": "dc7752fb2406dc7e89afc29793a817ffe536583584d082157a4bace228e94ca2",
+        "caseDigest": "1f21fa03eb014c3c61d0518cb0848334cee1368a4e89cb2bc101112776dddf0a",
+        "fixtureDigest": "6dc4821842f299e1640f8670d3caeb27b9240700d8f1c72b5d1b6460585f0ee7",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_faq_support_contact.master_r1",
+        "pairId": "702e287b936b01d001c4cbadc246b298b00029ab653bc886ae9f45f3804aeb26",
+        "caseDigest": "db334b480af46549fad528994e2fc3ef7077e076490074ac7b2f91c8c364de70",
+        "fixtureDigest": "dfc794556d09d8d7b867a492342c1d37d8c7bf295053ab9908c2085ca0065938",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_faq_transfer_example.master_r1",
+        "pairId": "844f5ff8e5ab4ad46e6554d414c58e72e02a3138bce1d0e52cea4d444100371e",
+        "caseDigest": "1391094f6ce6caa3f7680307bf6a4de2d703b340a7f65ad8f94866883b1856cf",
+        "fixtureDigest": "dfc794556d09d8d7b867a492342c1d37d8c7bf295053ab9908c2085ca0065938",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.provider_decimal_budget_excludes_expensive_candidates.master_r1",
+        "pairId": "4f57b53673536cf3236f8c63819ff3d768dc86eccfe68b8df5251507d6653113",
+        "caseDigest": "13adb75a03d1ca65e60b01ea315350c926fdad9055384a77ae6b629a25a35bbd",
+        "fixtureDigest": "07911aba6cd0fbc1168946c3615640f0cfb3efb23fcb2c803f62d2306b2dc884",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_provider_live_selection.master_r1",
+        "pairId": "a5e3d0da25e22aa45cb2e9e6b1447887594026b9b30455c79db2fef00a9af0dc",
+        "caseDigest": "ed8dd1bc6cb998b4456dfb8a0d0a020052c43395f466122b511c7e7d5433ac4f",
+        "fixtureDigest": "5201756f402f42740b2bfe4a57872c5d93e55a2636dd2756d340319dd6d04085",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_faq_calculator.master_r1",
+        "pairId": "6a4e19c00790843cfb77459f95ca712d6df4f10dd42f794e06e810fdb7bb0a01",
+        "caseDigest": "7314132ea5e843e5e81de8357ee2ca883847f02e443aa003cc0f98042428cef2",
+        "fixtureDigest": "dfc794556d09d8d7b867a492342c1d37d8c7bf295053ab9908c2085ca0065938",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_provider_no_results.master_r1",
+        "pairId": "449f5707ef0252ef7301fa707da16dbeee57bcb0ec83a7d5c411424b0d2b67a7",
+        "caseDigest": "a76bb4fd75ff624dd0f189bbbc534cea55f8d98ee661aae66cc29fa7f06e8c0c",
+        "fixtureDigest": "2e02dc3a2978f57a706bf8dc1dceccb62f377d65db01f5d44d1b71e663980a27",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_faq_card_example.master_r1",
+        "pairId": "e95b3ce5d4b6dbb257fcd8c7a269a80cd5706206e52e4851efc1e61a64188c44",
+        "caseDigest": "9a17c7e789a4f4f30a208e1447fcf9d249dcc0080890a195be025e44b9e49172",
+        "fixtureDigest": "dfc794556d09d8d7b867a492342c1d37d8c7bf295053ab9908c2085ca0065938",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.question_after_takeover_is_answered.master_r1",
+        "pairId": "c243c8211694a7d5269355282d87e37e76d712588bd191abea1304f387047b21",
+        "caseDigest": "74835dfba6a9218369fafe8b18fb3c34c7be2d47415f0c1d1e7da0fafde8dc67",
+        "fixtureDigest": "d39f27f939f5c15ac8fa38516535cea9af88a99d754e9951cd2f721c11e79918",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_provider_live_photography.master_r1",
+        "pairId": "dc7a66077e1435ed93ae326d433638329cbc5025b99a8d138649d27ef888db5c",
+        "caseDigest": "8266cfd70b24b26b720c44b75727bae914968538f598776221e1ec1b758cc006",
+        "fixtureDigest": "5201756f402f42740b2bfe4a57872c5d93e55a2636dd2756d340319dd6d04085",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_faq_support_hours.master_r1",
+        "pairId": "b23a14015889f793a4976eadfa5ceb0348b34aa4cec2b174c63182cb994e6b16",
+        "caseDigest": "c449369e9773226a2f7dd56a08704b42724dcdf30429afe4390028aa7e2cf40c",
+        "fixtureDigest": "dfc794556d09d8d7b867a492342c1d37d8c7bf295053ab9908c2085ca0065938",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.authentication_refusal_closes_protected_query.master_r1",
+        "pairId": "c05ae45e83e48409f1656b8db52e24b150b7d157462568b09a34994301132423",
+        "caseDigest": "7ae6d67eddf8c6de3f88c376782f6b90ddf688a872a7551e1a317f7820a67d83",
+        "fixtureDigest": "33f8b07f71bf4bf5ff82d3e1460356eee7e46eb6e8b659a873f8c51393903792",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_faq_paypal_example.master_r1",
+        "pairId": "45931c6bd12e3b52640fc5fc23753222a6870bf8df8727a456bc3f6f0f49ce12",
+        "caseDigest": "2212ff7c1ca373d3256a038f258300ac944b257690010c4c07c54e8a21a2d8a0",
+        "fixtureDigest": "dfc794556d09d8d7b867a492342c1d37d8c7bf295053ab9908c2085ca0065938",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_provider_live_venues.master_r1",
+        "pairId": "682c153902f1f7768dadd9480a171524af36c671e6c92c8a20ee6b585ce33d96",
+        "caseDigest": "314f6958e8d2f47b6631b08116b1a9a702e05a8cd0e61a8e667d603b9c7fdcbd",
+        "fixtureDigest": "5201756f402f42740b2bfe4a57872c5d93e55a2636dd2756d340319dd6d04085",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_faq_paypal_example.master_r2",
+        "pairId": "d773cfcd0445d222c8880eaa4a9de4704d3f2fbc8b9490c0ad0a072347c0de7e",
+        "caseDigest": "c3bd0c00a3172a631a0b39c1561e08e2638441fdbe3f2d95639f00bc2069b02a",
+        "fixtureDigest": "dfc794556d09d8d7b867a492342c1d37d8c7bf295053ab9908c2085ca0065938",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.unrelated_answer_isolates_money.master_r2",
+        "pairId": "fd819bf306a4e6ade8655c8b0e36028bb214f5547202941497ba86392b047ed9",
+        "caseDigest": "6de5f429a718de7bffce12582e2c28dfd885b50b56d818e0da23448cb1d133e8",
+        "fixtureDigest": "b0f189ab4f4b5f3ee67b3c6cf834c0097042d040e30d29ab4e4bb355dad29bff",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.pending_total_dispute_is_reviewed.master_r2",
+        "pairId": "ffe51d1683f638697a09014bc5e04655da3f544674681ff2a7606076a0ddb988",
+        "caseDigest": "92b689fbbd429b9b7794cd10d014cf0c6f688e69d4e84d467e7a50d36c0af5d7",
+        "fixtureDigest": "73e48f5dda0bdebee9e3b717aac7edef0d4c04127ae95a899b5180679d7e3c30",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.question_after_takeover_is_answered.master_r2",
+        "pairId": "978856765091a3913f7c862b62f1142ec36365927567be8e7e5bec834ffe6725",
+        "caseDigest": "2246176e85d0752bc4d1afa7c0be1ee3e05e25ec0c33e95d5665901643dba7ae",
+        "fixtureDigest": "d39f27f939f5c15ac8fa38516535cea9af88a99d754e9951cd2f721c11e79918",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.s11_rsvp_durability_confirms_once.master_r2",
+        "pairId": "a7a5caf3af128870aea9ed85320a117f20d3b4ffeeb4764cbe3ccba5987041cd",
+        "caseDigest": "4a3744b837f679ec5545b6a348f76901dedfb415e0096b3f89bd2805c7b0e168",
+        "fixtureDigest": "6dc4821842f299e1640f8670d3caeb27b9240700d8f1c72b5d1b6460585f0ee7",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_provider_live_category_catalog.master_r2",
+        "pairId": "d4fc27d6552b97bf1e4aa96c52774134979a2e90e1c8bfdadf00f9a2308f8f0b",
+        "caseDigest": "ab1a29012f05de936666a23b80e7517c82b74936055f3035f0915e61511d0305",
+        "fixtureDigest": "5201756f402f42740b2bfe4a57872c5d93e55a2636dd2756d340319dd6d04085",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_provider_live_wedding_planner.master_r2",
+        "pairId": "9d09fa0d25a50ea22b75e2047cf3c39c37551014656c8a8db413ba84a1194486",
+        "caseDigest": "a0525dc9ffbd88d007527c8b34508f80f17ee6d4ca58c91ba1d7d39e81db1379",
+        "fixtureDigest": "5201756f402f42740b2bfe4a57872c5d93e55a2636dd2756d340319dd6d04085",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.gift_mixed_order_distinguishes_items.master_r2",
+        "pairId": "7fb5fd0d48a8401dd7610b335da5664512befaec3ae259acde880872c3db9653",
+        "caseDigest": "ce9c05fe6b9f2afb54a956e97370e699669a9429debc592525701d2dd6fbb95b",
+        "fixtureDigest": "2dbd7975df2dcbf8a6192f1fd8da90fedfe927ae8963700222d0a76099897ebe",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_faq_support_contact.master_r2",
+        "pairId": "937bb8537775e4b424ddb23702ec20548587ec366c318a617db2800ce60b0376",
+        "caseDigest": "77afe814d3ec640f7203c5ff5231641a833935c1579ae425909df41adde8cb62",
+        "fixtureDigest": "dfc794556d09d8d7b867a492342c1d37d8c7bf295053ab9908c2085ca0065938",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_faq_card_example.master_r2",
+        "pairId": "a494d6713a39f3d827c3c452c1628b337b0c9df920bda67108bde91a4d94e269",
+        "caseDigest": "56c769de3c557f46c338b0941c5ad469b4d845eaa939039d29839c09dc5aba77",
+        "fixtureDigest": "dfc794556d09d8d7b867a492342c1d37d8c7bf295053ab9908c2085ca0065938",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.returned_refund_stays_with_person.master_r2",
+        "pairId": "4861a6bf2cd0ec7805a04b9e7e1107733cc9d94b16d0540dbef366c8fef258b9",
+        "caseDigest": "9f0b03451d9abac15053453d258b658742bef57f35d78413b37aeedbc124315b",
+        "fixtureDigest": "b0f189ab4f4b5f3ee67b3c6cf834c0097042d040e30d29ab4e4bb355dad29bff",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.s12_provider_completion_truthful_event_date.master_r2",
+        "pairId": "221a6dffabb015ad06ced6a69417b7997ba0ca5dc637a30e4b2d58db7b5653dc",
+        "caseDigest": "d7c247fc90a51d60f5e6189f42d35ef6c8d2ddf87b195f4ca39f06c7f0b04608",
+        "fixtureDigest": "7ade4c480dc0df65848cbb9f479a6213c02f3ad64cafedfa0e34ac3036d2902c",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_public_search_followup.master_r2",
+        "pairId": "b8d29dcd65b3158da127a32b48001b804493f76bbdb8020d10d2644f6b3baac9",
+        "caseDigest": "a46e6d2e2ca5ef5102a33a88e9953a7a610f5702c9d4c7bc7b5ee9fc817df4ae",
+        "fixtureDigest": "3077df61599c1e144054b3d299a17b9f77532ec9b79e8f3b1dba0d02c843034a",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_provider_live_catering.master_r2",
+        "pairId": "f54cc0e60f315ab8f518f425bae5f56c6e7a224c36c3875ee366ca1f1e6cf059",
+        "caseDigest": "ebaf06bfa1c4494c9fa1de2a3c7178537e3e58dfa623fdc5e914ec9aab3c44ca",
+        "fixtureDigest": "bc83786a52ceec1ed3864adeca801119fd1b65cb60ea6d5c9080a79f6c24d278",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_faq_transfer_example.master_r2",
+        "pairId": "b22e359c22a400a35e12e062a422b94788725b6aae87531dea608ae57ad35718",
+        "caseDigest": "6a82ee63a5915a3c5b13df2ad92b0ca15d5de77cd076d603fac23c69cffcd4bd",
+        "fixtureDigest": "dfc794556d09d8d7b867a492342c1d37d8c7bf295053ab9908c2085ca0065938",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_faq_support_hours.master_r2",
+        "pairId": "d68223db89bd794ed7a2c8cf9c79e8386a5192eaecdb04eb4e32ee7e80b9309d",
+        "caseDigest": "bc16a4ba5621cdb64d00b90588378ec6b9c81bb72d735f6c6e2fd634e79e22f6",
+        "fixtureDigest": "dfc794556d09d8d7b867a492342c1d37d8c7bf295053ab9908c2085ca0065938",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.otp_number_words_are_verified.master_r2",
+        "pairId": "d32e461f081cd93ba8eecdbaa2d084449e6dc7bfe7fd019d0c4e7f68c258f991",
+        "caseDigest": "f9f9ac66bee7ba89a3139ae75c150203d58128a156d66e1858233ba913347f09",
+        "fixtureDigest": "8f7fffd85f9b9734b45b9697b50f5aca038ec5203a7c44a36ad007df7353ce80",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.provider_decimal_budget_excludes_expensive_candidates.master_r2",
+        "pairId": "34fa0b4aeced466c1e7f29a0d1aea13c7d203cd4d3c66dda9dd78f7ad3ac730d",
+        "caseDigest": "5b168a61df54c494eedf2a3d5b77551d59850acb8b926ff7016c2612e95ea4a0",
+        "fixtureDigest": "07911aba6cd0fbc1168946c3615640f0cfb3efb23fcb2c803f62d2306b2dc884",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_provider_live_photography.master_r2",
+        "pairId": "c1ea11ad65e4c08b5e255a38aee63974aa61241151916eff381c5f4d6676c6b8",
+        "caseDigest": "7ef198dd391c584d049b9bf8d23dca6514261873e522150b244fa21e3c0fa5e6",
+        "fixtureDigest": "5201756f402f42740b2bfe4a57872c5d93e55a2636dd2756d340319dd6d04085",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.authentication_refusal_closes_protected_query.master_r2",
+        "pairId": "62e8c3be42de08a8c930ceb5f7ffab696efcb5664e4f5dfe217712d708ecc60d",
+        "caseDigest": "253820162722aaaf4a8f70120024e904bfda0e6a15c0d305f0e9533801ed610a",
+        "fixtureDigest": "33f8b07f71bf4bf5ff82d3e1460356eee7e46eb6e8b659a873f8c51393903792",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_faq_calculator.master_r2",
+        "pairId": "bb71b8ca7d5f9a677a533bc7517d1e5d9e2658b11671e58a8d617b9e52433efb",
+        "caseDigest": "f6af6091d65c7602cfdfe0d50178a9fc155a518e2fed1361d376a8f933963a83",
+        "fixtureDigest": "dfc794556d09d8d7b867a492342c1d37d8c7bf295053ab9908c2085ca0065938",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.otp_terminal_handoff_failed.master_r2",
+        "pairId": "04c2f6fd1fab7f4c4aedd90238b30ef9472e86e3805ca499a4c795846cb075f5",
+        "caseDigest": "3cd4007d1ef82b84bd8bc92d88e74306f5a5210e6bd7bf2d42e61eb6ef2b5098",
+        "fixtureDigest": "864a9bde3d48a8558dee2bd3ffb074cbeb61936ed711c30abf201f9601fc5e05",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_provider_no_results.master_r2",
+        "pairId": "4d6acdbc4a5dfa890902d23fb7ce61cd93a32a5bff1afc403d8a2d52d438f63e",
+        "caseDigest": "d7498b7ae6ae1616bd350453a110b846d80072584c5c3db91d6fe5768f23d454",
+        "fixtureDigest": "2e02dc3a2978f57a706bf8dc1dceccb62f377d65db01f5d44d1b71e663980a27",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_provider_live_multi_need.master_r2",
+        "pairId": "2d02c9d4f23e32e52f6005506b449a4211bb11d219d380c7ed7571bf5fedff7c",
+        "caseDigest": "991010ad8661a6ab655da6b68e3fd605ff88375e1002c7a2d6476e5455cbc6dd",
+        "fixtureDigest": "5201756f402f42740b2bfe4a57872c5d93e55a2636dd2756d340319dd6d04085",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.rsvp_explicit_mutation_targets_requested_event.master_r2",
+        "pairId": "9c1d802ca44fa9647505c0f5f2d2994408d3960e3fbbafcd1a784c955ec01ffe",
+        "caseDigest": "acd8c0089a3b356214046571cae18f8da79d7f601631a8a58a8fb145ba31b69d",
+        "fixtureDigest": "80f62dc5e14951cdbb69fb3e71566ae2c1557419fd39abe07f7f0b387e307768",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_provider_live_selection.master_r2",
+        "pairId": "ea6c1674655d48ab66540cf145c9daa844bfc7b06322e5a5469c9e28491aa41e",
+        "caseDigest": "86837ad32969b5098856f1adcd142bee9bf8ac08b9c7d30ef245b77586dbb07a",
+        "fixtureDigest": "5201756f402f42740b2bfe4a57872c5d93e55a2636dd2756d340319dd6d04085",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_faq_validation_window.master_r2",
+        "pairId": "6db5f100af6a121256b580d1cf0e061f01bc1d2609fc527f2a987ed0aefcc8d8",
+        "caseDigest": "3683a62ae0916e49f5e4d394c69a697aa62b5021f7d037ec38cef3e3330d91cb",
+        "fixtureDigest": "dfc794556d09d8d7b867a492342c1d37d8c7bf295053ab9908c2085ca0065938",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_provider_live_venues.master_r2",
+        "pairId": "1b4c3aa85f9630b4e895d7fcc714ffb31aa61acd9004c70f1bbe3d5386933932",
+        "caseDigest": "b4ca761f87d1e5718b99e958a94a0cae9f6c7b1340bc1c9434b903e0c859faa2",
+        "fixtureDigest": "5201756f402f42740b2bfe4a57872c5d93e55a2636dd2756d340319dd6d04085",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_faq_additional_transfer.master_r2",
+        "pairId": "c2fc1b4a4dfa0228448d8c0bb99d3e7025c9b57765634332998dfb5951cbbf69",
+        "caseDigest": "1365c9fe0e6cbd3a519b5c83570674b8fbf41ef858b07976c5e8d37e2e151124",
+        "fixtureDigest": "dfc794556d09d8d7b867a492342c1d37d8c7bf295053ab9908c2085ca0065938",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_provider_live_details.master_r2",
+        "pairId": "37eba22d9e9b18e695b3b172686cdd4f0ee54062293ab175221fe3e0d971d5d6",
+        "caseDigest": "1974c33557b8383bc2ed2c6116f3751cb8e9c4eb4d799e3c119f9d33f0b80d7a",
+        "fixtureDigest": "5201756f402f42740b2bfe4a57872c5d93e55a2636dd2756d340319dd6d04085",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_provider_live_details.master_r3",
+        "pairId": "aa49e1e4fd6050e965d46bf35373a1f47c41b3cfe23fbf81fc3ea8a6b0cdd437",
+        "caseDigest": "bbf5c16490af8d3a55a1fa2f817cebba7097edc6c62d758e2ce57460cdb4f24c",
+        "fixtureDigest": "5201756f402f42740b2bfe4a57872c5d93e55a2636dd2756d340319dd6d04085",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_public_search_followup.master_r3",
+        "pairId": "68031e690b245fd4d091f72ed885e2fa8f8966356b3b0142be08ddc2fe38a05d",
+        "caseDigest": "90e3e6f4f81f05c76e943abf8ff12708c157959cacd94d5706c856905cacfb52",
+        "fixtureDigest": "3077df61599c1e144054b3d299a17b9f77532ec9b79e8f3b1dba0d02c843034a",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.provider_decimal_budget_excludes_expensive_candidates.master_r3",
+        "pairId": "71f5685528a4864984a5b358467dd479c760799e259049a1394fd76fbb9ad9d8",
+        "caseDigest": "9cd834590a113206fa4ad13d9e88b1a63b32120065a7880f7e113f11a136141c",
+        "fixtureDigest": "07911aba6cd0fbc1168946c3615640f0cfb3efb23fcb2c803f62d2306b2dc884",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_faq_paypal_example.master_r3",
+        "pairId": "109e595bc3df0e60a32505e7ced1479886abaf561f17a95b66f8ef901c1c34a3",
+        "caseDigest": "e4c721bc6efbfeaa8d1f90c3357b94110af75b1961d3e8e1e9999484e0f2bc1f",
+        "fixtureDigest": "dfc794556d09d8d7b867a492342c1d37d8c7bf295053ab9908c2085ca0065938",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_provider_live_venues.master_r3",
+        "pairId": "6ba327e9e7b9b7d2e45b780b68bd027e167f2800c8c1add468dc7b6510e2458f",
+        "caseDigest": "9d374db546017bb0a016ed846f8d731da9f69aef9698f95f470dd240959acc8c",
+        "fixtureDigest": "5201756f402f42740b2bfe4a57872c5d93e55a2636dd2756d340319dd6d04085",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_faq_calculator.master_r3",
+        "pairId": "82fc2993ad6b3c52582a6b76fcd49bb12b00d3380428b17d01b64740ae6cd37c",
+        "caseDigest": "3e5db53824fad7cb871607e2502637f735feab93f42f6a6be9f02546256e3a1a",
+        "fixtureDigest": "dfc794556d09d8d7b867a492342c1d37d8c7bf295053ab9908c2085ca0065938",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_faq_card_example.master_r3",
+        "pairId": "b5896a8275a1e040a219b97f8a932f8206e3da30152f8b0800599b4f500cbb86",
+        "caseDigest": "e09f7c864d7a2adfe4a14dcb22d8d791d9f90e7bec9a99d9524ec0d2782b96e1",
+        "fixtureDigest": "dfc794556d09d8d7b867a492342c1d37d8c7bf295053ab9908c2085ca0065938",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_faq_transfer_example.master_r3",
+        "pairId": "c1eeedad2031802a3365242d3bf738b09dc9efbebdb0b4e1148edb4e1ddd95b6",
+        "caseDigest": "286d50e4a264f7dd6e09ed8dc92845221b7dcd1be22dfb1936bcd2e3d2010b94",
+        "fixtureDigest": "dfc794556d09d8d7b867a492342c1d37d8c7bf295053ab9908c2085ca0065938",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.pending_total_dispute_is_reviewed.master_r3",
+        "pairId": "4c4806531df04fa7fa088426ad503d17e3412712e62e32b07146a7fd32894621",
+        "caseDigest": "60f31f4a219c24839b004c11dfffc8486c8e38ae95be123bb28d7fd4de63ca1e",
+        "fixtureDigest": "73e48f5dda0bdebee9e3b717aac7edef0d4c04127ae95a899b5180679d7e3c30",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.rsvp_explicit_mutation_targets_requested_event.master_r3",
+        "pairId": "952c55a812fe72f0bec1892aaf322593123daced0d323b73fbf33a42d0a63f81",
+        "caseDigest": "8678aed83bc7e152db3572fab52656ed7c428c77e0ccce7cdd509120cb0e15df",
+        "fixtureDigest": "80f62dc5e14951cdbb69fb3e71566ae2c1557419fd39abe07f7f0b387e307768",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.otp_number_words_are_verified.master_r3",
+        "pairId": "0e0feb4c105609298fb2389a9763770a0d295bafbb4cb1ff98a999f665277fbf",
+        "caseDigest": "e5dd8fffe36da9aeff6966d1229b746728bb2ab696050547d98f5158971d5a29",
+        "fixtureDigest": "8f7fffd85f9b9734b45b9697b50f5aca038ec5203a7c44a36ad007df7353ce80",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_faq_support_contact.master_r3",
+        "pairId": "d62ffe9dad6162c3caf10c48d1e047f59dc51ccae500503d91a2a62be39fdea4",
+        "caseDigest": "3144df02d3341a4cb8ddfb07724a10c2ae581c8c3096953d55bc526a4c21b407",
+        "fixtureDigest": "dfc794556d09d8d7b867a492342c1d37d8c7bf295053ab9908c2085ca0065938",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_provider_live_category_catalog.master_r3",
+        "pairId": "e0d21c3162602b05d3e03c180c187ccb41bbbdadef84bc543605f1585f57604b",
+        "caseDigest": "968d5246efe5eaeb96065a0f0ddfcacac598b486c495aca5e6886af0cf152597",
+        "fixtureDigest": "5201756f402f42740b2bfe4a57872c5d93e55a2636dd2756d340319dd6d04085",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_provider_live_catering.master_r3",
+        "pairId": "297384a998fda5076cef69423d4bd3fb2c185c46faa81843d19efcef8e01cf01",
+        "caseDigest": "9d1a5dbe869128458205bd2d6904fef9b13bc85096c6bc3808ce191803b28aab",
+        "fixtureDigest": "bc83786a52ceec1ed3864adeca801119fd1b65cb60ea6d5c9080a79f6c24d278",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_provider_no_results.master_r3",
+        "pairId": "f5d8a55e260b4bfecc6cf5123756951f520ea79271720598ae660e957fc84aa6",
+        "caseDigest": "6aa01a62e1b53f3ef6de11ba753ed64e617c412484658c570278dca0d1d72be0",
+        "fixtureDigest": "2e02dc3a2978f57a706bf8dc1dceccb62f377d65db01f5d44d1b71e663980a27",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.question_after_takeover_is_answered.master_r3",
+        "pairId": "e8d8db7f2b29b568ada9de53e64dbc063cd82e43d91b0e9c589f98525c099164",
+        "caseDigest": "9068cee0ca12ffb149600003b270ceb291e23f7cd936c28fad687c697846f903",
+        "fixtureDigest": "d39f27f939f5c15ac8fa38516535cea9af88a99d754e9951cd2f721c11e79918",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_provider_live_wedding_planner.master_r3",
+        "pairId": "526542ca38f1413c2cc9870acf2e6645e9eb6724ced3a552dd29fbe0e2c3ea65",
+        "caseDigest": "e551ff00b17b6ff16e420a9f5365576f76cbb87aaf0cdd47e9a80d01aee9fd85",
+        "fixtureDigest": "5201756f402f42740b2bfe4a57872c5d93e55a2636dd2756d340319dd6d04085",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.s12_provider_completion_truthful_event_date.master_r3",
+        "pairId": "252a114afe1555864cce026c5e27fd589f10a039a7051a571885ebea36d9bec1",
+        "caseDigest": "8545b19c3c313b28036e557ea93921002180043a35b0e4403abad014b3243ce1",
+        "fixtureDigest": "7ade4c480dc0df65848cbb9f479a6213c02f3ad64cafedfa0e34ac3036d2902c",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.gift_mixed_order_distinguishes_items.master_r3",
+        "pairId": "72442b1865b9a0b8cb801425598cef35a6d249f9996a67a5d5af7fefe5d1d263",
+        "caseDigest": "250b87a5e985d79f7845244ff5ef3e57d6deaf1a62ded3b1ed2c8678f335912b",
+        "fixtureDigest": "2dbd7975df2dcbf8a6192f1fd8da90fedfe927ae8963700222d0a76099897ebe",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_faq_additional_transfer.master_r3",
+        "pairId": "5436b0f73c5717e43ab1f223014bb3ac587217027ae80c23199cbace383c012d",
+        "caseDigest": "6154a52188ead91f81e0226071e4603255abea13f63e5cf2f962078c50be7e83",
+        "fixtureDigest": "dfc794556d09d8d7b867a492342c1d37d8c7bf295053ab9908c2085ca0065938",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.otp_terminal_handoff_failed.master_r3",
+        "pairId": "672eee73709ecf5f391ddcd3c47bf7608274fed2cef7953d09bdb24d95c1a09d",
+        "caseDigest": "ddb9bb2eff3bb33a30186fa5d63a77b808eff76a6ee7a20c7f804c28c0d9b965",
+        "fixtureDigest": "864a9bde3d48a8558dee2bd3ffb074cbeb61936ed711c30abf201f9601fc5e05",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.unrelated_answer_isolates_money.master_r3",
+        "pairId": "cd1bf793ea2a26f04c96d1fa644a331eb8ad33229beddce1014201a999119427",
+        "caseDigest": "f6d8b899d14dcfc54258c5ae5b1db5b36441bbe9ace57e0be3d6e02a5d897d28",
+        "fixtureDigest": "b0f189ab4f4b5f3ee67b3c6cf834c0097042d040e30d29ab4e4bb355dad29bff",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_provider_live_photography.master_r3",
+        "pairId": "2c6adf57fe7f3aa6dd83b71634b5fc66d2b63b99ab862edb1da9533c273a4fc5",
+        "caseDigest": "f97ef37f90883033760f739f06ef6ff80c601cd3febb4673c3bd226c3a9822f9",
+        "fixtureDigest": "5201756f402f42740b2bfe4a57872c5d93e55a2636dd2756d340319dd6d04085",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_provider_live_selection.master_r3",
+        "pairId": "eb741d5f4dde8e89063c9bdc2f2aef24a0ca899a293f644f91dec728f00e0615",
+        "caseDigest": "af6de9d78aa1d8b5b2d70b75df8726cb32f333513034d7054695e237ab982c46",
+        "fixtureDigest": "5201756f402f42740b2bfe4a57872c5d93e55a2636dd2756d340319dd6d04085",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_faq_support_hours.master_r3",
+        "pairId": "f393416c5cd03b3f4146033ad963185e6b770e8eb3f6d53025cdcad8a83a4551",
+        "caseDigest": "0aeae6d0be2ba02540183fba43df3020b5637f21d46a5b4b55c95ddb2f79a888",
+        "fixtureDigest": "dfc794556d09d8d7b867a492342c1d37d8c7bf295053ab9908c2085ca0065938",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.s11_rsvp_durability_confirms_once.master_r3",
+        "pairId": "c58563e192be3dbc0354f98f470843b015a569f0443e1fde6c4b93af21bc9202",
+        "caseDigest": "d050367f8980720777a2c119bc7783531985cc435a92877b9ab98ed28ef9c91e",
+        "fixtureDigest": "6dc4821842f299e1640f8670d3caeb27b9240700d8f1c72b5d1b6460585f0ee7",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_faq_validation_window.master_r3",
+        "pairId": "4925595269c1697b4fcf5974c5e6f336490022351c23aad34ba8d6f721019e7c",
+        "caseDigest": "b3c62a7816848c30ab9780087833187b9011bb8381d8e66070ba38b9ce75658a",
+        "fixtureDigest": "dfc794556d09d8d7b867a492342c1d37d8c7bf295053ab9908c2085ca0065938",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.authentication_refusal_closes_protected_query.master_r3",
+        "pairId": "2c8f161957061ac81cb1708a4e94309263915c782785e3e5d2a160bddd9bc3f7",
+        "caseDigest": "95409142f54ed5b4ba0a07f7333cdaa4cc8f38cf609e5e3262829f7e66ff882a",
+        "fixtureDigest": "33f8b07f71bf4bf5ff82d3e1460356eee7e46eb6e8b659a873f8c51393903792",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.returned_refund_stays_with_person.master_r3",
+        "pairId": "800126a73acf53a7be80f2be2ad9111798aa5bbceeb02e08267c540568cf4eb7",
+        "caseDigest": "c01481e1fcd935cab363a5d76c06f0dec081da4588dade97be29ad096308f84d",
+        "fixtureDigest": "b0f189ab4f4b5f3ee67b3c6cf834c0097042d040e30d29ab4e4bb355dad29bff",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.master_provider_live_multi_need.master_r3",
+        "pairId": "ff6a5065beb9ecc545a2d79bbfe84ad9b4e58854fc92d5808487c4adcbd087f6",
+        "caseDigest": "311447b1c7224df15bba6761de0079158c77b6d4bde21804792489bffb51cc35",
+        "fixtureDigest": "5201756f402f42740b2bfe4a57872c5d93e55a2636dd2756d340319dd6d04085",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      }
+    ]
+  },
+  "models": {
+    "reply": "gpt-6-luna",
+    "extractor": "gpt-6-luna",
+    "classifier": "gpt-6-luna",
+    "judgeModels": [
+      "gpt-6-luna"
+    ],
+    "promptCache": {
+      "mode": "implicit",
+      "ttl": "30m"
+    },
+    "configSettings": [
+      {
+        "label": "live_lambda",
+        "replyModel": null,
+        "extractorModel": null,
+        "reasoningEffort": null,
+        "promptBundleLabel": null
+      }
+    ]
+  },
+  "concurrency": {
+    "requestedCases": 1,
+    "requestedJudges": 1,
+    "effectiveCases": 1,
+    "effectiveJudges": 1
+  },
+  "timeouts": {
+    "perTurnMs": 95000,
+    "suiteDeadlineMs": 3600000,
+    "drainMs": 300000,
+    "judgeTimeoutMs": 60000,
+    "judgeMaxRetries": 1
+  },
+  "startedAt": "2026-10-27T05:31:21.388Z",
+  "completedAt": "2026-10-27T06:02:05.077Z",
+  "env": {
+    "nodeVersion": "v24.15.0",
+    "platform": "darwin",
+    "awsProfile": "se-dev",
+    "awsRegion": "us-east-1",
+    "stackName": "recap-agent-runtime-dev",
+    "openaiSdk": "7.43.0",
+    "agentsSdk": "0.21.0"
+  },
+  "providerModelIdentities": [
+    "gpt-6-luna"
+  ],
+  "preflight": {
+    "passed": true,
+    "checks": [
+      {
+        "id": "selected-count",
+        "status": "pass",
+        "detail": "Selected 90 cases."
+      },
+      {
+        "id": "duplicate-ids",
+        "status": "pass",
+        "detail": "Case IDs are unique."
+      },
+      {
+        "id": "config-case-identity",
+        "status": "pass",
+        "detail": "Every config/case pair has a unique identity."
+      },
+      {
+        "id": "judge-availability",
+        "status": "pass",
+        "detail": "Judge key is present (value never printed)."
+      },
+      {
+        "id": "credentials",
+        "status": "pass",
+        "detail": "Live target resolves AWS credentials at invocation; profile presence is advisory only and no secret was read."
+      },
+      {
+        "id": "fixture-completeness",
+        "status": "pass",
+        "detail": "90 cases reference a backend fixture, 3 declare RSVP hooks, 0 run without one."
+      },
+      {
+        "id": "disk-writability",
+        "status": "pass",
+        "detail": "Run directory /Users/leonardocandio/Work/thesis/recap-agent/.eval-runs/eval-2026-10-27T05-31-20-436Z-edb558f3 is writable."
+      },
+      {
+        "id": "deployed-identity",
+        "status": "pass",
+        "detail": "Pinned arn:aws:lambda:us-east-1:684516060775:function:recap-agent-runtime-dev CodeSha256 184bUW2Le1ky artifact d7ce1b516d8b version $LATEST."
+      },
+      {
+        "id": "sdk-versions",
+        "status": "pass",
+        "detail": "openai 7.43.0, @openai/agents 0.21.0."
+      },
+      {
+        "id": "service-limits",
+        "status": "warn",
+        "detail": "Configured service limits are undiscovered; capacity against 4 cases / 2 judges is unproven and no default was changed."
+      }
+    ]
+  },
+  "notes": [
+    "O2/O3 bounded pipeline: configurations sequential, up to 4 case workers with a single external lane, 2 judge requests in flight, 8-snapshot backpressure queue.",
+    "Judge policy explicit: 60s request timeout, SDK maxRetries=0, one runner-owned retry only for transient transport/429/5xx after Retry-After (<=30s) or 2s.",
+    "Suite coordinator deadline 60 minutes with a 5-minute bounded drain; per-turn Lambda bound stays 95s."
+  ]
+}

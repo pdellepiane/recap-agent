@@ -1,0 +1,503 @@
+{
+  "runId": "eval-2026-10-28T02-18-49-459Z-91b952cc",
+  "caseId": "live_behavior.master_provider_live_details.master_r3",
+  "configLabel": "live_lambda",
+  "lane": "parallel",
+  "phase": "snapshot",
+  "status": "passed",
+  "executionUncertain": false,
+  "writtenAt": "2026-10-28T02:43:55.472Z",
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "¿En qué ciudad está Carla Muñoz Wedding Planner y cuál es el enlace de su ficha?",
+        "sessionId": "live_behavior.master_provider_live_details",
+        "backendFixture": {
+          "scenario": "master-provider-live-public"
+        }
+      },
+      "outputText": "Carla Muñoz Wedding Planner está en Lima, Perú. Puedes ver su ficha aquí: https://sinenvolturas.com/proveedores/carla-munoz-wedding-planner\n\n1. Carla Muñoz Wedding Planner\n Está en Lima, Perú; su ficha incluye información sobre sus servicios de wedding planning.\n Ubicación: Lima, Perú.\n Precio: $$$$.\n Promo: 10 off y 15 off.\n\n Ficha: https://sinenvolturas.com/proveedores/carla-munoz-wedding-planner",
+      "deliveredText": "Carla Muñoz Wedding Planner está en Lima, Perú. Puedes ver su ficha aquí: https://sinenvolturas.com/proveedores/carla-munoz-wedding-planner\n\n1. Carla Muñoz Wedding Planner\n Está en Lima, Perú; su ficha incluye información sobre sus servicios de wedding planning.\n Ubicación: Lima, Perú.\n Precio: $$$$.\n Promo: 10 off y 15 off.\n\n Ficha: https://sinenvolturas.com/proveedores/carla-munoz-wedding-planner",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "65e77f60b878177054a98e2d869d90051bc3af0ae50821a5931cf8b724e69dba",
+        "deliveredSha256": "65e77f60b878177054a98e2d869d90051bc3af0ae50821a5931cf8b724e69dba",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "recomendar",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 5,
+          "attempts": 1
+        },
+        "trace_id": "01M60692P79H0G7VMT7NGBF05A",
+        "conversation_id": null,
+        "plan_id": "d23bd99a-7846-4910-a962-414e67a80a08",
+        "previous_node": "recomendar",
+        "next_node": "recomendar",
+        "node_path": [
+          "recomendar",
+          "existe_plan_guardado",
+          "seguir_refinando_guardar_plan",
+          "recomendar"
+        ],
+        "intent": "detallar_proveedor",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "9579d9dcb7c9",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/domain_scope.txt",
+          "shared/flow_discipline.txt"
+        ],
+        "tools_considered": [
+          "classify_reply_delivery",
+          "get_provider_detail",
+          "get_related_providers",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "classify_reply_delivery",
+          "get_provider_detail"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "get_provider_detail",
+            "input": "{\"projection_version\":1,\"provider_id\":43}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "get_provider_detail",
+            "output": "{\"projection_version\":1,\"result_kind\":\"detail\",\"provider_id\":43,\"found\":true}"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 43,
+            "title": "Carla Muñoz Wedding Planner",
+            "slug": "carla-munoz-wedding-planner",
+            "category": "Wedding planners",
+            "location": "Lima, Perú",
+            "priceLevel": "very_high",
+            "rating": "5.0",
+            "detailUrl": "https://sinenvolturas.com/proveedores/carla-munoz-wedding-planner",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10 off y 15 off",
+            "promoSummary": "20% de descuento en Full Wedding y Half Wedding\r\n\r\n15% de descuento en Wedding Month y Wedding day",
+            "descriptionSnippet": "Carla Muñoz es una wedding planner especializada en crear celebraciones inolvidables, cuidando cada detalle para que cada pareja disfrute una experiencia personalizada y sin preocupaciones.",
+            "serviceHighlights": [
+              "Wedding Month",
+              "Half Wedding",
+              "Wedding day",
+              "Full wedding",
+              "y más"
+            ],
+            "termsHighlights": [
+              "Preguntar por términos y condiciones"
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Carla Muñoz es una wedding planner especializada en crear celebraciones inolvidables, cuidando cada detalle para que cada pareja disfrute una experiencia personalizada y sin preocupaciones.",
+              "Servicios que ofrece: Wedding Month",
+              "Servicios que ofrece: Half Wedding",
+              "Servicios que ofrece: Wedding day",
+              "Servicios que ofrece: Full wedding",
+              "Servicios que ofrece: y más",
+              "Términos  y condiciones: Preguntar por términos y condiciones",
+              "About the provider: Carla Muñoz es una wedding planner especializada en crear celebraciones inolvidables, cuidando cada detalle para que cada pareja disfrute una experiencia personalizada y sin preocupaciones.",
+              "Services offered: Wedding Month",
+              "Services offered: Half Wedding",
+              "Services offered: Wedding Day",
+              "Services offered: Full Wedding",
+              "Services offered: and more",
+              "Terms and conditions: Ask for terms and conditions"
+            ],
+            "eventTypes": [],
+            "description": "Carla Muñoz es una wedding planner especializada en crear celebraciones inolvidables, cuidando cada detalle para que cada pareja disfrute una experiencia personalizada y sin preocupaciones."
+          }
+        ],
+        "search_strategy": "existing_plan_shortlist",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 43,
+            "category": "Wedding planners",
+            "location": "Lima, Perú",
+            "retrieval_source": null,
+            "retrieval_score": null,
+            "fit_score": null
+          }
+        ],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_0057afc773bfe6e4006ae1616194c087d2ad432a6f214b259e",
+            "requestId": "req_ee7ef4096b834a1c933d2f883fa1fe19",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 708,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 7585,
+                "instructionBytes": 0,
+                "inputBytes": 5758,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_0c5c8a01408d6f5c006ae161636e0087d2b7e7d6ef2d1291da",
+            "requestId": "req_aac788540e42494384f2cf8922b985ce",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 10050,
+              "inputBytes": 3600,
+              "toolCount": 0,
+              "schemaPropertyCount": 36,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 35430,
+                "instructionBytes": 10163,
+                "inputBytes": 3892,
+                "toolBytes": 2,
+                "outputSchemaBytes": 21111,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_035f1b14f3ec3344006ae16169583887d2909a91dd131bc421",
+            "requestId": "req_fdde9f6f5903499290fe86d144c1139f",
+            "model": "gpt-6-luna",
+            "attemptCount": 2,
+            "requestMetrics": {
+              "instructionBytes": 2588,
+              "inputBytes": 8203,
+              "toolCount": 3,
+              "schemaPropertyCount": 3,
+              "transport": {
+                "observedRequestCount": 2,
+                "totalPayloadBytes": 29532,
+                "instructionBytes": 5248,
+                "inputBytes": 20358,
+                "toolBytes": 2054,
+                "outputSchemaBytes": 1334,
+                "requests": []
+              }
+            }
+          },
+          "router": null
+        },
+        "recommendation_funnel": {
+          "available_candidates": 1,
+          "context_candidates": 1,
+          "context_candidate_ids": [
+            43
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "recomendar",
+        "timing_ms": {
+          "total": 9713,
+          "load_plan": 11,
+          "response_classification": 1736,
+          "prepare_working_plan": 0,
+          "extraction": 4765,
+          "apply_extraction": 2,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 3176,
+          "save_plan": 17,
+          "router": 0,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1505,
+            "output_tokens": 115,
+            "total_tokens": 1620,
+            "cached_input_tokens": 1502,
+            "cache_write_input_tokens": 0
+          },
+          "router": null,
+          "extraction": {
+            "input_tokens": 7663,
+            "output_tokens": 423,
+            "total_tokens": 8086,
+            "cached_input_tokens": 6805,
+            "cache_write_input_tokens": 855
+          },
+          "reply": {
+            "input_tokens": 5996,
+            "output_tokens": 117,
+            "total_tokens": 6113,
+            "cached_input_tokens": 2774,
+            "cache_write_input_tokens": 3216
+          },
+          "total": {
+            "input_tokens": 15164,
+            "output_tokens": 655,
+            "total_tokens": 15819,
+            "cached_input_tokens": 11081,
+            "cache_write_input_tokens": 4071
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "local_plan",
+          "has_prior_outbound_message": false,
+          "fallback_used": false,
+          "conversation_health": "uncertain",
+          "health_reason": "insufficient_context",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "question_or_request",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "recomendar",
+          "routeKind": "present_existing_shortlist",
+          "providerSearchMode": "existing_shortlist",
+          "presentationScope": "single_need",
+          "focusNeedCategory": "Wedding planners",
+          "needsToSearch": [],
+          "needsToPresent": [
+            "Wedding planners"
+          ],
+          "stopReason": null,
+          "persistReason": "recomendar",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "present_existing_shortlist",
+        "presentation_scope": "single_need",
+        "session_focus_used": false,
+        "session_focus_key_present": true,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.99,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": null,
+          "vendor_category": "Wedding planners",
+          "vendor_categories": [],
+          "active_need_category": "Wedding planners",
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 0,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": true,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Pregunta por la ciudad y el enlace de la ficha de Carla Muñoz Wedding Planner.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "recomendar",
+          "lifecycle_state": "active",
+          "event_type": "boda",
+          "vendor_category": "Wedding planners",
+          "active_need_category": "Wedding planners",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "51-100",
+          "provider_need_categories": [
+            "Wedding planners"
+          ],
+          "provider_need_count": 1,
+          "provider_need_statuses": [
+            {
+              "category": "Wedding planners",
+              "status": "shortlisted",
+              "has_recommendations": true,
+              "selected_provider_ids": []
+            }
+          ],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "Pregunta por la ciudad y el enlace de la ficha de Carla Muñoz Wedding Planner.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "missing_phone_number",
+          "context_source": "local_plan",
+          "retrieved_message_count": 0,
+          "recent_message_count": 0,
+          "excluded_current_message_count": 0,
+          "directions": [],
+          "sources": [],
+          "entry_source": null
+        },
+        "continuity_state": "continuing",
+        "welcome_allowed": false,
+        "history_status": "missing_phone_number",
+        "has_prior_outbound": false,
+        "requested_operation": null,
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 9767,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M60692P79H0G7VMT7NGBF05A",
+        "conversation_hash": "6f0269102460ba74e28553d252f1013ac4cb3f2d68b9eaeeb92dbced234748ec",
+        "runtime_latency_ms": 9713,
+        "extraction_latency_ms": 4765,
+        "compose_latency_ms": 3176,
+        "tools_called_count": 2,
+        "provider_results_count": 1,
+        "recommendation_context_candidates": 1,
+        "recommendation_presentation_limit": 6,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "uncertain",
+        "conversation_health_reason": "insufficient_context",
+        "human_help_response": "not_applicable",
+        "total_tokens": 15819,
+        "cached_input_tokens": 11081,
+        "cache_hit_rate": 0.7307438670535479,
+        "extraction_to_compose_ratio": 1.5003148614609572,
+        "captured_at": "2026-10-28T02:43:55.213Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "recomendar",
+        "lifecycle_state": "active",
+        "event_type": "boda",
+        "vendor_category": "Wedding planners",
+        "active_need_category": "Wedding planners",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": "51-100",
+        "provider_needs": [
+          {
+            "category": "Wedding planners",
+            "status": "shortlisted",
+            "recommended_provider_ids": [
+              43
+            ],
+            "selected_provider_ids": []
+          }
+        ],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": false
+        }
+      },
+      "latencyMs": 9983
+    }
+  ]
+}

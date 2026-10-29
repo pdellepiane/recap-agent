@@ -1,0 +1,124 @@
+{
+  "runId": "eval-2026-10-28T02-18-49-459Z-91b952cc",
+  "caseId": "live_behavior.july_breadth_birthday_04.master_r1",
+  "suite": "live_behavior_regression",
+  "target": "live_lambda",
+  "configLabel": "live_lambda",
+  "status": "errored",
+  "hardGatePassed": false,
+  "primaryFailureReason": "infrastructure_error",
+  "finalScore": 0,
+  "totalLatencyMs": 0,
+  "totalToolCalls": 0,
+  "nodeTransitions": [],
+  "planDiffSummary": [
+    "Runtime error: Live Lambda returned HTTP 400: {\n  \"error\": \"Invalid request body.\",\n  \"issues\": [\n    {\n      \"path\": \"contact_phone\",\n      \"message\": \"contact_phone is required for WhatsApp channels.\"\n    }\n  ],\n  \"correlation_id\": \"live_behavior.july_breadth_birthday_04.master_r1-0-1a5be9db\",\n  \"request_id\": \"f0ac8fa5-a8a2-4afb-af28-1ee8be1abc8d\"\n}"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/.eval-runs/eval-2026-10-28T02-18-49-459Z-91b952cc/artifacts/live_lambda/live_behavior.july_breadth_birthday_04.master_r1.json"
+  },
+  "expectationResults": [
+    {
+      "id": "event-type-retained",
+      "type": "plan_field_equals",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Plan field event_type was undefined instead of \"cumpleanos\"."
+    },
+    {
+      "id": "answer-delivered",
+      "type": "text_contains",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Text containment checks failed."
+    },
+    {
+      "id": "no-provider-quote-without-explicit-date",
+      "type": "fixture_effect_count",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Missing turn final for fixture_effect_count."
+    },
+    {
+      "id": "no-unrequested-rsvp",
+      "type": "fixture_effect_count",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Missing turn final for fixture_effect_count."
+    },
+    {
+      "id": "no-unrequested-handoff",
+      "type": "fixture_effect_count",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Missing turn final for fixture_effect_count."
+    },
+    {
+      "id": "requested-needs-retained",
+      "type": "plan_field_subset",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Plan field provider_needs did not contain the expected subset."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "objective-obligations",
+      "type": "expectation_pass_rate",
+      "score": 0,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 6 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 0,
+    "avg_latency_ms": 0,
+    "p95_latency_ms": 0,
+    "tool_calls_total": 0,
+    "unique_tools_called": 0,
+    "tool_call_rate_per_turn": 0,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0,
+    "state_expectation_pass_rate": 0,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 0,
+    "total_tokens": 0,
+    "cache_hit_rate": 0,
+    "input_tokens": 0,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 0,
+    "uncached_input_tokens": 0,
+    "usage_known": true
+  },
+  "timing": {
+    "queueWaitMs": 147424,
+    "setupMs": 0,
+    "turnMs": 1591,
+    "snapshotMs": 3,
+    "teardownMs": 0,
+    "judgeWaitMs": 0,
+    "judgeApiMs": 0,
+    "reportWriteMs": 0,
+    "makespanMs": 0
+  },
+  "judgeMetrics": {
+    "modelCalls": 0,
+    "retryCount": 0,
+    "rateLimitCount": 0,
+    "tokensUnknown": false,
+    "openaiSdk": "7.43.0",
+    "judgeModels": []
+  },
+  "turns": [],
+  "startedAt": "2026-10-28T02:21:19.890Z",
+  "completedAt": "2026-10-28T02:21:19.890Z"
+}

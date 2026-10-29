@@ -1,0 +1,4573 @@
+
+> recap-agent@0.1.0 check
+> npm run typecheck && npm run lint && npm run test && npm run audit:prompt-freshness
+
+
+> recap-agent@0.1.0 typecheck
+> tsc --noEmit
+
+
+> recap-agent@0.1.0 lint
+> eslint .
+
+
+> recap-agent@0.1.0 test
+> vitest run
+
+
+ RUN  v1.6.1 /Users/leonardocandio/Work/thesis/recap-agent
+
+ ✓ tests/information-orchestrator.test.ts  (35 tests) 35ms
+ ✓ tests/agent-conversation-gateway.test.ts  (23 tests) 368ms
+stdout | tests/runtime-actual-request.test.ts > actual reply request owns its instructions > projects the open-request record only on the two support contract nodes
+Open request prompt audit {
+  node: 'resolver_consultas_informativas',
+  instructionBytes: 680,
+  inputBytes: 1258
+}
+
+stdout | tests/runtime-actual-request.test.ts > actual reply request owns its instructions > projects the open-request record only on the two support contract nodes
+Open request prompt audit {
+  node: 'solicitar_agente_humano',
+  instructionBytes: 680,
+  inputBytes: 2137
+}
+
+ ✓ tests/openai-agent-runtime-token-usage.test.ts  (28 tests) 321ms
+stdout | tests/runtime-actual-request.test.ts > effective production request settings via actual serialization > sends low reasoning on serialized requests with stable cache keys
+{
+  event: 'openai_stage_started',
+  stage: 'extraction',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 35000
+}
+
+stderr | tests/runtime-actual-request.test.ts > effective production request settings via actual serialization > sends low reasoning on serialized requests with stable cache keys
+{
+  event: 'openai_stage_failed',
+  stage: 'extraction',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 35000,
+  duration_ms: 133,
+  error_name: 'Error',
+  error_message: '429 You exceeded your current quota.'
+}
+
+stdout | tests/runtime-actual-request.test.ts > effective production request settings via actual serialization > sends low reasoning on serialized requests with stable cache keys
+{
+  event: 'openai_stage_started',
+  stage: 'reply',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 22000
+}
+
+stderr | tests/runtime-actual-request.test.ts > effective production request settings via actual serialization > sends low reasoning on serialized requests with stable cache keys
+{
+  event: 'openai_stage_failed',
+  stage: 'reply',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 22000,
+  duration_ms: 12,
+  error_name: 'Error',
+  error_message: '429 You exceeded your current quota.'
+}
+
+stdout | tests/runtime-actual-request.test.ts > fee topics and mixed reply instruction contracts > selects fee contracts by structured topic even when the same article covers both services
+fee-contract-bytes {"topic":"gift_commission","instructions":1743,"input":1630}
+
+stdout | tests/runtime-actual-request.test.ts > fee topics and mixed reply instruction contracts > selects fee contracts by structured topic even when the same article covers both services
+fee-contract-bytes {"topic":"host_withdrawal","instructions":1911,"input":1698}
+
+stdout | tests/runtime-actual-request.test.ts > fee topics and mixed reply instruction contracts > selects fee contracts by structured topic even when the same article covers both services
+fee-contract-bytes {"topic":"mixed","instructions":2661,"input":1688}
+
+stdout | tests/runtime-actual-request.test.ts > fee topics and mixed reply instruction contracts > allows verified public resources with image evidence while retaining private access restrictions
+mixed-public-image-bytes {"instructions":4583,"input":1866}
+
+ ✓ tests/runtime-actual-request.test.ts  (53 tests) 950ms
+ ✓ tests/image-file-persistence.test.ts  (37 tests) 429ms
+ ✓ tests/s17-image-turn.test.ts  (24 tests) 392ms
+ ✓ tests/agent-service.test.ts  (80 tests) 1592ms
+ ❯ tests/agent-service-information-flow.test.ts  (60 tests | 1 failed | 1 skipped) 1149ms
+   ❯ tests/agent-service-information-flow.test.ts > AgentService first-class information flow > completes a sourced withdrawal-fee policy with no processing-hours claim or private operation
+     → expected '{"currentNode":"resolver_consultas_in…' not to contain '72'
+stdout | tests/agent-service-rsvp.test.ts > AgentService RSVP flow > reads an ambiguous current RSVP reference before composing and keeps both guests distinct
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:27.977Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'needs_event_selection',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 2,
+  candidate_event_ids: [ 205, 206 ]
+}
+
+stdout | tests/agent-service-rsvp.test.ts > AgentService RSVP flow > a current state query neither inherits an old action nor offers another mutation
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:27.997Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+
+stdout | tests/agent-service-rsvp.test.ts > AgentService RSVP flow > allows an explicit RSVP topic switch despite a pending host-support question
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.008Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+
+stdout | tests/agent-service-rsvp.test.ts > AgentService RSVP flow > reconciles a read-only RSVP continuation before a development write boundary
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.013Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+
+stdout | tests/agent-service-rsvp.test.ts > AgentService RSVP flow > treats guest records with no event identity as unavailable, not as no invitation
+{
+  event: 'rsvp_reconcile_rejected_missing_identity',
+  observed_at: '2026-10-27T05:13:28.019Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  authoritative_before: 1,
+  authoritative_after: 0,
+  associated_before: 0,
+  associated_after: 0
+}
+
+stdout | tests/agent-service-rsvp.test.ts > AgentService RSVP flow > records an explicit attending response using only the trusted channel phone
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.021Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+
+stdout | tests/agent-service-rsvp.test.ts > AgentService RSVP flow > records an explicit declining response using only the trusted channel phone
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.026Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+
+stdout | tests/agent-service-rsvp.test.ts > AgentService RSVP flow > does not claim companion success when the backend declines to save it
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.031Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+
+stdout | tests/agent-service-rsvp.test.ts > AgentService RSVP flow > a fresh self confirmation does not attach an unresolved companion decision to the selected event
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.041Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'needs_event_selection',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 2,
+  candidate_event_ids: [ 205, 206 ]
+}
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.045Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'needs_event_selection',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 2,
+  candidate_event_ids: [ 205, 206 ]
+}
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.051Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 2,
+  selected_event_id: 206,
+  selected_event_name: 'Cumpleaños de Marta'
+}
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.055Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 2,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.057Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'needs_event_selection',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 2,
+  candidate_event_ids: [ 205, 206 ]
+}
+
+stdout | tests/agent-service-rsvp.test.ts > AgentService RSVP flow > preserves a companion response across one bounded event-selection turn
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.061Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'needs_event_selection',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 2,
+  candidate_event_ids: [ 205, 205 ]
+}
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.065Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 2,
+  selected_event_id: 205,
+  selected_event_name: 'Cumpleaños de Marta'
+}
+
+stdout | tests/agent-service-rsvp.test.ts > AgentService RSVP flow > persists multiple pending candidates and re-calls with only a validated selection
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.069Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'needs_event_selection',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 2,
+  candidate_event_ids: [ 205, 205 ]
+}
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.070Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 2,
+  selected_event_id: 205,
+  selected_event_name: 'Cumpleaños de Marta'
+}
+
+stdout | tests/agent-service-rsvp.test.ts > AgentService RSVP flow > keeps an ambiguous RSVP continuation in selection state and renders grounded candidates
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.072Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'needs_event_selection',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 2,
+  candidate_event_ids: [ 205, 206 ]
+}
+
+stdout | tests/agent-service-rsvp.test.ts > AgentService RSVP flow > never calls the mutation when the extracted guest id is not a stored candidate
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.076Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'needs_event_selection',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 2,
+  candidate_event_ids: [ 205, 205 ]
+}
+
+stdout | tests/agent-service-rsvp.test.ts > AgentService RSVP flow > reports a pending invitation and offers confirmation without mutating it
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.079Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+
+stdout | tests/agent-service-rsvp.test.ts > AgentService RSVP flow > packet C reconciles a settled event selection out of the reply ambiguity
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.084Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+
+stdout | tests/agent-service-rsvp.test.ts > AgentService RSVP flow > packet C resolves an explicit old event reference over recency
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.087Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 2,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+
+stdout | tests/agent-service-rsvp.test.ts > AgentService RSVP flow > packet C asks one selection question for multi-event unresolved intent
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.088Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'needs_event_selection',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 2,
+  candidate_event_ids: [ 205, 206 ]
+}
+
+stdout | tests/agent-service-rsvp.test.ts > AgentService RSVP flow > distinguishes a user-level not-found result from a lookup failure
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.092Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'unavailable',
+  coverage: 'complete',
+  resolution: 'not_found',
+  invitation_count: 0,
+  reason: 'no_invitations'
+}
+
+stdout | tests/agent-service-rsvp.test.ts > AgentService RSVP flow > reports an already-confirmed invitation naturally without another mutation
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.102Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'partial',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+
+stdout | tests/agent-service-rsvp.test.ts > AgentService RSVP flow > applies an explicit RSVP reversal immediately without another confirmation turn
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.107Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+
+stdout | tests/agent-service-rsvp.test.ts > AgentService RSVP flow > never claims a declined invitation changed when the backend returns its current state
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.113Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+
+stdout | tests/agent-service-rsvp.test.ts > AgentService RSVP flow > reports { status: 'already_responded', currentAction: null, requestedAction: 'attending', guestId: null, eventName: null, eventDate: null } without inventing success
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.116Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Gia Antonella'
+}
+
+stdout | tests/agent-service-rsvp.test.ts > AgentService RSVP flow > reports { status: 'no_pending' } without inventing success
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.125Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Gia Antonella'
+}
+
+stdout | tests/agent-service-rsvp.test.ts > AgentService RSVP flow > reports { status: 'phone_mismatch' } without inventing success
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.128Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Gia Antonella'
+}
+
+stdout | tests/agent-service-rsvp.test.ts > AgentService RSVP flow > reports { status: 'failed', error: 'timeout', retryable: true } without inventing success
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.130Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Gia Antonella'
+}
+
+stdout | tests/agent-service-rsvp.test.ts > AgentService RSVP flow > reports a campaign-grounded invitation without auto-escalating when the user lookup has no current record
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.139Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'unavailable',
+  coverage: 'complete',
+  resolution: 'not_found',
+  invitation_count: 0,
+  reason: 'no_invitations'
+}
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.149Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'unavailable',
+  coverage: 'complete',
+  resolution: 'not_found',
+  invitation_count: 0,
+  reason: 'no_invitations'
+}
+
+stdout | tests/agent-service-rsvp.test.ts > AgentService RSVP flow > treats an inbound campaign label as no campaign context and never escalates
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.152Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'unavailable',
+  coverage: 'complete',
+  resolution: 'not_found',
+  invitation_count: 0,
+  reason: 'no_invitations'
+}
+
+stdout | tests/agent-service-rsvp.test.ts > AgentService RSVP flow > uses the trusted-phone event read fallback instead of falsely denying an associated invitation
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.170Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 37218,
+  selected_event_name: 'Michelle & Jorge'
+}
+
+stdout | tests/agent-service-rsvp.test.ts > AgentService RSVP flow > preserves the authoritative server date when phone enrichment omits it
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.235Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 37218,
+  selected_event_name: 'Michelle & Jorge'
+}
+
+stdout | tests/agent-service-rsvp.test.ts > AgentService RSVP flow > records the latest response centrally and keeps an unrelated owner pending question on an RSVP send
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.249Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+
+stdout | tests/agent-service-rsvp.test.ts > AgentService RSVP flow > marks reconciled evidence partial when one phone lookup fails
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:28.314Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'partial',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+
+ ✓ tests/agent-service-rsvp.test.ts  (32 tests) 394ms
+ ✓ tests/decisions-router-lane.test.ts  (30 tests) 1978ms
+stdout | tests/rsvp-verified-effect.test.ts > RSVP verified effect twins > (a) accepted write plus confirming read yields a verified update with a persisted receipt
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:30.146Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+
+stdout | tests/support-continuity.test.ts > pending support questions reach the information executor > routes pending support questions to lookup with scoped event context, not the ack shortcut
+{
+  event: 'information_auth_flow_started',
+  observed_at: '2026-10-27T05:13:30.151Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: 'a65776f9-2c15-4dfc-9259-3c28e0deb128',
+  plan_id: 'p-u-pending-venue',
+  auth_flow_operation_id: 'a65776f9-2c15-4dfc-9259-3c28e0deb128',
+  prior_auth_state: {
+    status: 'none',
+    auth_method: null,
+    email_present: false,
+    token_present: false,
+    otp_send_attempts: 0,
+    otp_non_delivery_reports: 0
+  },
+  trusted_contact_phone_present: true,
+  phone_confirmation: null,
+  requests: [
+    {
+      kind: 'associated_event',
+      request_id: 'pending-venue',
+      event_hint_present: true
+    }
+  ],
+  user_message_length: 30,
+  extracted_email_present: false,
+  otp_present: false
+}
+{
+  event: 'information_auth_flow_completed',
+  observed_at: '2026-10-27T05:13:30.155Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: 'a65776f9-2c15-4dfc-9259-3c28e0deb128',
+  plan_id: 'p-u-pending-venue',
+  auth_flow_operation_id: 'a65776f9-2c15-4dfc-9259-3c28e0deb128',
+  duration_ms: 6,
+  next_auth_state: {
+    status: 'none',
+    auth_method: null,
+    email_present: false,
+    token_present: false
+  },
+  authentication_present: false,
+  auth_block_reason: null
+}
+{
+  event: 'information_auth_execution_completed',
+  observed_at: '2026-10-27T05:13:30.158Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: 'a65776f9-2c15-4dfc-9259-3c28e0deb128',
+  plan_id: 'p-u-pending-venue',
+  auth_flow_operation_id: 'a65776f9-2c15-4dfc-9259-3c28e0deb128',
+  duration_ms: 9,
+  summaries: [
+    {
+      requestId: 'pending-venue',
+      kind: 'associated_event',
+      status: 'completed',
+      source: 'agent_api',
+      outcomeCode: 'completed_with_results',
+      retryable: null,
+      queryHash: 'venue',
+      evidence: [],
+      resultCount: 1,
+      durationMs: 90,
+      accessMethod: 'trusted_phone_guest',
+      eventDetailCount: 1
+    }
+  ]
+}
+{
+  event: 'information_auth_flow_started',
+  observed_at: '2026-10-27T05:13:30.197Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '5ebb7aa7-3e7d-4ea4-99c5-97aa80d57e66',
+  plan_id: 'p-u-pending-time-role',
+  auth_flow_operation_id: '5ebb7aa7-3e7d-4ea4-99c5-97aa80d57e66',
+  prior_auth_state: {
+    status: 'none',
+    auth_method: null,
+    email_present: false,
+    token_present: false,
+    otp_send_attempts: 0,
+    otp_non_delivery_reports: 0
+  },
+  trusted_contact_phone_present: true,
+  phone_confirmation: null,
+  requests: [
+    {
+      kind: 'associated_event',
+      request_id: 'pending-time',
+      event_hint_present: true
+    }
+  ],
+  user_message_length: 33,
+  extracted_email_present: false,
+  otp_present: false
+}
+{
+  event: 'information_auth_flow_completed',
+  observed_at: '2026-10-27T05:13:30.198Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '5ebb7aa7-3e7d-4ea4-99c5-97aa80d57e66',
+  plan_id: 'p-u-pending-time-role',
+  auth_flow_operation_id: '5ebb7aa7-3e7d-4ea4-99c5-97aa80d57e66',
+  duration_ms: 3,
+  next_auth_state: {
+    status: 'none',
+    auth_method: null,
+    email_present: false,
+    token_present: false
+  },
+  authentication_present: false,
+  auth_block_reason: null
+}
+{
+  event: 'information_auth_execution_completed',
+  observed_at: '2026-10-27T05:13:30.198Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '5ebb7aa7-3e7d-4ea4-99c5-97aa80d57e66',
+  plan_id: 'p-u-pending-time-role',
+  auth_flow_operation_id: '5ebb7aa7-3e7d-4ea4-99c5-97aa80d57e66',
+  duration_ms: 3,
+  summaries: [
+    {
+      requestId: 'pending-time',
+      kind: 'associated_event',
+      status: 'completed',
+      source: 'agent_api',
+      outcomeCode: 'completed_with_results',
+      retryable: null,
+      queryHash: 'venue',
+      evidence: [],
+      resultCount: 1,
+      durationMs: 90,
+      accessMethod: 'trusted_phone_guest',
+      eventDetailCount: 1
+    }
+  ]
+}
+
+stdout | tests/support-continuity.test.ts > pending credential resume and card topic preservation > resumes pending protected requests through the OTP episode and keeps declines terminal
+{
+  event: 'information_auth_flow_started',
+  observed_at: '2026-10-27T05:13:30.240Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: 'c0c0576e-6b9b-4257-a625-ad84afc9b1d7',
+  plan_id: 'p-u-otp-email-resume',
+  auth_flow_operation_id: 'c0c0576e-6b9b-4257-a625-ad84afc9b1d7',
+  prior_auth_state: {
+    status: 'none',
+    auth_method: null,
+    email_present: false,
+    token_present: false,
+    otp_send_attempts: 0,
+    otp_non_delivery_reports: 0
+  },
+  trusted_contact_phone_present: false,
+  phone_confirmation: null,
+  requests: [
+    {
+      kind: 'associated_event',
+      request_id: 'information-1',
+      event_hint_present: false
+    }
+  ],
+  user_message_length: 51,
+  extracted_email_present: true,
+  otp_present: false
+}
+{
+  event: 'information_auth_flow_completed',
+  observed_at: '2026-10-27T05:13:30.242Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: 'c0c0576e-6b9b-4257-a625-ad84afc9b1d7',
+  plan_id: 'p-u-otp-email-resume',
+  auth_flow_operation_id: 'c0c0576e-6b9b-4257-a625-ad84afc9b1d7',
+  duration_ms: 2,
+  next_auth_state: {
+    status: 'code_requested',
+    auth_method: null,
+    email_present: true,
+    token_present: false
+  },
+  authentication_present: false,
+  auth_block_reason: 'otp_sent'
+}
+{
+  event: 'information_auth_execution_completed',
+  observed_at: '2026-10-27T05:13:30.243Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: 'c0c0576e-6b9b-4257-a625-ad84afc9b1d7',
+  plan_id: 'p-u-otp-email-resume',
+  auth_flow_operation_id: 'c0c0576e-6b9b-4257-a625-ad84afc9b1d7',
+  duration_ms: 4,
+  summaries: []
+}
+{
+  event: 'information_auth_flow_started',
+  observed_at: '2026-10-27T05:13:30.262Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '9e4a352f-2e3b-4532-8d92-e17cef1fd540',
+  plan_id: 'p-u-otp-code-verify',
+  auth_flow_operation_id: '9e4a352f-2e3b-4532-8d92-e17cef1fd540',
+  prior_auth_state: {
+    status: 'code_requested',
+    auth_method: null,
+    email_present: true,
+    token_present: false,
+    otp_send_attempts: 1,
+    otp_non_delivery_reports: 0
+  },
+  trusted_contact_phone_present: false,
+  phone_confirmation: null,
+  requests: [
+    {
+      kind: 'associated_event',
+      request_id: 'information-1',
+      event_hint_present: false
+    }
+  ],
+  user_message_length: 19,
+  extracted_email_present: false,
+  otp_present: true
+}
+{
+  event: 'information_auth_flow_completed',
+  observed_at: '2026-10-27T05:13:30.263Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '9e4a352f-2e3b-4532-8d92-e17cef1fd540',
+  plan_id: 'p-u-otp-code-verify',
+  auth_flow_operation_id: '9e4a352f-2e3b-4532-8d92-e17cef1fd540',
+  duration_ms: 2,
+  next_auth_state: {
+    status: 'authenticated',
+    auth_method: 'email',
+    email_present: true,
+    token_present: true
+  },
+  authentication_present: true,
+  auth_block_reason: null
+}
+{
+  event: 'information_auth_execution_completed',
+  observed_at: '2026-10-27T05:13:30.264Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '9e4a352f-2e3b-4532-8d92-e17cef1fd540',
+  plan_id: 'p-u-otp-code-verify',
+  auth_flow_operation_id: '9e4a352f-2e3b-4532-8d92-e17cef1fd540',
+  duration_ms: 2,
+  summaries: []
+}
+
+stdout | tests/support-continuity.test.ts > pending credential resume and card topic preservation > answers the card question from serialized KB evidence with a single execution
+{
+  event: 'information_auth_flow_started',
+  observed_at: '2026-10-27T05:13:30.326Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '332b29c2-3033-4a4b-ac2c-faaf94a0560b',
+  plan_id: 'p-u-card-answer',
+  auth_flow_operation_id: '332b29c2-3033-4a4b-ac2c-faaf94a0560b',
+  prior_auth_state: {
+    status: 'none',
+    auth_method: null,
+    email_present: false,
+    token_present: false,
+    otp_send_attempts: 0,
+    otp_non_delivery_reports: 0
+  },
+  trusted_contact_phone_present: false,
+  phone_confirmation: null,
+  requests: [ { kind: 'faq', request_id: 'information-1' } ],
+  user_message_length: 97,
+  extracted_email_present: false,
+  otp_present: false
+}
+{
+  event: 'information_auth_flow_completed',
+  observed_at: '2026-10-27T05:13:30.327Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '332b29c2-3033-4a4b-ac2c-faaf94a0560b',
+  plan_id: 'p-u-card-answer',
+  auth_flow_operation_id: '332b29c2-3033-4a4b-ac2c-faaf94a0560b',
+  duration_ms: 1,
+  next_auth_state: {
+    status: 'none',
+    auth_method: null,
+    email_present: false,
+    token_present: false
+  },
+  authentication_present: false,
+  auth_block_reason: null
+}
+{
+  event: 'information_auth_execution_completed',
+  observed_at: '2026-10-27T05:13:30.327Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '332b29c2-3033-4a4b-ac2c-faaf94a0560b',
+  plan_id: 'p-u-card-answer',
+  auth_flow_operation_id: '332b29c2-3033-4a4b-ac2c-faaf94a0560b',
+  duration_ms: 1,
+  summaries: [
+    {
+      requestId: 'information-1',
+      kind: 'faq',
+      status: 'completed',
+      source: 'knowledge',
+      outcomeCode: 'completed_with_results',
+      retryable: null,
+      queryHash: 'card',
+      evidence: [],
+      resultCount: 1,
+      durationMs: 60
+    }
+  ]
+}
+{
+  event: 'information_auth_flow_started',
+  observed_at: '2026-10-27T05:13:30.331Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '5bfa161b-5887-4f24-9bdd-700c348776cc',
+  plan_id: 'p-u-card-multi-evidence',
+  auth_flow_operation_id: '5bfa161b-5887-4f24-9bdd-700c348776cc',
+  prior_auth_state: {
+    status: 'none',
+    auth_method: null,
+    email_present: false,
+    token_present: false,
+    otp_send_attempts: 0,
+    otp_non_delivery_reports: 0
+  },
+  trusted_contact_phone_present: false,
+  phone_confirmation: null,
+  requests: [ { kind: 'faq', request_id: 'information-1' } ],
+  user_message_length: 97,
+  extracted_email_present: false,
+  otp_present: false
+}
+{
+  event: 'information_auth_flow_completed',
+  observed_at: '2026-10-27T05:13:30.331Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '5bfa161b-5887-4f24-9bdd-700c348776cc',
+  plan_id: 'p-u-card-multi-evidence',
+  auth_flow_operation_id: '5bfa161b-5887-4f24-9bdd-700c348776cc',
+  duration_ms: 0,
+  next_auth_state: {
+    status: 'none',
+    auth_method: null,
+    email_present: false,
+    token_present: false
+  },
+  authentication_present: false,
+  auth_block_reason: null
+}
+{
+  event: 'information_auth_execution_completed',
+  observed_at: '2026-10-27T05:13:30.331Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '5bfa161b-5887-4f24-9bdd-700c348776cc',
+  plan_id: 'p-u-card-multi-evidence',
+  auth_flow_operation_id: '5bfa161b-5887-4f24-9bdd-700c348776cc',
+  duration_ms: 0,
+  summaries: [
+    {
+      requestId: 'information-1',
+      kind: 'faq',
+      status: 'completed',
+      source: 'knowledge',
+      outcomeCode: 'completed_with_results',
+      retryable: null,
+      queryHash: 'card',
+      evidence: [],
+      resultCount: 3,
+      durationMs: 60
+    }
+  ]
+}
+
+ ✓ tests/support-continuity.test.ts  (9 tests) 380ms
+stdout | tests/rsvp-verified-effect.test.ts > RSVP verified effect twins > (b) wrong guest returned is rejected without trusting the echo
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:30.258Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+
+stdout | tests/rsvp-verified-effect.test.ts > RSVP verified effect twins > (c) same event different guest in read is a mismatch, never a confirmation
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:30.284Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+
+stdout | tests/rsvp-verified-effect.test.ts > RSVP verified effect twins > (d) attendance saved but companion not saved verifies attendance without claiming the companion
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:30.300Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+
+stdout | tests/rsvp-verified-effect.test.ts > RSVP verified effect twins > passes a saved companion write receipt without projecting a contradictory false confirmation
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:30.316Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+
+stdout | tests/rsvp-verified-effect.test.ts > RSVP verified effect twins > (e) read failure stays unconfirmed with unknown persistence and unchanged evidence
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:30.323Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+
+stdout | tests/rsvp-verified-effect.test.ts > RSVP verified effect twins > (f) timeout with read observing requested state reports observed state without attribution and no retry
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:30.329Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+
+stdout | tests/rsvp-verified-effect.test.ts > RSVP verified effect twins > (g) duplicate inbound replays the receipt with no second write and never as a fresh read
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:30.333Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:30.353Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+
+stdout | tests/rsvp-verified-effect.test.ts > RSVP verified effect twins > (h) explicit attendance plus a venue question yields one write and one combined reply
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:30.363Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+{
+  event: 'information_auth_flow_started',
+  observed_at: '2026-10-27T05:13:30.378Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '114fa9be-5e2d-4e2d-9122-fa30b7178783',
+  plan_id: '01M5XWE8FSKGP84V1KA28732MV',
+  auth_flow_operation_id: '114fa9be-5e2d-4e2d-9122-fa30b7178783',
+  prior_auth_state: {
+    status: 'none',
+    auth_method: null,
+    email_present: false,
+    token_present: false,
+    otp_send_attempts: 0,
+    otp_non_delivery_reports: 0
+  },
+  trusted_contact_phone_present: true,
+  phone_confirmation: null,
+  requests: [ { kind: 'faq', request_id: 'information-1' } ],
+  user_message_length: 39,
+  extracted_email_present: false,
+  otp_present: false
+}
+{
+  event: 'information_auth_flow_completed',
+  observed_at: '2026-10-27T05:13:30.378Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '114fa9be-5e2d-4e2d-9122-fa30b7178783',
+  plan_id: '01M5XWE8FSKGP84V1KA28732MV',
+  auth_flow_operation_id: '114fa9be-5e2d-4e2d-9122-fa30b7178783',
+  duration_ms: 1,
+  next_auth_state: {
+    status: 'none',
+    auth_method: null,
+    email_present: false,
+    token_present: false
+  },
+  authentication_present: false,
+  auth_block_reason: null
+}
+{
+  event: 'information_auth_execution_completed',
+  observed_at: '2026-10-27T05:13:30.379Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '114fa9be-5e2d-4e2d-9122-fa30b7178783',
+  plan_id: '01M5XWE8FSKGP84V1KA28732MV',
+  auth_flow_operation_id: '114fa9be-5e2d-4e2d-9122-fa30b7178783',
+  duration_ms: 5,
+  summaries: [
+    {
+      requestId: 'faq-1',
+      kind: 'faq',
+      status: 'completed',
+      source: 'agent_api',
+      outcomeCode: 'completed_with_results',
+      retryable: null,
+      queryHash: 'q',
+      evidence: [],
+      resultCount: 1,
+      durationMs: 40
+    }
+  ]
+}
+
+stdout | tests/rsvp-verified-effect.test.ts > RSVP verified effect twins > (g) restart after write before receipt recovers by read with no second write
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:30.414Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:30.416Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+
+stdout | tests/rsvp-verified-effect.test.ts > RSVP verified effect twins > (j) completed write survives a phone-scoped miss without escalation as typed facts
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:30.447Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+{
+  event: 'information_auth_flow_started',
+  observed_at: '2026-10-27T05:13:30.449Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: 'd9fd016f-32d9-4510-a7d5-f41346ded801',
+  plan_id: '01M5XWE8JD2Q9J181ZBY37761D',
+  auth_flow_operation_id: 'd9fd016f-32d9-4510-a7d5-f41346ded801',
+  prior_auth_state: {
+    status: 'none',
+    auth_method: null,
+    email_present: false,
+    token_present: false,
+    otp_send_attempts: 0,
+    otp_non_delivery_reports: 0
+  },
+  trusted_contact_phone_present: true,
+  phone_confirmation: null,
+  requests: [
+    {
+      kind: 'associated_event',
+      request_id: 'information-1',
+      event_hint_present: false
+    }
+  ],
+  user_message_length: 33,
+  extracted_email_present: false,
+  otp_present: false
+}
+{
+  event: 'information_auth_flow_completed',
+  observed_at: '2026-10-27T05:13:30.449Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: 'd9fd016f-32d9-4510-a7d5-f41346ded801',
+  plan_id: '01M5XWE8JD2Q9J181ZBY37761D',
+  auth_flow_operation_id: 'd9fd016f-32d9-4510-a7d5-f41346ded801',
+  duration_ms: 0,
+  next_auth_state: {
+    status: 'none',
+    auth_method: null,
+    email_present: false,
+    token_present: false
+  },
+  authentication_present: false,
+  auth_block_reason: null
+}
+{
+  event: 'information_auth_execution_completed',
+  observed_at: '2026-10-27T05:13:30.451Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: 'd9fd016f-32d9-4510-a7d5-f41346ded801',
+  plan_id: '01M5XWE8JD2Q9J181ZBY37761D',
+  auth_flow_operation_id: 'd9fd016f-32d9-4510-a7d5-f41346ded801',
+  duration_ms: 2,
+  summaries: [
+    {
+      requestId: 'information-1',
+      kind: 'associated_event',
+      status: 'failed',
+      source: 'associated_event_api',
+      outcomeCode: 'not_configured',
+      retryable: false,
+      queryHash: 'bced8b6e5d7d20172646400482da5e80160b1bbd9b2a4bf43dfdae3af8e8e768',
+      evidence: [],
+      resultCount: 0,
+      durationMs: 0,
+      accessMethod: 'trusted_phone_guest',
+      coverage: null
+    }
+  ]
+}
+
+stdout | tests/rsvp-verified-effect.test.ts > RSVP verified effect twins > (k) multi-person handoff plus an information question carries the typed handoff outcome
+{
+  event: 'information_auth_flow_started',
+  observed_at: '2026-10-27T05:13:30.460Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '697c2f54-8cd7-4446-b783-3945906aeb36',
+  plan_id: '01M5XWE8JRZASZSRM5WYPHCQBY',
+  auth_flow_operation_id: '697c2f54-8cd7-4446-b783-3945906aeb36',
+  prior_auth_state: {
+    status: 'none',
+    auth_method: null,
+    email_present: false,
+    token_present: false,
+    otp_send_attempts: 0,
+    otp_non_delivery_reports: 0
+  },
+  trusted_contact_phone_present: true,
+  phone_confirmation: null,
+  requests: [ { kind: 'faq', request_id: 'information-1' } ],
+  user_message_length: 41,
+  extracted_email_present: false,
+  otp_present: false
+}
+{
+  event: 'information_auth_flow_completed',
+  observed_at: '2026-10-27T05:13:30.460Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '697c2f54-8cd7-4446-b783-3945906aeb36',
+  plan_id: '01M5XWE8JRZASZSRM5WYPHCQBY',
+  auth_flow_operation_id: '697c2f54-8cd7-4446-b783-3945906aeb36',
+  duration_ms: 0,
+  next_auth_state: {
+    status: 'none',
+    auth_method: null,
+    email_present: false,
+    token_present: false
+  },
+  authentication_present: false,
+  auth_block_reason: null
+}
+{
+  event: 'information_auth_execution_completed',
+  observed_at: '2026-10-27T05:13:30.460Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '697c2f54-8cd7-4446-b783-3945906aeb36',
+  plan_id: '01M5XWE8JRZASZSRM5WYPHCQBY',
+  auth_flow_operation_id: '697c2f54-8cd7-4446-b783-3945906aeb36',
+  duration_ms: 0,
+  summaries: [
+    {
+      requestId: 'faq-1',
+      kind: 'faq',
+      status: 'completed',
+      source: 'agent_api',
+      outcomeCode: 'completed_with_results',
+      retryable: null,
+      queryHash: 'q',
+      evidence: [],
+      resultCount: 1,
+      durationMs: 40
+    }
+  ]
+}
+
+stdout | tests/rsvp-verified-effect.test.ts > RSVP verified effect twins > (l) completed write survives an unrelated purchase-source failure as typed facts
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:30.471Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+{
+  event: 'information_auth_flow_started',
+  observed_at: '2026-10-27T05:13:30.472Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '6d8b27bb-bf78-43fb-ae70-0ee53241cbb9',
+  plan_id: '01M5XWE8K402V06HQJV532C2DJ',
+  auth_flow_operation_id: '6d8b27bb-bf78-43fb-ae70-0ee53241cbb9',
+  prior_auth_state: {
+    status: 'none',
+    auth_method: null,
+    email_present: false,
+    token_present: false,
+    otp_send_attempts: 0,
+    otp_non_delivery_reports: 0
+  },
+  trusted_contact_phone_present: true,
+  phone_confirmation: null,
+  requests: [
+    {
+      kind: 'purchase',
+      request_id: 'information-1',
+      order_id_present: false
+    }
+  ],
+  user_message_length: 38,
+  extracted_email_present: false,
+  otp_present: false
+}
+{
+  event: 'information_auth_flow_completed',
+  observed_at: '2026-10-27T05:13:30.473Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '6d8b27bb-bf78-43fb-ae70-0ee53241cbb9',
+  plan_id: '01M5XWE8K402V06HQJV532C2DJ',
+  auth_flow_operation_id: '6d8b27bb-bf78-43fb-ae70-0ee53241cbb9',
+  duration_ms: 1,
+  next_auth_state: {
+    status: 'none',
+    auth_method: null,
+    email_present: false,
+    token_present: false
+  },
+  authentication_present: false,
+  auth_block_reason: null
+}
+{
+  event: 'information_auth_execution_completed',
+  observed_at: '2026-10-27T05:13:30.473Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '6d8b27bb-bf78-43fb-ae70-0ee53241cbb9',
+  plan_id: '01M5XWE8K402V06HQJV532C2DJ',
+  auth_flow_operation_id: '6d8b27bb-bf78-43fb-ae70-0ee53241cbb9',
+  duration_ms: 1,
+  summaries: [
+    {
+      requestId: 'information-1',
+      kind: 'purchase',
+      status: 'failed',
+      source: 'agent_api',
+      outcomeCode: 'failed_retryable',
+      retryable: true,
+      queryHash: 'q',
+      evidence: [],
+      resultCount: 0,
+      durationMs: 40
+    }
+  ]
+}
+
+stdout | tests/rsvp-verified-effect.test.ts > RSVP existing-state versus this-turn-effect evidence > serializes a rejected companion receipt and its scoped instruction
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:30.492Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+
+stdout | tests/rsvp-verified-effect.test.ts > RSVP existing-state versus this-turn-effect evidence > keeps the exact frozen companion rejection when attendance echo is absent
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:30.529Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 7001,
+  selected_event_name: 'Michelle & Jorge'
+}
+
+stderr | tests/rsvp-verified-effect.test.ts > RSVP existing-state versus this-turn-effect evidence > keeps the exact frozen companion rejection when attendance echo is absent
+{"event":"unmapped_customer_wire_key","endpoint":"/guest/gift-purchases","fieldPath":"pending_orders"}
+{"event":"unmapped_customer_wire_key","endpoint":"/guest/gift-purchases","fieldPath":"completed_orders"}
+{"event":"unmapped_customer_wire_key","endpoint":"/guest/gift-purchases","fieldPath":"carts"}
+
+stderr | tests/rsvp-verified-effect.test.ts > RSVP existing-state versus this-turn-effect evidence > keeps the exact frozen companion rejection when attendance echo is absent
+{"event":"unmapped_customer_wire_key","endpoint":"/guest/gift-purchases","fieldPath":"pending_orders"}
+{"event":"unmapped_customer_wire_key","endpoint":"/guest/gift-purchases","fieldPath":"completed_orders"}
+{"event":"unmapped_customer_wire_key","endpoint":"/guest/gift-purchases","fieldPath":"carts"}
+
+stdout | tests/rsvp-verified-effect.test.ts > RSVP existing-state versus this-turn-effect evidence > keeps the exact frozen companion rejection when attendance echo is absent
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:30.556Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 7001,
+  selected_event_name: 'Michelle & Jorge'
+}
+
+stdout | tests/rsvp-verified-effect.test.ts > RSVP existing-state versus this-turn-effect evidence > does not bind an unmatched numeric event ID to the only available invitation
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:30.566Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'needs_event_selection',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  candidate_event_ids: [ 205 ]
+}
+
+stdout | tests/rsvp-verified-effect.test.ts > RSVP existing-state versus this-turn-effect evidence > existing confirmed attendance without a write claims no completed work and no effect receipt
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:30.578Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+
+stdout | tests/rsvp-verified-effect.test.ts > RSVP existing-state versus this-turn-effect evidence > an attempted write the backend reports as already responded stays unapplied existing state
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:30.591Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+
+ ✓ tests/rsvp-verified-effect.test.ts  (19 tests) 557ms
+stderr | tests/eval-fixture-gateway.test.ts > eval fixture seam > loads Carina with the realistic international phone and preserves the current partitioned order
+{"event":"unmapped_customer_wire_key","endpoint":"/guest/gift-purchases","fieldPath":"purchases.name"}
+{"event":"unmapped_customer_wire_key","endpoint":"/guest/gift-purchases","fieldPath":"purchases.email"}
+{"event":"unmapped_customer_wire_key","endpoint":"/guest/gift-purchases","fieldPath":"purchases.payment_method"}
+{"event":"unmapped_customer_wire_key","endpoint":"/guest/gift-purchases","fieldPath":"purchases.name"}
+{"event":"unmapped_customer_wire_key","endpoint":"/guest/gift-purchases","fieldPath":"purchases.email"}
+{"event":"unmapped_customer_wire_key","endpoint":"/guest/gift-purchases","fieldPath":"purchases.payment_method"}
+
+ ✓ tests/eval-fixture-gateway.test.ts  (18 tests) 223ms
+stdout | tests/message-response-classifier.test.ts > OpenAiMessageResponseClassifier > uses Structured Outputs with bounded context, history window, and a suppression decision
+{
+  event: 'openai_stage_started',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000,
+  duration_ms: 46
+}
+
+stdout | tests/message-response-classifier.test.ts > OpenAiMessageResponseClassifier > uses Structured Outputs with bounded context, history window, and a suppression decision
+{
+  event: 'openai_stage_started',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000,
+  duration_ms: 3
+}
+
+stdout | tests/message-response-classifier.test.ts > OpenAiMessageResponseClassifier > fails open with an explicit unavailable decision on unusable output
+{
+  event: 'openai_stage_started',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000
+}
+
+stderr | tests/message-response-classifier.test.ts > OpenAiMessageResponseClassifier > fails open with an explicit unavailable decision on unusable output
+{
+  event: 'openai_stage_failed',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000,
+  duration_ms: 8,
+  error_name: 'TypeError',
+  error_message: "Cannot use 'in' operator to search for 'object' in not-json"
+}
+
+stderr | tests/message-response-classifier.test.ts > OpenAiMessageResponseClassifier > fails open with an explicit unavailable decision on unusable output
+<empty line>
+stdout | tests/message-response-classifier.test.ts > OpenAiMessageResponseClassifier > fails open with an explicit unavailable decision on unusable output
+{
+  event: 'openai_stage_started',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000,
+  duration_ms: 1
+}
+
+stdout | tests/message-response-classifier.test.ts > OpenAiMessageResponseClassifier > propagates permanent quota exhaustion with one HTTP request and no fallback
+{
+  event: 'openai_stage_started',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000
+}
+
+stderr | tests/message-response-classifier.test.ts > OpenAiMessageResponseClassifier > propagates permanent quota exhaustion with one HTTP request and no fallback
+{
+  event: 'openai_stage_failed',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000,
+  duration_ms: 3,
+  error_name: 'Error',
+  error_message: '429 You exceeded your current quota.'
+}
+
+stdout | tests/message-response-classifier.test.ts > OpenAiMessageResponseClassifier > retries a transient rate limit and respects a zero retry delay
+{
+  event: 'openai_stage_started',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000
+}
+
+stdout | tests/message-response-classifier.test.ts > OpenAiMessageResponseClassifier > retries a transient rate limit and respects a zero retry delay
+{
+  event: 'openai_stage_completed',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000,
+  duration_ms: 68
+}
+
+stdout | tests/message-response-classifier.test.ts > OpenAiMessageResponseClassifier > accepts high-confidence automated suppression with or without outbound context
+{
+  event: 'openai_stage_started',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000,
+  duration_ms: 2
+}
+{
+  event: 'openai_stage_started',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000,
+  duration_ms: 2
+}
+
+stdout | tests/message-response-classifier.test.ts > OpenAiMessageResponseClassifier > honors model suppression decisions without outbound context
+{
+  event: 'openai_stage_started',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000,
+  duration_ms: 2
+}
+
+stdout | tests/message-response-classifier.test.ts > OpenAiMessageResponseClassifier > honors model suppression decisions without outbound context
+{
+  event: 'openai_stage_started',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000,
+  duration_ms: 6
+}
+
+stdout | tests/message-response-classifier.test.ts > OpenAiMessageResponseClassifier > forces replies while an RSVP decision or a human-help offer is pending
+{
+  event: 'openai_stage_started',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000,
+  duration_ms: 5
+}
+
+ ✓ tests/model-output-origin.test.ts  (31 tests) 487ms
+stdout | tests/message-response-classifier.test.ts > OpenAiMessageResponseClassifier > forces replies while an RSVP decision or a human-help offer is pending
+{
+  event: 'openai_stage_started',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000,
+  duration_ms: 1
+}
+
+stdout | tests/message-response-classifier.test.ts > OpenAiMessageResponseClassifier > forces actionable campaign replies through extraction from typed campaign evidence
+{
+  event: 'openai_stage_started',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000,
+  duration_ms: 2
+}
+{
+  event: 'openai_stage_started',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000,
+  duration_ms: 1
+}
+
+stdout | tests/message-response-classifier.test.ts > OpenAiMessageResponseClassifier > suppresses the reported campaign decline without reopening the conversation
+{
+  event: 'openai_stage_started',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000,
+  duration_ms: 2
+}
+
+stdout | tests/message-response-classifier.test.ts > OpenAiMessageResponseClassifier > selects the campaign or general profile by newest campaign evidence
+{
+  event: 'openai_stage_started',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000,
+  duration_ms: 0
+}
+
+stdout | tests/message-response-classifier.test.ts > OpenAiMessageResponseClassifier > selects the campaign or general profile by newest campaign evidence
+{
+  event: 'openai_stage_started',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000,
+  duration_ms: 3
+}
+
+stdout | tests/message-response-classifier.test.ts > OpenAiMessageResponseClassifier > resolves automated suppression by confidence and sender scope
+{
+  event: 'openai_stage_started',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000,
+  duration_ms: 8
+}
+
+stdout | tests/message-response-classifier.test.ts > OpenAiMessageResponseClassifier > resolves automated suppression by confidence and sender scope
+{
+  event: 'openai_stage_started',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000,
+  duration_ms: 4
+}
+
+stdout | tests/message-response-classifier.test.ts > OpenAiMessageResponseClassifier > resolves automated suppression by confidence and sender scope
+{
+  event: 'openai_stage_started',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'classifier',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 16000,
+  duration_ms: 3
+}
+
+ ✓ tests/message-response-classifier.test.ts  (13 tests) 460ms
+ ✓ tests/whatsapp-dossier-twins.test.ts  (12 tests) 3100ms
+ ✓ tests/eval-live-target.test.ts  (12 tests) 6891ms
+ ✓ tests/owner-b-decision-2-prompt-economy.test.ts  (18 tests) 247ms
+ ✓ tests/sinenvolturas-gateway.test.ts  (11 tests) 415ms
+stderr | tests/sinenvolturas-gateway.test.ts > SinEnvolturasGateway strict search mapping > looks up user event context by email through the guest service endpoint
+{"event":"unmapped_customer_wire_key","endpoint":"/user-lookup","fieldPath":"subscriptions"}
+{"event":"unmapped_customer_wire_key","endpoint":"/user-lookup","fieldPath":"summary"}
+
+stderr | tests/sinenvolturas-gateway.test.ts > SinEnvolturasGateway strict search mapping > never substitutes a guest name for missing event metadata
+{"event":"unmapped_customer_wire_key","endpoint":"/user-lookup","fieldPath":"guest_in_events.name"}
+
+stderr | tests/sinenvolturas-gateway.test.ts > SinEnvolturasGateway strict search mapping > looks up phone user context and maps a missing record to null
+{"event":"unmapped_customer_wire_key","endpoint":"/user-lookup","fieldPath":"user.phone_number"}
+{"event":"unmapped_customer_wire_key","endpoint":"/user-lookup","fieldPath":"subscriptions"}
+{"event":"unmapped_customer_wire_key","endpoint":"/user-lookup","fieldPath":"summary"}
+
+stderr | tests/sinenvolturas-gateway.test.ts > SinEnvolturasGateway strict search mapping > looks up authenticated guest context with bearer token and verified email
+{"event":"unmapped_customer_wire_key","endpoint":"/user-lookup","fieldPath":"subscriptions"}
+{"event":"unmapped_customer_wire_key","endpoint":"/user-lookup","fieldPath":"summary"}
+
+stdout | tests/sinenvolturas-gateway.test.ts > SinEnvolturasGateway strict search mapping > hybrid search dedupes candidates and filters cross-country results
+[search-funnel] hybrid vector results: 1 #2(0.910)
+[search-funnel] hybrid enriched providers: 1
+[search-funnel] hybrid vector results: 3 #164(0.980), #173(0.960), #142(0.800)
+[search-funnel] hybrid enriched providers: 3
+
+ ✓ tests/batch4-state-machine.test.ts  (7 tests) 525ms
+stdout | tests/complete-customer-context-serialized.test.ts > complete authorized customer context in serialized model requests > carries every prepared record into extraction and reply despite route/reference changes
+complete-customer-context-request-metrics {"extractionInstructions":5981,"extractionInput":21738,"replyInstructions":680,"replyInput":32555,"profileJson":19906,"backendReads":{"totalReads":13,"peakConcurrency":4,"readsByOperation":{"agent.orders":1,"agent.gift_purchases":1,"provider.user_events":1,"agent.guest_events":1,"provider.phone_user_events":1,"agent.event_detail":6,"agent.guest_orders":1,"agent.guest_gift_purchases":1}}}
+
+ ✓ tests/complete-customer-context-serialized.test.ts  (4 tests) 320ms
+ ✓ tests/url-image-context.test.ts  (14 tests) 182ms
+ ✓ tests/c-terminal-auth.test.ts  (15 tests) 178ms
+ ✓ tests/r3-image-access-fallback.test.ts  (31 tests) 2077ms
+ ✓ tests/eval-snapshot-fixture-effects.test.ts  (17 tests) 3486ms
+stdout | tests/event-identity-rsvp.test.ts > event identity RSVP regressions > pending A never overrides an explicit B: only B is selected and mutated
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:41.352Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 2,
+  selected_event_id: 2,
+  selected_event_name: 'Boda Beto'
+}
+
+stdout | tests/event-identity-rsvp.test.ts > event identity RSVP regressions > sole A with a named B performs zero mutations and never answers A as B
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:41.361Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'needs_event_selection',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  candidate_event_ids: [ 1 ]
+}
+
+stdout | tests/event-identity-rsvp.test.ts > event identity RSVP regressions > identical names with different IDs, guests and dates never merge
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:41.365Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'needs_event_selection',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 2,
+  candidate_event_ids: [ 1, 2 ]
+}
+
+stdout | tests/event-identity-rsvp.test.ts > event identity RSVP regressions > missing-ID A never lends its date to dateless B
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:41.377Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'needs_event_selection',
+  coverage: 'partial',
+  resolution: 'authoritative_invitation',
+  invitation_count: 2,
+  candidate_event_ids: [ 2, null ]
+}
+
+stdout | tests/event-identity-rsvp.test.ts > event identity RSVP regressions > host-set willAttend=true with hasResponded=false displays 'attending' consistently
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:41.381Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 1,
+  selected_event_name: 'Boda Ana'
+}
+
+stdout | tests/event-identity-rsvp.test.ts > event identity RSVP regressions > host-set willAttend=false with hasResponded=false displays 'declining' consistently
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:41.384Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 1,
+  selected_event_name: 'Boda Ana'
+}
+
+stdout | tests/event-identity-rsvp.test.ts > event identity RSVP regressions > shared name across different guests never auto-selects: asks a bounded selection
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:41.387Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'needs_event_selection',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 2,
+  candidate_event_ids: [ 100, 200 ]
+}
+
+stdout | tests/event-identity-rsvp.test.ts > event identity RSVP regressions > B after A then back to A preserves both fact sets per requested target
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:41.391Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 2,
+  selected_event_id: 1,
+  selected_event_name: 'Boda Ana'
+}
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:41.392Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 2,
+  selected_event_id: 2,
+  selected_event_name: 'Boda Beto'
+}
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:41.394Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 2,
+  selected_event_id: 1,
+  selected_event_name: 'Boda Ana'
+}
+
+ ✓ tests/event-identity-rsvp.test.ts  (16 tests) 96ms
+ ✓ tests/perf-trace.test.ts  (3 tests) 18ms
+ ✓ tests/s08-purchase-reconciliation.test.ts  (13 tests) 55ms
+ ✓ tests/close-completed-evidence.test.ts  (9 tests) 99ms
+ ✓ tests/rsvp-handoff-multi-person.test.ts  (8 tests) 71ms
+stdout | tests/rsvp-handoff-multi-person.test.ts > RSVP multi-person handoff (T11) > single-person does NOT handoff and proceeds to normal RSVP backend (lookup called)
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:13:42.501Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 38331,
+  selected_event_name: 'Otra celebración prueba'
+}
+
+stdout | tests/knowledge-retrieval-gateway.test.ts > OpenAiKnowledgeRetrievalGateway > searches the configured vector store with the complete semantic query
+{
+  event: 'openai_stage_started',
+  stage: 'knowledge_retrieval',
+  model: 'vector_store_search',
+  timeout_ms: 8000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'knowledge_retrieval',
+  model: 'vector_store_search',
+  timeout_ms: 8000,
+  duration_ms: 2
+}
+
+stdout | tests/knowledge-retrieval-gateway.test.ts > OpenAiKnowledgeRetrievalGateway > expands snapshot articles with full-article citation evidence
+{
+  event: 'openai_stage_started',
+  stage: 'knowledge_retrieval',
+  model: 'vector_store_search',
+  timeout_ms: 8000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'knowledge_retrieval',
+  model: 'vector_store_search',
+  timeout_ms: 8000,
+  duration_ms: 0
+}
+
+stdout | tests/knowledge-retrieval-gateway.test.ts > OpenAiKnowledgeRetrievalGateway > expands snapshot articles with full-article citation evidence
+{
+  event: 'openai_stage_started',
+  stage: 'knowledge_retrieval',
+  model: 'vector_store_search',
+  timeout_ms: 8000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'knowledge_retrieval',
+  model: 'vector_store_search',
+  timeout_ms: 8000,
+  duration_ms: 0
+}
+
+stdout | tests/knowledge-retrieval-gateway.test.ts > OpenAiKnowledgeRetrievalGateway > keeps chunks when expansion is unavailable or unsafe
+{
+  event: 'openai_stage_started',
+  stage: 'knowledge_retrieval',
+  model: 'vector_store_search',
+  timeout_ms: 8000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'knowledge_retrieval',
+  model: 'vector_store_search',
+  timeout_ms: 8000,
+  duration_ms: 0
+}
+{
+  event: 'openai_stage_started',
+  stage: 'knowledge_retrieval',
+  model: 'vector_store_search',
+  timeout_ms: 8000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'knowledge_retrieval',
+  model: 'vector_store_search',
+  timeout_ms: 8000,
+  duration_ms: 1
+}
+
+stdout | tests/knowledge-retrieval-gateway.test.ts > OpenAiKnowledgeRetrievalGateway > keeps chunks when expansion is unavailable or unsafe
+{
+  event: 'openai_stage_started',
+  stage: 'knowledge_retrieval',
+  model: 'vector_store_search',
+  timeout_ms: 8000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'knowledge_retrieval',
+  model: 'vector_store_search',
+  timeout_ms: 8000,
+  duration_ms: 0
+}
+
+stdout | tests/knowledge-retrieval-gateway.test.ts > OpenAiKnowledgeRetrievalGateway > preserves the official citation for a first-ranked commission article below a score threshold
+{
+  event: 'openai_stage_started',
+  stage: 'knowledge_retrieval',
+  model: 'vector_store_search',
+  timeout_ms: 8000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'knowledge_retrieval',
+  model: 'vector_store_search',
+  timeout_ms: 8000,
+  duration_ms: 1
+}
+
+stdout | tests/knowledge-retrieval-gateway.test.ts > OpenAiKnowledgeRetrievalGateway > retries the batch check after a list failure instead of caching it
+{
+  event: 'openai_stage_started',
+  stage: 'knowledge_retrieval',
+  model: 'vector_store_search',
+  timeout_ms: 8000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'knowledge_retrieval',
+  model: 'vector_store_search',
+  timeout_ms: 8000,
+  duration_ms: 1
+}
+{
+  event: 'openai_stage_started',
+  stage: 'knowledge_retrieval',
+  model: 'vector_store_search',
+  timeout_ms: 8000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'knowledge_retrieval',
+  model: 'vector_store_search',
+  timeout_ms: 8000,
+  duration_ms: 0
+}
+
+stdout | tests/knowledge-retrieval-gateway.test.ts > OpenAiKnowledgeRetrievalGateway > skips a snapshot article whose hash disagrees with the manifest
+{
+  event: 'openai_stage_started',
+  stage: 'knowledge_retrieval',
+  model: 'vector_store_search',
+  timeout_ms: 8000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'knowledge_retrieval',
+  model: 'vector_store_search',
+  timeout_ms: 8000,
+  duration_ms: 0
+}
+
+stdout | tests/knowledge-retrieval-gateway.test.ts > OpenAiKnowledgeRetrievalGateway > stays on chunks without snapshot or help-center configuration
+{
+  event: 'openai_stage_started',
+  stage: 'knowledge_retrieval',
+  model: 'vector_store_search',
+  timeout_ms: 8000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'knowledge_retrieval',
+  model: 'vector_store_search',
+  timeout_ms: 8000,
+  duration_ms: 0
+}
+{
+  event: 'openai_stage_started',
+  stage: 'knowledge_retrieval',
+  model: 'vector_store_search',
+  timeout_ms: 8000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'knowledge_retrieval',
+  model: 'vector_store_search',
+  timeout_ms: 8000,
+  duration_ms: 0
+}
+
+stdout | tests/knowledge-retrieval-gateway.test.ts > OpenAiKnowledgeRetrievalGateway > excludes case-specific replies even when they outrank the official FAQ
+{
+  event: 'openai_stage_started',
+  stage: 'knowledge_retrieval',
+  model: 'vector_store_search',
+  timeout_ms: 8000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'knowledge_retrieval',
+  model: 'vector_store_search',
+  timeout_ms: 8000,
+  duration_ms: 0
+}
+
+stdout | tests/knowledge-retrieval-gateway.test.ts > OpenAiKnowledgeRetrievalGateway > returns a retryable failure without exposing query content
+{
+  event: 'openai_stage_started',
+  stage: 'knowledge_retrieval',
+  model: 'vector_store_search',
+  timeout_ms: 8000
+}
+
+stderr | tests/knowledge-retrieval-gateway.test.ts > OpenAiKnowledgeRetrievalGateway > returns a retryable failure without exposing query content
+{
+  event: 'openai_stage_failed',
+  stage: 'knowledge_retrieval',
+  model: 'vector_store_search',
+  timeout_ms: 8000,
+  duration_ms: 0,
+  error_name: 'Error',
+  error_message: 'temporary failure'
+}
+
+ ✓ tests/knowledge-retrieval-gateway.test.ts  (12 tests) 121ms
+ ✓ tests/artifact-redaction.test.ts  (11 tests) 1267ms
+ ✓ tests/conversation-turn-coordinator.test.ts  (16 tests) 161ms
+ ✓ tests/extraction-schemas.test.ts  (19 tests) 238ms
+ ✓ tests/eval-scheduler.test.ts  (13 tests) 442ms
+stdout | tests/matched-request-measurement.test.ts > matched request measurement after SDK serialization > aggregates extraction plus reply stages for one matched turn
+{
+  event: 'openai_stage_started',
+  stage: 'extraction',
+  model: 'gpt-test',
+  timeout_ms: 35000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'extraction',
+  model: 'gpt-test',
+  timeout_ms: 35000,
+  duration_ms: 412,
+  response_id: 'resp_stepd_extract_1',
+  request_id: 'req-stepd-1',
+  attempt_count: 1
+}
+
+ ✓ tests/semantic-silence-integration.test.ts  (11 tests) 450ms
+ ✓ tests/decisions-router-client.test.ts  (23 tests) 962ms
+stdout | tests/matched-request-measurement.test.ts > matched request measurement after SDK serialization > aggregates extraction plus reply stages for one matched turn
+{
+  event: 'openai_stage_started',
+  stage: 'reply',
+  model: 'gpt-test',
+  timeout_ms: 22000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'reply',
+  model: 'gpt-test',
+  timeout_ms: 22000,
+  duration_ms: 268,
+  response_id: 'resp_stepd_1',
+  request_id: 'req-stepd-1',
+  attempt_count: 1
+}
+
+stdout | tests/matched-request-measurement.test.ts > matched request measurement after SDK serialization > records per-domain reply totals for auth
+{
+  event: 'openai_stage_started',
+  stage: 'reply',
+  model: 'gpt-test',
+  timeout_ms: 22000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'reply',
+  model: 'gpt-test',
+  timeout_ms: 22000,
+  duration_ms: 84,
+  response_id: 'resp_stepd_1',
+  request_id: 'req-stepd-1',
+  attempt_count: 1
+}
+
+stdout | tests/matched-request-measurement.test.ts > matched request measurement after SDK serialization > records per-domain reply totals for purchase
+{
+  event: 'openai_stage_started',
+  stage: 'reply',
+  model: 'gpt-test',
+  timeout_ms: 22000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'reply',
+  model: 'gpt-test',
+  timeout_ms: 22000,
+  duration_ms: 38,
+  response_id: 'resp_stepd_1',
+  request_id: 'req-stepd-1',
+  attempt_count: 1
+}
+
+stdout | tests/matched-request-measurement.test.ts > matched request measurement after SDK serialization > records per-domain reply totals for faq
+{
+  event: 'openai_stage_started',
+  stage: 'reply',
+  model: 'gpt-test',
+  timeout_ms: 22000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'reply',
+  model: 'gpt-test',
+  timeout_ms: 22000,
+  duration_ms: 30,
+  response_id: 'resp_stepd_1',
+  request_id: 'req-stepd-1',
+  attempt_count: 1
+}
+
+stdout | tests/matched-request-measurement.test.ts > matched request measurement after SDK serialization > records per-domain reply totals for rsvp
+{
+  event: 'openai_stage_started',
+  stage: 'reply',
+  model: 'gpt-test',
+  timeout_ms: 22000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'reply',
+  model: 'gpt-test',
+  timeout_ms: 22000,
+  duration_ms: 20,
+  response_id: 'resp_stepd_1',
+  request_id: 'req-stepd-1',
+  attempt_count: 1
+}
+
+stdout | tests/matched-request-measurement.test.ts > matched request measurement after SDK serialization > records per-domain reply totals for close
+{
+  event: 'openai_stage_started',
+  stage: 'reply',
+  model: 'gpt-test',
+  timeout_ms: 22000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'reply',
+  model: 'gpt-test',
+  timeout_ms: 22000,
+  duration_ms: 51,
+  response_id: 'resp_stepd_1',
+  request_id: 'req-stepd-1',
+  attempt_count: 1
+}
+
+ ✓ tests/matched-request-measurement.test.ts  (9 tests) 3162ms
+ ✓ tests/class1-fixes.test.ts  (5 tests) 140ms
+stdout | tests/image-sdk-wire.test.ts > installed-SDK image transport capture > serializes native URL and file_id image input through the installed SDK converter
+{
+  event: 'openai_stage_started',
+  stage: 'reply',
+  model: 'gpt-test',
+  timeout_ms: 22000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'reply',
+  model: 'gpt-test',
+  timeout_ms: 22000,
+  duration_ms: 125,
+  response_id: 'resp_img_wire_1',
+  request_id: 'req-sdk-wire',
+  attempt_count: 1
+}
+{
+  event: 'openai_stage_started',
+  stage: 'reply',
+  model: 'gpt-test',
+  timeout_ms: 22000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'reply',
+  model: 'gpt-test',
+  timeout_ms: 22000,
+  duration_ms: 17,
+  response_id: 'resp_img_wire_1',
+  request_id: 'req-sdk-file-wire',
+  attempt_count: 1
+}
+
+ ✓ tests/s10-model-projection.test.ts  (13 tests) 62ms
+ ❯ tests/high-risk-offline-twins.test.ts  (12 tests | 2 failed) 16719ms
+   ❯ tests/high-risk-offline-twins.test.ts > high-risk scenario offline twins (F3) > Diana thread: four inputs share one session and the detail turn reuses the single handoff receipt
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ❯ tests/high-risk-offline-twins.test.ts > high-risk scenario offline twins (F3) > token-seeded close: contact gathering never submits, explicit authorization submits once
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+stdout | tests/image-sdk-wire.test.ts > installed-SDK image transport capture > installed-SDK extraction transport capture > sends the uploaded file ref as native input_image on the production extraction payload
+{
+  event: 'openai_stage_started',
+  stage: 'extraction',
+  model: 'gpt-test',
+  timeout_ms: 35000
+}
+
+stderr | tests/image-sdk-wire.test.ts > installed-SDK image transport capture > installed-SDK extraction transport capture > sends the uploaded file ref as native input_image on the production extraction payload
+{
+  event: 'openai_stage_failed',
+  stage: 'extraction',
+  model: 'gpt-test',
+  timeout_ms: 35000,
+  duration_ms: 51,
+  error_name: 'Error',
+  error_message: '429 You exceeded your current quota.'
+}
+
+stdout | tests/image-sdk-wire.test.ts > installed-SDK image transport capture > installed-SDK extraction transport capture > sends the backend URL as native input_image on the production extraction payload
+{
+  event: 'openai_stage_started',
+  stage: 'extraction',
+  model: 'gpt-test',
+  timeout_ms: 35000
+}
+
+stderr | tests/image-sdk-wire.test.ts > installed-SDK image transport capture > installed-SDK extraction transport capture > sends the backend URL as native input_image on the production extraction payload
+{
+  event: 'openai_stage_failed',
+  stage: 'extraction',
+  model: 'gpt-test',
+  timeout_ms: 35000,
+  duration_ms: 20,
+  error_name: 'Error',
+  error_message: '429 You exceeded your current quota.'
+}
+
+stdout | tests/image-sdk-wire.test.ts > installed-SDK image transport capture > installed-SDK extraction transport capture > keeps the imageless extraction payload as the existing string input
+{
+  event: 'openai_stage_started',
+  stage: 'extraction',
+  model: 'gpt-test',
+  timeout_ms: 35000
+}
+
+stderr | tests/image-sdk-wire.test.ts > installed-SDK image transport capture > installed-SDK extraction transport capture > keeps the imageless extraction payload as the existing string input
+{
+  event: 'openai_stage_failed',
+  stage: 'extraction',
+  model: 'gpt-test',
+  timeout_ms: 35000,
+  duration_ms: 31,
+  error_name: 'Error',
+  error_message: '429 You exceeded your current quota.'
+}
+
+stdout | tests/image-sdk-wire.test.ts > installed-SDK image transport capture > image-evidence reply gating > omits planning categories and the capability catalog on image-evidence replies
+{
+  event: 'openai_stage_started',
+  stage: 'reply',
+  model: 'gpt-test',
+  timeout_ms: 22000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'reply',
+  model: 'gpt-test',
+  timeout_ms: 22000,
+  duration_ms: 7,
+  response_id: 'resp_img_wire_1',
+  request_id: 'req-sdk-image-suppress',
+  attempt_count: 1
+}
+
+ ✓ tests/image-sdk-wire.test.ts  (5 tests) 648ms
+stdout | tests/rsvp-lease-replay-integrity.test.ts > RSVP lease and replay integrity > restart after a host change performs no second write and never overwrites fresh state
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:14:00.558Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:14:00.617Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+
+ ✓ tests/rsvp-lease-replay-integrity.test.ts  (4 tests) 147ms
+ ✓ tests/acceptance-contract-mutations.test.ts  (5 tests) 39ms
+ ✓ tests/model-spans-origin.test.ts  (16 tests) 28ms
+ ✓ tests/dossier-purchase-fixtures.test.ts  (11 tests) 236ms
+ ✓ tests/semantic-judge.test.ts  (9 tests) 57ms
+ ✓ tests/f1-otp-terminal-handoff.test.ts  (7 tests) 298ms
+ ✓ tests/customer-event-task-continuity.test.ts  (3 tests) 5136ms
+ ✓ tests/l4-customer-context-service.test.ts  (4 tests) 437ms
+stdout | tests/rsvp-three-state-projection.test.ts > RSVP three-state projection (Paolo & Mariana fix) > reads every authorized phone event and keeps known states beside a resolved event
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:14:07.910Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'partial',
+  resolution: 'authoritative_invitation',
+  invitation_count: 3,
+  selected_event_id: 101,
+  selected_event_name: 'Evento A'
+}
+
+stdout | tests/rsvp-three-state-projection.test.ts > RSVP three-state projection (Paolo & Mariana fix) > projects resolved_single without candidate arrays for Paolo & Mariana attending
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:14:07.964Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 2,
+  selected_event_id: 1001,
+  selected_event_name: 'Paolo & Mariana'
+}
+
+stdout | tests/rsvp-three-state-projection.test.ts > RSVP three-state projection (Paolo & Mariana fix) > rejects records lacking event identity and keeps projection deterministic
+{
+  event: 'rsvp_reconcile_rejected_missing_identity',
+  observed_at: '2026-10-27T05:14:07.985Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  authoritative_before: 3,
+  authoritative_after: 2,
+  associated_before: 0,
+  associated_after: 0
+}
+
+stdout | tests/rsvp-three-state-projection.test.ts > RSVP three-state projection (Paolo & Mariana fix) > produces stable ordering for needs_event_selection candidates
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:14:08.024Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'needs_event_selection',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 2,
+  candidate_event_ids: [ 10, 20 ]
+}
+
+stdout | tests/rsvp-three-state-projection.test.ts > RSVP three-state projection (Paolo & Mariana fix) > keeps broad candidate list only in needs_event_selection
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:14:08.031Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Solo Evento'
+}
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:14:08.039Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'needs_event_selection',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 2,
+  candidate_event_ids: [ 205, 205 ]
+}
+
+stdout | tests/rsvp-three-state-projection.test.ts > RSVP three-state projection (Paolo & Mariana fix) > produces identical evidence for identical inputs (deterministic rendering)
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:14:08.071Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 2,
+  selected_event_id: 1001,
+  selected_event_name: 'Paolo & Mariana'
+}
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:14:08.082Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 2,
+  selected_event_id: 1001,
+  selected_event_name: 'Paolo & Mariana'
+}
+
+ ✓ tests/rsvp-three-state-projection.test.ts  (9 tests) 271ms
+ ✓ tests/purchase-evidence-facts.test.ts  (11 tests) 34ms
+stdout | tests/model-input-packet-b.test.ts > Packet B model input and continuity > native media rides the reply call on URL turns and delayed file follow-ups
+{
+  event: 'information_auth_flow_started',
+  observed_at: '2026-10-27T05:14:08.370Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '76303a09-c287-4b90-9f0a-f9c79ec6d8dd',
+  plan_id: '01M5XWFDE20YKDRHYBTQHP8W0E',
+  auth_flow_operation_id: '76303a09-c287-4b90-9f0a-f9c79ec6d8dd',
+  prior_auth_state: {
+    status: 'none',
+    auth_method: null,
+    email_present: false,
+    token_present: false,
+    otp_send_attempts: 0,
+    otp_non_delivery_reports: 0
+  },
+  trusted_contact_phone_present: true,
+  phone_confirmation: null,
+  requests: [
+    {
+      kind: 'purchase',
+      request_id: 'information-1',
+      order_id_present: false
+    }
+  ],
+  user_message_length: 50,
+  extracted_email_present: false,
+  otp_present: false
+}
+{
+  event: 'information_auth_flow_completed',
+  observed_at: '2026-10-27T05:14:08.380Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '76303a09-c287-4b90-9f0a-f9c79ec6d8dd',
+  plan_id: '01M5XWFDE20YKDRHYBTQHP8W0E',
+  auth_flow_operation_id: '76303a09-c287-4b90-9f0a-f9c79ec6d8dd',
+  duration_ms: 12,
+  next_auth_state: {
+    status: 'none',
+    auth_method: null,
+    email_present: false,
+    token_present: false
+  },
+  authentication_present: false,
+  auth_block_reason: null
+}
+{
+  event: 'information_auth_execution_completed',
+  observed_at: '2026-10-27T05:14:08.381Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '76303a09-c287-4b90-9f0a-f9c79ec6d8dd',
+  plan_id: '01M5XWFDE20YKDRHYBTQHP8W0E',
+  auth_flow_operation_id: '76303a09-c287-4b90-9f0a-f9c79ec6d8dd',
+  duration_ms: 13,
+  summaries: []
+}
+
+stdout | tests/model-input-packet-b.test.ts > Packet B model input and continuity > delayed amount question reuses the stored file natively without resend
+{
+  event: 'information_auth_flow_started',
+  observed_at: '2026-10-27T05:14:08.427Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '6a2ff376-d35b-48fb-82e7-256684ca65b6',
+  plan_id: 'packet-b-media',
+  auth_flow_operation_id: '6a2ff376-d35b-48fb-82e7-256684ca65b6',
+  prior_auth_state: {
+    status: 'none',
+    auth_method: null,
+    email_present: false,
+    token_present: false,
+    otp_send_attempts: 0,
+    otp_non_delivery_reports: 0
+  },
+  trusted_contact_phone_present: true,
+  phone_confirmation: null,
+  requests: [],
+  user_message_length: 16,
+  extracted_email_present: false,
+  otp_present: false
+}
+{
+  event: 'information_auth_flow_completed',
+  observed_at: '2026-10-27T05:14:08.428Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '6a2ff376-d35b-48fb-82e7-256684ca65b6',
+  plan_id: 'packet-b-media',
+  auth_flow_operation_id: '6a2ff376-d35b-48fb-82e7-256684ca65b6',
+  duration_ms: 0,
+  next_auth_state: {
+    status: 'none',
+    auth_method: null,
+    email_present: false,
+    token_present: false
+  },
+  authentication_present: false,
+  auth_block_reason: null
+}
+{
+  event: 'information_auth_execution_completed',
+  observed_at: '2026-10-27T05:14:08.434Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '6a2ff376-d35b-48fb-82e7-256684ca65b6',
+  plan_id: 'packet-b-media',
+  auth_flow_operation_id: '6a2ff376-d35b-48fb-82e7-256684ca65b6',
+  duration_ms: 7,
+  summaries: []
+}
+
+ ✓ tests/model-input-packet-b.test.ts  (6 tests) 528ms
+ ✓ tests/customer-profile-deadline.test.ts  (6 tests) 306ms
+ ✓ tests/d-grounded-routes.test.ts  (5 tests) 272ms
+stdout | tests/eval-execution-isolation.test.ts > O1 real-backend isolation fails closed > fails setup closed without a gateway, identity, or verifiable prior
+{
+  event: 'auth_http_request_started',
+  observed_at: '2026-10-27T05:14:12.270Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: '3af78499-70ee-497e-a136-d12eac2309a2',
+  service: 'agent_api',
+  operation: 'lookup_guest_events_by_phone',
+  method: 'GET',
+  route: '/guest/events',
+  max_attempts: 1,
+  request_headers_present: [ 'X-Agent-Key' ],
+  request_body_fields: []
+}
+{
+  event: 'auth_http_response_received',
+  observed_at: '2026-10-27T05:14:12.290Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: '3af78499-70ee-497e-a136-d12eac2309a2',
+  service: 'agent_api',
+  operation: 'lookup_guest_events_by_phone',
+  method: 'GET',
+  route: '/guest/events',
+  attempt: 1,
+  max_attempts: 1,
+  attempt_duration_ms: 16,
+  total_duration_ms: 20,
+  response_status: 200,
+  response_ok: true,
+  response_headers: { 'content-type': 'application/json' },
+  response_body_summary: { kind: 'object', fields: [ 'status', 'data' ], status: true }
+}
+{
+  event: 'auth_http_request_started',
+  observed_at: '2026-10-27T05:14:12.306Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: '848ecc54-5ae5-4348-87a5-e0f5babadeac',
+  service: 'agent_api',
+  operation: 'lookup_guest_events_by_phone',
+  method: 'GET',
+  route: '/guest/events',
+  max_attempts: 1,
+  request_headers_present: [ 'X-Agent-Key' ],
+  request_body_fields: []
+}
+{
+  event: 'auth_http_response_received',
+  observed_at: '2026-10-27T05:14:12.311Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: '848ecc54-5ae5-4348-87a5-e0f5babadeac',
+  service: 'agent_api',
+  operation: 'lookup_guest_events_by_phone',
+  method: 'GET',
+  route: '/guest/events',
+  attempt: 1,
+  max_attempts: 1,
+  attempt_duration_ms: 4,
+  total_duration_ms: 5,
+  response_status: 200,
+  response_ok: true,
+  response_headers: { 'content-type': 'application/json' },
+  response_body_summary: { kind: 'object', fields: [ 'status', 'data' ], status: true }
+}
+{
+  event: 'auth_http_request_started',
+  observed_at: '2026-10-27T05:14:12.315Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: 'a6c0a84c-d5db-4037-8e4e-3fb89a0d0ddd',
+  service: 'agent_api',
+  operation: 'lookup_guest_event_detail',
+  method: 'GET',
+  route: '/event',
+  max_attempts: 1,
+  request_headers_present: [ 'X-Agent-Key' ],
+  request_body_fields: []
+}
+{
+  event: 'auth_http_response_received',
+  observed_at: '2026-10-27T05:14:12.315Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: 'a6c0a84c-d5db-4037-8e4e-3fb89a0d0ddd',
+  service: 'agent_api',
+  operation: 'lookup_guest_event_detail',
+  method: 'GET',
+  route: '/event',
+  attempt: 1,
+  max_attempts: 1,
+  attempt_duration_ms: 0,
+  total_duration_ms: 1,
+  response_status: 200,
+  response_ok: true,
+  response_headers: { 'content-type': 'application/json' },
+  response_body_summary: { kind: 'object', fields: [ 'status', 'data' ], status: true }
+}
+
+ ✓ tests/eval-execution-isolation.test.ts  (10 tests) 5605ms
+stdout | tests/fixture-received-history.test.ts > fixture received history preservation (Finding 1) > carries the three-turn support-detail lifecycle into serialized extractor and reply inputs
+{
+  event: 'information_auth_flow_started',
+  observed_at: '2026-10-27T05:14:14.096Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '115db251-b1e7-4ded-9e26-257a39d13a29',
+  plan_id: '01M5XWFK018HGNP1ZKFFYGCTAP',
+  auth_flow_operation_id: '115db251-b1e7-4ded-9e26-257a39d13a29',
+  prior_auth_state: {
+    status: 'none',
+    auth_method: null,
+    email_present: false,
+    token_present: false,
+    otp_send_attempts: 0,
+    otp_non_delivery_reports: 0
+  },
+  trusted_contact_phone_present: true,
+  phone_confirmation: null,
+  requests: [ { kind: 'faq', request_id: 'information-1' } ],
+  user_message_length: 39,
+  extracted_email_present: false,
+  otp_present: false
+}
+{
+  event: 'information_auth_flow_completed',
+  observed_at: '2026-10-27T05:14:14.098Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '115db251-b1e7-4ded-9e26-257a39d13a29',
+  plan_id: '01M5XWFK018HGNP1ZKFFYGCTAP',
+  auth_flow_operation_id: '115db251-b1e7-4ded-9e26-257a39d13a29',
+  duration_ms: 2,
+  next_auth_state: {
+    status: 'none',
+    auth_method: null,
+    email_present: false,
+    token_present: false
+  },
+  authentication_present: false,
+  auth_block_reason: null
+}
+{
+  event: 'information_auth_execution_completed',
+  observed_at: '2026-10-27T05:14:14.100Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '115db251-b1e7-4ded-9e26-257a39d13a29',
+  plan_id: '01M5XWFK018HGNP1ZKFFYGCTAP',
+  auth_flow_operation_id: '115db251-b1e7-4ded-9e26-257a39d13a29',
+  duration_ms: 5,
+  summaries: [
+    {
+      requestId: 'information-1',
+      kind: 'faq',
+      status: 'completed',
+      source: 'knowledge_base',
+      outcomeCode: 'completed_with_results',
+      retryable: null,
+      queryHash: 'a93c7c77a2da1caafa2ca62d91504660279b46c16bd90369e38627f3e7cb4df1',
+      evidence: [Array],
+      resultCount: 1,
+      durationMs: 0
+    }
+  ]
+}
+
+ ✓ tests/fixture-received-history.test.ts  (5 tests) 676ms
+ ✓ tests/f-trace-judge-repair.test.ts  (9 tests) 1077ms
+ ✓ tests/s11-rsvp-durability.test.ts  (12 tests) 78ms
+ ✓ tests/rsvp-mutation-authorization.test.ts  (4 tests) 160ms
+stdout | tests/rsvp-mutation-authorization.test.ts > RSVP mutation authorization (awaiting_action vs awaiting_event_selection) > awaiting_action without current-turn decision reports declining and offers one change without mutating
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:14:17.846Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:14:17.873Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+
+stdout | tests/rsvp-mutation-authorization.test.ts > RSVP mutation authorization (awaiting_action vs awaiting_event_selection) > awaiting_event_selection without current-turn action but stored pending_action still executes selection continuation
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:14:17.895Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 2,
+  selected_event_id: 206,
+  selected_event_name: 'Cumpleanos de Marta'
+}
+
+stdout | tests/rsvp-mutation-authorization.test.ts > RSVP mutation authorization (awaiting_action vs awaiting_event_selection) > current-turn explicit action executes in awaiting_action status
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:14:17.916Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+
+stdout | tests/rsvp-mutation-authorization.test.ts > RSVP mutation authorization (awaiting_action vs awaiting_event_selection) > current-turn explicit action executes in awaiting_event_selection status
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:14:17.931Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 2,
+  selected_event_id: 205,
+  selected_event_name: 'Matrimonio de Ana y Luis'
+}
+
+ ✓ tests/profile-inference-e2.test.ts  (14 tests) 3598ms
+ ✓ tests/eval-runner-judge-context.test.ts  (9 tests) 54ms
+ ✓ tests/close-proceed-confirmed.test.ts  (5 tests) 390ms
+ ✓ tests/s06-information-auth.test.ts  (11 tests) 18ms
+ ✓ tests/l4-owner-routing.test.ts  (15 tests) 34ms
+ ✓ tests/phone-identity-rejection.test.ts  (3 tests) 159ms
+ ✓ tests/token-defer-close-yield.test.ts  (3 tests) 263ms
+ ✓ tests/handler-wire-observation.test.ts  (8 tests) 105ms
+ ✓ tests/message-renderer.test.ts  (8 tests) 29ms
+ ✓ tests/s07-rsvp-decision-policy.test.ts  (17 tests) 43ms
+ ✓ tests/s16-turn-capability.test.ts  (7 tests) 96ms
+stdout | tests/owner-c-decision-4-model-deployment.test.ts > Owner C decision 4 model/deployment contracts > sends low reasoning for the gpt-6-luna classifier call
+{
+  event: 'openai_stage_started',
+  stage: 'classifier',
+  model: 'gpt-6-luna',
+  timeout_ms: 16000
+}
+{
+  event: 'openai_stage_completed',
+  stage: 'classifier',
+  model: 'gpt-6-luna',
+  timeout_ms: 16000,
+  duration_ms: 29
+}
+
+ ✓ tests/owner-c-decision-4-model-deployment.test.ts  (11 tests) 511ms
+ ✓ tests/fixture-migration-25.test.ts  (13 tests) 7945ms
+stdout | tests/decisions-router-input.test.ts > decisions router input builder > is deterministic and stays inside the byte budget
+rendered router input bytes: 2943
+
+stdout | tests/decisions-router-input.test.ts > decisions router input builder > stays inside the byte budget on a heavy turn
+rendered heavy router input bytes: 6928
+
+ ✓ tests/decisions-router-input.test.ts  (13 tests) 133ms
+ ✓ tests/campaign-reference-context.test.ts  (7 tests) 196ms
+ ✓ tests/request-observability.test.ts  (9 tests) 12ms
+ ✓ tests/eval-purchase-evidence-adapter.test.ts  (5 tests) 34ms
+stdout | tests/f2-frozen-closure.test.ts > F2c frozen concise and suppression guard > packet C gratitude follow-up neither replays a stale selection nor claims a new write
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:14:28.284Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'needs_event_selection',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 2,
+  candidate_event_ids: [ 41, 42 ]
+}
+
+ ✓ tests/f2-frozen-closure.test.ts  (2 tests) 198ms
+ ✓ tests/t6-deterministic-twins.test.ts  (3 tests) 55ms
+ ✓ tests/support-outcome.test.ts  (16 tests) 23ms
+ ✓ tests/eval-pricing.test.ts  (7 tests) 21ms
+ ✓ tests/s05-conversation-continuity.test.ts  (8 tests) 19ms
+ ✓ tests/live-behavior-cli.test.ts  (8 tests) 2460ms
+ ✓ tests/s02-fixture-simulation.test.ts  (9 tests) 64ms
+ ✓ tests/a-fixture-correctness.test.ts  (4 tests) 158ms
+stdout | tests/rsvp-deterministic-current-state.test.ts > RSVP model output and typed current state > passes current-state evidence to the model and preserves both model paragraphs
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:14:33.904Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 38331,
+  selected_event_name: 'Otra celebración prueba'
+}
+
+stdout | tests/rsvp-deterministic-current-state.test.ts > RSVP model output and typed current state > keeps a declining invitation offer typed while model wording remains authoritative
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:14:34.000Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 38331,
+  selected_event_name: 'Evento Decline'
+}
+
+stdout | tests/rsvp-deterministic-current-state.test.ts > RSVP model output and typed current state > does not prepend or replace a generated RSVP response
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:14:34.038Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'unavailable',
+  coverage: 'complete',
+  resolution: 'not_found',
+  invitation_count: 0,
+  reason: 'no_invitations'
+}
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:14:34.066Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 38331,
+  selected_event_name: 'Otra celebración prueba'
+}
+
+ ✓ tests/rsvp-deterministic-current-state.test.ts  (3 tests) 261ms
+ ✓ tests/lambda-turn-coordination.test.ts  (8 tests) 4822ms
+stdout | tests/rsvp-party-precision.test.ts > rsvp party detection precision (T12-fix) > jose twin: Si confirmamos la asistencia (event Gia Antonella) -> scope self, no handoff, RSVP lookups run
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:14:35.363Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 38331,
+  selected_event_name: 'Gia Antonella'
+}
+
+ ✓ tests/rsvp-party-precision.test.ts  (2 tests) 554ms
+ ✓ tests/lambda-request-contract.test.ts  (18 tests) 56ms
+stdout | tests/f3-capability-safe-read.test.ts > F3c safe read precedes the unsupported mutation handoff > reads gift purchases for dedication selection on fresh and persisted discovery turns
+{
+  event: 'information_auth_flow_started',
+  observed_at: '2026-10-27T05:14:38.759Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: 'a8f34df3-8b99-48fc-9477-b8ab2e841959',
+  plan_id: 'p-u-f3c-joaquin',
+  auth_flow_operation_id: 'a8f34df3-8b99-48fc-9477-b8ab2e841959',
+  prior_auth_state: {
+    status: 'none',
+    auth_method: null,
+    email_present: false,
+    token_present: false,
+    otp_send_attempts: 0,
+    otp_non_delivery_reports: 0
+  },
+  trusted_contact_phone_present: true,
+  phone_confirmation: null,
+  requests: [
+    {
+      kind: 'purchase',
+      request_id: 'information-1',
+      order_id_present: false
+    }
+  ],
+  user_message_length: 66,
+  extracted_email_present: false,
+  otp_present: false
+}
+{
+  event: 'information_auth_flow_completed',
+  observed_at: '2026-10-27T05:14:38.778Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: 'a8f34df3-8b99-48fc-9477-b8ab2e841959',
+  plan_id: 'p-u-f3c-joaquin',
+  auth_flow_operation_id: 'a8f34df3-8b99-48fc-9477-b8ab2e841959',
+  duration_ms: 22,
+  next_auth_state: {
+    status: 'none',
+    auth_method: null,
+    email_present: false,
+    token_present: false
+  },
+  authentication_present: false,
+  auth_block_reason: null
+}
+{
+  event: 'information_auth_execution_completed',
+  observed_at: '2026-10-27T05:14:38.781Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: 'a8f34df3-8b99-48fc-9477-b8ab2e841959',
+  plan_id: 'p-u-f3c-joaquin',
+  auth_flow_operation_id: 'a8f34df3-8b99-48fc-9477-b8ab2e841959',
+  duration_ms: 28,
+  summaries: [
+    {
+      requestId: 'capability-status-read',
+      kind: 'purchase',
+      status: 'completed',
+      source: 'agent_api',
+      outcomeCode: 'completed_with_results',
+      retryable: false,
+      queryHash: 'joaquin',
+      evidence: [],
+      resultCount: 2,
+      durationMs: 1,
+      accessMethod: 'trusted_phone_purchase',
+      resource: 'gift_purchases'
+    }
+  ]
+}
+{
+  event: 'information_auth_flow_started',
+  observed_at: '2026-10-27T05:14:38.921Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '4167f15f-d371-47f7-bc37-303192dacb0b',
+  plan_id: 'p-u-f3c-joaquin-persisted',
+  auth_flow_operation_id: '4167f15f-d371-47f7-bc37-303192dacb0b',
+  prior_auth_state: {
+    status: 'none',
+    auth_method: null,
+    email_present: false,
+    token_present: false,
+    otp_send_attempts: 0,
+    otp_non_delivery_reports: 0
+  },
+  trusted_contact_phone_present: true,
+  phone_confirmation: null,
+  requests: [
+    {
+      kind: 'purchase',
+      request_id: 'information-1',
+      order_id_present: false
+    }
+  ],
+  user_message_length: 66,
+  extracted_email_present: false,
+  otp_present: false
+}
+{
+  event: 'information_auth_flow_completed',
+  observed_at: '2026-10-27T05:14:38.922Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '4167f15f-d371-47f7-bc37-303192dacb0b',
+  plan_id: 'p-u-f3c-joaquin-persisted',
+  auth_flow_operation_id: '4167f15f-d371-47f7-bc37-303192dacb0b',
+  duration_ms: 1,
+  next_auth_state: {
+    status: 'none',
+    auth_method: null,
+    email_present: false,
+    token_present: false
+  },
+  authentication_present: false,
+  auth_block_reason: null
+}
+{
+  event: 'information_auth_execution_completed',
+  observed_at: '2026-10-27T05:14:38.934Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '4167f15f-d371-47f7-bc37-303192dacb0b',
+  plan_id: 'p-u-f3c-joaquin-persisted',
+  auth_flow_operation_id: '4167f15f-d371-47f7-bc37-303192dacb0b',
+  duration_ms: 13,
+  summaries: [
+    {
+      requestId: 'capability-status-read',
+      kind: 'purchase',
+      status: 'completed',
+      source: 'agent_api',
+      outcomeCode: 'completed_with_results',
+      retryable: false,
+      queryHash: 'joaquin',
+      evidence: [],
+      resultCount: 2,
+      durationMs: 1,
+      accessMethod: 'trusted_phone_purchase',
+      resource: 'gift_purchases'
+    }
+  ]
+}
+
+ ✓ tests/f3-capability-safe-read.test.ts  (1 test) 409ms
+ ✓ tests/eval-image-fixture-integrity.test.ts  (3 tests) 3002ms
+ ✓ tests/s14-turn-fencing.test.ts  (10 tests) 29ms
+ ✓ tests/silence-exemption.test.ts  (9 tests) 287ms
+ ❯ tests/eval-run-manifest.test.ts  (16 tests | 9 failed) 50861ms
+   ❯ tests/eval-run-manifest.test.ts > run manifest identity (O0) > builds a schema-valid manifest with unique config/case identities
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ❯ tests/eval-run-manifest.test.ts > run manifest identity (O0) > writes the manifest before the first invocation with case order aligned to results
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ❯ tests/eval-run-manifest.test.ts > run manifest identity (O0) > detects fixture and hard-effect contract tampering
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ❯ tests/eval-run-manifest.test.ts > run manifest identity (O0) > detects artifact drift and rejects mixed-artifact evidence
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ❯ tests/eval-run-manifest.test.ts > run manifest identity (O0) > fails live preflight before paid calls without identity or digest
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ❯ tests/eval-run-manifest.test.ts > run manifest identity (O0) > keeps dry-run and offline preflight intact without identity
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ❯ tests/eval-run-manifest.test.ts > run manifest identity (O0) > accepts bounded pipeline concurrency and records it in the manifest
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ❯ tests/eval-run-manifest.test.ts > run manifest identity (O0) > reconciles frozen support-gate counts from the catalog suite (60 total / 57 support)
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ❯ tests/eval-run-manifest.test.ts > run manifest identity (O0) > task-continuity oracle binds per-turn runtime effects instead of fixture inspection
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+stdout | tests/customer-gateway-field-mapping.test.ts > customer gateway field conservation > maps order, payment, card, thanks and item fields while diagnosing unknown wire keys
+{
+  event: 'auth_http_request_started',
+  observed_at: '2026-10-27T05:14:44.895Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: '2ff91047-a5e4-44e9-9a56-62f0c1ad8d07',
+  service: 'agent_api',
+  operation: 'lookup_authenticated_gift_purchases',
+  method: 'GET',
+  route: '/gift-purchases',
+  max_attempts: 1,
+  request_headers_present: [ 'X-Agent-Key', 'Authorization' ],
+  request_body_fields: []
+}
+{
+  event: 'auth_http_response_received',
+  observed_at: '2026-10-27T05:14:44.918Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: '2ff91047-a5e4-44e9-9a56-62f0c1ad8d07',
+  service: 'agent_api',
+  operation: 'lookup_authenticated_gift_purchases',
+  method: 'GET',
+  route: '/gift-purchases',
+  attempt: 1,
+  max_attempts: 1,
+  attempt_duration_ms: 6,
+  total_duration_ms: 23,
+  response_status: 200,
+  response_ok: true,
+  response_headers: { 'content-type': 'application/json' },
+  response_body_summary: {
+    kind: 'object',
+    fields: [ 'status', 'data', 'errors', 'error' ],
+    status: true
+  }
+}
+
+stdout | tests/customer-gateway-field-mapping.test.ts > customer gateway field conservation > maps authorized user identity, full user-lookup event details and order references
+{
+  event: 'auth_http_request_started',
+  observed_at: '2026-10-27T05:14:44.948Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: '54cad634-9b72-4a15-9377-a53002fbe22b',
+  service: 'guest_service_api',
+  operation: 'authenticated_user_lookup',
+  method: 'GET',
+  url: 'https://api.example.test/guest/user-lookup?email=maria%40example.test',
+  request_headers: {
+    authorization: {
+      redacted: true,
+      kind: 'bearer',
+      length: 16,
+      sha256: 'db5f757ccac9f3f27812f95127be90d675a757b1aa2dd17a86f54187f352a867'
+    }
+  },
+  request_body: null
+}
+{
+  event: 'auth_http_response_received',
+  observed_at: '2026-10-27T05:14:44.967Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: '54cad634-9b72-4a15-9377-a53002fbe22b',
+  service: 'guest_service_api',
+  method: 'GET',
+  url: 'https://api.example.test/guest/user-lookup?email=maria%40example.test',
+  duration_ms: 21,
+  response_status: 200,
+  response_ok: true,
+  response_headers: { 'content-type': 'application/json' },
+  response_body: {
+    status: true,
+    errors: null,
+    error: null,
+    data: {
+      user: [Object],
+      events: [Array],
+      guest_in_events: [],
+      host_in_events: [],
+      celebrated_in: [],
+      recent_orders: [Array]
+    }
+  }
+}
+
+ ✓ tests/customer-gateway-field-mapping.test.ts  (2 tests) 253ms
+Phone-scoped reset target: pk=whatsapp#51900000403 (phone=51900000403)
+Phone-scoped reset: 6 items in whatsapp#51900000403.
+Phone-scoped reset: 0 items in whatsapp#51900000403 after reset.
+ ✓ tests/s12-plan-completion.test.ts  (7 tests) 329ms
+ ✓ tests/knowledge-admin.test.ts  (13 tests) 412ms
+ ✓ tests/dynamo-rsvp-effect-store.test.ts  (7 tests) 80ms
+ ✓ tests/capability-boundary.test.ts  (7 tests) 17ms
+ ✓ tests/prompt-audit.test.ts  (6 tests) 2558ms
+ ✓ tests/request-payload-capture.test.ts  (8 tests) 58ms
+ ✓ tests/w1-10-catastrophic-fix.test.ts  (3 tests) 176ms
+ ✓ tests/dynamic-agent-policy.test.ts  (8 tests) 38ms
+ ✓ tests/plan-lifecycle.test.ts  (7 tests) 72ms
+ ✓ tests/observable-live-script.test.ts  (5 tests) 359ms
+ ✓ tests/capability-boundary-routing.test.ts  (6 tests) 478ms
+ ✓ tests/s04-reminder-invitation.test.ts  (8 tests) 35ms
+ ✓ tests/prompt-contracts.test.ts  (6 tests) 1450ms
+ ✓ tests/decisions-router-policy.test.ts  (48 tests) 30ms
+ ✓ tests/rsvp-party.test.ts  (5 tests) 339ms
+ ✓ tests/capability-map-snapshot.test.ts  (12 tests) 2567ms
+stdout | tests/f3-ambiguous-confirmation.test.ts > L3 Carina status-or-document ambiguity > serves a purchase-shaped Carina conflict through the information flow, not capability clarification
+{
+  event: 'information_auth_flow_started',
+  observed_at: '2026-10-27T05:15:05.985Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '19868eb0-b405-4aed-a13b-a52c1f606800',
+  plan_id: 'p-carina',
+  auth_flow_operation_id: '19868eb0-b405-4aed-a13b-a52c1f606800',
+  prior_auth_state: {
+    status: 'none',
+    auth_method: null,
+    email_present: false,
+    token_present: false,
+    otp_send_attempts: 0,
+    otp_non_delivery_reports: 0
+  },
+  trusted_contact_phone_present: false,
+  phone_confirmation: null,
+  requests: [
+    {
+      kind: 'purchase',
+      request_id: 'information-1',
+      order_id_present: false
+    }
+  ],
+  user_message_length: 33,
+  extracted_email_present: false,
+  otp_present: false
+}
+{
+  event: 'information_auth_flow_completed',
+  observed_at: '2026-10-27T05:15:06.017Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '19868eb0-b405-4aed-a13b-a52c1f606800',
+  plan_id: 'p-carina',
+  auth_flow_operation_id: '19868eb0-b405-4aed-a13b-a52c1f606800',
+  duration_ms: 36,
+  next_auth_state: {
+    status: 'none',
+    auth_method: null,
+    email_present: false,
+    token_present: false
+  },
+  authentication_present: false,
+  auth_block_reason: 'email_required'
+}
+{
+  event: 'information_auth_execution_completed',
+  observed_at: '2026-10-27T05:15:06.031Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: '19868eb0-b405-4aed-a13b-a52c1f606800',
+  plan_id: 'p-carina',
+  auth_flow_operation_id: '19868eb0-b405-4aed-a13b-a52c1f606800',
+  duration_ms: 58,
+  summaries: [
+    {
+      requestId: 'information-1',
+      kind: 'purchase',
+      status: 'completed',
+      source: 'agent_api',
+      outcomeCode: 'completed_with_results',
+      retryable: null,
+      queryHash: 'a235319f7e8ebc41e11765c52193425fe2d8aefaf6a6af09e7c52f7e8fc72ebf',
+      evidence: [Array],
+      resultCount: 1,
+      durationMs: 2,
+      sourceCoverage: [Array],
+      accessMethod: 'trusted_phone_purchase',
+      coverage: 'partial',
+      resource: 'orders'
+    }
+  ]
+}
+
+ ✓ tests/f3-ambiguous-confirmation.test.ts  (1 test) 681ms
+ ✓ tests/lambda-handler-observability.test.ts  (6 tests) 10529ms
+ ✓ tests/r8-image-observation.test.ts  (5 tests) 1156ms
+ ✓ tests/provider-fit.test.ts  (8 tests) 111ms
+ ❯ tests/eval-preflight-fixture-coverage.test.ts  (5 tests | 1 failed) 5390ms
+   ❯ tests/eval-preflight-fixture-coverage.test.ts > §2 live_behavior_regression fixture-coverage preflight > rejects incomplete coverage on a dry run before any remote call
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ✓ tests/deployment-target-safety.test.ts  (5 tests) 109ms
+ ✓ tests/open-request.test.ts  (12 tests) 23ms
+ ✓ tests/prompt-loader.test.ts  (8 tests) 1999ms
+stdout | tests/knowledge-sync-atc-cleanup.test.ts > ATC supplemental FAQ knowledge sync cleanup > keeps non-ATC FAQ vector-store files while cleaning stale ATC files
+Cleaning up 1 old vector store files from previous batches
+Deleted vector store file vsf-old-atc
+
+stdout | tests/knowledge-sync-atc-cleanup.test.ts > ATC supplemental FAQ knowledge sync cleanup > preserves helper uploads during the original FAQ resync cleanup
+Cleaning up 1 old vector store files from previous batches
+Deleted vector store file old-tawk
+
+stdout | tests/knowledge-sync-atc-cleanup.test.ts > ATC supplemental FAQ knowledge sync cleanup > adds ATC source-scoping attributes to new supplemental uploads
+Using existing vector store: vs_kb_test
+Uploaded 1 files to OpenAI Files API
+Created vector store file batch batch_atc_1 in vs_kb_test
+Batch batch_atc_1 status: completed
+
+ ✓ tests/knowledge-sync-atc-cleanup.test.ts  (4 tests) 90ms
+ ✓ tests/eval-primary-failure-reason.test.ts  (3 tests) 19ms
+ ✓ tests/customer-context-data-completeness.test.ts  (2 tests) 131ms
+stdout | tests/rsvp-seeded-candidate-fallback.test.ts > RSVP seeded candidate fallback > projects seeded candidates into the model evidence and preserves generated output
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:15:22.193Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'needs_event_selection',
+  coverage: 'complete',
+  resolution: 'not_found',
+  invitation_count: 2,
+  candidate_event_ids: [ null, null ]
+}
+
+ ✓ tests/rsvp-seeded-candidate-fallback.test.ts  (2 tests) 160ms
+stdout | tests/f2-rsvp-declined-offer.test.ts > F2 declined read-only offers one change > read-only declining query stages awaiting_action with explicit question
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:15:25.597Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'resolved_single',
+  coverage: 'complete',
+  resolution: 'authoritative_invitation',
+  invitation_count: 1,
+  selected_event_id: 1,
+  selected_event_name: 'Otra celebración prueba'
+}
+
+ ✓ tests/f2-rsvp-declined-offer.test.ts  (1 test) 189ms
+ ✓ tests/schema-bound-actual-extraction.test.ts  (5 tests) 1556ms
+ ✓ tests/s13-grading-alignment.test.ts  (5 tests) 48ms
+ ✓ tests/purge-conversation-reset.test.ts  (24 tests) 48806ms
+Phone-scoped reset target: pk=whatsapp#51900000403 (phone=51900000403)
+Phone-scoped reset: 6 items in whatsapp#51900000403.
+Phone-scoped reset target: pk=whatsapp#51900000403 (phone=51900000403)
+Phone-scoped reset: 6 items in whatsapp#51900000403.
+Phone-scoped reset target: pk=whatsapp#51900000403 (phone=51900000403)
+Phone-scoped reset: 6 items in whatsapp#51900000403.
+ ❯ tests/support-relevance-e1.test.ts  (3 tests | 1 failed) 5152ms
+   ❯ tests/support-relevance-e1.test.ts > support relevance packet E1 judge evidence > proves read-only support turns from receipts, never node pins
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ✓ tests/attempt3-provider-stub.test.ts  (3 tests) 68ms
+ ✓ tests/w1-07-structured-completeness.test.ts  (2 tests) 83ms
+ ✓ tests/eval-run-cost.test.ts  (6 tests) 65ms
+stdout | tests/f2-reminder-mismatch.test.ts > F2 reminder mismatch reports without auto-escalation > empty lookup with explicit confirm and reminder never escalates without a human request
+{
+  event: 'rsvp_projection_state',
+  observed_at: '2026-10-27T05:15:34.393Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  state: 'unavailable',
+  coverage: 'complete',
+  resolution: 'not_found',
+  invitation_count: 0,
+  reason: 'no_invitations'
+}
+
+ ✓ tests/f2-reminder-mismatch.test.ts  (1 test) 270ms
+ ✓ tests/turn-message-context.test.ts  (4 tests) 36ms
+ ✓ tests/canary-fixes.test.ts  (3 tests) 17ms
+ ✓ tests/trace-agent-visibility.test.ts  (3 tests) 73ms
+ ✓ tests/faq-citation.test.ts  (8 tests) 51ms
+ ✓ tests/openai-transport-capture.test.ts  (2 tests) 30ms
+ ✓ tests/eval-failure-reporting.test.ts  (4 tests) 22ms
+ ✓ tests/s13-reference-worlds.test.ts  (2 tests) 214ms
+stdout | tests/faq-prompt-economy.test.ts > October feedback prompt scope > projects public search only after an event lookup reports no association
+feedback-request-bytes {"missingEvent":{"instructions":2961,"input":1462},"commission":{"instructions":993,"input":1550}}
+
+ ✓ tests/faq-prompt-economy.test.ts  (4 tests) 91ms
+stdout | tests/rsvp-isolation-prior-read.test.ts > rsvp isolation prior read and read-back verify > reads the actual prior state, verifies the write, and restores the prior read
+{
+  event: 'auth_http_request_started',
+  observed_at: '2026-10-27T05:15:38.046Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: '2485ebb7-8cd9-4eaf-8f98-96c94ac05b50',
+  service: 'agent_api',
+  operation: 'lookup_guest_events_by_phone',
+  method: 'GET',
+  route: '/guest/events',
+  max_attempts: 1,
+  request_headers_present: [ 'X-Agent-Key' ],
+  request_body_fields: []
+}
+{
+  event: 'auth_http_response_received',
+  observed_at: '2026-10-27T05:15:38.054Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: '2485ebb7-8cd9-4eaf-8f98-96c94ac05b50',
+  service: 'agent_api',
+  operation: 'lookup_guest_events_by_phone',
+  method: 'GET',
+  route: '/guest/events',
+  attempt: 1,
+  max_attempts: 1,
+  attempt_duration_ms: 6,
+  total_duration_ms: 9,
+  response_status: 200,
+  response_ok: true,
+  response_headers: { 'content-type': 'application/json' },
+  response_body_summary: { kind: 'object', fields: [ 'status', 'data' ], status: true }
+}
+{
+  event: 'auth_http_request_started',
+  observed_at: '2026-10-27T05:15:38.058Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: 'cce48a1e-f65b-4675-90ed-a69373924c6b',
+  service: 'agent_api',
+  operation: 'lookup_guest_event_detail',
+  method: 'GET',
+  route: '/event',
+  max_attempts: 1,
+  request_headers_present: [ 'X-Agent-Key' ],
+  request_body_fields: []
+}
+{
+  event: 'auth_http_response_received',
+  observed_at: '2026-10-27T05:15:38.062Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: 'cce48a1e-f65b-4675-90ed-a69373924c6b',
+  service: 'agent_api',
+  operation: 'lookup_guest_event_detail',
+  method: 'GET',
+  route: '/event',
+  attempt: 1,
+  max_attempts: 1,
+  attempt_duration_ms: 4,
+  total_duration_ms: 4,
+  response_status: 200,
+  response_ok: true,
+  response_headers: { 'content-type': 'application/json' },
+  response_body_summary: { kind: 'object', fields: [ 'status', 'data' ], status: true }
+}
+{
+  event: 'auth_http_request_started',
+  observed_at: '2026-10-27T05:15:38.073Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: 'd9bfa3d5-48a3-493b-a567-3e68d6d19b8e',
+  service: 'agent_api',
+  operation: 'respond_guest_rsvp',
+  method: 'POST',
+  route: '/guest/rsvp',
+  max_attempts: 1,
+  request_headers_present: [ 'X-Agent-Key', 'content-type' ],
+  request_body_fields: [ 'phone_extension', 'phone_number', 'action', 'guest_id' ]
+}
+{
+  event: 'auth_http_response_received',
+  observed_at: '2026-10-27T05:15:38.075Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: 'd9bfa3d5-48a3-493b-a567-3e68d6d19b8e',
+  service: 'agent_api',
+  operation: 'respond_guest_rsvp',
+  method: 'POST',
+  route: '/guest/rsvp',
+  attempt: 1,
+  max_attempts: 1,
+  attempt_duration_ms: 1,
+  total_duration_ms: 2,
+  response_status: 200,
+  response_ok: true,
+  response_headers: { 'content-type': 'application/json' },
+  response_body_summary: { kind: 'object', fields: [ 'status', 'data' ], status: true }
+}
+{
+  event: 'auth_http_request_started',
+  observed_at: '2026-10-27T05:15:38.083Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: '017f1bb0-d23e-4138-a052-0b1bdd5dfc23',
+  service: 'agent_api',
+  operation: 'lookup_guest_events_by_phone',
+  method: 'GET',
+  route: '/guest/events',
+  max_attempts: 1,
+  request_headers_present: [ 'X-Agent-Key' ],
+  request_body_fields: []
+}
+{
+  event: 'auth_http_response_received',
+  observed_at: '2026-10-27T05:15:38.086Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: '017f1bb0-d23e-4138-a052-0b1bdd5dfc23',
+  service: 'agent_api',
+  operation: 'lookup_guest_events_by_phone',
+  method: 'GET',
+  route: '/guest/events',
+  attempt: 1,
+  max_attempts: 1,
+  attempt_duration_ms: 1,
+  total_duration_ms: 2,
+  response_status: 200,
+  response_ok: true,
+  response_headers: { 'content-type': 'application/json' },
+  response_body_summary: { kind: 'object', fields: [ 'status', 'data' ], status: true }
+}
+{
+  event: 'auth_http_request_started',
+  observed_at: '2026-10-27T05:15:38.100Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: 'a2d8e9c1-a507-4da1-8af0-086325b0f319',
+  service: 'agent_api',
+  operation: 'lookup_guest_event_detail',
+  method: 'GET',
+  route: '/event',
+  max_attempts: 1,
+  request_headers_present: [ 'X-Agent-Key' ],
+  request_body_fields: []
+}
+{
+  event: 'auth_http_response_received',
+  observed_at: '2026-10-27T05:15:38.124Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: 'a2d8e9c1-a507-4da1-8af0-086325b0f319',
+  service: 'agent_api',
+  operation: 'lookup_guest_event_detail',
+  method: 'GET',
+  route: '/event',
+  attempt: 1,
+  max_attempts: 1,
+  attempt_duration_ms: 21,
+  total_duration_ms: 23,
+  response_status: 200,
+  response_ok: true,
+  response_headers: { 'content-type': 'application/json' },
+  response_body_summary: { kind: 'object', fields: [ 'status', 'data' ], status: true }
+}
+{
+  event: 'auth_http_request_started',
+  observed_at: '2026-10-27T05:15:38.138Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: 'c1bfb3e1-4f0b-4676-ac6c-c2a31db9be30',
+  service: 'agent_api',
+  operation: 'respond_guest_rsvp',
+  method: 'POST',
+  route: '/guest/rsvp',
+  max_attempts: 1,
+  request_headers_present: [ 'X-Agent-Key', 'content-type' ],
+  request_body_fields: [ 'phone_extension', 'phone_number', 'action', 'guest_id' ]
+}
+{
+  event: 'auth_http_response_received',
+  observed_at: '2026-10-27T05:15:38.139Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: 'c1bfb3e1-4f0b-4676-ac6c-c2a31db9be30',
+  service: 'agent_api',
+  operation: 'respond_guest_rsvp',
+  method: 'POST',
+  route: '/guest/rsvp',
+  attempt: 1,
+  max_attempts: 1,
+  attempt_duration_ms: 0,
+  total_duration_ms: 1,
+  response_status: 200,
+  response_ok: true,
+  response_headers: { 'content-type': 'application/json' },
+  response_body_summary: { kind: 'object', fields: [ 'status', 'data' ], status: true }
+}
+{
+  event: 'auth_http_request_started',
+  observed_at: '2026-10-27T05:15:38.140Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: '83574543-0551-4c5b-9df3-91a5ed8dacec',
+  service: 'agent_api',
+  operation: 'lookup_guest_events_by_phone',
+  method: 'GET',
+  route: '/guest/events',
+  max_attempts: 1,
+  request_headers_present: [ 'X-Agent-Key' ],
+  request_body_fields: []
+}
+{
+  event: 'auth_http_response_received',
+  observed_at: '2026-10-27T05:15:38.141Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: '83574543-0551-4c5b-9df3-91a5ed8dacec',
+  service: 'agent_api',
+  operation: 'lookup_guest_events_by_phone',
+  method: 'GET',
+  route: '/guest/events',
+  attempt: 1,
+  max_attempts: 1,
+  attempt_duration_ms: 1,
+  total_duration_ms: 1,
+  response_status: 200,
+  response_ok: true,
+  response_headers: { 'content-type': 'application/json' },
+  response_body_summary: { kind: 'object', fields: [ 'status', 'data' ], status: true }
+}
+{
+  event: 'auth_http_request_started',
+  observed_at: '2026-10-27T05:15:38.142Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: '09b95f0f-8f4c-4e48-b0dc-02b74b69365e',
+  service: 'agent_api',
+  operation: 'lookup_guest_event_detail',
+  method: 'GET',
+  route: '/event',
+  max_attempts: 1,
+  request_headers_present: [ 'X-Agent-Key' ],
+  request_body_fields: []
+}
+{
+  event: 'auth_http_response_received',
+  observed_at: '2026-10-27T05:15:38.142Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: '09b95f0f-8f4c-4e48-b0dc-02b74b69365e',
+  service: 'agent_api',
+  operation: 'lookup_guest_event_detail',
+  method: 'GET',
+  route: '/event',
+  attempt: 1,
+  max_attempts: 1,
+  attempt_duration_ms: 0,
+  total_duration_ms: 0,
+  response_status: 200,
+  response_ok: true,
+  response_headers: { 'content-type': 'application/json' },
+  response_body_summary: { kind: 'object', fields: [ 'status', 'data' ], status: true }
+}
+
+stdout | tests/rsvp-isolation-prior-read.test.ts > rsvp isolation prior read and read-back verify > errors setup when the read-back contradicts the written target
+{
+  event: 'auth_http_request_started',
+  observed_at: '2026-10-27T05:15:38.146Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: '9022de0c-2085-4dc8-85ae-c1f7b7276220',
+  service: 'agent_api',
+  operation: 'lookup_guest_events_by_phone',
+  method: 'GET',
+  route: '/guest/events',
+  max_attempts: 1,
+  request_headers_present: [ 'X-Agent-Key' ],
+  request_body_fields: []
+}
+{
+  event: 'auth_http_response_received',
+  observed_at: '2026-10-27T05:15:38.158Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: '9022de0c-2085-4dc8-85ae-c1f7b7276220',
+  service: 'agent_api',
+  operation: 'lookup_guest_events_by_phone',
+  method: 'GET',
+  route: '/guest/events',
+  attempt: 1,
+  max_attempts: 1,
+  attempt_duration_ms: 11,
+  total_duration_ms: 12,
+  response_status: 200,
+  response_ok: true,
+  response_headers: { 'content-type': 'application/json' },
+  response_body_summary: { kind: 'object', fields: [ 'status', 'data' ], status: true }
+}
+{
+  event: 'auth_http_request_started',
+  observed_at: '2026-10-27T05:15:38.158Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: '453b73cd-b267-4895-99a8-3192339c3b0a',
+  service: 'agent_api',
+  operation: 'lookup_guest_event_detail',
+  method: 'GET',
+  route: '/event',
+  max_attempts: 1,
+  request_headers_present: [ 'X-Agent-Key' ],
+  request_body_fields: []
+}
+{
+  event: 'auth_http_response_received',
+  observed_at: '2026-10-27T05:15:38.159Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: '453b73cd-b267-4895-99a8-3192339c3b0a',
+  service: 'agent_api',
+  operation: 'lookup_guest_event_detail',
+  method: 'GET',
+  route: '/event',
+  attempt: 1,
+  max_attempts: 1,
+  attempt_duration_ms: 1,
+  total_duration_ms: 1,
+  response_status: 200,
+  response_ok: true,
+  response_headers: { 'content-type': 'application/json' },
+  response_body_summary: { kind: 'object', fields: [ 'status', 'data' ], status: true }
+}
+{
+  event: 'auth_http_request_started',
+  observed_at: '2026-10-27T05:15:38.159Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: '1ccb7f7b-0f50-43c5-a58f-75f3f14d76f5',
+  service: 'agent_api',
+  operation: 'respond_guest_rsvp',
+  method: 'POST',
+  route: '/guest/rsvp',
+  max_attempts: 1,
+  request_headers_present: [ 'X-Agent-Key', 'content-type' ],
+  request_body_fields: [ 'phone_extension', 'phone_number', 'action', 'guest_id' ]
+}
+{
+  event: 'auth_http_response_received',
+  observed_at: '2026-10-27T05:15:38.160Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: '1ccb7f7b-0f50-43c5-a58f-75f3f14d76f5',
+  service: 'agent_api',
+  operation: 'respond_guest_rsvp',
+  method: 'POST',
+  route: '/guest/rsvp',
+  attempt: 1,
+  max_attempts: 1,
+  attempt_duration_ms: 1,
+  total_duration_ms: 1,
+  response_status: 200,
+  response_ok: true,
+  response_headers: { 'content-type': 'application/json' },
+  response_body_summary: { kind: 'object', fields: [ 'status', 'data' ], status: true }
+}
+{
+  event: 'auth_http_request_started',
+  observed_at: '2026-10-27T05:15:38.161Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: 'e8d957b3-e985-4b55-8428-bb741529dd4f',
+  service: 'agent_api',
+  operation: 'lookup_guest_events_by_phone',
+  method: 'GET',
+  route: '/guest/events',
+  max_attempts: 1,
+  request_headers_present: [ 'X-Agent-Key' ],
+  request_body_fields: []
+}
+{
+  event: 'auth_http_response_received',
+  observed_at: '2026-10-27T05:15:38.164Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: 'e8d957b3-e985-4b55-8428-bb741529dd4f',
+  service: 'agent_api',
+  operation: 'lookup_guest_events_by_phone',
+  method: 'GET',
+  route: '/guest/events',
+  attempt: 1,
+  max_attempts: 1,
+  attempt_duration_ms: 2,
+  total_duration_ms: 3,
+  response_status: 200,
+  response_ok: true,
+  response_headers: { 'content-type': 'application/json' },
+  response_body_summary: { kind: 'object', fields: [ 'status', 'data' ], status: true }
+}
+{
+  event: 'auth_http_request_started',
+  observed_at: '2026-10-27T05:15:38.165Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: '5584abff-71c2-4ee4-817c-f2a06f65a844',
+  service: 'agent_api',
+  operation: 'lookup_guest_event_detail',
+  method: 'GET',
+  route: '/event',
+  max_attempts: 1,
+  request_headers_present: [ 'X-Agent-Key' ],
+  request_body_fields: []
+}
+{
+  event: 'auth_http_response_received',
+  observed_at: '2026-10-27T05:15:38.166Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: '5584abff-71c2-4ee4-817c-f2a06f65a844',
+  service: 'agent_api',
+  operation: 'lookup_guest_event_detail',
+  method: 'GET',
+  route: '/event',
+  attempt: 1,
+  max_attempts: 1,
+  attempt_duration_ms: 1,
+  total_duration_ms: 1,
+  response_status: 200,
+  response_ok: true,
+  response_headers: { 'content-type': 'application/json' },
+  response_body_summary: { kind: 'object', fields: [ 'status', 'data' ], status: true }
+}
+
+stdout | tests/rsvp-isolation-prior-read.test.ts > rsvp isolation prior read and read-back verify > performs no writes for a pending target even with a decided prior read
+{
+  event: 'auth_http_request_started',
+  observed_at: '2026-10-27T05:15:38.168Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: '1f8d3039-8980-477b-9051-90bdf9d0d5bf',
+  service: 'agent_api',
+  operation: 'lookup_guest_events_by_phone',
+  method: 'GET',
+  route: '/guest/events',
+  max_attempts: 1,
+  request_headers_present: [ 'X-Agent-Key' ],
+  request_body_fields: []
+}
+{
+  event: 'auth_http_response_received',
+  observed_at: '2026-10-27T05:15:38.168Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: '1f8d3039-8980-477b-9051-90bdf9d0d5bf',
+  service: 'agent_api',
+  operation: 'lookup_guest_events_by_phone',
+  method: 'GET',
+  route: '/guest/events',
+  attempt: 1,
+  max_attempts: 1,
+  attempt_duration_ms: 0,
+  total_duration_ms: 0,
+  response_status: 200,
+  response_ok: true,
+  response_headers: { 'content-type': 'application/json' },
+  response_body_summary: { kind: 'object', fields: [ 'status', 'data' ], status: true }
+}
+{
+  event: 'auth_http_request_started',
+  observed_at: '2026-10-27T05:15:38.169Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: 'c17ecd89-ce47-48eb-a2ab-8d6a66edae5f',
+  service: 'agent_api',
+  operation: 'lookup_guest_event_detail',
+  method: 'GET',
+  route: '/event',
+  max_attempts: 1,
+  request_headers_present: [ 'X-Agent-Key' ],
+  request_body_fields: []
+}
+{
+  event: 'auth_http_response_received',
+  observed_at: '2026-10-27T05:15:38.169Z',
+  lambda_request_id: null,
+  correlation_id: null,
+  auth_flow_id: null,
+  plan_id: null,
+  auth_http_operation_id: 'c17ecd89-ce47-48eb-a2ab-8d6a66edae5f',
+  service: 'agent_api',
+  operation: 'lookup_guest_event_detail',
+  method: 'GET',
+  route: '/event',
+  attempt: 1,
+  max_attempts: 1,
+  attempt_duration_ms: 0,
+  total_duration_ms: 0,
+  response_status: 200,
+  response_ok: true,
+  response_headers: { 'content-type': 'application/json' },
+  response_body_summary: { kind: 'object', fields: [ 'status', 'data' ], status: true }
+}
+
+ ✓ tests/rsvp-isolation-prior-read.test.ts  (3 tests) 148ms
+ ✓ tests/owner-c-decision-5-eval-contracts.test.ts  (2 tests) 240ms
+ ✓ tests/eval-loader.test.ts  (4 tests) 2490ms
+ ✓ tests/provider-sub-query-selection.test.ts  (3 tests) 16ms
+ ✓ tests/phone.test.ts  (4 tests) 26ms
+ ✓ tests/spanish-only-multi-need-retention.test.ts  (1 test) 574ms
+ ✓ tests/auth-observability.test.ts  (3 tests) 32ms
+ ✓ tests/agent-participation-service.test.ts  (4 tests) 29ms
+ ✓ tests/profile-inference-e1.test.ts  (2 tests) 8820ms
+ ✓ tests/offline-twins-provenance-fixes.test.ts  (1 test) 27ms
+ ✓ tests/s01-frozen-regression.test.ts  (4 tests) 46ms
+ ❯ tests/eval-runner.test.ts  (4 tests | 3 failed) 40283ms
+   ❯ tests/eval-runner.test.ts > eval runner > dry-run estimates without executing, enforces concurrency bounds, and labels resumes
+     → Test timed out in 30000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ❯ tests/eval-runner.test.ts > eval runner > produces a stable result envelope for an offline smoke case
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ❯ tests/eval-runner.test.ts > eval runner bounded pipeline (O2/O3) > executes the offline smoke panel at 4/2 in manifest order with timing
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ✓ tests/provider-vector-search.test.ts  (2 tests) 46ms
+ ✓ tests/l1-semantic-evidence.test.ts  (1 test) 36ms
+ ✓ tests/commission-grounding.test.ts  (4 tests) 21ms
+ ✓ tests/openai-retry.test.ts  (14 tests) 30ms
+ ✓ tests/f4-trace-unredact.test.ts  (2 tests) 29ms
+ ✓ tests/capability-digest.test.ts  (4 tests) 39ms
+ ✓ tests/rsvp-schema.test.ts  (3 tests) 64ms
+ ❯ tests/eval-rsvp-hooks.test.ts  (4 tests | 3 failed) 15418ms
+   ❯ tests/eval-rsvp-hooks.test.ts > rsvp isolation hooks > executes setup before case and teardown after case
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ❯ tests/eval-rsvp-hooks.test.ts > rsvp isolation hooks > setup failure marks case as errored and does not silently skip
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ❯ tests/eval-rsvp-hooks.test.ts > rsvp isolation hooks > teardown is still called after successful case and does not hide prior setup error
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ✓ tests/quota-cascade-stop.test.ts  (2 tests) 196ms
+ ❯ tests/master-study.test.ts  (4 tests | 1 failed) 16888ms
+   ❯ tests/master-study.test.ts > single frozen master study > FAQ bounded-value oracles reject wrong published values and use live retrieval rather than canned passages
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ✓ tests/canonical-normalization.test.ts  (6 tests) 16ms
+ ✓ tests/close-void-action-repair.test.ts  (3 tests) 141ms
+ ✓ tests/information-auth-guidance.test.ts  (4 tests) 3ms
+ ✓ tests/development-isolation.test.ts  (3 tests) 821ms
+ ✓ tests/github-branch-deploys.test.ts  (4 tests) 337ms
+ ✓ tests/prompt-freshness.test.ts  (5 tests) 433ms
+ ✓ tests/atc-template-ingestion.test.ts  (3 tests) 31ms
+ ✓ tests/master-provider-fixtures.test.ts  (2 tests) 69ms
+ ❯ tests/live-behavior-coverage.test.ts  (2 tests | 1 failed) 5385ms
+   ❯ tests/live-behavior-coverage.test.ts > live behavior coverage registry > maps every registered behavior change to fail-closed live Lambda cases
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ✓ tests/purchase-evidence-emission.test.ts  (4 tests) 13ms
+ ✓ tests/f4-close-submission-summary.test.ts  (5 tests) 11ms
+ ✓ tests/rsvp-foreign-number-decline.test.ts  (4 tests) 152ms
+ ✓ tests/eval-grounding.test.ts  (2 tests) 52ms
+ ✓ tests/host-withdrawal-policy.test.ts  (5 tests) 16ms
+ ✓ tests/eval-concurrent-turns.test.ts  (5 tests) 181ms
+ ✓ tests/openai-stage-execution.test.ts  (2 tests) 26ms
+ ✓ tests/knowledge-scraper.test.ts  (2 tests) 206ms
+ ✓ tests/decisions-router-questions.test.ts  (5 tests) 6ms
+ ✓ tests/bearer-auth.test.ts  (3 tests) 20ms
+ ✓ tests/f4-judge-close-evidence.test.ts  (2 tests) 29ms
+ ✓ tests/prompt-branch-measurement.test.ts  (1 test) 255ms
+ ✓ tests/openai-agent-runtime-retry.test.ts  (1 test) 233ms
+stdout | tests/openai-agent-runtime-retry.test.ts > OpenAiAgentRuntime retry behavior > makes exactly one Agents SDK request for insufficient quota
+{
+  event: 'openai_stage_started',
+  stage: 'extraction',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 35000
+}
+
+stderr | tests/openai-agent-runtime-retry.test.ts > OpenAiAgentRuntime retry behavior > makes exactly one Agents SDK request for insufficient quota
+{
+  event: 'openai_stage_failed',
+  stage: 'extraction',
+  model: 'gpt-5.6-luna',
+  timeout_ms: 35000,
+  duration_ms: 176,
+  error_name: 'Error',
+  error_message: '429 You exceeded your current quota.'
+}
+
+ ✓ tests/openai-audit-client.test.ts  (2 tests) 12ms
+ ✓ tests/provider-sync.test.ts  (1 test) 3ms
+ ✓ tests/openai-model-defaults.test.ts  (2 tests) 12ms
+ ✓ tests/vector-store-separation.test.ts  (2 tests) 11ms
+ ✓ tests/event-local-time.test.ts  (2 tests) 6ms
+ ✓ tests/server-timestamp.test.ts  (2 tests) 16ms
+ ✓ tests/targeted-future-panel.test.ts  (1 test) 640ms
+ ✓ tests/deployment-endpoint-defaults.test.ts  (1 test) 4ms
+ ✓ tests/f4-provider-selection-trace.test.ts  (1 test) 16ms
+ ✓ tests/rsvp-sinar-campaign-fixture.test.ts  (1 test) 70ms
+ ✓ tests/order-reference.test.ts  (7 tests) 119ms
+ ✓ tests/eval-metrics.test.ts  (2 tests) 14ms
+ ✓ tests/eval-study-manifest.test.ts  (2 tests) 52ms
+ ✓ tests/user-auth-token.test.ts  (4 tests) 8ms
+ ✓ tests/panel-fixture-isolation.test.ts  (2 tests) 2108ms
+ ✓ tests/f4-explicit-event-date.test.ts  (1 test) 5ms
+ ✓ tests/location-compatibility.test.ts  (1 test) 8ms
+ ✓ tests/openai-structured-schema.test.ts  (1 test) 125ms
+ ✓ tests/eval-offline-target.test.ts  (1 test) 1773ms
+ ✓ tests/otp-normalization.test.ts  (11 tests) 5ms
+ ✓ tests/eval-fixture-path-portability.test.ts  (1 test) 1216ms
+ ✓ tests/supervised-probe-phone-guard.test.ts  (2 tests) 1505ms
+ ✓ tests/lambda-request-route.test.ts  (2 tests) 8ms
+ ✓ tests/private-audit-file.test.ts  (1 test) 36ms
+ ✓ tests/eval-reporting.test.ts  (1 test) 22ms
+ ✓ tests/local-aws-profile.test.ts  (2 tests) 2ms
+ ✓ tests/event-provider-priorities.test.ts  (2 tests) 4ms
+ ✓ tests/no-atc-trigger-routing.test.ts  (1 test) 103ms
+ ✓ tests/sufficiency.test.ts  (1 test) 12ms
+ ✓ tests/lean-close-footer.test.ts  (1 test) 2ms
+ ✓ tests/eval-local-fixtures.test.ts  (1 test) 2ms
+ ✓ tests/b-fixture-oracles.test.ts  (1 test) 10ms
+ ❯ tests/static-prompt-comparison.test.ts  (3 tests | 1 failed) 47182ms
+   ❯ tests/static-prompt-comparison.test.ts > static prompt comparison > proves every route-scoped prompt is leaner than the historical baseline
+     → Test timed out in 20000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ✓ tests/starter-provider-categories.test.ts  (2 tests) 2ms
+ ❯ tests/eval-runner-case-ids.test.ts  (4 tests | 1 failed) 49027ms
+   ❯ tests/eval-runner-case-ids.test.ts > eval runner caseIds filtering > selects cases by caseIds: single, multiple, unknown, and empty filters
+     → Test timed out in 30000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 24 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/agent-service-information-flow.test.ts > AgentService first-class information flow > completes a sourced withdrawal-fee policy with no processing-hours claim or private operation
+AssertionError: expected '{"currentNode":"resolver_consultas_in…' not to contain '72'
+
+- Expected
++ Received
+
+- 72
++ {"currentNode":"resolver_consultas_informativas","previousNode":"contacto_inicial","userMessage":"¿Cobran por el primer retiro y por los siguientes?","messageContext":{"historyStatus":"missing_phone_number","contextSource":"local_plan","retrievedMessageCount":0,"excludedCurrentMessageCount":0,"recentMessages":[],"entryMessage":null,"continuity":{"state":"degraded","hasPersistedPlan":false,"hasRecentMessages":false,"hasPriorOutbound":false,"historyStatus":"missing_phone_number","lane":"unresolved","hasPriorContext":true,"welcomeAllowed":false,"hasPendingInformation":false,"hasCompletedInformation":false,"recentInboundCount":0,"recentOutboundCount":0}},"plan":{"plan_id":"01M5XWE59WT8M4N72GQD4Y1XAC","channel":"whatsapp","external_user_id":"fee-policy-no-hours","conversation_id":null,"lifecycle_state":"active","contact_name":null,"contact_email":null,"contact_phone":null,"contact_phone_extension":null,"contact_phone_number":null,"user_auth":{"status":"none","email":null,"token":null,"token_expires_at":null,"last_error":null,"requested_at":null,"failed_code_attempts":0,"otp_send_attempts":0,"otp_non_delivery_reports":0,"auth_method":null,"awaiting_phone_confirmation":false},"auth_recovery":{"sendAttempted":false,"verificationAttempted":false,"terminalReason":null,"challengeEmail":null,"challengeRequestedAt":null,"preservedRequest":null},"information_state":{"resume_node":"deteccion_intencion","pending_requests":[],"selection_candidates":[],"last_completed_request":{"kind":"faq","query":"¿Cobran por el primer retiro y por los siguientes?","hostWithdrawal":"policy_only","feeTopic":"host_withdrawal"}},"rsvp_state":{"status":"none","pending_action":null,"pending_plus_one_response":null,"candidates":[],"requested_at":null,"selection_attempts":0},"human_escalation":{"status":"none","requested_at":null,"phone_number":null,"last_error":null},"human_help_receipt":null,"conversation_health":{"status":"uncertain","reason":"insufficient_context","consecutive_non_progress_turns":0,"help_offer_status":"none","help_offered_at":null,"last_assessed_at":null},"open_requests":[],"support_outcome":{"signature":null,"repeat_count":0,"unresolved_money":false,"updated_at":null,"reported_payment":null},"current_node":"resolver_consultas_informativas","intent":null,"intent_confidence":null,"event_type":null,"vendor_category":null,"active_need_category":null,"location":null,"budget_signal":null,"guest_range":null,"preferences":[],"hard_constraints":[],"missing_fields":[],"provider_needs":[],"recommended_provider_ids":[],"recommended_providers":[],"selected_provider_ids":[],"selected_provider_hints":[],"assumptions":[],"conversation_summary":"","last_user_goal":null,"open_questions":[],"image_attachments":[],"owner":"faq","owner_capability":null,"owner_pending_question":null,"owner_pending_task":"faq:open","owner_return":"planning","last_outbound_context":null,"updated_at":"2026-10-27T05:13:27.103Z"},"requestOpen":false,"requestOpenTurns":0,"extraction":{"actionIntent":null,"informationRequests":[{"kind":"faq","hostWithdrawal":"policy_only","feeTopic":"host_withdrawal","query":"¿Cobran por el primer retiro y por los siguientes?"}],"phoneConfirmation":null,"intentConfidence":0.98,"ambiguity":{"status":"clear","clarificationQuestion":null,"interpretations":[],"candidateOperations":[],"questionKey":null},"eventType":null,"vendorCategory":null,"vendorCategories":[],"activeNeedCategory":null,"location":null,"budgetSignal":null,"guestRange":null,"preferences":[],"hardConstraints":[],"assumptions":[],"conversationSummary":"Consulta informativa.","selectedProviderHints":[],"pauseRequested":false,"contactName":null,"contactEmail":null,"contactPhone":null,"providerFitCriteria":null,"providerQueryIntents":[],"providerPlanOperations":[],"providerExplanationRequest":null,"providerDetailRequest":null},"missingFields":[],"searchReady":false,"providerResults":[],"turnDecision":{"nextNode":"resolver_consultas_informativas","routeKind":"information_batch","providerSearchMode":"none","presentationScope":"information_batch","focusNeedCategory":null,"needsToSearch":[],"needsToPresent":[],"stopReason":null,"persistReason":"host_withdrawal_policy_and_support","invariantStatus":"valid","invariantViolations":[]},"errorMessage":null,"promptBundleId":"compiler:runtime-reported","promptFilePaths":[],"toolUsage":{"considered":["knowledge_base_search"],"called":["knowledge_base_search"],"inputs":[{"tool":"knowledge_base_search","input":"{\n  \"subject\": \"host_withdrawal\",\n  \"query_present\": true\n}"}],"outputs":[{"tool":"knowledge_base_search","output":"{\"request_id\":\"information-1\",\"kind\":\"faq\",\"status\":\"completed\",\"result_count\":1,\"access_method\":null,\"coverage\":null,\"resource\":null,\"event_detail_count\":0,\"duration_ms\":0}"}]},"informationResults":[{"requestId":"information-1","kind":"faq","status":"completed","feeTopic":"host_withdrawal","evidence":[{"fileId":"official-fee","filename":"donde-va-el-dinero.md","score":1,"sourceUrl":"https://sinenvolturas.tawk.help/article/donde-va-el-dinero","fullArticle":true,"text":"La primera transferencia no tiene descuento. Desde la segunda, se descuenta $5 o su equivalente en la moneda de la lista."}],"hostWithdrawalPolicy":null,"citationUrl":"https://sinenvolturas.tawk.help/article/donde-va-el-dinero"}],"customerContext":{"identityAccess":{"section":"identity_access","status":"unavailable","source":"authorization","fetchedAt":null,"scope":null,"completeness":null,"paginationExhausted":null,"historyLimit":null,"customerRef":null,"displayName":null,"email":null,"phone":null,"authorizedScopes":[],"guestEventIds":[],"hostEventIds":[]},"currentContext":{"section":"current_context","status":"ready","source":"plan_domain_state","fetchedAt":"2026-10-27T05:13:27.101Z","scope":null,"completeness":"complete","paginationExhausted":null,"historyLimit":null,"relevantEventIds":[],"relevantOrderIds":[],"pendingQuestion":null,"unresolvedCandidateOrderIds":[],"unresolvedCandidateEventIds":[]},"purchases":[],"carts":[],"invitations":[],"actionOutcomes":[],"coverage":{"purchasesCarts":{"status":"unavailable","source":"authorization","fetchedAt":null,"scope":null,"completeness":null,"paginationExhausted":null,"historyLimit":null},"invitationsEvents":{"status":"unavailable","source":"authorization","fetchedAt":null,"scope":null,"completeness":null,"paginationExhausted":null,"historyLimit":null}}},"handoffOutcome":null,"owner":"faq","continuity":{"pendingQuestion":null,"pendingTask":"faq:open","hasPendingInformation":false,"hasCompletedInformation":true,"hasPriorOutbound":false},"imageUrlAttachments":[],"imageFileAttachments":[]}
+
+ ❯ tests/agent-service-information-flow.test.ts:726:64
+    724|       evidence: [{ text: feeText }],
+    725|     });
+    726|     // The policy evidence must not import processing hours. Unrelated…
+       |                                                                ^
+    727|     // IDs and timestamps may legitimately contain these digits.
+    728|     const policyResult = runtime.composeRequests.at(-1)?.informationRe…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/24]⎯
+
+ FAIL  tests/eval-preflight-fixture-coverage.test.ts > §2 live_behavior_regression fixture-coverage preflight > rejects incomplete coverage on a dry run before any remote call
+ FAIL  tests/eval-rsvp-hooks.test.ts > rsvp isolation hooks > executes setup before case and teardown after case
+ FAIL  tests/eval-rsvp-hooks.test.ts > rsvp isolation hooks > setup failure marks case as errored and does not silently skip
+ FAIL  tests/eval-rsvp-hooks.test.ts > rsvp isolation hooks > teardown is still called after successful case and does not hide prior setup error
+ FAIL  tests/eval-run-manifest.test.ts > run manifest identity (O0) > builds a schema-valid manifest with unique config/case identities
+ FAIL  tests/eval-run-manifest.test.ts > run manifest identity (O0) > writes the manifest before the first invocation with case order aligned to results
+ FAIL  tests/eval-run-manifest.test.ts > run manifest identity (O0) > detects fixture and hard-effect contract tampering
+ FAIL  tests/eval-run-manifest.test.ts > run manifest identity (O0) > detects artifact drift and rejects mixed-artifact evidence
+ FAIL  tests/eval-run-manifest.test.ts > run manifest identity (O0) > fails live preflight before paid calls without identity or digest
+ FAIL  tests/eval-run-manifest.test.ts > run manifest identity (O0) > keeps dry-run and offline preflight intact without identity
+ FAIL  tests/eval-run-manifest.test.ts > run manifest identity (O0) > accepts bounded pipeline concurrency and records it in the manifest
+ FAIL  tests/eval-run-manifest.test.ts > run manifest identity (O0) > reconciles frozen support-gate counts from the catalog suite (60 total / 57 support)
+ FAIL  tests/eval-run-manifest.test.ts > run manifest identity (O0) > task-continuity oracle binds per-turn runtime effects instead of fixture inspection
+ FAIL  tests/eval-runner.test.ts > eval runner > produces a stable result envelope for an offline smoke case
+ FAIL  tests/eval-runner.test.ts > eval runner bounded pipeline (O2/O3) > executes the offline smoke panel at 4/2 in manifest order with timing
+ FAIL  tests/high-risk-offline-twins.test.ts > high-risk scenario offline twins (F3) > Diana thread: four inputs share one session and the detail turn reuses the single handoff receipt
+ FAIL  tests/high-risk-offline-twins.test.ts > high-risk scenario offline twins (F3) > token-seeded close: contact gathering never submits, explicit authorization submits once
+ FAIL  tests/live-behavior-coverage.test.ts > live behavior coverage registry > maps every registered behavior change to fail-closed live Lambda cases
+ FAIL  tests/master-study.test.ts > single frozen master study > FAQ bounded-value oracles reject wrong published values and use live retrieval rather than canned passages
+ FAIL  tests/support-relevance-e1.test.ts > support relevance packet E1 judge evidence > proves read-only support turns from receipts, never node pins
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/24]⎯
+
+ FAIL  tests/eval-runner-case-ids.test.ts > eval runner caseIds filtering > selects cases by caseIds: single, multiple, unknown, and empty filters
+ FAIL  tests/eval-runner.test.ts > eval runner > dry-run estimates without executing, enforces concurrency bounds, and labels resumes
+Error: Test timed out in 30000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/24]⎯
+
+ FAIL  tests/static-prompt-comparison.test.ts > static prompt comparison > proves every route-scoped prompt is leaner than the historical baseline
+Error: Test timed out in 20000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/24]⎯
+
+ Test Files  11 failed | 208 passed (219)
+      Tests  24 failed | 1746 passed | 1 skipped (1771)
+   Start at  00:13:22
+   Duration  194.90s (transform 39.07s, setup 451ms, collect 633.27s, tests 428.63s, environment 163ms, prepare 113.42s)
+

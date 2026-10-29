@@ -1,0 +1,1235 @@
+{
+  "runId": "eval-2026-10-28T13-25-45-964Z-aaee23b6",
+  "caseId": "live_behavior.july_breadth_birthday_10_phonefixed.master_r3",
+  "suite": "live_behavior_regression",
+  "target": "live_lambda",
+  "configLabel": "live_lambda",
+  "status": "failed",
+  "hardGatePassed": false,
+  "primaryFailureReason": "product_fact_completeness",
+  "finalScore": 0.8333333333333334,
+  "totalLatencyMs": 34858,
+  "totalToolCalls": 11,
+  "nodeTransitions": [
+    "contacto_inicial->recomendar",
+    "recomendar->recomendar"
+  ],
+  "planDiffSummary": [
+    "current_node=\"recomendar\"",
+    "intent=\"refinar_busqueda\"",
+    "event_type=\"cumpleanos\"",
+    "vendor_category=\"Otros\"",
+    "active_need_category=\"Otros\"",
+    "location=\"Lima\"",
+    "guest_range=\"1-20\"",
+    "provider_needs=Otros:shortlisted"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/.eval-runs/eval-2026-10-28T13-25-45-964Z-aaee23b6/artifacts/live_lambda/live_behavior.july_breadth_birthday_10_phonefixed.master_r3.json"
+  },
+  "expectationResults": [
+    {
+      "id": "event-type-retained",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "answer-delivered",
+      "type": "text_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Text containment checks passed."
+    },
+    {
+      "id": "no-provider-quote-without-explicit-date",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture provider.quote.write attempts=0 successes=0 replays=0 outcome=none."
+    },
+    {
+      "id": "no-unrequested-rsvp",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture rsvp.write attempts=0 successes=0 replays=0 outcome=none."
+    },
+    {
+      "id": "no-unrequested-handoff",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture handoff.write attempts=0 successes=0 replays=0 outcome=none."
+    },
+    {
+      "id": "requested-needs-retained",
+      "type": "plan_field_subset",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Plan field provider_needs did not contain the expected subset."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "objective-obligations",
+      "type": "expectation_pass_rate",
+      "score": 0.8333333333333334,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 6 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 2,
+    "avg_latency_ms": 17429,
+    "p95_latency_ms": 17508,
+    "tool_calls_total": 11,
+    "unique_tools_called": 6,
+    "tool_call_rate_per_turn": 5.5,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.3103448275862069,
+    "state_expectation_pass_rate": 0.5,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 33206,
+    "cache_hit_rate": 0.6236899284253579,
+    "input_tokens": 31296,
+    "cached_input_tokens": 19519,
+    "cache_write_input_tokens": 10280,
+    "uncached_input_tokens": 11777,
+    "usage_known": true
+  },
+  "timing": {
+    "queueWaitMs": 3501540,
+    "setupMs": 0,
+    "turnMs": 38768,
+    "snapshotMs": 15,
+    "teardownMs": 0,
+    "judgeWaitMs": 0,
+    "judgeApiMs": 0,
+    "reportWriteMs": 0,
+    "makespanMs": 0
+  },
+  "judgeMetrics": {
+    "modelCalls": 0,
+    "retryCount": 0,
+    "rateLimitCount": 0,
+    "tokensUnknown": false,
+    "openaiSdk": "7.43.0",
+    "judgeModels": []
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Busco animación temática medieval para cumpleaños en Lurín, 20 personas.",
+        "channel": "whatsapp",
+        "sessionId": "live_behavior.july_breadth_birthday_10_phonefixed",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "master-provider-live-public"
+        }
+      },
+      "outputText": "No encontré una opción que confirme ofrecer animación medieval en Lurín. Las alternativas de la categoría «Otros» no muestran servicios relacionados con esa temática; podemos ajustar la búsqueda si me dices si te sirve un animador en Lima o solo en Lurín.",
+      "deliveredText": "No encontré una opción que confirme ofrecer animación medieval en Lurín. Las alternativas de la categoría «Otros» no muestran servicios relacionados con esa temática; podemos ajustar la búsqueda si me dices si te sirve un animador en Lima o solo en Lurín.",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "fb21b64113327cf320d74cb60225aa3b4f8fc98538ea18d941ad92bde99267b9",
+        "deliveredSha256": "fb21b64113327cf320d74cb60225aa3b4f8fc98538ea18d941ad92bde99267b9",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "recomendar",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 7,
+          "attempts": 1
+        },
+        "trace_id": "01M61EBS07W9PB6XG6RN3V5EGK",
+        "conversation_id": null,
+        "plan_id": "01M61EB9AY4AZEFZGT874KE3GV",
+        "previous_node": "contacto_inicial",
+        "next_node": "recomendar",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "minimos_para_buscar",
+          "buscar_proveedores",
+          "busqueda_exitosa",
+          "hay_resultados",
+          "recomendar"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "9579d9dcb7c9",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/domain_scope.txt",
+          "shared/flow_discipline.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "search_providers_from_plan",
+          "get_provider_detail",
+          "get_related_providers",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "search_providers_from_plan",
+          "get_provider_detail",
+          "get_related_providers"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "search_providers_from_plan",
+            "input": "{\"projection_version\":1}"
+          },
+          {
+            "tool": "get_provider_detail",
+            "input": "{\"projection_version\":1,\"provider_id\":1}"
+          },
+          {
+            "tool": "get_related_providers",
+            "input": "{\"projection_version\":1,\"provider_id\":1}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "search_providers_from_plan",
+            "output": "{\"projection_version\":1,\"result_kind\":\"collection\",\"count\":1,\"provider_ids\":[1]}"
+          },
+          {
+            "tool": "get_provider_detail",
+            "output": "{\"projection_version\":1,\"result_kind\":\"detail\",\"provider_id\":1,\"found\":true}"
+          },
+          {
+            "tool": "get_related_providers",
+            "output": "[omitted]"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 1,
+            "title": "Shop Sin Envolturas",
+            "slug": "shop-sin-envolturas",
+            "category": "Otros",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "5.0",
+            "reason": "Shop Sin Envolturas encaja con Otros según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/shop-sin-envolturas",
+            "websiteUrl": "https://www.shop.sinenvolturas.pe/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% OFF",
+            "promoSummary": "10% de descuento en nuestra tienda virtual, exclusivo para clientes de Sin Envolturas. Puedes consultarnos por tu cupón.",
+            "descriptionSnippet": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa.",
+            "serviceHighlights": [
+              "Ya sea tu matri, la llegada de tu bebé o tu nueva casa, y disfruta de tus descuento exclusivo por ser cliente de Sin Envolturas."
+            ],
+            "termsHighlights": [
+              "El descuento no aplica sobre descuento.",
+              "El descuento no aplica para algunos productos y servicios, consultar."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor:: Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa.",
+              "Acerca del proveedor:: https://www.shop.sinenvolturas.pe/",
+              "Servicios que ofrece:: Ya sea tu matri, la llegada de tu bebé o tu nueva casa, y disfruta de tus descuento exclusivo por ser cliente de Sin Envolturas.",
+              "Términos y condiciones:: El descuento no aplica sobre descuento.",
+              "Términos y condiciones:: El descuento no aplica para algunos productos y servicios, consultar."
+            ],
+            "eventTypes": [],
+            "description": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa. https://www.shop.sinenvolturas.pe/",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7142607345456886,
+            "retrievalSource": "hybrid"
+          }
+        ],
+        "search_strategy": "search_from_plan",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 1,
+            "category": "Otros",
+            "location": "Lima, Perú",
+            "retrieval_source": "hybrid",
+            "retrieval_score": 0.7142607345456886,
+            "fit_score": 80
+          }
+        ],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_0cce48e2b08c538a006ae2058aefb087d1a9b33d7c4e2d6604",
+            "requestId": "req_cf530423d4a849728a617343fe0bdec1",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 710,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 7587,
+                "instructionBytes": 0,
+                "inputBytes": 5760,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_054993e0d6627934006ae2058ced5887d19dd3c9a81fcbf4ef",
+            "requestId": "req_4aa5071eb7a6456daf64a414f1b48dc4",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 6855,
+              "inputBytes": 3136,
+              "toolCount": 0,
+              "schemaPropertyCount": 30,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 20823,
+                "instructionBytes": 6932,
+                "inputBytes": 3420,
+                "toolBytes": 2,
+                "outputSchemaBytes": 10207,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_033b30fd943c4c84006ae20598937087d19f3ea0d2e2f2549f",
+            "requestId": "req_456fdc2d2f7a4c7497f16da97ca5be20",
+            "model": "gpt-6-luna",
+            "attemptCount": 2,
+            "requestMetrics": {
+              "instructionBytes": 2588,
+              "inputBytes": 9346,
+              "toolCount": 3,
+              "schemaPropertyCount": 3,
+              "transport": {
+                "observedRequestCount": 2,
+                "totalPayloadBytes": 34564,
+                "instructionBytes": 5248,
+                "inputBytes": 25390,
+                "toolBytes": 2054,
+                "outputSchemaBytes": 1334,
+                "requests": []
+              }
+            }
+          },
+          "router": {
+            "responseId": null,
+            "requestId": "req_c990775b76be4167a664451421039628",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 3321,
+              "inputBytes": 2536,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 6818,
+                "instructionBytes": 3321,
+                "inputBytes": 2536,
+                "toolBytes": 0,
+                "outputSchemaBytes": 0,
+                "requests": []
+              }
+            }
+          }
+        },
+        "recommendation_funnel": {
+          "available_candidates": 1,
+          "context_candidates": 1,
+          "context_candidate_ids": [
+            1
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "recomendar",
+        "timing_ms": {
+          "total": 16047,
+          "load_plan": 7,
+          "response_classification": 2035,
+          "prepare_working_plan": 0,
+          "extraction": 7584,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 2133,
+          "provider_enrichment": 39,
+          "prompt_bundle_load": 0,
+          "compose_reply": 4086,
+          "save_plan": 24,
+          "router": 128,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1515,
+            "output_tokens": 70,
+            "total_tokens": 1585,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 170
+          },
+          "router": {
+            "input_tokens": 1473,
+            "output_tokens": 0,
+            "total_tokens": 1473
+          },
+          "extraction": {
+            "input_tokens": 4399,
+            "output_tokens": 729,
+            "total_tokens": 5128,
+            "cached_input_tokens": 3636,
+            "cache_write_input_tokens": 760
+          },
+          "reply": {
+            "input_tokens": 7220,
+            "output_tokens": 126,
+            "total_tokens": 7346,
+            "cached_input_tokens": 3067,
+            "cache_write_input_tokens": 4147
+          },
+          "total": {
+            "input_tokens": 14607,
+            "output_tokens": 925,
+            "total_tokens": 15532,
+            "cached_input_tokens": 8045,
+            "cache_write_input_tokens": 5077
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "agent_api",
+          "has_prior_outbound_message": false,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "not_applicable",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "recomendar",
+          "routeKind": "single_need_search",
+          "providerSearchMode": "single_need_from_plan",
+          "presentationScope": "single_need",
+          "focusNeedCategory": "Otros",
+          "needsToSearch": [
+            "Otros"
+          ],
+          "needsToPresent": [
+            "Otros"
+          ],
+          "stopReason": null,
+          "persistReason": "recomendar",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "single_need_search",
+        "presentation_scope": "single_need",
+        "session_focus_used": false,
+        "session_focus_key_present": true,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.94,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": "cumpleanos",
+          "vendor_category": "Otros",
+          "vendor_categories": [
+            "Otros"
+          ],
+          "active_need_category": "Otros",
+          "location": "Lurín",
+          "budget_signal": null,
+          "guest_range": "1-20",
+          "selected_provider_hints": [],
+          "preferences": [
+            "animación temática medieval"
+          ],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 1,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Busca animación temática medieval para un cumpleaños en Lurín, para 20 personas.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "recomendar",
+          "lifecycle_state": "active",
+          "event_type": "cumpleanos",
+          "vendor_category": "Otros",
+          "active_need_category": "Otros",
+          "location": "Lurín",
+          "budget_signal": null,
+          "guest_range": "1-20",
+          "provider_need_categories": [
+            "Otros"
+          ],
+          "provider_need_count": 1,
+          "provider_need_statuses": [
+            {
+              "category": "Otros",
+              "status": "shortlisted",
+              "has_recommendations": true,
+              "selected_provider_ids": []
+            }
+          ],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "Busca animación temática medieval para un cumpleaños en Lurín, para 20 personas.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "empty",
+          "context_source": "agent_api",
+          "retrieved_message_count": 0,
+          "recent_message_count": 0,
+          "excluded_current_message_count": 0,
+          "directions": [],
+          "sources": [],
+          "entry_source": null
+        },
+        "continuity_state": "new",
+        "welcome_allowed": true,
+        "history_status": "empty",
+        "has_prior_outbound": false,
+        "requested_operation": "provider.search",
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 10768,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M61EBS07W9PB6XG6RN3V5EGK",
+        "conversation_hash": "b23bfc3361b4cf5afecb6852c7d99ae6b83bc9a44e633c37554f90b6b9d5822c",
+        "runtime_latency_ms": 16047,
+        "extraction_latency_ms": 7584,
+        "compose_latency_ms": 4086,
+        "tools_called_count": 6,
+        "provider_results_count": 1,
+        "recommendation_context_candidates": 1,
+        "recommendation_presentation_limit": 6,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 15532,
+        "cached_input_tokens": 8045,
+        "cache_hit_rate": 0.55076333264873,
+        "extraction_to_compose_ratio": 1.856093979441997,
+        "captured_at": "2026-10-28T14:24:26.638Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "recomendar",
+        "lifecycle_state": "active",
+        "event_type": "cumpleanos",
+        "vendor_category": "Otros",
+        "active_need_category": "Otros",
+        "location": "Lurín",
+        "budget_signal": null,
+        "guest_range": "1-20",
+        "provider_needs": [
+          {
+            "category": "Otros",
+            "status": "shortlisted",
+            "recommended_provider_ids": [
+              1
+            ],
+            "selected_provider_ids": []
+          }
+        ],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": true
+        }
+      },
+      "latencyMs": 17350
+    },
+    {
+      "turnIndex": 1,
+      "input": {
+        "text": "Si no hay, amplía la búsqueda a entretenimiento para cumpleaños en Lima.",
+        "channel": "whatsapp",
+        "sessionId": "live_behavior.july_breadth_birthday_10_phonefixed",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "master-provider-live-public"
+        }
+      },
+      "outputText": "Amplié la búsqueda a Lima, pero no encontré opciones que confirmen ofrecer entretenimiento para cumpleaños. Solo aparece esta tienda, que no indica brindar animación; ¿quieres que exploremos otra categoría?\n\n1. Shop Sin Envolturas\n Está ubicada en Lima y figura en la categoría «Otros».\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 10% OFF.\n Nota: Su ficha describe una tienda virtual, no servicios de entretenimiento o animación.\n\n Ficha: https://sinenvolturas.com/proveedores/shop-sin-envolturas",
+      "deliveredText": "Amplié la búsqueda a Lima, pero no encontré opciones que confirmen ofrecer entretenimiento para cumpleaños. Solo aparece esta tienda, que no indica brindar animación; ¿quieres que exploremos otra categoría?\n\n1. Shop Sin Envolturas\n Está ubicada en Lima y figura en la categoría «Otros».\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 10% OFF.\n Nota: Su ficha describe una tienda virtual, no servicios de entretenimiento o animación.\n\n Ficha: https://sinenvolturas.com/proveedores/shop-sin-envolturas",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "1a6f1182b2588cee2990347f5578a839fcdc1d7b563529751684be74b0529f43",
+        "deliveredSha256": "1a6f1182b2588cee2990347f5578a839fcdc1d7b563529751684be74b0529f43",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "recomendar",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 6,
+          "attempts": 1
+        },
+        "trace_id": "01M61ECBYWDMPGSZMTQ5ZK7V6S",
+        "conversation_id": null,
+        "plan_id": "01M61EB9AY4AZEFZGT874KE3GV",
+        "previous_node": "recomendar",
+        "next_node": "recomendar",
+        "node_path": [
+          "recomendar",
+          "existe_plan_guardado",
+          "refinar_criterios",
+          "minimos_para_buscar",
+          "buscar_proveedores",
+          "busqueda_exitosa",
+          "hay_resultados",
+          "recomendar"
+        ],
+        "intent": "refinar_busqueda",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "9579d9dcb7c9",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/domain_scope.txt",
+          "shared/flow_discipline.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "search_providers_from_plan",
+          "get_provider_detail",
+          "get_related_providers",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "search_providers_from_plan",
+          "get_provider_detail"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "search_providers_from_plan",
+            "input": "{\"projection_version\":1}"
+          },
+          {
+            "tool": "get_provider_detail",
+            "input": "{\"projection_version\":1,\"provider_id\":1}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "search_providers_from_plan",
+            "output": "{\"projection_version\":1,\"result_kind\":\"collection\",\"count\":1,\"provider_ids\":[1]}"
+          },
+          {
+            "tool": "get_provider_detail",
+            "output": "{\"projection_version\":1,\"result_kind\":\"detail\",\"provider_id\":1,\"found\":true}"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 1,
+            "title": "Shop Sin Envolturas",
+            "slug": "shop-sin-envolturas",
+            "category": "Otros",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "5.0",
+            "reason": "Shop Sin Envolturas encaja con Otros según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/shop-sin-envolturas",
+            "websiteUrl": "https://www.shop.sinenvolturas.pe/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% OFF",
+            "promoSummary": "10% de descuento en nuestra tienda virtual, exclusivo para clientes de Sin Envolturas. Puedes consultarnos por tu cupón.",
+            "descriptionSnippet": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa.",
+            "serviceHighlights": [
+              "Ya sea tu matri, la llegada de tu bebé o tu nueva casa, y disfruta de tus descuento exclusivo por ser cliente de Sin Envolturas."
+            ],
+            "termsHighlights": [
+              "El descuento no aplica sobre descuento.",
+              "El descuento no aplica para algunos productos y servicios, consultar."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor:: Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa.",
+              "Acerca del proveedor:: https://www.shop.sinenvolturas.pe/",
+              "Servicios que ofrece:: Ya sea tu matri, la llegada de tu bebé o tu nueva casa, y disfruta de tus descuento exclusivo por ser cliente de Sin Envolturas.",
+              "Términos y condiciones:: El descuento no aplica sobre descuento.",
+              "Términos y condiciones:: El descuento no aplica para algunos productos y servicios, consultar."
+            ],
+            "eventTypes": [],
+            "description": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa. https://www.shop.sinenvolturas.pe/",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7265868438641392,
+            "retrievalSource": "hybrid"
+          }
+        ],
+        "search_strategy": "search_from_plan",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 1,
+            "category": "Otros",
+            "location": "Lima, Perú",
+            "retrieval_source": "hybrid",
+            "retrieval_score": 0.7265868438641392,
+            "fit_score": 80
+          }
+        ],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_0d3a7edadd5b30ac006ae2059d0c5087d19eb80218ad59fed8",
+            "requestId": "req_acad413b5bc840f280af1572ed0d1666",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 1226,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 8125,
+                "instructionBytes": 0,
+                "inputBytes": 6298,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_08b0a5d9e6191561006ae2059ffc7c87d19d25bca7c02e5e04",
+            "requestId": "req_295173eacd0b4b06acb647c1a59c2fae",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 10050,
+              "inputBytes": 5070,
+              "toolCount": 0,
+              "schemaPropertyCount": 36,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 37005,
+                "instructionBytes": 10163,
+                "inputBytes": 5467,
+                "toolBytes": 2,
+                "outputSchemaBytes": 21111,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_0ab35f5d186c997a006ae205aa6ad087d183930e08547997b9",
+            "requestId": "req_5275d5089f204a8aa18500e618ed2de8",
+            "model": "gpt-6-luna",
+            "attemptCount": 2,
+            "requestMetrics": {
+              "instructionBytes": 2588,
+              "inputBytes": 10456,
+              "toolCount": 3,
+              "schemaPropertyCount": 3,
+              "transport": {
+                "observedRequestCount": 2,
+                "totalPayloadBytes": 33929,
+                "instructionBytes": 5248,
+                "inputBytes": 24755,
+                "toolBytes": 2054,
+                "outputSchemaBytes": 1334,
+                "requests": []
+              }
+            }
+          },
+          "router": null
+        },
+        "recommendation_funnel": {
+          "available_candidates": 1,
+          "context_candidates": 1,
+          "context_candidate_ids": [
+            1
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "recomendar",
+        "timing_ms": {
+          "total": 17157,
+          "load_plan": 10,
+          "response_classification": 2865,
+          "prepare_working_plan": 0,
+          "extraction": 6996,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 1926,
+          "provider_enrichment": 46,
+          "prompt_bundle_load": 0,
+          "compose_reply": 5281,
+          "save_plan": 21,
+          "router": 0,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1626,
+            "output_tokens": 114,
+            "total_tokens": 1740,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 281
+          },
+          "router": null,
+          "extraction": {
+            "input_tokens": 8026,
+            "output_tokens": 684,
+            "total_tokens": 8710,
+            "cached_input_tokens": 6805,
+            "cache_write_input_tokens": 1218
+          },
+          "reply": {
+            "input_tokens": 7037,
+            "output_tokens": 187,
+            "total_tokens": 7224,
+            "cached_input_tokens": 3327,
+            "cache_write_input_tokens": 3704
+          },
+          "total": {
+            "input_tokens": 16689,
+            "output_tokens": 985,
+            "total_tokens": 17674,
+            "cached_input_tokens": 11474,
+            "cache_write_input_tokens": 5203
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "agent_api",
+          "has_prior_outbound_message": true,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "question_or_request",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "recomendar",
+          "routeKind": "single_need_search",
+          "providerSearchMode": "single_need_from_plan",
+          "presentationScope": "single_need",
+          "focusNeedCategory": "Otros",
+          "needsToSearch": [
+            "Otros"
+          ],
+          "needsToPresent": [
+            "Otros"
+          ],
+          "stopReason": null,
+          "persistReason": "recomendar",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "single_need_search",
+        "presentation_scope": "single_need",
+        "session_focus_used": true,
+        "session_focus_key_present": true,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.98,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": "cumpleanos",
+          "vendor_category": "Otros",
+          "vendor_categories": [
+            "Otros"
+          ],
+          "active_need_category": "Otros",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "1-20",
+          "selected_provider_hints": [],
+          "preferences": [
+            "entretenimiento para cumpleaños"
+          ],
+          "hard_constraints": [],
+          "assumptions": [
+            "La búsqueda ampliada mantiene el cumpleaños y el grupo de 20 personas; cambia la ubicación a Lima y amplía la temática medieval a entretenimiento general."
+          ],
+          "provider_query_intents_count": 1,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Amplía la búsqueda de animación para cumpleaños a opciones de entretenimiento en Lima, si no hay una opción adecuada en Lurín.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "recomendar",
+          "lifecycle_state": "active",
+          "event_type": "cumpleanos",
+          "vendor_category": "Otros",
+          "active_need_category": "Otros",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "1-20",
+          "provider_need_categories": [
+            "Otros"
+          ],
+          "provider_need_count": 1,
+          "provider_need_statuses": [
+            {
+              "category": "Otros",
+              "status": "shortlisted",
+              "has_recommendations": true,
+              "selected_provider_ids": []
+            }
+          ],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "Amplía la búsqueda de animación para cumpleaños a opciones de entretenimiento en Lima, si no hay una opción adecuada en Lurín.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "available",
+          "context_source": "agent_api",
+          "retrieved_message_count": 2,
+          "recent_message_count": 2,
+          "excluded_current_message_count": 0,
+          "directions": [
+            "inbound",
+            "outbound"
+          ],
+          "sources": [
+            null,
+            null
+          ],
+          "entry_source": null
+        },
+        "continuity_state": "continuing",
+        "welcome_allowed": false,
+        "history_status": "available",
+        "has_prior_outbound": true,
+        "requested_operation": "provider.search",
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 10518,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M61ECBYWDMPGSZMTQ5ZK7V6S",
+        "conversation_hash": "b23bfc3361b4cf5afecb6852c7d99ae6b83bc9a44e633c37554f90b6b9d5822c",
+        "runtime_latency_ms": 17157,
+        "extraction_latency_ms": 6996,
+        "compose_latency_ms": 5281,
+        "tools_called_count": 5,
+        "provider_results_count": 1,
+        "recommendation_context_candidates": 1,
+        "recommendation_presentation_limit": 6,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 17674,
+        "cached_input_tokens": 11474,
+        "cache_hit_rate": 0.6875187249086224,
+        "extraction_to_compose_ratio": 1.3247491005491385,
+        "captured_at": "2026-10-28T14:24:46.052Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "recomendar",
+        "lifecycle_state": "active",
+        "event_type": "cumpleanos",
+        "vendor_category": "Otros",
+        "active_need_category": "Otros",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": "1-20",
+        "provider_needs": [
+          {
+            "category": "Otros",
+            "status": "shortlisted",
+            "recommended_provider_ids": [
+              1
+            ],
+            "selected_provider_ids": []
+          }
+        ],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": true
+        }
+      },
+      "latencyMs": 17508
+    }
+  ],
+  "startedAt": "2026-10-28T14:24:47.767Z",
+  "completedAt": "2026-10-28T14:24:47.768Z"
+}

@@ -1,0 +1,100 @@
+{
+  "runId": "eval-2026-10-27T22-19-42-463Z-78589b85",
+  "caseId": "live_behavior.master_v2_otp_number_words.master_r1",
+  "suite": "live_behavior_regression",
+  "target": "live_lambda",
+  "configLabel": "live_lambda",
+  "status": "errored",
+  "hardGatePassed": false,
+  "primaryFailureReason": "infrastructure_error",
+  "finalScore": 0.6666666666666666,
+  "totalLatencyMs": 0,
+  "totalToolCalls": 0,
+  "nodeTransitions": [],
+  "planDiffSummary": [
+    "Runtime error: Live Lambda returned HTTP 500: {\n  \"error\": \"Invalid output type: final assistant output did not match the expected schema.\",\n  \"correlation_id\": \"live_behavior.master_v2_otp_number_words.master_r1-1-4b5b2a2c\",\n  \"request_id\": \"79ea4c83-f67e-42d9-88c8-12323757b468\"\n}"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/.eval-runs/eval-2026-10-27T22-19-42-463Z-78589b85/artifacts/live_lambda/live_behavior.master_v2_otp_number_words.master_r1.json"
+  },
+  "expectationResults": [
+    {
+      "id": "word-code-is-submitted",
+      "type": "tool_usage",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Missing=verify_user_login_code; forbidden=none; total=0."
+    },
+    {
+      "id": "recall-performs-no-new-effect",
+      "type": "tool_usage",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Tool usage matched expectations."
+    },
+    {
+      "id": "thanks-performs-no-new-effect",
+      "type": "tool_usage",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Tool usage matched expectations."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 0.6666666666666666,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 3 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 0,
+    "avg_latency_ms": 0,
+    "p95_latency_ms": 0,
+    "tool_calls_total": 0,
+    "unique_tools_called": 0,
+    "tool_call_rate_per_turn": 0,
+    "tool_precision": 0,
+    "tool_recall": 0.6666666666666666,
+    "tool_f1": 0,
+    "branch_coverage": 0,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 0,
+    "total_tokens": 0,
+    "cache_hit_rate": 0,
+    "input_tokens": 0,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 0,
+    "uncached_input_tokens": 0,
+    "usage_known": true
+  },
+  "timing": {
+    "queueWaitMs": 176300,
+    "setupMs": 0,
+    "turnMs": 20767,
+    "snapshotMs": 4,
+    "teardownMs": 0,
+    "judgeWaitMs": 0,
+    "judgeApiMs": 0,
+    "reportWriteMs": 0,
+    "makespanMs": 0
+  },
+  "judgeMetrics": {
+    "modelCalls": 0,
+    "retryCount": 0,
+    "rateLimitCount": 0,
+    "tokensUnknown": false,
+    "openaiSdk": "7.43.0",
+    "judgeModels": []
+  },
+  "turns": [],
+  "startedAt": "2026-10-27T22:23:00.753Z",
+  "completedAt": "2026-10-27T22:23:00.754Z"
+}
