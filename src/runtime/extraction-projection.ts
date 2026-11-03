@@ -14,8 +14,8 @@ import { createDynamicExtractionSchema, requestedOperationSchema, type Extractio
  * schema fields and prompt files stay omitted for that turn.
  *
  * L3 established-lane narrowing: once typed plan state shows an established
- * purchase/support lane (information node with pending or completed
- * information work) or an established RSVP lane (invitation node or active
+ * purchase/support lane (information node or pending information work)
+ * or an established RSVP lane (invitation node or active
  * RSVP state), planning-only fields stay omitted from the profile. The
  * domain is derived from structured plan state only, never from message
  * keywords. Information and RSVP stays expressible in both lanes so
@@ -48,7 +48,7 @@ function manifestAvailable(
 
 /**
  * L3: established lane derived from typed plan state only. An information
- * lane with pending or completed information work is an established
+ * lane with active information work is an established
  * purchase lane when a purchase/associated-event request is present and an
  * established support lane otherwise (faq, policy and follow-up turns).
  * An invitation node or active RSVP state is an established RSVP lane.
@@ -67,8 +67,7 @@ export function deriveEstablishedExtractionDomain(
   }
   const hasInformationWork =
     plan.current_node === 'resolver_consultas_informativas' ||
-    pending.length > 0 ||
-    lastCompleted != null;
+    pending.length > 0;
   if (!hasInformationWork) {
     return null;
   }
