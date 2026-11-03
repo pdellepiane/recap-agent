@@ -5513,6 +5513,18 @@ export class AgentService {
     extraction: ExtractionResult,
     options?: { forImageGate?: boolean },
   ): boolean {
+    // A clear, structured provider-search pivot owns this turn. Keep any
+    // pending information request on the plan for a later continuation.
+    if (
+      options?.forImageGate !== true &&
+      extraction.actionIntent === 'buscar_proveedores' &&
+      extraction.requestedOperation === 'provider.search' &&
+      extraction.informationRequests.length === 0 &&
+      extraction.supportAct == null &&
+      extraction.ambiguity?.status !== 'ambiguous'
+    ) {
+      return false;
+    }
     // A close-flow contact turn belongs to close handling even when the
     // extractor also labels it a support detail: providing requested contact
     // data is not a support act, and the support path would drop the update.

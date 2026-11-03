@@ -489,6 +489,11 @@ describe('structured extraction schemas', () => {
     expect(deriveEstablishedExtractionDomain(plan)).toBe('support');
     const projection = projectExtraction({ plan, manifest: buildRuntimeCapabilityManifest({}), allowedActionIntents: actionIntentValues });
     expect(projection.profile.providerPlanning).toBe(false);
+    const pivot = projectExtraction({ plan, manifest: buildRuntimeCapabilityManifest({}), allowedActionIntents: actionIntentValues, providerPivot: true });
+    expect(pivot.profile.providerPlanning).toBe(true);
+    const fields = Object.keys(createDynamicExtractionSchema({ allowedActionIntents: pivot.allowedActionIntents, capabilities: pivot.profile }).shape);
+    expect(fields).toEqual(expect.arrayContaining(['vendorCategory', 'location', 'providerQueryIntents']));
+    expect(plan.information_state.last_completed_request?.kind).toBe('faq');
   });
 
   it('narrows established purchase/support/RSVP profiles to non-planning fields', () => {

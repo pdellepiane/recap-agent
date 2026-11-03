@@ -29,6 +29,7 @@ export type ExtractionProjectionInput = {
   readonly plan: PersistedPlan;
   readonly manifest: RuntimeCapabilityManifest;
   readonly allowedActionIntents: readonly ActionIntent[];
+  readonly providerPivot?: boolean;
 };
 
 export type ExtractionProjection = {
@@ -83,10 +84,11 @@ export function deriveEstablishedExtractionDomain(
 function profileFromManifestAndPlan(
   plan: PersistedPlan,
   manifest: RuntimeCapabilityManifest,
+  providerPivot = false,
 ): ExtractionCapabilityProfile {
   const lane = derivePlanCapabilities(plan);
   const established = deriveEstablishedExtractionDomain(plan);
-  const laneNarrowed = established !== null;
+  const laneNarrowed = established !== null && !providerPivot;
   const information =
     manifestAvailable(manifest, 'faq.read') ||
     manifestAvailable(manifest, 'event.association.read') ||
@@ -148,7 +150,7 @@ function intentAllowedByManifest(
 }
 
 export function projectExtraction(input: ExtractionProjectionInput): ExtractionProjection {
-  const profile = profileFromManifestAndPlan(input.plan, input.manifest);
+  const profile = profileFromManifestAndPlan(input.plan, input.manifest, input.providerPivot);
   const lane = derivePlanCapabilities(input.plan);
   // L3: established lanes use exactly the static base intents. Planning
   // progress (active plan, shortlist, close readiness) must not change the
@@ -156,7 +158,7 @@ export function projectExtraction(input: ExtractionProjectionInput): ExtractionP
   // cross-domain pivots stay expressible as intent-only signals whose
   // details the owning lane elicits next turn.
   const established = deriveEstablishedExtractionDomain(input.plan);
-  const laneIntents = established === null
+  const laneIntents = established === null || input.providerPivot
     ? input.allowedActionIntents
     : input.allowedActionIntents.filter((intent) =>
       (baseActionIntents as readonly ActionIntent[]).includes(intent),
