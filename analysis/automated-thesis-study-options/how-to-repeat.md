@@ -75,3 +75,7 @@ failures, scores, model/price identities and uncertainty definitions.
 ## Current primary study handoff (2026-10-27)
 
 Read `analysis/master-thesis-study-followup-2026-10-27/frozen-master.json`, `master-summary.json`, `results.md`, and `artifacts/master-live-run/report.json`. Check separate calculator run `analysis/targeted-calculator-followup-2026-10-27/protocol.md` and its report. Recompute scenario denominators directly from the frozen protocol and raw report; do not pool runs or alter the original primary endpoint. Drafting the handoff uses retained artifacts only and requires no new model calls.
+
+## Bounded response reanalysis (2026-10-29)
+
+Run `npx tsx scripts/analyze-bounded-response-evidence.ts` on the preserved expanded, recovery and continuation reports. It uses the preexisting reconstructed mapping and writes summary, per-card and selection records to `artifacts/bounded-coverage-2026-10-29/`; `metadata.json` records source hashes. This is offline and makes no model calls. Run `npx vitest run tests/bounded-response-checks.test.ts --maxWorkers=2 --minWorkers=1` for detector negative controls. Separate new case definitions and execution artifacts are in `analysis/bounded-outcome-validation-2026-10-29/`.
