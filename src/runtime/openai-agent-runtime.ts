@@ -1388,6 +1388,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       assumptions: extraction.assumptions ?? [],
       conversationSummary: extraction.conversationSummary ?? '',
       selectedProviderHints: extraction.selectedProviderHints ?? [],
+      selectedProviderOrdinal: extraction.selectedProviderOrdinal ?? null,
       selectedProviderReferences: extraction.selectedProviderReferences ?? [],
       closeAction: repairVoidCloseAction(extraction.closeAction ?? null),
       pauseRequested: extraction.pauseRequested ?? false,

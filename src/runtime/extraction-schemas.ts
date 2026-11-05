@@ -207,6 +207,7 @@ export const extractionSchema = z.object({
   hardConstraints: z.array(z.string()),
   assumptions: z.array(z.string()),
   conversationSummary: z.string(),
+  selectedProviderOrdinal: z.number().int().positive().nullable().default(null),
   selectedProviderHints: z.array(z.string()).default([]),
   selectedProviderReferences: z.array(providerReferenceSchema).default([]),
   closeAction: closeActionSchema.nullable().default(null),
@@ -297,11 +298,15 @@ export function createDynamicExtractionSchema(args: {
           providerQueryIntents: extractionSchema.shape.providerQueryIntents,
         }
       : {}),
+    ...((args.capabilities.providerOperations && !args.capabilities.providerSelection)
+      ? { selectedProviderOrdinal: extractionSchema.shape.selectedProviderOrdinal }
+      : {}),
     ...(args.capabilities.providerOperations
       ? { providerPlanOperations: extractionSchema.shape.providerPlanOperations }
       : {}),
     ...(args.capabilities.providerSelection
       ? {
+          selectedProviderOrdinal: extractionSchema.shape.selectedProviderOrdinal,
           selectedProviderHints: extractionSchema.shape.selectedProviderHints,
           selectedProviderReferences: extractionSchema.shape.selectedProviderReferences,
         }

@@ -373,7 +373,7 @@ export async function main(
     suite: 'live_behavior_regression',
     target: 'live_lambda',
     caseIds,
-    ...(master ? { caseOverrides: expandMasterCases(master.protocol, selectedCases) } : {}),
+    ...(master ? { caseOverrides: expandMasterCases(master.protocol, selectedCases), deadlineMs: 4 * 60 * 60 * 1000 } : {}),
     runLabel,
     requestedCaseConcurrency: caseConcurrency,
     requestedJudgeConcurrency: judgeConcurrency,

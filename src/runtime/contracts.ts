@@ -110,6 +110,7 @@ export type ExtractionResult = {
   hardConstraints: string[];
   assumptions: string[];
   conversationSummary: string;
+  selectedProviderOrdinal?: number | null;
   selectedProviderHints: string[];
   selectedProviderReferences?: ProviderReference[];
   closeAction?: CloseAction | null;

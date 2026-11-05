@@ -3502,7 +3502,7 @@ describe('AgentService', () => {
     expect(gateway.searchCalls).toBe(0);
   });
 
-  it('resolves ordinal selections against the active shortlist without searching again', async () => {
+  it('does not resolve ordinal selections from shortlist order without delivered evidence', async () => {
     {
       class OrdinalSelectionRuntime extends FakeRuntime {
         override async extract(): Promise<ExtractionResult> {
@@ -3521,6 +3521,7 @@ describe('AgentService', () => {
             hardConstraints: [],
             assumptions: [],
             conversationSummary: 'El usuario eligió la primera opción de música.',
+            selectedProviderOrdinal: 1,
             selectedProviderHints: ['primera opción'],
             pauseRequested: false,
             contactName: null,
@@ -3623,10 +3624,28 @@ describe('AgentService', () => {
         receivedAt: new Date().toISOString(),
       });
 
-      expect(response.plan.current_node).toBe('seguir_refinando_guardar_plan');
-      expect(response.plan.selected_provider_ids).toEqual([115]);
-      expect(getActiveNeed(response.plan)?.status).toBe('selected');
+      expect(response.plan.selected_provider_ids).toEqual([]);
+      expect(getActiveNeed(response.plan)?.status).not.toBe('selected');
       expect(gateway.searchCalls).toBe(0);
+
+      // The first displayed provider is second in the candidate list.
+      const deliveredStore = new InMemoryPlanStore();
+      await deliveredStore.save({ plan: seededPlan, reason: 'seed' });
+      const deliveredGateway = new TrackingAgentConversationGateway([{
+        id: 1, direction: 'outbound', source: null, status: 'sent',
+        body: '1. Dj Siles\nhttps://sinenvolturas.com/proveedores/dj-siles\n2. Dj Naoki\nhttps://sinenvolturas.com/proveedores/dj-naoki',
+        sentAt: '2026-11-05T00:00:00Z', createdAt: '2026-11-05T00:00:00Z',
+      }]);
+      const deliveredService = new AgentService({
+        planStore: deliveredStore, runtime, providerGateway: gateway,
+        agentConversationGateway: deliveredGateway, promptLoader, renderers,
+      });
+      const selected = await deliveredService.handleTurn({
+        channel: 'terminal_whatsapp', externalUserId: 'user-ordinal-provider',
+        text: 'dame la primera opcion', messageId: 'msg-delivered-ordinal',
+        receivedAt: new Date().toISOString(), contactPhone: '+51999999999',
+      });
+      expect(selected.plan.selected_provider_ids).toEqual([119]);
     }
 
     {
@@ -3709,8 +3728,7 @@ describe('AgentService', () => {
         receivedAt: new Date().toISOString(),
       });
 
-      expect(response.plan.selected_provider_ids).toEqual([101, 103]);
-      expect(gateway.searchCalls).toBe(0);
+      expect(response.plan.selected_provider_ids).toEqual([]);
     }
   });
 

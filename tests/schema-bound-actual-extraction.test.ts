@@ -62,6 +62,16 @@ describe('schema-bound actual extraction composition', () => {
     expect(request.instructions).not.toContain('destination_account');
   });
 
+  it('scopes explicit quote dispatch guidance to the close capability', async () => {
+    const withClose = await spec(true, true);
+    const withoutClose = await spec(true, true, { featureFlags: { providerQuoteRequests: false } });
+    const marker = 'pide expresamente enviar la cotización';
+    expect(withClose.instructions).toContain(marker);
+    expect(withoutClose.instructions).not.toContain(marker);
+    expect(Buffer.byteLength(withClose.instructions, 'utf8')).toBeGreaterThan(0);
+    expect(Buffer.byteLength(withClose.input, 'utf8')).toBeGreaterThan(0);
+  });
+
   it('keeps unsupported requested operations expressible without advertising executable tools', async () => {
     const request = await spec(false, false);
     expect(request.extractionProjection.allowedOperations).toEqual(requestedOperationSchema.options);
