@@ -1,0 +1,1679 @@
+{
+  "runId": "eval-2026-11-05T16-01-27-136Z-2eace95d",
+  "caseId": "live_behavior.july_breadth_social_06_phonefixed.master_r3",
+  "suite": "live_behavior_regression",
+  "target": "live_lambda",
+  "configLabel": "live_lambda",
+  "status": "passed",
+  "hardGatePassed": true,
+  "finalScore": 1,
+  "totalLatencyMs": 35554,
+  "totalToolCalls": 9,
+  "nodeTransitions": [
+    "contacto_inicial->elicitacion_necesidades",
+    "elicitacion_necesidades->elicitacion_necesidades",
+    "elicitacion_necesidades->aclarar_pedir_faltante"
+  ],
+  "planDiffSummary": [
+    "current_node=\"aclarar_pedir_faltante\"",
+    "intent=\"retomar_plan\"",
+    "event_type=\"bautizo\"",
+    "vendor_category=\"Locales\"",
+    "active_need_category=\"Locales\"",
+    "location=\"Lima\"",
+    "provider_needs=Locales:search_ready, Catering:identified, Fotografía y video:identified, Florería y papelería:identified, Hogar y deco:identified"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/.eval-runs/eval-2026-11-05T16-01-27-136Z-2eace95d/artifacts/live_lambda/live_behavior.july_breadth_social_06_phonefixed.master_r3.json"
+  },
+  "expectationResults": [
+    {
+      "id": "event-type-retained",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "answer-delivered",
+      "type": "text_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Text containment checks passed."
+    },
+    {
+      "id": "no-provider-quote-without-explicit-date",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture provider.quote.write attempts=0 successes=0 replays=0 outcome=none."
+    },
+    {
+      "id": "no-unrequested-rsvp",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture rsvp.write attempts=0 successes=0 replays=0 outcome=none."
+    },
+    {
+      "id": "no-unrequested-handoff",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture handoff.write attempts=0 successes=0 replays=0 outcome=none."
+    },
+    {
+      "id": "requested-needs-retained",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "objective-obligations",
+      "type": "expectation_pass_rate",
+      "score": 1,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 6 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 3,
+    "avg_latency_ms": 11851.333333333334,
+    "p95_latency_ms": 13426,
+    "tool_calls_total": 9,
+    "unique_tools_called": 3,
+    "tool_call_rate_per_turn": 3,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.20689655172413793,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 34445,
+    "cache_hit_rate": 0.6102991057662658,
+    "input_tokens": 32430,
+    "cached_input_tokens": 19792,
+    "cache_write_input_tokens": 11144,
+    "uncached_input_tokens": 12638,
+    "usage_known": true
+  },
+  "timing": {
+    "queueWaitMs": 5473609,
+    "setupMs": 0,
+    "turnMs": 40134,
+    "snapshotMs": 14,
+    "teardownMs": 0,
+    "judgeWaitMs": 1,
+    "judgeApiMs": 0,
+    "reportWriteMs": 0,
+    "makespanMs": 0
+  },
+  "judgeMetrics": {
+    "modelCalls": 0,
+    "retryCount": 0,
+    "rateLimitCount": 0,
+    "tokensUnknown": false,
+    "openaiSdk": "7.43.0",
+    "judgeModels": []
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Planeo un bautizo en Lima y necesito catering.",
+        "channel": "whatsapp",
+        "sessionId": "live_behavior.july_breadth_social_06_phonefixed",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "master-provider-live-public"
+        }
+      },
+      "outputText": "Ya tengo el bautizo en Lima y el catering como necesidad. ¿Quieres enfocarte solo en catering por ahora o también necesitas alguno de estos servicios: local, fotografía y video, florería y papelería, o decoración?",
+      "deliveredText": "Ya tengo el bautizo en Lima y el catering como necesidad. ¿Quieres enfocarte solo en catering por ahora o también necesitas alguno de estos servicios: local, fotografía y video, florería y papelería, o decoración?",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "e6380c2e5e6f532770141ebbcfc31368aec31eba3be560a410b650e73304b941",
+        "deliveredSha256": "e6380c2e5e6f532770141ebbcfc31368aec31eba3be560a410b650e73304b941",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "elicitacion_necesidades",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 7,
+          "attempts": 1
+        },
+        "trace_id": "01M6PCAP1766CGTX8JT034EM52",
+        "conversation_id": null,
+        "plan_id": "01M6PCAA04SYR0DTAFQNPJFKQS",
+        "previous_node": "contacto_inicial",
+        "next_node": "elicitacion_necesidades",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "elicitacion_necesidades"
+        ],
+        "intent": "elicitar_necesidades",
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "f2764487cbf6",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/domain_scope.txt",
+          "shared/flow_discipline.txt",
+          "shared/domain_knowledge.txt",
+          "shared/question_strategy.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_0af2aca0fb3353b1006aecbdbcc71087d1a6d1c88d12b88582",
+            "requestId": "req_bf95527c9e7d4729b24659bd7afda69c",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 680,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 7557,
+                "instructionBytes": 0,
+                "inputBytes": 5730,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_00fb34353afa6950006aecbdbf00b487d1a593279f4cd4e2ba",
+            "requestId": "req_27cdec82a2804bf28056cf5e0cd663bc",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 6855,
+              "inputBytes": 3106,
+              "toolCount": 0,
+              "schemaPropertyCount": 30,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 20793,
+                "instructionBytes": 6932,
+                "inputBytes": 3390,
+                "toolBytes": 2,
+                "outputSchemaBytes": 10207,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_004daef7be4f8917006aecbdc5e9ac87d19f394d56cc214f23",
+            "requestId": "req_6fad6664577d43d690e1c280b4091205",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4708,
+              "inputBytes": 9088,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 15366,
+                "instructionBytes": 4772,
+                "inputBytes": 9997,
+                "toolBytes": 2,
+                "outputSchemaBytes": 313,
+                "requests": []
+              }
+            }
+          },
+          "router": {
+            "responseId": null,
+            "requestId": "req_b74083bd553a4f6283369e75a547f99b",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 3321,
+              "inputBytes": 2506,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 6788,
+                "instructionBytes": 3321,
+                "inputBytes": 2506,
+                "toolBytes": 0,
+                "outputSchemaBytes": 0,
+                "requests": []
+              }
+            }
+          }
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "elicitacion_necesidades",
+        "timing_ms": {
+          "total": 12328,
+          "load_plan": 6,
+          "response_classification": 2196,
+          "prepare_working_plan": 0,
+          "extraction": 6946,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 2911,
+          "save_plan": 16,
+          "router": 245,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1509,
+            "output_tokens": 111,
+            "total_tokens": 1620,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 164
+          },
+          "router": {
+            "input_tokens": 1467,
+            "output_tokens": 0,
+            "total_tokens": 1467
+          },
+          "extraction": {
+            "input_tokens": 4393,
+            "output_tokens": 449,
+            "total_tokens": 4842,
+            "cached_input_tokens": 3636,
+            "cache_write_input_tokens": 754
+          },
+          "reply": {
+            "input_tokens": 3205,
+            "output_tokens": 199,
+            "total_tokens": 3404,
+            "cached_input_tokens": 0,
+            "cache_write_input_tokens": 3202
+          },
+          "total": {
+            "input_tokens": 10574,
+            "output_tokens": 759,
+            "total_tokens": 11333,
+            "cached_input_tokens": 4978,
+            "cache_write_input_tokens": 4120
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "agent_api",
+          "has_prior_outbound_message": false,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "question_or_request",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "elicitacion_necesidades",
+          "routeKind": "ask_event_context",
+          "providerSearchMode": "none",
+          "presentationScope": "multi_need",
+          "focusNeedCategory": "Catering",
+          "needsToSearch": [],
+          "needsToPresent": [
+            "Catering"
+          ],
+          "stopReason": "need_priority_confirmation",
+          "persistReason": "elicitacion_necesidades",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "ask_event_context",
+        "presentation_scope": "multi_need",
+        "session_focus_used": false,
+        "session_focus_key_present": true,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.88,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": "bautizo",
+          "vendor_category": "Catering",
+          "vendor_categories": [
+            "Catering"
+          ],
+          "active_need_category": "Catering",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": null,
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 0,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Planea un bautizo en Lima y necesita catering.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "elicitacion_necesidades",
+          "lifecycle_state": "active",
+          "event_type": "bautizo",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": null,
+          "provider_need_categories": [
+            "Locales",
+            "Catering",
+            "Fotografía y video",
+            "Florería y papelería",
+            "Hogar y deco"
+          ],
+          "provider_need_count": 5,
+          "provider_need_statuses": [
+            {
+              "category": "Locales",
+              "status": "identified",
+              "has_recommendations": false,
+              "selected_provider_ids": []
+            },
+            {
+              "category": "Catering",
+              "status": "identified",
+              "has_recommendations": false,
+              "selected_provider_ids": []
+            },
+            {
+              "category": "Fotografía y video",
+              "status": "identified",
+              "has_recommendations": false,
+              "selected_provider_ids": []
+            },
+            {
+              "category": "Florería y papelería",
+              "status": "identified",
+              "has_recommendations": false,
+              "selected_provider_ids": []
+            },
+            {
+              "category": "Hogar y deco",
+              "status": "identified",
+              "has_recommendations": false,
+              "selected_provider_ids": []
+            }
+          ],
+          "selected_provider_ids": [],
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "conversation_summary_preview": "Planea un bautizo en Lima y necesita catering.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "empty",
+          "context_source": "agent_api",
+          "retrieved_message_count": 0,
+          "recent_message_count": 0,
+          "excluded_current_message_count": 0,
+          "directions": [],
+          "sources": [],
+          "entry_source": null
+        },
+        "continuity_state": "new",
+        "welcome_allowed": true,
+        "history_status": "empty",
+        "has_prior_outbound": false,
+        "requested_operation": "provider.plan",
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 8620,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M6PCAP1766CGTX8JT034EM52",
+        "conversation_hash": "90b00de850379d571d06f85630ae3b0a0dc3a9c24b5e465fcdcaf662980e8651",
+        "runtime_latency_ms": 12328,
+        "extraction_latency_ms": 6946,
+        "compose_latency_ms": 2911,
+        "tools_called_count": 3,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 11333,
+        "cached_input_tokens": 4978,
+        "cache_hit_rate": 0.47077737847550594,
+        "extraction_to_compose_ratio": 2.38612160769495,
+        "captured_at": "2026-11-05T17:32:56.749Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "elicitacion_necesidades",
+        "lifecycle_state": "active",
+        "event_type": "bautizo",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": null,
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "identified",
+            "recommended_provider_ids": [],
+            "selected_provider_ids": []
+          },
+          {
+            "category": "Catering",
+            "status": "identified",
+            "recommended_provider_ids": [],
+            "selected_provider_ids": []
+          },
+          {
+            "category": "Fotografía y video",
+            "status": "identified",
+            "recommended_provider_ids": [],
+            "selected_provider_ids": []
+          },
+          {
+            "category": "Florería y papelería",
+            "status": "identified",
+            "recommended_provider_ids": [],
+            "selected_provider_ids": []
+          },
+          {
+            "category": "Hogar y deco",
+            "status": "identified",
+            "recommended_provider_ids": [],
+            "selected_provider_ids": []
+          }
+        ],
+        "selected_provider_ids": [],
+        "missing_fields": [
+          "budget_or_guest_range"
+        ]
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": true
+        }
+      },
+      "latencyMs": 13426
+    },
+    {
+      "turnIndex": 1,
+      "input": {
+        "text": "Pausa el plan por ahora.",
+        "channel": "whatsapp",
+        "sessionId": "live_behavior.july_breadth_social_06_phonefixed",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "master-provider-live-public"
+        }
+      },
+      "outputText": "Claro, dejamos el plan en pausa. Cuando quieras retomarlo, seguimos con el catering para el bautizo en Lima.",
+      "deliveredText": "Claro, dejamos el plan en pausa. Cuando quieras retomarlo, seguimos con el catering para el bautizo en Lima.",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "f06af65d3f2652380ac11af01033896e760987fb406890a9e16e084ce3bb3bae",
+        "deliveredSha256": "f06af65d3f2652380ac11af01033896e760987fb406890a9e16e084ce3bb3bae",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "elicitacion_necesidades",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 6,
+          "attempts": 1
+        },
+        "trace_id": "01M6PCB2YW5GAD6AR1S1SPA9FW",
+        "conversation_id": null,
+        "plan_id": "01M6PCAA04SYR0DTAFQNPJFKQS",
+        "previous_node": "elicitacion_necesidades",
+        "next_node": "elicitacion_necesidades",
+        "node_path": [
+          "elicitacion_necesidades"
+        ],
+        "intent": null,
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "09f7a0da63c9",
+        "prompt_file_paths": [
+          "shared/reply_core.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_0fe33179b9cd6b81006aecbdcb380087d1969f5aaa5556f08f",
+            "requestId": "req_ca7d1c59b0a0430bb65a5f6cb721e959",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 1076,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 7975,
+                "instructionBytes": 0,
+                "inputBytes": 6148,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_04ce595ba54a1de8006aecbdce931887d18b2789b90ef1a736",
+            "requestId": "req_c5fd00bb0e054569917de471fff4d1cb",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 8903,
+              "inputBytes": 5523,
+              "toolCount": 0,
+              "schemaPropertyCount": 33,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 31919,
+                "instructionBytes": 9002,
+                "inputBytes": 5982,
+                "toolBytes": 2,
+                "outputSchemaBytes": 16671,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_032d3dcdccfe93ee006aecbdd38e3487d1954cc0e27310f81c",
+            "requestId": "req_e546ff5202234a9d812321845179d33c",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 680,
+              "inputBytes": 4304,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 6097,
+                "instructionBytes": 684,
+                "inputBytes": 4808,
+                "toolBytes": 2,
+                "outputSchemaBytes": 313,
+                "requests": []
+              }
+            }
+          },
+          "router": null
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 5
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "contextual_clarification",
+        "timing_ms": {
+          "total": 11261,
+          "load_plan": 7,
+          "response_classification": 3666,
+          "prepare_working_plan": 0,
+          "extraction": 5043,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 0,
+          "save_plan": 0,
+          "router": 0,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1601,
+            "output_tokens": 112,
+            "total_tokens": 1713,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 256
+          },
+          "router": null,
+          "extraction": {
+            "input_tokens": 6793,
+            "output_tokens": 428,
+            "total_tokens": 7221,
+            "cached_input_tokens": 5505,
+            "cache_write_input_tokens": 1285
+          },
+          "reply": {
+            "input_tokens": 1343,
+            "output_tokens": 74,
+            "total_tokens": 1417,
+            "cached_input_tokens": 0,
+            "cache_write_input_tokens": 1340
+          },
+          "total": {
+            "input_tokens": 9737,
+            "output_tokens": 614,
+            "total_tokens": 10351,
+            "cached_input_tokens": 6847,
+            "cache_write_input_tokens": 2881
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "agent_api",
+          "has_prior_outbound_message": true,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "other_actionable",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "resolver_consultas_informativas",
+          "routeKind": "contextual_clarification",
+          "providerSearchMode": "none",
+          "presentationScope": "clarification",
+          "focusNeedCategory": null,
+          "needsToSearch": [],
+          "needsToPresent": [],
+          "stopReason": null,
+          "persistReason": "contextual_clarification",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "contextual_clarification",
+        "presentation_scope": "clarification",
+        "session_focus_used": false,
+        "session_focus_key_present": false,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.96,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": null,
+          "vendor_category": null,
+          "vendor_categories": [],
+          "active_need_category": null,
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [
+            "La pausa temporal no equivale a cerrar o abandonar el plan."
+          ],
+          "provider_query_intents_count": 0,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "La persona planea un bautizo en Lima y necesita catering. Ahora pide pausar el plan temporalmente.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "elicitacion_necesidades",
+          "lifecycle_state": "active",
+          "event_type": "bautizo",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": null,
+          "provider_need_categories": [
+            "Locales",
+            "Catering",
+            "Fotografía y video",
+            "Florería y papelería",
+            "Hogar y deco"
+          ],
+          "provider_need_count": 5,
+          "provider_need_statuses": [
+            {
+              "category": "Locales",
+              "status": "identified",
+              "has_recommendations": false,
+              "selected_provider_ids": []
+            },
+            {
+              "category": "Catering",
+              "status": "identified",
+              "has_recommendations": false,
+              "selected_provider_ids": []
+            },
+            {
+              "category": "Fotografía y video",
+              "status": "identified",
+              "has_recommendations": false,
+              "selected_provider_ids": []
+            },
+            {
+              "category": "Florería y papelería",
+              "status": "identified",
+              "has_recommendations": false,
+              "selected_provider_ids": []
+            },
+            {
+              "category": "Hogar y deco",
+              "status": "identified",
+              "has_recommendations": false,
+              "selected_provider_ids": []
+            }
+          ],
+          "selected_provider_ids": [],
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "conversation_summary_preview": "Planea un bautizo en Lima y necesita catering.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "available",
+          "context_source": "agent_api",
+          "retrieved_message_count": 2,
+          "recent_message_count": 2,
+          "excluded_current_message_count": 0,
+          "directions": [
+            "inbound",
+            "outbound"
+          ],
+          "sources": [
+            null,
+            null
+          ],
+          "entry_source": null
+        },
+        "continuity_state": "continuing",
+        "welcome_allowed": false,
+        "history_status": "available",
+        "has_prior_outbound": true,
+        "requested_operation": null,
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 8147,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M6PCB2YW5GAD6AR1S1SPA9FW",
+        "conversation_hash": "90b00de850379d571d06f85630ae3b0a0dc3a9c24b5e465fcdcaf662980e8651",
+        "runtime_latency_ms": 11261,
+        "extraction_latency_ms": 5043,
+        "compose_latency_ms": 0,
+        "tools_called_count": 3,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 5,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 10351,
+        "cached_input_tokens": 6847,
+        "cache_hit_rate": 0.7031940022594229,
+        "extraction_to_compose_ratio": null,
+        "captured_at": "2026-11-05T17:33:09.993Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "elicitacion_necesidades",
+        "lifecycle_state": "active",
+        "event_type": "bautizo",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": null,
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "identified",
+            "recommended_provider_ids": [],
+            "selected_provider_ids": []
+          },
+          {
+            "category": "Catering",
+            "status": "identified",
+            "recommended_provider_ids": [],
+            "selected_provider_ids": []
+          },
+          {
+            "category": "Fotografía y video",
+            "status": "identified",
+            "recommended_provider_ids": [],
+            "selected_provider_ids": []
+          },
+          {
+            "category": "Florería y papelería",
+            "status": "identified",
+            "recommended_provider_ids": [],
+            "selected_provider_ids": []
+          },
+          {
+            "category": "Hogar y deco",
+            "status": "identified",
+            "recommended_provider_ids": [],
+            "selected_provider_ids": []
+          }
+        ],
+        "selected_provider_ids": [],
+        "missing_fields": [
+          "budget_or_guest_range"
+        ]
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": true
+        }
+      },
+      "latencyMs": 11578
+    },
+    {
+      "turnIndex": 2,
+      "input": {
+        "text": "Continuemos con el bautizo.",
+        "channel": "whatsapp",
+        "sessionId": "live_behavior.july_breadth_social_06_phonefixed",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "master-provider-live-public"
+        }
+      },
+      "outputText": "¡Claro! Retomemos el bautizo en Lima; empecemos por el local. ¿Cuántos invitados calculas o qué presupuesto tienes en mente? Luego seguimos con el catering.",
+      "deliveredText": "¡Claro! Retomemos el bautizo en Lima; empecemos por el local. ¿Cuántos invitados calculas o qué presupuesto tienes en mente? Luego seguimos con el catering.",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "5bd42aaf07c4de835c5bb7dd314bdb0dcbe069860149d592192abf5d3aa3d5c8",
+        "deliveredSha256": "5bd42aaf07c4de835c5bb7dd314bdb0dcbe069860149d592192abf5d3aa3d5c8",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "aclarar_pedir_faltante",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 6,
+          "attempts": 1
+        },
+        "trace_id": "01M6PCBEBE4BDY36PGZQ9933P6",
+        "conversation_id": null,
+        "plan_id": "01M6PCAA04SYR0DTAFQNPJFKQS",
+        "previous_node": "elicitacion_necesidades",
+        "next_node": "aclarar_pedir_faltante",
+        "node_path": [
+          "elicitacion_necesidades",
+          "existe_plan_guardado",
+          "aclarar_pedir_faltante",
+          "minimos_para_buscar",
+          "aclarar_pedir_faltante"
+        ],
+        "intent": "retomar_plan",
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "f2764487cbf6",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/domain_scope.txt",
+          "shared/flow_discipline.txt",
+          "shared/domain_knowledge.txt",
+          "shared/question_strategy.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "list_categories",
+          "get_category_by_slug",
+          "list_locations"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_056a2fa2f080eedb006aecbdd7a34087d1ac9ed7bf5e6262fc",
+            "requestId": "req_bc91b1aec0fe4713b653688d66775b0d",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 1308,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 8227,
+                "instructionBytes": 0,
+                "inputBytes": 6400,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_0faf90a71eb72b1a006aecbdda5b3487d1ae72ce82a8d7cc4c",
+            "requestId": "req_b3de16559efe40dd92df2978ea466086",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 8903,
+              "inputBytes": 5718,
+              "toolCount": 0,
+              "schemaPropertyCount": 33,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 32142,
+                "instructionBytes": 9002,
+                "inputBytes": 6205,
+                "toolBytes": 2,
+                "outputSchemaBytes": 16671,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_0495f0a7cfe9c4df006aecbddf779c87d1a1f1f6882d6396da",
+            "requestId": "req_9f5e32622ad44a798bdc5127ade5b444",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4708,
+              "inputBytes": 10220,
+              "toolCount": 3,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 17480,
+                "instructionBytes": 4772,
+                "inputBytes": 11197,
+                "toolBytes": 917,
+                "outputSchemaBytes": 313,
+                "requests": []
+              }
+            }
+          },
+          "router": null
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "aclarar_pedir_faltante",
+        "timing_ms": {
+          "total": 10271,
+          "load_plan": 8,
+          "response_classification": 2756,
+          "prepare_working_plan": 0,
+          "extraction": 5212,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 2272,
+          "save_plan": 14,
+          "router": 0,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1656,
+            "output_tokens": 117,
+            "total_tokens": 1773,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 311
+          },
+          "router": null,
+          "extraction": {
+            "input_tokens": 6860,
+            "output_tokens": 397,
+            "total_tokens": 7257,
+            "cached_input_tokens": 5505,
+            "cache_write_input_tokens": 1352
+          },
+          "reply": {
+            "input_tokens": 3603,
+            "output_tokens": 128,
+            "total_tokens": 3731,
+            "cached_input_tokens": 1120,
+            "cache_write_input_tokens": 2480
+          },
+          "total": {
+            "input_tokens": 12119,
+            "output_tokens": 642,
+            "total_tokens": 12761,
+            "cached_input_tokens": 7967,
+            "cache_write_input_tokens": 4143
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "agent_api",
+          "has_prior_outbound_message": true,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "not_applicable",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "aclarar_pedir_faltante",
+          "routeKind": "clarify_missing_fields",
+          "providerSearchMode": "none",
+          "presentationScope": "clarification",
+          "focusNeedCategory": "Locales",
+          "needsToSearch": [],
+          "needsToPresent": [],
+          "stopReason": "budget_or_guest_range",
+          "persistReason": "aclarar_pedir_faltante",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "clarify_missing_fields",
+        "presentation_scope": "clarification",
+        "session_focus_used": true,
+        "session_focus_key_present": true,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.94,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": "bautizo",
+          "vendor_category": null,
+          "vendor_categories": [],
+          "active_need_category": null,
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 0,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Quiere retomar el plan pausado para el bautizo en Lima; previamente indicó que necesitaba catering.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "aclarar_pedir_faltante",
+          "lifecycle_state": "active",
+          "event_type": "bautizo",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": null,
+          "provider_need_categories": [
+            "Locales",
+            "Catering",
+            "Fotografía y video",
+            "Florería y papelería",
+            "Hogar y deco"
+          ],
+          "provider_need_count": 5,
+          "provider_need_statuses": [
+            {
+              "category": "Locales",
+              "status": "search_ready",
+              "has_recommendations": false,
+              "selected_provider_ids": []
+            },
+            {
+              "category": "Catering",
+              "status": "identified",
+              "has_recommendations": false,
+              "selected_provider_ids": []
+            },
+            {
+              "category": "Fotografía y video",
+              "status": "identified",
+              "has_recommendations": false,
+              "selected_provider_ids": []
+            },
+            {
+              "category": "Florería y papelería",
+              "status": "identified",
+              "has_recommendations": false,
+              "selected_provider_ids": []
+            },
+            {
+              "category": "Hogar y deco",
+              "status": "identified",
+              "has_recommendations": false,
+              "selected_provider_ids": []
+            }
+          ],
+          "selected_provider_ids": [],
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "conversation_summary_preview": "Quiere retomar el plan pausado para el bautizo en Lima; previamente indicó que necesitaba catering.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "available",
+          "context_source": "agent_api",
+          "retrieved_message_count": 4,
+          "recent_message_count": 4,
+          "excluded_current_message_count": 0,
+          "directions": [
+            "inbound",
+            "outbound",
+            "inbound",
+            "outbound"
+          ],
+          "sources": [
+            null,
+            null,
+            null,
+            null
+          ],
+          "entry_source": null
+        },
+        "continuity_state": "continuing",
+        "welcome_allowed": false,
+        "history_status": "available",
+        "has_prior_outbound": true,
+        "requested_operation": "provider.plan",
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 8487,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M6PCBEBE4BDY36PGZQ9933P6",
+        "conversation_hash": "90b00de850379d571d06f85630ae3b0a0dc3a9c24b5e465fcdcaf662980e8651",
+        "runtime_latency_ms": 10271,
+        "extraction_latency_ms": 5212,
+        "compose_latency_ms": 2272,
+        "tools_called_count": 3,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 12761,
+        "cached_input_tokens": 7967,
+        "cache_hit_rate": 0.6573974750391947,
+        "extraction_to_compose_ratio": 2.2940140845070425,
+        "captured_at": "2026-11-05T17:33:21.652Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "aclarar_pedir_faltante",
+        "lifecycle_state": "active",
+        "event_type": "bautizo",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": null,
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "search_ready",
+            "recommended_provider_ids": [],
+            "selected_provider_ids": []
+          },
+          {
+            "category": "Catering",
+            "status": "identified",
+            "recommended_provider_ids": [],
+            "selected_provider_ids": []
+          },
+          {
+            "category": "Fotografía y video",
+            "status": "identified",
+            "recommended_provider_ids": [],
+            "selected_provider_ids": []
+          },
+          {
+            "category": "Florería y papelería",
+            "status": "identified",
+            "recommended_provider_ids": [],
+            "selected_provider_ids": []
+          },
+          {
+            "category": "Hogar y deco",
+            "status": "identified",
+            "recommended_provider_ids": [],
+            "selected_provider_ids": []
+          }
+        ],
+        "selected_provider_ids": [],
+        "missing_fields": [
+          "budget_or_guest_range"
+        ]
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": true
+        }
+      },
+      "latencyMs": 10550
+    }
+  ],
+  "startedAt": "2026-11-05T17:33:22.907Z",
+  "completedAt": "2026-11-05T17:33:22.908Z"
+}

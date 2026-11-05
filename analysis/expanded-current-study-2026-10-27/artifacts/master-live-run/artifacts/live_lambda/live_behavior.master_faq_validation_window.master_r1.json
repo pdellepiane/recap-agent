@@ -1,0 +1,641 @@
+{
+  "runId": "eval-2026-10-28T02-18-49-459Z-91b952cc",
+  "caseId": "live_behavior.master_faq_validation_window.master_r1",
+  "suite": "live_behavior_regression",
+  "target": "live_lambda",
+  "configLabel": "live_lambda",
+  "status": "passed",
+  "hardGatePassed": true,
+  "finalScore": 1,
+  "totalLatencyMs": 8911,
+  "totalToolCalls": 4,
+  "nodeTransitions": [
+    "contacto_inicial->resolver_consultas_informativas"
+  ],
+  "planDiffSummary": [
+    "current_node=\"resolver_consultas_informativas\""
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/.eval-runs/eval-2026-10-28T02-18-49-459Z-91b952cc/artifacts/live_lambda/live_behavior.master_faq_validation_window.master_r1.json"
+  },
+  "expectationResults": [
+    {
+      "id": "requested-published-value-delivered",
+      "type": "text_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Text containment checks passed."
+    },
+    {
+      "id": "no-private-auth-or-side-effect",
+      "type": "tool_usage",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Tool usage matched expectations."
+    },
+    {
+      "id": "no-rsvp.write",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture rsvp.write turn=0 delta attempts=0 successes=0 replays=0 (cumulative 0/0/0) outcome=none."
+    },
+    {
+      "id": "no-handoff.write",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture handoff.write turn=0 delta attempts=0 successes=0 replays=0 (cumulative 0/0/0) outcome=none."
+    },
+    {
+      "id": "no-provider.quote.write",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture provider.quote.write turn=0 delta attempts=0 successes=0 replays=0 (cumulative 0/0/0) outcome=none."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "objective-obligations",
+      "type": "expectation_pass_rate",
+      "score": 1,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 5 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 1,
+    "avg_latency_ms": 8911,
+    "p95_latency_ms": 8911,
+    "tool_calls_total": 4,
+    "unique_tools_called": 4,
+    "tool_call_rate_per_turn": 4,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.06896551724137931,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 9736,
+    "cache_hit_rate": 0.3927838392567787,
+    "input_tokens": 9257,
+    "cached_input_tokens": 3636,
+    "cache_write_input_tokens": 4130,
+    "uncached_input_tokens": 5621,
+    "usage_known": true
+  },
+  "timing": {
+    "queueWaitMs": 417374,
+    "setupMs": 0,
+    "turnMs": 11264,
+    "snapshotMs": 7,
+    "teardownMs": 0,
+    "judgeWaitMs": 0,
+    "judgeApiMs": 0,
+    "reportWriteMs": 0,
+    "makespanMs": 0
+  },
+  "judgeMetrics": {
+    "modelCalls": 0,
+    "retryCount": 0,
+    "rateLimitCount": 0,
+    "tokensUnknown": false,
+    "openaiSdk": "7.43.0",
+    "judgeModels": []
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Si pago un regalo por transferencia o Yape, ¿cuál es el plazo publicado mínimo y máximo de validación en horas hábiles?",
+        "channel": "whatsapp",
+        "sessionId": "live_behavior.master_faq_validation_window",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "master-faq-public-empty"
+        }
+      },
+      "outputText": "El plazo publicado de validación es de **24 a 72 horas hábiles**, de lunes a viernes, entre las 9:00 a. m. y las 6:00 p. m. Si falta información o el comprobante no es válido, el tiempo puede depender de cuándo respondas.\n\nFuente: https://sinenvolturas.tawk.help/article/medios-de-pago",
+      "deliveredText": "El plazo publicado de validación es de **24 a 72 horas hábiles**, de lunes a viernes, entre las 9:00 a. m. y las 6:00 p. m. Si falta información o el comprobante no es válido, el tiempo puede depender de cuándo respondas.\n\nFuente: https://sinenvolturas.tawk.help/article/medios-de-pago",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "9c821b36456c9ac2c89b8864342e635a0bcd3ce2f537903a9a580757b950cb9c",
+        "deliveredSha256": "9c821b36456c9ac2c89b8864342e635a0bcd3ce2f537903a9a580757b950cb9c",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "resolver_consultas_informativas",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 6,
+          "attempts": 1
+        },
+        "trace_id": "01M60586J16WQ0MYVBR0YBCB7J",
+        "conversation_id": null,
+        "plan_id": "01M6057YPHR4FYJY5VYXCFTAC8",
+        "previous_node": "contacto_inicial",
+        "next_node": "resolver_consultas_informativas",
+        "node_path": [
+          "contacto_inicial",
+          "resolver_consultas_informativas"
+        ],
+        "intent": null,
+        "missing_fields": [],
+        "search_ready": false,
+        "prompt_bundle_id": "86b5eba7a40c",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "nodes/resolver_consultas_informativas/payment_disclosure.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "knowledge_base_search"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "knowledge_base_search",
+          "support_reply_sidecar"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "knowledge_base_search",
+            "input": "{\"projection_version\":1,\"status\":null,\"kind\":null,\"request_present\":true}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "knowledge_base_search",
+            "output": "{\"projection_version\":1,\"status\":\"completed\",\"kind\":\"faq\",\"result_count\":6}"
+          },
+          {
+            "tool": "support_reply_sidecar",
+            "output": "[omitted]"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [
+          {
+            "requestId": "information-1",
+            "kind": "faq",
+            "status": "completed",
+            "source": "knowledge_base",
+            "outcomeCode": "completed_with_results",
+            "retryable": null,
+            "queryHash": "1fdbe0fa75f31a44419a0200a03999a942f90f39c9b2faa054ab58ca5d5fcfcd",
+            "evidence": [
+              {
+                "fileId": "file-MpgXFXtxpBeVvZBKSGyCBK",
+                "filename": "medios-de-pago.md",
+                "score": 0.9415424245409297,
+                "contentHash": "0d9c70bb3b3d56bf053ce20e504e92daef4bd5883d71da8919579bc306ee11df"
+              },
+              {
+                "fileId": "file-1wmaVWTL1PcW4TC7HvZUyk",
+                "filename": "¿cuándo-llega-mi-regalo.md",
+                "score": 0.9357396942084888,
+                "contentHash": "ba37a0deb58b44c68c0b21d6a3bf773be013f5aceb290eee33e1f0542ab33d38"
+              },
+              {
+                "fileId": "file-J61oLoYHGzTr6TRUERFf5b",
+                "filename": "validación-de-regalos-por-transferencia-y-yape.md",
+                "score": 0.9202930803941753,
+                "contentHash": "5210520bf29f9d18124d90c6c842a16f69f17a77f14de886a8c102ce2b3e4e76"
+              },
+              {
+                "fileId": "file-SAHhffRsx7nUtUDVvyh1es",
+                "filename": "horarios-y-canales-de-atención.md",
+                "score": 0.6685860011932299,
+                "contentHash": "9459bd5ab4999d7cb90c81fdac9573bb768df1a6c1024b6d834da607025ea51f"
+              },
+              {
+                "fileId": "file-33FTnnCVvLRdLHzYKkA5xq",
+                "filename": "cuanto-cuesta.md",
+                "score": 0.6454461433267523,
+                "contentHash": "f6f7d3988613bacdef4f17964579d299f3752b7e5ab6356d7b35b903eb7637fc"
+              },
+              {
+                "fileId": "file-33FTnnCVvLRdLHzYKkA5xq",
+                "filename": "cuanto-cuesta.md",
+                "score": 0.46182503188179647,
+                "contentHash": "853b68922a4ecb394ed115408e00f3462de6444e2cdc263fdbd9f6933866cfc5"
+              }
+            ],
+            "resultCount": 6,
+            "durationMs": 1716,
+            "openAiTransport": {
+              "observedRequestCount": 1,
+              "totalPayloadBytes": 408,
+              "instructionBytes": 0,
+              "inputBytes": 0,
+              "toolBytes": 0,
+              "outputSchemaBytes": 0,
+              "requests": [
+                {
+                  "sequence": 0,
+                  "stage": "knowledge_retrieval",
+                  "requestId": "req_b2465d852f914c1e8dd7e5640ab67699",
+                  "responseId": null,
+                  "statusCode": 200,
+                  "succeeded": true,
+                  "totalPayloadBytes": 408,
+                  "instructionBytes": 0,
+                  "inputBytes": 0,
+                  "toolBytes": 0,
+                  "outputSchemaBytes": 0,
+                  "requestBodySha256": "0575086aadcc197ab6a1b632f3c5edf9c143bbecb4f5b846e496376501d561e5"
+                }
+              ]
+            }
+          }
+        ],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": null,
+          "extraction": {
+            "responseId": "resp_0fc59cd0ba34f4db006ae15d2e0f4487d28e036ce78fd76180",
+            "requestId": "req_48b09c417a1a487a990de4904c677a2f",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 6855,
+              "inputBytes": 3182,
+              "toolCount": 0,
+              "schemaPropertyCount": 30,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 20869,
+                "instructionBytes": 6932,
+                "inputBytes": 3466,
+                "toolBytes": 2,
+                "outputSchemaBytes": 10207,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_01259e8c8b6982a0006ae15d33e52087d2a4dbf2328550ef11",
+            "requestId": "req_677c4c4e4508430a9fa19c4fead92bda",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 993,
+              "inputBytes": 10022,
+              "toolCount": 0,
+              "schemaPropertyCount": 7,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 14844,
+                "instructionBytes": 1000,
+                "inputBytes": 10830,
+                "toolBytes": 2,
+                "outputSchemaBytes": 2722,
+                "requests": []
+              }
+            }
+          },
+          "router": {
+            "responseId": null,
+            "requestId": "req_57f8991a9a714f91840661c1fa5ac9ab",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 3321,
+              "inputBytes": 2585,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 6867,
+                "instructionBytes": 3321,
+                "inputBytes": 2585,
+                "toolBytes": 0,
+                "outputSchemaBytes": 0,
+                "requests": []
+              }
+            }
+          }
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 5
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "resolver_consultas_informativas",
+        "timing_ms": {
+          "total": 8055,
+          "load_plan": 7,
+          "response_classification": 38,
+          "prepare_working_plan": 0,
+          "extraction": 4158,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 2020,
+          "save_plan": 6,
+          "router": 105,
+          "information_execution": 1717,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": null,
+          "router": {
+            "input_tokens": 1485,
+            "output_tokens": 0,
+            "total_tokens": 1485
+          },
+          "extraction": {
+            "input_tokens": 4411,
+            "output_tokens": 369,
+            "total_tokens": 4780,
+            "cached_input_tokens": 3636,
+            "cache_write_input_tokens": 772
+          },
+          "reply": {
+            "input_tokens": 3361,
+            "output_tokens": 110,
+            "total_tokens": 3471,
+            "cached_input_tokens": 0,
+            "cache_write_input_tokens": 3358
+          },
+          "total": {
+            "input_tokens": 9257,
+            "output_tokens": 479,
+            "total_tokens": 9736,
+            "cached_input_tokens": 3636,
+            "cache_write_input_tokens": 4130
+          }
+        },
+        "turn_decision": {
+          "nextNode": "resolver_consultas_informativas",
+          "routeKind": "information_batch",
+          "providerSearchMode": "none",
+          "presentationScope": "information_batch",
+          "focusNeedCategory": null,
+          "needsToSearch": [],
+          "needsToPresent": [],
+          "stopReason": null,
+          "persistReason": "information_batch",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "information_batch",
+        "presentation_scope": "information_batch",
+        "session_focus_used": false,
+        "session_focus_key_present": false,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.99,
+          "information_request_count": 1,
+          "information_request_kinds": [
+            "faq"
+          ],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": null,
+          "vendor_category": null,
+          "vendor_categories": [],
+          "active_need_category": null,
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 0,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Consulta el plazo publicado mínimo y máximo, en horas hábiles, para validar el pago de un regalo por transferencia o Yape.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "resolver_consultas_informativas",
+          "lifecycle_state": "active",
+          "event_type": null,
+          "vendor_category": null,
+          "active_need_category": null,
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "provider_need_categories": [],
+          "provider_need_count": 0,
+          "provider_need_statuses": [],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "empty",
+          "context_source": "agent_api",
+          "retrieved_message_count": 0,
+          "recent_message_count": 0,
+          "excluded_current_message_count": 0,
+          "directions": [],
+          "sources": [],
+          "entry_source": null
+        },
+        "continuity_state": "new",
+        "welcome_allowed": true,
+        "history_status": "empty",
+        "has_prior_outbound": false,
+        "requested_operation": "faq.read",
+        "capability_decision": null,
+        "capability_reason": null,
+        "router_decision": {
+          "route": "information_flow",
+          "route_probability": 0.98,
+          "route_probabilities": [
+            {
+              "value": "answer_with_records",
+              "probability": 0.01
+            },
+            {
+              "value": "information_flow",
+              "probability": 0.98
+            },
+            {
+              "value": "ask_clarification",
+              "probability": 0.01
+            },
+            {
+              "value": "offer_human",
+              "probability": 0
+            },
+            {
+              "value": "escalate_human",
+              "probability": 0
+            },
+            {
+              "value": "rsvp_flow",
+              "probability": 0
+            },
+            {
+              "value": "planning_flow",
+              "probability": 0
+            },
+            {
+              "value": "suppress_ack",
+              "probability": 0
+            }
+          ],
+          "same_open_request": false,
+          "same_open_request_probability": 0,
+          "request_settled": true,
+          "request_settled_probability": 0.65
+        },
+        "open_request_state": "answered",
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 9467,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M60586J16WQ0MYVBR0YBCB7J",
+        "conversation_hash": "b7ff3466489cfddef42b6da202806157bee1648c990f2f7923f817c2c884cfee",
+        "runtime_latency_ms": 8055,
+        "extraction_latency_ms": 4158,
+        "compose_latency_ms": 2020,
+        "tools_called_count": 4,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 5,
+        "response_classifier_action": null,
+        "response_classifier_would_suppress": null,
+        "conversation_health_status": null,
+        "conversation_health_reason": null,
+        "human_help_response": null,
+        "total_tokens": 9736,
+        "cached_input_tokens": 3636,
+        "cache_hit_rate": 0.3927838392567787,
+        "extraction_to_compose_ratio": 2.0584158415841585,
+        "captured_at": "2026-10-28T02:25:57.831Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "resolver_consultas_informativas",
+        "lifecycle_state": "active",
+        "event_type": null,
+        "vendor_category": null,
+        "active_need_category": null,
+        "location": null,
+        "budget_signal": null,
+        "guest_range": null,
+        "provider_needs": [],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": true
+        }
+      },
+      "latencyMs": 8911
+    }
+  ],
+  "startedAt": "2026-10-28T02:25:59.517Z",
+  "completedAt": "2026-10-28T02:25:59.518Z"
+}

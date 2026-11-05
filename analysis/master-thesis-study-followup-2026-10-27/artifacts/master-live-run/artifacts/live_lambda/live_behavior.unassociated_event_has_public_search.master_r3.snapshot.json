@@ -1,0 +1,477 @@
+{
+  "runId": "eval-2026-10-27T22-19-42-463Z-78589b85",
+  "caseId": "live_behavior.unassociated_event_has_public_search.master_r3",
+  "configLabel": "live_lambda",
+  "lane": "parallel",
+  "phase": "snapshot",
+  "status": "passed",
+  "executionUncertain": false,
+  "writtenAt": "2026-10-27T22:47:34.522Z",
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Soy prima de la novia, mi número no es peruano. Quiero confirmar hora y lugar de la boda de Alexandra Toledo y Alejandro Castillo. ¿Es en Molino Blanco?",
+        "channel": "whatsapp",
+        "sessionId": "unassociated_event_has_public_search",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "public-event-unassociated"
+        }
+      },
+      "outputText": "Puedes buscar la boda en https://sinenvolturas.com/buscar usando los nombres Alexandra Toledo y Alejandro Castillo. Ahí podrás comprobar si aparece el lugar y la hora; no puedo confirmar desde aquí si es en Molino Blanco.",
+      "deliveredText": "Puedes buscar la boda en https://sinenvolturas.com/buscar usando los nombres Alexandra Toledo y Alejandro Castillo. Ahí podrás comprobar si aparece el lugar y la hora; no puedo confirmar desde aquí si es en Molino Blanco.",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "2dc357bd8c534af0a8d6ec0bbf9fb5d597c19f9aeb529b34c7ae0dc359586f57",
+        "deliveredSha256": "2dc357bd8c534af0a8d6ec0bbf9fb5d597c19f9aeb529b34c7ae0dc359586f57",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "resolver_consultas_informativas",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 6,
+          "attempts": 1
+        },
+        "trace_id": "01M5ZRR8S4Q0SHET9Z3E5Y9GNN",
+        "conversation_id": null,
+        "plan_id": "01M5ZRR0QXS1R0H92R4TEDF42N",
+        "previous_node": "contacto_inicial",
+        "next_node": "resolver_consultas_informativas",
+        "node_path": [
+          "contacto_inicial",
+          "resolver_consultas_informativas"
+        ],
+        "intent": null,
+        "missing_fields": [],
+        "search_ready": false,
+        "prompt_bundle_id": "bcf8befa45e1",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/customer_context_fields.txt",
+          "nodes/resolver_consultas_informativas/public_event_search.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "associated_event_lookup"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "lookup_guest_events_by_phone",
+          "support_reply_sidecar"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "associated_event_lookup",
+            "input": "{\"projection_version\":1,\"status\":null,\"kind\":null,\"request_present\":true}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "associated_event_lookup",
+            "output": "{\"projection_version\":1,\"status\":\"failed\",\"kind\":\"associated_event\",\"result_count\":0}"
+          },
+          {
+            "tool": "support_reply_sidecar",
+            "output": "[omitted]"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [
+          {
+            "requestId": "information-1",
+            "kind": "associated_event",
+            "status": "failed",
+            "source": "associated_event_api",
+            "outcomeCode": "not_found",
+            "retryable": false,
+            "queryHash": "df892be2bc17bd32f3932f88f337d4dcbca79fd89dd272328441998548696df1",
+            "evidence": [],
+            "resultCount": 0,
+            "durationMs": 0,
+            "accessMethod": "trusted_phone_guest",
+            "coverage": null
+          }
+        ],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": null,
+          "extraction": {
+            "responseId": "resp_0a4c6e3ecf1d031c006ae129fd040487d2999d9175dac167dd",
+            "requestId": "req_b0aed9ed20f847e8ac2ab7798273a8bd",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 6855,
+              "inputBytes": 3211,
+              "toolCount": 0,
+              "schemaPropertyCount": 30,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 20898,
+                "instructionBytes": 6932,
+                "inputBytes": 3495,
+                "toolBytes": 2,
+                "outputSchemaBytes": 10207,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_0188dbd292426dcf006ae12a03257c87d29a57123d67215851",
+            "requestId": "req_8d178fd417bc4c99b2c64719ed03795d",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 2961,
+              "inputBytes": 4389,
+              "toolCount": 0,
+              "schemaPropertyCount": 7,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 10912,
+                "instructionBytes": 2980,
+                "inputBytes": 4918,
+                "toolBytes": 2,
+                "outputSchemaBytes": 2722,
+                "requests": []
+              }
+            }
+          },
+          "router": {
+            "responseId": null,
+            "requestId": "req_7d5464b464464a3aa6b1493e79c21204",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 3321,
+              "inputBytes": 2614,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 6896,
+                "instructionBytes": 3321,
+                "inputBytes": 2614,
+                "toolBytes": 0,
+                "outputSchemaBytes": 0,
+                "requests": []
+              }
+            }
+          }
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 5
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "resolver_consultas_informativas",
+        "timing_ms": {
+          "total": 8237,
+          "load_plan": 6,
+          "response_classification": 38,
+          "prepare_working_plan": 0,
+          "extraction": 6137,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 1882,
+          "save_plan": 5,
+          "router": 164,
+          "information_execution": 1,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": null,
+          "router": {
+            "input_tokens": 1491,
+            "output_tokens": 0,
+            "total_tokens": 1491
+          },
+          "extraction": {
+            "input_tokens": 4417,
+            "output_tokens": 633,
+            "total_tokens": 5050,
+            "cached_input_tokens": 3636,
+            "cache_write_input_tokens": 778
+          },
+          "reply": {
+            "input_tokens": 2267,
+            "output_tokens": 94,
+            "total_tokens": 2361,
+            "cached_input_tokens": 1110,
+            "cache_write_input_tokens": 1154
+          },
+          "total": {
+            "input_tokens": 8175,
+            "output_tokens": 727,
+            "total_tokens": 8902,
+            "cached_input_tokens": 4746,
+            "cache_write_input_tokens": 1932
+          }
+        },
+        "turn_decision": {
+          "nextNode": "resolver_consultas_informativas",
+          "routeKind": "information_batch",
+          "providerSearchMode": "none",
+          "presentationScope": "information_batch",
+          "focusNeedCategory": null,
+          "needsToSearch": [],
+          "needsToPresent": [],
+          "stopReason": null,
+          "persistReason": "information_batch",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "information_batch",
+        "presentation_scope": "information_batch",
+        "session_focus_used": false,
+        "session_focus_key_present": false,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.98,
+          "information_request_count": 1,
+          "information_request_kinds": [
+            "associated_event"
+          ],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": null,
+          "vendor_category": null,
+          "vendor_categories": [],
+          "active_need_category": null,
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 0,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": true,
+          "conversation_summary_preview": "La usuaria dice ser prima de la novia y pregunta por la hora y el lugar de la boda de Alexandra Toledo y Alejandro Castillo, en particular si será en Molino Bl…",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "resolver_consultas_informativas",
+          "lifecycle_state": "active",
+          "event_type": null,
+          "vendor_category": null,
+          "active_need_category": null,
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "provider_need_categories": [],
+          "provider_need_count": 0,
+          "provider_need_statuses": [],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "empty",
+          "context_source": "agent_api",
+          "retrieved_message_count": 0,
+          "recent_message_count": 0,
+          "excluded_current_message_count": 0,
+          "directions": [],
+          "sources": [],
+          "entry_source": null
+        },
+        "continuity_state": "new",
+        "welcome_allowed": true,
+        "history_status": "empty",
+        "has_prior_outbound": false,
+        "requested_operation": "event.association.read",
+        "capability_decision": null,
+        "capability_reason": null,
+        "router_decision": {
+          "route": "information_flow",
+          "route_probability": 0.84,
+          "route_probabilities": [
+            {
+              "value": "answer_with_records",
+              "probability": 0.02
+            },
+            {
+              "value": "information_flow",
+              "probability": 0.84
+            },
+            {
+              "value": "ask_clarification",
+              "probability": 0.04
+            },
+            {
+              "value": "offer_human",
+              "probability": 0.01
+            },
+            {
+              "value": "escalate_human",
+              "probability": 0.03
+            },
+            {
+              "value": "rsvp_flow",
+              "probability": 0.03
+            },
+            {
+              "value": "planning_flow",
+              "probability": 0.02
+            },
+            {
+              "value": "suppress_ack",
+              "probability": 0.01
+            }
+          ],
+          "same_open_request": false,
+          "same_open_request_probability": 0,
+          "request_settled": false,
+          "request_settled_probability": 0.62
+        },
+        "open_request_state": "answered",
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 8036,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M5ZRR8S4Q0SHET9Z3E5Y9GNN",
+        "conversation_hash": "127f49906bf924f3612e334927248206a409d333bc16b652fba2c2169557d28b",
+        "runtime_latency_ms": 8237,
+        "extraction_latency_ms": 6137,
+        "compose_latency_ms": 1882,
+        "tools_called_count": 4,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 5,
+        "response_classifier_action": null,
+        "response_classifier_would_suppress": null,
+        "conversation_health_status": null,
+        "conversation_health_reason": null,
+        "human_help_response": null,
+        "total_tokens": 8902,
+        "cached_input_tokens": 4746,
+        "cache_hit_rate": 0.5805504587155963,
+        "extraction_to_compose_ratio": 3.260892667375133,
+        "captured_at": "2026-10-27T22:47:32.906Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "resolver_consultas_informativas",
+        "lifecycle_state": "active",
+        "event_type": null,
+        "vendor_category": null,
+        "active_need_category": null,
+        "location": null,
+        "budget_signal": null,
+        "guest_range": null,
+        "provider_needs": [],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": true
+        }
+      },
+      "latencyMs": 9103
+    }
+  ]
+}

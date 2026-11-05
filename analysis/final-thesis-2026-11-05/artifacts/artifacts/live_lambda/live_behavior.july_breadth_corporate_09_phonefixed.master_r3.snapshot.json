@@ -1,0 +1,505 @@
+{
+  "runId": "eval-2026-11-05T16-01-27-136Z-2eace95d",
+  "caseId": "live_behavior.july_breadth_corporate_09_phonefixed.master_r3",
+  "configLabel": "live_lambda",
+  "lane": "parallel",
+  "phase": "snapshot",
+  "status": "passed",
+  "executionUncertain": false,
+  "writtenAt": "2026-11-05T17:25:57.287Z",
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Necesito un auditorio dentro del aeropuerto de Lima para un evento corporativo de 900 personas mañana y con presupuesto mínimo.",
+        "channel": "whatsapp",
+        "sessionId": "live_behavior.july_breadth_corporate_09_phonefixed",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "master-provider-empty"
+        }
+      },
+      "outputText": "No encontramos opciones disponibles que cumplan con todos esos requisitos. Para ampliar la búsqueda, ¿te serviría un auditorio cerca del aeropuerto o puedes flexibilizar la fecha o la capacidad?",
+      "deliveredText": "No encontramos opciones disponibles que cumplan con todos esos requisitos. Para ampliar la búsqueda, ¿te serviría un auditorio cerca del aeropuerto o puedes flexibilizar la fecha o la capacidad?",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "f7646c17df07f2c947e8512f86fccd6a5c2ef6af1e787968116a094c09968ea5",
+        "deliveredSha256": "f7646c17df07f2c947e8512f86fccd6a5c2ef6af1e787968116a094c09968ea5",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "refinar_criterios",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 6,
+          "attempts": 1
+        },
+        "trace_id": "01M6PBXTMQH8RTAJ9CKTHQKH7R",
+        "conversation_id": null,
+        "plan_id": "01M6PBXEB4ZKERZPN1CFHY848W",
+        "previous_node": "contacto_inicial",
+        "next_node": "refinar_criterios",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "minimos_para_buscar",
+          "buscar_proveedores",
+          "busqueda_exitosa",
+          "hay_resultados",
+          "refinar_criterios"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "f2764487cbf6",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/domain_scope.txt",
+          "shared/flow_discipline.txt",
+          "shared/domain_knowledge.txt",
+          "shared/question_strategy.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "search_providers_from_plan",
+          "list_categories",
+          "get_category_by_slug",
+          "list_locations"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "search_providers_from_plan"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "search_providers_from_plan",
+            "input": "{\"projection_version\":1}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "search_providers_from_plan",
+            "output": "{\"projection_version\":1,\"result_kind\":\"collection\",\"count\":0,\"provider_ids\":[]}"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "search_from_plan",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_02f511de6b757187006aecbc172d6087d1884317cfa70ef38f",
+            "requestId": "req_22dd94181f2248429f2ecbcbe3bdfc13",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 763,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 7640,
+                "instructionBytes": 0,
+                "inputBytes": 5813,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_0241bbd980e26fa4006aecbc193da887d1b817ba9763459c56",
+            "requestId": "req_d2390dbbbb5a49ff8a2c599e8079568a",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 6855,
+              "inputBytes": 3189,
+              "toolCount": 0,
+              "schemaPropertyCount": 30,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 20876,
+                "instructionBytes": 6932,
+                "inputBytes": 3473,
+                "toolBytes": 2,
+                "outputSchemaBytes": 10207,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_0e0dda5fd62882b7006aecbc21151487d1becb9158c640c4aa",
+            "requestId": "req_baa9942c36bb4c66b86fc61ff789fbff",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4708,
+              "inputBytes": 8874,
+              "toolCount": 3,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 15997,
+                "instructionBytes": 4772,
+                "inputBytes": 9719,
+                "toolBytes": 917,
+                "outputSchemaBytes": 313,
+                "requests": []
+              }
+            }
+          },
+          "router": {
+            "responseId": null,
+            "requestId": "req_52160f50d2194781a404b963abbf8cd7",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 3321,
+              "inputBytes": 2589,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 6871,
+                "instructionBytes": 3321,
+                "inputBytes": 2589,
+                "toolBytes": 0,
+                "outputSchemaBytes": 0,
+                "requests": []
+              }
+            }
+          }
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "refinar_criterios",
+        "timing_ms": {
+          "total": 12601,
+          "load_plan": 7,
+          "response_classification": 2036,
+          "prepare_working_plan": 0,
+          "extraction": 7875,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 2490,
+          "save_plan": 17,
+          "router": 168,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1523,
+            "output_tokens": 70,
+            "total_tokens": 1593,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 178
+          },
+          "router": {
+            "input_tokens": 1481,
+            "output_tokens": 0,
+            "total_tokens": 1481
+          },
+          "extraction": {
+            "input_tokens": 4407,
+            "output_tokens": 724,
+            "total_tokens": 5131,
+            "cached_input_tokens": 3636,
+            "cache_write_input_tokens": 768
+          },
+          "reply": {
+            "input_tokens": 3249,
+            "output_tokens": 114,
+            "total_tokens": 3363,
+            "cached_input_tokens": 1120,
+            "cache_write_input_tokens": 2126
+          },
+          "total": {
+            "input_tokens": 10660,
+            "output_tokens": 908,
+            "total_tokens": 11568,
+            "cached_input_tokens": 6098,
+            "cache_write_input_tokens": 3072
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "agent_api",
+          "has_prior_outbound_message": false,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "not_applicable",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "refinar_criterios",
+          "routeKind": "single_need_search",
+          "providerSearchMode": "single_need_from_plan",
+          "presentationScope": "clarification",
+          "focusNeedCategory": "Locales",
+          "needsToSearch": [
+            "Locales"
+          ],
+          "needsToPresent": [
+            "Locales"
+          ],
+          "stopReason": "no_providers_available",
+          "persistReason": "refinar_criterios",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "single_need_search",
+        "presentation_scope": "clarification",
+        "session_focus_used": false,
+        "session_focus_key_present": true,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.99,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": "corporativo",
+          "vendor_category": "Locales",
+          "vendor_categories": [
+            "Locales"
+          ],
+          "active_need_category": "Locales",
+          "location": "Aeropuerto de Lima",
+          "budget_signal": "presupuesto mínimo",
+          "guest_range": "201+",
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [
+            "Auditorio dentro del aeropuerto de Lima",
+            "Evento mañana",
+            "900 personas"
+          ],
+          "assumptions": [],
+          "provider_query_intents_count": 1,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Busca un auditorio dentro del aeropuerto de Lima para un evento corporativo mañana, para 900 personas, con presupuesto mínimo.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "refinar_criterios",
+          "lifecycle_state": "active",
+          "event_type": "corporativo",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": "Aeropuerto de Lima",
+          "budget_signal": "presupuesto mínimo",
+          "guest_range": "201+",
+          "provider_need_categories": [
+            "Locales"
+          ],
+          "provider_need_count": 1,
+          "provider_need_statuses": [
+            {
+              "category": "Locales",
+              "status": "no_providers_available",
+              "has_recommendations": false,
+              "selected_provider_ids": []
+            }
+          ],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "Busca un auditorio dentro del aeropuerto de Lima para un evento corporativo mañana, para 900 personas, con presupuesto mínimo.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "empty",
+          "context_source": "agent_api",
+          "retrieved_message_count": 0,
+          "recent_message_count": 0,
+          "excluded_current_message_count": 0,
+          "directions": [],
+          "sources": [],
+          "entry_source": null
+        },
+        "continuity_state": "new",
+        "welcome_allowed": true,
+        "history_status": "empty",
+        "has_prior_outbound": false,
+        "requested_operation": "provider.search",
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 8799,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M6PBXTMQH8RTAJ9CKTHQKH7R",
+        "conversation_hash": "35287112b978ffd9945d8f90867b4596f95f5a238fa027e7e10d8c7aae74b6d1",
+        "runtime_latency_ms": 12601,
+        "extraction_latency_ms": 7875,
+        "compose_latency_ms": 2490,
+        "tools_called_count": 4,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 11568,
+        "cached_input_tokens": 6098,
+        "cache_hit_rate": 0.5720450281425892,
+        "extraction_to_compose_ratio": 3.1626506024096384,
+        "captured_at": "2026-11-05T17:25:55.487Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "refinar_criterios",
+        "lifecycle_state": "active",
+        "event_type": "corporativo",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": "Aeropuerto de Lima",
+        "budget_signal": "presupuesto mínimo",
+        "guest_range": "201+",
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "no_providers_available",
+            "recommended_provider_ids": [],
+            "selected_provider_ids": []
+          }
+        ],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": true
+        }
+      },
+      "latencyMs": 13634
+    }
+  ]
+}

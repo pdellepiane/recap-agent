@@ -1,0 +1,642 @@
+{
+  "runId": "eval-2026-10-29T13-46-58-495Z-62c0e7de",
+  "caseId": "live_behavior.july_breadth_baby_shower_09_phonefixed",
+  "suite": "live_behavior_regression",
+  "target": "live_lambda",
+  "configLabel": "live_lambda",
+  "status": "passed",
+  "hardGatePassed": true,
+  "finalScore": 1,
+  "totalLatencyMs": 14062,
+  "totalToolCalls": 5,
+  "nodeTransitions": [
+    "contacto_inicial->refinar_criterios"
+  ],
+  "planDiffSummary": [
+    "current_node=\"refinar_criterios\"",
+    "intent=\"buscar_proveedores\"",
+    "event_type=\"baby_shower\"",
+    "vendor_category=\"Locales\"",
+    "active_need_category=\"Locales\"",
+    "location=\"Lima\"",
+    "budget_signal=\"presupuesto muy bajo\"",
+    "guest_range=\"1-20\"",
+    "provider_needs=Locales:no_providers_available"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/.eval-runs/eval-2026-10-29T13-46-58-495Z-62c0e7de/artifacts/live_lambda/live_behavior.july_breadth_baby_shower_09_phonefixed.json"
+  },
+  "expectationResults": [
+    {
+      "id": "event-type-retained",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "answer-delivered",
+      "type": "text_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Text containment checks passed."
+    },
+    {
+      "id": "no-provider-quote-without-explicit-date",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture provider.quote.write attempts=0 successes=0 replays=0 outcome=none."
+    },
+    {
+      "id": "no-unrequested-rsvp",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture rsvp.write attempts=0 successes=0 replays=0 outcome=none."
+    },
+    {
+      "id": "no-unrequested-handoff",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture handoff.write attempts=0 successes=0 replays=0 outcome=none."
+    },
+    {
+      "id": "requested-needs-retained",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "empty-world-has-no-shortlist",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field recommended_provider_ids matched exactly."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "objective-obligations",
+      "type": "expectation_pass_rate",
+      "score": 1,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 7 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 1,
+    "avg_latency_ms": 14062,
+    "p95_latency_ms": 14062,
+    "tool_calls_total": 5,
+    "unique_tools_called": 5,
+    "tool_call_rate_per_turn": 5,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.2413793103448276,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 14665,
+    "cache_hit_rate": 0.5911030741410488,
+    "input_tokens": 13825,
+    "cached_input_tokens": 8172,
+    "cache_write_input_tokens": 4162,
+    "uncached_input_tokens": 5653,
+    "usage_known": true
+  },
+  "timing": {
+    "queueWaitMs": 146745,
+    "setupMs": 0,
+    "turnMs": 16891,
+    "snapshotMs": 13,
+    "teardownMs": 0,
+    "judgeWaitMs": 0,
+    "judgeApiMs": 0,
+    "reportWriteMs": 0,
+    "makespanMs": 0
+  },
+  "judgeMetrics": {
+    "modelCalls": 0,
+    "retryCount": 0,
+    "rateLimitCount": 0,
+    "tokensUnknown": false,
+    "openaiSdk": "7.43.0",
+    "judgeModels": []
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Busco un local en una isla privada dentro de Lima para baby shower, 20 personas y presupuesto muy bajo.",
+        "channel": "whatsapp",
+        "sessionId": "live_behavior.july_breadth_baby_shower_09_phonefixed",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "master-provider-empty"
+        }
+      },
+      "outputText": "No encontré opciones disponibles para un local en una isla privada dentro de Lima. ¿Te serviría ampliar la búsqueda a espacios en Lima que no estén en una isla privada?",
+      "deliveredText": "No encontré opciones disponibles para un local en una isla privada dentro de Lima. ¿Te serviría ampliar la búsqueda a espacios en Lima que no estén en una isla privada?",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "23b46c662305dbdcf43fe8e49d7532ae05bfd434b2963114a4070c1a977a2deb",
+        "deliveredSha256": "23b46c662305dbdcf43fe8e49d7532ae05bfd434b2963114a4070c1a977a2deb",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "refinar_criterios",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 42,
+          "attempts": 1
+        },
+        "trace_id": "01M63YRWE22T84NC7WCJSVXFKJ",
+        "conversation_id": null,
+        "plan_id": "01M63YRG4ZGYRGAE62ECWT013N",
+        "previous_node": "contacto_inicial",
+        "next_node": "refinar_criterios",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "minimos_para_buscar",
+          "buscar_proveedores",
+          "busqueda_exitosa",
+          "hay_resultados",
+          "refinar_criterios"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "d4c67dedd44b",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/domain_scope.txt",
+          "shared/flow_discipline.txt",
+          "shared/domain_knowledge.txt",
+          "shared/question_strategy.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "search_providers_from_plan",
+          "list_categories",
+          "get_category_by_slug",
+          "list_locations"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "search_providers_from_plan",
+          "list_categories"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "search_providers_from_plan",
+            "input": "{\"projection_version\":1}"
+          },
+          {
+            "tool": "list_categories",
+            "input": "{\"projection_version\":1}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "search_providers_from_plan",
+            "output": "{\"projection_version\":1,\"result_kind\":\"collection\",\"count\":0,\"provider_ids\":[]}"
+          },
+          {
+            "tool": "list_categories",
+            "output": "[omitted]"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "search_from_plan",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_00d7a97ea5117a07006ae34ee9f89087d1939637a58dbe89e5",
+            "requestId": "req_f706d88e5ada4c09a99fc922bc71d604",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 737,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 7614,
+                "instructionBytes": 0,
+                "inputBytes": 5787,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_0a0edefe8c54a1b3006ae34eebcf8087d18dbc82cb010d7e93",
+            "requestId": "req_bc3acb05545b4d6f9fa83b24f5a81346",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 6855,
+              "inputBytes": 3163,
+              "toolCount": 0,
+              "schemaPropertyCount": 30,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 20850,
+                "instructionBytes": 6932,
+                "inputBytes": 3447,
+                "toolBytes": 2,
+                "outputSchemaBytes": 10207,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_02a2a1a9280ff5d8006ae34ef45a1087d1bba8a5efc71a416e",
+            "requestId": "req_c0b5002fec8a4cd795087dc85f1990cc",
+            "model": "gpt-6-luna",
+            "attemptCount": 2,
+            "requestMetrics": {
+              "instructionBytes": 4789,
+              "inputBytes": 8356,
+              "toolCount": 3,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 2,
+                "totalPayloadBytes": 31356,
+                "instructionBytes": 9708,
+                "inputBytes": 18636,
+                "toolBytes": 1834,
+                "outputSchemaBytes": 626,
+                "requests": []
+              }
+            }
+          },
+          "router": {
+            "responseId": null,
+            "requestId": "req_687fce2cf8e34a11ad32876915e7d680",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 3321,
+              "inputBytes": 2563,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 6845,
+                "instructionBytes": 3321,
+                "inputBytes": 2563,
+                "toolBytes": 0,
+                "outputSchemaBytes": 0,
+                "requests": []
+              }
+            }
+          }
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "refinar_criterios",
+        "timing_ms": {
+          "total": 12723,
+          "load_plan": 144,
+          "response_classification": 1816,
+          "prepare_working_plan": 0,
+          "extraction": 7447,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 1,
+          "prompt_bundle_load": 0,
+          "compose_reply": 3103,
+          "save_plan": 21,
+          "router": 182,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1521,
+            "output_tokens": 99,
+            "total_tokens": 1620,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 176
+          },
+          "router": {
+            "input_tokens": 1479,
+            "output_tokens": 0,
+            "total_tokens": 1479
+          },
+          "extraction": {
+            "input_tokens": 4405,
+            "output_tokens": 674,
+            "total_tokens": 5079,
+            "cached_input_tokens": 3636,
+            "cache_write_input_tokens": 766
+          },
+          "reply": {
+            "input_tokens": 6420,
+            "output_tokens": 67,
+            "total_tokens": 6487,
+            "cached_input_tokens": 3194,
+            "cache_write_input_tokens": 3220
+          },
+          "total": {
+            "input_tokens": 13825,
+            "output_tokens": 840,
+            "total_tokens": 14665,
+            "cached_input_tokens": 8172,
+            "cache_write_input_tokens": 4162
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "agent_api",
+          "has_prior_outbound_message": false,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "question_or_request",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "refinar_criterios",
+          "routeKind": "single_need_search",
+          "providerSearchMode": "single_need_from_plan",
+          "presentationScope": "clarification",
+          "focusNeedCategory": "Locales",
+          "needsToSearch": [
+            "Locales"
+          ],
+          "needsToPresent": [
+            "Locales"
+          ],
+          "stopReason": "no_providers_available",
+          "persistReason": "refinar_criterios",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "single_need_search",
+        "presentation_scope": "clarification",
+        "session_focus_used": false,
+        "session_focus_key_present": true,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.99,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": "baby_shower",
+          "vendor_category": "Locales",
+          "vendor_categories": [
+            "Locales"
+          ],
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": "presupuesto muy bajo",
+          "guest_range": "1-20",
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [
+            "Local en una isla privada dentro de Lima"
+          ],
+          "assumptions": [],
+          "provider_query_intents_count": 1,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Busca un local para baby shower en una isla privada dentro de Lima, para 20 personas y con presupuesto muy bajo.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "refinar_criterios",
+          "lifecycle_state": "active",
+          "event_type": "baby_shower",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": "presupuesto muy bajo",
+          "guest_range": "1-20",
+          "provider_need_categories": [
+            "Locales"
+          ],
+          "provider_need_count": 1,
+          "provider_need_statuses": [
+            {
+              "category": "Locales",
+              "status": "no_providers_available",
+              "has_recommendations": false,
+              "selected_provider_ids": []
+            }
+          ],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "Busca un local para baby shower en una isla privada dentro de Lima, para 20 personas y con presupuesto muy bajo.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "empty",
+          "context_source": "agent_api",
+          "retrieved_message_count": 0,
+          "recent_message_count": 0,
+          "excluded_current_message_count": 0,
+          "directions": [],
+          "sources": [],
+          "entry_source": null
+        },
+        "continuity_state": "new",
+        "welcome_allowed": true,
+        "history_status": "empty",
+        "has_prior_outbound": false,
+        "requested_operation": "provider.search",
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 8849,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M63YRWE22T84NC7WCJSVXFKJ",
+        "conversation_hash": "0a859f3a792290d355ae84102b0e0600fff35df1c8ac27c28e93dfe4dc55cd89",
+        "runtime_latency_ms": 12723,
+        "extraction_latency_ms": 7447,
+        "compose_latency_ms": 3103,
+        "tools_called_count": 5,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 14665,
+        "cached_input_tokens": 8172,
+        "cache_hit_rate": 0.5911030741410488,
+        "extraction_to_compose_ratio": 2.399935546245569,
+        "captured_at": "2026-10-29T13:49:42.217Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "refinar_criterios",
+        "lifecycle_state": "active",
+        "event_type": "baby_shower",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": "Lima",
+        "budget_signal": "presupuesto muy bajo",
+        "guest_range": "1-20",
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "no_providers_available",
+            "recommended_provider_ids": [],
+            "selected_provider_ids": []
+          }
+        ],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": true
+        }
+      },
+      "latencyMs": 14062
+    }
+  ],
+  "startedAt": "2026-10-29T13:49:44.736Z",
+  "completedAt": "2026-10-29T13:49:44.737Z"
+}

@@ -189,6 +189,14 @@ describe('decisions router policy', () => {
     });
   });
 
+  it('answers the first record-grounded follow-up to a nonfinancial unresolved request before escalating a loop', () => {
+    const base = openRequest('unresolved', { turns: 1, financial_reconciliation_required: false });
+    expect(decideRouterPolicy(policyInput({ route: 'answer_with_records', sameOpenRequest: true, current: base }))).toEqual({ kind: 'answer' });
+    expect(decideRouterPolicy(policyInput({ route: 'answer_with_records', sameOpenRequest: true, current: { ...base, turns: 2 } }))).toEqual({ kind: 'escalate', reason: 'unresolved_request_repeated' });
+    expect(decideRouterPolicy(policyInput({ route: 'answer_with_records', sameOpenRequest: true, current: { ...base, financial_reconciliation_required: true } }))).toEqual({ kind: 'escalate', reason: 'unresolved_request_repeated' });
+    expect(decideRouterPolicy(policyInput({ route: 'escalate_human', sameOpenRequest: true, current: base }))).toEqual({ kind: 'escalate', reason: 'unresolved_request_repeated' });
+  });
+
   it('lets the record rule win over an answer route', () => {
     expect(decideRouterPolicy(policyInput({
       route: 'answer_with_records',

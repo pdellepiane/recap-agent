@@ -612,10 +612,7 @@ describe('decisions router: customer-assistance lane', () => {
     expect(purchaseSummary?.outcomeCode).toBe('completed_without_results');
   });
 
-  it('escalates the second turn of a request the record left unresolved', async () => {
-    // The router keeps answering the same request the first turn could not
-    // settle. The record says the request is still open and the guest came
-    // back to it, so the policy escalates whatever the route says.
+  it('answers one record-grounded nonfinancial follow-up and escalates a continuing loop', async () => {
     const gateway = await FixtureAgentConversationGateway.create(CASE_C_SCENARIO);
     const runtime = new ScriptedAgentRuntime(
       [emptyExtraction()],
@@ -625,6 +622,7 @@ describe('decisions router: customer-assistance lane', () => {
       enabled: true,
       answers: [
         { route: 'answer_with_records', sameOpenRequest: false, requestSettled: false },
+        { route: 'answer_with_records', sameOpenRequest: true, requestSettled: false },
         { route: 'answer_with_records', sameOpenRequest: true, requestSettled: false },
       ],
     });
@@ -637,7 +635,7 @@ describe('decisions router: customer-assistance lane', () => {
       contactPhone: CASE_C_PHONE,
       messageId: 'router-open-request-repeat-1',
       receivedAt: new Date().toISOString(),
-      text: 'Quiero que me devuelvan el dinero de mi regalo.',
+      text: 'Tengo una duda sobre mi evento.',
     });
 
     // The first turn is answered and leaves the request open.
@@ -655,16 +653,28 @@ describe('decisions router: customer-assistance lane', () => {
       contactPhone: CASE_C_PHONE,
       messageId: 'router-open-request-repeat-2',
       receivedAt: new Date().toISOString(),
-      text: 'Sigo sin recibir la devolución, quiero mi dinero de vuelta.',
+      text: '¿Puedes revisar otro detalle del mismo evento?',
     });
 
-    expect(second.trace.turn_decision.stopReason)
+    expect(second.trace.turn_decision.stopReason).toBeNull();
+    expect(gateway.getFixtureCallCount('handoff.write')).toBe(0);
+    expect(second.plan.open_requests.at(-1)).toMatchObject({ state: 'unresolved', turns: 2 });
+
+    const third = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'router-open-request-repeat',
+      contactPhone: CASE_C_PHONE,
+      messageId: 'router-open-request-repeat-3',
+      receivedAt: new Date().toISOString(),
+      text: 'Sigo con la misma duda sobre el evento.',
+    });
+    expect(third.trace.turn_decision.stopReason)
       .toBe('router_escalation:unresolved_request_repeated');
     expect(gateway.getFixtureCallCount('handoff.write')).toBe(1);
-    expect(second.plan.human_escalation.status).toBe('requested');
-    expect(second.plan.open_requests.at(-1)).toMatchObject({
+    expect(third.plan.human_escalation.status).toBe('requested');
+    expect(third.plan.open_requests.at(-1)).toMatchObject({
       state: 'with_person',
-      turns: 2,
+      turns: 3,
     });
   });
 

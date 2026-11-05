@@ -1,0 +1,1617 @@
+{
+  "runId": "eval-2026-11-05T16-01-27-136Z-2eace95d",
+  "caseId": "live_behavior.master_v2_provider_completion.master_r3",
+  "suite": "live_behavior_regression",
+  "target": "live_lambda",
+  "configLabel": "live_lambda",
+  "status": "passed",
+  "hardGatePassed": true,
+  "finalScore": 1,
+  "totalLatencyMs": 23501,
+  "totalToolCalls": 10,
+  "nodeTransitions": [
+    "crear_lead_cerrar->crear_lead_cerrar",
+    "necesidad_cubierta->necesidad_cubierta",
+    "necesidad_cubierta->necesidad_cubierta"
+  ],
+  "planDiffSummary": [
+    "current_node=\"necesidad_cubierta\"",
+    "intent=\"cerrar\"",
+    "event_type=\"boda\"",
+    "vendor_category=\"Catering\"",
+    "active_need_category=\"Catering\"",
+    "location=\"Lima\"",
+    "guest_range=\"51-100\"",
+    "selected_provider_ids=[101]",
+    "provider_needs=Catering:selected, Música:selected"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/.eval-runs/eval-2026-11-05T16-01-27-136Z-2eace95d/artifacts/live_lambda/live_behavior.master_v2_provider_completion.master_r3.json"
+  },
+  "expectationResults": [
+    {
+      "id": "both-quote-receipts-match-selected-providers-and-date",
+      "type": "trace_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field provider_quote_receipts contained the expected subset."
+    },
+    {
+      "id": "submits-quotes-through-finish-plan",
+      "type": "tool_usage",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Tool usage matched expectations."
+    },
+    {
+      "id": "multi-need-selection-preserved",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "recall-performs-no-new-effect",
+      "type": "tool_usage",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Tool usage matched expectations."
+    },
+    {
+      "id": "thanks-performs-no-new-effect",
+      "type": "tool_usage",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Tool usage matched expectations."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 1,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 5 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 3,
+    "avg_latency_ms": 7833.666666666667,
+    "p95_latency_ms": 11315,
+    "tool_calls_total": 10,
+    "unique_tools_called": 4,
+    "tool_call_rate_per_turn": 3.3333333333333335,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.13793103448275862,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 27738,
+    "cache_hit_rate": 0.6951778476457442,
+    "input_tokens": 26399,
+    "cached_input_tokens": 18352,
+    "cache_write_input_tokens": 8023,
+    "uncached_input_tokens": 8047,
+    "usage_known": true
+  },
+  "timing": {
+    "queueWaitMs": 4767234,
+    "setupMs": 0,
+    "turnMs": 27734,
+    "snapshotMs": 8,
+    "teardownMs": 0,
+    "judgeWaitMs": 1,
+    "judgeApiMs": 0,
+    "reportWriteMs": 0,
+    "makespanMs": 0
+  },
+  "judgeMetrics": {
+    "modelCalls": 0,
+    "retryCount": 0,
+    "rateLimitCount": 0,
+    "tokensUnknown": false,
+    "openaiSdk": "7.43.0",
+    "judgeModels": []
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Mi evento es el 18 de octubre de 2028. Por favor envía las cotizaciones a los dos proveedores elegidos para cerrar el plan.",
+        "channel": "whatsapp",
+        "sessionId": "live-master-v2-provider-completion-session",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "master-v2-provider-completion"
+        }
+      },
+      "outputText": "Listo, envié las cotizaciones a EDO y Orquesta Sintética para el 18 de octubre de 2028.",
+      "deliveredText": "Listo, envié las cotizaciones a EDO y Orquesta Sintética para el 18 de octubre de 2028.",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "2218fd95c94bb793c4a6a068fc76f0b6cf4a0c4022ea052d76af839413d63287",
+        "deliveredSha256": "2218fd95c94bb793c4a6a068fc76f0b6cf4a0c4022ea052d76af839413d63287",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "necesidad_cubierta",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 6,
+          "attempts": 1
+        },
+        "trace_id": "01M6PBN3CP48KWDVD0VDT743F5",
+        "conversation_id": null,
+        "plan_id": "ffdc9f49-fea2-4a92-b116-d2780ac4f73b",
+        "previous_node": "crear_lead_cerrar",
+        "next_node": "crear_lead_cerrar",
+        "node_path": [
+          "crear_lead_cerrar",
+          "existe_plan_guardado",
+          "entrevista",
+          "crear_lead_cerrar"
+        ],
+        "intent": "cerrar",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "9579d9dcb7c9",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/domain_scope.txt",
+          "shared/flow_discipline.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "finish_plan"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "finish_plan"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "finish_plan",
+            "input": "{\"event_date\":\"2028-10-18\"}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "finish_plan",
+            "output": "{\"status\":\"success\",\"eventDate\":\"2028-10-18\",\"contacted_providers\":[{\"providerId\":101,\"category\":\"Catering\",\"success\":true},{\"providerId\":202,\"category\":\"Música\",\"success\":true}]}"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 101,
+            "title": "EDO",
+            "category": "Catering",
+            "location": "Lima",
+            "serviceHighlights": [],
+            "termsHighlights": []
+          },
+          {
+            "id": 202,
+            "title": "Orquesta Sintetica",
+            "category": "Música",
+            "location": "Lima",
+            "serviceHighlights": [],
+            "termsHighlights": []
+          }
+        ],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": "proceed_confirmed",
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [
+            {
+              "provider_id": 101,
+              "category": "Catering",
+              "has_title": true,
+              "has_hint": true
+            },
+            {
+              "provider_id": 202,
+              "category": "Música",
+              "has_title": true,
+              "has_hint": true
+            }
+          ],
+          "selected_provider_hints_count": 2,
+          "provider_plan_operation_types": [
+            "select_provider",
+            "select_provider"
+          ],
+          "provider_plan_operation_categories": [
+            "Catering",
+            "Música"
+          ]
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": true,
+            "email": true,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 101,
+            "category": "Catering",
+            "location": "Lima",
+            "retrieval_source": null,
+            "retrieval_score": null,
+            "fit_score": null
+          },
+          {
+            "provider_id": 202,
+            "category": "Música",
+            "location": "Lima",
+            "retrieval_source": null,
+            "retrieval_score": null,
+            "fit_score": null
+          }
+        ],
+        "information_execution_summary": [],
+        "finish_plan_summary": {
+          "status": "success",
+          "eventDate": "2028-10-18",
+          "confirmedCount": 2,
+          "pendingProviderIds": [],
+          "errorKind": null
+        },
+        "provider_quote_receipts": [
+          {
+            "providerId": 101,
+            "eventDate": "2028-10-18",
+            "resultStatus": "confirmed",
+            "attempt": 1
+          },
+          {
+            "providerId": 202,
+            "eventDate": "2028-10-18",
+            "resultStatus": "confirmed",
+            "attempt": 1
+          }
+        ],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_0bb0ebdd0f9c2746006aecbafa9e2887d1a99200a5730c6569",
+            "requestId": "req_95d8052986ea4d87a02965c55d2ef21b",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 746,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 7623,
+                "instructionBytes": 0,
+                "inputBytes": 5796,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_0fe469bc1b5a9adb006aecbafcd71087d185fdbb3ea931892f",
+            "requestId": "req_5c68c9d1d2a84a468263eae1a35f17e0",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 10226,
+              "inputBytes": 4294,
+              "toolCount": 0,
+              "schemaPropertyCount": 37,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 36539,
+                "instructionBytes": 10339,
+                "inputBytes": 4678,
+                "toolBytes": 2,
+                "outputSchemaBytes": 21258,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_037b5e78be25d5b0006aecbb04150487d1b56e4557c597a80f",
+            "requestId": "req_7f4ec1e021c4439c96fa5823a1b186de",
+            "model": "gpt-6-luna",
+            "attemptCount": 2,
+            "requestMetrics": {
+              "instructionBytes": 2588,
+              "inputBytes": 5440,
+              "toolCount": 1,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 2,
+                "totalPayloadBytes": 20789,
+                "instructionBytes": 5248,
+                "inputBytes": 12991,
+                "toolBytes": 1372,
+                "outputSchemaBytes": 626,
+                "requests": []
+              }
+            }
+          },
+          "router": null
+        },
+        "recommendation_funnel": {
+          "available_candidates": 2,
+          "context_candidates": 2,
+          "context_candidate_ids": [
+            101,
+            202
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "quote_submission_confirmed",
+        "timing_ms": {
+          "total": 11031,
+          "load_plan": 8,
+          "response_classification": 1790,
+          "prepare_working_plan": 0,
+          "extraction": 6152,
+          "apply_extraction": 2,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 3066,
+          "save_plan": 52,
+          "router": 0,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1517,
+            "output_tokens": 105,
+            "total_tokens": 1622,
+            "cached_input_tokens": 1514,
+            "cache_write_input_tokens": 0
+          },
+          "router": null,
+          "extraction": {
+            "input_tokens": 7913,
+            "output_tokens": 489,
+            "total_tokens": 8402,
+            "cached_input_tokens": 6860,
+            "cache_write_input_tokens": 1050
+          },
+          "reply": {
+            "input_tokens": 4468,
+            "output_tokens": 69,
+            "total_tokens": 4537,
+            "cached_input_tokens": 2155,
+            "cache_write_input_tokens": 2307
+          },
+          "total": {
+            "input_tokens": 13898,
+            "output_tokens": 663,
+            "total_tokens": 14561,
+            "cached_input_tokens": 10529,
+            "cache_write_input_tokens": 3357
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "agent_api",
+          "has_prior_outbound_message": false,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "question_or_request",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "crear_lead_cerrar",
+          "routeKind": "close",
+          "providerSearchMode": "none",
+          "presentationScope": "close",
+          "focusNeedCategory": "Catering",
+          "needsToSearch": [
+            "Catering"
+          ],
+          "needsToPresent": [
+            "Catering",
+            "Música"
+          ],
+          "stopReason": null,
+          "persistReason": "crear_lead_cerrar",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "close",
+        "presentation_scope": "close",
+        "session_focus_used": false,
+        "session_focus_key_present": false,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.99,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": "boda",
+          "vendor_category": null,
+          "vendor_categories": [],
+          "active_need_category": "Catering",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "51-100",
+          "selected_provider_hints": [
+            "EDO",
+            "Orquesta Sintetica"
+          ],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 0,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Solicita enviar cotizaciones a los dos proveedores seleccionados para cerrar el plan. Indica que el evento es el 18 de octubre de 2028.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "necesidad_cubierta",
+          "lifecycle_state": "finished",
+          "event_type": "boda",
+          "vendor_category": "Catering",
+          "active_need_category": "Catering",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "51-100",
+          "provider_need_categories": [
+            "Catering",
+            "Música"
+          ],
+          "provider_need_count": 2,
+          "provider_need_statuses": [
+            {
+              "category": "Catering",
+              "status": "selected",
+              "has_recommendations": true,
+              "selected_provider_ids": [
+                101
+              ]
+            },
+            {
+              "category": "Música",
+              "status": "selected",
+              "has_recommendations": true,
+              "selected_provider_ids": [
+                202
+              ]
+            }
+          ],
+          "selected_provider_ids": [
+            101
+          ],
+          "missing_fields": [],
+          "conversation_summary_preview": "Solicita enviar cotizaciones a los dos proveedores seleccionados para cerrar el plan. Indica que el evento es el 18 de octubre de 2028.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": true,
+            "email": true,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "empty",
+          "context_source": "agent_api",
+          "retrieved_message_count": 0,
+          "recent_message_count": 0,
+          "excluded_current_message_count": 0,
+          "directions": [],
+          "sources": [],
+          "entry_source": null
+        },
+        "continuity_state": "continuing",
+        "welcome_allowed": false,
+        "history_status": "empty",
+        "has_prior_outbound": false,
+        "requested_operation": "provider.quote.write",
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 9183,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M6PBN3CP48KWDVD0VDT743F5",
+        "conversation_hash": "db982b7d843fc5e1ed0b2ac2a16e88c5cc2359fe16d19db74c5b6628ed775182",
+        "runtime_latency_ms": 11031,
+        "extraction_latency_ms": 6152,
+        "compose_latency_ms": 3066,
+        "tools_called_count": 4,
+        "provider_results_count": 2,
+        "recommendation_context_candidates": 2,
+        "recommendation_presentation_limit": 6,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 14561,
+        "cached_input_tokens": 10529,
+        "cache_hit_rate": 0.7575910202906893,
+        "extraction_to_compose_ratio": 2.006523157208089,
+        "captured_at": "2026-11-05T17:21:09.533Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "necesidad_cubierta",
+        "lifecycle_state": "finished",
+        "event_type": "boda",
+        "vendor_category": "Catering",
+        "active_need_category": "Catering",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": "51-100",
+        "provider_needs": [
+          {
+            "category": "Catering",
+            "status": "selected",
+            "recommended_provider_ids": [
+              101
+            ],
+            "selected_provider_ids": [
+              101
+            ]
+          },
+          {
+            "category": "Música",
+            "status": "selected",
+            "recommended_provider_ids": [
+              202
+            ],
+            "selected_provider_ids": [
+              202
+            ]
+          }
+        ],
+        "selected_provider_ids": [
+          101
+        ],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": true,
+          "email": true,
+          "phone": true
+        }
+      },
+      "latencyMs": 11315
+    },
+    {
+      "turnIndex": 1,
+      "input": {
+        "text": "Perdona, ¿me repites lo último que me dijiste?",
+        "channel": "whatsapp",
+        "sessionId": "live-master-v2-provider-completion-session",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "master-v2-provider-completion"
+        }
+      },
+      "outputText": "Te dije: “Listo, envié las cotizaciones a EDO y Orquesta Sintética para el 18 de octubre de 2028.”",
+      "deliveredText": "Te dije: “Listo, envié las cotizaciones a EDO y Orquesta Sintética para el 18 de octubre de 2028.”",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "9c010071544a65f9759db061d6cf07792c62feb683c89fcfa8d4f97a86985af4",
+        "deliveredSha256": "9c010071544a65f9759db061d6cf07792c62feb683c89fcfa8d4f97a86985af4",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "necesidad_cubierta",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 4,
+          "attempts": 1
+        },
+        "trace_id": "01M6PBNDAA3VNEF25FCC926JMD",
+        "conversation_id": null,
+        "plan_id": "ffdc9f49-fea2-4a92-b116-d2780ac4f73b",
+        "previous_node": "necesidad_cubierta",
+        "next_node": "necesidad_cubierta",
+        "node_path": [
+          "necesidad_cubierta",
+          "existe_plan_guardado",
+          "necesidad_cubierta"
+        ],
+        "intent": null,
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "9579d9dcb7c9",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/domain_scope.txt",
+          "shared/flow_discipline.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 101,
+            "title": "EDO",
+            "category": "Catering",
+            "location": "Lima",
+            "serviceHighlights": [],
+            "termsHighlights": []
+          }
+        ],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": true,
+            "email": true,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 101,
+            "category": "Catering",
+            "location": "Lima",
+            "retrieval_source": null,
+            "retrieval_score": null,
+            "fit_score": null
+          }
+        ],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_006ccbc80368bb06006aecbb07128487d1b7610067f0b680ac",
+            "requestId": "req_beaee5410cbd42d0b2e190c6cd474f21",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 1133,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 8032,
+                "instructionBytes": 0,
+                "inputBytes": 6205,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_0d354b3f0f7c6c32006aecbb096d5c87d1bcbc78a028a0049a",
+            "requestId": "req_0b8ce07973654e338e70fe7ee623b99c",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 8833,
+              "inputBytes": 4895,
+              "toolCount": 0,
+              "schemaPropertyCount": 35,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 29456,
+                "instructionBytes": 8931,
+                "inputBytes": 5320,
+                "toolBytes": 2,
+                "outputSchemaBytes": 14941,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_0456ad760c8f427c006aecbb0dfec487d1897c591f9491e1f8",
+            "requestId": "req_e19e6ff0f73543beb73dc44af8c687f3",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 2588,
+              "inputBytes": 8723,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 12791,
+                "instructionBytes": 2624,
+                "inputBytes": 9575,
+                "toolBytes": 2,
+                "outputSchemaBytes": 313,
+                "requests": []
+              }
+            }
+          },
+          "router": null
+        },
+        "recommendation_funnel": {
+          "available_candidates": 1,
+          "context_candidates": 1,
+          "context_candidate_ids": [
+            101
+          ],
+          "presentation_limit": 5
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": null,
+        "timing_ms": {
+          "total": 8793,
+          "load_plan": 7,
+          "response_classification": 2349,
+          "prepare_working_plan": 0,
+          "extraction": 4638,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 6435,
+          "save_plan": 0,
+          "router": 0,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1632,
+            "output_tokens": 125,
+            "total_tokens": 1757,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 287
+          },
+          "router": null,
+          "extraction": {
+            "input_tokens": 6367,
+            "output_tokens": 360,
+            "total_tokens": 6727,
+            "cached_input_tokens": 5139,
+            "cache_write_input_tokens": 1225
+          },
+          "reply": {
+            "input_tokens": 2810,
+            "output_tokens": 49,
+            "total_tokens": 2859,
+            "cached_input_tokens": 0,
+            "cache_write_input_tokens": 2807
+          },
+          "total": {
+            "input_tokens": 10809,
+            "output_tokens": 534,
+            "total_tokens": 11343,
+            "cached_input_tokens": 6481,
+            "cache_write_input_tokens": 4319
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "agent_api",
+          "has_prior_outbound_message": true,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "question_or_request",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "necesidad_cubierta",
+          "routeKind": "ask_event_context",
+          "providerSearchMode": "none",
+          "presentationScope": "none",
+          "focusNeedCategory": "Catering",
+          "needsToSearch": [
+            "Catering"
+          ],
+          "needsToPresent": [
+            "Catering"
+          ],
+          "stopReason": null,
+          "persistReason": "necesidad_cubierta",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "ask_event_context",
+        "presentation_scope": "none",
+        "session_focus_used": false,
+        "session_focus_key_present": false,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 1,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": null,
+          "vendor_category": null,
+          "vendor_categories": [],
+          "active_need_category": null,
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 0,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "La persona pide que se repita el último mensaje: se le dijo que se enviaron las cotizaciones a EDO y Orquesta Sintética para el 18 de octubre de 2028.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "necesidad_cubierta",
+          "lifecycle_state": "finished",
+          "event_type": "boda",
+          "vendor_category": "Catering",
+          "active_need_category": "Catering",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "51-100",
+          "provider_need_categories": [
+            "Catering",
+            "Música"
+          ],
+          "provider_need_count": 2,
+          "provider_need_statuses": [
+            {
+              "category": "Catering",
+              "status": "selected",
+              "has_recommendations": true,
+              "selected_provider_ids": [
+                101
+              ]
+            },
+            {
+              "category": "Música",
+              "status": "selected",
+              "has_recommendations": true,
+              "selected_provider_ids": [
+                202
+              ]
+            }
+          ],
+          "selected_provider_ids": [
+            101
+          ],
+          "missing_fields": [],
+          "conversation_summary_preview": "Solicita enviar cotizaciones a los dos proveedores seleccionados para cerrar el plan. Indica que el evento es el 18 de octubre de 2028.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": true,
+            "email": true,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "available",
+          "context_source": "agent_api",
+          "retrieved_message_count": 2,
+          "recent_message_count": 2,
+          "excluded_current_message_count": 0,
+          "directions": [
+            "inbound",
+            "outbound"
+          ],
+          "sources": [
+            null,
+            null
+          ],
+          "entry_source": null
+        },
+        "continuity_state": "continuing",
+        "welcome_allowed": false,
+        "history_status": "available",
+        "has_prior_outbound": true,
+        "requested_operation": null,
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 8074,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M6PBNDAA3VNEF25FCC926JMD",
+        "conversation_hash": "db982b7d843fc5e1ed0b2ac2a16e88c5cc2359fe16d19db74c5b6628ed775182",
+        "runtime_latency_ms": 8793,
+        "extraction_latency_ms": 4638,
+        "compose_latency_ms": 6435,
+        "tools_called_count": 3,
+        "provider_results_count": 1,
+        "recommendation_context_candidates": 1,
+        "recommendation_presentation_limit": 5,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 11343,
+        "cached_input_tokens": 6481,
+        "cache_hit_rate": 0.5995929318160792,
+        "extraction_to_compose_ratio": 0.7207459207459207,
+        "captured_at": "2026-11-05T17:21:19.696Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "necesidad_cubierta",
+        "lifecycle_state": "finished",
+        "event_type": "boda",
+        "vendor_category": "Catering",
+        "active_need_category": "Catering",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": "51-100",
+        "provider_needs": [
+          {
+            "category": "Catering",
+            "status": "selected",
+            "recommended_provider_ids": [
+              101
+            ],
+            "selected_provider_ids": [
+              101
+            ]
+          },
+          {
+            "category": "Música",
+            "status": "selected",
+            "recommended_provider_ids": [
+              202
+            ],
+            "selected_provider_ids": [
+              202
+            ]
+          }
+        ],
+        "selected_provider_ids": [
+          101
+        ],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": true,
+          "email": true,
+          "phone": true
+        }
+      },
+      "latencyMs": 9120
+    },
+    {
+      "turnIndex": 2,
+      "input": {
+        "text": "Gracias, eso era todo.",
+        "channel": "whatsapp",
+        "sessionId": "live-master-v2-provider-completion-session",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "master-v2-provider-completion"
+        }
+      },
+      "outputText": "",
+      "deliveredText": null,
+      "delivery": {
+        "action": "suppress",
+        "reason": "suppress_acknowledgement"
+      },
+      "outputOrigin": {
+        "status": "missing",
+        "candidateSha256": null,
+        "deliveredSha256": null,
+        "transformationVersion": null,
+        "mismatchFields": [
+          "candidate_output_origin"
+        ]
+      },
+      "currentNode": "necesidad_cubierta",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 5,
+          "attempts": 1
+        },
+        "trace_id": "01M6PBNHC9BTH7N4EM2JRYXQA2",
+        "conversation_id": null,
+        "plan_id": "ffdc9f49-fea2-4a92-b116-d2780ac4f73b",
+        "previous_node": "necesidad_cubierta",
+        "next_node": "necesidad_cubierta",
+        "node_path": [
+          "necesidad_cubierta"
+        ],
+        "intent": "solicitar_humano",
+        "missing_fields": [],
+        "search_ready": false,
+        "prompt_bundle_id": "3dadfbdaa726",
+        "prompt_file_paths": [
+          "nodes/deteccion_intencion/response_classifier.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": true,
+            "email": true,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_0b7e48a1581e3963006aecbb112d4087d19087854c9d64444f",
+            "requestId": "req_5bb5eb14ee1d47ae96ac9bf98797dac1",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 1356,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 8275,
+                "instructionBytes": 0,
+                "inputBytes": 6448,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": null,
+          "reply": null,
+          "router": null
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 5
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "response_classifier_suppressed",
+        "timing_ms": {
+          "total": 2804,
+          "load_plan": 7,
+          "response_classification": 2790,
+          "prepare_working_plan": 0,
+          "extraction": 0,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 0,
+          "save_plan": 5,
+          "router": 0,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1692,
+            "output_tokens": 142,
+            "total_tokens": 1834,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 347
+          },
+          "router": null,
+          "extraction": null,
+          "reply": null,
+          "total": {
+            "input_tokens": 1692,
+            "output_tokens": 142,
+            "total_tokens": 1834,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 347
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "suppress_acknowledgement",
+          "reason": "acknowledgement",
+          "would_suppress": true,
+          "context_source": "agent_api",
+          "has_prior_outbound_message": true,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "acknowledgement_only",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "necesidad_cubierta",
+          "routeKind": "ask_event_context",
+          "providerSearchMode": "none",
+          "presentationScope": "none",
+          "focusNeedCategory": "Catering",
+          "needsToSearch": [
+            "Catering"
+          ],
+          "needsToPresent": [],
+          "stopReason": null,
+          "persistReason": "necesidad_cubierta",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "ask_event_context",
+        "presentation_scope": "none",
+        "session_focus_used": false,
+        "session_focus_key_present": false,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 1,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": null,
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": null,
+          "vendor_category": null,
+          "vendor_categories": [],
+          "active_need_category": null,
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 0,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "The response classifier suppressed delivery: acknowledgement.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "necesidad_cubierta",
+          "lifecycle_state": "finished",
+          "event_type": "boda",
+          "vendor_category": "Catering",
+          "active_need_category": "Catering",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "51-100",
+          "provider_need_categories": [
+            "Catering",
+            "Música"
+          ],
+          "provider_need_count": 2,
+          "provider_need_statuses": [
+            {
+              "category": "Catering",
+              "status": "selected",
+              "has_recommendations": true,
+              "selected_provider_ids": [
+                101
+              ]
+            },
+            {
+              "category": "Música",
+              "status": "selected",
+              "has_recommendations": true,
+              "selected_provider_ids": [
+                202
+              ]
+            }
+          ],
+          "selected_provider_ids": [
+            101
+          ],
+          "missing_fields": [],
+          "conversation_summary_preview": "Solicita enviar cotizaciones a los dos proveedores seleccionados para cerrar el plan. Indica que el evento es el 18 de octubre de 2028.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": true,
+            "email": true,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "available",
+          "context_source": "agent_api",
+          "retrieved_message_count": 4,
+          "recent_message_count": 4,
+          "excluded_current_message_count": 0,
+          "directions": [
+            "inbound",
+            "outbound",
+            "inbound",
+            "outbound"
+          ],
+          "sources": [
+            null,
+            null,
+            null,
+            null
+          ],
+          "entry_source": null
+        },
+        "continuity_state": "continuing",
+        "welcome_allowed": false,
+        "history_status": "available",
+        "has_prior_outbound": true,
+        "requested_operation": null,
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 6712,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M6PBNHC9BTH7N4EM2JRYXQA2",
+        "conversation_hash": "db982b7d843fc5e1ed0b2ac2a16e88c5cc2359fe16d19db74c5b6628ed775182",
+        "runtime_latency_ms": 2804,
+        "extraction_latency_ms": 0,
+        "compose_latency_ms": 0,
+        "tools_called_count": 3,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 5,
+        "response_classifier_action": "suppress_acknowledgement",
+        "response_classifier_would_suppress": true,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 1834,
+        "cached_input_tokens": 1342,
+        "cache_hit_rate": 0.793144208037825,
+        "extraction_to_compose_ratio": null,
+        "captured_at": "2026-11-05T17:21:23.849Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "necesidad_cubierta",
+        "lifecycle_state": "finished",
+        "event_type": "boda",
+        "vendor_category": "Catering",
+        "active_need_category": "Catering",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": "51-100",
+        "provider_needs": [
+          {
+            "category": "Catering",
+            "status": "selected",
+            "recommended_provider_ids": [
+              101
+            ],
+            "selected_provider_ids": [
+              101
+            ]
+          },
+          {
+            "category": "Música",
+            "status": "selected",
+            "recommended_provider_ids": [
+              202
+            ],
+            "selected_provider_ids": [
+              202
+            ]
+          }
+        ],
+        "selected_provider_ids": [
+          101
+        ],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": true,
+          "email": true,
+          "phone": true
+        }
+      },
+      "latencyMs": 3066
+    }
+  ],
+  "startedAt": "2026-11-05T17:21:24.128Z",
+  "completedAt": "2026-11-05T17:21:24.128Z"
+}

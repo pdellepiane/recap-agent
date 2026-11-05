@@ -1,0 +1,1461 @@
+{
+  "runId": "eval-2026-10-27T22-19-42-463Z-78589b85",
+  "caseId": "live_behavior.otp_terminal_handoff_failed.master_r1",
+  "suite": "live_behavior_regression",
+  "target": "live_lambda",
+  "configLabel": "live_lambda",
+  "status": "passed",
+  "hardGatePassed": true,
+  "finalScore": 1,
+  "totalLatencyMs": 40646,
+  "totalToolCalls": 11,
+  "nodeTransitions": [
+    "resolver_consultas_informativas->solicitar_agente_humano",
+    "solicitar_agente_humano->solicitar_agente_humano",
+    "solicitar_agente_humano->solicitar_agente_humano"
+  ],
+  "planDiffSummary": [
+    "current_node=\"solicitar_agente_humano\"",
+    "intent=\"solicitar_humano\""
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/.eval-runs/eval-2026-10-27T22-19-42-463Z-78589b85/artifacts/live_lambda/live_behavior.otp_terminal_handoff_failed.master_r1.json"
+  },
+  "expectationResults": [
+    {
+      "id": "failed-handoff-is-not-requested",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field human_escalation.status matched exactly."
+    },
+    {
+      "id": "failed-handoff-no-verify-after-turn0",
+      "type": "tool_usage",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Tool usage matched expectations."
+    },
+    {
+      "id": "failed-handoff-no-effect-after-turn0",
+      "type": "tool_usage",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Tool usage matched expectations."
+    },
+    {
+      "id": "failed-handoff-effect-turn0",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture handoff.write turn=0 delta attempts=1 successes=0 replays=0 (cumulative 1/0/0) outcome=failed."
+    },
+    {
+      "id": "failed-handoff-effect-final-unchanged",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture handoff.write turn=2 delta attempts=0 successes=0 replays=0 (cumulative 1/0/0) outcome=failed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 1,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 5 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 3,
+    "avg_latency_ms": 13548.666666666666,
+    "p95_latency_ms": 17299,
+    "tool_calls_total": 11,
+    "unique_tools_called": 5,
+    "tool_call_rate_per_turn": 3.6666666666666665,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.06896551724137931,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 23814,
+    "cache_hit_rate": 0.6214792871585085,
+    "input_tokens": 21267,
+    "cached_input_tokens": 13217,
+    "cache_write_input_tokens": 8023,
+    "uncached_input_tokens": 8050,
+    "usage_known": true
+  },
+  "timing": {
+    "queueWaitMs": 662056,
+    "setupMs": 0,
+    "turnMs": 45852,
+    "snapshotMs": 12,
+    "teardownMs": 0,
+    "judgeWaitMs": 1,
+    "judgeApiMs": 0,
+    "reportWriteMs": 0,
+    "makespanMs": 0
+  },
+  "judgeMetrics": {
+    "modelCalls": 0,
+    "retryCount": 0,
+    "rateLimitCount": 0,
+    "tokensUnknown": false,
+    "openaiSdk": "7.43.0",
+    "judgeModels": []
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "[redacted-code]",
+        "channel": "whatsapp",
+        "sessionId": "live-otp-terminal-failed-session",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "s06-otp-handoff-failed"
+        }
+      },
+      "outputText": "No pude validar el código y la solicitud de derivación no llegó a gestionarse. Por eso, todavía no puedo revisar si el depósito llegó a los novios; vuelve a contactarnos para continuar.",
+      "deliveredText": "No pude validar el código y la solicitud de derivación no llegó a gestionarse. Por eso, todavía no puedo revisar si el depósito llegó a los novios; vuelve a contactarnos para continuar.",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "e1ad210af26c147fb161933faf9eb9725b4c194f98a3fe65b3ad2dca2c317c30",
+        "deliveredSha256": "e1ad210af26c147fb161933faf9eb9725b4c194f98a3fe65b3ad2dca2c317c30",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "solicitar_agente_humano",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 6,
+          "attempts": 1
+        },
+        "trace_id": "01M5ZQT3X8J5M51HT5C0980P3Z",
+        "conversation_id": null,
+        "plan_id": "7dea2007-cf0d-45c1-9c7c-becbf8c5fe33",
+        "previous_node": "resolver_consultas_informativas",
+        "next_node": "solicitar_agente_humano",
+        "node_path": [
+          "resolver_consultas_informativas",
+          "solicitar_agente_humano"
+        ],
+        "intent": null,
+        "missing_fields": [],
+        "search_ready": false,
+        "prompt_bundle_id": "4069f74be678",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/customer_context_fields.txt",
+          "nodes/resolver_consultas_informativas/payment_disclosure.txt",
+          "nodes/resolver_consultas_informativas/auth_limitation.txt",
+          "nodes/solicitar_agente_humano/system.txt",
+          "nodes/solicitar_agente_humano/response_contract.txt",
+          "nodes/resolver_consultas_informativas/support_continuity.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "verify_user_login_code",
+          "request_human_takeover"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "verify_user_login_code",
+          "request_human_takeover"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "verify_user_login_code",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "request_human_takeover",
+            "input": "{\"projection_version\":1,\"trusted_phone_present\":true}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "verify_user_login_code",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "request_human_takeover",
+            "output": "{\"projection_version\":1,\"status\":\"failed\",\"retryable\":false}"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": true,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_0da3c1f24a4597b5006ae12618054487d28793b34b42eed324",
+            "requestId": "req_6e6a429460ac402aa1fdbd5efc115692",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 634,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 7509,
+                "instructionBytes": 0,
+                "inputBytes": 5682,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_0a22be5887adf39d006ae1261a544487d2840911c6c667c140",
+            "requestId": "req_3623b18ded0f424db609c90a27172fbc",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 5735,
+              "inputBytes": 3083,
+              "toolCount": 0,
+              "schemaPropertyCount": 19,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 14625,
+                "instructionBytes": 5792,
+                "inputBytes": 3361,
+                "toolBytes": 2,
+                "outputSchemaBytes": 5208,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_0e4631822eb475d5006ae12626f0c087d290e8a1ef72ca8c91",
+            "requestId": "req_88e628a9081349fc8ab166f1e6580d2d",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 5699,
+              "inputBytes": 4487,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 11395,
+                "instructionBytes": 5753,
+                "inputBytes": 5037,
+                "toolBytes": 2,
+                "outputSchemaBytes": 313,
+                "requests": []
+              }
+            }
+          },
+          "router": null
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 5
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "information_authentication_terminal_handoff",
+        "timing_ms": {
+          "total": 14934,
+          "load_plan": 8,
+          "response_classification": 2346,
+          "prepare_working_plan": 1,
+          "extraction": 12532,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 0,
+          "save_plan": 0,
+          "router": 0,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1490,
+            "output_tokens": 135,
+            "total_tokens": 1625,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 145
+          },
+          "router": null,
+          "extraction": {
+            "input_tokens": 2958,
+            "output_tokens": 757,
+            "total_tokens": 3715,
+            "cached_input_tokens": 2207,
+            "cache_write_input_tokens": 748
+          },
+          "reply": {
+            "input_tokens": 2466,
+            "output_tokens": 127,
+            "total_tokens": 2593,
+            "cached_input_tokens": 0,
+            "cache_write_input_tokens": 2463
+          },
+          "total": {
+            "input_tokens": 6914,
+            "output_tokens": 1019,
+            "total_tokens": 7933,
+            "cached_input_tokens": 3549,
+            "cache_write_input_tokens": 3356
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "agent_api",
+          "has_prior_outbound_message": false,
+          "fallback_used": false,
+          "conversation_health": "uncertain",
+          "health_reason": "insufficient_context",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "unclear",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "solicitar_agente_humano",
+          "routeKind": "human_escalation",
+          "providerSearchMode": "none",
+          "presentationScope": "human_escalation",
+          "focusNeedCategory": null,
+          "needsToSearch": [],
+          "needsToPresent": [],
+          "stopReason": "otp_verification_failed",
+          "persistReason": "solicitar_agente_humano",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "human_escalation",
+        "presentation_scope": "human_escalation",
+        "session_focus_used": false,
+        "session_focus_key_present": false,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.99,
+          "information_request_count": 1,
+          "information_request_kinds": [
+            "purchase"
+          ],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": null,
+          "vendor_category": null,
+          "vendor_categories": [],
+          "active_need_category": null,
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 0,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "La persona aportó la referencia de transacción [redacted-code] para consultar el depósito del regalo. La solicitud de verificación pendiente no recibió un código explíc…",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "solicitar_agente_humano",
+          "lifecycle_state": "active",
+          "event_type": null,
+          "vendor_category": null,
+          "active_need_category": null,
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "provider_need_categories": [],
+          "provider_need_count": 0,
+          "provider_need_statuses": [],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": true,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "code_requested",
+          "auth_recovery_terminal_reason": "verification_failed",
+          "auth_recovery_send_attempted": true,
+          "auth_recovery_verification_attempted": true,
+          "pending_information_request_count": 1,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [
+          {
+            "operation": "verify_user_login_code",
+            "status": "invalid_code",
+            "auth_method": "email_otp",
+            "failure_kind": "invalid_code",
+            "retryable": null,
+            "error_preview": "El codigo es invalido.",
+            "http_status": 401,
+            "request_id": "fixture-s06-otp-invalid"
+          }
+        ],
+        "message_context": {
+          "history_status": "empty",
+          "context_source": "agent_api",
+          "retrieved_message_count": 0,
+          "recent_message_count": 0,
+          "excluded_current_message_count": 0,
+          "directions": [],
+          "sources": [],
+          "entry_source": null
+        },
+        "continuity_state": "continuing",
+        "welcome_allowed": false,
+        "history_status": "empty",
+        "has_prior_outbound": false,
+        "requested_operation": "purchase.read",
+        "capability_decision": null,
+        "capability_reason": null,
+        "human_takeover_attempted": true,
+        "human_takeover_succeeded": false,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 8564,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M5ZQT3X8J5M51HT5C0980P3Z",
+        "conversation_hash": "6e2d97ec976c63491addb4e455c67d653054adbe2a54ba5c5ffa197788d53a02",
+        "runtime_latency_ms": 14934,
+        "extraction_latency_ms": 12532,
+        "compose_latency_ms": 0,
+        "tools_called_count": 5,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 5,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "uncertain",
+        "conversation_health_reason": "insufficient_context",
+        "human_help_response": "not_applicable",
+        "total_tokens": 7933,
+        "cached_input_tokens": 3549,
+        "cache_hit_rate": 0.5133063349725195,
+        "extraction_to_compose_ratio": null,
+        "captured_at": "2026-10-27T22:31:04.878Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "solicitar_agente_humano",
+        "lifecycle_state": "active",
+        "event_type": null,
+        "vendor_category": null,
+        "active_need_category": null,
+        "location": null,
+        "budget_signal": null,
+        "guest_range": null,
+        "provider_needs": [],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "code_requested",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": true,
+          "phone": true
+        }
+      },
+      "latencyMs": 17299
+    },
+    {
+      "turnIndex": 1,
+      "input": {
+        "text": "[redacted-code]",
+        "channel": "whatsapp",
+        "sessionId": "live-otp-terminal-failed-session",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "s06-otp-handoff-failed"
+        }
+      },
+      "outputText": "El código anterior no se pudo validar y la solicitud de derivación no llegó a gestionarse. Cuando quieras continuar, vuelve a contactarnos para revisar si el depósito llegó a los novios.",
+      "deliveredText": "El código anterior no se pudo validar y la solicitud de derivación no llegó a gestionarse. Cuando quieras continuar, vuelve a contactarnos para revisar si el depósito llegó a los novios.",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "302302bcff56be6072880d10c70f2bf9b9a250b03137b903fd69a2aad58740ac",
+        "deliveredSha256": "302302bcff56be6072880d10c70f2bf9b9a250b03137b903fd69a2aad58740ac",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "solicitar_agente_humano",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 5,
+          "attempts": 1
+        },
+        "trace_id": "01M5ZQTG0J264KSMJ6ZQQYSWDE",
+        "conversation_id": null,
+        "plan_id": "7dea2007-cf0d-45c1-9c7c-becbf8c5fe33",
+        "previous_node": "solicitar_agente_humano",
+        "next_node": "solicitar_agente_humano",
+        "node_path": [
+          "solicitar_agente_humano",
+          "solicitar_agente_humano"
+        ],
+        "intent": null,
+        "missing_fields": [],
+        "search_ready": false,
+        "prompt_bundle_id": "4069f74be678",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/customer_context_fields.txt",
+          "nodes/resolver_consultas_informativas/payment_disclosure.txt",
+          "nodes/resolver_consultas_informativas/auth_limitation.txt",
+          "nodes/solicitar_agente_humano/system.txt",
+          "nodes/solicitar_agente_humano/response_contract.txt",
+          "nodes/resolver_consultas_informativas/support_continuity.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": true,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_0ed4d06d19506cb2006ae1262a5ee087d29feb7601c5148a34",
+            "requestId": "req_7d8cdace29704be0b299ecad83a67713",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 942,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 7839,
+                "instructionBytes": 0,
+                "inputBytes": 6012,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_0538a794e50d7416006ae1262d7a2c87d2964d8e9c70e70aef",
+            "requestId": "req_6bdb8f3cb97e42c5ac1316a395333f05",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 5735,
+              "inputBytes": 3377,
+              "toolCount": 0,
+              "schemaPropertyCount": 19,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 14914,
+                "instructionBytes": 5792,
+                "inputBytes": 3650,
+                "toolBytes": 2,
+                "outputSchemaBytes": 5208,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_08fa2618df3c4dc8006ae12632e3d887d2b0820e938e295f36",
+            "requestId": "req_87d4dc9b57564fa78be82982c8655c86",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 5699,
+              "inputBytes": 4406,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 11290,
+                "instructionBytes": 5753,
+                "inputBytes": 4932,
+                "toolBytes": 2,
+                "outputSchemaBytes": 313,
+                "requests": []
+              }
+            }
+          },
+          "router": null
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 5
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "information_authentication_terminal_handoff",
+        "timing_ms": {
+          "total": 8544,
+          "load_plan": 8,
+          "response_classification": 2806,
+          "prepare_working_plan": 0,
+          "extraction": 5721,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 0,
+          "save_plan": 0,
+          "router": 0,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1573,
+            "output_tokens": 189,
+            "total_tokens": 1762,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 228
+          },
+          "router": null,
+          "extraction": {
+            "input_tokens": 3016,
+            "output_tokens": 361,
+            "total_tokens": 3377,
+            "cached_input_tokens": 2207,
+            "cache_write_input_tokens": 806
+          },
+          "reply": {
+            "input_tokens": 2448,
+            "output_tokens": 178,
+            "total_tokens": 2626,
+            "cached_input_tokens": 1285,
+            "cache_write_input_tokens": 1160
+          },
+          "total": {
+            "input_tokens": 7037,
+            "output_tokens": 728,
+            "total_tokens": 7765,
+            "cached_input_tokens": 4834,
+            "cache_write_input_tokens": 2194
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "agent_api",
+          "has_prior_outbound_message": true,
+          "fallback_used": false,
+          "conversation_health": "uncertain",
+          "health_reason": "insufficient_context",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "other_actionable",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "solicitar_agente_humano",
+          "routeKind": "human_escalation",
+          "providerSearchMode": "none",
+          "presentationScope": "human_escalation",
+          "focusNeedCategory": null,
+          "needsToSearch": [],
+          "needsToPresent": [],
+          "stopReason": "verification_failed",
+          "persistReason": "solicitar_agente_humano",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "human_escalation",
+        "presentation_scope": "human_escalation",
+        "session_focus_used": false,
+        "session_focus_key_present": false,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 1,
+          "information_request_count": 1,
+          "information_request_kinds": [
+            "purchase"
+          ],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": null,
+          "vendor_category": null,
+          "vendor_categories": [],
+          "active_need_category": null,
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 0,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Proporciona un código para continuar la consulta pendiente sobre si llegó el depósito del regalo.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "solicitar_agente_humano",
+          "lifecycle_state": "active",
+          "event_type": null,
+          "vendor_category": null,
+          "active_need_category": null,
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "provider_need_categories": [],
+          "provider_need_count": 0,
+          "provider_need_statuses": [],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": true,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "code_requested",
+          "auth_recovery_terminal_reason": "verification_failed",
+          "auth_recovery_send_attempted": true,
+          "auth_recovery_verification_attempted": true,
+          "pending_information_request_count": 1,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "available",
+          "context_source": "agent_api",
+          "retrieved_message_count": 2,
+          "recent_message_count": 2,
+          "excluded_current_message_count": 0,
+          "directions": [
+            "inbound",
+            "outbound"
+          ],
+          "sources": [
+            null,
+            null
+          ],
+          "entry_source": null
+        },
+        "continuity_state": "continuing",
+        "welcome_allowed": false,
+        "history_status": "available",
+        "has_prior_outbound": true,
+        "requested_operation": "auth.otp.verify",
+        "capability_decision": null,
+        "capability_reason": null,
+        "human_takeover_attempted": false,
+        "human_takeover_succeeded": false,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 7852,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M5ZQTG0J264KSMJ6ZQQYSWDE",
+        "conversation_hash": "6e2d97ec976c63491addb4e455c67d653054adbe2a54ba5c5ffa197788d53a02",
+        "runtime_latency_ms": 8544,
+        "extraction_latency_ms": 5721,
+        "compose_latency_ms": 0,
+        "tools_called_count": 3,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 5,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "uncertain",
+        "conversation_health_reason": "insufficient_context",
+        "human_help_response": "not_applicable",
+        "total_tokens": 7765,
+        "cached_input_tokens": 4834,
+        "cache_hit_rate": 0.6869404575813557,
+        "extraction_to_compose_ratio": null,
+        "captured_at": "2026-10-27T22:31:17.273Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "solicitar_agente_humano",
+        "lifecycle_state": "active",
+        "event_type": null,
+        "vendor_category": null,
+        "active_need_category": null,
+        "location": null,
+        "budget_signal": null,
+        "guest_range": null,
+        "provider_needs": [],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "code_requested",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": true,
+          "phone": true
+        }
+      },
+      "latencyMs": 11294
+    },
+    {
+      "turnIndex": 2,
+      "input": {
+        "text": "Ese es el codigo que me llego",
+        "channel": "whatsapp",
+        "sessionId": "live-otp-terminal-failed-session",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "s06-otp-handoff-failed"
+        }
+      },
+      "outputText": "Entiendo que ese es el código que recibiste, pero no se pudo validar y la solicitud de derivación no llegó a gestionarse. No puedo revisar todavía si el depósito llegó a los novios; vuelve a contactarnos para continuar.",
+      "deliveredText": "Entiendo que ese es el código que recibiste, pero no se pudo validar y la solicitud de derivación no llegó a gestionarse. No puedo revisar todavía si el depósito llegó a los novios; vuelve a contactarnos para continuar.",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "97899cc83db0dfca6bd85cc88318aa26aad1762196f4944f03121a1c272210da",
+        "deliveredSha256": "97899cc83db0dfca6bd85cc88318aa26aad1762196f4944f03121a1c272210da",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "solicitar_agente_humano",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 6,
+          "attempts": 1
+        },
+        "trace_id": "01M5ZQTWSYN9Y5DED8T144TTMM",
+        "conversation_id": null,
+        "plan_id": "7dea2007-cf0d-45c1-9c7c-becbf8c5fe33",
+        "previous_node": "solicitar_agente_humano",
+        "next_node": "solicitar_agente_humano",
+        "node_path": [
+          "solicitar_agente_humano",
+          "solicitar_agente_humano"
+        ],
+        "intent": null,
+        "missing_fields": [],
+        "search_ready": false,
+        "prompt_bundle_id": "4069f74be678",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/customer_context_fields.txt",
+          "nodes/resolver_consultas_informativas/payment_disclosure.txt",
+          "nodes/resolver_consultas_informativas/auth_limitation.txt",
+          "nodes/solicitar_agente_humano/system.txt",
+          "nodes/solicitar_agente_humano/response_contract.txt",
+          "nodes/resolver_consultas_informativas/support_continuity.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": true,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_0512ff84e77de99d006ae12636beb887d2bd701274fd3db7f3",
+            "requestId": "req_0a8350d0403f44fa827fc545a1a8b1b3",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 1259,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 8176,
+                "instructionBytes": 0,
+                "inputBytes": 6349,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_08bf19d7e4955966006ae1263a051887d2a25710452e6fc013",
+            "requestId": "req_70fb2b8f05d64ce38d4420ae38a82118",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 5735,
+              "inputBytes": 3609,
+              "toolCount": 0,
+              "schemaPropertyCount": 19,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 15163,
+                "instructionBytes": 5792,
+                "inputBytes": 3899,
+                "toolBytes": 2,
+                "outputSchemaBytes": 5208,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_010713c256de4368006ae1263f9c8487d2badb870e4f540e45",
+            "requestId": "req_737e8d70d25d4898b476baed917e977d",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 5699,
+              "inputBytes": 4905,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 11829,
+                "instructionBytes": 5753,
+                "inputBytes": 5471,
+                "toolBytes": 2,
+                "outputSchemaBytes": 313,
+                "requests": []
+              }
+            }
+          },
+          "router": null
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 5
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "information_authentication_terminal_handoff",
+        "timing_ms": {
+          "total": 8922,
+          "load_plan": 9,
+          "response_classification": 3310,
+          "prepare_working_plan": 0,
+          "extraction": 5596,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 0,
+          "save_plan": 0,
+          "router": 0,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1643,
+            "output_tokens": 168,
+            "total_tokens": 1811,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 298
+          },
+          "router": null,
+          "extraction": {
+            "input_tokens": 3088,
+            "output_tokens": 401,
+            "total_tokens": 3489,
+            "cached_input_tokens": 2207,
+            "cache_write_input_tokens": 878
+          },
+          "reply": {
+            "input_tokens": 2585,
+            "output_tokens": 231,
+            "total_tokens": 2816,
+            "cached_input_tokens": 1285,
+            "cache_write_input_tokens": 1297
+          },
+          "total": {
+            "input_tokens": 7316,
+            "output_tokens": 800,
+            "total_tokens": 8116,
+            "cached_input_tokens": 4834,
+            "cache_write_input_tokens": 2473
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "agent_api",
+          "has_prior_outbound_message": true,
+          "fallback_used": false,
+          "conversation_health": "stalled",
+          "health_reason": "unresolved_error",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "other_actionable",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "solicitar_agente_humano",
+          "routeKind": "human_escalation",
+          "providerSearchMode": "none",
+          "presentationScope": "human_escalation",
+          "focusNeedCategory": null,
+          "needsToSearch": [],
+          "needsToPresent": [],
+          "stopReason": "verification_failed",
+          "persistReason": "solicitar_agente_humano",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "human_escalation",
+        "presentation_scope": "human_escalation",
+        "session_focus_used": false,
+        "session_focus_key_present": false,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 1,
+          "information_request_count": 1,
+          "information_request_kinds": [
+            "purchase"
+          ],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": null,
+          "vendor_category": null,
+          "vendor_categories": [],
+          "active_need_category": null,
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 0,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Proporciona el código solicitado para continuar con la verificación y la consulta pendiente sobre si llegó el depósito del regalo.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "solicitar_agente_humano",
+          "lifecycle_state": "active",
+          "event_type": null,
+          "vendor_category": null,
+          "active_need_category": null,
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "provider_need_categories": [],
+          "provider_need_count": 0,
+          "provider_need_statuses": [],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": true,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "code_requested",
+          "auth_recovery_terminal_reason": "verification_failed",
+          "auth_recovery_send_attempted": true,
+          "auth_recovery_verification_attempted": true,
+          "pending_information_request_count": 1,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "available",
+          "context_source": "agent_api",
+          "retrieved_message_count": 4,
+          "recent_message_count": 4,
+          "excluded_current_message_count": 0,
+          "directions": [
+            "inbound",
+            "outbound",
+            "inbound",
+            "outbound"
+          ],
+          "sources": [
+            null,
+            null,
+            null,
+            null
+          ],
+          "entry_source": null
+        },
+        "continuity_state": "continuing",
+        "welcome_allowed": false,
+        "history_status": "available",
+        "has_prior_outbound": true,
+        "requested_operation": "auth.otp.verify",
+        "capability_decision": null,
+        "capability_reason": null,
+        "human_takeover_attempted": false,
+        "human_takeover_succeeded": false,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 7912,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M5ZQTWSYN9Y5DED8T144TTMM",
+        "conversation_hash": "6e2d97ec976c63491addb4e455c67d653054adbe2a54ba5c5ffa197788d53a02",
+        "runtime_latency_ms": 8922,
+        "extraction_latency_ms": 5596,
+        "compose_latency_ms": 0,
+        "tools_called_count": 3,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 5,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "stalled",
+        "conversation_health_reason": "unresolved_error",
+        "human_help_response": "not_applicable",
+        "total_tokens": 8116,
+        "cached_input_tokens": 4834,
+        "cache_hit_rate": 0.6607435757244395,
+        "extraction_to_compose_ratio": null,
+        "captured_at": "2026-10-27T22:31:30.373Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "solicitar_agente_humano",
+        "lifecycle_state": "active",
+        "event_type": null,
+        "vendor_category": null,
+        "active_need_category": null,
+        "location": null,
+        "budget_signal": null,
+        "guest_range": null,
+        "provider_needs": [],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "code_requested",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": true,
+          "phone": true
+        }
+      },
+      "latencyMs": 12053
+    }
+  ],
+  "startedAt": "2026-10-27T22:31:31.599Z",
+  "completedAt": "2026-10-27T22:31:31.600Z"
+}

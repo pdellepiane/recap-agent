@@ -1,0 +1,629 @@
+{
+  "runId": "eval-2026-10-29T13-46-58-495Z-62c0e7de",
+  "caseId": "live_behavior.july_breadth_baby_shower_02_phonefixed",
+  "suite": "live_behavior_regression",
+  "target": "live_lambda",
+  "configLabel": "live_lambda",
+  "status": "passed",
+  "hardGatePassed": true,
+  "finalScore": 1,
+  "totalLatencyMs": 21109,
+  "totalToolCalls": 4,
+  "nodeTransitions": [
+    "contacto_inicial->aclarar_pedir_faltante"
+  ],
+  "planDiffSummary": [
+    "current_node=\"aclarar_pedir_faltante\"",
+    "intent=\"buscar_proveedores\"",
+    "event_type=\"baby_shower\"",
+    "vendor_category=\"Hogar y deco\"",
+    "active_need_category=\"Hogar y deco\"",
+    "guest_range=\"21-50\"",
+    "provider_needs=Hogar y deco:search_ready"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/.eval-runs/eval-2026-10-29T13-46-58-495Z-62c0e7de/artifacts/live_lambda/live_behavior.july_breadth_baby_shower_02_phonefixed.json"
+  },
+  "expectationResults": [
+    {
+      "id": "event-type-retained",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "answer-delivered",
+      "type": "text_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Text containment checks passed."
+    },
+    {
+      "id": "no-provider-quote-without-explicit-date",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture provider.quote.write attempts=0 successes=0 replays=0 outcome=none."
+    },
+    {
+      "id": "no-unrequested-rsvp",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture rsvp.write attempts=0 successes=0 replays=0 outcome=none."
+    },
+    {
+      "id": "no-unrequested-handoff",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture handoff.write attempts=0 successes=0 replays=0 outcome=none."
+    },
+    {
+      "id": "requested-needs-retained",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "location-not-invented",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field location matched exactly."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "objective-obligations",
+      "type": "expectation_pass_rate",
+      "score": 1,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 7 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 1,
+    "avg_latency_ms": 21109,
+    "p95_latency_ms": 21109,
+    "tool_calls_total": 4,
+    "unique_tools_called": 4,
+    "tool_call_rate_per_turn": 4,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.13793103448275862,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 15023,
+    "cache_hit_rate": 0.2155950366610265,
+    "input_tokens": 14184,
+    "cached_input_tokens": 3058,
+    "cache_write_input_tokens": 9645,
+    "uncached_input_tokens": 11126,
+    "usage_known": true
+  },
+  "timing": {
+    "queueWaitMs": 3,
+    "setupMs": 0,
+    "turnMs": 26341,
+    "snapshotMs": 8,
+    "teardownMs": 0,
+    "judgeWaitMs": 1,
+    "judgeApiMs": 0,
+    "reportWriteMs": 0,
+    "makespanMs": 0
+  },
+  "judgeMetrics": {
+    "modelCalls": 0,
+    "retryCount": 0,
+    "rateLimitCount": 0,
+    "tokensUnknown": false,
+    "openaiSdk": "7.43.0",
+    "judgeModels": []
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Necesito decoración pastel para un baby shower de 35 invitados.",
+        "channel": "whatsapp",
+        "sessionId": "live_behavior.july_breadth_baby_shower_02_phonefixed",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "master-provider-live-public"
+        }
+      },
+      "outputText": "¡Qué lindo! Ya tengo la decoración en tonos pastel y los 35 invitados para el baby shower. ¿En qué ciudad o zona será?",
+      "deliveredText": "¡Qué lindo! Ya tengo la decoración en tonos pastel y los 35 invitados para el baby shower. ¿En qué ciudad o zona será?",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "0621b15859ebf6dd3969a17141c287d504d5c31afeeb6e3baeef6f41eee1acdd",
+        "deliveredSha256": "0621b15859ebf6dd3969a17141c287d504d5c31afeeb6e3baeef6f41eee1acdd",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "aclarar_pedir_faltante",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 45,
+          "attempts": 1
+        },
+        "trace_id": "01M63YMPNMVJZ6M99G8GWJ8HN4",
+        "conversation_id": null,
+        "plan_id": "01M63YM5S7TF0EK9D61KZY6HVT",
+        "previous_node": "contacto_inicial",
+        "next_node": "aclarar_pedir_faltante",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "minimos_para_buscar",
+          "aclarar_pedir_faltante"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [
+          "location"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "d4c67dedd44b",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/domain_scope.txt",
+          "shared/flow_discipline.txt",
+          "shared/domain_knowledge.txt",
+          "shared/question_strategy.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "list_categories",
+          "get_category_by_slug",
+          "list_locations"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "list_locations"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "list_locations",
+            "input": "{\"projection_version\":1}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "list_locations",
+            "output": "[omitted]"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_04cb74bd6b89f495006ae34e5ef60887d182e9bb65898605d2",
+            "requestId": "req_b5578057306a4d27ac58968eea0c53ee",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 698,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 7575,
+                "instructionBytes": 0,
+                "inputBytes": 5748,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_0b2000fd774f52ad006ae34e61920087d1885dc39546414cf2",
+            "requestId": "req_b8c7386d03174e5fa3fb243fb8076332",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 6855,
+              "inputBytes": 3124,
+              "toolCount": 0,
+              "schemaPropertyCount": 30,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 20811,
+                "instructionBytes": 6932,
+                "inputBytes": 3408,
+                "toolBytes": 2,
+                "outputSchemaBytes": 10207,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_082b39fd3e81f18a006ae34e6b131487d18fe3eaa2b7dd0aa3",
+            "requestId": "req_85da7b2a94df4b089cf9e684b8280534",
+            "model": "gpt-6-luna",
+            "attemptCount": 2,
+            "requestMetrics": {
+              "instructionBytes": 4789,
+              "inputBytes": 7670,
+              "toolCount": 3,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 2,
+                "totalPayloadBytes": 32410,
+                "instructionBytes": 9708,
+                "inputBytes": 19680,
+                "toolBytes": 1834,
+                "outputSchemaBytes": 626,
+                "requests": []
+              }
+            }
+          },
+          "router": {
+            "responseId": null,
+            "requestId": "req_7acc5f4fe2284dac8d2739207f7daa50",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 3321,
+              "inputBytes": 2524,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 6806,
+                "instructionBytes": 3321,
+                "inputBytes": 2524,
+                "toolBytes": 0,
+                "outputSchemaBytes": 0,
+                "requests": []
+              }
+            }
+          }
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "deteccion_intencion",
+        "timing_ms": {
+          "total": 17325,
+          "load_plan": 33,
+          "response_classification": 4317,
+          "prepare_working_plan": 0,
+          "extraction": 7961,
+          "apply_extraction": 5,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 3907,
+          "save_plan": 13,
+          "router": 1054,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1511,
+            "output_tokens": 124,
+            "total_tokens": 1635,
+            "cached_input_tokens": 0,
+            "cache_write_input_tokens": 1508
+          },
+          "router": {
+            "input_tokens": 1469,
+            "output_tokens": 0,
+            "total_tokens": 1469
+          },
+          "extraction": {
+            "input_tokens": 4395,
+            "output_tokens": 645,
+            "total_tokens": 5040,
+            "cached_input_tokens": 0,
+            "cache_write_input_tokens": 4392
+          },
+          "reply": {
+            "input_tokens": 6809,
+            "output_tokens": 70,
+            "total_tokens": 6879,
+            "cached_input_tokens": 3058,
+            "cache_write_input_tokens": 3745
+          },
+          "total": {
+            "input_tokens": 14184,
+            "output_tokens": 839,
+            "total_tokens": 15023,
+            "cached_input_tokens": 3058,
+            "cache_write_input_tokens": 9645
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "agent_api",
+          "has_prior_outbound_message": false,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "question_or_request",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "aclarar_pedir_faltante",
+          "routeKind": "clarify_missing_fields",
+          "providerSearchMode": "none",
+          "presentationScope": "clarification",
+          "focusNeedCategory": "Hogar y deco",
+          "needsToSearch": [],
+          "needsToPresent": [],
+          "stopReason": "location",
+          "persistReason": "aclarar_pedir_faltante",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "clarify_missing_fields",
+        "presentation_scope": "clarification",
+        "session_focus_used": false,
+        "session_focus_key_present": true,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.91,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": "baby_shower",
+          "vendor_category": "Hogar y deco",
+          "vendor_categories": [
+            "Hogar y deco"
+          ],
+          "active_need_category": "Hogar y deco",
+          "location": null,
+          "budget_signal": null,
+          "guest_range": "21-50",
+          "selected_provider_hints": [],
+          "preferences": [
+            "Decoración en tonos pastel"
+          ],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 0,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Busca decoración en tonos pastel para un baby shower de 35 invitados.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "aclarar_pedir_faltante",
+          "lifecycle_state": "active",
+          "event_type": "baby_shower",
+          "vendor_category": "Hogar y deco",
+          "active_need_category": "Hogar y deco",
+          "location": null,
+          "budget_signal": null,
+          "guest_range": "21-50",
+          "provider_need_categories": [
+            "Hogar y deco"
+          ],
+          "provider_need_count": 1,
+          "provider_need_statuses": [
+            {
+              "category": "Hogar y deco",
+              "status": "search_ready",
+              "has_recommendations": false,
+              "selected_provider_ids": []
+            }
+          ],
+          "selected_provider_ids": [],
+          "missing_fields": [
+            "location"
+          ],
+          "conversation_summary_preview": "Busca decoración en tonos pastel para un baby shower de 35 invitados.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "empty",
+          "context_source": "agent_api",
+          "retrieved_message_count": 0,
+          "recent_message_count": 0,
+          "excluded_current_message_count": 0,
+          "directions": [],
+          "sources": [],
+          "entry_source": null
+        },
+        "continuity_state": "new",
+        "welcome_allowed": true,
+        "history_status": "empty",
+        "has_prior_outbound": false,
+        "requested_operation": "provider.search",
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 8404,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M63YMPNMVJZ6M99G8GWJ8HN4",
+        "conversation_hash": "bdf268ec17b871411ce5c05abfaebdb78a4d2b5a03c82406ce659b4cca7034c2",
+        "runtime_latency_ms": 17325,
+        "extraction_latency_ms": 7961,
+        "compose_latency_ms": 3907,
+        "tools_called_count": 4,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 15023,
+        "cached_input_tokens": 3058,
+        "cache_hit_rate": 0.2155950366610265,
+        "extraction_to_compose_ratio": 2.0376247760429997,
+        "captured_at": "2026-10-29T13:47:25.248Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "aclarar_pedir_faltante",
+        "lifecycle_state": "active",
+        "event_type": "baby_shower",
+        "vendor_category": "Hogar y deco",
+        "active_need_category": "Hogar y deco",
+        "location": null,
+        "budget_signal": null,
+        "guest_range": "21-50",
+        "provider_needs": [
+          {
+            "category": "Hogar y deco",
+            "status": "search_ready",
+            "recommended_provider_ids": [],
+            "selected_provider_ids": []
+          }
+        ],
+        "selected_provider_ids": [],
+        "missing_fields": [
+          "location"
+        ]
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": true
+        }
+      },
+      "latencyMs": 21109
+    }
+  ],
+  "startedAt": "2026-10-29T13:47:27.436Z",
+  "completedAt": "2026-10-29T13:47:27.439Z"
+}

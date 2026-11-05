@@ -1,0 +1,3466 @@
+{
+  "runId": "eval-2026-11-05T15-44-10-684Z-f3fd08a5",
+  "generatedAt": "2026-11-05T15:45:26.100Z",
+  "totalCases": 2,
+  "passedCases": 1,
+  "failedCases": 1,
+  "erroredCases": 0,
+  "skippedCases": 0,
+  "averageScore": 0.8888888888888888,
+  "averageLatencyMs": 32487,
+  "suiteSummaries": [
+    {
+      "key": "live_behavior_regression",
+      "totalCases": 2,
+      "passedCases": 1,
+      "failedCases": 1,
+      "erroredCases": 0,
+      "skippedCases": 0,
+      "averageScore": 0.8888888888888888,
+      "averageLatencyMs": 32487
+    }
+  ],
+  "configSummaries": [
+    {
+      "key": "live_lambda",
+      "totalCases": 2,
+      "passedCases": 1,
+      "failedCases": 1,
+      "erroredCases": 0,
+      "skippedCases": 0,
+      "averageScore": 0.8888888888888888,
+      "averageLatencyMs": 32487
+    }
+  ],
+  "targetSummaries": [
+    {
+      "key": "live_lambda",
+      "totalCases": 2,
+      "passedCases": 1,
+      "failedCases": 1,
+      "erroredCases": 0,
+      "skippedCases": 0,
+      "averageScore": 0.8888888888888888,
+      "averageLatencyMs": 32487
+    }
+  ],
+  "flakyCandidates": [],
+  "benchmarkSummary": {
+    "avg_tool_precision": 1,
+    "avg_tool_recall": 1,
+    "avg_tool_f1": 1,
+    "avg_branch_coverage": 0.2413793103448276,
+    "avg_state_expectation_pass_rate": 0.8333333333333333,
+    "avg_trajectory_expectation_pass_rate": 1,
+    "avg_plan_persistence_rate": 1,
+    "avg_cache_hit_rate": 0.2645174469349477,
+    "total_tokens": 57022,
+    "total_input_tokens": 53849,
+    "total_cached_input_tokens": 14244,
+    "total_cache_write_input_tokens": 38095,
+    "total_uncached_input_tokens": 39605
+  },
+  "completion": {
+    "complete": true,
+    "reason": null,
+    "resumeMode": "full"
+  },
+  "timingSummary": {
+    "makespanMs": 74329
+  },
+  "judgeSummary": {
+    "modelCalls": 0,
+    "retryCount": 0,
+    "rateLimitCount": 0,
+    "judgeApiMs": 0,
+    "judgeModels": []
+  },
+  "costSummary": {
+    "priced": true,
+    "pricingVersion": "2026-09-25",
+    "openaiUsd": 0.006642,
+    "judgeUsd": 0,
+    "lambdaUsd": 0.001084,
+    "totalUsd": 0.007726,
+    "unpricedCases": [],
+    "unpricedModels": []
+  },
+  "results": [
+    {
+      "runId": "eval-2026-11-05T15-44-10-684Z-f3fd08a5",
+      "caseId": "live_behavior.quote_explicit_send_seeded_contact",
+      "suite": "live_behavior_regression",
+      "target": "live_lambda",
+      "configLabel": "live_lambda",
+      "status": "passed",
+      "hardGatePassed": true,
+      "finalScore": 1,
+      "totalLatencyMs": 34105,
+      "totalToolCalls": 10,
+      "nodeTransitions": [
+        "crear_lead_cerrar->crear_lead_cerrar",
+        "necesidad_cubierta->necesidad_cubierta",
+        "necesidad_cubierta->necesidad_cubierta"
+      ],
+      "planDiffSummary": [
+        "current_node=\"necesidad_cubierta\"",
+        "intent=\"cerrar\"",
+        "event_type=\"boda\"",
+        "vendor_category=\"Catering\"",
+        "active_need_category=\"Catering\"",
+        "location=\"Lima\"",
+        "guest_range=\"51-100\"",
+        "selected_provider_ids=[101]",
+        "provider_needs=Catering:selected"
+      ],
+      "artifactPaths": {
+        "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/.eval-runs/eval-2026-11-05T15-44-10-684Z-f3fd08a5/artifacts/live_lambda/live_behavior.quote_explicit_send_seeded_contact.json"
+      },
+      "expectationResults": [
+        {
+          "id": "both-quote-receipts-match-selected-providers-and-date",
+          "type": "trace_field_subset",
+          "passed": true,
+          "severity": "hard",
+          "score": 1,
+          "message": "Trace field provider_quote_receipts contained the expected subset."
+        },
+        {
+          "id": "submits-quotes-through-finish-plan",
+          "type": "tool_usage",
+          "passed": true,
+          "severity": "hard",
+          "score": 1,
+          "message": "Tool usage matched expectations."
+        },
+        {
+          "id": "multi-need-selection-preserved",
+          "type": "plan_field_subset",
+          "passed": true,
+          "severity": "hard",
+          "score": 1,
+          "message": "Plan field provider_needs contained the expected subset."
+        },
+        {
+          "id": "recall-performs-no-new-effect",
+          "type": "tool_usage",
+          "passed": true,
+          "severity": "hard",
+          "score": 1,
+          "message": "Tool usage matched expectations."
+        },
+        {
+          "id": "thanks-performs-no-new-effect",
+          "type": "tool_usage",
+          "passed": true,
+          "severity": "hard",
+          "score": 1,
+          "message": "Tool usage matched expectations."
+        },
+        {
+          "id": "expected-simulated-quote-count",
+          "type": "fixture_effect_count",
+          "passed": true,
+          "severity": "hard",
+          "score": 1,
+          "message": "Fixture provider.quote.write turn=0 delta attempts=1 successes=1 replays=0 (cumulative 1/1/0) outcome=success."
+        },
+        {
+          "id": "no-repeat-quote-on-recall",
+          "type": "fixture_effect_count",
+          "passed": true,
+          "severity": "hard",
+          "score": 1,
+          "message": "Fixture provider.quote.write turn=1 delta attempts=0 successes=0 replays=0 (cumulative 1/1/0) outcome=success."
+        }
+      ],
+      "scorerResults": [
+        {
+          "id": "expectation-core",
+          "type": "expectation_pass_rate",
+          "score": 1,
+          "weight": 1,
+          "skipped": false,
+          "message": "Average expectation score across 7 expectations."
+        }
+      ],
+      "benchmarkMetrics": {
+        "turn_count": 3,
+        "avg_latency_ms": 11368.333333333334,
+        "p95_latency_ms": 19250,
+        "tool_calls_total": 10,
+        "unique_tools_called": 4,
+        "tool_call_rate_per_turn": 3.3333333333333335,
+        "tool_precision": 1,
+        "tool_recall": 1,
+        "tool_f1": 1,
+        "branch_coverage": 0.13793103448275862,
+        "state_expectation_pass_rate": 1,
+        "trajectory_expectation_pass_rate": 1,
+        "plan_persistence_rate": 1,
+        "total_tokens": 27146,
+        "cache_hit_rate": 0.18212818724327676,
+        "input_tokens": 25806,
+        "cached_input_tokens": 4700,
+        "cache_write_input_tokens": 21082,
+        "uncached_input_tokens": 21106,
+        "usage_known": true
+      },
+      "timing": {
+        "queueWaitMs": 0,
+        "setupMs": 0,
+        "turnMs": 39950,
+        "snapshotMs": 9,
+        "teardownMs": 0,
+        "judgeWaitMs": 0,
+        "judgeApiMs": 0,
+        "reportWriteMs": 11,
+        "makespanMs": 13
+      },
+      "judgeMetrics": {
+        "modelCalls": 0,
+        "retryCount": 0,
+        "rateLimitCount": 0,
+        "tokensUnknown": false,
+        "openaiSdk": "7.43.0",
+        "judgeModels": []
+      },
+      "turns": [
+        {
+          "turnIndex": 0,
+          "input": {
+            "text": "Mi evento es el 18 de octubre de 2028. Por favor envía la cotización al proveedor elegido para cerrar el plan.",
+            "channel": "whatsapp",
+            "sessionId": "live_behavior.quote_explicit_send_seeded_contact",
+            "contactPhone": null,
+            "backendFixture": {
+              "scenario": "master-v2-provider-completion"
+            }
+          },
+          "outputText": "Listo, envié la solicitud de cotización a EDO para tu evento del 18 de octubre de 2028. El plan quedó cerrado.",
+          "deliveredText": "Listo, envié la solicitud de cotización a EDO para tu evento del 18 de octubre de 2028. El plan quedó cerrado.",
+          "delivery": {
+            "action": "send",
+            "reason": "reply_composed"
+          },
+          "outputOrigin": {
+            "status": "verified",
+            "candidateSha256": "8fc523b680d080528e32da4426fbc3a4cd37e8a6f72323072d08fce9861fc7a4",
+            "deliveredSha256": "8fc523b680d080528e32da4426fbc3a4cd37e8a6f72323072d08fce9861fc7a4",
+            "transformationVersion": "transport-v2",
+            "mismatchFields": []
+          },
+          "currentNode": "necesidad_cubierta",
+          "trace": {
+            "turn_coordination": {
+              "wait_ms": 43,
+              "attempts": 1
+            },
+            "trace_id": "01M6P647N51XGD4FHNGDB5859X",
+            "conversation_id": null,
+            "plan_id": "ece9849e-cb0a-460c-b0dd-763ff44ad487",
+            "previous_node": "crear_lead_cerrar",
+            "next_node": "crear_lead_cerrar",
+            "node_path": [
+              "crear_lead_cerrar",
+              "existe_plan_guardado",
+              "entrevista",
+              "crear_lead_cerrar"
+            ],
+            "intent": "cerrar",
+            "missing_fields": [],
+            "search_ready": true,
+            "prompt_bundle_id": "9579d9dcb7c9",
+            "prompt_file_paths": [
+              "shared/reply_core.txt",
+              "shared/domain_scope.txt",
+              "shared/flow_discipline.txt"
+            ],
+            "tools_considered": [
+              "get_agent_conversation_messages",
+              "log_agent_conversation_message",
+              "classify_reply_delivery",
+              "finish_plan"
+            ],
+            "tools_called": [
+              "get_agent_conversation_messages",
+              "log_agent_conversation_message",
+              "classify_reply_delivery",
+              "finish_plan"
+            ],
+            "tool_inputs": [
+              {
+                "tool": "get_agent_conversation_messages",
+                "input": "[omitted]"
+              },
+              {
+                "tool": "log_agent_conversation_message",
+                "input": "[omitted]"
+              },
+              {
+                "tool": "classify_reply_delivery",
+                "input": "[omitted]"
+              },
+              {
+                "tool": "finish_plan",
+                "input": "{\"event_date\":\"2028-10-18\"}"
+              }
+            ],
+            "tool_outputs": [
+              {
+                "tool": "get_agent_conversation_messages",
+                "output": "[omitted]"
+              },
+              {
+                "tool": "log_agent_conversation_message",
+                "output": "[omitted]"
+              },
+              {
+                "tool": "classify_reply_delivery",
+                "output": "[omitted]"
+              },
+              {
+                "tool": "finish_plan",
+                "output": "{\"status\":\"success\",\"eventDate\":\"2028-10-18\",\"contacted_providers\":[{\"providerId\":101,\"category\":\"Catering\",\"success\":true}]}"
+              }
+            ],
+            "provider_results": [
+              {
+                "id": 101,
+                "title": "EDO",
+                "category": "Catering",
+                "location": "Lima",
+                "serviceHighlights": [],
+                "termsHighlights": []
+              }
+            ],
+            "search_strategy": "none",
+            "close_action_summary": {
+              "type": "proceed_confirmed",
+              "category": null,
+              "reason_preview": null
+            },
+            "selection_resolution_summary": {
+              "selected_provider_references": [
+                {
+                  "provider_id": 101,
+                  "category": "Catering",
+                  "has_title": true,
+                  "has_hint": true
+                }
+              ],
+              "selected_provider_hints_count": 1,
+              "provider_plan_operation_types": [
+                "select_provider"
+              ],
+              "provider_plan_operation_categories": [
+                "Catering"
+              ]
+            },
+            "contact_validation_summary": {
+              "status": "valid",
+              "field": null,
+              "reason_preview": null,
+              "extraction_contact_fields_present": {
+                "name": false,
+                "email": false,
+                "phone": false
+              },
+              "plan_contact_fields_present": {
+                "name": true,
+                "email": true,
+                "phone": true
+              }
+            },
+            "provider_candidate_audit": [
+              {
+                "provider_id": 101,
+                "category": "Catering",
+                "location": "Lima",
+                "retrieval_source": null,
+                "retrieval_score": null,
+                "fit_score": null
+              }
+            ],
+            "information_execution_summary": [],
+            "finish_plan_summary": {
+              "status": "success",
+              "eventDate": "2028-10-18",
+              "confirmedCount": 1,
+              "pendingProviderIds": [],
+              "errorKind": null
+            },
+            "provider_quote_receipts": [
+              {
+                "providerId": 101,
+                "eventDate": "2028-10-18",
+                "resultStatus": "confirmed",
+                "attempt": 1
+              }
+            ],
+            "openai_calls": {
+              "classifier": {
+                "responseId": "resp_0ffb6ddfe7d6125c006aeca45227f487d18e6bad9a0e8cd0a2",
+                "requestId": "req_74e9afc255d2499abf7e6f554190c467",
+                "model": "gpt-6-luna",
+                "attemptCount": 1,
+                "requestMetrics": {
+                  "instructionBytes": 4896,
+                  "inputBytes": 734,
+                  "toolCount": 0,
+                  "schemaPropertyCount": 9,
+                  "transport": {
+                    "observedRequestCount": 1,
+                    "totalPayloadBytes": 7611,
+                    "instructionBytes": 0,
+                    "inputBytes": 5784,
+                    "toolBytes": 0,
+                    "outputSchemaBytes": 1592,
+                    "requests": []
+                  }
+                }
+              },
+              "extraction": {
+                "responseId": "resp_02e3e8ab1d4c7f1f006aeca4561f4487d1ba9a885aea9da33d",
+                "requestId": "req_92bc7706ce4a47359dc88950d68e6b60",
+                "model": "gpt-6-luna",
+                "attemptCount": 1,
+                "requestMetrics": {
+                  "instructionBytes": 10226,
+                  "inputBytes": 3964,
+                  "toolCount": 0,
+                  "schemaPropertyCount": 37,
+                  "transport": {
+                    "observedRequestCount": 1,
+                    "totalPayloadBytes": 36169,
+                    "instructionBytes": 10339,
+                    "inputBytes": 4308,
+                    "toolBytes": 2,
+                    "outputSchemaBytes": 21258,
+                    "requests": []
+                  }
+                }
+              },
+              "reply": {
+                "responseId": "resp_0de5ae7e878d5dfb006aeca460691087d183e54608ba94b838",
+                "requestId": "req_d4b3f4fb8ec54c87b972efd58bcb33a8",
+                "model": "gpt-6-luna",
+                "attemptCount": 2,
+                "requestMetrics": {
+                  "instructionBytes": 2588,
+                  "inputBytes": 4920,
+                  "toolCount": 1,
+                  "schemaPropertyCount": 2,
+                  "transport": {
+                    "observedRequestCount": 2,
+                    "totalPayloadBytes": 19412,
+                    "instructionBytes": 5248,
+                    "inputBytes": 11614,
+                    "toolBytes": 1372,
+                    "outputSchemaBytes": 626,
+                    "requests": []
+                  }
+                }
+              },
+              "router": null
+            },
+            "recommendation_funnel": {
+              "available_candidates": 1,
+              "context_candidates": 1,
+              "context_candidate_ids": [
+                101
+              ],
+              "presentation_limit": 6
+            },
+            "plan_persisted": true,
+            "plan_persist_reason": "quote_submission_confirmed",
+            "timing_ms": {
+              "total": 16141,
+              "load_plan": 55,
+              "response_classification": 3418,
+              "prepare_working_plan": 1,
+              "extraction": 7981,
+              "apply_extraction": 7,
+              "compute_sufficiency": 0,
+              "provider_search": 0,
+              "provider_enrichment": 0,
+              "prompt_bundle_load": 0,
+              "compose_reply": 4618,
+              "save_plan": 33,
+              "router": 0,
+              "information_execution": 0,
+              "rsvp_execution": 0
+            },
+            "token_usage": {
+              "classifier": {
+                "input_tokens": 1514,
+                "output_tokens": 144,
+                "total_tokens": 1658,
+                "cached_input_tokens": 0,
+                "cache_write_input_tokens": 1511
+              },
+              "router": null,
+              "extraction": {
+                "input_tokens": 7834,
+                "output_tokens": 472,
+                "total_tokens": 8306,
+                "cached_input_tokens": 0,
+                "cache_write_input_tokens": 7831
+              },
+              "reply": {
+                "input_tokens": 4141,
+                "output_tokens": 73,
+                "total_tokens": 4214,
+                "cached_input_tokens": 2016,
+                "cache_write_input_tokens": 2119
+              },
+              "total": {
+                "input_tokens": 13489,
+                "output_tokens": 689,
+                "total_tokens": 14178,
+                "cached_input_tokens": 2016,
+                "cache_write_input_tokens": 11461
+              }
+            },
+            "response_classifier": {
+              "mode": "enforce",
+              "classifier_profile": "general",
+              "action": "respond",
+              "reason": "requires_response",
+              "would_suppress": false,
+              "context_source": "agent_api",
+              "has_prior_outbound_message": false,
+              "fallback_used": false,
+              "conversation_health": "uncertain",
+              "health_reason": "insufficient_context",
+              "human_help_response": "not_applicable",
+              "campaign_reply_kind": "other_actionable",
+              "automation_confidence": "not_automated",
+              "automation_pattern": "none",
+              "automation_scope": "none_or_uncertain",
+              "prompt_bundle_id": "3dadfbdaa726",
+              "prompt_file_paths": [
+                "nodes/deteccion_intencion/response_classifier.txt"
+              ]
+            },
+            "turn_decision": {
+              "nextNode": "crear_lead_cerrar",
+              "routeKind": "close",
+              "providerSearchMode": "none",
+              "presentationScope": "close",
+              "focusNeedCategory": "Catering",
+              "needsToSearch": [
+                "Catering"
+              ],
+              "needsToPresent": [
+                "Catering"
+              ],
+              "stopReason": null,
+              "persistReason": "crear_lead_cerrar",
+              "invariantStatus": "valid",
+              "invariantViolations": []
+            },
+            "route_kind": "close",
+            "presentation_scope": "close",
+            "session_focus_used": false,
+            "session_focus_key_present": false,
+            "state_machine_invariant_status": "valid",
+            "state_machine_invariant_violations": [],
+            "operational_note": "[omitted]",
+            "extraction_summary": {
+              "intent_confidence": 0.99,
+              "information_request_count": 0,
+              "information_request_kinds": [],
+              "support_act_kind": null,
+              "ambiguity_status": "clear",
+              "clarification_question_present": false,
+              "ambiguity_interpretation_count": 0,
+              "event_type": "boda",
+              "vendor_category": "Catering",
+              "vendor_categories": [
+                "Catering"
+              ],
+              "active_need_category": "Catering",
+              "location": "Lima",
+              "budget_signal": null,
+              "guest_range": "51-100",
+              "selected_provider_hints": [
+                "EDO"
+              ],
+              "preferences": [],
+              "hard_constraints": [],
+              "assumptions": [],
+              "provider_query_intents_count": 0,
+              "provider_plan_operations_count": 0,
+              "provider_explanation_requested": false,
+              "provider_detail_requested": false,
+              "rsvp_action": null,
+              "rsvp_candidate_guest_id_present": false,
+              "rsvp_event_reference_present": false,
+              "conversation_summary_preview": "La persona solicita enviar la cotización al proveedor elegido para cerrar el plan. Indica que el evento será el 18 de octubre de 2028.",
+              "pause_requested": false,
+              "contact_fields_present": {
+                "name": false,
+                "email": false,
+                "phone": false
+              },
+              "contact_validation_error": null
+            },
+            "plan_summary": {
+              "current_node": "necesidad_cubierta",
+              "lifecycle_state": "finished",
+              "event_type": "boda",
+              "vendor_category": "Catering",
+              "active_need_category": "Catering",
+              "location": "Lima",
+              "budget_signal": null,
+              "guest_range": "51-100",
+              "provider_need_categories": [
+                "Catering"
+              ],
+              "provider_need_count": 1,
+              "provider_need_statuses": [
+                {
+                  "category": "Catering",
+                  "status": "selected",
+                  "has_recommendations": true,
+                  "selected_provider_ids": [
+                    101
+                  ]
+                }
+              ],
+              "selected_provider_ids": [
+                101
+              ],
+              "missing_fields": [],
+              "conversation_summary_preview": "La persona solicita enviar la cotización al proveedor elegido para cerrar el plan. Indica que el evento será el 18 de octubre de 2028.",
+              "open_question_count": 0,
+              "contact_fields_present": {
+                "name": true,
+                "email": true,
+                "phone": true
+              },
+              "contact_validation_error": null,
+              "user_auth_status": "none",
+              "auth_recovery_terminal_reason": null,
+              "auth_recovery_send_attempted": false,
+              "auth_recovery_verification_attempted": false,
+              "pending_information_request_count": 0,
+              "rsvp_status": "none",
+              "rsvp_candidate_count": 0
+            },
+            "authentication_execution_summary": [],
+            "message_context": {
+              "history_status": "empty",
+              "context_source": "agent_api",
+              "retrieved_message_count": 0,
+              "recent_message_count": 0,
+              "excluded_current_message_count": 0,
+              "directions": [],
+              "sources": [],
+              "entry_source": null
+            },
+            "continuity_state": "continuing",
+            "welcome_allowed": false,
+            "history_status": "empty",
+            "has_prior_outbound": false,
+            "requested_operation": "provider.quote.write",
+            "capability_decision": null,
+            "capability_reason": null,
+            "truncation": {
+              "truncated": false,
+              "droppedCandidateDetails": 0,
+              "droppedCalls": 0,
+              "diagnosticBytes": 8561,
+              "envelopeBytes": 12288,
+              "maxCallSummaries": 16,
+              "maxCandidateDetails": 8
+            }
+          },
+          "perf": {
+            "trace_id": "01M6P647N51XGD4FHNGDB5859X",
+            "conversation_hash": "a8cd2ef108fe0586bcd108c95ecde1ad360c5d7590501d50d443bb17880160cb",
+            "runtime_latency_ms": 16141,
+            "extraction_latency_ms": 7981,
+            "compose_latency_ms": 4618,
+            "tools_called_count": 4,
+            "provider_results_count": 1,
+            "recommendation_context_candidates": 1,
+            "recommendation_presentation_limit": 6,
+            "response_classifier_action": "respond",
+            "response_classifier_would_suppress": false,
+            "conversation_health_status": "uncertain",
+            "conversation_health_reason": "insufficient_context",
+            "human_help_response": "not_applicable",
+            "total_tokens": 14178,
+            "cached_input_tokens": 2016,
+            "cache_hit_rate": 0.14945511157239233,
+            "extraction_to_compose_ratio": 1.7282373321784321,
+            "captured_at": "2026-11-05T15:44:34.095Z",
+            "persisted": true,
+            "storage_target": "recap-agent-runtime-dev-perf"
+          },
+          "plan_summary": {
+            "current_node": "necesidad_cubierta",
+            "lifecycle_state": "finished",
+            "event_type": "boda",
+            "vendor_category": "Catering",
+            "active_need_category": "Catering",
+            "location": "Lima",
+            "budget_signal": null,
+            "guest_range": "51-100",
+            "provider_needs": [
+              {
+                "category": "Catering",
+                "status": "selected",
+                "recommended_provider_ids": [
+                  101
+                ],
+                "selected_provider_ids": [
+                  101
+                ]
+              }
+            ],
+            "selected_provider_ids": [
+              101
+            ],
+            "missing_fields": []
+          },
+          "auth_evidence": {
+            "status": "none",
+            "auth_method": null,
+            "awaiting_phone_confirmation": false,
+            "phone_confirmation": "not_awaiting",
+            "contact_fields_present": {
+              "name": true,
+              "email": true,
+              "phone": true
+            }
+          },
+          "latencyMs": 19250
+        },
+        {
+          "turnIndex": 1,
+          "input": {
+            "text": "Perdona, ¿me repites lo último que me dijiste?",
+            "channel": "whatsapp",
+            "sessionId": "live_behavior.quote_explicit_send_seeded_contact",
+            "contactPhone": null,
+            "backendFixture": {
+              "scenario": "master-v2-provider-completion"
+            }
+          },
+          "outputText": "Listo, envié la solicitud de cotización a EDO para tu evento del 18 de octubre de 2028. El plan quedó cerrado.",
+          "deliveredText": "Listo, envié la solicitud de cotización a EDO para tu evento del 18 de octubre de 2028. El plan quedó cerrado.",
+          "delivery": {
+            "action": "send",
+            "reason": "reply_composed"
+          },
+          "outputOrigin": {
+            "status": "verified",
+            "candidateSha256": "8fc523b680d080528e32da4426fbc3a4cd37e8a6f72323072d08fce9861fc7a4",
+            "deliveredSha256": "8fc523b680d080528e32da4426fbc3a4cd37e8a6f72323072d08fce9861fc7a4",
+            "transformationVersion": "transport-v2",
+            "mismatchFields": []
+          },
+          "currentNode": "necesidad_cubierta",
+          "trace": {
+            "turn_coordination": {
+              "wait_ms": 6,
+              "attempts": 1
+            },
+            "trace_id": "01M6P64JRG6ARVQ9E30BAFWRV9",
+            "conversation_id": null,
+            "plan_id": "ece9849e-cb0a-460c-b0dd-763ff44ad487",
+            "previous_node": "necesidad_cubierta",
+            "next_node": "necesidad_cubierta",
+            "node_path": [
+              "necesidad_cubierta",
+              "existe_plan_guardado",
+              "necesidad_cubierta"
+            ],
+            "intent": null,
+            "missing_fields": [],
+            "search_ready": true,
+            "prompt_bundle_id": "9579d9dcb7c9",
+            "prompt_file_paths": [
+              "shared/reply_core.txt",
+              "shared/domain_scope.txt",
+              "shared/flow_discipline.txt"
+            ],
+            "tools_considered": [
+              "get_agent_conversation_messages",
+              "log_agent_conversation_message",
+              "classify_reply_delivery"
+            ],
+            "tools_called": [
+              "get_agent_conversation_messages",
+              "log_agent_conversation_message",
+              "classify_reply_delivery"
+            ],
+            "tool_inputs": [
+              {
+                "tool": "get_agent_conversation_messages",
+                "input": "[omitted]"
+              },
+              {
+                "tool": "log_agent_conversation_message",
+                "input": "[omitted]"
+              },
+              {
+                "tool": "classify_reply_delivery",
+                "input": "[omitted]"
+              }
+            ],
+            "tool_outputs": [
+              {
+                "tool": "get_agent_conversation_messages",
+                "output": "[omitted]"
+              },
+              {
+                "tool": "log_agent_conversation_message",
+                "output": "[omitted]"
+              },
+              {
+                "tool": "classify_reply_delivery",
+                "output": "[omitted]"
+              }
+            ],
+            "provider_results": [
+              {
+                "id": 101,
+                "title": "EDO",
+                "category": "Catering",
+                "location": "Lima",
+                "serviceHighlights": [],
+                "termsHighlights": []
+              }
+            ],
+            "search_strategy": "none",
+            "close_action_summary": {
+              "type": null,
+              "category": null,
+              "reason_preview": null
+            },
+            "selection_resolution_summary": {
+              "selected_provider_references": [],
+              "selected_provider_hints_count": 0,
+              "provider_plan_operation_types": [],
+              "provider_plan_operation_categories": []
+            },
+            "contact_validation_summary": {
+              "status": "valid",
+              "field": null,
+              "reason_preview": null,
+              "extraction_contact_fields_present": {
+                "name": false,
+                "email": false,
+                "phone": false
+              },
+              "plan_contact_fields_present": {
+                "name": true,
+                "email": true,
+                "phone": true
+              }
+            },
+            "provider_candidate_audit": [
+              {
+                "provider_id": 101,
+                "category": "Catering",
+                "location": "Lima",
+                "retrieval_source": null,
+                "retrieval_score": null,
+                "fit_score": null
+              }
+            ],
+            "information_execution_summary": [],
+            "finish_plan_summary": null,
+            "provider_quote_receipts": [],
+            "openai_calls": {
+              "classifier": {
+                "responseId": "resp_001ddf6871984cd4006aeca464064487d1809c4007e4f8abd3",
+                "requestId": "req_110c431551834bc7a33010be78158292",
+                "model": "gpt-6-luna",
+                "attemptCount": 1,
+                "requestMetrics": {
+                  "instructionBytes": 4896,
+                  "inputBytes": 1149,
+                  "toolCount": 0,
+                  "schemaPropertyCount": 9,
+                  "transport": {
+                    "observedRequestCount": 1,
+                    "totalPayloadBytes": 8048,
+                    "instructionBytes": 0,
+                    "inputBytes": 6221,
+                    "toolBytes": 0,
+                    "outputSchemaBytes": 1592,
+                    "requests": []
+                  }
+                }
+              },
+              "extraction": {
+                "responseId": "resp_0f7e29682566b1d0006aeca466843c87d1a9e254272b079675",
+                "requestId": "req_d0126a78ea0943dca91f14f8a5faab91",
+                "model": "gpt-6-luna",
+                "attemptCount": 1,
+                "requestMetrics": {
+                  "instructionBytes": 8833,
+                  "inputBytes": 4614,
+                  "toolCount": 0,
+                  "schemaPropertyCount": 35,
+                  "transport": {
+                    "observedRequestCount": 1,
+                    "totalPayloadBytes": 29135,
+                    "instructionBytes": 8931,
+                    "inputBytes": 4999,
+                    "toolBytes": 2,
+                    "outputSchemaBytes": 14941,
+                    "requests": []
+                  }
+                }
+              },
+              "reply": {
+                "responseId": "resp_09d9fa7e4dca7734006aeca46bf71887d195ddd6e7da5974fc",
+                "requestId": "req_251323051293476bb6e3cf8e7cb9c993",
+                "model": "gpt-6-luna",
+                "attemptCount": 1,
+                "requestMetrics": {
+                  "instructionBytes": 2588,
+                  "inputBytes": 8219,
+                  "toolCount": 0,
+                  "schemaPropertyCount": 2,
+                  "transport": {
+                    "observedRequestCount": 1,
+                    "totalPayloadBytes": 12235,
+                    "instructionBytes": 2624,
+                    "inputBytes": 9019,
+                    "toolBytes": 2,
+                    "outputSchemaBytes": 313,
+                    "requests": []
+                  }
+                }
+              },
+              "router": null
+            },
+            "recommendation_funnel": {
+              "available_candidates": 1,
+              "context_candidates": 1,
+              "context_candidate_ids": [
+                101
+              ],
+              "presentation_limit": 5
+            },
+            "plan_persisted": true,
+            "plan_persist_reason": null,
+            "timing_ms": {
+              "total": 9490,
+              "load_plan": 8,
+              "response_classification": 2419,
+              "prepare_working_plan": 0,
+              "extraction": 5574,
+              "apply_extraction": 0,
+              "compute_sufficiency": 0,
+              "provider_search": 0,
+              "provider_enrichment": 0,
+              "prompt_bundle_load": 0,
+              "compose_reply": 7060,
+              "save_plan": 0,
+              "router": 0,
+              "information_execution": 0,
+              "rsvp_execution": 0
+            },
+            "token_usage": {
+              "classifier": {
+                "input_tokens": 1633,
+                "output_tokens": 109,
+                "total_tokens": 1742,
+                "cached_input_tokens": 1342,
+                "cache_write_input_tokens": 288
+              },
+              "router": null,
+              "extraction": {
+                "input_tokens": 6295,
+                "output_tokens": 350,
+                "total_tokens": 6645,
+                "cached_input_tokens": 0,
+                "cache_write_input_tokens": 6292
+              },
+              "reply": {
+                "input_tokens": 2697,
+                "output_tokens": 49,
+                "total_tokens": 2746,
+                "cached_input_tokens": 0,
+                "cache_write_input_tokens": 2694
+              },
+              "total": {
+                "input_tokens": 10625,
+                "output_tokens": 508,
+                "total_tokens": 11133,
+                "cached_input_tokens": 1342,
+                "cache_write_input_tokens": 9274
+              }
+            },
+            "response_classifier": {
+              "mode": "enforce",
+              "classifier_profile": "general",
+              "action": "respond",
+              "reason": "requires_response",
+              "would_suppress": false,
+              "context_source": "agent_api",
+              "has_prior_outbound_message": true,
+              "fallback_used": false,
+              "conversation_health": "progressing",
+              "health_reason": "normal_progress",
+              "human_help_response": "not_applicable",
+              "campaign_reply_kind": "not_applicable",
+              "automation_confidence": "not_automated",
+              "automation_pattern": "none",
+              "automation_scope": "none_or_uncertain",
+              "prompt_bundle_id": "3dadfbdaa726",
+              "prompt_file_paths": [
+                "nodes/deteccion_intencion/response_classifier.txt"
+              ]
+            },
+            "turn_decision": {
+              "nextNode": "necesidad_cubierta",
+              "routeKind": "ask_event_context",
+              "providerSearchMode": "none",
+              "presentationScope": "none",
+              "focusNeedCategory": "Catering",
+              "needsToSearch": [
+                "Catering"
+              ],
+              "needsToPresent": [
+                "Catering"
+              ],
+              "stopReason": null,
+              "persistReason": "necesidad_cubierta",
+              "invariantStatus": "valid",
+              "invariantViolations": []
+            },
+            "route_kind": "ask_event_context",
+            "presentation_scope": "none",
+            "session_focus_used": false,
+            "session_focus_key_present": false,
+            "state_machine_invariant_status": "valid",
+            "state_machine_invariant_violations": [],
+            "operational_note": "[omitted]",
+            "extraction_summary": {
+              "intent_confidence": 1,
+              "information_request_count": 0,
+              "information_request_kinds": [],
+              "support_act_kind": null,
+              "ambiguity_status": "clear",
+              "clarification_question_present": false,
+              "ambiguity_interpretation_count": 0,
+              "event_type": null,
+              "vendor_category": null,
+              "vendor_categories": [],
+              "active_need_category": null,
+              "location": null,
+              "budget_signal": null,
+              "guest_range": null,
+              "selected_provider_hints": [],
+              "preferences": [],
+              "hard_constraints": [],
+              "assumptions": [],
+              "provider_query_intents_count": 0,
+              "provider_plan_operations_count": 0,
+              "provider_explanation_requested": false,
+              "provider_detail_requested": false,
+              "rsvp_action": null,
+              "rsvp_candidate_guest_id_present": false,
+              "rsvp_event_reference_present": false,
+              "conversation_summary_preview": "La persona pide que se le repita la respuesta anterior: se envió la solicitud de cotización a EDO para el evento del 18 de octubre de 2028 y el plan quedó cerr…",
+              "pause_requested": false,
+              "contact_fields_present": {
+                "name": false,
+                "email": false,
+                "phone": false
+              },
+              "contact_validation_error": null
+            },
+            "plan_summary": {
+              "current_node": "necesidad_cubierta",
+              "lifecycle_state": "finished",
+              "event_type": "boda",
+              "vendor_category": "Catering",
+              "active_need_category": "Catering",
+              "location": "Lima",
+              "budget_signal": null,
+              "guest_range": "51-100",
+              "provider_need_categories": [
+                "Catering"
+              ],
+              "provider_need_count": 1,
+              "provider_need_statuses": [
+                {
+                  "category": "Catering",
+                  "status": "selected",
+                  "has_recommendations": true,
+                  "selected_provider_ids": [
+                    101
+                  ]
+                }
+              ],
+              "selected_provider_ids": [
+                101
+              ],
+              "missing_fields": [],
+              "conversation_summary_preview": "La persona solicita enviar la cotización al proveedor elegido para cerrar el plan. Indica que el evento será el 18 de octubre de 2028.",
+              "open_question_count": 0,
+              "contact_fields_present": {
+                "name": true,
+                "email": true,
+                "phone": true
+              },
+              "contact_validation_error": null,
+              "user_auth_status": "none",
+              "auth_recovery_terminal_reason": null,
+              "auth_recovery_send_attempted": false,
+              "auth_recovery_verification_attempted": false,
+              "pending_information_request_count": 0,
+              "rsvp_status": "none",
+              "rsvp_candidate_count": 0
+            },
+            "authentication_execution_summary": [],
+            "message_context": {
+              "history_status": "available",
+              "context_source": "agent_api",
+              "retrieved_message_count": 2,
+              "recent_message_count": 2,
+              "excluded_current_message_count": 0,
+              "directions": [
+                "inbound",
+                "outbound"
+              ],
+              "sources": [
+                null,
+                null
+              ],
+              "entry_source": null
+            },
+            "continuity_state": "continuing",
+            "welcome_allowed": false,
+            "history_status": "available",
+            "has_prior_outbound": true,
+            "requested_operation": null,
+            "capability_decision": null,
+            "capability_reason": null,
+            "truncation": {
+              "truncated": false,
+              "droppedCandidateDetails": 0,
+              "droppedCalls": 0,
+              "diagnosticBytes": 7970,
+              "envelopeBytes": 12288,
+              "maxCallSummaries": 16,
+              "maxCandidateDetails": 8
+            }
+          },
+          "perf": {
+            "trace_id": "01M6P64JRG6ARVQ9E30BAFWRV9",
+            "conversation_hash": "a8cd2ef108fe0586bcd108c95ecde1ad360c5d7590501d50d443bb17880160cb",
+            "runtime_latency_ms": 9490,
+            "extraction_latency_ms": 5574,
+            "compose_latency_ms": 7060,
+            "tools_called_count": 3,
+            "provider_results_count": 1,
+            "recommendation_context_candidates": 1,
+            "recommendation_presentation_limit": 5,
+            "response_classifier_action": "respond",
+            "response_classifier_would_suppress": false,
+            "conversation_health_status": "progressing",
+            "conversation_health_reason": "normal_progress",
+            "human_help_response": "not_applicable",
+            "total_tokens": 11133,
+            "cached_input_tokens": 1342,
+            "cache_hit_rate": 0.12630588235294118,
+            "extraction_to_compose_ratio": 0.7895184135977337,
+            "captured_at": "2026-11-05T15:44:45.337Z",
+            "persisted": true,
+            "storage_target": "recap-agent-runtime-dev-perf"
+          },
+          "plan_summary": {
+            "current_node": "necesidad_cubierta",
+            "lifecycle_state": "finished",
+            "event_type": "boda",
+            "vendor_category": "Catering",
+            "active_need_category": "Catering",
+            "location": "Lima",
+            "budget_signal": null,
+            "guest_range": "51-100",
+            "provider_needs": [
+              {
+                "category": "Catering",
+                "status": "selected",
+                "recommended_provider_ids": [
+                  101
+                ],
+                "selected_provider_ids": [
+                  101
+                ]
+              }
+            ],
+            "selected_provider_ids": [
+              101
+            ],
+            "missing_fields": []
+          },
+          "auth_evidence": {
+            "status": "none",
+            "auth_method": null,
+            "awaiting_phone_confirmation": false,
+            "phone_confirmation": "not_awaiting",
+            "contact_fields_present": {
+              "name": true,
+              "email": true,
+              "phone": true
+            }
+          },
+          "latencyMs": 9908
+        },
+        {
+          "turnIndex": 2,
+          "input": {
+            "text": "Gracias, eso era todo.",
+            "channel": "whatsapp",
+            "sessionId": "live_behavior.quote_explicit_send_seeded_contact",
+            "contactPhone": null,
+            "backendFixture": {
+              "scenario": "master-v2-provider-completion"
+            }
+          },
+          "outputText": "",
+          "deliveredText": null,
+          "delivery": {
+            "action": "suppress",
+            "reason": "suppress_acknowledgement"
+          },
+          "outputOrigin": {
+            "status": "missing",
+            "candidateSha256": null,
+            "deliveredSha256": null,
+            "transformationVersion": null,
+            "mismatchFields": [
+              "candidate_output_origin"
+            ]
+          },
+          "currentNode": "necesidad_cubierta",
+          "trace": {
+            "turn_coordination": {
+              "wait_ms": 5,
+              "attempts": 1
+            },
+            "trace_id": "01M6P64RRQVSJZFNPX2WNS3EHV",
+            "conversation_id": null,
+            "plan_id": "ece9849e-cb0a-460c-b0dd-763ff44ad487",
+            "previous_node": "necesidad_cubierta",
+            "next_node": "necesidad_cubierta",
+            "node_path": [
+              "necesidad_cubierta"
+            ],
+            "intent": "solicitar_humano",
+            "missing_fields": [],
+            "search_ready": false,
+            "prompt_bundle_id": "3dadfbdaa726",
+            "prompt_file_paths": [
+              "nodes/deteccion_intencion/response_classifier.txt"
+            ],
+            "tools_considered": [
+              "get_agent_conversation_messages",
+              "log_agent_conversation_message",
+              "classify_reply_delivery"
+            ],
+            "tools_called": [
+              "get_agent_conversation_messages",
+              "log_agent_conversation_message",
+              "classify_reply_delivery"
+            ],
+            "tool_inputs": [
+              {
+                "tool": "get_agent_conversation_messages",
+                "input": "[omitted]"
+              },
+              {
+                "tool": "log_agent_conversation_message",
+                "input": "[omitted]"
+              },
+              {
+                "tool": "classify_reply_delivery",
+                "input": "[omitted]"
+              }
+            ],
+            "tool_outputs": [
+              {
+                "tool": "get_agent_conversation_messages",
+                "output": "[omitted]"
+              },
+              {
+                "tool": "log_agent_conversation_message",
+                "output": "[omitted]"
+              },
+              {
+                "tool": "classify_reply_delivery",
+                "output": "[omitted]"
+              }
+            ],
+            "provider_results": [],
+            "search_strategy": "none",
+            "close_action_summary": {
+              "type": null,
+              "category": null,
+              "reason_preview": null
+            },
+            "selection_resolution_summary": {
+              "selected_provider_references": [],
+              "selected_provider_hints_count": 0,
+              "provider_plan_operation_types": [],
+              "provider_plan_operation_categories": []
+            },
+            "contact_validation_summary": {
+              "status": "valid",
+              "field": null,
+              "reason_preview": null,
+              "extraction_contact_fields_present": {
+                "name": false,
+                "email": false,
+                "phone": false
+              },
+              "plan_contact_fields_present": {
+                "name": true,
+                "email": true,
+                "phone": true
+              }
+            },
+            "provider_candidate_audit": [],
+            "information_execution_summary": [],
+            "finish_plan_summary": null,
+            "provider_quote_receipts": [],
+            "openai_calls": {
+              "classifier": {
+                "responseId": "resp_04d319e1ab3add02006aeca46fbd6487d19eae87f9612cefc0",
+                "requestId": "req_5f0bf41591124349bf4c4a0d69ad1b4f",
+                "model": "gpt-6-luna",
+                "attemptCount": 1,
+                "requestMetrics": {
+                  "instructionBytes": 4896,
+                  "inputBytes": 1378,
+                  "toolCount": 0,
+                  "schemaPropertyCount": 9,
+                  "transport": {
+                    "observedRequestCount": 1,
+                    "totalPayloadBytes": 8297,
+                    "instructionBytes": 0,
+                    "inputBytes": 6470,
+                    "toolBytes": 0,
+                    "outputSchemaBytes": 1592,
+                    "requests": []
+                  }
+                }
+              },
+              "extraction": null,
+              "reply": null,
+              "router": null
+            },
+            "recommendation_funnel": {
+              "available_candidates": 0,
+              "context_candidates": 0,
+              "context_candidate_ids": [],
+              "presentation_limit": 5
+            },
+            "plan_persisted": true,
+            "plan_persist_reason": "response_classifier_suppressed",
+            "timing_ms": {
+              "total": 4666,
+              "load_plan": 10,
+              "response_classification": 4649,
+              "prepare_working_plan": 0,
+              "extraction": 0,
+              "apply_extraction": 0,
+              "compute_sufficiency": 0,
+              "provider_search": 0,
+              "provider_enrichment": 0,
+              "prompt_bundle_load": 0,
+              "compose_reply": 0,
+              "save_plan": 6,
+              "router": 0,
+              "information_execution": 0,
+              "rsvp_execution": 0
+            },
+            "token_usage": {
+              "classifier": {
+                "input_tokens": 1692,
+                "output_tokens": 143,
+                "total_tokens": 1835,
+                "cached_input_tokens": 1342,
+                "cache_write_input_tokens": 347
+              },
+              "router": null,
+              "extraction": null,
+              "reply": null,
+              "total": {
+                "input_tokens": 1692,
+                "output_tokens": 143,
+                "total_tokens": 1835,
+                "cached_input_tokens": 1342,
+                "cache_write_input_tokens": 347
+              }
+            },
+            "response_classifier": {
+              "mode": "enforce",
+              "classifier_profile": "general",
+              "action": "suppress_acknowledgement",
+              "reason": "acknowledgement",
+              "would_suppress": true,
+              "context_source": "agent_api",
+              "has_prior_outbound_message": true,
+              "fallback_used": false,
+              "conversation_health": "progressing",
+              "health_reason": "normal_progress",
+              "human_help_response": "not_applicable",
+              "campaign_reply_kind": "acknowledgement_only",
+              "automation_confidence": "not_automated",
+              "automation_pattern": "none",
+              "automation_scope": "none_or_uncertain",
+              "prompt_bundle_id": "3dadfbdaa726",
+              "prompt_file_paths": [
+                "nodes/deteccion_intencion/response_classifier.txt"
+              ]
+            },
+            "turn_decision": {
+              "nextNode": "necesidad_cubierta",
+              "routeKind": "ask_event_context",
+              "providerSearchMode": "none",
+              "presentationScope": "none",
+              "focusNeedCategory": "Catering",
+              "needsToSearch": [
+                "Catering"
+              ],
+              "needsToPresent": [],
+              "stopReason": null,
+              "persistReason": "necesidad_cubierta",
+              "invariantStatus": "valid",
+              "invariantViolations": []
+            },
+            "route_kind": "ask_event_context",
+            "presentation_scope": "none",
+            "session_focus_used": false,
+            "session_focus_key_present": false,
+            "state_machine_invariant_status": "valid",
+            "state_machine_invariant_violations": [],
+            "operational_note": "[omitted]",
+            "extraction_summary": {
+              "intent_confidence": 1,
+              "information_request_count": 0,
+              "information_request_kinds": [],
+              "support_act_kind": null,
+              "ambiguity_status": null,
+              "clarification_question_present": false,
+              "ambiguity_interpretation_count": 0,
+              "event_type": null,
+              "vendor_category": null,
+              "vendor_categories": [],
+              "active_need_category": null,
+              "location": null,
+              "budget_signal": null,
+              "guest_range": null,
+              "selected_provider_hints": [],
+              "preferences": [],
+              "hard_constraints": [],
+              "assumptions": [],
+              "provider_query_intents_count": 0,
+              "provider_plan_operations_count": 0,
+              "provider_explanation_requested": false,
+              "provider_detail_requested": false,
+              "rsvp_action": null,
+              "rsvp_candidate_guest_id_present": false,
+              "rsvp_event_reference_present": false,
+              "conversation_summary_preview": "The response classifier suppressed delivery: acknowledgement.",
+              "pause_requested": false,
+              "contact_fields_present": {
+                "name": false,
+                "email": false,
+                "phone": false
+              },
+              "contact_validation_error": null
+            },
+            "plan_summary": {
+              "current_node": "necesidad_cubierta",
+              "lifecycle_state": "finished",
+              "event_type": "boda",
+              "vendor_category": "Catering",
+              "active_need_category": "Catering",
+              "location": "Lima",
+              "budget_signal": null,
+              "guest_range": "51-100",
+              "provider_need_categories": [
+                "Catering"
+              ],
+              "provider_need_count": 1,
+              "provider_need_statuses": [
+                {
+                  "category": "Catering",
+                  "status": "selected",
+                  "has_recommendations": true,
+                  "selected_provider_ids": [
+                    101
+                  ]
+                }
+              ],
+              "selected_provider_ids": [
+                101
+              ],
+              "missing_fields": [],
+              "conversation_summary_preview": "La persona solicita enviar la cotización al proveedor elegido para cerrar el plan. Indica que el evento será el 18 de octubre de 2028.",
+              "open_question_count": 0,
+              "contact_fields_present": {
+                "name": true,
+                "email": true,
+                "phone": true
+              },
+              "contact_validation_error": null,
+              "user_auth_status": "none",
+              "auth_recovery_terminal_reason": null,
+              "auth_recovery_send_attempted": false,
+              "auth_recovery_verification_attempted": false,
+              "pending_information_request_count": 0,
+              "rsvp_status": "none",
+              "rsvp_candidate_count": 0
+            },
+            "authentication_execution_summary": [],
+            "message_context": {
+              "history_status": "available",
+              "context_source": "agent_api",
+              "retrieved_message_count": 4,
+              "recent_message_count": 4,
+              "excluded_current_message_count": 0,
+              "directions": [
+                "inbound",
+                "outbound",
+                "inbound",
+                "outbound"
+              ],
+              "sources": [
+                null,
+                null,
+                null,
+                null
+              ],
+              "entry_source": null
+            },
+            "continuity_state": "continuing",
+            "welcome_allowed": false,
+            "history_status": "available",
+            "has_prior_outbound": true,
+            "requested_operation": null,
+            "capability_decision": null,
+            "capability_reason": null,
+            "truncation": {
+              "truncated": false,
+              "droppedCandidateDetails": 0,
+              "droppedCalls": 0,
+              "diagnosticBytes": 6604,
+              "envelopeBytes": 12288,
+              "maxCallSummaries": 16,
+              "maxCandidateDetails": 8
+            }
+          },
+          "perf": {
+            "trace_id": "01M6P64RRQVSJZFNPX2WNS3EHV",
+            "conversation_hash": "a8cd2ef108fe0586bcd108c95ecde1ad360c5d7590501d50d443bb17880160cb",
+            "runtime_latency_ms": 4666,
+            "extraction_latency_ms": 0,
+            "compose_latency_ms": 0,
+            "tools_called_count": 3,
+            "provider_results_count": 0,
+            "recommendation_context_candidates": 0,
+            "recommendation_presentation_limit": 5,
+            "response_classifier_action": "suppress_acknowledgement",
+            "response_classifier_would_suppress": true,
+            "conversation_health_status": "progressing",
+            "conversation_health_reason": "normal_progress",
+            "human_help_response": "not_applicable",
+            "total_tokens": 1835,
+            "cached_input_tokens": 1342,
+            "cache_hit_rate": 0.793144208037825,
+            "extraction_to_compose_ratio": null,
+            "captured_at": "2026-11-05T15:44:51.480Z",
+            "persisted": true,
+            "storage_target": "recap-agent-runtime-dev-perf"
+          },
+          "plan_summary": {
+            "current_node": "necesidad_cubierta",
+            "lifecycle_state": "finished",
+            "event_type": "boda",
+            "vendor_category": "Catering",
+            "active_need_category": "Catering",
+            "location": "Lima",
+            "budget_signal": null,
+            "guest_range": "51-100",
+            "provider_needs": [
+              {
+                "category": "Catering",
+                "status": "selected",
+                "recommended_provider_ids": [
+                  101
+                ],
+                "selected_provider_ids": [
+                  101
+                ]
+              }
+            ],
+            "selected_provider_ids": [
+              101
+            ],
+            "missing_fields": []
+          },
+          "auth_evidence": {
+            "status": "none",
+            "auth_method": null,
+            "awaiting_phone_confirmation": false,
+            "phone_confirmation": "not_awaiting",
+            "contact_fields_present": {
+              "name": true,
+              "email": true,
+              "phone": true
+            }
+          },
+          "latencyMs": 4947
+        }
+      ],
+      "startedAt": "2026-11-05T15:44:51.722Z",
+      "completedAt": "2026-11-05T15:44:51.724Z"
+    },
+    {
+      "runId": "eval-2026-11-05T15-44-10-684Z-f3fd08a5",
+      "caseId": "live_behavior.regression_displayed_second_birthday",
+      "suite": "live_behavior_regression",
+      "target": "live_lambda",
+      "configLabel": "live_lambda",
+      "status": "failed",
+      "hardGatePassed": false,
+      "primaryFailureReason": "product_fact_completeness",
+      "finalScore": 0.7777777777777778,
+      "totalLatencyMs": 30869,
+      "totalToolCalls": 7,
+      "nodeTransitions": [
+        "contacto_inicial->recomendar",
+        "recomendar->aclarar_pedir_faltante"
+      ],
+      "planDiffSummary": [
+        "current_node=\"aclarar_pedir_faltante\"",
+        "intent=\"confirmar_proveedor\"",
+        "event_type=\"cumpleanos\"",
+        "vendor_category=\"Catering\"",
+        "active_need_category=\"Catering\"",
+        "location=\"Lima\"",
+        "guest_range=\"21-50\"",
+        "provider_needs=Catering:shortlisted"
+      ],
+      "artifactPaths": {
+        "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/.eval-runs/eval-2026-11-05T15-44-10-684Z-f3fd08a5/artifacts/live_lambda/live_behavior.regression_displayed_second_birthday.json"
+      },
+      "expectationResults": [
+        {
+          "id": "event-type-retained",
+          "type": "plan_field_equals",
+          "passed": true,
+          "severity": "hard",
+          "score": 1,
+          "message": "Plan field event_type matched exactly."
+        },
+        {
+          "id": "answer-delivered",
+          "type": "text_contains",
+          "passed": true,
+          "severity": "hard",
+          "score": 1,
+          "message": "Text containment checks passed."
+        },
+        {
+          "id": "no-provider-quote-without-explicit-date",
+          "type": "fixture_effect_count",
+          "passed": true,
+          "severity": "hard",
+          "score": 1,
+          "message": "Fixture provider.quote.write attempts=0 successes=0 replays=0 outcome=none."
+        },
+        {
+          "id": "no-unrequested-rsvp",
+          "type": "fixture_effect_count",
+          "passed": true,
+          "severity": "hard",
+          "score": 1,
+          "message": "Fixture rsvp.write attempts=0 successes=0 replays=0 outcome=none."
+        },
+        {
+          "id": "no-unrequested-handoff",
+          "type": "fixture_effect_count",
+          "passed": true,
+          "severity": "hard",
+          "score": 1,
+          "message": "Fixture handoff.write attempts=0 successes=0 replays=0 outcome=none."
+        },
+        {
+          "id": "requested-needs-retained",
+          "type": "plan_field_subset",
+          "passed": true,
+          "severity": "hard",
+          "score": 1,
+          "message": "Plan field provider_needs contained the expected subset."
+        },
+        {
+          "id": "provider-selection-recorded",
+          "type": "plan_field_subset",
+          "passed": false,
+          "severity": "hard",
+          "score": 0,
+          "message": "Plan field provider_needs did not contain the expected subset."
+        },
+        {
+          "id": "two-options-available",
+          "type": "provider_result_count",
+          "passed": true,
+          "severity": "hard",
+          "score": 1,
+          "message": "Provider result count 7 matched expectation."
+        },
+        {
+          "id": "second-displayed-provider-selected",
+          "type": "provider_displayed_selection",
+          "passed": false,
+          "severity": "hard",
+          "score": 0,
+          "message": "Displayed selection comparison: not_selected."
+        }
+      ],
+      "scorerResults": [
+        {
+          "id": "objective-obligations",
+          "type": "expectation_pass_rate",
+          "score": 0.7777777777777778,
+          "weight": 1,
+          "skipped": false,
+          "message": "Average expectation score across 9 expectations."
+        }
+      ],
+      "benchmarkMetrics": {
+        "turn_count": 2,
+        "avg_latency_ms": 15434.5,
+        "p95_latency_ms": 19667,
+        "tool_calls_total": 7,
+        "unique_tools_called": 4,
+        "tool_call_rate_per_turn": 3.5,
+        "tool_precision": 1,
+        "tool_recall": 1,
+        "tool_f1": 1,
+        "branch_coverage": 0.3448275862068966,
+        "state_expectation_pass_rate": 0.6666666666666666,
+        "trajectory_expectation_pass_rate": 1,
+        "plan_persistence_rate": 1,
+        "total_tokens": 29876,
+        "cache_hit_rate": 0.34033448632457297,
+        "input_tokens": 28043,
+        "cached_input_tokens": 9544,
+        "cache_write_input_tokens": 17013,
+        "uncached_input_tokens": 18499,
+        "usage_known": true
+      },
+      "timing": {
+        "queueWaitMs": 39961,
+        "setupMs": 0,
+        "turnMs": 34345,
+        "snapshotMs": 5,
+        "teardownMs": 0,
+        "judgeWaitMs": 1,
+        "judgeApiMs": 0,
+        "reportWriteMs": 5,
+        "makespanMs": 8
+      },
+      "judgeMetrics": {
+        "modelCalls": 0,
+        "retryCount": 0,
+        "rateLimitCount": 0,
+        "tokensUnknown": false,
+        "openaiSdk": "7.43.0",
+        "judgeModels": []
+      },
+      "turns": [
+        {
+          "turnIndex": 0,
+          "input": {
+            "text": "Necesito catering para cumpleaños en Lima para 40 personas.",
+            "channel": "whatsapp",
+            "sessionId": "live_behavior.regression_displayed_second_birthday",
+            "contactPhone": null,
+            "backendFixture": {
+              "scenario": "master-provider-live-public"
+            }
+          },
+          "outputText": "Para el cumpleaños en Lima de 40 personas, estas opciones de catering podrían encajar:\n\n1. Edo Sushi Bar\n Edo Sushi Bar ofrece catering de sushi y paquetes personalizados para eventos; anuncia 10% de descuento.\n Ubicación: Lima, Perú.\n Precio: $$$.\n Promo: 10% Off.\n Nota: El descuento aplica desde 300 piezas y está sujeto a disponibilidad. Su precio mínimo publicado es S/ 1,200.\n\n Ficha: https://sinenvolturas.com/proveedores/edo-sushi-bar\n\n2. Lucitana\n Lucitana ofrece catering para eventos sociales y propuestas personalizadas; también anuncia asesoría o degustación sin costo.\n Ubicación: Lima, Perú.\n Promo: 10 % OFF.\n Nota: Consulta disponibilidad y condiciones del descuento directamente con el proveedor.\n\n Ficha: https://sinenvolturas.com/proveedores/lucitana\n\n3. 4Foodies\n 4Foodies ofrece mesas gastronómicas, tablas de quesos y montaje para eventos; anuncia 10% de descuento.\n Ubicación: Lima, Perú.\n Precio: $$$.\n Promo: 10% Off.\n Nota: Requiere solicitar el pedido con al menos 2 meses de anticipación y validar la cobertura de la zona.\n\n Ficha: https://sinenvolturas.com/proveedores/4foodies\n\n4. Café del Alba\n Café del Alba ofrece carritos y estaciones de café atendidas por baristas, como complemento para la celebración.\n Ubicación: Lima, Perú.\n Precio: $$$.\n Promo: S/. 250 de dscto.\n Nota: Su propuesta se centra en café, no en un servicio de comida completa.\n\n Ficha: https://sinenvolturas.com/proveedores/cafe-del-alba",
+          "deliveredText": "Para el cumpleaños en Lima de 40 personas, estas opciones de catering podrían encajar:\n\n1. Edo Sushi Bar\n Edo Sushi Bar ofrece catering de sushi y paquetes personalizados para eventos; anuncia 10% de descuento.\n Ubicación: Lima, Perú.\n Precio: $$$.\n Promo: 10% Off.\n Nota: El descuento aplica desde 300 piezas y está sujeto a disponibilidad. Su precio mínimo publicado es S/ 1,200.\n\n Ficha: https://sinenvolturas.com/proveedores/edo-sushi-bar\n\n2. Lucitana\n Lucitana ofrece catering para eventos sociales y propuestas personalizadas; también anuncia asesoría o degustación sin costo.\n Ubicación: Lima, Perú.\n Promo: 10 % OFF.\n Nota: Consulta disponibilidad y condiciones del descuento directamente con el proveedor.\n\n Ficha: https://sinenvolturas.com/proveedores/lucitana\n\n3. 4Foodies\n 4Foodies ofrece mesas gastronómicas, tablas de quesos y montaje para eventos; anuncia 10% de descuento.\n Ubicación: Lima, Perú.\n Precio: $$$.\n Promo: 10% Off.\n Nota: Requiere solicitar el pedido con al menos 2 meses de anticipación y validar la cobertura de la zona.\n\n Ficha: https://sinenvolturas.com/proveedores/4foodies\n\n4. Café del Alba\n Café del Alba ofrece carritos y estaciones de café atendidas por baristas, como complemento para la celebración.\n Ubicación: Lima, Perú.\n Precio: $$$.\n Promo: S/. 250 de dscto.\n Nota: Su propuesta se centra en café, no en un servicio de comida completa.\n\n Ficha: https://sinenvolturas.com/proveedores/cafe-del-alba",
+          "delivery": {
+            "action": "send",
+            "reason": "reply_composed"
+          },
+          "outputOrigin": {
+            "status": "verified",
+            "candidateSha256": "c3ba72dedefd528f382aadcf161b7b21ba401363eb94c99f74b35fa52a1fc181",
+            "deliveredSha256": "c3ba72dedefd528f382aadcf161b7b21ba401363eb94c99f74b35fa52a1fc181",
+            "transformationVersion": "transport-v2",
+            "mismatchFields": []
+          },
+          "currentNode": "recomendar",
+          "trace": {
+            "turn_coordination": {
+              "wait_ms": 7,
+              "attempts": 1
+            },
+            "trace_id": "01M6P65CADDNY4B8YQM5QDX1TY",
+            "conversation_id": null,
+            "plan_id": "01M6P64TKNQCH55F9ZP0454KN8",
+            "previous_node": "contacto_inicial",
+            "next_node": "recomendar",
+            "node_path": [
+              "contacto_inicial",
+              "deteccion_intencion",
+              "minimos_para_buscar",
+              "buscar_proveedores",
+              "busqueda_exitosa",
+              "hay_resultados",
+              "recomendar"
+            ],
+            "intent": "buscar_proveedores",
+            "missing_fields": [],
+            "search_ready": true,
+            "prompt_bundle_id": "9579d9dcb7c9",
+            "prompt_file_paths": [
+              "shared/reply_core.txt",
+              "shared/domain_scope.txt",
+              "shared/flow_discipline.txt"
+            ],
+            "tools_considered": [
+              "get_agent_conversation_messages",
+              "log_agent_conversation_message",
+              "classify_reply_delivery",
+              "search_providers_from_plan",
+              "get_provider_detail",
+              "get_related_providers",
+              "list_provider_reviews"
+            ],
+            "tools_called": [
+              "get_agent_conversation_messages",
+              "log_agent_conversation_message",
+              "classify_reply_delivery",
+              "search_providers_from_plan"
+            ],
+            "tool_inputs": [],
+            "tool_outputs": [],
+            "provider_results": [
+              {
+                "id": 109,
+                "title": "Edo Sushi Bar",
+                "slug": "edo-sushi-bar",
+                "category": "Catering",
+                "location": "Lima, Perú",
+                "priceLevel": "high",
+                "rating": "5.0",
+                "reason": "Edo Sushi Bar encaja con Catering según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/edo-sushi-bar",
+                "websiteUrl": "https://www.edosushibar.com/catering",
+                "minPrice": "1200.00",
+                "maxPrice": null,
+                "promoBadge": "10% Off",
+                "promoSummary": "10% de descuento en servicio de catering para clientes de Sin Envolturas.",
+                "descriptionSnippet": "Edo Sushi Bar es un servicio de catering especializado en comida japonesa, ofreciendo propuestas gastronómicas de alta calidad para eventos y celebraciones.",
+                "serviceHighlights": [
+                  "Catering de sushi para eventos",
+                  "Propuestas gastronómicas japonesas",
+                  "Paquetes de catering personalizados",
+                  "Atención para eventos sociales y corporativos"
+                ],
+                "termsHighlights": [
+                  "Para acceder al beneficio, se debe indicar al momento de solicitar la cotización.",
+                  "Válido para pedidos desde 300 piezas a más.",
+                  "Aplica únicamente para servicio de catering (no incluye consumo en locales ni delivery).",
+                  "No acumulable con otros descuentos o promociones.",
+                  "Sujeto a disponibilidad"
+                ],
+                "providerNotes": [
+                  "Acerca del proveedor: Edo Sushi Bar es un servicio de catering especializado en comida japonesa, ofreciendo propuestas gastronómicas de alta calidad para eventos y celebraciones.",
+                  "Servicios que ofrece: Catering de sushi para eventos",
+                  "Servicios que ofrece: Propuestas gastronómicas japonesas",
+                  "Servicios que ofrece: Paquetes de catering personalizados",
+                  "Servicios que ofrece: Atención para eventos sociales y corporativos",
+                  "Términos  y condiciones: Para acceder al beneficio, se debe indicar al momento de solicitar la cotización.",
+                  "Términos  y condiciones: Válido para pedidos desde 300 piezas a más.",
+                  "Términos  y condiciones: Aplica únicamente para servicio de catering (no incluye consumo en locales ni delivery).",
+                  "Términos  y condiciones: No acumulable con otros descuentos o promociones.",
+                  "Términos  y condiciones: Sujeto a disponibilidad",
+                  "EDO SUSHI BAR | 10% DE DSCTO EN CATERING: Edo Sushi Bar es un servicio de catering especializado en comida japonesa, ofreciendo propuestas gastronómicas de alta calidad para eventos y celebraciones.",
+                  "Términos y condiciones: Para acceder al beneficio, se debe indicar al momento de solicitar la cotización.",
+                  "Términos y condiciones: Válido para pedidos desde 300 piezas a más.",
+                  "Términos y condiciones: Aplica únicamente para servicio de catering (no incluye consumo en locales ni delivery).",
+                  "Términos y condiciones: No acumulable con otros descuentos o promociones.",
+                  "Términos y condiciones: Sujeto a disponibilidad"
+                ],
+                "eventTypes": [],
+                "description": "Edo Sushi Bar es un servicio de catering especializado en comida japonesa, ofreciendo propuestas gastronómicas de alta calidad para eventos y celebraciones.",
+                "fitScore": 88,
+                "fitWarnings": [],
+                "fitTags": [
+                  "event_match",
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.8104503163085458,
+                "retrievalSource": "vector"
+              },
+              {
+                "id": 189,
+                "title": "Café del Alba",
+                "slug": "cafe-del-alba",
+                "category": "Catering",
+                "location": "Lima, Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Café del Alba encaja con Catering según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/cafe-del-alba",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "S/. 250 de dscto",
+                "promoSummary": "S/250 de descuento en servicios para clientes de Sin Envolturas.",
+                "descriptionSnippet": "En Lima, Café del Alba es un emprendimiento local especializado en el servicio de carritos de café para eventos y celebraciones.",
+                "serviceHighlights": [
+                  "Cafetería para eventos y corporativos: Instalación de barras móviles atendidas por baristas profesionales para conferencias y eventos sociales.",
+                  "Coffee stations y carritos de café: Alquiler de carritos equipados que sirven café caliente, frío y opciones de tendencia como el matcha latte .",
+                  "Servicio de atención personalizada: Proveen insumos seleccionados de alta calidad para que los invitados disfruten de una experiencia completa de cafetería de especialidad adaptada al lugar del evento"
+                ],
+                "termsHighlights": [
+                  "Consultar términos y condiciones."
+                ],
+                "providerNotes": [
+                  "Acerca del proveedor: En Lima, Café del Alba es un emprendimiento local especializado en el servicio de carritos de café para eventos y celebraciones. Ofrecen barras móviles y coffee breaks personalizados para bodas, baby showers, lanzamientos de marca, ferias y reuniones corporativas.",
+                  "Servicios que ofrece: Cafetería para eventos y corporativos: Instalación de barras móviles atendidas por baristas profesionales para conferencias y eventos sociales.",
+                  "Servicios que ofrece: Coffee stations y carritos de café: Alquiler de carritos equipados que sirven café caliente, frío y opciones de tendencia como el matcha latte .",
+                  "Servicios que ofrece: Servicio de atención personalizada: Proveen insumos seleccionados de alta calidad para que los invitados disfruten de una experiencia completa de cafetería de especialidad adaptada al lugar del evento",
+                  "Términos  y condiciones: Consultar términos y condiciones.",
+                  "Términos y condiciones: Consultar términos y condiciones."
+                ],
+                "eventTypes": [],
+                "description": "En Lima, Café del Alba es un emprendimiento local especializado en el servicio de carritos de café para eventos y celebraciones. Ofrecen barras móviles y coffee breaks personalizados para bodas, baby showers, lanzamientos de marca, ferias y reuniones corporativas.",
+                "fitScore": 82,
+                "fitWarnings": [],
+                "fitTags": [
+                  "event_match",
+                  "need_match"
+                ],
+                "retrievalSource": "api"
+              },
+              {
+                "id": 136,
+                "title": "4Foodies",
+                "slug": "4foodies",
+                "category": "Catering",
+                "location": "Lima, Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "4Foodies encaja con Catering según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/4foodies",
+                "websiteUrl": "https://www.4foodies.pe",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% Off",
+                "promoSummary": "10% de descuento en el servicio de catering para los clientes de Sin Envolturas",
+                "descriptionSnippet": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+                "serviceHighlights": [
+                  "Catering para eventos",
+                  "Tablas de quesos",
+                  "Mesas gastronómicas",
+                  "Implementación y montaje de servicio",
+                  "Propuestas personalizadas según el evento"
+                ],
+                "termsHighlights": [
+                  "El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+                  "El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+                  "En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+                  "Válido para Lima (previa validación de zona de cobertura)."
+                ],
+                "providerNotes": [
+                  "Acerca del proveedor: 4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+                  "Servicios que ofrece: Catering para eventos",
+                  "Servicios que ofrece: Tablas de quesos",
+                  "Servicios que ofrece: Mesas gastronómicas",
+                  "Servicios que ofrece: Implementación y montaje de servicio",
+                  "Servicios que ofrece: Propuestas personalizadas según el evento",
+                  "Términos  y condiciones: El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+                  "Términos  y condiciones: El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+                  "Términos  y condiciones: En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+                  "Términos  y condiciones: Válido para Lima (previa validación de zona de cobertura).",
+                  "Términos y condiciones: El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+                  "Términos y condiciones: El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+                  "Términos y condiciones: En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+                  "Términos y condiciones: Válido para Lima (previa validación de zona de cobertura)."
+                ],
+                "eventTypes": [],
+                "description": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+                "fitScore": 81,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.8430030655411495,
+                "retrievalSource": "vector"
+              },
+              {
+                "id": 138,
+                "title": "Galería Gourmand",
+                "slug": "galeria-gourmand",
+                "category": "Catering",
+                "location": "Lima, Perú",
+                "priceLevel": "mid",
+                "rating": "0.0",
+                "reason": "Galería Gourmand encaja con Catering según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/galeria-gourmand",
+                "websiteUrl": "https://www.galeriagourmand.com/tienda-online/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% Off",
+                "promoSummary": "10% de Descuento en comida gourmet para matrimonios civiles y alquiler de menaje, solo para clientes de Sin Envolturas.",
+                "descriptionSnippet": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+                "serviceHighlights": [
+                  "Catering gourmet para matrimonios civiles y eventos",
+                  "Alquiler de menaje",
+                  "Propuestas gastronómicas personalizadas",
+                  "Servicio para eventos sociales"
+                ],
+                "termsHighlights": [
+                  "Aplica para matrimonios civiles y alquiler de menaje.",
+                  "Válido solo para clientes de Sin Envolturas.",
+                  "Válido únicamente en Lima.",
+                  "Beneficio no transferible ni acumulable.",
+                  "Válido de lunes a viernes en horario laboral.",
+                  "Aplica solo para anfitriones.",
+                  "Los pedidos deben realizarse con 48 horas de anticipación."
+                ],
+                "providerNotes": [
+                  "Acerca del proveedor: Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+                  "Servicios que ofrece: Catering gourmet para matrimonios civiles y eventos",
+                  "Servicios que ofrece: Alquiler de menaje",
+                  "Servicios que ofrece: Propuestas gastronómicas personalizadas",
+                  "Servicios que ofrece: Servicio para eventos sociales",
+                  "Términos  y condiciones: Aplica para matrimonios civiles y alquiler de menaje.",
+                  "Términos  y condiciones: Válido solo para clientes de Sin Envolturas.",
+                  "Términos  y condiciones: Válido únicamente en Lima.",
+                  "Términos  y condiciones: Beneficio no transferible ni acumulable.",
+                  "Términos  y condiciones: Válido de lunes a viernes en horario laboral.",
+                  "Términos  y condiciones: Aplica solo para anfitriones.",
+                  "Términos  y condiciones: Los pedidos deben realizarse con 48 horas de anticipación.",
+                  "Términos y condiciones: Aplica para matrimonios civiles y alquiler de menaje.",
+                  "Términos y condiciones: Válido solo para clientes de Sin Envolturas.",
+                  "Términos y condiciones: Válido únicamente en Lima.",
+                  "Términos y condiciones: Beneficio no transferible ni acumulable.",
+                  "Términos y condiciones: Válido de lunes a viernes en horario laboral.",
+                  "Términos y condiciones: Aplica solo para anfitriones.",
+                  "Términos y condiciones: Los pedidos deben realizarse con 48 horas de anticipación."
+                ],
+                "eventTypes": [],
+                "description": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+                "fitScore": 81,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.8406744536058749,
+                "retrievalSource": "hybrid"
+              },
+              {
+                "id": 137,
+                "title": "FCatering",
+                "slug": "fcatering",
+                "category": "Catering",
+                "location": "Lima, Perú",
+                "priceLevel": "mid",
+                "rating": "0.0",
+                "reason": "FCatering encaja con Catering según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "Vale de 300 Dólares",
+                "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+                "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                "serviceHighlights": [
+                  "Catering para eventos",
+                  "Propuestas gastronómicas personalizadas",
+                  "Montaje y servicio de alimentos",
+                  "Atención para eventos sociales y corporativos"
+                ],
+                "termsHighlights": [
+                  "Válido solo para clientes de Sin Envolturas.",
+                  "Válido únicamente en Lima.",
+                  "Beneficio no transferible ni acumulable.",
+                  "Válido de lunes a viernes en horario laboral.",
+                  "Aplica solo para anfitriones.",
+                  "Sujeto a disponibilidad."
+                ],
+                "providerNotes": [
+                  "Acerca del proveedor: FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                  "Servicios que ofrece: Catering para eventos",
+                  "Servicios que ofrece: Propuestas gastronómicas personalizadas",
+                  "Servicios que ofrece: Montaje y servicio de alimentos",
+                  "Servicios que ofrece: Atención para eventos sociales y corporativos",
+                  "Términos  y condiciones: Válido solo para clientes de Sin Envolturas.",
+                  "Términos  y condiciones: Válido únicamente en Lima.",
+                  "Términos  y condiciones: Beneficio no transferible ni acumulable.",
+                  "Términos  y condiciones: Válido de lunes a viernes en horario laboral.",
+                  "Términos  y condiciones: Aplica solo para anfitriones.",
+                  "Términos  y condiciones: Sujeto a disponibilidad.",
+                  "Términos y condiciones: Válido solo para clientes de Sin Envolturas.",
+                  "Términos y condiciones: Válido únicamente en Lima.",
+                  "Términos y condiciones: Beneficio no transferible ni acumulable.",
+                  "Términos y condiciones: Válido de lunes a viernes en horario laboral.",
+                  "Términos y condiciones: Aplica solo para anfitriones.",
+                  "Términos y condiciones: Sujeto a disponibilidad."
+                ],
+                "eventTypes": [],
+                "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                "fitScore": 81,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.839791992045881,
+                "retrievalSource": "vector"
+              },
+              {
+                "id": 199,
+                "title": "Lucitana",
+                "slug": "lucitana",
+                "category": "Catering",
+                "location": "Lima, Perú",
+                "priceLevel": null,
+                "rating": "0.0",
+                "reason": "Lucitana encaja con Catering según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/lucitana",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10 % OFF",
+                "promoSummary": "Descuento en servicios de catering",
+                "descriptionSnippet": "Empresa de catering que convierte cada evento en una experiencia para disfrutar.",
+                "serviceHighlights": [
+                  "Catering para eventos sociales",
+                  "Catering para eventos corporativos",
+                  "Propuestas gastronómicas personalizadas",
+                  "Producción integral de eventos"
+                ],
+                "termsHighlights": [
+                  "Válido únicamente para clientes de Sin Envolturas",
+                  "Degustación o asesoría personalizada sin costo",
+                  "Válido únicamente en Lima"
+                ],
+                "providerNotes": [
+                  "Acerca del proveedor: Empresa de catering que convierte cada evento en una experiencia para disfrutar. Crea propuestas gastronómicas personalizadas, combinando sabor, buena presentación y un servicio adaptado a cada ocasión.",
+                  "Servicios que ofrece: Catering para eventos sociales",
+                  "Servicios que ofrece: Catering para eventos corporativos",
+                  "Servicios que ofrece: Propuestas gastronómicas personalizadas",
+                  "Servicios que ofrece: Producción integral de eventos",
+                  "Términos  y condiciones: Válido únicamente para clientes de Sin Envolturas",
+                  "Términos  y condiciones: Degustación o asesoría personalizada sin costo",
+                  "Términos  y condiciones: Válido únicamente en Lima"
+                ],
+                "eventTypes": [],
+                "description": "Empresa de catering que convierte cada evento en una experiencia para disfrutar. Crea propuestas gastronómicas personalizadas, combinando sabor, buena presentación y un servicio adaptado a cada ocasión.",
+                "fitScore": 81,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.829609964858443,
+                "retrievalSource": "hybrid"
+              },
+              {
+                "id": 153,
+                "title": "BAPO",
+                "slug": "bapo",
+                "category": "Catering",
+                "location": "Lima, Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "BAPO encaja con Catering según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% off",
+                "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+                "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+                "serviceHighlights": [
+                  "Servicios de catering",
+                  "Preguntar por paquetes"
+                ],
+                "termsHighlights": [
+                  "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                  "Válido solo para Lima Metropolitana o consultando disponibilidad",
+                  "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                  "No acumulable con otros descuentos y/o promociones"
+                ],
+                "providerNotes": [
+                  "Acerca del proveedor: Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+                  "Servicios que ofrece: Servicios de catering",
+                  "Servicios que ofrece: Preguntar por paquetes",
+                  "Términos  y condiciones: Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                  "Términos  y condiciones: Válido solo para Lima Metropolitana o consultando disponibilidad",
+                  "Términos  y condiciones: Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                  "Términos  y condiciones: No acumulable con otros descuentos y/o promociones",
+                  "Términos y condiciones: Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                  "Términos y condiciones: Válido solo para Lima Metropolitana o consultando disponibilidad",
+                  "Términos y condiciones: Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                  "Términos y condiciones: No acumulable con otros descuentos y/o promociones"
+                ],
+                "eventTypes": [],
+                "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+                "fitScore": 81,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.820750519538073,
+                "retrievalSource": "hybrid"
+              }
+            ],
+            "search_strategy": "search_from_plan",
+            "close_action_summary": {
+              "type": null,
+              "category": null,
+              "reason_preview": null
+            },
+            "selection_resolution_summary": {
+              "selected_provider_references": [],
+              "selected_provider_hints_count": 0,
+              "provider_plan_operation_types": [],
+              "provider_plan_operation_categories": []
+            },
+            "contact_validation_summary": {
+              "status": "valid",
+              "field": null,
+              "reason_preview": null,
+              "extraction_contact_fields_present": {
+                "name": false,
+                "email": false,
+                "phone": false
+              },
+              "plan_contact_fields_present": {
+                "name": false,
+                "email": false,
+                "phone": true
+              }
+            },
+            "provider_candidate_audit": [],
+            "information_execution_summary": [],
+            "finish_plan_summary": null,
+            "provider_quote_receipts": [],
+            "openai_calls": {
+              "classifier": {
+                "responseId": "resp_0dd1298135fa71b4006aeca4765bf087d18a4cff2bd153b9f7",
+                "requestId": "req_92b98f5eb48b45fdb1da636e4194edab",
+                "model": "gpt-6-luna",
+                "attemptCount": 1,
+                "requestMetrics": {
+                  "instructionBytes": 4896,
+                  "inputBytes": 694,
+                  "toolCount": 0,
+                  "schemaPropertyCount": 9,
+                  "transport": {
+                    "observedRequestCount": 1,
+                    "totalPayloadBytes": 7571,
+                    "instructionBytes": 0,
+                    "inputBytes": 5744,
+                    "toolBytes": 0,
+                    "outputSchemaBytes": 1592,
+                    "requests": []
+                  }
+                }
+              },
+              "extraction": {
+                "responseId": "resp_099818fe1bfd9648006aeca478970c87d19b94585647b46a49",
+                "requestId": "req_95b3d737041d46d789bb1ff8940c4ecf",
+                "model": "gpt-6-luna",
+                "attemptCount": 1,
+                "requestMetrics": {
+                  "instructionBytes": 6855,
+                  "inputBytes": 3120,
+                  "toolCount": 0,
+                  "schemaPropertyCount": 30,
+                  "transport": {
+                    "observedRequestCount": 1,
+                    "totalPayloadBytes": 20807,
+                    "instructionBytes": 6932,
+                    "inputBytes": 3404,
+                    "toolBytes": 2,
+                    "outputSchemaBytes": 10207,
+                    "requests": []
+                  }
+                }
+              },
+              "reply": {
+                "responseId": "resp_007eed75e608b76b006aeca482dc2c87d1934c21fd098fb484",
+                "requestId": "req_d28f518ac92e4afdb5f5a0573e5b7a59",
+                "model": "gpt-6-luna",
+                "attemptCount": 1,
+                "requestMetrics": {
+                  "instructionBytes": 2588,
+                  "inputBytes": 16723,
+                  "toolCount": 3,
+                  "schemaPropertyCount": 3,
+                  "transport": {
+                    "observedRequestCount": 1,
+                    "totalPayloadBytes": 22802,
+                    "instructionBytes": 2624,
+                    "inputBytes": 18215,
+                    "toolBytes": 1027,
+                    "outputSchemaBytes": 667,
+                    "requests": []
+                  }
+                }
+              },
+              "router": {
+                "responseId": null,
+                "requestId": "req_fa000e3069a443d2b5a2fa1bf4bad0c9",
+                "model": "gpt-6-luna",
+                "attemptCount": 1,
+                "requestMetrics": {
+                  "instructionBytes": 3321,
+                  "inputBytes": 2520,
+                  "toolCount": 0,
+                  "schemaPropertyCount": 2,
+                  "transport": {
+                    "observedRequestCount": 1,
+                    "totalPayloadBytes": 6802,
+                    "instructionBytes": 3321,
+                    "inputBytes": 2520,
+                    "toolBytes": 0,
+                    "outputSchemaBytes": 0,
+                    "requests": []
+                  }
+                }
+              }
+            },
+            "recommendation_funnel": {
+              "available_candidates": 7,
+              "context_candidates": 6,
+              "context_candidate_ids": [
+                109,
+                189,
+                136,
+                138,
+                137,
+                199
+              ],
+              "presentation_limit": 6
+            },
+            "plan_persisted": true,
+            "plan_persist_reason": "recomendar",
+            "timing_ms": {
+              "total": 18143,
+              "load_plan": 8,
+              "response_classification": 2210,
+              "prepare_working_plan": 0,
+              "extraction": 7522,
+              "apply_extraction": 1,
+              "compute_sufficiency": 0,
+              "provider_search": 2569,
+              "provider_enrichment": 140,
+              "prompt_bundle_load": 0,
+              "compose_reply": 4767,
+              "save_plan": 53,
+              "router": 855,
+              "information_execution": 0,
+              "rsvp_execution": 0
+            },
+            "token_usage": {
+              "classifier": {
+                "input_tokens": 1510,
+                "output_tokens": 107,
+                "total_tokens": 1617,
+                "cached_input_tokens": 1342,
+                "cache_write_input_tokens": 165
+              },
+              "router": {
+                "input_tokens": 1468,
+                "output_tokens": 0,
+                "total_tokens": 1468
+              },
+              "extraction": {
+                "input_tokens": 4394,
+                "output_tokens": 603,
+                "total_tokens": 4997,
+                "cached_input_tokens": 0,
+                "cache_write_input_tokens": 4391
+              },
+              "reply": {
+                "input_tokens": 4848,
+                "output_tokens": 390,
+                "total_tokens": 5238,
+                "cached_input_tokens": 0,
+                "cache_write_input_tokens": 4845
+              },
+              "total": {
+                "input_tokens": 12220,
+                "output_tokens": 1100,
+                "total_tokens": 13320,
+                "cached_input_tokens": 1342,
+                "cache_write_input_tokens": 9401
+              }
+            },
+            "response_classifier": {
+              "mode": "enforce",
+              "classifier_profile": "general",
+              "action": "respond",
+              "reason": "requires_response",
+              "would_suppress": false,
+              "context_source": "agent_api",
+              "has_prior_outbound_message": false,
+              "fallback_used": false,
+              "conversation_health": "progressing",
+              "health_reason": "normal_progress",
+              "human_help_response": "not_applicable",
+              "campaign_reply_kind": "question_or_request",
+              "automation_confidence": "not_automated",
+              "automation_pattern": "none",
+              "automation_scope": "none_or_uncertain",
+              "prompt_bundle_id": "3dadfbdaa726",
+              "prompt_file_paths": [
+                "nodes/deteccion_intencion/response_classifier.txt"
+              ]
+            },
+            "turn_decision": {
+              "nextNode": "recomendar",
+              "routeKind": "single_need_search",
+              "providerSearchMode": "single_need_from_plan",
+              "presentationScope": "single_need",
+              "focusNeedCategory": "Catering",
+              "needsToSearch": [
+                "Catering"
+              ],
+              "needsToPresent": [
+                "Catering"
+              ],
+              "stopReason": null,
+              "persistReason": "recomendar",
+              "invariantStatus": "valid",
+              "invariantViolations": []
+            },
+            "route_kind": "single_need_search",
+            "presentation_scope": "single_need",
+            "session_focus_used": false,
+            "session_focus_key_present": true,
+            "state_machine_invariant_status": "valid",
+            "state_machine_invariant_violations": [],
+            "operational_note": "[omitted]",
+            "extraction_summary": {
+              "intent_confidence": 0.96,
+              "information_request_count": 0,
+              "information_request_kinds": [],
+              "support_act_kind": null,
+              "ambiguity_status": "clear",
+              "clarification_question_present": false,
+              "ambiguity_interpretation_count": 0,
+              "event_type": "cumpleanos",
+              "vendor_category": "Catering",
+              "vendor_categories": [
+                "Catering"
+              ],
+              "active_need_category": "Catering",
+              "location": "Lima",
+              "budget_signal": null,
+              "guest_range": "21-50",
+              "selected_provider_hints": [],
+              "preferences": [],
+              "hard_constraints": [],
+              "assumptions": [],
+              "provider_query_intents_count": 1,
+              "provider_plan_operations_count": 0,
+              "provider_explanation_requested": false,
+              "provider_detail_requested": false,
+              "rsvp_action": null,
+              "rsvp_candidate_guest_id_present": false,
+              "rsvp_event_reference_present": false,
+              "conversation_summary_preview": "Busca catering para un cumpleaños en Lima para 40 personas.",
+              "pause_requested": false,
+              "contact_fields_present": {
+                "name": false,
+                "email": false,
+                "phone": false
+              },
+              "contact_validation_error": null
+            },
+            "plan_summary": {
+              "current_node": "recomendar",
+              "lifecycle_state": "active",
+              "event_type": "cumpleanos",
+              "vendor_category": "Catering",
+              "active_need_category": "Catering",
+              "location": "Lima",
+              "budget_signal": null,
+              "guest_range": "21-50",
+              "provider_need_categories": [
+                "Catering"
+              ],
+              "provider_need_count": 1,
+              "provider_need_statuses": [
+                {
+                  "category": "Catering",
+                  "status": "shortlisted",
+                  "has_recommendations": true,
+                  "selected_provider_ids": []
+                }
+              ],
+              "selected_provider_ids": [],
+              "missing_fields": [],
+              "conversation_summary_preview": "Busca catering para un cumpleaños en Lima para 40 personas.",
+              "open_question_count": 0,
+              "contact_fields_present": {
+                "name": false,
+                "email": false,
+                "phone": true
+              },
+              "contact_validation_error": null,
+              "user_auth_status": "none",
+              "auth_recovery_terminal_reason": null,
+              "auth_recovery_send_attempted": false,
+              "auth_recovery_verification_attempted": false,
+              "pending_information_request_count": 0,
+              "rsvp_status": "none",
+              "rsvp_candidate_count": 0
+            },
+            "authentication_execution_summary": [],
+            "message_context": {
+              "history_status": "empty",
+              "context_source": "agent_api",
+              "retrieved_message_count": 0,
+              "recent_message_count": 0,
+              "excluded_current_message_count": 0,
+              "directions": [],
+              "sources": [],
+              "entry_source": null
+            },
+            "continuity_state": "new",
+            "welcome_allowed": true,
+            "history_status": "empty",
+            "has_prior_outbound": false,
+            "requested_operation": "provider.plan",
+            "capability_decision": null,
+            "capability_reason": null,
+            "truncation": {
+              "truncated": true,
+              "droppedCandidateDetails": 7,
+              "droppedCalls": 8,
+              "diagnosticBytes": 12288,
+              "envelopeBytes": 12288,
+              "maxCallSummaries": 16,
+              "maxCandidateDetails": 8
+            }
+          },
+          "perf": {
+            "trace_id": "01M6P65CADDNY4B8YQM5QDX1TY",
+            "conversation_hash": "df79f2acab4ee86abd6f94b5d72a07d173618e2261d67c7b487a58f87bfb7c52",
+            "runtime_latency_ms": 18143,
+            "extraction_latency_ms": 7522,
+            "compose_latency_ms": 4767,
+            "tools_called_count": 4,
+            "provider_results_count": 7,
+            "recommendation_context_candidates": 6,
+            "recommendation_presentation_limit": 6,
+            "response_classifier_action": "respond",
+            "response_classifier_would_suppress": false,
+            "conversation_health_status": "progressing",
+            "conversation_health_reason": "normal_progress",
+            "human_help_response": "not_applicable",
+            "total_tokens": 13320,
+            "cached_input_tokens": 1342,
+            "cache_hit_rate": 0.10981996726677577,
+            "extraction_to_compose_ratio": 1.5779316131739038,
+            "captured_at": "2026-11-05T15:45:11.523Z",
+            "persisted": true,
+            "storage_target": "recap-agent-runtime-dev-perf"
+          },
+          "plan_summary": {
+            "current_node": "recomendar",
+            "lifecycle_state": "active",
+            "event_type": "cumpleanos",
+            "vendor_category": "Catering",
+            "active_need_category": "Catering",
+            "location": "Lima",
+            "budget_signal": null,
+            "guest_range": "21-50",
+            "provider_needs": [
+              {
+                "category": "Catering",
+                "status": "shortlisted",
+                "recommended_provider_ids": [
+                  109,
+                  189,
+                  136,
+                  138,
+                  137,
+                  199,
+                  153
+                ],
+                "selected_provider_ids": []
+              }
+            ],
+            "selected_provider_ids": [],
+            "missing_fields": []
+          },
+          "auth_evidence": {
+            "status": "none",
+            "auth_method": null,
+            "awaiting_phone_confirmation": false,
+            "phone_confirmation": "not_awaiting",
+            "contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": true
+            }
+          },
+          "latencyMs": 19667
+        },
+        {
+          "turnIndex": 1,
+          "input": {
+            "text": "Elijo la segunda opción.",
+            "channel": "whatsapp",
+            "sessionId": "live_behavior.regression_displayed_second_birthday",
+            "contactPhone": null,
+            "backendFixture": {
+              "scenario": "master-provider-live-public"
+            }
+          },
+          "outputText": "¡Claro! La segunda opción de la lista es Café del Alba, que ofrece carritos y estaciones de café para eventos; no es un servicio de comida completa. ¿Quieres que avancemos con esta opción?",
+          "deliveredText": "¡Claro! La segunda opción de la lista es Café del Alba, que ofrece carritos y estaciones de café para eventos; no es un servicio de comida completa. ¿Quieres que avancemos con esta opción?",
+          "delivery": {
+            "action": "send",
+            "reason": "reply_composed"
+          },
+          "outputOrigin": {
+            "status": "verified",
+            "candidateSha256": "50f1d1a46d279205aa9632831e83d2d502113a693170b92e58272480104c35f3",
+            "deliveredSha256": "50f1d1a46d279205aa9632831e83d2d502113a693170b92e58272480104c35f3",
+            "transformationVersion": "transport-v2",
+            "mismatchFields": []
+          },
+          "currentNode": "aclarar_pedir_faltante",
+          "trace": {
+            "turn_coordination": {
+              "wait_ms": 6,
+              "attempts": 1
+            },
+            "trace_id": "01M6P65S0RV9ZJ3Z3Q09W06PY5",
+            "conversation_id": null,
+            "plan_id": "01M6P64TKNQCH55F9ZP0454KN8",
+            "previous_node": "recomendar",
+            "next_node": "aclarar_pedir_faltante",
+            "node_path": [
+              "recomendar",
+              "existe_plan_guardado",
+              "usuario_elige_proveedor",
+              "minimos_para_buscar",
+              "aclarar_pedir_faltante"
+            ],
+            "intent": "confirmar_proveedor",
+            "missing_fields": [],
+            "search_ready": true,
+            "prompt_bundle_id": "d4c67dedd44b",
+            "prompt_file_paths": [
+              "shared/reply_core.txt",
+              "shared/domain_scope.txt",
+              "shared/flow_discipline.txt",
+              "shared/domain_knowledge.txt",
+              "shared/question_strategy.txt"
+            ],
+            "tools_considered": [
+              "get_agent_conversation_messages",
+              "log_agent_conversation_message",
+              "classify_reply_delivery",
+              "list_categories",
+              "get_category_by_slug",
+              "list_locations"
+            ],
+            "tools_called": [
+              "get_agent_conversation_messages",
+              "log_agent_conversation_message",
+              "classify_reply_delivery"
+            ],
+            "tool_inputs": [],
+            "tool_outputs": [],
+            "provider_results": [
+              {
+                "id": 109,
+                "title": "Edo Sushi Bar",
+                "slug": "edo-sushi-bar",
+                "category": "Catering",
+                "location": "Lima, Perú",
+                "priceLevel": "high",
+                "rating": "5.0",
+                "reason": "Edo Sushi Bar encaja con Catering según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/edo-sushi-bar",
+                "websiteUrl": "https://www.edosushibar.com/catering",
+                "minPrice": "1200.00",
+                "maxPrice": null,
+                "promoBadge": "10% Off",
+                "promoSummary": "10% de descuento en servicio de catering para clientes de Sin Envolturas.",
+                "descriptionSnippet": "Edo Sushi Bar es un servicio de catering especializado en comida japonesa, ofreciendo propuestas gastronómicas de alta calidad para eventos y celebraciones.",
+                "serviceHighlights": [
+                  "Catering de sushi para eventos",
+                  "Propuestas gastronómicas japonesas",
+                  "Paquetes de catering personalizados",
+                  "Atención para eventos sociales y corporativos"
+                ],
+                "termsHighlights": [
+                  "Para acceder al beneficio, se debe indicar al momento de solicitar la cotización.",
+                  "Válido para pedidos desde 300 piezas a más.",
+                  "Aplica únicamente para servicio de catering (no incluye consumo en locales ni delivery).",
+                  "No acumulable con otros descuentos o promociones.",
+                  "Sujeto a disponibilidad"
+                ],
+                "providerNotes": [
+                  "Acerca del proveedor: Edo Sushi Bar es un servicio de catering especializado en comida japonesa, ofreciendo propuestas gastronómicas de alta calidad para eventos y celebraciones.",
+                  "Servicios que ofrece: Catering de sushi para eventos",
+                  "Servicios que ofrece: Propuestas gastronómicas japonesas",
+                  "Servicios que ofrece: Paquetes de catering personalizados",
+                  "Servicios que ofrece: Atención para eventos sociales y corporativos",
+                  "Términos  y condiciones: Para acceder al beneficio, se debe indicar al momento de solicitar la cotización.",
+                  "Términos  y condiciones: Válido para pedidos desde 300 piezas a más.",
+                  "Términos  y condiciones: Aplica únicamente para servicio de catering (no incluye consumo en locales ni delivery).",
+                  "Términos  y condiciones: No acumulable con otros descuentos o promociones.",
+                  "Términos  y condiciones: Sujeto a disponibilidad",
+                  "EDO SUSHI BAR | 10% DE DSCTO EN CATERING: Edo Sushi Bar es un servicio de catering especializado en comida japonesa, ofreciendo propuestas gastronómicas de alta calidad para eventos y celebraciones.",
+                  "Términos y condiciones: Para acceder al beneficio, se debe indicar al momento de solicitar la cotización.",
+                  "Términos y condiciones: Válido para pedidos desde 300 piezas a más.",
+                  "Términos y condiciones: Aplica únicamente para servicio de catering (no incluye consumo en locales ni delivery).",
+                  "Términos y condiciones: No acumulable con otros descuentos o promociones.",
+                  "Términos y condiciones: Sujeto a disponibilidad"
+                ],
+                "eventTypes": [],
+                "description": "Edo Sushi Bar es un servicio de catering especializado en comida japonesa, ofreciendo propuestas gastronómicas de alta calidad para eventos y celebraciones.",
+                "fitScore": 88,
+                "fitWarnings": [],
+                "fitTags": [
+                  "event_match",
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.8104503163085458,
+                "retrievalSource": "vector"
+              },
+              {
+                "id": 189,
+                "title": "Café del Alba",
+                "slug": "cafe-del-alba",
+                "category": "Catering",
+                "location": "Lima, Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Café del Alba encaja con Catering según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/cafe-del-alba",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "S/. 250 de dscto",
+                "promoSummary": "S/250 de descuento en servicios para clientes de Sin Envolturas.",
+                "descriptionSnippet": "En Lima, Café del Alba es un emprendimiento local especializado en el servicio de carritos de café para eventos y celebraciones.",
+                "serviceHighlights": [
+                  "Cafetería para eventos y corporativos: Instalación de barras móviles atendidas por baristas profesionales para conferencias y eventos sociales.",
+                  "Coffee stations y carritos de café: Alquiler de carritos equipados que sirven café caliente, frío y opciones de tendencia como el matcha latte .",
+                  "Servicio de atención personalizada: Proveen insumos seleccionados de alta calidad para que los invitados disfruten de una experiencia completa de cafetería de especialidad adaptada al lugar del evento"
+                ],
+                "termsHighlights": [
+                  "Consultar términos y condiciones."
+                ],
+                "providerNotes": [
+                  "Acerca del proveedor: En Lima, Café del Alba es un emprendimiento local especializado en el servicio de carritos de café para eventos y celebraciones. Ofrecen barras móviles y coffee breaks personalizados para bodas, baby showers, lanzamientos de marca, ferias y reuniones corporativas.",
+                  "Servicios que ofrece: Cafetería para eventos y corporativos: Instalación de barras móviles atendidas por baristas profesionales para conferencias y eventos sociales.",
+                  "Servicios que ofrece: Coffee stations y carritos de café: Alquiler de carritos equipados que sirven café caliente, frío y opciones de tendencia como el matcha latte .",
+                  "Servicios que ofrece: Servicio de atención personalizada: Proveen insumos seleccionados de alta calidad para que los invitados disfruten de una experiencia completa de cafetería de especialidad adaptada al lugar del evento",
+                  "Términos  y condiciones: Consultar términos y condiciones.",
+                  "Términos y condiciones: Consultar términos y condiciones."
+                ],
+                "eventTypes": [],
+                "description": "En Lima, Café del Alba es un emprendimiento local especializado en el servicio de carritos de café para eventos y celebraciones. Ofrecen barras móviles y coffee breaks personalizados para bodas, baby showers, lanzamientos de marca, ferias y reuniones corporativas.",
+                "fitScore": 82,
+                "fitWarnings": [],
+                "fitTags": [
+                  "event_match",
+                  "need_match"
+                ],
+                "retrievalSource": "api"
+              },
+              {
+                "id": 136,
+                "title": "4Foodies",
+                "slug": "4foodies",
+                "category": "Catering",
+                "location": "Lima, Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "4Foodies encaja con Catering según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/4foodies",
+                "websiteUrl": "https://www.4foodies.pe",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% Off",
+                "promoSummary": "10% de descuento en el servicio de catering para los clientes de Sin Envolturas",
+                "descriptionSnippet": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+                "serviceHighlights": [
+                  "Catering para eventos",
+                  "Tablas de quesos",
+                  "Mesas gastronómicas",
+                  "Implementación y montaje de servicio",
+                  "Propuestas personalizadas según el evento"
+                ],
+                "termsHighlights": [
+                  "El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+                  "El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+                  "En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+                  "Válido para Lima (previa validación de zona de cobertura)."
+                ],
+                "providerNotes": [
+                  "Acerca del proveedor: 4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+                  "Servicios que ofrece: Catering para eventos",
+                  "Servicios que ofrece: Tablas de quesos",
+                  "Servicios que ofrece: Mesas gastronómicas",
+                  "Servicios que ofrece: Implementación y montaje de servicio",
+                  "Servicios que ofrece: Propuestas personalizadas según el evento",
+                  "Términos  y condiciones: El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+                  "Términos  y condiciones: El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+                  "Términos  y condiciones: En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+                  "Términos  y condiciones: Válido para Lima (previa validación de zona de cobertura).",
+                  "Términos y condiciones: El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+                  "Términos y condiciones: El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+                  "Términos y condiciones: En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+                  "Términos y condiciones: Válido para Lima (previa validación de zona de cobertura)."
+                ],
+                "eventTypes": [],
+                "description": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+                "fitScore": 81,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.8430030655411495,
+                "retrievalSource": "vector"
+              },
+              {
+                "id": 138,
+                "title": "Galería Gourmand",
+                "slug": "galeria-gourmand",
+                "category": "Catering",
+                "location": "Lima, Perú",
+                "priceLevel": "mid",
+                "rating": "0.0",
+                "reason": "Galería Gourmand encaja con Catering según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/galeria-gourmand",
+                "websiteUrl": "https://www.galeriagourmand.com/tienda-online/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% Off",
+                "promoSummary": "10% de Descuento en comida gourmet para matrimonios civiles y alquiler de menaje, solo para clientes de Sin Envolturas.",
+                "descriptionSnippet": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+                "serviceHighlights": [
+                  "Catering gourmet para matrimonios civiles y eventos",
+                  "Alquiler de menaje",
+                  "Propuestas gastronómicas personalizadas",
+                  "Servicio para eventos sociales"
+                ],
+                "termsHighlights": [
+                  "Aplica para matrimonios civiles y alquiler de menaje.",
+                  "Válido solo para clientes de Sin Envolturas.",
+                  "Válido únicamente en Lima.",
+                  "Beneficio no transferible ni acumulable.",
+                  "Válido de lunes a viernes en horario laboral.",
+                  "Aplica solo para anfitriones.",
+                  "Los pedidos deben realizarse con 48 horas de anticipación."
+                ],
+                "providerNotes": [
+                  "Acerca del proveedor: Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+                  "Servicios que ofrece: Catering gourmet para matrimonios civiles y eventos",
+                  "Servicios que ofrece: Alquiler de menaje",
+                  "Servicios que ofrece: Propuestas gastronómicas personalizadas",
+                  "Servicios que ofrece: Servicio para eventos sociales",
+                  "Términos  y condiciones: Aplica para matrimonios civiles y alquiler de menaje.",
+                  "Términos  y condiciones: Válido solo para clientes de Sin Envolturas.",
+                  "Términos  y condiciones: Válido únicamente en Lima.",
+                  "Términos  y condiciones: Beneficio no transferible ni acumulable.",
+                  "Términos  y condiciones: Válido de lunes a viernes en horario laboral.",
+                  "Términos  y condiciones: Aplica solo para anfitriones.",
+                  "Términos  y condiciones: Los pedidos deben realizarse con 48 horas de anticipación.",
+                  "Términos y condiciones: Aplica para matrimonios civiles y alquiler de menaje.",
+                  "Términos y condiciones: Válido solo para clientes de Sin Envolturas.",
+                  "Términos y condiciones: Válido únicamente en Lima.",
+                  "Términos y condiciones: Beneficio no transferible ni acumulable.",
+                  "Términos y condiciones: Válido de lunes a viernes en horario laboral.",
+                  "Términos y condiciones: Aplica solo para anfitriones.",
+                  "Términos y condiciones: Los pedidos deben realizarse con 48 horas de anticipación."
+                ],
+                "eventTypes": [],
+                "description": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+                "fitScore": 81,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.8406744536058749,
+                "retrievalSource": "hybrid"
+              },
+              {
+                "id": 137,
+                "title": "FCatering",
+                "slug": "fcatering",
+                "category": "Catering",
+                "location": "Lima, Perú",
+                "priceLevel": "mid",
+                "rating": "0.0",
+                "reason": "FCatering encaja con Catering según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "Vale de 300 Dólares",
+                "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+                "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                "serviceHighlights": [
+                  "Catering para eventos",
+                  "Propuestas gastronómicas personalizadas",
+                  "Montaje y servicio de alimentos",
+                  "Atención para eventos sociales y corporativos"
+                ],
+                "termsHighlights": [
+                  "Válido solo para clientes de Sin Envolturas.",
+                  "Válido únicamente en Lima.",
+                  "Beneficio no transferible ni acumulable.",
+                  "Válido de lunes a viernes en horario laboral.",
+                  "Aplica solo para anfitriones.",
+                  "Sujeto a disponibilidad."
+                ],
+                "providerNotes": [
+                  "Acerca del proveedor: FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                  "Servicios que ofrece: Catering para eventos",
+                  "Servicios que ofrece: Propuestas gastronómicas personalizadas",
+                  "Servicios que ofrece: Montaje y servicio de alimentos",
+                  "Servicios que ofrece: Atención para eventos sociales y corporativos",
+                  "Términos  y condiciones: Válido solo para clientes de Sin Envolturas.",
+                  "Términos  y condiciones: Válido únicamente en Lima.",
+                  "Términos  y condiciones: Beneficio no transferible ni acumulable.",
+                  "Términos  y condiciones: Válido de lunes a viernes en horario laboral.",
+                  "Términos  y condiciones: Aplica solo para anfitriones.",
+                  "Términos  y condiciones: Sujeto a disponibilidad.",
+                  "Términos y condiciones: Válido solo para clientes de Sin Envolturas.",
+                  "Términos y condiciones: Válido únicamente en Lima.",
+                  "Términos y condiciones: Beneficio no transferible ni acumulable.",
+                  "Términos y condiciones: Válido de lunes a viernes en horario laboral.",
+                  "Términos y condiciones: Aplica solo para anfitriones.",
+                  "Términos y condiciones: Sujeto a disponibilidad."
+                ],
+                "eventTypes": [],
+                "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                "fitScore": 81,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.839791992045881,
+                "retrievalSource": "vector"
+              },
+              {
+                "id": 199,
+                "title": "Lucitana",
+                "slug": "lucitana",
+                "category": "Catering",
+                "location": "Lima, Perú",
+                "priceLevel": null,
+                "rating": "0.0",
+                "reason": "Lucitana encaja con Catering según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/lucitana",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10 % OFF",
+                "promoSummary": "Descuento en servicios de catering",
+                "descriptionSnippet": "Empresa de catering que convierte cada evento en una experiencia para disfrutar.",
+                "serviceHighlights": [
+                  "Catering para eventos sociales",
+                  "Catering para eventos corporativos",
+                  "Propuestas gastronómicas personalizadas",
+                  "Producción integral de eventos"
+                ],
+                "termsHighlights": [
+                  "Válido únicamente para clientes de Sin Envolturas",
+                  "Degustación o asesoría personalizada sin costo",
+                  "Válido únicamente en Lima"
+                ],
+                "providerNotes": [
+                  "Acerca del proveedor: Empresa de catering que convierte cada evento en una experiencia para disfrutar. Crea propuestas gastronómicas personalizadas, combinando sabor, buena presentación y un servicio adaptado a cada ocasión.",
+                  "Servicios que ofrece: Catering para eventos sociales",
+                  "Servicios que ofrece: Catering para eventos corporativos",
+                  "Servicios que ofrece: Propuestas gastronómicas personalizadas",
+                  "Servicios que ofrece: Producción integral de eventos",
+                  "Términos  y condiciones: Válido únicamente para clientes de Sin Envolturas",
+                  "Términos  y condiciones: Degustación o asesoría personalizada sin costo",
+                  "Términos  y condiciones: Válido únicamente en Lima"
+                ],
+                "eventTypes": [],
+                "description": "Empresa de catering que convierte cada evento en una experiencia para disfrutar. Crea propuestas gastronómicas personalizadas, combinando sabor, buena presentación y un servicio adaptado a cada ocasión.",
+                "fitScore": 81,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.829609964858443,
+                "retrievalSource": "hybrid"
+              },
+              {
+                "id": 153,
+                "title": "BAPO",
+                "slug": "bapo",
+                "category": "Catering",
+                "location": "Lima, Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "BAPO encaja con Catering según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% off",
+                "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+                "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+                "serviceHighlights": [
+                  "Servicios de catering",
+                  "Preguntar por paquetes"
+                ],
+                "termsHighlights": [
+                  "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                  "Válido solo para Lima Metropolitana o consultando disponibilidad",
+                  "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                  "No acumulable con otros descuentos y/o promociones"
+                ],
+                "providerNotes": [
+                  "Acerca del proveedor: Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+                  "Servicios que ofrece: Servicios de catering",
+                  "Servicios que ofrece: Preguntar por paquetes",
+                  "Términos  y condiciones: Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                  "Términos  y condiciones: Válido solo para Lima Metropolitana o consultando disponibilidad",
+                  "Términos  y condiciones: Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                  "Términos  y condiciones: No acumulable con otros descuentos y/o promociones",
+                  "Términos y condiciones: Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                  "Términos y condiciones: Válido solo para Lima Metropolitana o consultando disponibilidad",
+                  "Términos y condiciones: Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                  "Términos y condiciones: No acumulable con otros descuentos y/o promociones"
+                ],
+                "eventTypes": [],
+                "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+                "fitScore": 81,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.820750519538073,
+                "retrievalSource": "hybrid"
+              }
+            ],
+            "search_strategy": "none",
+            "close_action_summary": {
+              "type": null,
+              "category": null,
+              "reason_preview": null
+            },
+            "selection_resolution_summary": {
+              "selected_provider_references": [],
+              "selected_provider_hints_count": 0,
+              "provider_plan_operation_types": [],
+              "provider_plan_operation_categories": []
+            },
+            "contact_validation_summary": {
+              "status": "valid",
+              "field": null,
+              "reason_preview": null,
+              "extraction_contact_fields_present": {
+                "name": false,
+                "email": false,
+                "phone": false
+              },
+              "plan_contact_fields_present": {
+                "name": false,
+                "email": false,
+                "phone": true
+              }
+            },
+            "provider_candidate_audit": [],
+            "information_execution_summary": [],
+            "finish_plan_summary": null,
+            "provider_quote_receipts": [],
+            "openai_calls": {
+              "classifier": {
+                "responseId": "resp_01697072296abea2006aeca48a139487d18dcc19e0269b12b5",
+                "requestId": "req_bf1e99799432431eb11829a744921c4f",
+                "model": "gpt-6-luna",
+                "attemptCount": 1,
+                "requestMetrics": {
+                  "instructionBytes": 4896,
+                  "inputBytes": 1286,
+                  "toolCount": 0,
+                  "schemaPropertyCount": 9,
+                  "transport": {
+                    "observedRequestCount": 1,
+                    "totalPayloadBytes": 8193,
+                    "instructionBytes": 0,
+                    "inputBytes": 6366,
+                    "toolBytes": 0,
+                    "outputSchemaBytes": 1592,
+                    "requests": []
+                  }
+                }
+              },
+              "extraction": {
+                "responseId": "resp_0d6ee30f666ccb94006aeca48c281887d19745c003d8862c88",
+                "requestId": "req_4825e9520a674db6a09b0c9fedc4427c",
+                "model": "gpt-6-luna",
+                "attemptCount": 1,
+                "requestMetrics": {
+                  "instructionBytes": 10226,
+                  "inputBytes": 7200,
+                  "toolCount": 0,
+                  "schemaPropertyCount": 37,
+                  "transport": {
+                    "observedRequestCount": 1,
+                    "totalPayloadBytes": 39599,
+                    "instructionBytes": 10339,
+                    "inputBytes": 7738,
+                    "toolBytes": 2,
+                    "outputSchemaBytes": 21258,
+                    "requests": []
+                  }
+                }
+              },
+              "reply": {
+                "responseId": "resp_01e929efd86c315f006aeca49298f487d199276a6d23e1b117",
+                "requestId": "req_aaa8120296184f27a8d6c25b23100b2d",
+                "model": "gpt-6-luna",
+                "attemptCount": 1,
+                "requestMetrics": {
+                  "instructionBytes": 4789,
+                  "inputBytes": 17714,
+                  "toolCount": 3,
+                  "schemaPropertyCount": 2,
+                  "transport": {
+                    "observedRequestCount": 1,
+                    "totalPayloadBytes": 25597,
+                    "instructionBytes": 4854,
+                    "inputBytes": 19232,
+                    "toolBytes": 917,
+                    "outputSchemaBytes": 313,
+                    "requests": []
+                  }
+                }
+              },
+              "router": null
+            },
+            "recommendation_funnel": {
+              "available_candidates": 7,
+              "context_candidates": 6,
+              "context_candidate_ids": [
+                109,
+                189,
+                136,
+                138,
+                137,
+                199
+              ],
+              "presentation_limit": 6
+            },
+            "plan_persisted": true,
+            "plan_persist_reason": "aclarar_pedir_faltante",
+            "timing_ms": {
+              "total": 10579,
+              "load_plan": 16,
+              "response_classification": 1976,
+              "prepare_working_plan": 1,
+              "extraction": 6466,
+              "apply_extraction": 5,
+              "compute_sufficiency": 0,
+              "provider_search": 0,
+              "provider_enrichment": 0,
+              "prompt_bundle_load": 0,
+              "compose_reply": 2082,
+              "save_plan": 12,
+              "router": 0,
+              "information_execution": 0,
+              "rsvp_execution": 0
+            },
+            "token_usage": {
+              "classifier": {
+                "input_tokens": 1658,
+                "output_tokens": 105,
+                "total_tokens": 1763,
+                "cached_input_tokens": 1342,
+                "cache_write_input_tokens": 313
+              },
+              "router": null,
+              "extraction": {
+                "input_tokens": 8670,
+                "output_tokens": 559,
+                "total_tokens": 9229,
+                "cached_input_tokens": 6860,
+                "cache_write_input_tokens": 1807
+              },
+              "reply": {
+                "input_tokens": 5495,
+                "output_tokens": 69,
+                "total_tokens": 5564,
+                "cached_input_tokens": 0,
+                "cache_write_input_tokens": 5492
+              },
+              "total": {
+                "input_tokens": 15823,
+                "output_tokens": 733,
+                "total_tokens": 16556,
+                "cached_input_tokens": 8202,
+                "cache_write_input_tokens": 7612
+              }
+            },
+            "response_classifier": {
+              "mode": "enforce",
+              "classifier_profile": "general",
+              "action": "respond",
+              "reason": "requires_response",
+              "would_suppress": false,
+              "context_source": "agent_api",
+              "has_prior_outbound_message": true,
+              "fallback_used": false,
+              "conversation_health": "progressing",
+              "health_reason": "normal_progress",
+              "human_help_response": "not_applicable",
+              "campaign_reply_kind": "not_applicable",
+              "automation_confidence": "not_automated",
+              "automation_pattern": "none",
+              "automation_scope": "none_or_uncertain",
+              "prompt_bundle_id": "3dadfbdaa726",
+              "prompt_file_paths": [
+                "nodes/deteccion_intencion/response_classifier.txt"
+              ]
+            },
+            "turn_decision": {
+              "nextNode": "aclarar_pedir_faltante",
+              "routeKind": "clarify_missing_fields",
+              "providerSearchMode": "none",
+              "presentationScope": "clarification",
+              "focusNeedCategory": "Catering",
+              "needsToSearch": [],
+              "needsToPresent": [
+                "Catering"
+              ],
+              "stopReason": "provider_selection_ambiguous",
+              "persistReason": "aclarar_pedir_faltante",
+              "invariantStatus": "valid",
+              "invariantViolations": []
+            },
+            "route_kind": "clarify_missing_fields",
+            "presentation_scope": "clarification",
+            "session_focus_used": true,
+            "session_focus_key_present": true,
+            "state_machine_invariant_status": "valid",
+            "state_machine_invariant_violations": [],
+            "operational_note": "[omitted]",
+            "extraction_summary": {
+              "intent_confidence": 0.99,
+              "information_request_count": 0,
+              "information_request_kinds": [],
+              "support_act_kind": null,
+              "ambiguity_status": "ambiguous",
+              "clarification_question_present": false,
+              "ambiguity_interpretation_count": 8,
+              "event_type": "cumpleanos",
+              "vendor_category": "Catering",
+              "vendor_categories": [
+                "Catering"
+              ],
+              "active_need_category": "Catering",
+              "location": null,
+              "budget_signal": null,
+              "guest_range": null,
+              "selected_provider_hints": [],
+              "preferences": [],
+              "hard_constraints": [],
+              "assumptions": [],
+              "provider_query_intents_count": 0,
+              "provider_plan_operations_count": 0,
+              "provider_explanation_requested": false,
+              "provider_detail_requested": false,
+              "rsvp_action": null,
+              "rsvp_candidate_guest_id_present": false,
+              "rsvp_event_reference_present": false,
+              "conversation_summary_preview": "Elige la segunda opción de catering de la lista mostrada: Lucitana.",
+              "pause_requested": false,
+              "contact_fields_present": {
+                "name": false,
+                "email": false,
+                "phone": false
+              },
+              "contact_validation_error": null
+            },
+            "plan_summary": {
+              "current_node": "aclarar_pedir_faltante",
+              "lifecycle_state": "active",
+              "event_type": "cumpleanos",
+              "vendor_category": "Catering",
+              "active_need_category": "Catering",
+              "location": "Lima",
+              "budget_signal": null,
+              "guest_range": "21-50",
+              "provider_need_categories": [
+                "Catering"
+              ],
+              "provider_need_count": 1,
+              "provider_need_statuses": [
+                {
+                  "category": "Catering",
+                  "status": "shortlisted",
+                  "has_recommendations": true,
+                  "selected_provider_ids": []
+                }
+              ],
+              "selected_provider_ids": [],
+              "missing_fields": [],
+              "conversation_summary_preview": "Elige la segunda opción de catering de la lista mostrada: Lucitana.",
+              "open_question_count": 0,
+              "contact_fields_present": {
+                "name": false,
+                "email": false,
+                "phone": true
+              },
+              "contact_validation_error": null,
+              "user_auth_status": "none",
+              "auth_recovery_terminal_reason": null,
+              "auth_recovery_send_attempted": false,
+              "auth_recovery_verification_attempted": false,
+              "pending_information_request_count": 0,
+              "rsvp_status": "none",
+              "rsvp_candidate_count": 0
+            },
+            "authentication_execution_summary": [],
+            "message_context": {
+              "history_status": "available",
+              "context_source": "agent_api",
+              "retrieved_message_count": 2,
+              "recent_message_count": 2,
+              "excluded_current_message_count": 0,
+              "directions": [
+                "inbound",
+                "outbound"
+              ],
+              "sources": [
+                null,
+                null
+              ],
+              "entry_source": null
+            },
+            "continuity_state": "continuing",
+            "welcome_allowed": false,
+            "history_status": "available",
+            "has_prior_outbound": true,
+            "requested_operation": "provider.plan",
+            "capability_decision": null,
+            "capability_reason": null,
+            "truncation": {
+              "truncated": true,
+              "droppedCandidateDetails": 7,
+              "droppedCalls": 6,
+              "diagnosticBytes": 12288,
+              "envelopeBytes": 12288,
+              "maxCallSummaries": 16,
+              "maxCandidateDetails": 8
+            }
+          },
+          "perf": {
+            "trace_id": "01M6P65S0RV9ZJ3Z3Q09W06PY5",
+            "conversation_hash": "df79f2acab4ee86abd6f94b5d72a07d173618e2261d67c7b487a58f87bfb7c52",
+            "runtime_latency_ms": 10579,
+            "extraction_latency_ms": 6466,
+            "compose_latency_ms": 2082,
+            "tools_called_count": 3,
+            "provider_results_count": 7,
+            "recommendation_context_candidates": 6,
+            "recommendation_presentation_limit": 6,
+            "response_classifier_action": "respond",
+            "response_classifier_would_suppress": false,
+            "conversation_health_status": "progressing",
+            "conversation_health_reason": "normal_progress",
+            "human_help_response": "not_applicable",
+            "total_tokens": 16556,
+            "cached_input_tokens": 8202,
+            "cache_hit_rate": 0.5183593503128358,
+            "extraction_to_compose_ratio": 3.10566762728146,
+            "captured_at": "2026-11-05T15:45:24.519Z",
+            "persisted": true,
+            "storage_target": "recap-agent-runtime-dev-perf"
+          },
+          "plan_summary": {
+            "current_node": "aclarar_pedir_faltante",
+            "lifecycle_state": "active",
+            "event_type": "cumpleanos",
+            "vendor_category": "Catering",
+            "active_need_category": "Catering",
+            "location": "Lima",
+            "budget_signal": null,
+            "guest_range": "21-50",
+            "provider_needs": [
+              {
+                "category": "Catering",
+                "status": "shortlisted",
+                "recommended_provider_ids": [
+                  109,
+                  189,
+                  136,
+                  138,
+                  137,
+                  199,
+                  153
+                ],
+                "selected_provider_ids": []
+              }
+            ],
+            "selected_provider_ids": [],
+            "missing_fields": []
+          },
+          "auth_evidence": {
+            "status": "none",
+            "auth_method": null,
+            "awaiting_phone_confirmation": false,
+            "phone_confirmation": "not_awaiting",
+            "contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": true
+            }
+          },
+          "latencyMs": 11202
+        }
+      ],
+      "startedAt": "2026-11-05T15:45:26.082Z",
+      "completedAt": "2026-11-05T15:45:26.086Z"
+    }
+  ]
+}

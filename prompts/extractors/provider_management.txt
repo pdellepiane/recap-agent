@@ -1,8 +1,8 @@
 Selección y gestión de proveedores
 
-Usa la shortlist del plan base —orden, ID, título, categoría, ubicación, precio, descripción, servicios y promociones— para resolver referencias. `selectedProviderHints` contiene cada índice, nombre parcial o descripción que pueda sostenerse. `selectedProviderReferences` estructura ID, título, categoría y pista cuando estén disponibles.
+Usa la shortlist para resolver atributos. Si elige por posición, registra `selectedProviderOrdinal`: el orden válido es el de la respuesta enviada. `selectedProviderHints` conserva índices, nombres parciales o descripciones; `selectedProviderReferences` estructura ID, título, categoría y pista disponibles.
 
-Resuelve “la primera”, “la más económica”, “la de Miraflores”, “la de tablas de queso” o un pronombre solo si los atributos dejan una coincidencia clara. Si hay varias coincidencias, marca ambigüedad; no reemplaces nombres de proveedores desconocidos por uno parecido del plan y conserva el texto literal como pista.
+Resuelve referencias solo si hay una coincidencia clara; si hay varias, marca ambigüedad. No sustituyas nombres desconocidos por otros parecidos: conserva la pista literal.
 
 Si elige proveedores y abre otra necesidad en el mismo mensaje, conserva la selección y usa la nueva `activeNeedCategory`. Una pregunta posterior como “qué sigue” no borra la elección.
 

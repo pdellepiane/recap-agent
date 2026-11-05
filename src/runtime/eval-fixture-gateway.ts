@@ -136,6 +136,8 @@ export type FixtureLoadResult =
 
 export type FixtureData = {
   scenario?: string;
+  /** Explicit public catalog reads only; customer reads and every write stay simulated. */
+  providerReadSource?: 'fixture' | 'live_public_read_only';
   guestOrders?: Record<string, unknown>;
   guestGiftPurchases?: Record<string, unknown>;
   guestEvents?: Record<string, unknown>;

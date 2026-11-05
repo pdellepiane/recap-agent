@@ -457,6 +457,45 @@ describe('structured extraction schemas', () => {
     expect(deriveEstablishedExtractionDomain(rsvp)).toBe('rsvp');
   });
 
+  it.each(['faq', 'purchase'] as const)('reopens planning after a completed %s turn when the plan returned to interview', (kind) => {
+    const fresh = createEmptyPlan({ planId: 'reported-wedding', channel: 'whatsapp', externalUserId: 'synthetic' });
+    const plan = mergePlan(fresh, {
+      current_node: 'entrevista',
+      information_state: {
+        resume_node: null,
+        pending_requests: [],
+        selection_candidates: [],
+        last_completed_request: kind === 'faq'
+          ? { kind: 'faq', query: 'Consulta previa.' }
+          : { kind: 'purchase', query: 'Consulta previa.', resource: 'orders', orderId: null, authAction: 'none' },
+      },
+    });
+    expect(deriveEstablishedExtractionDomain(plan)).toBeNull();
+    const projection = projectExtraction({ plan, manifest: buildRuntimeCapabilityManifest({}), allowedActionIntents: actionIntentValues });
+    expect(projection.profile.providerPlanning).toBe(true);
+    const schema = createDynamicExtractionSchema({ allowedActionIntents: projection.allowedActionIntents, capabilities: projection.profile });
+    expect(Object.keys(schema.shape)).toEqual(expect.arrayContaining(['eventType', 'vendorCategory', 'location', 'providerQueryIntents']));
+  });
+
+  it('keeps active information work scoped even when a previous FAQ exists', () => {
+    const fresh = createEmptyPlan({ planId: 'active-support', channel: 'whatsapp', externalUserId: 'synthetic' });
+    const plan = mergePlan(fresh, {
+      current_node: 'resolver_consultas_informativas',
+      information_state: {
+        resume_node: null, pending_requests: [], selection_candidates: [],
+        last_completed_request: { kind: 'faq', query: 'Consulta previa.' },
+      },
+    });
+    expect(deriveEstablishedExtractionDomain(plan)).toBe('support');
+    const projection = projectExtraction({ plan, manifest: buildRuntimeCapabilityManifest({}), allowedActionIntents: actionIntentValues });
+    expect(projection.profile.providerPlanning).toBe(false);
+    const pivot = projectExtraction({ plan, manifest: buildRuntimeCapabilityManifest({}), allowedActionIntents: actionIntentValues, providerPivot: true });
+    expect(pivot.profile.providerPlanning).toBe(true);
+    const fields = Object.keys(createDynamicExtractionSchema({ allowedActionIntents: pivot.allowedActionIntents, capabilities: pivot.profile }).shape);
+    expect(fields).toEqual(expect.arrayContaining(['vendorCategory', 'location', 'providerQueryIntents']));
+    expect(plan.information_state.last_completed_request?.kind).toBe('faq');
+  });
+
   it('narrows established purchase/support/RSVP profiles to non-planning fields', () => {
     const manifest = buildRuntimeCapabilityManifest({});
     const fresh = createEmptyPlan({ planId: 'p-l3-prof', channel: 'whatsapp', externalUserId: 'u' });

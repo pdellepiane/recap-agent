@@ -1464,6 +1464,20 @@ describe('L3 established-lane minimal extraction requests', () => {
     expect(captured.input).not.toContain('Prioridad completa');
   });
 
+  it('keeps a completed FAQ from permanently hiding the planning extractor after returning to interview', async () => {
+    const runtime = createRuntimeForTokenUsageTests();
+    const fresh = structuredClone(createL3BaseRequest('entrevista').plan);
+    const resumed = structuredClone(fresh);
+    resumed.information_state.last_completed_request = { kind: 'faq', query: 'Consulta previa.' };
+    const baseline = await captureL3ExtractionRequest(runtime, fresh, 'Primero catering y luego música.');
+    const actual = await captureL3ExtractionRequest(runtime, resumed, 'Primero catering y luego música.');
+    expect(actual.schemaKeys).toEqual(expect.arrayContaining(['eventType', 'vendorCategory', 'providerQueryIntents']));
+    expect(actual.filePaths).toContain('extractors/planning.txt');
+    expect(actual.instructionBytes).toBe(baseline.instructionBytes);
+    expect(actual.inputBytes).toBe(baseline.inputBytes);
+    expect(actual.serializedBytes).toBe(baseline.serializedBytes);
+  });
+
   it('keeps unsupported operations expressible without full schemas', async () => {
     const runtime = createRuntimeForTokenUsageTests();
     const captured = await captureL3ExtractionRequest(

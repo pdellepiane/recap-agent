@@ -1,0 +1,179 @@
+{
+  "studyId": "july-breadth-infrastructure-recovery-2026-10-28",
+  "runId": "eval-2026-10-28T13-25-45-964Z-aaee23b6",
+  "population": "current-master-only",
+  "scheduled": 150,
+  "observed": 150,
+  "passed": 106,
+  "passRate": 0.7066666666666667,
+  "allThreePassScenarios": 8,
+  "mixedScenarios": 41,
+  "scenarioClusterBootstrap95": {
+    "lower": 0.6666666666666666,
+    "upper": 0.7466666666666667,
+    "resamples": 10000,
+    "seed": 28102650
+  },
+  "missingExecutionIds": [],
+  "strata": [
+    {
+      "stratum": "july_wedding",
+      "scheduled": 30,
+      "observed": 30,
+      "passed": 20
+    },
+    {
+      "stratum": "july_birthday",
+      "scheduled": 30,
+      "observed": 30,
+      "passed": 19
+    },
+    {
+      "stratum": "july_baby_shower",
+      "scheduled": 30,
+      "observed": 30,
+      "passed": 23
+    },
+    {
+      "stratum": "july_corporate",
+      "scheduled": 30,
+      "observed": 30,
+      "passed": 23
+    },
+    {
+      "stratum": "july_social",
+      "scheduled": 30,
+      "observed": 30,
+      "passed": 21
+    }
+  ],
+  "diagnostics": {
+    "observedTurns": 197,
+    "scriptedTurns": 270,
+    "conversationLatencyMs": {
+      "n": 150,
+      "mean": 21423.726666666666,
+      "median": 22795,
+      "p95": 46587,
+      "max": 63023
+    },
+    "turnLatencyMs": {
+      "n": 197,
+      "mean": 16312.482233502538,
+      "median": 15902,
+      "p95": 27361,
+      "max": 39084
+    },
+    "deliveredEmptyTurns": 1,
+    "tokenTelemetryTurns": 197,
+    "reportedTokens": 3086822,
+    "cachedInputTokens": 1717346,
+    "modelStages": [
+      {
+        "stage": "classifier",
+        "reportedOperations": 197,
+        "reportedAttempts": 197,
+        "instructionBytes": {
+          "n": 197,
+          "mean": 4896,
+          "median": 4896,
+          "p95": 4896,
+          "max": 4896
+        },
+        "inputBytes": {
+          "n": 197,
+          "mean": 966.3857868020305,
+          "median": 749,
+          "p95": 1643,
+          "max": 1882
+        },
+        "observedTransportRequests": 197
+      },
+      {
+        "stage": "extraction",
+        "reportedOperations": 196,
+        "reportedAttempts": 196,
+        "instructionBytes": {
+          "n": 196,
+          "mean": 7966.0204081632655,
+          "median": 6855,
+          "p95": 10050,
+          "max": 10050
+        },
+        "inputBytes": {
+          "n": 196,
+          "mean": 4267.994897959184,
+          "median": 3175,
+          "p95": 7548,
+          "max": 8370
+        },
+        "observedTransportRequests": 196
+      },
+      {
+        "stage": "reply",
+        "reportedOperations": 196,
+        "reportedAttempts": 311,
+        "instructionBytes": {
+          "n": 196,
+          "mean": 3257.668367346939,
+          "median": 2588,
+          "p95": 4789,
+          "max": 4789
+        },
+        "inputBytes": {
+          "n": 196,
+          "mean": 11081.091836734693,
+          "median": 9556,
+          "p95": 18180,
+          "max": 20879
+        },
+        "observedTransportRequests": 311
+      },
+      {
+        "stage": "router",
+        "reportedOperations": 110,
+        "reportedAttempts": 111,
+        "instructionBytes": {
+          "n": 110,
+          "mean": 3321,
+          "median": 3321,
+          "p95": 3321,
+          "max": 3321
+        },
+        "inputBytes": {
+          "n": 110,
+          "mean": 2531.4,
+          "median": 2520,
+          "p95": 2583,
+          "max": 2589
+        },
+        "observedTransportRequests": 110
+      }
+    ],
+    "traceProviderRecords": 457,
+    "detectedDeliveredProviderLinks": 201,
+    "linksMatchedToSameTurnTraceProvider": 201,
+    "providerReferenceLimit": "URL spans only; unmatched trace links may have other retained seed/history evidence. No comprehensive claim entailment or actual display count."
+  },
+  "cost": {
+    "accounting": "estimated-from-token-usage-and-dated-rates",
+    "harnessEstimate": {
+      "priced": true,
+      "pricingVersion": "2026-09-25",
+      "openaiUsd": 0.247085,
+      "judgeUsd": 0,
+      "lambdaUsd": 0.053599,
+      "totalUsd": 0.300683,
+      "unpricedCases": [],
+      "unpricedModels": []
+    }
+  },
+  "limitations": {
+    "primary": "All objective hard obligations met / 150 scheduled conversations. This is an infrastructure recovery run; preserve the original 150 HTTP 400 errors.",
+    "uncertainty": "10000 seeded stratified scenario-cluster bootstrap over five event strata, retaining repetitions; not a customer-population confidence interval.",
+    "claimBoundary": "Designed July-derived provider scenarios only; earlier current-system results remain a separate run. No causal comparison or pooling.",
+    "fixtureBoundary": "Five no-result worlds use empty fixtures; other public provider reads are live; all private customer data and SE effects mocked.",
+    "routeLimit": "Route labels are inputs, not proof of semantic correctness; selection identity and no-results prose are not comprehensively checked.",
+    "historicalPopulation": "July V4 and all October runs are preserved separately."
+  }
+}

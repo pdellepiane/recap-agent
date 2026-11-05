@@ -1,0 +1,661 @@
+{
+  "runId": "eval-2026-10-29T13-46-58-495Z-62c0e7de",
+  "caseId": "live_behavior.july_breadth_wedding_03_phonefixed",
+  "suite": "live_behavior_regression",
+  "target": "live_lambda",
+  "configLabel": "live_lambda",
+  "status": "failed",
+  "hardGatePassed": false,
+  "primaryFailureReason": "product_fact_completeness",
+  "finalScore": 0.75,
+  "totalLatencyMs": 14420,
+  "totalToolCalls": 4,
+  "nodeTransitions": [
+    "contacto_inicial->entrevista"
+  ],
+  "planDiffSummary": [
+    "current_node=\"entrevista\"",
+    "event_type=\"boda\"",
+    "vendor_category=\"Locales\"",
+    "active_need_category=\"Locales\"",
+    "location=\"Lima\"",
+    "budget_signal=\"alto\"",
+    "guest_range=\"101-200\"",
+    "provider_needs=Locales:search_ready, Catering:identified, Música:identified"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/.eval-runs/eval-2026-10-29T13-46-58-495Z-62c0e7de/artifacts/live_lambda/live_behavior.july_breadth_wedding_03_phonefixed.json"
+  },
+  "expectationResults": [
+    {
+      "id": "event-type-retained",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "answer-delivered",
+      "type": "text_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Text containment checks passed."
+    },
+    {
+      "id": "no-provider-quote-without-explicit-date",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture provider.quote.write attempts=0 successes=0 replays=0 outcome=none."
+    },
+    {
+      "id": "no-unrequested-rsvp",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture rsvp.write attempts=0 successes=0 replays=0 outcome=none."
+    },
+    {
+      "id": "no-unrequested-handoff",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture handoff.write attempts=0 successes=0 replays=0 outcome=none."
+    },
+    {
+      "id": "requested-needs-retained",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "recommendation-has-candidates",
+      "type": "provider_result_count",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Provider result count 0 outside expected range min=1 max=*."
+    },
+    {
+      "id": "recommendation-delivers-provider-link",
+      "type": "text_contains",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Text containment checks failed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "objective-obligations",
+      "type": "expectation_pass_rate",
+      "score": 0.75,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 8 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 1,
+    "avg_latency_ms": 14420,
+    "p95_latency_ms": 14420,
+    "tool_calls_total": 4,
+    "unique_tools_called": 4,
+    "tool_call_rate_per_turn": 4,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.10344827586206896,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 24993,
+    "cache_hit_rate": 0.3889324798678505,
+    "input_tokens": 24215,
+    "cached_input_tokens": 9418,
+    "cache_write_input_tokens": 13304,
+    "uncached_input_tokens": 14797,
+    "usage_known": true
+  },
+  "timing": {
+    "queueWaitMs": 938945,
+    "setupMs": 0,
+    "turnMs": 17643,
+    "snapshotMs": 4,
+    "teardownMs": 0,
+    "judgeWaitMs": 0,
+    "judgeApiMs": 0,
+    "reportWriteMs": 0,
+    "makespanMs": 0
+  },
+  "judgeMetrics": {
+    "modelCalls": 0,
+    "retryCount": 0,
+    "rateLimitCount": 0,
+    "tokensUnknown": false,
+    "openaiSdk": "7.43.0",
+    "judgeModels": []
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Organizo una boda elegante en Lima para 150 personas. Necesito local, catering y música en vivo; presupuesto alto.",
+        "channel": "whatsapp",
+        "sessionId": "live_behavior.july_breadth_wedding_03_phonefixed",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "master-provider-live-public"
+        }
+      },
+      "outputText": "¡Perfecto! Ya tengo el contexto: boda elegante en Lima para 150 personas, con presupuesto alto, y tres frentes: local, catering y música en vivo. Empecemos por el local: ¿tienes una fecha o una zona de Lima en mente?",
+      "deliveredText": "¡Perfecto! Ya tengo el contexto: boda elegante en Lima para 150 personas, con presupuesto alto, y tres frentes: local, catering y música en vivo. Empecemos por el local: ¿tienes una fecha o una zona de Lima en mente?",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "e9cf389c83ed5e49b7a48d467ed0ea42367310427ffead63b9a8a21a5348cef1",
+        "deliveredSha256": "e9cf389c83ed5e49b7a48d467ed0ea42367310427ffead63b9a8a21a5348cef1",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "entrevista",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 5,
+          "attempts": 1
+        },
+        "trace_id": "01M63ZH2ZBC45RWV40A5EPNDJA",
+        "conversation_id": null,
+        "plan_id": "01M63ZGP1YXN6R9G0FPC09KT1P",
+        "previous_node": "contacto_inicial",
+        "next_node": "entrevista",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "entrevista"
+        ],
+        "intent": null,
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "d4c67dedd44b",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/domain_scope.txt",
+          "shared/flow_discipline.txt",
+          "shared/domain_knowledge.txt",
+          "shared/question_strategy.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "list_categories",
+          "get_category_by_slug",
+          "list_locations"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "list_categories"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "list_categories",
+            "input": "{\"projection_version\":1}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "list_categories",
+            "output": "[omitted]"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_066e9793cc437769006ae352028c7c87d18bd0cf87791ab33d",
+            "requestId": "req_0271a48d85804414b9864715ab9d317b",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 749,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 7626,
+                "instructionBytes": 0,
+                "inputBytes": 5799,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_0381d76a41422e85006ae35203e24487d1af379525c240395d",
+            "requestId": "req_13baf6c884924d06a081e2f5f60fe8a4",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 6855,
+              "inputBytes": 3175,
+              "toolCount": 0,
+              "schemaPropertyCount": 30,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 20862,
+                "instructionBytes": 6932,
+                "inputBytes": 3459,
+                "toolBytes": 2,
+                "outputSchemaBytes": 10207,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_0a116977469e33ff006ae3520c5d8c87d1b0fe191f0ee99cb7",
+            "requestId": "req_a445c47fce0c42f28f03f11c9d0916b4",
+            "model": "gpt-6-luna",
+            "attemptCount": 2,
+            "requestMetrics": {
+              "instructionBytes": 4789,
+              "inputBytes": 8842,
+              "toolCount": 3,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 2,
+                "totalPayloadBytes": 62918,
+                "instructionBytes": 9708,
+                "inputBytes": 50212,
+                "toolBytes": 1834,
+                "outputSchemaBytes": 626,
+                "requests": []
+              }
+            }
+          },
+          "router": {
+            "responseId": null,
+            "requestId": "req_550dd2f292154e91a5a6960a6183bdd1",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 3321,
+              "inputBytes": 2575,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 6857,
+                "instructionBytes": 3321,
+                "inputBytes": 2575,
+                "toolBytes": 0,
+                "outputSchemaBytes": 0,
+                "requests": []
+              }
+            }
+          }
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "deteccion_intencion",
+        "timing_ms": {
+          "total": 13246,
+          "load_plan": 17,
+          "response_classification": 1349,
+          "prepare_working_plan": 0,
+          "extraction": 7009,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 4565,
+          "save_plan": 12,
+          "router": 287,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1523,
+            "output_tokens": 70,
+            "total_tokens": 1593,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 178
+          },
+          "router": {
+            "input_tokens": 1481,
+            "output_tokens": 0,
+            "total_tokens": 1481
+          },
+          "extraction": {
+            "input_tokens": 4407,
+            "output_tokens": 621,
+            "total_tokens": 5028,
+            "cached_input_tokens": 3636,
+            "cache_write_input_tokens": 768
+          },
+          "reply": {
+            "input_tokens": 16804,
+            "output_tokens": 87,
+            "total_tokens": 16891,
+            "cached_input_tokens": 4440,
+            "cache_write_input_tokens": 12358
+          },
+          "total": {
+            "input_tokens": 24215,
+            "output_tokens": 778,
+            "total_tokens": 24993,
+            "cached_input_tokens": 9418,
+            "cache_write_input_tokens": 13304
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "agent_api",
+          "has_prior_outbound_message": false,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "other_actionable",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "entrevista",
+          "routeKind": "ask_event_context",
+          "providerSearchMode": "none",
+          "presentationScope": "clarification",
+          "focusNeedCategory": "Locales",
+          "needsToSearch": [],
+          "needsToPresent": [],
+          "stopReason": "insufficient_reachable_transition",
+          "persistReason": "entrevista",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "ask_event_context",
+        "presentation_scope": "clarification",
+        "session_focus_used": false,
+        "session_focus_key_present": true,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.94,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": "boda",
+          "vendor_category": "Locales",
+          "vendor_categories": [
+            "Locales",
+            "Catering",
+            "Música"
+          ],
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": "alto",
+          "guest_range": "101-200",
+          "selected_provider_hints": [],
+          "preferences": [
+            "elegante",
+            "música en vivo"
+          ],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 0,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Organiza una boda elegante en Lima para 150 personas y necesita local, catering y música en vivo; presupuesto alto.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "entrevista",
+          "lifecycle_state": "active",
+          "event_type": "boda",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": "alto",
+          "guest_range": "101-200",
+          "provider_need_categories": [
+            "Locales",
+            "Catering",
+            "Música"
+          ],
+          "provider_need_count": 3,
+          "provider_need_statuses": [
+            {
+              "category": "Locales",
+              "status": "search_ready",
+              "has_recommendations": false,
+              "selected_provider_ids": []
+            },
+            {
+              "category": "Catering",
+              "status": "identified",
+              "has_recommendations": false,
+              "selected_provider_ids": []
+            },
+            {
+              "category": "Música",
+              "status": "identified",
+              "has_recommendations": false,
+              "selected_provider_ids": []
+            }
+          ],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "Organiza una boda elegante en Lima para 150 personas y necesita local, catering y música en vivo; presupuesto alto.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "empty",
+          "context_source": "agent_api",
+          "retrieved_message_count": 0,
+          "recent_message_count": 0,
+          "excluded_current_message_count": 0,
+          "directions": [],
+          "sources": [],
+          "entry_source": null
+        },
+        "continuity_state": "new",
+        "welcome_allowed": true,
+        "history_status": "empty",
+        "has_prior_outbound": false,
+        "requested_operation": "provider.plan",
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 8595,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M63ZH2ZBC45RWV40A5EPNDJA",
+        "conversation_hash": "6e7d5dc01df264b881d2537a415ba973957fda36bb3dbeeaae81cd8ec81463a9",
+        "runtime_latency_ms": 13246,
+        "extraction_latency_ms": 7009,
+        "compose_latency_ms": 4565,
+        "tools_called_count": 4,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 24993,
+        "cached_input_tokens": 9418,
+        "cache_hit_rate": 0.3889324798678505,
+        "extraction_to_compose_ratio": 1.5353778751369114,
+        "captured_at": "2026-10-29T14:02:55.350Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "entrevista",
+        "lifecycle_state": "active",
+        "event_type": "boda",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": "Lima",
+        "budget_signal": "alto",
+        "guest_range": "101-200",
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "search_ready",
+            "recommended_provider_ids": [],
+            "selected_provider_ids": []
+          },
+          {
+            "category": "Catering",
+            "status": "identified",
+            "recommended_provider_ids": [],
+            "selected_provider_ids": []
+          },
+          {
+            "category": "Música",
+            "status": "identified",
+            "recommended_provider_ids": [],
+            "selected_provider_ids": []
+          }
+        ],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": true
+        }
+      },
+      "latencyMs": 14420
+    }
+  ],
+  "startedAt": "2026-10-29T14:02:57.681Z",
+  "completedAt": "2026-10-29T14:02:57.686Z"
+}

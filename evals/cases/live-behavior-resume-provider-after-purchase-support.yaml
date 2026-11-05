@@ -1,0 +1,69 @@
+id: live_behavior.resume_provider_after_purchase_support
+suite: live_behavior_regression
+version: 1
+description: Resume wedding catering recommendations from the typed state observed in a production WhatsApp conversation after purchase and FAQ support.
+tags: [live, behavior, provider, support, production-regression]
+targetModes: [live_lambda]
+backendFixture:
+  scenario: master-provider-live-public
+seedPlan:
+  current_node: resolver_consultas_informativas
+  intent: responder_invitacion
+  guest_range: 51-100
+  information_state:
+    resume_node: entrevista
+    pending_requests:
+      - requestId: synthetic-purchase
+        kind: purchase
+        resource: purchase_discovery
+        query: Consulta sintética sobre una compra anterior.
+        orderId: synthetic-order
+        authAction: none
+    selection_candidates: []
+    last_completed_request:
+      kind: faq
+      query: Consulta sintética sobre comisiones.
+inputs:
+  - text: Quiero retomar mi boda. Recomiéndame catering criollo tipo buffet en Lima para 100 invitados, con presupuesto de 20 mil soles.
+    channel: whatsapp
+    sessionId: live_behavior.resume_provider_after_purchase_support
+    contactPhone: "+51999111222"
+    backendFixture:
+      scenario: master-provider-live-public
+expectations:
+  - id: catering-selected-as-search-context
+    type: plan_field_equals
+    turnIndex: 0
+    path: active_need_category
+    expected: Catering
+    severity: hard
+  - id: provider-option-displayed
+    type: text_contains
+    turnIndex: 0
+    regex:
+      - https://sinenvolturas\.com/proveedores/[\p{L}\p{N}%_-]+
+    severity: hard
+  - id: pending-purchase-is-preserved
+    type: plan_field_subset
+    turnIndex: 0
+    path: information_state.pending_requests
+    expected:
+      - requestId: synthetic-purchase
+        kind: purchase
+    severity: hard
+  - id: no-unrequested-effects
+    type: tool_usage
+    mustNotCall: [create_quote_request, finish_plan, request_human_takeover, guest_rsvp, request_user_login_code, verify_user_login_code, add_vendor_to_event_favorites, create_provider_review]
+    severity: hard
+scorers:
+  - id: objective-obligations
+    type: expectation_pass_rate
+    weight: 1
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 12000
+  estimatedCompletionTokensPerTurn: 600
+notes:
+  - Reconstructs the latest production session's typed state with synthetic identifiers and content; no customer record or real phone is used in development.
+  - Public provider reads are live; private customer access and all SE effects are fixture-backed and simulated.
+  - Provider availability may change; the provider-link assertion is bounded to the retained run evidence.

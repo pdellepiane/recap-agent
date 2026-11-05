@@ -1,0 +1,86 @@
+id: live_behavior.july_breadth_corporate_07
+suite: live_behavior_regression
+version: 1
+description: "July breadth study.corporate.07: Close corporate venue lead."
+tags:
+  - live
+  - behavior
+  - july-breadth
+  - corporate
+  - closure
+targetModes:
+  - live_lambda
+backendFixture:
+  scenario: master-provider-live-public
+inputs:
+  - text: Busco local corporativo en Lima para 60 personas.
+    channel: whatsapp
+    sessionId: live_behavior.july_breadth_corporate_07
+    backendFixture:
+      scenario: master-provider-live-public
+  - text: Elijo la primera opción.
+    channel: whatsapp
+    sessionId: live_behavior.july_breadth_corporate_07
+    backendFixture:
+      scenario: master-provider-live-public
+  - text: Deseo cerrar. Soy Mario León, mario.leon@example.com, +51 984777888.
+    channel: whatsapp
+    sessionId: live_behavior.july_breadth_corporate_07
+    backendFixture:
+      scenario: master-provider-live-public
+expectations:
+  - id: event-type-retained
+    type: plan_field_equals
+    path: event_type
+    expected: corporativo
+    turnIndex: 2
+    severity: hard
+  - id: answer-delivered
+    type: text_contains
+    regex:
+      - "[\\s\\S]+"
+    turnIndex: 2
+    severity: hard
+  - id: no-provider-quote-without-explicit-date
+    type: fixture_effect_count
+    operation: provider.quote.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: no-unrequested-rsvp
+    type: fixture_effect_count
+    operation: rsvp.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: no-unrequested-handoff
+    type: fixture_effect_count
+    operation: handoff.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: requested-needs-retained
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: Locales
+    turnIndex: 2
+    severity: hard
+scorers:
+  - id: objective-obligations
+    type: expectation_pass_rate
+    weight: 1
+budget:
+  maxTurns: 3
+notes:
+  - Derived from study.corporate.07, route closure; prompts are preserved,
+    assertions use current objective contracts, so results are not directly
+    comparable to July.
+  - Live public provider reads; private customer reads and all SE effects are
+    mocked.
+  - For selection, the selected state is checked but correctness of the first
+    displayed provider identity is not independently verified. Other unscored
+    semantic outcomes must not be inferred.

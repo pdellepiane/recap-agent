@@ -1,0 +1,523 @@
+{
+  "runId": "eval-2026-10-28T02-18-49-459Z-91b952cc",
+  "caseId": "live_behavior.master_provider_live_category_catalog.master_r1",
+  "configLabel": "live_lambda",
+  "lane": "parallel",
+  "phase": "snapshot",
+  "status": "passed",
+  "executionUncertain": false,
+  "writtenAt": "2026-10-28T02:30:11.772Z",
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "¿Qué categorías de proveedores tienen? Quisiera saber si puedo buscar Catering, Música y Fotografía y video.",
+        "sessionId": "live_behavior.master_provider_live_category_catalog",
+        "backendFixture": {
+          "scenario": "master-provider-live-public"
+        }
+      },
+      "outputText": "Puedes buscar proveedores de Fotografía y video desde la sección de [Proveedores]([redacted-url]). No tengo información confirmada sobre las categorías de Catering y Música; puedes revisar si aparecen en esa sección.",
+      "deliveredText": "Puedes buscar proveedores de Fotografía y video desde la sección de [Proveedores]([redacted-url]). No tengo información confirmada sobre las categorías de Catering y Música; puedes revisar si aparecen en esa sección.",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "c098c7872da238f9006a00234e455b26ab64d405d1cb25826a988e94a4a60b12",
+        "deliveredSha256": "c098c7872da238f9006a00234e455b26ab64d405d1cb25826a988e94a4a60b12",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "resolver_consultas_informativas",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 5,
+          "attempts": 1
+        },
+        "trace_id": "01M605FXKR01RD4XFCKGK3XE48",
+        "conversation_id": null,
+        "plan_id": "01M605FKK2D71HMHHTG5M0G8VH",
+        "previous_node": "contacto_inicial",
+        "next_node": "resolver_consultas_informativas",
+        "node_path": [
+          "contacto_inicial",
+          "resolver_consultas_informativas"
+        ],
+        "intent": null,
+        "missing_fields": [],
+        "search_ready": false,
+        "prompt_bundle_id": "313b92fbfb16",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "nodes/resolver_consultas_informativas/payment_disclosure.txt",
+          "nodes/resolver_consultas_informativas/support_continuity.txt"
+        ],
+        "tools_considered": [
+          "classify_reply_delivery",
+          "knowledge_base_search"
+        ],
+        "tools_called": [
+          "classify_reply_delivery",
+          "knowledge_base_search"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "knowledge_base_search",
+            "input": "{\"projection_version\":1,\"status\":null,\"kind\":null,\"request_present\":true}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "knowledge_base_search",
+            "output": "{\"projection_version\":1,\"status\":\"completed\",\"kind\":\"faq\",\"result_count\":6}"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [
+          {
+            "requestId": "information-1",
+            "kind": "faq",
+            "status": "completed",
+            "source": "knowledge_base",
+            "outcomeCode": "completed_with_results",
+            "retryable": null,
+            "queryHash": "d8c44383fe889703433155a108c347176dca8529e97c27ed081fa73f14369692",
+            "evidence": [
+              {
+                "fileId": "file-2dochU2jUNEvzJV1XXqzau",
+                "filename": "como-funciona-transmision-en-vivo.md",
+                "score": 0.6402650730280423,
+                "contentHash": "8108e79b952a2f9160bdd53518960088ad29ceab8d2716eea7c70b57862ae003"
+              },
+              {
+                "fileId": "file-K3yK9bzG3dptaBkFr4CZZu",
+                "filename": "beneficios-en-el-shop-por-ser-usuario-de-sin-envolturas.md",
+                "score": 0.24775106976203154,
+                "contentHash": "40cd56b5597f4eebf255be7e9991eb3737d6e13f5ca93ba0cd34bbcf80cc429c"
+              },
+              {
+                "fileId": "file-KdNxy91PV3VDN7EeLGmhFc",
+                "filename": "cuanto-cuesta-invitados.md",
+                "score": 0.22634358628490295,
+                "contentHash": "8f11d209aa74176fa3438a538afeff3cb8ba6ab8a2f08300bc45b906a8770e39"
+              },
+              {
+                "fileId": "file-CvAEYi8dtoZUDfL1Y12XqD",
+                "filename": "configuracion-transmision.md",
+                "score": 0.19865510244082704,
+                "contentHash": "63e67471e2e8ada9d3771a48c0e1859b80e700891b0d5a5e07ab744ed5cc46a9"
+              },
+              {
+                "fileId": "file-Fxh2pRQvf9eCJpCJa89X7D",
+                "filename": "políticas-de-devolución-del-shop.md",
+                "score": 0.19695845705821569,
+                "contentHash": "f1102cbb67d1cfa4eaf83357ee44a8bea595567017480649338824d382128485"
+              },
+              {
+                "fileId": "file-CRT9PEW6jtBjJTpZ4KZuKr",
+                "filename": "beneficios.md",
+                "score": 0.1864971012066706,
+                "contentHash": "1678d62a9b44624bb673573bc708c16dcc07c402016601a64b16ef1df011ec5e"
+              }
+            ],
+            "resultCount": 6,
+            "durationMs": 2627,
+            "openAiTransport": {
+              "observedRequestCount": 1,
+              "totalPayloadBytes": 379,
+              "instructionBytes": 0,
+              "inputBytes": 0,
+              "toolBytes": 0,
+              "outputSchemaBytes": 0,
+              "requests": [
+                {
+                  "sequence": 0,
+                  "stage": "knowledge_retrieval",
+                  "requestId": "req_820c9362738149dda5d786b35a3f424f",
+                  "responseId": null,
+                  "statusCode": 200,
+                  "succeeded": true,
+                  "totalPayloadBytes": 379,
+                  "instructionBytes": 0,
+                  "inputBytes": 0,
+                  "toolBytes": 0,
+                  "outputSchemaBytes": 0,
+                  "requestBodySha256": "d35c8eb2cc3ac607ebf3b1455a4bb357a67ea00ce45cf6f0886c63dd17c80dde"
+                }
+              ]
+            }
+          }
+        ],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_0e27612ab2aa16fd006ae15e28bc6087d2ac4923dfef1c985f",
+            "requestId": "req_ba6041b3d301491ea14248a03748c82f",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 747,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 7624,
+                "instructionBytes": 0,
+                "inputBytes": 5797,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_05a152c1ab882427006ae15e2a0c0887d2b53a7f92dd40d313",
+            "requestId": "req_03a661bff0774c6984462dd533a68ee5",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 6855,
+              "inputBytes": 2749,
+              "toolCount": 0,
+              "schemaPropertyCount": 30,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 20382,
+                "instructionBytes": 6932,
+                "inputBytes": 2979,
+                "toolBytes": 2,
+                "outputSchemaBytes": 10207,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_0186d36e5212d5ea006ae15e31585487d2bff675d73dd79872",
+            "requestId": "req_401c6f228e2744b0a54554306c9980a3",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 1422,
+              "inputBytes": 9498,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 12342,
+                "instructionBytes": 1432,
+                "inputBytes": 10305,
+                "toolBytes": 2,
+                "outputSchemaBytes": 313,
+                "requests": []
+              }
+            }
+          },
+          "router": {
+            "responseId": null,
+            "requestId": "req_a7cd34b4f830499aa5b48d5854c51349",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 3321,
+              "inputBytes": 2573,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 6855,
+                "instructionBytes": 3321,
+                "inputBytes": 2573,
+                "toolBytes": 0,
+                "outputSchemaBytes": 0,
+                "requests": []
+              }
+            }
+          }
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 5
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "resolver_consultas_informativas",
+        "timing_ms": {
+          "total": 10269,
+          "load_plan": 7,
+          "response_classification": 1259,
+          "prepare_working_plan": 0,
+          "extraction": 4676,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 1588,
+          "save_plan": 6,
+          "router": 103,
+          "information_execution": 2628,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1521,
+            "output_tokens": 70,
+            "total_tokens": 1591,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 176
+          },
+          "router": {
+            "input_tokens": 1479,
+            "output_tokens": 0,
+            "total_tokens": 1479
+          },
+          "extraction": {
+            "input_tokens": 4284,
+            "output_tokens": 506,
+            "total_tokens": 4790,
+            "cached_input_tokens": 3636,
+            "cache_write_input_tokens": 645
+          },
+          "reply": {
+            "input_tokens": 2850,
+            "output_tokens": 65,
+            "total_tokens": 2915,
+            "cached_input_tokens": 0,
+            "cache_write_input_tokens": 2847
+          },
+          "total": {
+            "input_tokens": 10134,
+            "output_tokens": 641,
+            "total_tokens": 10775,
+            "cached_input_tokens": 4978,
+            "cache_write_input_tokens": 3668
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "local_plan",
+          "has_prior_outbound_message": false,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "question_or_request",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "resolver_consultas_informativas",
+          "routeKind": "information_batch",
+          "providerSearchMode": "none",
+          "presentationScope": "information_batch",
+          "focusNeedCategory": null,
+          "needsToSearch": [],
+          "needsToPresent": [],
+          "stopReason": null,
+          "persistReason": "information_batch",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "information_batch",
+        "presentation_scope": "information_batch",
+        "session_focus_used": false,
+        "session_focus_key_present": false,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.93,
+          "information_request_count": 1,
+          "information_request_kinds": [
+            "faq"
+          ],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": null,
+          "vendor_category": null,
+          "vendor_categories": [],
+          "active_need_category": null,
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 0,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Consulta qué categorías de proveedores están disponibles y si se puede buscar Catering, Música y Fotografía y video.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "resolver_consultas_informativas",
+          "lifecycle_state": "active",
+          "event_type": null,
+          "vendor_category": null,
+          "active_need_category": null,
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "provider_need_categories": [],
+          "provider_need_count": 0,
+          "provider_need_statuses": [],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "missing_phone_number",
+          "context_source": "local_plan",
+          "retrieved_message_count": 0,
+          "recent_message_count": 0,
+          "excluded_current_message_count": 0,
+          "directions": [],
+          "sources": [],
+          "entry_source": null
+        },
+        "continuity_state": "degraded",
+        "welcome_allowed": false,
+        "history_status": "missing_phone_number",
+        "has_prior_outbound": false,
+        "requested_operation": "faq.read",
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 9825,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M605FXKR01RD4XFCKGK3XE48",
+        "conversation_hash": "3d5fcc948e415cde6ad6957252dba52153b125cc47a1cfe8a6dad7d1ea657333",
+        "runtime_latency_ms": 10269,
+        "extraction_latency_ms": 4676,
+        "compose_latency_ms": 1588,
+        "tools_called_count": 2,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 5,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 10775,
+        "cached_input_tokens": 4978,
+        "cache_hit_rate": 0.49121768304716795,
+        "extraction_to_compose_ratio": 2.9445843828715366,
+        "captured_at": "2026-10-28T02:30:10.815Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "resolver_consultas_informativas",
+        "lifecycle_state": "active",
+        "event_type": null,
+        "vendor_category": null,
+        "active_need_category": null,
+        "location": null,
+        "budget_signal": null,
+        "guest_range": null,
+        "provider_needs": [],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": false
+        }
+      },
+      "latencyMs": 11240
+    }
+  ]
+}

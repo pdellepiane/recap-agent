@@ -723,7 +723,11 @@ describe('AgentService first-class information flow', () => {
       kind: 'faq', status: 'completed', feeTopic: 'host_withdrawal', hostWithdrawalPolicy: null,
       evidence: [{ text: feeText }],
     });
-    expect(JSON.stringify(runtime.composeRequests.at(-1))).not.toContain('72');
+    // The policy evidence must not import processing hours. Unrelated request
+    // IDs and timestamps may legitimately contain these digits.
+    const policyResult = runtime.composeRequests.at(-1)?.informationResults?.[0];
+    if (policyResult?.kind !== 'faq' || policyResult.status !== 'completed') throw new Error('Expected completed fee FAQ');
+    expect(JSON.stringify(policyResult.evidence)).not.toContain('72');
   });
 
   it('retrieves withdrawal fees with the actual policy question and retains the fee article', async () => {
@@ -2487,6 +2491,10 @@ describe('AgentService first-class information flow', () => {
       knowledgeGateway: new FakeKnowledgeGateway(),
       purchaseGateway: gateway,
       providerGateway: provider,
+      supportLaneRouter: new ScriptedSupportLaneRouter({ answers: [
+        { route: 'information_flow', sameOpenRequest: false, requestSettled: false },
+        { route: 'suppress_ack', sameOpenRequest: false, requestSettled: true },
+      ] }),
     });
 
     await service.handleTurn({

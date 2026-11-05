@@ -1,0 +1,597 @@
+{
+  "runId": "eval-2026-10-28T02-18-49-459Z-91b952cc",
+  "caseId": "live_behavior.master_provider_no_results.master_r2",
+  "suite": "live_behavior_regression",
+  "target": "live_lambda",
+  "configLabel": "live_lambda",
+  "status": "passed",
+  "hardGatePassed": true,
+  "finalScore": 1,
+  "totalLatencyMs": 11456,
+  "totalToolCalls": 3,
+  "nodeTransitions": [
+    "contacto_inicial->refinar_criterios"
+  ],
+  "planDiffSummary": [
+    "current_node=\"refinar_criterios\"",
+    "intent=\"buscar_proveedores\"",
+    "event_type=\"cumpleanos\"",
+    "vendor_category=\"Catering\"",
+    "active_need_category=\"Catering\"",
+    "location=\"Lima\"",
+    "budget_signal=\"Máximo 500 soles\"",
+    "guest_range=\"1-20\"",
+    "provider_needs=Catering:no_providers_available"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/.eval-runs/eval-2026-10-28T02-18-49-459Z-91b952cc/artifacts/live_lambda/live_behavior.master_provider_no_results.master_r2.json"
+  },
+  "expectationResults": [
+    {
+      "id": "empty-catalog-has-no-recommendations",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field recommended_provider_ids matched exactly."
+    },
+    {
+      "id": "need-records-unavailability",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "no-provider-from-another-world",
+      "type": "text_not_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Forbidden phrases were absent."
+    },
+    {
+      "id": "read-only-provider-conversation-has-no-submission",
+      "type": "tool_usage",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Tool usage matched expectations."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 1,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 4 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 1,
+    "avg_latency_ms": 11456,
+    "p95_latency_ms": 11456,
+    "tool_calls_total": 3,
+    "unique_tools_called": 3,
+    "tool_call_rate_per_turn": 3,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.2413793103448276,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 14278,
+    "cache_hit_rate": 0.6820337978061073,
+    "input_tokens": 13492,
+    "cached_input_tokens": 9202,
+    "cache_write_input_tokens": 2798,
+    "uncached_input_tokens": 4290,
+    "usage_known": true
+  },
+  "timing": {
+    "queueWaitMs": 897391,
+    "setupMs": 0,
+    "turnMs": 12968,
+    "snapshotMs": 6,
+    "teardownMs": 0,
+    "judgeWaitMs": 0,
+    "judgeApiMs": 0,
+    "reportWriteMs": 0,
+    "makespanMs": 0
+  },
+  "judgeMetrics": {
+    "modelCalls": 0,
+    "retryCount": 0,
+    "rateLimitCount": 0,
+    "tokensUnknown": false,
+    "openaiSdk": "7.43.0",
+    "judgeModels": []
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Busco catering para mi cumpleaños en Lima para 20 invitados, presupuesto máximo 500 soles. ¿Qué opciones hay?",
+        "sessionId": "master-provider-no_results",
+        "backendFixture": {
+          "scenario": "master-provider-empty"
+        }
+      },
+      "outputText": "No encontré opciones de catering disponibles para tu búsqueda en Lima, para 20 invitados y hasta S/ 500. ¿Te serviría ampliar el presupuesto o considerar otra zona para buscar?",
+      "deliveredText": "No encontré opciones de catering disponibles para tu búsqueda en Lima, para 20 invitados y hasta S/ 500. ¿Te serviría ampliar el presupuesto o considerar otra zona para buscar?",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "03f3a46d7b50fa7a883578189b382a9db98492e67719ff99dd17633ae6aa4281",
+        "deliveredSha256": "03f3a46d7b50fa7a883578189b382a9db98492e67719ff99dd17633ae6aa4281",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "refinar_criterios",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 5,
+          "attempts": 1
+        },
+        "trace_id": "01M605PXMNS7GPA33AK84E5SXN",
+        "conversation_id": null,
+        "plan_id": "01M605PKF5G8H27FEMN8D7ZFWF",
+        "previous_node": "contacto_inicial",
+        "next_node": "refinar_criterios",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "minimos_para_buscar",
+          "buscar_proveedores",
+          "busqueda_exitosa",
+          "hay_resultados",
+          "refinar_criterios"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "d4c67dedd44b",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/domain_scope.txt",
+          "shared/flow_discipline.txt",
+          "shared/domain_knowledge.txt",
+          "shared/question_strategy.txt"
+        ],
+        "tools_considered": [
+          "classify_reply_delivery",
+          "search_providers_from_plan",
+          "list_categories",
+          "get_category_by_slug",
+          "list_locations"
+        ],
+        "tools_called": [
+          "classify_reply_delivery",
+          "search_providers_from_plan",
+          "list_categories"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "search_providers_from_plan",
+            "input": "{\"projection_version\":1}"
+          },
+          {
+            "tool": "list_categories",
+            "input": "{\"projection_version\":1}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "search_providers_from_plan",
+            "output": "{\"projection_version\":1,\"result_kind\":\"collection\",\"count\":0,\"provider_ids\":[]}"
+          },
+          {
+            "tool": "list_categories",
+            "output": "[omitted]"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "search_from_plan",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_0541057fa5a2ab77006ae15f0e1d5887d28b296806926a69a3",
+            "requestId": "req_5d3a073eff72455eae458fffd30ab79b",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 747,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 7624,
+                "instructionBytes": 0,
+                "inputBytes": 5797,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_09e3790b2837e5b2006ae15f0ff04c87d2b2eb2204460cdfd4",
+            "requestId": "req_772c2322c82a4c67a860b048f62b5677",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 6855,
+              "inputBytes": 2749,
+              "toolCount": 0,
+              "schemaPropertyCount": 30,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 20382,
+                "instructionBytes": 6932,
+                "inputBytes": 2979,
+                "toolBytes": 2,
+                "outputSchemaBytes": 10207,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_0f55ddc10d641ce8006ae15f1661e487d291e5e58a737baa81",
+            "requestId": "req_7ffe8a66cddb4aef85fcd4db6c762538",
+            "model": "gpt-6-luna",
+            "attemptCount": 2,
+            "requestMetrics": {
+              "instructionBytes": 4789,
+              "inputBytes": 7991,
+              "toolCount": 3,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 2,
+                "totalPayloadBytes": 30532,
+                "instructionBytes": 9708,
+                "inputBytes": 17812,
+                "toolBytes": 1834,
+                "outputSchemaBytes": 626,
+                "requests": []
+              }
+            }
+          },
+          "router": {
+            "responseId": null,
+            "requestId": "req_3077b3e90d5348ac9d52a8e45cb90420",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 3321,
+              "inputBytes": 2573,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 6855,
+                "instructionBytes": 3321,
+                "inputBytes": 2573,
+                "toolBytes": 0,
+                "outputSchemaBytes": 0,
+                "requests": []
+              }
+            }
+          }
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "refinar_criterios",
+        "timing_ms": {
+          "total": 10422,
+          "load_plan": 6,
+          "response_classification": 1841,
+          "prepare_working_plan": 0,
+          "extraction": 5503,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 2889,
+          "save_plan": 15,
+          "router": 161,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1523,
+            "output_tokens": 103,
+            "total_tokens": 1626,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 178
+          },
+          "router": {
+            "input_tokens": 1480,
+            "output_tokens": 0,
+            "total_tokens": 1480
+          },
+          "extraction": {
+            "input_tokens": 4285,
+            "output_tokens": 613,
+            "total_tokens": 4898,
+            "cached_input_tokens": 3636,
+            "cache_write_input_tokens": 646
+          },
+          "reply": {
+            "input_tokens": 6204,
+            "output_tokens": 70,
+            "total_tokens": 6274,
+            "cached_input_tokens": 4224,
+            "cache_write_input_tokens": 1974
+          },
+          "total": {
+            "input_tokens": 13492,
+            "output_tokens": 786,
+            "total_tokens": 14278,
+            "cached_input_tokens": 9202,
+            "cache_write_input_tokens": 2798
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "local_plan",
+          "has_prior_outbound_message": false,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "question_or_request",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "refinar_criterios",
+          "routeKind": "single_need_search",
+          "providerSearchMode": "single_need_from_plan",
+          "presentationScope": "clarification",
+          "focusNeedCategory": "Catering",
+          "needsToSearch": [
+            "Catering"
+          ],
+          "needsToPresent": [
+            "Catering"
+          ],
+          "stopReason": "no_providers_available",
+          "persistReason": "refinar_criterios",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "single_need_search",
+        "presentation_scope": "clarification",
+        "session_focus_used": false,
+        "session_focus_key_present": true,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.99,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": "cumpleanos",
+          "vendor_category": "Catering",
+          "vendor_categories": [
+            "Catering"
+          ],
+          "active_need_category": "Catering",
+          "location": "Lima",
+          "budget_signal": "Máximo 500 soles",
+          "guest_range": "1-20",
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [
+            "Presupuesto máximo de 500 soles",
+            "20 invitados"
+          ],
+          "assumptions": [],
+          "provider_query_intents_count": 1,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Busca opciones de catering para un cumpleaños en Lima, para 20 invitados y con presupuesto máximo de 500 soles.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "refinar_criterios",
+          "lifecycle_state": "active",
+          "event_type": "cumpleanos",
+          "vendor_category": "Catering",
+          "active_need_category": "Catering",
+          "location": "Lima",
+          "budget_signal": "Máximo 500 soles",
+          "guest_range": "1-20",
+          "provider_need_categories": [
+            "Catering"
+          ],
+          "provider_need_count": 1,
+          "provider_need_statuses": [
+            {
+              "category": "Catering",
+              "status": "no_providers_available",
+              "has_recommendations": false,
+              "selected_provider_ids": []
+            }
+          ],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "Busca opciones de catering para un cumpleaños en Lima, para 20 invitados y con presupuesto máximo de 500 soles.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "missing_phone_number",
+          "context_source": "local_plan",
+          "retrieved_message_count": 0,
+          "recent_message_count": 0,
+          "excluded_current_message_count": 0,
+          "directions": [],
+          "sources": [],
+          "entry_source": null
+        },
+        "continuity_state": "degraded",
+        "welcome_allowed": false,
+        "history_status": "missing_phone_number",
+        "has_prior_outbound": false,
+        "requested_operation": "provider.search",
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 8519,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M605PXMNS7GPA33AK84E5SXN",
+        "conversation_hash": "de4c0c10ccce9b0f262a0cce654895ab2d43e5f74580606f87ac92de9049976c",
+        "runtime_latency_ms": 10422,
+        "extraction_latency_ms": 5503,
+        "compose_latency_ms": 2889,
+        "tools_called_count": 3,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 14278,
+        "cached_input_tokens": 9202,
+        "cache_hit_rate": 0.6820337978061073,
+        "extraction_to_compose_ratio": 1.9048113534094842,
+        "captured_at": "2026-10-28T02:34:00.219Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "refinar_criterios",
+        "lifecycle_state": "active",
+        "event_type": "cumpleanos",
+        "vendor_category": "Catering",
+        "active_need_category": "Catering",
+        "location": "Lima",
+        "budget_signal": "Máximo 500 soles",
+        "guest_range": "1-20",
+        "provider_needs": [
+          {
+            "category": "Catering",
+            "status": "no_providers_available",
+            "recommended_provider_ids": [],
+            "selected_provider_ids": []
+          }
+        ],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": false
+        }
+      },
+      "latencyMs": 11456
+    }
+  ],
+  "startedAt": "2026-10-28T02:34:01.237Z",
+  "completedAt": "2026-10-28T02:34:01.237Z"
+}

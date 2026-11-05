@@ -79,6 +79,13 @@ export function decideRouterPolicy(input: RouterPolicyInput): RouterPolicyOutcom
     return { kind: 'pause' };
   }
   if (sameRequest && current.state === 'unresolved' && !input.requestSettled) {
+    // A first record-answerable follow-up may ask for another fact about the
+    // same transaction. Give it one evidence-backed answer before the loop
+    // backstop, while financial disputes and explicit escalation stay intact.
+    if (!input.takeoverConfirmed && input.route === 'answer_with_records' &&
+        current.financial_reconciliation_required === false && current.turns === 1) {
+      return { kind: 'answer' };
+    }
     return input.takeoverConfirmed
       ? { kind: 'pause' }
       : { kind: 'escalate', reason: 'unresolved_request_repeated' };

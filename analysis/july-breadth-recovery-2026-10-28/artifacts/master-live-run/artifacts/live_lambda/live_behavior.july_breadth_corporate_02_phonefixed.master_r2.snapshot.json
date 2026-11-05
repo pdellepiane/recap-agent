@@ -1,0 +1,501 @@
+{
+  "runId": "eval-2026-10-28T13-25-45-964Z-aaee23b6",
+  "caseId": "live_behavior.july_breadth_corporate_02_phonefixed.master_r2",
+  "configLabel": "live_lambda",
+  "lane": "parallel",
+  "phase": "snapshot",
+  "status": "passed",
+  "executionUncertain": false,
+  "writtenAt": "2026-10-28T14:12:16.895Z",
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Necesito producción audiovisual para un evento corporativo de 200 asistentes.",
+        "channel": "whatsapp",
+        "sessionId": "live_behavior.july_breadth_corporate_02_phonefixed",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "master-provider-live-public"
+        }
+      },
+      "outputText": "¡Claro! ¿En qué ciudad será el evento?",
+      "deliveredText": "¡Claro! ¿En qué ciudad será el evento?",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "98d439cf91706e33a4b4247fb14cc70a17f41c50d0c2a663d13978ed5a1af841",
+        "deliveredSha256": "98d439cf91706e33a4b4247fb14cc70a17f41c50d0c2a663d13978ed5a1af841",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "aclarar_pedir_faltante",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 7,
+          "attempts": 1
+        },
+        "trace_id": "01M61DNED6NDMGFQJQVYS6BEDT",
+        "conversation_id": null,
+        "plan_id": "01M61DMZZZJYHES7SPNHYVD4KW",
+        "previous_node": "contacto_inicial",
+        "next_node": "aclarar_pedir_faltante",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "minimos_para_buscar",
+          "aclarar_pedir_faltante"
+        ],
+        "intent": null,
+        "missing_fields": [
+          "location"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "d4c67dedd44b",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/domain_scope.txt",
+          "shared/flow_discipline.txt",
+          "shared/domain_knowledge.txt",
+          "shared/question_strategy.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "list_categories",
+          "get_category_by_slug",
+          "list_locations"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "list_locations"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "list_locations",
+            "input": "{\"projection_version\":1}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "list_locations",
+            "output": "[omitted]"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_0de35ce03e5316c6006ae202b0767c87d1a746137c30333a01",
+            "requestId": "req_6d810d512b724b3b8141dd93e2e8e1bb",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 712,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 7589,
+                "instructionBytes": 0,
+                "inputBytes": 5762,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_00e600d8270b1502006ae202b2a97887d1a8a971f23f1ae967",
+            "requestId": "req_98526a3f7f5d40d1a0803ee10ab99d8b",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 6855,
+              "inputBytes": 3138,
+              "toolCount": 0,
+              "schemaPropertyCount": 30,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 20825,
+                "instructionBytes": 6932,
+                "inputBytes": 3422,
+                "toolBytes": 2,
+                "outputSchemaBytes": 10207,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_0833712e7c1446af006ae202bc612887d1ae41288f0eeca639",
+            "requestId": "req_75e491b6bb4141dba60ed8aab14b6c34",
+            "model": "gpt-6-luna",
+            "attemptCount": 2,
+            "requestMetrics": {
+              "instructionBytes": 4789,
+              "inputBytes": 7713,
+              "toolCount": 3,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 2,
+                "totalPayloadBytes": 32496,
+                "instructionBytes": 9708,
+                "inputBytes": 19766,
+                "toolBytes": 1834,
+                "outputSchemaBytes": 626,
+                "requests": []
+              }
+            }
+          },
+          "router": {
+            "responseId": null,
+            "requestId": "req_5f463d22372c435889b05006e4a0d722",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 3321,
+              "inputBytes": 2538,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 6820,
+                "instructionBytes": 3321,
+                "inputBytes": 2538,
+                "toolBytes": 0,
+                "outputSchemaBytes": 0,
+                "requests": []
+              }
+            }
+          }
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "deteccion_intencion",
+        "timing_ms": {
+          "total": 14767,
+          "load_plan": 8,
+          "response_classification": 2187,
+          "prepare_working_plan": 0,
+          "extraction": 6736,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 5627,
+          "save_plan": 17,
+          "router": 184,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1512,
+            "output_tokens": 109,
+            "total_tokens": 1621,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 167
+          },
+          "router": {
+            "input_tokens": 1470,
+            "output_tokens": 0,
+            "total_tokens": 1470
+          },
+          "extraction": {
+            "input_tokens": 4396,
+            "output_tokens": 513,
+            "total_tokens": 4909,
+            "cached_input_tokens": 3636,
+            "cache_write_input_tokens": 757
+          },
+          "reply": {
+            "input_tokens": 6765,
+            "output_tokens": 43,
+            "total_tokens": 6808,
+            "cached_input_tokens": 4174,
+            "cache_write_input_tokens": 2585
+          },
+          "total": {
+            "input_tokens": 14143,
+            "output_tokens": 665,
+            "total_tokens": 14808,
+            "cached_input_tokens": 9152,
+            "cache_write_input_tokens": 3509
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "agent_api",
+          "has_prior_outbound_message": false,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "question_or_request",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "aclarar_pedir_faltante",
+          "routeKind": "clarify_missing_fields",
+          "providerSearchMode": "none",
+          "presentationScope": "clarification",
+          "focusNeedCategory": "Fotografía y video",
+          "needsToSearch": [],
+          "needsToPresent": [],
+          "stopReason": "location",
+          "persistReason": "aclarar_pedir_faltante",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "clarify_missing_fields",
+        "presentation_scope": "clarification",
+        "session_focus_used": false,
+        "session_focus_key_present": true,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.88,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": "corporativo",
+          "vendor_category": "Fotografía y video",
+          "vendor_categories": [
+            "Fotografía y video"
+          ],
+          "active_need_category": "Fotografía y video",
+          "location": null,
+          "budget_signal": null,
+          "guest_range": "201+",
+          "selected_provider_hints": [],
+          "preferences": [
+            "producción audiovisual"
+          ],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 0,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Necesita producción audiovisual para un evento corporativo de 200 asistentes.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "aclarar_pedir_faltante",
+          "lifecycle_state": "active",
+          "event_type": "corporativo",
+          "vendor_category": "Fotografía y video",
+          "active_need_category": "Fotografía y video",
+          "location": null,
+          "budget_signal": null,
+          "guest_range": "101-200",
+          "provider_need_categories": [
+            "Fotografía y video"
+          ],
+          "provider_need_count": 1,
+          "provider_need_statuses": [
+            {
+              "category": "Fotografía y video",
+              "status": "search_ready",
+              "has_recommendations": false,
+              "selected_provider_ids": []
+            }
+          ],
+          "selected_provider_ids": [],
+          "missing_fields": [
+            "location"
+          ],
+          "conversation_summary_preview": "Necesita producción audiovisual para un evento corporativo de 200 asistentes.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "empty",
+          "context_source": "agent_api",
+          "retrieved_message_count": 0,
+          "recent_message_count": 0,
+          "excluded_current_message_count": 0,
+          "directions": [],
+          "sources": [],
+          "entry_source": null
+        },
+        "continuity_state": "new",
+        "welcome_allowed": true,
+        "history_status": "empty",
+        "has_prior_outbound": false,
+        "requested_operation": "provider.plan",
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 8456,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M61DNED6NDMGFQJQVYS6BEDT",
+        "conversation_hash": "17a3ef1a326441299dd61e49a04dd3c99f7ec79b3981e5c5a43693ba2df20ec2",
+        "runtime_latency_ms": 14767,
+        "extraction_latency_ms": 6736,
+        "compose_latency_ms": 5627,
+        "tools_called_count": 4,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 14808,
+        "cached_input_tokens": 9152,
+        "cache_hit_rate": 0.6471045747012656,
+        "extraction_to_compose_ratio": 1.197085480717967,
+        "captured_at": "2026-10-28T14:12:14.893Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "aclarar_pedir_faltante",
+        "lifecycle_state": "active",
+        "event_type": "corporativo",
+        "vendor_category": "Fotografía y video",
+        "active_need_category": "Fotografía y video",
+        "location": null,
+        "budget_signal": null,
+        "guest_range": "101-200",
+        "provider_needs": [
+          {
+            "category": "Fotografía y video",
+            "status": "search_ready",
+            "recommended_provider_ids": [],
+            "selected_provider_ids": []
+          }
+        ],
+        "selected_provider_ids": [],
+        "missing_fields": [
+          "location"
+        ]
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": true
+        }
+      },
+      "latencyMs": 15998
+    }
+  ]
+}

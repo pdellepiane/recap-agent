@@ -1,0 +1,44 @@
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import { z } from 'zod';
+import { masterProtocolSchema, summarizeMasterResults } from '../src/evals/master-study';
+
+const firstDir = 'analysis/july-breadth-recovery-2026-10-28';
+const continuationDir = 'analysis/july-breadth-unstarted-continuation-2026-10-29';
+const schema = z.object({runId:z.string(),results:z.array(z.object({caseId:z.string(),status:z.enum(['passed','failed','errored','skipped']),hardGatePassed:z.boolean(),turns:z.array(z.unknown()),planDiffSummary:z.array(z.string())}))});
+const firstBytes = fs.readFileSync(`${firstDir}/artifacts/master-live-run/report.json`);
+const first = schema.parse(JSON.parse(firstBytes.toString()) as unknown);
+const next = schema.parse(JSON.parse(fs.readFileSync(`${continuationDir}/artifacts/report.json`,'utf8')) as unknown);
+const selection = z.object({originalRunId:z.string(),originalReportSha256:z.string(),cases:z.array(z.object({caseId:z.string(),originalExecutionId:z.string()})).length(40)}).parse(JSON.parse(fs.readFileSync(`${continuationDir}/selection.json`,'utf8')) as unknown);
+if (first.runId !== selection.originalRunId || crypto.createHash('sha256').update(firstBytes).digest('hex') !== selection.originalReportSha256) throw new Error('Recovery report does not match selection.');
+const identity = z.object({inputsUnchanged:z.literal(true),deploymentUnchanged:z.literal(true)}).parse(JSON.parse(fs.readFileSync(`${continuationDir}/identity-after.json`,'utf8')) as unknown);
+void identity;
+const frozen = z.object({protocol:masterProtocolSchema,deployment:z.object({codeSha256:z.string()}),schedule:z.array(z.object({caseId:z.string(),repetition:z.number()}))}).parse(JSON.parse(fs.readFileSync(`${firstDir}/frozen-master.json`,'utf8')) as unknown);
+const mapping = z.array(z.object({id:z.string(),stratum:z.string(),routeFamily:z.string(),fixture:z.string(),julyId:z.string()})).parse(JSON.parse(fs.readFileSync(`${firstDir}/july-scenario-mapping.json`,'utf8')) as unknown);
+const original = new Map(first.results.map(r=>[r.caseId,r]));
+const continued = new Map(next.results.map(r=>[r.caseId,r]));
+if (original.size !== 150 || continued.size !== 40 || selection.cases.length !== 40) throw new Error('Unexpected or duplicate report IDs.');
+const selectedByOriginal = new Map(selection.cases.map(c=>[c.originalExecutionId,c]));
+if (selectedByOriginal.size !== 40 || new Set(selection.cases.map(c=>c.caseId)).size !== 40) throw new Error('Duplicate continuation mapping.');
+const rows = frozen.schedule.map(s=>{
+  const executionId = `${s.caseId}.master_r${s.repetition}`;
+  const old = original.get(executionId);
+  if (!old) throw new Error(`Missing original ${executionId}`);
+  const selected = selectedByOriginal.get(executionId);
+  let outcome = old; let phase = 'recovery';
+  if (selected) {
+    if (selected.caseId !== s.caseId || old.status !== 'errored' || old.turns.length !== 0 || !old.planDiffSummary.some(m=>m.includes('deadline stopped admissions before this case started'))) throw new Error(`Not a proved unstarted case: ${executionId}`);
+    const replay = continued.get(s.caseId); if (!replay) throw new Error(`Missing continuation: ${s.caseId}`);
+    outcome = replay; phase = 'continuation';
+  } else if (old.status === 'errored' && old.planDiffSummary.some(m=>m.includes('deadline stopped admissions before this case started'))) throw new Error(`Unmapped unstarted ${executionId}`);
+  if (outcome.status !== 'passed' && outcome.status !== 'failed') throw new Error(`Unexpected unfinished outcome: ${executionId}`);
+  const scenario = mapping.find(m=>m.id===s.caseId); if (!scenario) throw new Error(`Missing scenario mapping ${s.caseId}`);
+  return {executionId,caseId:s.caseId,repetition:s.repetition,julyId:scenario.julyId,stratum:scenario.stratum,routeFamily:scenario.routeFamily,fixture:scenario.fixture,phase,status:outcome.status,passed:outcome.status==='passed' && outcome.hardGatePassed};
+});
+if (rows.length !== 150 || new Set(rows.map(r=>r.executionId)).size !== 150) throw new Error('Combined schedule is incomplete or duplicated.');
+const outcomes = new Map<string,boolean[]>();for(const r of rows) outcomes.set(r.caseId,[...(outcomes.get(r.caseId)??[]),r.passed]);
+const aggregate = summarizeMasterResults(frozen.protocol,outcomes);
+const grouped = (key:'stratum'|'routeFamily') => [...new Set(rows.map(r=>r[key]))].sort().map(value=>({[key]:value,scheduled:rows.filter(r=>r[key]===value).length,passed:rows.filter(r=>r[key]===value && r.passed).length}));
+const result = {label:'one prespecified July-breadth protocol, two separate execution phases', runIds:[first.runId,next.runId], deploymentCodeSha256:frozen.deployment.codeSha256, integrity:'40 continuation cases mapped one-to-one to previously unstarted repetitions; source and deployment identities unchanged', ...aggregate, phaseCounts:{recovery:rows.filter(r=>r.phase==='recovery').length,continuation:rows.filter(r=>r.phase==='continuation').length}, eventGroups:grouped('stratum'), routeFamilies:grouped('routeFamily'), caveat:'The phases ran on different dates with a live provider catalog that can change. This is not a single contiguous run, a controlled comparison with July V4, or a measure of general response faithfulness.', rows};
+fs.writeFileSync(`${continuationDir}/combined-study-summary.json`,JSON.stringify(result,null,2)+'\n');
+console.log(JSON.stringify({...result,rows:undefined},null,2));

@@ -1,0 +1,89 @@
+id: live_behavior.july_breadth_social_05
+suite: live_behavior_regression
+version: 1
+description: "July breadth study.social.05: Select graduation music option."
+tags:
+  - live
+  - behavior
+  - july-breadth
+  - social
+  - selection
+targetModes:
+  - live_lambda
+backendFixture:
+  scenario: master-provider-live-public
+inputs:
+  - text: Necesito música para graduación en Lima para 100 personas.
+    channel: whatsapp
+    sessionId: live_behavior.july_breadth_social_05
+    backendFixture:
+      scenario: master-provider-live-public
+  - text: Elijo la primera opción.
+    channel: whatsapp
+    sessionId: live_behavior.july_breadth_social_05
+    backendFixture:
+      scenario: master-provider-live-public
+expectations:
+  - id: event-type-retained
+    type: plan_field_equals
+    path: event_type
+    expected: graduacion
+    turnIndex: 1
+    severity: hard
+  - id: answer-delivered
+    type: text_contains
+    regex:
+      - "[\\s\\S]+"
+    turnIndex: 1
+    severity: hard
+  - id: no-provider-quote-without-explicit-date
+    type: fixture_effect_count
+    operation: provider.quote.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: no-unrequested-rsvp
+    type: fixture_effect_count
+    operation: rsvp.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: no-unrequested-handoff
+    type: fixture_effect_count
+    operation: handoff.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: requested-needs-retained
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: Música
+    turnIndex: 1
+    severity: hard
+  - id: provider-selection-recorded
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: Música
+        status: selected
+    turnIndex: 1
+    severity: hard
+scorers:
+  - id: objective-obligations
+    type: expectation_pass_rate
+    weight: 1
+budget:
+  maxTurns: 2
+notes:
+  - Derived from study.social.05, route selection; prompts are preserved,
+    assertions use current objective contracts, so results are not directly
+    comparable to July.
+  - Live public provider reads; private customer reads and all SE effects are
+    mocked.
+  - For selection, the selected state is checked but correctness of the first
+    displayed provider identity is not independently verified. Other unscored
+    semantic outcomes must not be inferred.

@@ -1,0 +1,606 @@
+{
+  "runId": "eval-2026-10-28T02-18-49-459Z-91b952cc",
+  "caseId": "live_behavior.master_provider_live_selection.master_r1",
+  "suite": "live_behavior_regression",
+  "target": "live_lambda",
+  "configLabel": "live_lambda",
+  "status": "passed",
+  "hardGatePassed": true,
+  "finalScore": 1,
+  "totalLatencyMs": 13510,
+  "totalToolCalls": 1,
+  "nodeTransitions": [
+    "recomendar->seguir_refinando_guardar_plan"
+  ],
+  "planDiffSummary": [
+    "current_node=\"seguir_refinando_guardar_plan\"",
+    "intent=\"confirmar_proveedor\"",
+    "event_type=\"boda\"",
+    "vendor_category=\"Catering\"",
+    "active_need_category=\"Catering\"",
+    "location=\"Lima\"",
+    "guest_range=\"51-100\"",
+    "selected_provider_ids=[102]",
+    "provider_needs=Catering:selected"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/.eval-runs/eval-2026-10-28T02-18-49-459Z-91b952cc/artifacts/live_lambda/live_behavior.master_provider_live_selection.master_r1.json"
+  },
+  "expectationResults": [
+    {
+      "id": "no-real-or-requested-submission",
+      "type": "tool_usage",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Tool usage matched expectations."
+    },
+    {
+      "id": "requested-real-provider-selected-only-in-local-plan",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field selected_provider_ids matched exactly."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "objective-obligations",
+      "type": "expectation_pass_rate",
+      "score": 1,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 2 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 1,
+    "avg_latency_ms": 13510,
+    "p95_latency_ms": 13510,
+    "tool_calls_total": 1,
+    "unique_tools_called": 1,
+    "tool_call_rate_per_turn": 1,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.1724137931034483,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 12696,
+    "cache_hit_rate": 0.6758752281400365,
+    "input_tokens": 12054,
+    "cached_input_tokens": 8147,
+    "cache_write_input_tokens": 3898,
+    "uncached_input_tokens": 3907,
+    "usage_known": true
+  },
+  "timing": {
+    "queueWaitMs": 290198,
+    "setupMs": 0,
+    "turnMs": 15745,
+    "snapshotMs": 6,
+    "teardownMs": 0,
+    "judgeWaitMs": 0,
+    "judgeApiMs": 0,
+    "reportWriteMs": 0,
+    "makespanMs": 0
+  },
+  "judgeMetrics": {
+    "modelCalls": 0,
+    "retryCount": 0,
+    "rateLimitCount": 0,
+    "tokensUnknown": false,
+    "openaiSdk": "7.43.0",
+    "judgeModels": []
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Elijo Fiorella Giulia para Catering. Guárdalo como mi proveedor elegido, sin enviar cotización todavía.",
+        "sessionId": "live_behavior.master_provider_live_selection",
+        "backendFixture": {
+          "scenario": "master-provider-live-public"
+        }
+      },
+      "outputText": "Listo, Fiorella Giulia quedó guardada como tu proveedor elegido para Catering. No enviaré ninguna cotización por ahora.",
+      "deliveredText": "Listo, Fiorella Giulia quedó guardada como tu proveedor elegido para Catering. No enviaré ninguna cotización por ahora.",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "1ec0b68dda8626899e25c0b7f1895f535d39fee3a7bff3c70e4f6e3b437c446f",
+        "deliveredSha256": "1ec0b68dda8626899e25c0b7f1895f535d39fee3a7bff3c70e4f6e3b437c446f",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "seguir_refinando_guardar_plan",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 10,
+          "attempts": 1
+        },
+        "trace_id": "01M6054G0Y4NMEEGVTR6TNZ6GH",
+        "conversation_id": null,
+        "plan_id": "285b46ff-0e36-444b-942e-7bfe27a813ad",
+        "previous_node": "recomendar",
+        "next_node": "seguir_refinando_guardar_plan",
+        "node_path": [
+          "recomendar",
+          "existe_plan_guardado",
+          "usuario_elige_proveedor",
+          "usuario_elige_proveedor",
+          "anadir_a_proveedores_recomendados",
+          "seguir_refinando_guardar_plan"
+        ],
+        "intent": "confirmar_proveedor",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "9579d9dcb7c9",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/domain_scope.txt",
+          "shared/flow_discipline.txt"
+        ],
+        "tools_considered": [
+          "classify_reply_delivery",
+          "get_provider_detail"
+        ],
+        "tools_called": [
+          "classify_reply_delivery"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 102,
+            "title": "Fiorella Giulia",
+            "slug": "fiorella-giulia",
+            "category": "Catering",
+            "location": "Perú",
+            "priceLevel": "mid",
+            "rating": "5.0",
+            "detailUrl": "https://sinenvolturas.com/proveedores/fiorella-giulia",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "Asesoría 100% gratis",
+            "promoSummary": "Bono 100% asesoría gratis.\r\nTe regalamos la decoración de la zona de Novios o la zona de bienvenida",
+            "descriptionSnippet": "Fiorella Giulia es un servicio especializado en la asesoría y diseño de espacios para matrimonios y eventos, creando propuestas estéticas que elevan la experiencia de cada celebración.",
+            "serviceHighlights": [
+              "Asesoría en diseño y decoración de eventos",
+              "Diseño de espacios para matrimonios",
+              "Decoración de zonas clave (novios, bienvenida, etc.)",
+              "Propuestas personalizadas según el estilo del evento"
+            ],
+            "termsHighlights": [
+              "Incluye la decoración de la zona de novios o la zona de bienvenida.",
+              "Para acceder al beneficio, es necesario ser cliente de Sin Envolturas.",
+              "El beneficio debe ser comunicado antes de concretar una reunión.",
+              "Sujeto a disponibilidad."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Fiorella Giulia es un servicio especializado en la asesoría y diseño de espacios para matrimonios y eventos, creando propuestas estéticas que elevan la experiencia de cada celebración.",
+              "Servicios que ofrece: Asesoría en diseño y decoración de eventos",
+              "Servicios que ofrece: Diseño de espacios para matrimonios",
+              "Servicios que ofrece: Decoración de zonas clave (novios, bienvenida, etc.)",
+              "Servicios que ofrece: Propuestas personalizadas según el estilo del evento",
+              "Términos  y condiciones: Incluye la decoración de la zona de novios o la zona de bienvenida.",
+              "Términos  y condiciones: Para acceder al beneficio, es necesario ser cliente de Sin Envolturas.",
+              "Términos  y condiciones: El beneficio debe ser comunicado antes de concretar una reunión.",
+              "Términos  y condiciones: Sujeto a disponibilidad.",
+              "Términos y condiciones: Incluye la decoración de la zona de novios o la zona de bienvenida.",
+              "Términos y condiciones: Para acceder al beneficio, es necesario ser cliente de Sin Envolturas.",
+              "Términos y condiciones: El beneficio debe ser comunicado antes de concretar una reunión.",
+              "Términos y condiciones: Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Fiorella Giulia es un servicio especializado en la asesoría y diseño de espacios para matrimonios y eventos, creando propuestas estéticas que elevan la experiencia de cada celebración."
+          }
+        ],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [
+            {
+              "provider_id": 102,
+              "category": "Catering",
+              "has_title": true,
+              "has_hint": true
+            }
+          ],
+          "selected_provider_hints_count": 1,
+          "provider_plan_operation_types": [
+            "select_provider"
+          ],
+          "provider_plan_operation_categories": [
+            "Catering"
+          ]
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 102,
+            "category": "Catering",
+            "location": "Perú",
+            "retrieval_source": null,
+            "retrieval_score": null,
+            "fit_score": null
+          }
+        ],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_004cd3d12babb7c4006ae15caf6bf487d28960a416a331e290",
+            "requestId": "req_23669ab394f340e3b8a85cc21f41067c",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 721,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 7598,
+                "instructionBytes": 0,
+                "inputBytes": 5771,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_02ba1c0132a616c4006ae15cb3daac87d2ac907721daba1f78",
+            "requestId": "req_87ec243734c343a98b9d5e5fe37597d0",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 10050,
+              "inputBytes": 3571,
+              "toolCount": 0,
+              "schemaPropertyCount": 36,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 35401,
+                "instructionBytes": 10163,
+                "inputBytes": 3863,
+                "toolBytes": 2,
+                "outputSchemaBytes": 21111,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_0398b2cbce117395006ae15cb8a38487d2a03c881637395e55",
+            "requestId": "req_a3fb50e989f24a479a4b9ba5563ed6f9",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 2588,
+              "inputBytes": 9026,
+              "toolCount": 1,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 13451,
+                "instructionBytes": 2624,
+                "inputBytes": 9883,
+                "toolBytes": 343,
+                "outputSchemaBytes": 313,
+                "requests": []
+              }
+            }
+          },
+          "router": null
+        },
+        "recommendation_funnel": {
+          "available_candidates": 1,
+          "context_candidates": 1,
+          "context_candidate_ids": [
+            102
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "seguir_refinando_guardar_plan",
+        "timing_ms": {
+          "total": 13122,
+          "load_plan": 26,
+          "response_classification": 4260,
+          "prepare_working_plan": 0,
+          "extraction": 4886,
+          "apply_extraction": 15,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 3914,
+          "save_plan": 13,
+          "router": 0,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1509,
+            "output_tokens": 138,
+            "total_tokens": 1647,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 164
+          },
+          "router": null,
+          "extraction": {
+            "input_tokens": 7664,
+            "output_tokens": 459,
+            "total_tokens": 8123,
+            "cached_input_tokens": 6805,
+            "cache_write_input_tokens": 856
+          },
+          "reply": {
+            "input_tokens": 2881,
+            "output_tokens": 45,
+            "total_tokens": 2926,
+            "cached_input_tokens": 0,
+            "cache_write_input_tokens": 2878
+          },
+          "total": {
+            "input_tokens": 12054,
+            "output_tokens": 642,
+            "total_tokens": 12696,
+            "cached_input_tokens": 8147,
+            "cache_write_input_tokens": 3898
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "local_plan",
+          "has_prior_outbound_message": false,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "other_actionable",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "seguir_refinando_guardar_plan",
+          "routeKind": "apply_selection",
+          "providerSearchMode": "none",
+          "presentationScope": "none",
+          "focusNeedCategory": "Catering",
+          "needsToSearch": [],
+          "needsToPresent": [],
+          "stopReason": null,
+          "persistReason": "seguir_refinando_guardar_plan",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "apply_selection",
+        "presentation_scope": "none",
+        "session_focus_used": false,
+        "session_focus_key_present": true,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.99,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": null,
+          "vendor_category": "Catering",
+          "vendor_categories": [
+            "Catering"
+          ],
+          "active_need_category": "Catering",
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "selected_provider_hints": [
+            "Fiorella Giulia"
+          ],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 0,
+          "provider_plan_operations_count": 1,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Eligió a Fiorella Giulia para Catering y pidió guardarla como proveedor elegido, sin enviar cotización.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "seguir_refinando_guardar_plan",
+          "lifecycle_state": "active",
+          "event_type": "boda",
+          "vendor_category": "Catering",
+          "active_need_category": "Catering",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "51-100",
+          "provider_need_categories": [
+            "Catering"
+          ],
+          "provider_need_count": 1,
+          "provider_need_statuses": [
+            {
+              "category": "Catering",
+              "status": "selected",
+              "has_recommendations": true,
+              "selected_provider_ids": [
+                102
+              ]
+            }
+          ],
+          "selected_provider_ids": [
+            102
+          ],
+          "missing_fields": [],
+          "conversation_summary_preview": "Eligió a Fiorella Giulia para Catering y pidió guardarla como proveedor elegido, sin enviar cotización.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "missing_phone_number",
+          "context_source": "local_plan",
+          "retrieved_message_count": 0,
+          "recent_message_count": 0,
+          "excluded_current_message_count": 0,
+          "directions": [],
+          "sources": [],
+          "entry_source": null
+        },
+        "continuity_state": "continuing",
+        "welcome_allowed": false,
+        "history_status": "missing_phone_number",
+        "has_prior_outbound": false,
+        "requested_operation": "provider.plan",
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 10255,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M6054G0Y4NMEEGVTR6TNZ6GH",
+        "conversation_hash": "25aed2bd0e63b87f992fe016d74dbf3ad52120df0f75c0138c5977c656e9eb97",
+        "runtime_latency_ms": 13122,
+        "extraction_latency_ms": 4886,
+        "compose_latency_ms": 3914,
+        "tools_called_count": 1,
+        "provider_results_count": 1,
+        "recommendation_context_candidates": 1,
+        "recommendation_presentation_limit": 6,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 12696,
+        "cached_input_tokens": 8147,
+        "cache_hit_rate": 0.6758752281400365,
+        "extraction_to_compose_ratio": 1.2483392948390393,
+        "captured_at": "2026-10-28T02:23:56.454Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "seguir_refinando_guardar_plan",
+        "lifecycle_state": "active",
+        "event_type": "boda",
+        "vendor_category": "Catering",
+        "active_need_category": "Catering",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": "51-100",
+        "provider_needs": [
+          {
+            "category": "Catering",
+            "status": "selected",
+            "recommended_provider_ids": [
+              102
+            ],
+            "selected_provider_ids": [
+              102
+            ]
+          }
+        ],
+        "selected_provider_ids": [
+          102
+        ],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": false
+        }
+      },
+      "latencyMs": 13510
+    }
+  ],
+  "startedAt": "2026-10-28T02:23:56.826Z",
+  "completedAt": "2026-10-28T02:23:56.827Z"
+}

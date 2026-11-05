@@ -1,0 +1,1267 @@
+{
+  "runId": "eval-2026-11-05T16-01-27-136Z-2eace95d",
+  "caseId": "live_behavior.july_breadth_wedding_10_phonefixed.master_r2",
+  "suite": "live_behavior_regression",
+  "target": "live_lambda",
+  "configLabel": "live_lambda",
+  "status": "passed",
+  "hardGatePassed": true,
+  "finalScore": 1,
+  "totalLatencyMs": 31195,
+  "totalToolCalls": 13,
+  "nodeTransitions": [
+    "contacto_inicial->recomendar",
+    "recomendar->recomendar"
+  ],
+  "planDiffSummary": [
+    "current_node=\"recomendar\"",
+    "intent=\"refinar_busqueda\"",
+    "event_type=\"boda\"",
+    "vendor_category=\"Locales\"",
+    "active_need_category=\"Locales\"",
+    "location=\"Lima Metropolitana\"",
+    "budget_signal=\"presupuesto medio\"",
+    "guest_range=\"51-100\"",
+    "provider_needs=Locales:shortlisted"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/.eval-runs/eval-2026-11-05T16-01-27-136Z-2eace95d/artifacts/live_lambda/live_behavior.july_breadth_wedding_10_phonefixed.master_r2.json"
+  },
+  "expectationResults": [
+    {
+      "id": "event-type-retained",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "answer-delivered",
+      "type": "text_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Text containment checks passed."
+    },
+    {
+      "id": "no-provider-quote-without-explicit-date",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture provider.quote.write attempts=0 successes=0 replays=0 outcome=none."
+    },
+    {
+      "id": "no-unrequested-rsvp",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture rsvp.write attempts=0 successes=0 replays=0 outcome=none."
+    },
+    {
+      "id": "no-unrequested-handoff",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture handoff.write attempts=0 successes=0 replays=0 outcome=none."
+    },
+    {
+      "id": "requested-needs-retained",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "objective-obligations",
+      "type": "expectation_pass_rate",
+      "score": 1,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 6 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 2,
+    "avg_latency_ms": 15597.5,
+    "p95_latency_ms": 16375,
+    "tool_calls_total": 13,
+    "unique_tools_called": 7,
+    "tool_call_rate_per_turn": 6.5,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.3103448275862069,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 33581,
+    "cache_hit_rate": 0.6198944941087279,
+    "input_tokens": 31657,
+    "cached_input_tokens": 19624,
+    "cache_write_input_tokens": 10540,
+    "uncached_input_tokens": 12033,
+    "usage_known": true
+  },
+  "timing": {
+    "queueWaitMs": 3399499,
+    "setupMs": 0,
+    "turnMs": 34538,
+    "snapshotMs": 12,
+    "teardownMs": 0,
+    "judgeWaitMs": 0,
+    "judgeApiMs": 0,
+    "reportWriteMs": 0,
+    "makespanMs": 0
+  },
+  "judgeMetrics": {
+    "modelCalls": 0,
+    "retryCount": 0,
+    "rateLimitCount": 0,
+    "tokensUnknown": false,
+    "openaiSdk": "7.43.0",
+    "judgeModels": []
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Necesito un local para boda en Lima para 100 personas.",
+        "channel": "whatsapp",
+        "sessionId": "live_behavior.july_breadth_wedding_10_phonefixed",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "master-provider-live-public"
+        }
+      },
+      "outputText": "Para tu boda en Lima, encontré esta opción:\n\n1. Casa Club 147\n Ofrece alquiler de local y espacios para matrimonios; la ficha la describe con ambientes amplios y cómodos. Tiene un 10% de descuento en el alquiler para clientes de Sin Envolturas, sujeto a disponibilidad.\n Ubicación: Perú.\n Precio: $$$.\n Promo: 10% Off Alquiler local.\n Nota: No se indica la capacidad para 100 personas ni el precio. Te recomiendo confirmar ambos antes de avanzar.\n\n Ficha: https://sinenvolturas.com/proveedores/casa-club-147",
+      "deliveredText": "Para tu boda en Lima, encontré esta opción:\n\n1. Casa Club 147\n Ofrece alquiler de local y espacios para matrimonios; la ficha la describe con ambientes amplios y cómodos. Tiene un 10% de descuento en el alquiler para clientes de Sin Envolturas, sujeto a disponibilidad.\n Ubicación: Perú.\n Precio: $$$.\n Promo: 10% Off Alquiler local.\n Nota: No se indica la capacidad para 100 personas ni el precio. Te recomiendo confirmar ambos antes de avanzar.\n\n Ficha: https://sinenvolturas.com/proveedores/casa-club-147",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "abfe92141a3c57478dd09d9ea8511ee445bd107957011555d973806638bafa6c",
+        "deliveredSha256": "abfe92141a3c57478dd09d9ea8511ee445bd107957011555d973806638bafa6c",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "recomendar",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 5,
+          "attempts": 1
+        },
+        "trace_id": "01M6PABF8JP44M33W7G1WWPS6Y",
+        "conversation_id": null,
+        "plan_id": "01M6PAB0A53FKRW1RG4AK81GEJ",
+        "previous_node": "contacto_inicial",
+        "next_node": "recomendar",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "minimos_para_buscar",
+          "buscar_proveedores",
+          "busqueda_exitosa",
+          "hay_resultados",
+          "recomendar"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "9579d9dcb7c9",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/domain_scope.txt",
+          "shared/flow_discipline.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "search_providers_from_plan",
+          "get_provider_detail",
+          "get_related_providers",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "search_providers_from_plan",
+          "get_provider_detail",
+          "get_related_providers",
+          "list_provider_reviews"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "search_providers_from_plan",
+            "input": "{\"projection_version\":1}"
+          },
+          {
+            "tool": "get_provider_detail",
+            "input": "{\"projection_version\":1,\"provider_id\":147}"
+          },
+          {
+            "tool": "get_related_providers",
+            "input": "{\"projection_version\":1,\"provider_id\":147}"
+          },
+          {
+            "tool": "list_provider_reviews",
+            "input": "{\"projection_version\":1,\"provider_id\":147}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "search_providers_from_plan",
+            "output": "{\"projection_version\":1,\"result_kind\":\"collection\",\"count\":1,\"provider_ids\":[147]}"
+          },
+          {
+            "tool": "list_provider_reviews",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "get_provider_detail",
+            "output": "{\"projection_version\":1,\"result_kind\":\"detail\",\"provider_id\":147,\"found\":true}"
+          },
+          {
+            "tool": "get_related_providers",
+            "output": "[omitted]"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 147,
+            "title": "Casa Club 147",
+            "slug": "casa-club-147",
+            "category": "Locales",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Casa Club 147 encaja con Locales según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+            "websiteUrl": "https://casaclub147.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off Alquiler local",
+            "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "serviceHighlights": [
+              "Alquiler de local para eventos",
+              "Espacios para matrimonios",
+              "Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Eventos institucionales",
+              "Alojamiento para hasta 32 personas"
+            ],
+            "termsHighlights": [
+              "Beneficio no transferible ni acumulable con otras promociones.",
+              "Sujeto a disponibilidad."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "Servicios que ofrece: Alquiler de local para eventos",
+              "Servicios que ofrece: Espacios para matrimonios",
+              "Servicios que ofrece: Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Servicios que ofrece: Eventos institucionales",
+              "Servicios que ofrece: Alojamiento para hasta 32 personas",
+              "Términos  y condiciones: Beneficio no transferible ni acumulable con otras promociones.",
+              "Términos  y condiciones: Sujeto a disponibilidad.",
+              "Términos y condiciones: Beneficio no transferible ni acumulable con otras promociones.",
+              "Términos y condiciones: Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "fitScore": 88,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7667714554245671,
+            "retrievalSource": "hybrid"
+          }
+        ],
+        "search_strategy": "search_from_plan",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 147,
+            "category": "Locales",
+            "location": "Perú",
+            "retrieval_source": "hybrid",
+            "retrieval_score": 0.7667714554245671,
+            "fit_score": 88
+          }
+        ],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_024c45a91bd6ff19006aecb5a2697087d1adcb466ae6286495",
+            "requestId": "req_bc4ad6df27804d5f9da6258250d20b8d",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 688,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 7565,
+                "instructionBytes": 0,
+                "inputBytes": 5738,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_039be9103fd016de006aecb5a45a7487d191ac1e3d673c733b",
+            "requestId": "req_f4ce74dd969b4e7d94dd69efe6260183",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 6855,
+              "inputBytes": 3114,
+              "toolCount": 0,
+              "schemaPropertyCount": 30,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 20801,
+                "instructionBytes": 6932,
+                "inputBytes": 3398,
+                "toolBytes": 2,
+                "outputSchemaBytes": 10207,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_05cbc5cd20676365006aecb5aef48487d193bc2cafd297f455",
+            "requestId": "req_1add4c8d5d9542199a0fd51fdc5dbe9a",
+            "model": "gpt-6-luna",
+            "attemptCount": 2,
+            "requestMetrics": {
+              "instructionBytes": 2588,
+              "inputBytes": 9167,
+              "toolCount": 3,
+              "schemaPropertyCount": 3,
+              "transport": {
+                "observedRequestCount": 2,
+                "totalPayloadBytes": 35093,
+                "instructionBytes": 5248,
+                "inputBytes": 25919,
+                "toolBytes": 2054,
+                "outputSchemaBytes": 1334,
+                "requests": []
+              }
+            }
+          },
+          "router": {
+            "responseId": null,
+            "requestId": "req_96ea84fde1ee41d4b8a3bc9c594d9019",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 3321,
+              "inputBytes": 2514,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 6796,
+                "instructionBytes": 3321,
+                "inputBytes": 2514,
+                "toolBytes": 0,
+                "outputSchemaBytes": 0,
+                "requests": []
+              }
+            }
+          }
+        },
+        "recommendation_funnel": {
+          "available_candidates": 1,
+          "context_candidates": 1,
+          "context_candidate_ids": [
+            147
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "recomendar",
+        "timing_ms": {
+          "total": 15315,
+          "load_plan": 6,
+          "response_classification": 1908,
+          "prepare_working_plan": 0,
+          "extraction": 6991,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 1152,
+          "provider_enrichment": 45,
+          "prompt_bundle_load": 0,
+          "compose_reply": 5025,
+          "save_plan": 16,
+          "router": 163,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1511,
+            "output_tokens": 106,
+            "total_tokens": 1617,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 166
+          },
+          "router": {
+            "input_tokens": 1469,
+            "output_tokens": 0,
+            "total_tokens": 1469
+          },
+          "extraction": {
+            "input_tokens": 4395,
+            "output_tokens": 606,
+            "total_tokens": 5001,
+            "cached_input_tokens": 3636,
+            "cache_write_input_tokens": 756
+          },
+          "reply": {
+            "input_tokens": 6858,
+            "output_tokens": 223,
+            "total_tokens": 7081,
+            "cached_input_tokens": 3042,
+            "cache_write_input_tokens": 3810
+          },
+          "total": {
+            "input_tokens": 14233,
+            "output_tokens": 935,
+            "total_tokens": 15168,
+            "cached_input_tokens": 8020,
+            "cache_write_input_tokens": 4732
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "agent_api",
+          "has_prior_outbound_message": false,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "question_or_request",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "recomendar",
+          "routeKind": "single_need_search",
+          "providerSearchMode": "single_need_from_plan",
+          "presentationScope": "single_need",
+          "focusNeedCategory": "Locales",
+          "needsToSearch": [
+            "Locales"
+          ],
+          "needsToPresent": [
+            "Locales"
+          ],
+          "stopReason": null,
+          "persistReason": "recomendar",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "single_need_search",
+        "presentation_scope": "single_need",
+        "session_focus_used": false,
+        "session_focus_key_present": true,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.98,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": "boda",
+          "vendor_category": "Locales",
+          "vendor_categories": [
+            "Locales"
+          ],
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "51-100",
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 1,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Busca un local para una boda en Lima para 100 personas.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "recomendar",
+          "lifecycle_state": "active",
+          "event_type": "boda",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "51-100",
+          "provider_need_categories": [
+            "Locales"
+          ],
+          "provider_need_count": 1,
+          "provider_need_statuses": [
+            {
+              "category": "Locales",
+              "status": "shortlisted",
+              "has_recommendations": true,
+              "selected_provider_ids": []
+            }
+          ],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "Busca un local para una boda en Lima para 100 personas.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "empty",
+          "context_source": "agent_api",
+          "retrieved_message_count": 0,
+          "recent_message_count": 0,
+          "excluded_current_message_count": 0,
+          "directions": [],
+          "sources": [],
+          "entry_source": null
+        },
+        "continuity_state": "new",
+        "welcome_allowed": true,
+        "history_status": "empty",
+        "has_prior_outbound": false,
+        "requested_operation": "provider.search",
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 11250,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M6PABF8JP44M33W7G1WWPS6Y",
+        "conversation_hash": "5402c3fcf1437adb4a585369a2a19b8280365cbd7a94626eb620f9793020ba98",
+        "runtime_latency_ms": 15315,
+        "extraction_latency_ms": 6991,
+        "compose_latency_ms": 5025,
+        "tools_called_count": 7,
+        "provider_results_count": 1,
+        "recommendation_context_candidates": 1,
+        "recommendation_presentation_limit": 6,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 15168,
+        "cached_input_tokens": 8020,
+        "cache_hit_rate": 0.5634792383896579,
+        "extraction_to_compose_ratio": 1.3912437810945273,
+        "captured_at": "2026-11-05T16:58:25.433Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "recomendar",
+        "lifecycle_state": "active",
+        "event_type": "boda",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": "51-100",
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "shortlisted",
+            "recommended_provider_ids": [
+              147
+            ],
+            "selected_provider_ids": []
+          }
+        ],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": true
+        }
+      },
+      "latencyMs": 16375
+    },
+    {
+      "turnIndex": 1,
+      "input": {
+        "text": "Si no encuentras coincidencia exacta, amplía a Lima Metropolitana y conserva el presupuesto medio.",
+        "channel": "whatsapp",
+        "sessionId": "live_behavior.july_breadth_wedding_10_phonefixed",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "master-provider-live-public"
+        }
+      },
+      "outputText": "Amplié la búsqueda, pero no encontré otra opción que coincida con Lima Metropolitana y presupuesto medio. Casa Club 147 ofrece espacios para matrimonios en Cieneguilla, aunque figura con precio alto; habría que confirmar si tiene capacidad para 100 personas y su precio. También puedo seguir buscando si quieres priorizar una de esas condiciones.\n\n1. Casa Club 147\n Ofrece alquiler de local y espacios para matrimonios en Cieneguilla, dentro de Lima Metropolitana. Tiene un 10% de descuento en el alquiler para clientes de Sin Envolturas, sujeto a disponibilidad.\n Ubicación: Perú.\n Precio: $$$.\n Promo: 10% Off Alquiler local.\n Nota: La ficha indica un nivel de precio alto, no medio, y no especifica capacidad para 100 personas ni precio.\n\n Ficha: https://sinenvolturas.com/proveedores/casa-club-147",
+      "deliveredText": "Amplié la búsqueda, pero no encontré otra opción que coincida con Lima Metropolitana y presupuesto medio. Casa Club 147 ofrece espacios para matrimonios en Cieneguilla, aunque figura con precio alto; habría que confirmar si tiene capacidad para 100 personas y su precio. También puedo seguir buscando si quieres priorizar una de esas condiciones.\n\n1. Casa Club 147\n Ofrece alquiler de local y espacios para matrimonios en Cieneguilla, dentro de Lima Metropolitana. Tiene un 10% de descuento en el alquiler para clientes de Sin Envolturas, sujeto a disponibilidad.\n Ubicación: Perú.\n Precio: $$$.\n Promo: 10% Off Alquiler local.\n Nota: La ficha indica un nivel de precio alto, no medio, y no especifica capacidad para 100 personas ni precio.\n\n Ficha: https://sinenvolturas.com/proveedores/casa-club-147",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "9622f37310244847fef1e71fea60ae549ff4abb4a32f14e7c6afcf7d0a53d5ab",
+        "deliveredSha256": "9622f37310244847fef1e71fea60ae549ff4abb4a32f14e7c6afcf7d0a53d5ab",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "recomendar",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 6,
+          "attempts": 1
+        },
+        "trace_id": "01M6PABZAX5STYX9GN6YRANVT7",
+        "conversation_id": null,
+        "plan_id": "01M6PAB0A53FKRW1RG4AK81GEJ",
+        "previous_node": "recomendar",
+        "next_node": "recomendar",
+        "node_path": [
+          "recomendar",
+          "existe_plan_guardado",
+          "refinar_criterios",
+          "minimos_para_buscar",
+          "buscar_proveedores",
+          "busqueda_exitosa",
+          "hay_resultados",
+          "recomendar"
+        ],
+        "intent": "refinar_busqueda",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "9579d9dcb7c9",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/domain_scope.txt",
+          "shared/flow_discipline.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "search_providers_from_plan",
+          "get_provider_detail",
+          "get_related_providers",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "search_providers_from_plan",
+          "get_provider_detail",
+          "get_related_providers"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "search_providers_from_plan",
+            "input": "{\"projection_version\":1}"
+          },
+          {
+            "tool": "get_provider_detail",
+            "input": "{\"projection_version\":1,\"provider_id\":147}"
+          },
+          {
+            "tool": "get_related_providers",
+            "input": "{\"projection_version\":1,\"provider_id\":147}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "search_providers_from_plan",
+            "output": "{\"projection_version\":1,\"result_kind\":\"collection\",\"count\":1,\"provider_ids\":[147]}"
+          },
+          {
+            "tool": "get_provider_detail",
+            "output": "{\"projection_version\":1,\"result_kind\":\"detail\",\"provider_id\":147,\"found\":true}"
+          },
+          {
+            "tool": "get_related_providers",
+            "output": "[omitted]"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 147,
+            "title": "Casa Club 147",
+            "slug": "casa-club-147",
+            "category": "Locales",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Casa Club 147 encaja con Locales según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+            "websiteUrl": "https://casaclub147.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off Alquiler local",
+            "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "serviceHighlights": [
+              "Alquiler de local para eventos",
+              "Espacios para matrimonios",
+              "Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Eventos institucionales",
+              "Alojamiento para hasta 32 personas"
+            ],
+            "termsHighlights": [
+              "Beneficio no transferible ni acumulable con otras promociones.",
+              "Sujeto a disponibilidad."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "Servicios que ofrece: Alquiler de local para eventos",
+              "Servicios que ofrece: Espacios para matrimonios",
+              "Servicios que ofrece: Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Servicios que ofrece: Eventos institucionales",
+              "Servicios que ofrece: Alojamiento para hasta 32 personas",
+              "Términos  y condiciones: Beneficio no transferible ni acumulable con otras promociones.",
+              "Términos  y condiciones: Sujeto a disponibilidad.",
+              "Términos y condiciones: Beneficio no transferible ni acumulable con otras promociones.",
+              "Términos y condiciones: Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "fitScore": 88,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7875634480131083,
+            "retrievalSource": "hybrid"
+          }
+        ],
+        "search_strategy": "search_from_plan",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 147,
+            "category": "Locales",
+            "location": "Perú",
+            "retrieval_source": "hybrid",
+            "retrieval_score": 0.7875634480131083,
+            "fit_score": 88
+          }
+        ],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_0a76cdc4b2ad2672006aecb5b387f887d1ac4bd5b1a0a4f814",
+            "requestId": "req_da2c402ec99b4546a86fcfe017847f38",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 1344,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 8249,
+                "instructionBytes": 0,
+                "inputBytes": 6422,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_096325fd66fe5027006aecb5b5760087d181a032579add3d24",
+            "requestId": "req_9fd42e5bd0ec4b258787f84f8f6dc325",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 10226,
+              "inputBytes": 5535,
+              "toolCount": 0,
+              "schemaPropertyCount": 37,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 37807,
+                "instructionBytes": 10339,
+                "inputBytes": 5946,
+                "toolBytes": 2,
+                "outputSchemaBytes": 21258,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_00bcad64fc6f8a06006aecb5be281887d1baf8e23358283816",
+            "requestId": "req_f8bfcaea90dd40eda63eacc40a49711b",
+            "model": "gpt-6-luna",
+            "attemptCount": 2,
+            "requestMetrics": {
+              "instructionBytes": 2588,
+              "inputBytes": 10733,
+              "toolCount": 3,
+              "schemaPropertyCount": 3,
+              "transport": {
+                "observedRequestCount": 2,
+                "totalPayloadBytes": 36147,
+                "instructionBytes": 5248,
+                "inputBytes": 26973,
+                "toolBytes": 2054,
+                "outputSchemaBytes": 1334,
+                "requests": []
+              }
+            }
+          },
+          "router": null
+        },
+        "recommendation_funnel": {
+          "available_candidates": 1,
+          "context_candidates": 1,
+          "context_candidate_ids": [
+            147
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "recomendar",
+        "timing_ms": {
+          "total": 14508,
+          "load_plan": 14,
+          "response_classification": 1869,
+          "prepare_working_plan": 0,
+          "extraction": 5765,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 1223,
+          "provider_enrichment": 40,
+          "prompt_bundle_load": 0,
+          "compose_reply": 5569,
+          "save_plan": 19,
+          "router": 0,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1672,
+            "output_tokens": 107,
+            "total_tokens": 1779,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 327
+          },
+          "router": null,
+          "extraction": {
+            "input_tokens": 8228,
+            "output_tokens": 649,
+            "total_tokens": 8877,
+            "cached_input_tokens": 6860,
+            "cache_write_input_tokens": 1365
+          },
+          "reply": {
+            "input_tokens": 7524,
+            "output_tokens": 233,
+            "total_tokens": 7757,
+            "cached_input_tokens": 3402,
+            "cache_write_input_tokens": 4116
+          },
+          "total": {
+            "input_tokens": 17424,
+            "output_tokens": 989,
+            "total_tokens": 18413,
+            "cached_input_tokens": 11604,
+            "cache_write_input_tokens": 5808
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "agent_api",
+          "has_prior_outbound_message": true,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "not_applicable",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "recomendar",
+          "routeKind": "single_need_search",
+          "providerSearchMode": "single_need_from_plan",
+          "presentationScope": "single_need",
+          "focusNeedCategory": "Locales",
+          "needsToSearch": [
+            "Locales"
+          ],
+          "needsToPresent": [
+            "Locales"
+          ],
+          "stopReason": null,
+          "persistReason": "recomendar",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "single_need_search",
+        "presentation_scope": "single_need",
+        "session_focus_used": true,
+        "session_focus_key_present": true,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.98,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": "boda",
+          "vendor_category": "Locales",
+          "vendor_categories": [
+            "Locales"
+          ],
+          "active_need_category": "Locales",
+          "location": "Lima Metropolitana",
+          "budget_signal": "presupuesto medio",
+          "guest_range": "51-100",
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 1,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Busca un local para boda en Lima para 100 personas; pide ampliar la búsqueda a Lima Metropolitana si no hay coincidencia exacta y conservar presupuesto medio.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "recomendar",
+          "lifecycle_state": "active",
+          "event_type": "boda",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": "Lima Metropolitana",
+          "budget_signal": "presupuesto medio",
+          "guest_range": "51-100",
+          "provider_need_categories": [
+            "Locales"
+          ],
+          "provider_need_count": 1,
+          "provider_need_statuses": [
+            {
+              "category": "Locales",
+              "status": "shortlisted",
+              "has_recommendations": true,
+              "selected_provider_ids": []
+            }
+          ],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "Busca un local para boda en Lima para 100 personas; pide ampliar la búsqueda a Lima Metropolitana si no hay coincidencia exacta y conservar presupuesto medio.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "available",
+          "context_source": "agent_api",
+          "retrieved_message_count": 2,
+          "recent_message_count": 2,
+          "excluded_current_message_count": 0,
+          "directions": [
+            "inbound",
+            "outbound"
+          ],
+          "sources": [
+            null,
+            null
+          ],
+          "entry_source": null
+        },
+        "continuity_state": "continuing",
+        "welcome_allowed": false,
+        "history_status": "available",
+        "has_prior_outbound": true,
+        "requested_operation": "provider.search",
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 10997,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M6PABZAX5STYX9GN6YRANVT7",
+        "conversation_hash": "5402c3fcf1437adb4a585369a2a19b8280365cbd7a94626eb620f9793020ba98",
+        "runtime_latency_ms": 14508,
+        "extraction_latency_ms": 5765,
+        "compose_latency_ms": 5569,
+        "tools_called_count": 6,
+        "provider_results_count": 1,
+        "recommendation_context_candidates": 1,
+        "recommendation_presentation_limit": 6,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 18413,
+        "cached_input_tokens": 11604,
+        "cache_hit_rate": 0.6659779614325069,
+        "extraction_to_compose_ratio": 1.0351948285149937,
+        "captured_at": "2026-11-05T16:58:41.893Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "recomendar",
+        "lifecycle_state": "active",
+        "event_type": "boda",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": "Lima Metropolitana",
+        "budget_signal": "presupuesto medio",
+        "guest_range": "51-100",
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "shortlisted",
+            "recommended_provider_ids": [
+              147
+            ],
+            "selected_provider_ids": []
+          }
+        ],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": true
+        }
+      },
+      "latencyMs": 14820
+    }
+  ],
+  "startedAt": "2026-11-05T16:58:43.199Z",
+  "completedAt": "2026-11-05T16:58:43.200Z"
+}

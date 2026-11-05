@@ -1,0 +1,1657 @@
+{
+  "runId": "eval-2026-11-05T16-01-27-136Z-2eace95d",
+  "caseId": "live_behavior.july_breadth_baby_shower_07_phonefixed.master_r2",
+  "configLabel": "live_lambda",
+  "lane": "parallel",
+  "phase": "snapshot",
+  "status": "passed",
+  "executionUncertain": false,
+  "writtenAt": "2026-11-05T17:01:42.503Z",
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Busco local para baby shower en Lima para 40 personas.",
+        "channel": "whatsapp",
+        "sessionId": "live_behavior.july_breadth_baby_shower_07_phonefixed",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "master-provider-live-public"
+        }
+      },
+      "outputText": "Para tu baby shower de 40 personas, Casa Club 147 en Cieneguilla ofrece alquiler de local y menciona celebraciones como showers. La ficha no confirma capacidad para 40; además, tiene una promoción del 10% sujeta a disponibilidad. ¿Quieres que te ayude a preparar una consulta sobre capacidad y cotización?\n\n1. Casa Club 147\n Ofrece alquiler de local para eventos sociales y menciona showers entre sus celebraciones. Tiene una promoción del 10% de descuento para clientes de Sin Envolturas, sujeta a disponibilidad.\n Ubicación: Perú.\n Precio: $$$.\n Promo: 10% Off Alquiler local.\n Nota: No se indica si el espacio tiene capacidad para 40 personas.\n\n Ficha: https://sinenvolturas.com/proveedores/casa-club-147",
+      "deliveredText": "Para tu baby shower de 40 personas, Casa Club 147 en Cieneguilla ofrece alquiler de local y menciona celebraciones como showers. La ficha no confirma capacidad para 40; además, tiene una promoción del 10% sujeta a disponibilidad. ¿Quieres que te ayude a preparar una consulta sobre capacidad y cotización?\n\n1. Casa Club 147\n Ofrece alquiler de local para eventos sociales y menciona showers entre sus celebraciones. Tiene una promoción del 10% de descuento para clientes de Sin Envolturas, sujeta a disponibilidad.\n Ubicación: Perú.\n Precio: $$$.\n Promo: 10% Off Alquiler local.\n Nota: No se indica si el espacio tiene capacidad para 40 personas.\n\n Ficha: https://sinenvolturas.com/proveedores/casa-club-147",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "03118691bcb19dcf4e5c96b54ce355d9ed76c4d6c0b04301c8b1bb0d6a8234f7",
+        "deliveredSha256": "03118691bcb19dcf4e5c96b54ce355d9ed76c4d6c0b04301c8b1bb0d6a8234f7",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "recomendar",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 4,
+          "attempts": 1
+        },
+        "trace_id": "01M6PAGP31KGW08ZRZD0XMH822",
+        "conversation_id": null,
+        "plan_id": "01M6PAG3472QJKQHWYAKHJTZB3",
+        "previous_node": "contacto_inicial",
+        "next_node": "recomendar",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "minimos_para_buscar",
+          "buscar_proveedores",
+          "busqueda_exitosa",
+          "hay_resultados",
+          "recomendar"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "9579d9dcb7c9",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/domain_scope.txt",
+          "shared/flow_discipline.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "search_providers_from_plan",
+          "get_provider_detail",
+          "get_related_providers",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "search_providers_from_plan",
+          "get_provider_detail",
+          "get_related_providers"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "search_providers_from_plan",
+            "input": "{\"projection_version\":1}"
+          },
+          {
+            "tool": "get_provider_detail",
+            "input": "{\"projection_version\":1,\"provider_id\":147}"
+          },
+          {
+            "tool": "get_related_providers",
+            "input": "{\"projection_version\":1,\"provider_id\":147}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "search_providers_from_plan",
+            "output": "{\"projection_version\":1,\"result_kind\":\"collection\",\"count\":1,\"provider_ids\":[147]}"
+          },
+          {
+            "tool": "get_provider_detail",
+            "output": "{\"projection_version\":1,\"result_kind\":\"detail\",\"provider_id\":147,\"found\":true}"
+          },
+          {
+            "tool": "get_related_providers",
+            "output": "[omitted]"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 147,
+            "title": "Casa Club 147",
+            "slug": "casa-club-147",
+            "category": "Locales",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Casa Club 147 encaja con Locales según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+            "websiteUrl": "https://casaclub147.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off Alquiler local",
+            "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "serviceHighlights": [
+              "Alquiler de local para eventos",
+              "Espacios para matrimonios",
+              "Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Eventos institucionales",
+              "Alojamiento para hasta 32 personas"
+            ],
+            "termsHighlights": [
+              "Beneficio no transferible ni acumulable con otras promociones.",
+              "Sujeto a disponibilidad."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "Servicios que ofrece: Alquiler de local para eventos",
+              "Servicios que ofrece: Espacios para matrimonios",
+              "Servicios que ofrece: Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Servicios que ofrece: Eventos institucionales",
+              "Servicios que ofrece: Alojamiento para hasta 32 personas",
+              "Términos  y condiciones: Beneficio no transferible ni acumulable con otras promociones.",
+              "Términos  y condiciones: Sujeto a disponibilidad.",
+              "Términos y condiciones: Beneficio no transferible ni acumulable con otras promociones.",
+              "Términos y condiciones: Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "fitScore": 88,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7783541554955824,
+            "retrievalSource": "hybrid"
+          }
+        ],
+        "search_strategy": "search_from_plan",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 147,
+            "category": "Locales",
+            "location": "Perú",
+            "retrieval_source": "hybrid",
+            "retrieval_score": 0.7783541554955824,
+            "fit_score": 88
+          }
+        ],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_045c14193909c345006aecb649419c87d18be8c6388bb0a458",
+            "requestId": "req_e40a58f63a7b4135afe804c3c5df8f1f",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 688,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 7565,
+                "instructionBytes": 0,
+                "inputBytes": 5738,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_033233383a89fb8e006aecb64b985c87d18a1916533f7b9604",
+            "requestId": "req_033de6fca5024483984d952a85374f26",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 6855,
+              "inputBytes": 3114,
+              "toolCount": 0,
+              "schemaPropertyCount": 30,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 20801,
+                "instructionBytes": 6932,
+                "inputBytes": 3398,
+                "toolBytes": 2,
+                "outputSchemaBytes": 10207,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_03500946c3465f3c006aecb6582af487d1b47f9c1466101953",
+            "requestId": "req_76976770d25148348dae6648b4872468",
+            "model": "gpt-6-luna",
+            "attemptCount": 3,
+            "requestMetrics": {
+              "instructionBytes": 2588,
+              "inputBytes": 9315,
+              "toolCount": 3,
+              "schemaPropertyCount": 3,
+              "transport": {
+                "observedRequestCount": 3,
+                "totalPayloadBytes": 50311,
+                "instructionBytes": 7872,
+                "inputBytes": 36550,
+                "toolBytes": 3081,
+                "outputSchemaBytes": 2001,
+                "requests": []
+              }
+            }
+          },
+          "router": {
+            "responseId": null,
+            "requestId": "req_2754be8dddab4f9297657edbc460c716",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 3321,
+              "inputBytes": 2514,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 6796,
+                "instructionBytes": 3321,
+                "inputBytes": 2514,
+                "toolBytes": 0,
+                "outputSchemaBytes": 0,
+                "requests": []
+              }
+            }
+          }
+        },
+        "recommendation_funnel": {
+          "available_candidates": 1,
+          "context_candidates": 1,
+          "context_candidate_ids": [
+            147
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "recomendar",
+        "timing_ms": {
+          "total": 19424,
+          "load_plan": 6,
+          "response_classification": 2413,
+          "prepare_working_plan": 0,
+          "extraction": 7654,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 1189,
+          "provider_enrichment": 44,
+          "prompt_bundle_load": 0,
+          "compose_reply": 7930,
+          "save_plan": 21,
+          "router": 160,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1511,
+            "output_tokens": 70,
+            "total_tokens": 1581,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 166
+          },
+          "router": {
+            "input_tokens": 1469,
+            "output_tokens": 0,
+            "total_tokens": 1469
+          },
+          "extraction": {
+            "input_tokens": 4395,
+            "output_tokens": 548,
+            "total_tokens": 4943,
+            "cached_input_tokens": 3636,
+            "cache_write_input_tokens": 756
+          },
+          "reply": {
+            "input_tokens": 10379,
+            "output_tokens": 213,
+            "total_tokens": 10592,
+            "cached_input_tokens": 6595,
+            "cache_write_input_tokens": 3775
+          },
+          "total": {
+            "input_tokens": 17754,
+            "output_tokens": 831,
+            "total_tokens": 18585,
+            "cached_input_tokens": 11573,
+            "cache_write_input_tokens": 4697
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "agent_api",
+          "has_prior_outbound_message": false,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "question_or_request",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "recomendar",
+          "routeKind": "single_need_search",
+          "providerSearchMode": "single_need_from_plan",
+          "presentationScope": "single_need",
+          "focusNeedCategory": "Locales",
+          "needsToSearch": [
+            "Locales"
+          ],
+          "needsToPresent": [
+            "Locales"
+          ],
+          "stopReason": null,
+          "persistReason": "recomendar",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "single_need_search",
+        "presentation_scope": "single_need",
+        "session_focus_used": false,
+        "session_focus_key_present": true,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.99,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": "baby_shower",
+          "vendor_category": "Locales",
+          "vendor_categories": [
+            "Locales"
+          ],
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "21-50",
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 1,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Busca un local en Lima para un baby shower de 40 personas.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "recomendar",
+          "lifecycle_state": "active",
+          "event_type": "baby_shower",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "21-50",
+          "provider_need_categories": [
+            "Locales"
+          ],
+          "provider_need_count": 1,
+          "provider_need_statuses": [
+            {
+              "category": "Locales",
+              "status": "shortlisted",
+              "has_recommendations": true,
+              "selected_provider_ids": []
+            }
+          ],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "Busca un local en Lima para un baby shower de 40 personas.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "empty",
+          "context_source": "agent_api",
+          "retrieved_message_count": 0,
+          "recent_message_count": 0,
+          "excluded_current_message_count": 0,
+          "directions": [],
+          "sources": [],
+          "entry_source": null
+        },
+        "continuity_state": "new",
+        "welcome_allowed": true,
+        "history_status": "empty",
+        "has_prior_outbound": false,
+        "requested_operation": "provider.search",
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 11102,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M6PAGP31KGW08ZRZD0XMH822",
+        "conversation_hash": "c7065f09552790bbea290c386646b4837744f0e177dede7d69c9d87f5da76eeb",
+        "runtime_latency_ms": 19424,
+        "extraction_latency_ms": 7654,
+        "compose_latency_ms": 7930,
+        "tools_called_count": 6,
+        "provider_results_count": 1,
+        "recommendation_context_candidates": 1,
+        "recommendation_presentation_limit": 6,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 18585,
+        "cached_input_tokens": 11573,
+        "cache_hit_rate": 0.6518531035259659,
+        "extraction_to_compose_ratio": 0.9651954602774275,
+        "captured_at": "2026-11-05T17:01:16.265Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "recomendar",
+        "lifecycle_state": "active",
+        "event_type": "baby_shower",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": "21-50",
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "shortlisted",
+            "recommended_provider_ids": [
+              147
+            ],
+            "selected_provider_ids": []
+          }
+        ],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": true
+        }
+      },
+      "latencyMs": 20466
+    },
+    {
+      "turnIndex": 1,
+      "input": {
+        "text": "Elijo la primera opción.",
+        "channel": "whatsapp",
+        "sessionId": "live_behavior.july_breadth_baby_shower_07_phonefixed",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "master-provider-live-public"
+        }
+      },
+      "outputText": "¡Perfecto! Dejamos Casa Club 147 como tu opción elegida para el local. La ficha no confirma si tiene capacidad para 40 personas; ¿quieres que preparemos una consulta para preguntar por capacidad y cotización?",
+      "deliveredText": "¡Perfecto! Dejamos Casa Club 147 como tu opción elegida para el local. La ficha no confirma si tiene capacidad para 40 personas; ¿quieres que preparemos una consulta para preguntar por capacidad y cotización?",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "580b738c799de4baa8847de9c2e96551b28ece5ea717410048b5adb36d4450dd",
+        "deliveredSha256": "580b738c799de4baa8847de9c2e96551b28ece5ea717410048b5adb36d4450dd",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "seguir_refinando_guardar_plan",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 9,
+          "attempts": 1
+        },
+        "trace_id": "01M6PAH2S817KNJCCQ9C5G4TAX",
+        "conversation_id": null,
+        "plan_id": "01M6PAG3472QJKQHWYAKHJTZB3",
+        "previous_node": "recomendar",
+        "next_node": "seguir_refinando_guardar_plan",
+        "node_path": [
+          "recomendar",
+          "existe_plan_guardado",
+          "usuario_elige_proveedor",
+          "usuario_elige_proveedor",
+          "anadir_a_proveedores_recomendados",
+          "seguir_refinando_guardar_plan"
+        ],
+        "intent": "confirmar_proveedor",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "9579d9dcb7c9",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/domain_scope.txt",
+          "shared/flow_discipline.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "get_provider_detail"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "get_provider_detail"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "get_provider_detail",
+            "input": "{\"projection_version\":1,\"provider_id\":147}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "get_provider_detail",
+            "output": "{\"projection_version\":1,\"result_kind\":\"detail\",\"provider_id\":147,\"found\":true}"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 147,
+            "title": "Casa Club 147",
+            "slug": "casa-club-147",
+            "category": "Locales",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Casa Club 147 encaja con Locales según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+            "websiteUrl": "https://casaclub147.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off Alquiler local",
+            "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "serviceHighlights": [
+              "Alquiler de local para eventos",
+              "Espacios para matrimonios",
+              "Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Eventos institucionales",
+              "Alojamiento para hasta 32 personas"
+            ],
+            "termsHighlights": [
+              "Beneficio no transferible ni acumulable con otras promociones.",
+              "Sujeto a disponibilidad."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "Servicios que ofrece: Alquiler de local para eventos",
+              "Servicios que ofrece: Espacios para matrimonios",
+              "Servicios que ofrece: Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Servicios que ofrece: Eventos institucionales",
+              "Servicios que ofrece: Alojamiento para hasta 32 personas",
+              "Términos  y condiciones: Beneficio no transferible ni acumulable con otras promociones.",
+              "Términos  y condiciones: Sujeto a disponibilidad.",
+              "Términos y condiciones: Beneficio no transferible ni acumulable con otras promociones.",
+              "Términos y condiciones: Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "fitScore": 88,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7783541554955824,
+            "retrievalSource": "hybrid"
+          }
+        ],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [
+            {
+              "provider_id": 147,
+              "category": "Locales",
+              "has_title": true,
+              "has_hint": false
+            }
+          ],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [
+            "select_provider"
+          ],
+          "provider_plan_operation_categories": [
+            "Locales"
+          ]
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 147,
+            "category": "Locales",
+            "location": "Perú",
+            "retrieval_source": "hybrid",
+            "retrieval_score": 0.7783541554955824,
+            "fit_score": 88
+          }
+        ],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_0693d32c7c65037a006aecb65e5bc087d193a03d6eb7b51ae4",
+            "requestId": "req_2d2a8206dfa04d70a5249d523e5cd591",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 1274,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 8179,
+                "instructionBytes": 0,
+                "inputBytes": 6352,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_00a204568c7adfc5006aecb661193c87d1abf05763cb31c201",
+            "requestId": "req_7cd0b8407d634d409b1956239b455323",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 10226,
+              "inputBytes": 5639,
+              "toolCount": 0,
+              "schemaPropertyCount": 37,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 37905,
+                "instructionBytes": 10339,
+                "inputBytes": 6044,
+                "toolBytes": 2,
+                "outputSchemaBytes": 21258,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_04a41f40bba81143006aecb66795d087d1a4fc512a9d11bf2c",
+            "requestId": "req_22ba98dd4dcf40e388125fbb322c83ea",
+            "model": "gpt-6-luna",
+            "attemptCount": 2,
+            "requestMetrics": {
+              "instructionBytes": 2588,
+              "inputBytes": 9872,
+              "toolCount": 1,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 2,
+                "totalPayloadBytes": 31062,
+                "instructionBytes": 5248,
+                "inputBytes": 23926,
+                "toolBytes": 686,
+                "outputSchemaBytes": 626,
+                "requests": []
+              }
+            }
+          },
+          "router": null
+        },
+        "recommendation_funnel": {
+          "available_candidates": 1,
+          "context_candidates": 1,
+          "context_candidate_ids": [
+            147
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "seguir_refinando_guardar_plan",
+        "timing_ms": {
+          "total": 11064,
+          "load_plan": 9,
+          "response_classification": 2643,
+          "prepare_working_plan": 1,
+          "extraction": 5272,
+          "apply_extraction": 3,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 3110,
+          "save_plan": 20,
+          "router": 0,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1661,
+            "output_tokens": 148,
+            "total_tokens": 1809,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 316
+          },
+          "router": null,
+          "extraction": {
+            "input_tokens": 8242,
+            "output_tokens": 482,
+            "total_tokens": 8724,
+            "cached_input_tokens": 6860,
+            "cache_write_input_tokens": 1379
+          },
+          "reply": {
+            "input_tokens": 6717,
+            "output_tokens": 85,
+            "total_tokens": 6802,
+            "cached_input_tokens": 3129,
+            "cache_write_input_tokens": 3582
+          },
+          "total": {
+            "input_tokens": 16620,
+            "output_tokens": 715,
+            "total_tokens": 17335,
+            "cached_input_tokens": 11331,
+            "cache_write_input_tokens": 5277
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "agent_api",
+          "has_prior_outbound_message": true,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "other_actionable",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "seguir_refinando_guardar_plan",
+          "routeKind": "apply_selection",
+          "providerSearchMode": "none",
+          "presentationScope": "none",
+          "focusNeedCategory": "Locales",
+          "needsToSearch": [],
+          "needsToPresent": [],
+          "stopReason": null,
+          "persistReason": "seguir_refinando_guardar_plan",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "apply_selection",
+        "presentation_scope": "none",
+        "session_focus_used": true,
+        "session_focus_key_present": true,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.99,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": "baby_shower",
+          "vendor_category": "Locales",
+          "vendor_categories": [
+            "Locales"
+          ],
+          "active_need_category": "Locales",
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 0,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Elige la primera opción recomendada: Casa Club 147.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "seguir_refinando_guardar_plan",
+          "lifecycle_state": "active",
+          "event_type": "baby_shower",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "21-50",
+          "provider_need_categories": [
+            "Locales"
+          ],
+          "provider_need_count": 1,
+          "provider_need_statuses": [
+            {
+              "category": "Locales",
+              "status": "selected",
+              "has_recommendations": true,
+              "selected_provider_ids": [
+                147
+              ]
+            }
+          ],
+          "selected_provider_ids": [
+            147
+          ],
+          "missing_fields": [],
+          "conversation_summary_preview": "Elige la primera opción recomendada: Casa Club 147.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "available",
+          "context_source": "agent_api",
+          "retrieved_message_count": 2,
+          "recent_message_count": 2,
+          "excluded_current_message_count": 0,
+          "directions": [
+            "inbound",
+            "outbound"
+          ],
+          "sources": [
+            null,
+            null
+          ],
+          "entry_source": null
+        },
+        "continuity_state": "continuing",
+        "welcome_allowed": false,
+        "history_status": "available",
+        "has_prior_outbound": true,
+        "requested_operation": "provider.plan",
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 10374,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M6PAH2S817KNJCCQ9C5G4TAX",
+        "conversation_hash": "c7065f09552790bbea290c386646b4837744f0e177dede7d69c9d87f5da76eeb",
+        "runtime_latency_ms": 11064,
+        "extraction_latency_ms": 5272,
+        "compose_latency_ms": 3110,
+        "tools_called_count": 4,
+        "provider_results_count": 1,
+        "recommendation_context_candidates": 1,
+        "recommendation_presentation_limit": 6,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 17335,
+        "cached_input_tokens": 11331,
+        "cache_hit_rate": 0.6817689530685921,
+        "extraction_to_compose_ratio": 1.695176848874598,
+        "captured_at": "2026-11-05T17:01:29.263Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "seguir_refinando_guardar_plan",
+        "lifecycle_state": "active",
+        "event_type": "baby_shower",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": "21-50",
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "selected",
+            "recommended_provider_ids": [
+              147
+            ],
+            "selected_provider_ids": [
+              147
+            ]
+          }
+        ],
+        "selected_provider_ids": [
+          147
+        ],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": true
+        }
+      },
+      "latencyMs": 11356
+    },
+    {
+      "turnIndex": 2,
+      "input": {
+        "text": "Quiero cerrar. Soy Carla Ruiz, [redacted-email], [redacted-phone].",
+        "channel": "whatsapp",
+        "sessionId": "live_behavior.july_breadth_baby_shower_07_phonefixed",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "master-provider-live-public"
+        }
+      },
+      "outputText": "Para cerrar el plan de tu baby shower falta la fecha del evento. ¿Qué día será?",
+      "deliveredText": "Para cerrar el plan de tu baby shower falta la fecha del evento. ¿Qué día será?",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "1e45bb10753275503f414de74d99d0da54bd5d46d77571f4206513dfbe7c580c",
+        "deliveredSha256": "1e45bb10753275503f414de74d99d0da54bd5d46d77571f4206513dfbe7c580c",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "crear_lead_cerrar",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 5,
+          "attempts": 1
+        },
+        "trace_id": "01M6PAHE6X1RX9THW7RB2MGMQH",
+        "conversation_id": null,
+        "plan_id": "01M6PAG3472QJKQHWYAKHJTZB3",
+        "previous_node": "seguir_refinando_guardar_plan",
+        "next_node": "crear_lead_cerrar",
+        "node_path": [
+          "seguir_refinando_guardar_plan",
+          "existe_plan_guardado",
+          "entrevista",
+          "crear_lead_cerrar"
+        ],
+        "intent": "cerrar",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "9579d9dcb7c9",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/domain_scope.txt",
+          "shared/flow_discipline.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 147,
+            "title": "Casa Club 147",
+            "slug": "casa-club-147",
+            "category": "Locales",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Casa Club 147 encaja con Locales según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+            "websiteUrl": "https://casaclub147.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off Alquiler local",
+            "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "serviceHighlights": [
+              "Alquiler de local para eventos",
+              "Espacios para matrimonios",
+              "Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Eventos institucionales",
+              "Alojamiento para hasta 32 personas"
+            ],
+            "termsHighlights": [
+              "Beneficio no transferible ni acumulable con otras promociones.",
+              "Sujeto a disponibilidad."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "Servicios que ofrece: Alquiler de local para eventos",
+              "Servicios que ofrece: Espacios para matrimonios",
+              "Servicios que ofrece: Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Servicios que ofrece: Eventos institucionales",
+              "Servicios que ofrece: Alojamiento para hasta 32 personas",
+              "Términos  y condiciones: Beneficio no transferible ni acumulable con otras promociones.",
+              "Términos  y condiciones: Sujeto a disponibilidad.",
+              "Términos y condiciones: Beneficio no transferible ni acumulable con otras promociones.",
+              "Términos y condiciones: Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "fitScore": 88,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7783541554955824,
+            "retrievalSource": "hybrid"
+          }
+        ],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": "confirm_close",
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": true,
+            "email": true,
+            "phone": true
+          },
+          "plan_contact_fields_present": {
+            "name": true,
+            "email": true,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 147,
+            "category": "Locales",
+            "location": "Perú",
+            "retrieval_source": "hybrid",
+            "retrieval_score": 0.7783541554955824,
+            "fit_score": 88
+          }
+        ],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_07bf2e662a9497e2006aecb66ab28487d1b3e936662b0d3d8f",
+            "requestId": "req_3d939eb87fce4d6c99e494b5c4d338ff",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 1665,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 8590,
+                "instructionBytes": 0,
+                "inputBytes": 6763,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_05557eb523346170006aecb66cf70487d1968087c7bffde44f",
+            "requestId": "req_44f735b6223b4dfda69dcb5d66f97828",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 10226,
+              "inputBytes": 5840,
+              "toolCount": 0,
+              "schemaPropertyCount": 37,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 38135,
+                "instructionBytes": 10339,
+                "inputBytes": 6274,
+                "toolBytes": 2,
+                "outputSchemaBytes": 21258,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_05a35136662161e2006aecb6733eac87d184be22c9ac033f86",
+            "requestId": "req_97f637b721a1421daf8a88c593b29a46",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 2588,
+              "inputBytes": 7235,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 11197,
+                "instructionBytes": 2624,
+                "inputBytes": 7982,
+                "toolBytes": 2,
+                "outputSchemaBytes": 313,
+                "requests": []
+              }
+            }
+          },
+          "router": null
+        },
+        "recommendation_funnel": {
+          "available_candidates": 1,
+          "context_candidates": 1,
+          "context_candidate_ids": [
+            147
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "crear_lead_cerrar",
+        "timing_ms": {
+          "total": 10395,
+          "load_plan": 7,
+          "response_classification": 2147,
+          "prepare_working_plan": 0,
+          "extraction": 6396,
+          "apply_extraction": 2,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 1802,
+          "save_plan": 36,
+          "router": 0,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1757,
+            "output_tokens": 126,
+            "total_tokens": 1883,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 412
+          },
+          "router": null,
+          "extraction": {
+            "input_tokens": 8318,
+            "output_tokens": 489,
+            "total_tokens": 8807,
+            "cached_input_tokens": 6860,
+            "cache_write_input_tokens": 1455
+          },
+          "reply": {
+            "input_tokens": 2506,
+            "output_tokens": 37,
+            "total_tokens": 2543,
+            "cached_input_tokens": 0,
+            "cache_write_input_tokens": 2503
+          },
+          "total": {
+            "input_tokens": 12581,
+            "output_tokens": 652,
+            "total_tokens": 13233,
+            "cached_input_tokens": 8202,
+            "cache_write_input_tokens": 4370
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "agent_api",
+          "has_prior_outbound_message": true,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "other_actionable",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "crear_lead_cerrar",
+          "routeKind": "close",
+          "providerSearchMode": "none",
+          "presentationScope": "close",
+          "focusNeedCategory": "Locales",
+          "needsToSearch": [
+            "Locales"
+          ],
+          "needsToPresent": [
+            "Locales"
+          ],
+          "stopReason": null,
+          "persistReason": "crear_lead_cerrar",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "close",
+        "presentation_scope": "close",
+        "session_focus_used": false,
+        "session_focus_key_present": false,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.93,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": "baby_shower",
+          "vendor_category": "Locales",
+          "vendor_categories": [
+            "Locales"
+          ],
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "21-50",
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 0,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "La usuaria quiere cerrar el plan del baby shower y proporciona sus datos de contacto.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": true,
+            "email": true,
+            "phone": true
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "crear_lead_cerrar",
+          "lifecycle_state": "active",
+          "event_type": "baby_shower",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "21-50",
+          "provider_need_categories": [
+            "Locales"
+          ],
+          "provider_need_count": 1,
+          "provider_need_statuses": [
+            {
+              "category": "Locales",
+              "status": "selected",
+              "has_recommendations": true,
+              "selected_provider_ids": [
+                147
+              ]
+            }
+          ],
+          "selected_provider_ids": [
+            147
+          ],
+          "missing_fields": [],
+          "conversation_summary_preview": "La usuaria quiere cerrar el plan del baby shower y proporciona sus datos de contacto.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": true,
+            "email": true,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "available",
+          "context_source": "agent_api",
+          "retrieved_message_count": 4,
+          "recent_message_count": 4,
+          "excluded_current_message_count": 0,
+          "directions": [
+            "inbound",
+            "outbound",
+            "inbound",
+            "outbound"
+          ],
+          "sources": [
+            null,
+            null,
+            null,
+            null
+          ],
+          "entry_source": null
+        },
+        "continuity_state": "continuing",
+        "welcome_allowed": false,
+        "history_status": "available",
+        "has_prior_outbound": true,
+        "requested_operation": null,
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 9976,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M6PAHE6X1RX9THW7RB2MGMQH",
+        "conversation_hash": "c7065f09552790bbea290c386646b4837744f0e177dede7d69c9d87f5da76eeb",
+        "runtime_latency_ms": 10395,
+        "extraction_latency_ms": 6396,
+        "compose_latency_ms": 1802,
+        "tools_called_count": 3,
+        "provider_results_count": 1,
+        "recommendation_context_candidates": 1,
+        "recommendation_presentation_limit": 6,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 13233,
+        "cached_input_tokens": 8202,
+        "cache_hit_rate": 0.6519354582306653,
+        "extraction_to_compose_ratio": 3.549389567147614,
+        "captured_at": "2026-11-05T17:01:40.965Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "crear_lead_cerrar",
+        "lifecycle_state": "active",
+        "event_type": "baby_shower",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": "21-50",
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "selected",
+            "recommended_provider_ids": [
+              147
+            ],
+            "selected_provider_ids": [
+              147
+            ]
+          }
+        ],
+        "selected_provider_ids": [
+          147
+        ],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": true,
+          "email": true,
+          "phone": true
+        }
+      },
+      "latencyMs": 10783
+    }
+  ]
+}

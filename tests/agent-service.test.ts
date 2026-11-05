@@ -1689,6 +1689,26 @@ describe('AgentService', () => {
     ]);
   });
 
+  it('rejects a detail-enriched provider whose category contradicts the active need', async () => {
+    class MismatchedDetailGateway extends FakeGateway {
+      override async getProviderDetail(providerId: number): Promise<ProviderDetail | null> {
+        const detail = await super.getProviderDetail(providerId);
+        return detail ? { ...detail, category: 'Música' } : null;
+      }
+    }
+    const response = await new AgentService({
+      planStore: new InMemoryPlanStore(), runtime: new FakeRuntime(),
+      providerGateway: new MismatchedDetailGateway(), promptLoader, renderers,
+    }).handleTurn({
+      channel: 'terminal_whatsapp', externalUserId: 'mismatched-provider-detail',
+      text: 'Busco fotógrafo para mi boda en Lima con presupuesto medio',
+      messageId: 'mismatched-provider-detail', receivedAt: new Date().toISOString(),
+    });
+    expect(response.plan.recommended_provider_ids).toEqual([]);
+    expect(getActiveNeed(response.plan)?.status).toBe('no_providers_available');
+    expect(response.trace.provider_results).toEqual([]);
+  });
+
   it('enters no explicit pause state when the user pauses', async () => {
     const runtime = new FakeRuntime();
     const planStore = new InMemoryPlanStore();
@@ -3081,6 +3101,11 @@ describe('AgentService', () => {
       }
 
       class MusicGateway extends FakeGateway {
+        override async getProviderDetail(providerId: number): Promise<ProviderDetail | null> {
+          const detail = await super.getProviderDetail(providerId);
+          return detail ? { ...detail, title: 'Dj Naoki', category: 'Música' } : null;
+        }
+
         override async searchProviders(
           plan: PersistedPlan,
         ): Promise<ProviderGatewaySearchResult> {
@@ -3238,6 +3263,11 @@ describe('AgentService', () => {
               },
             ],
           };
+        }
+
+        override async getProviderDetail(providerId: number): Promise<ProviderDetail | null> {
+          const detail = await super.getProviderDetail(providerId);
+          return detail ? { ...detail, title: 'Dj Naoki', category: 'Música' } : null;
         }
       }
 
@@ -3472,7 +3502,7 @@ describe('AgentService', () => {
     expect(gateway.searchCalls).toBe(0);
   });
 
-  it('resolves ordinal selections against the active shortlist without searching again', async () => {
+  it('does not resolve ordinal selections from shortlist order without delivered evidence', async () => {
     {
       class OrdinalSelectionRuntime extends FakeRuntime {
         override async extract(): Promise<ExtractionResult> {
@@ -3491,6 +3521,7 @@ describe('AgentService', () => {
             hardConstraints: [],
             assumptions: [],
             conversationSummary: 'El usuario eligió la primera opción de música.',
+            selectedProviderOrdinal: 1,
             selectedProviderHints: ['primera opción'],
             pauseRequested: false,
             contactName: null,
@@ -3593,10 +3624,28 @@ describe('AgentService', () => {
         receivedAt: new Date().toISOString(),
       });
 
-      expect(response.plan.current_node).toBe('seguir_refinando_guardar_plan');
-      expect(response.plan.selected_provider_ids).toEqual([115]);
-      expect(getActiveNeed(response.plan)?.status).toBe('selected');
+      expect(response.plan.selected_provider_ids).toEqual([]);
+      expect(getActiveNeed(response.plan)?.status).not.toBe('selected');
       expect(gateway.searchCalls).toBe(0);
+
+      // The first displayed provider is second in the candidate list.
+      const deliveredStore = new InMemoryPlanStore();
+      await deliveredStore.save({ plan: seededPlan, reason: 'seed' });
+      const deliveredGateway = new TrackingAgentConversationGateway([{
+        id: 1, direction: 'outbound', source: null, status: 'sent',
+        body: '1. Dj Siles\nhttps://sinenvolturas.com/proveedores/dj-siles\n2. Dj Naoki\nhttps://sinenvolturas.com/proveedores/dj-naoki',
+        sentAt: '2026-11-05T00:00:00Z', createdAt: '2026-11-05T00:00:00Z',
+      }]);
+      const deliveredService = new AgentService({
+        planStore: deliveredStore, runtime, providerGateway: gateway,
+        agentConversationGateway: deliveredGateway, promptLoader, renderers,
+      });
+      const selected = await deliveredService.handleTurn({
+        channel: 'terminal_whatsapp', externalUserId: 'user-ordinal-provider',
+        text: 'dame la primera opcion', messageId: 'msg-delivered-ordinal',
+        receivedAt: new Date().toISOString(), contactPhone: '+51999999999',
+      });
+      expect(selected.plan.selected_provider_ids).toEqual([119]);
     }
 
     {
@@ -3679,8 +3728,7 @@ describe('AgentService', () => {
         receivedAt: new Date().toISOString(),
       });
 
-      expect(response.plan.selected_provider_ids).toEqual([101, 103]);
-      expect(gateway.searchCalls).toBe(0);
+      expect(response.plan.selected_provider_ids).toEqual([]);
     }
   });
 
@@ -5553,6 +5601,18 @@ describe('AgentService', () => {
   });
 
   it('uses matching session focus for single-need search without stale durable focus', async () => {
+    class SessionMusicGateway extends FakeGateway {
+      override async searchProviders(plan: PersistedPlan): Promise<ProviderGatewaySearchResult> {
+        const result = await super.searchProviders(plan);
+        return { providers: result.providers.map((provider) => ({ ...provider, title: 'Música Uno', category: 'Música' })) };
+      }
+
+      override async getProviderDetail(providerId: number): Promise<ProviderDetail | null> {
+        const detail = await super.getProviderDetail(providerId);
+        return detail ? { ...detail, title: 'Música Uno', category: 'Música' } : null;
+      }
+    }
+
     class FocusedRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
@@ -5636,7 +5696,7 @@ describe('AgentService', () => {
       updatedAt: new Date().toISOString(),
     });
 
-    const gateway = new FakeGateway();
+    const gateway = new SessionMusicGateway();
     const service = new AgentService({
       planStore,
       runtime: new FocusedRuntime(),
@@ -6048,6 +6108,114 @@ describe('AgentService', () => {
       'Fotografía y video',
       'Música',
       'Florería y papelería',
+    ]);
+    expect(response.plan.provider_needs.every((need) => need.status === 'shortlisted')).toBe(true);
+  });
+
+  it('searches two explicitly requested ready needs without inventing extra preferences', async () => {
+    class ExplicitReadyNeedsRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          actionIntent: 'buscar_proveedores',
+          informationRequests: [],
+          intentConfidence: 0.96,
+          eventType: 'boda',
+          vendorCategory: null,
+          vendorCategories: ['Catering', 'Música'],
+          activeNeedCategory: null,
+          location: 'Lima',
+          budgetSignal: null,
+          guestRange: '101-200',
+          preferences: [],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'Boda moderna en Lima para 120 personas con sushi, música en vivo, fotos naturales y flores minimalistas.',
+          selectedProviderHints: [],
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
+          providerQueryIntents: [
+            {
+              category: 'Catering',
+              label: 'Catering con sushi',
+              priority: 1,
+              queries: [providerNeedQuery('Catering', 'Catering con sushi', ['catering'])],
+              preferences: [],
+              hardConstraints: [],
+              missingFields: [],
+              retrievalReady: false,
+              fitCriteria: { ...testProviderFitCriteria, needCategory: 'Catering' },
+            },
+            {
+              category: 'Música',
+              label: 'Música en vivo',
+              priority: 3,
+              queries: [providerNeedQuery('Música', 'Música en vivo', ['música'])],
+              preferences: [],
+              hardConstraints: [],
+              missingFields: [],
+              retrievalReady: false,
+              fitCriteria: { ...testProviderFitCriteria, needCategory: 'Música' },
+            },
+          ],
+          providerPlanOperations: [],
+          providerExplanationRequest: null,
+          providerDetailRequest: null,
+        };
+      }
+    }
+
+    class QueryIntentGateway extends FakeGateway {
+      public readonly categories: string[] = [];
+      private readonly providers = new Map<number, ProviderSummary>();
+
+      override async searchProvidersByQueryIntent(
+        input: QueryIntentProviderSearchInput,
+      ): Promise<ProviderGatewaySearchResult> {
+        this.categories.push(input.category);
+        const provider: ProviderSummary = {
+          id: this.categories.length + 500,
+          title: `${input.category} Uno`,
+          category: input.category,
+          location: 'Lima',
+          priceLevel: 'mid',
+          reason: 'coincide con la necesidad',
+          serviceHighlights: [],
+          termsHighlights: [],
+        };
+        this.providers.set(provider.id, provider);
+        return { providers: [provider] };
+      }
+
+      override async getProviderDetail(providerId: number): Promise<ProviderDetail | null> {
+        const provider = this.providers.get(providerId);
+        return provider ? { ...provider, eventTypes: ['boda'], raw: {} } : null;
+      }
+    }
+
+    const gateway = new QueryIntentGateway();
+    const service = new AgentService({
+      planStore: new InMemoryPlanStore(),
+      runtime: new ExplicitReadyNeedsRuntime(),
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-detailed-query-intents',
+      text: 'quiero una boda moderna en Lima para 120 personas, cena con sushi, música en vivo, fotos naturales, flores minimalistas, fotografia especializada para novios, torta para novios',
+      messageId: 'msg-detailed-query-intents',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.trace.search_strategy).toBe('multi_need_query_intents');
+    expect(gateway.categories).toEqual([
+      'Catering',
+      'Música',
     ]);
     expect(response.plan.provider_needs.every((need) => need.status === 'shortlisted')).toBe(true);
   });

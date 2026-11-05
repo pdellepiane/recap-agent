@@ -1,0 +1,97 @@
+id: live_behavior.wedding_catering_after_completed_faq
+suite: live_behavior_regression
+version: 1
+description: Reconstruct the reported wedding conversation after completed FAQ state and provide catering options.
+tags: [live, behavior, provider, production-regression]
+targetModes: [live_lambda]
+backendFixture:
+  scenario: master-provider-live-public
+inputs:
+  - text: hola, estoy buscando proveedores para mi matrimonio
+    sessionId: live_behavior.wedding_catering_after_completed_faq
+    contactPhone: "+51999111222"
+    backendFixture:
+      scenario: master-provider-live-public
+  - text: en lima
+    sessionId: live_behavior.wedding_catering_after_completed_faq
+    contactPhone: "+51999111222"
+    backendFixture:
+      scenario: master-provider-live-public
+  - text: primero me gustaria ver catering y luego musica
+    sessionId: live_behavior.wedding_catering_after_completed_faq
+    contactPhone: "+51999111222"
+    backendFixture:
+      scenario: master-provider-live-public
+  - text: aprox 100 invitados, tengo un presupuesto de 20 mil soles
+    sessionId: live_behavior.wedding_catering_after_completed_faq
+    contactPhone: "+51999111222"
+    backendFixture:
+      scenario: master-provider-live-public
+  - text: solo busco que sea de comida criolla
+    sessionId: live_behavior.wedding_catering_after_completed_faq
+    contactPhone: "+51999111222"
+    backendFixture:
+      scenario: master-provider-live-public
+  - text: buffet
+    sessionId: live_behavior.wedding_catering_after_completed_faq
+    contactPhone: "+51999111222"
+    backendFixture:
+      scenario: master-provider-live-public
+  - text: para diciembre de este año
+    sessionId: live_behavior.wedding_catering_after_completed_faq
+    contactPhone: "+51999111222"
+    backendFixture:
+      scenario: master-provider-live-public
+  - text: en el centro de lima
+    sessionId: live_behavior.wedding_catering_after_completed_faq
+    contactPhone: "+51999111222"
+    backendFixture:
+      scenario: master-provider-live-public
+  - text: si, me das opciones?
+    sessionId: live_behavior.wedding_catering_after_completed_faq
+    contactPhone: "+51999111222"
+    backendFixture:
+      scenario: master-provider-live-public
+expectations:
+  - id: requested-catering-context-preserved
+    type: plan_field_equals
+    turnIndex: 8
+    path: active_need_category
+    expected: Catering
+    severity: hard
+  - id: options-request-delivers-provider-link
+    type: text_contains
+    turnIndex: 8
+    regex:
+      - https://sinenvolturas\.com/proveedores/[\p{L}\p{N}%_-]+
+    severity: hard
+  - id: no-unrequested-effects
+    type: tool_usage
+    mustNotCall: [create_quote_request, finish_plan, request_human_takeover, guest_rsvp, request_user_login_code, verify_user_login_code, add_vendor_to_event_favorites, create_provider_review]
+    severity: hard
+  - id: no-irrelevant-cost-article-at-first-turn
+    type: text_not_contains
+    turnIndex: 0
+    phrases: ["https://sinenvolturas.tawk.help/article/cuanto-cuesta"]
+    severity: hard
+scorers:
+  - id: objective-obligations
+    type: expectation_pass_rate
+    weight: 1
+budget:
+  maxTurns: 9
+  estimatedPromptTokensPerTurn: 12000
+  estimatedCompletionTokensPerTurn: 600
+notes:
+  - Reconstructs the user-supplied production screenshot with a synthetic phone and isolated session. Public provider reads only; customer access and effects are mocked.
+  - The final link assertion depends on live public catalog availability and is not an independent assessment of all provider claims.
+  - The original timestamp was in November 2026; relative December timing must be interpreted relative to the execution clock.
+seedPlan:
+  current_node: entrevista
+  information_state:
+    resume_node: null
+    pending_requests: []
+    selection_candidates: []
+    last_completed_request:
+      kind: faq
+      query: Consulta previa de soporte.

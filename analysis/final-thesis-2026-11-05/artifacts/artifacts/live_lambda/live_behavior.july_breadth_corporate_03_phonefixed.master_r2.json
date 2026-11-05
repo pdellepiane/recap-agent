@@ -1,0 +1,1027 @@
+{
+  "runId": "eval-2026-11-05T16-01-27-136Z-2eace95d",
+  "caseId": "live_behavior.july_breadth_corporate_03_phonefixed.master_r2",
+  "suite": "live_behavior_regression",
+  "target": "live_lambda",
+  "configLabel": "live_lambda",
+  "status": "passed",
+  "hardGatePassed": true,
+  "finalScore": 1,
+  "totalLatencyMs": 26111,
+  "totalToolCalls": 9,
+  "nodeTransitions": [
+    "contacto_inicial->elicitacion_necesidades"
+  ],
+  "planDiffSummary": [
+    "current_node=\"elicitacion_necesidades\"",
+    "intent=\"elicitar_necesidades\"",
+    "event_type=\"corporativo\"",
+    "vendor_category=\"Locales\"",
+    "active_need_category=\"Locales\"",
+    "location=\"Lima\"",
+    "budget_signal=\"alto\"",
+    "guest_range=\"101-200\"",
+    "provider_needs=Locales:shortlisted, Catering:shortlisted, Fotografía y video:shortlisted"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/.eval-runs/eval-2026-11-05T16-01-27-136Z-2eace95d/artifacts/live_lambda/live_behavior.july_breadth_corporate_03_phonefixed.master_r2.json"
+  },
+  "expectationResults": [
+    {
+      "id": "event-type-retained",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "answer-delivered",
+      "type": "text_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Text containment checks passed."
+    },
+    {
+      "id": "no-provider-quote-without-explicit-date",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture provider.quote.write attempts=0 successes=0 replays=0 outcome=none."
+    },
+    {
+      "id": "no-unrequested-rsvp",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture rsvp.write attempts=0 successes=0 replays=0 outcome=none."
+    },
+    {
+      "id": "no-unrequested-handoff",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture handoff.write attempts=0 successes=0 replays=0 outcome=none."
+    },
+    {
+      "id": "requested-needs-retained",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "recommendation-has-candidates",
+      "type": "provider_result_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Provider result count 7 matched expectation."
+    },
+    {
+      "id": "recommendation-delivers-provider-link",
+      "type": "text_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Text containment checks passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "objective-obligations",
+      "type": "expectation_pass_rate",
+      "score": 1,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 8 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 1,
+    "avg_latency_ms": 26111,
+    "p95_latency_ms": 26111,
+    "tool_calls_total": 9,
+    "unique_tools_called": 5,
+    "tool_call_rate_per_turn": 9,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.10344827586206896,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 30472,
+    "cache_hit_rate": 0.6941740823136818,
+    "input_tokens": 28768,
+    "cached_input_tokens": 19970,
+    "cache_write_input_tokens": 7302,
+    "uncached_input_tokens": 8798,
+    "usage_known": true
+  },
+  "timing": {
+    "queueWaitMs": 3143434,
+    "setupMs": 0,
+    "turnMs": 28356,
+    "snapshotMs": 13,
+    "teardownMs": 0,
+    "judgeWaitMs": 0,
+    "judgeApiMs": 0,
+    "reportWriteMs": 0,
+    "makespanMs": 0
+  },
+  "judgeMetrics": {
+    "modelCalls": 0,
+    "retryCount": 0,
+    "rateLimitCount": 0,
+    "tokensUnknown": false,
+    "openaiSdk": "7.43.0",
+    "judgeModels": []
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Organizo una conferencia corporativa en Lima para 180 personas. Necesito local, catering y audiovisuales, presupuesto alto.",
+        "channel": "whatsapp",
+        "sessionId": "live_behavior.july_breadth_corporate_03_phonefixed",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "master-provider-live-public"
+        }
+      },
+      "outputText": "Encontré opciones para los tres frentes de tu conferencia. Para audiovisuales, los resultados disponibles son principalmente de fotografía y video, así que no puedo confirmar que cubran sonido, pantallas o iluminación.\n\nLocales\nEspacio para eventos en Cieneguilla; conviene confirmar capacidad para 180 personas y disponibilidad para una conferencia.\n1. Casa Club 147 - Casa Club 147 (Perú · $$$ · promo: 10% Off Alquiler local)\n Ofrece alquiler de local y eventos institucionales; tiene una promoción de 10% de descuento en el alquiler.\n Limitación: La ficha no indica capacidad para 180 personas.\n Ficha: https://sinenvolturas.com/proveedores/casa-club-147\n\nServicio de comida\nOpciones en Lima para catering corporativo o servicios complementarios de café.\n1. Lucitana - Lucitana (Lima, Perú · promo: 10 % OFF)\n Ofrece catering para eventos corporativos y propuestas personalizadas; incluye asesoría o degustación sin costo.\n Limitación: No se especifica capacidad para 180 personas.\n Ficha: https://sinenvolturas.com/proveedores/lucitana\n2. Café del Alba - Café del Alba (Lima, Perú · $$$ · promo: S/. 250 de dscto)\n Ofrece barras móviles, coffee stations y coffee breaks para conferencias y eventos corporativos.\n Limitación: Está enfocado en café; no se confirma un servicio de catering completo ni capacidad para 180 personas.\n Ficha: https://sinenvolturas.com/proveedores/cafe-del-alba\n\nFotografía y video\nLas opciones encontradas se enfocan en fotografía y video, no hay confirmación de equipos audiovisuales técnicos para la conferencia.\n1. Willcast - Willcast (Lima, Perú · $$$$ · promo: 10% Off)\n Ofrece servicios de fotografía y video, con cobertura audiovisual.\n Limitación: La información disponible se centra en matrimonios; no confirma cobertura para conferencias ni equipos de sonido o proyección.\n Ficha: https://sinenvolturas.com/proveedores/willcast\n2. Fotostory - Fotostory (Lima, Perú · $$ · promo: 10% Off)\n Ofrece productos fotográficos personalizados para eventos.\n Limitación: No se confirma que brinde cobertura de video o audiovisuales técnicos.\n Ficha: https://sinenvolturas.com/proveedores/fotostory\n\n¿Quieres que avancemos con estas opciones y preparemos consultas para confirmar capacidad, servicio y disponibilidad?",
+      "deliveredText": "Encontré opciones para los tres frentes de tu conferencia. Para audiovisuales, los resultados disponibles son principalmente de fotografía y video, así que no puedo confirmar que cubran sonido, pantallas o iluminación.\n\nLocales\nEspacio para eventos en Cieneguilla; conviene confirmar capacidad para 180 personas y disponibilidad para una conferencia.\n1. Casa Club 147 - Casa Club 147 (Perú · $$$ · promo: 10% Off Alquiler local)\n Ofrece alquiler de local y eventos institucionales; tiene una promoción de 10% de descuento en el alquiler.\n Limitación: La ficha no indica capacidad para 180 personas.\n Ficha: https://sinenvolturas.com/proveedores/casa-club-147\n\nServicio de comida\nOpciones en Lima para catering corporativo o servicios complementarios de café.\n1. Lucitana - Lucitana (Lima, Perú · promo: 10 % OFF)\n Ofrece catering para eventos corporativos y propuestas personalizadas; incluye asesoría o degustación sin costo.\n Limitación: No se especifica capacidad para 180 personas.\n Ficha: https://sinenvolturas.com/proveedores/lucitana\n2. Café del Alba - Café del Alba (Lima, Perú · $$$ · promo: S/. 250 de dscto)\n Ofrece barras móviles, coffee stations y coffee breaks para conferencias y eventos corporativos.\n Limitación: Está enfocado en café; no se confirma un servicio de catering completo ni capacidad para 180 personas.\n Ficha: https://sinenvolturas.com/proveedores/cafe-del-alba\n\nFotografía y video\nLas opciones encontradas se enfocan en fotografía y video, no hay confirmación de equipos audiovisuales técnicos para la conferencia.\n1. Willcast - Willcast (Lima, Perú · $$$$ · promo: 10% Off)\n Ofrece servicios de fotografía y video, con cobertura audiovisual.\n Limitación: La información disponible se centra en matrimonios; no confirma cobertura para conferencias ni equipos de sonido o proyección.\n Ficha: https://sinenvolturas.com/proveedores/willcast\n2. Fotostory - Fotostory (Lima, Perú · $$ · promo: 10% Off)\n Ofrece productos fotográficos personalizados para eventos.\n Limitación: No se confirma que brinde cobertura de video o audiovisuales técnicos.\n Ficha: https://sinenvolturas.com/proveedores/fotostory\n\n¿Quieres que avancemos con estas opciones y preparemos consultas para confirmar capacidad, servicio y disponibilidad?",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "3cb11c03e8060eca156444de777e8a4b7f9bffe403e6fcaafa0b3da5f584e494",
+        "deliveredSha256": "3cb11c03e8060eca156444de777e8a4b7f9bffe403e6fcaafa0b3da5f584e494",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "elicitacion_necesidades",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 5,
+          "attempts": 1
+        },
+        "trace_id": "01M6PA3YD6JW125AHC0WPM0XAN",
+        "conversation_id": null,
+        "plan_id": "01M6PA36880910FZZVDHPQ3AM0",
+        "previous_node": "contacto_inicial",
+        "next_node": "elicitacion_necesidades",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "elicitacion_necesidades"
+        ],
+        "intent": "elicitar_necesidades",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "f2764487cbf6",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/domain_scope.txt",
+          "shared/flow_discipline.txt",
+          "shared/domain_knowledge.txt",
+          "shared/question_strategy.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "get_provider_detail",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "get_provider_detail",
+          "get_provider_detail",
+          "get_provider_detail"
+        ],
+        "tool_inputs": [],
+        "tool_outputs": [],
+        "provider_results": [
+          {
+            "id": 147,
+            "title": "Casa Club 147",
+            "slug": "casa-club-147",
+            "category": "Locales",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Casa Club 147 encaja con Local según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+            "websiteUrl": "https://casaclub147.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off Alquiler local",
+            "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "serviceHighlights": [
+              "Alquiler de local para eventos",
+              "Espacios para matrimonios",
+              "Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Eventos institucionales",
+              "Alojamiento para hasta 32 personas"
+            ],
+            "termsHighlights": [
+              "Beneficio no transferible ni acumulable con otras promociones.",
+              "Sujeto a disponibilidad."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "Servicios que ofrece: Alquiler de local para eventos",
+              "Servicios que ofrece: Espacios para matrimonios",
+              "Servicios que ofrece: Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Servicios que ofrece: Eventos institucionales",
+              "Servicios que ofrece: Alojamiento para hasta 32 personas",
+              "Términos  y condiciones: Beneficio no transferible ni acumulable con otras promociones.",
+              "Términos  y condiciones: Sujeto a disponibilidad.",
+              "Términos y condiciones: Beneficio no transferible ni acumulable con otras promociones.",
+              "Términos y condiciones: Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "fitScore": 99,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "preference_match",
+              "semantic_match",
+              "must_have_evidence",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.5707243799002527,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 189,
+            "title": "Café del Alba",
+            "slug": "cafe-del-alba",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Café del Alba encaja con Catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/cafe-del-alba",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "S/. 250 de dscto",
+            "promoSummary": "S/250 de descuento en servicios para clientes de Sin Envolturas.",
+            "descriptionSnippet": "En Lima, Café del Alba es un emprendimiento local especializado en el servicio de carritos de café para eventos y celebraciones.",
+            "serviceHighlights": [
+              "Cafetería para eventos y corporativos: Instalación de barras móviles atendidas por baristas profesionales para conferencias y eventos sociales.",
+              "Coffee stations y carritos de café: Alquiler de carritos equipados que sirven café caliente, frío y opciones de tendencia como el matcha latte .",
+              "Servicio de atención personalizada: Proveen insumos seleccionados de alta calidad para que los invitados disfruten de una experiencia completa de cafetería de especialidad adaptada al lugar del evento"
+            ],
+            "termsHighlights": [
+              "Consultar términos y condiciones."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: En Lima, Café del Alba es un emprendimiento local especializado en el servicio de carritos de café para eventos y celebraciones. Ofrecen barras móviles y coffee breaks personalizados para bodas, baby showers, lanzamientos de marca, ferias y reuniones corporativas.",
+              "Servicios que ofrece: Cafetería para eventos y corporativos: Instalación de barras móviles atendidas por baristas profesionales para conferencias y eventos sociales.",
+              "Servicios que ofrece: Coffee stations y carritos de café: Alquiler de carritos equipados que sirven café caliente, frío y opciones de tendencia como el matcha latte .",
+              "Servicios que ofrece: Servicio de atención personalizada: Proveen insumos seleccionados de alta calidad para que los invitados disfruten de una experiencia completa de cafetería de especialidad adaptada al lugar del evento",
+              "Términos  y condiciones: Consultar términos y condiciones.",
+              "Términos y condiciones: Consultar términos y condiciones."
+            ],
+            "eventTypes": [],
+            "description": "En Lima, Café del Alba es un emprendimiento local especializado en el servicio de carritos de café para eventos y celebraciones. Ofrecen barras móviles y coffee breaks personalizados para bodas, baby showers, lanzamientos de marca, ferias y reuniones corporativas.",
+            "fitScore": 100,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "preference_match",
+              "semantic_match",
+              "must_have_evidence",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.9534834027275682,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 199,
+            "title": "Lucitana",
+            "slug": "lucitana",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": null,
+            "rating": "0.0",
+            "reason": "Lucitana encaja con Catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/lucitana",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10 % OFF",
+            "promoSummary": "Descuento en servicios de catering",
+            "descriptionSnippet": "Empresa de catering que convierte cada evento en una experiencia para disfrutar.",
+            "serviceHighlights": [
+              "Catering para eventos sociales",
+              "Catering para eventos corporativos",
+              "Propuestas gastronómicas personalizadas",
+              "Producción integral de eventos"
+            ],
+            "termsHighlights": [
+              "Válido únicamente para clientes de Sin Envolturas",
+              "Degustación o asesoría personalizada sin costo",
+              "Válido únicamente en Lima"
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Empresa de catering que convierte cada evento en una experiencia para disfrutar. Crea propuestas gastronómicas personalizadas, combinando sabor, buena presentación y un servicio adaptado a cada ocasión.",
+              "Servicios que ofrece: Catering para eventos sociales",
+              "Servicios que ofrece: Catering para eventos corporativos",
+              "Servicios que ofrece: Propuestas gastronómicas personalizadas",
+              "Servicios que ofrece: Producción integral de eventos",
+              "Términos  y condiciones: Válido únicamente para clientes de Sin Envolturas",
+              "Términos  y condiciones: Degustación o asesoría personalizada sin costo",
+              "Términos  y condiciones: Válido únicamente en Lima"
+            ],
+            "eventTypes": [],
+            "description": "Empresa de catering que convierte cada evento en una experiencia para disfrutar. Crea propuestas gastronómicas personalizadas, combinando sabor, buena presentación y un servicio adaptado a cada ocasión.",
+            "fitScore": 100,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "preference_match",
+              "semantic_match",
+              "must_have_evidence",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.9298315309043245,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 136,
+            "title": "4Foodies",
+            "slug": "4foodies",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "4Foodies encaja con Catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/4foodies",
+            "websiteUrl": "https://www.4foodies.pe",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off",
+            "promoSummary": "10% de descuento en el servicio de catering para los clientes de Sin Envolturas",
+            "descriptionSnippet": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+            "serviceHighlights": [
+              "Catering para eventos",
+              "Tablas de quesos",
+              "Mesas gastronómicas",
+              "Implementación y montaje de servicio",
+              "Propuestas personalizadas según el evento"
+            ],
+            "termsHighlights": [
+              "El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+              "El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+              "En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+              "Válido para Lima (previa validación de zona de cobertura)."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: 4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+              "Servicios que ofrece: Catering para eventos",
+              "Servicios que ofrece: Tablas de quesos",
+              "Servicios que ofrece: Mesas gastronómicas",
+              "Servicios que ofrece: Implementación y montaje de servicio",
+              "Servicios que ofrece: Propuestas personalizadas según el evento",
+              "Términos  y condiciones: El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+              "Términos  y condiciones: El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+              "Términos  y condiciones: En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+              "Términos  y condiciones: Válido para Lima (previa validación de zona de cobertura).",
+              "Términos y condiciones: El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+              "Términos y condiciones: El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+              "Términos y condiciones: En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+              "Términos y condiciones: Válido para Lima (previa validación de zona de cobertura)."
+            ],
+            "eventTypes": [],
+            "description": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+            "fitScore": 100,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "preference_match",
+              "semantic_match",
+              "must_have_evidence",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.918046166589925,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 54,
+            "title": "Fotostory",
+            "slug": "fotostory",
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "Fotostory encaja con Audiovisuales según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/fotostory",
+            "websiteUrl": "https://fotostory.pe/",
+            "minPrice": "150.00",
+            "maxPrice": null,
+            "promoBadge": "10% Off",
+            "promoSummary": "10% de descuento en todos los fotobooks",
+            "descriptionSnippet": "Fotostory es una empresa especializada en crear recuerdos personalizados a través de fotobooks, tazas y cuadros con imágenes, transformando momentos especiales en piezas únicas para conservar y revivir siempre.",
+            "serviceHighlights": [
+              "Fotobooks",
+              "Tazas con fotos",
+              "Cuadros personalizados",
+              "y más"
+            ],
+            "termsHighlights": [
+              "Preguntar por términos y condiciones"
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Fotostory es una empresa especializada en crear recuerdos personalizados a través de fotobooks, tazas y cuadros con imágenes, transformando momentos especiales en piezas únicas para conservar y revivir siempre.",
+              "Servicios que ofrece: Fotobooks",
+              "Servicios que ofrece: Tazas con fotos",
+              "Servicios que ofrece: Cuadros personalizados",
+              "Servicios que ofrece: y más",
+              "Términos  y condiciones: Preguntar por términos y condiciones",
+              "Términos y condiciones: Preguntar por términos y condiciones"
+            ],
+            "eventTypes": [],
+            "description": "Fotostory es una empresa especializada en crear recuerdos personalizados a través de fotobooks, tazas y cuadros con imágenes, transformando momentos especiales en piezas únicas para conservar y revivir siempre.",
+            "fitScore": 66,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_uncertain",
+              "semantic_match",
+              "must_have_evidence",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.22310562196364966,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 131,
+            "title": "Willcast",
+            "slug": "willcast",
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "priceLevel": "very_high",
+            "rating": "5.0",
+            "reason": "Willcast encaja con Audiovisuales según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/willcast",
+            "websiteUrl": "https://goo.su/qFnV9B8",
+            "minPrice": "5000.00",
+            "maxPrice": null,
+            "promoBadge": "10% Off",
+            "promoSummary": "10% descuento en los paquetes: Lets Celebrate & Wedding day.",
+            "descriptionSnippet": "Willcast ofrece a los clientes de Sin Envolturas una propuesta audiovisual completa para matrimonios, combinando fotografía y video con un enfoque moderno.",
+            "serviceHighlights": [
+              "Paquete Let’s Celebrate",
+              "Paquete Wedding Day",
+              "Sesión post boda",
+              "Cobertura audiovisual para matrimonios",
+              "Tomas aéreas con drone"
+            ],
+            "termsHighlights": [
+              "No acumulable con otras promociones",
+              "Incluye 1 hora de cobertura para matrimonio civil",
+              "Sujeto a disponibilidad"
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Willcast ofrece a los clientes de Sin Envolturas una propuesta audiovisual completa para matrimonios, combinando fotografía y video con un enfoque moderno. Su estilo busca capturar cada momento clave del evento, incluyendo tomas aéreas que elevan la experiencia visual.",
+              "Servicios que ofrece: Paquete Let’s Celebrate",
+              "Servicios que ofrece: Paquete Wedding Day",
+              "Servicios que ofrece: Sesión post boda",
+              "Servicios que ofrece: Cobertura audiovisual para matrimonios",
+              "Servicios que ofrece: Tomas aéreas con drone",
+              "Términos  y condiciones: No acumulable con otras promociones",
+              "Términos  y condiciones: Incluye 1 hora de cobertura para matrimonio civil",
+              "Términos  y condiciones: Sujeto a disponibilidad",
+              "Términos y condiciones: No acumulable con otras promociones",
+              "Términos y condiciones: Incluye 1 hora de cobertura para matrimonio civil",
+              "Términos y condiciones: Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "Willcast ofrece a los clientes de Sin Envolturas una propuesta audiovisual completa para matrimonios, combinando fotografía y video con un enfoque moderno. Su estilo busca capturar cada momento clave del evento, incluyendo tomas aéreas que elevan la experiencia visual.",
+            "fitScore": 62,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_uncertain",
+              "semantic_match",
+              "must_have_evidence",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.7244330979180412,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 132,
+            "title": "Carlos Romero Films",
+            "slug": "carlos-romero-films",
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Carlos Romero Films encaja con Audiovisuales según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/carlos-romero-films",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off",
+            "promoSummary": "10% de descuento en cualquier paquete",
+            "descriptionSnippet": "Carlos Romero Films ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar cada momento con un enfoque cinematográfico.",
+            "serviceHighlights": [
+              "Cobertura audiovisual para matrimonios",
+              "Video de boda con enfoque cinematográfico",
+              "Edición y narrativa visual del evento",
+              "Asesoría para planificar los momentos clave a capturar"
+            ],
+            "termsHighlights": [
+              "No acumulable con otras promociones",
+              "Contacto directo vía Instagram o correo",
+              "Indicar la fecha y locación del evento al momento de la consulta",
+              "Sujeto a disponibilidad"
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Carlos Romero Films ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar cada momento con un enfoque cinematográfico. Su estilo busca transformar recuerdos en historias, resaltando la emoción y los detalles de cada celebración.",
+              "Servicios que ofrece: Cobertura audiovisual para matrimonios",
+              "Servicios que ofrece: Video de boda con enfoque cinematográfico",
+              "Servicios que ofrece: Edición y narrativa visual del evento",
+              "Servicios que ofrece: Asesoría para planificar los momentos clave a capturar",
+              "Términos  y condiciones: No acumulable con otras promociones",
+              "Términos  y condiciones: Contacto directo vía Instagram o correo",
+              "Términos  y condiciones: Indicar la fecha y locación del evento al momento de la consulta",
+              "Términos  y condiciones: Sujeto a disponibilidad",
+              "Términos y condiciones: No acumulable con otras promociones",
+              "Términos y condiciones: Contacto directo vía Instagram o correo",
+              "Términos y condiciones: Indicar la fecha y locación del evento al momento de la consulta",
+              "Términos y condiciones: Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "Carlos Romero Films ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar cada momento con un enfoque cinematográfico. Su estilo busca transformar recuerdos en historias, resaltando la emoción y los detalles de cada celebración.",
+            "fitScore": 61,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_uncertain",
+              "semantic_match",
+              "must_have_evidence",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.6084946720534096,
+            "retrievalSource": "vector"
+          }
+        ],
+        "search_strategy": "multi_need_query_intents",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_09e43f6afc6a952b006aecb4a26f3487d1acf88037d297620b",
+            "requestId": "req_cc99b7f474ed447ea7427c5a62239d6c",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 757,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 7634,
+                "instructionBytes": 0,
+                "inputBytes": 5807,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_0a67165d7177f097006aecb4a3d22487d18786a48066e752d9",
+            "requestId": "req_c7cbb62a79e84ecdbcd8e8472e614064",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 6855,
+              "inputBytes": 3183,
+              "toolCount": 0,
+              "schemaPropertyCount": 30,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 20870,
+                "instructionBytes": 6932,
+                "inputBytes": 3467,
+                "toolBytes": 2,
+                "outputSchemaBytes": 10207,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_078c28a8f59e4bd4006aecb4b5a02c87d19a9c65dec87d4762",
+            "requestId": "req_171f347ac41a4ef1ab0bf8ee41640df1",
+            "model": "gpt-6-luna",
+            "attemptCount": 3,
+            "requestMetrics": {
+              "instructionBytes": 4708,
+              "inputBytes": 20106,
+              "toolCount": 2,
+              "schemaPropertyCount": 4,
+              "transport": {
+                "observedRequestCount": 3,
+                "totalPayloadBytes": 103672,
+                "instructionBytes": 14316,
+                "inputBytes": 82858,
+                "toolBytes": 2049,
+                "outputSchemaBytes": 3603,
+                "requests": []
+              }
+            }
+          },
+          "router": {
+            "responseId": null,
+            "requestId": "req_a99dcd08178f4ddc86ea778225196c54",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 3321,
+              "inputBytes": 2583,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 6865,
+                "instructionBytes": 3321,
+                "inputBytes": 2583,
+                "toolBytes": 0,
+                "outputSchemaBytes": 0,
+                "requests": []
+              }
+            }
+          }
+        },
+        "recommendation_funnel": {
+          "available_candidates": 7,
+          "context_candidates": 6,
+          "context_candidate_ids": [
+            147,
+            189,
+            199,
+            136,
+            54,
+            131
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "elicitacion_necesidades",
+        "timing_ms": {
+          "total": 24740,
+          "load_plan": 6,
+          "response_classification": 1357,
+          "prepare_working_plan": 0,
+          "extraction": 11355,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 4568,
+          "provider_enrichment": 438,
+          "prompt_bundle_load": 0,
+          "compose_reply": 9565,
+          "save_plan": 37,
+          "router": 257,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1523,
+            "output_tokens": 70,
+            "total_tokens": 1593,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 178
+          },
+          "router": {
+            "input_tokens": 1481,
+            "output_tokens": 0,
+            "total_tokens": 1481
+          },
+          "extraction": {
+            "input_tokens": 4407,
+            "output_tokens": 998,
+            "total_tokens": 5405,
+            "cached_input_tokens": 3636,
+            "cache_write_input_tokens": 768
+          },
+          "reply": {
+            "input_tokens": 21357,
+            "output_tokens": 636,
+            "total_tokens": 21993,
+            "cached_input_tokens": 14992,
+            "cache_write_input_tokens": 6356
+          },
+          "total": {
+            "input_tokens": 28768,
+            "output_tokens": 1704,
+            "total_tokens": 30472,
+            "cached_input_tokens": 19970,
+            "cache_write_input_tokens": 7302
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "agent_api",
+          "has_prior_outbound_message": false,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "question_or_request",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "elicitacion_necesidades",
+          "routeKind": "multi_need_search",
+          "providerSearchMode": "multi_need_query_intents",
+          "presentationScope": "multi_need",
+          "focusNeedCategory": "Locales",
+          "needsToSearch": [
+            "Locales",
+            "Catering",
+            "Fotografía y video"
+          ],
+          "needsToPresent": [
+            "Locales",
+            "Catering",
+            "Fotografía y video"
+          ],
+          "stopReason": null,
+          "persistReason": "elicitacion_necesidades",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "multi_need_search",
+        "presentation_scope": "multi_need",
+        "session_focus_used": false,
+        "session_focus_key_present": true,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.97,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": "corporativo",
+          "vendor_category": "Locales",
+          "vendor_categories": [
+            "Locales",
+            "Catering",
+            "Fotografía y video"
+          ],
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": "alto",
+          "guest_range": "101-200",
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 3,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Organiza una conferencia corporativa en Lima para 180 personas; necesita local, catering y audiovisuales, con presupuesto alto.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "elicitacion_necesidades",
+          "lifecycle_state": "active",
+          "event_type": "corporativo",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": "alto",
+          "guest_range": "101-200",
+          "provider_need_categories": [
+            "Locales",
+            "Catering",
+            "Fotografía y video"
+          ],
+          "provider_need_count": 3,
+          "provider_need_statuses": [
+            {
+              "category": "Locales",
+              "status": "shortlisted",
+              "has_recommendations": true,
+              "selected_provider_ids": []
+            },
+            {
+              "category": "Catering",
+              "status": "shortlisted",
+              "has_recommendations": true,
+              "selected_provider_ids": []
+            },
+            {
+              "category": "Fotografía y video",
+              "status": "shortlisted",
+              "has_recommendations": true,
+              "selected_provider_ids": []
+            }
+          ],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "Organiza una conferencia corporativa en Lima para 180 personas; necesita local, catering y audiovisuales, con presupuesto alto.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "empty",
+          "context_source": "agent_api",
+          "retrieved_message_count": 0,
+          "recent_message_count": 0,
+          "excluded_current_message_count": 0,
+          "directions": [],
+          "sources": [],
+          "entry_source": null
+        },
+        "continuity_state": "new",
+        "welcome_allowed": true,
+        "history_status": "empty",
+        "has_prior_outbound": false,
+        "requested_operation": "provider.plan",
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": true,
+          "droppedCandidateDetails": 7,
+          "droppedCalls": 23,
+          "diagnosticBytes": 12288,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M6PA3YD6JW125AHC0WPM0XAN",
+        "conversation_hash": "d2aab40bb97d21798061e83c04fb3681f9137c9783f136d14a096b1dac2b74c2",
+        "runtime_latency_ms": 24740,
+        "extraction_latency_ms": 11355,
+        "compose_latency_ms": 9565,
+        "tools_called_count": 9,
+        "provider_results_count": 7,
+        "recommendation_context_candidates": 6,
+        "recommendation_presentation_limit": 6,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 30472,
+        "cached_input_tokens": 19970,
+        "cache_hit_rate": 0.6941740823136818,
+        "extraction_to_compose_ratio": 1.1871406168322007,
+        "captured_at": "2026-11-05T16:54:18.811Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "elicitacion_necesidades",
+        "lifecycle_state": "active",
+        "event_type": "corporativo",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": "Lima",
+        "budget_signal": "alto",
+        "guest_range": "101-200",
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "shortlisted",
+            "recommended_provider_ids": [
+              147
+            ],
+            "selected_provider_ids": []
+          },
+          {
+            "category": "Catering",
+            "status": "shortlisted",
+            "recommended_provider_ids": [
+              189,
+              199,
+              136
+            ],
+            "selected_provider_ids": []
+          },
+          {
+            "category": "Fotografía y video",
+            "status": "shortlisted",
+            "recommended_provider_ids": [
+              54,
+              131,
+              132
+            ],
+            "selected_provider_ids": []
+          }
+        ],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": true
+        }
+      },
+      "latencyMs": 26111
+    }
+  ],
+  "startedAt": "2026-11-05T16:54:20.952Z",
+  "completedAt": "2026-11-05T16:54:20.953Z"
+}

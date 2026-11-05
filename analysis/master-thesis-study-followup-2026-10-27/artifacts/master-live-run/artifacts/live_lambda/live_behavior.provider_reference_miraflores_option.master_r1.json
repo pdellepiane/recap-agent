@@ -1,0 +1,2342 @@
+{
+  "runId": "eval-2026-10-27T22-19-42-463Z-78589b85",
+  "caseId": "live_behavior.provider_reference_miraflores_option.master_r1",
+  "suite": "live_behavior_regression",
+  "target": "live_lambda",
+  "configLabel": "live_lambda",
+  "status": "passed",
+  "hardGatePassed": true,
+  "finalScore": 1,
+  "totalLatencyMs": 39679,
+  "totalToolCalls": 7,
+  "nodeTransitions": [
+    "recomendar->seguir_refinando_guardar_plan",
+    "seguir_refinando_guardar_plan->recomendar",
+    "recomendar->recomendar",
+    "recomendar->recomendar",
+    "recomendar->recomendar"
+  ],
+  "planDiffSummary": [
+    "current_node=\"recomendar\"",
+    "intent=\"ver_opciones\"",
+    "event_type=\"boda\"",
+    "vendor_category=\"Catering\"",
+    "active_need_category=\"Catering\"",
+    "location=\"Lima\"",
+    "guest_range=\"51-100\"",
+    "selected_provider_ids=[90]",
+    "provider_needs=Catering:selected"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/.eval-runs/eval-2026-10-27T22-19-42-463Z-78589b85/artifacts/live_lambda/live_behavior.provider_reference_miraflores_option.master_r1.json"
+  },
+  "expectationResults": [
+    {
+      "id": "miraflores-provider-selected",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "s4-miraflores-card-selected",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "s4-no-new-search-no-close",
+      "type": "tool_usage",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Tool usage matched expectations."
+    },
+    {
+      "id": "recall-keeps-selection",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "recall-no-new-search-or-close",
+      "type": "tool_usage",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Tool usage matched expectations."
+    },
+    {
+      "id": "recall-performs-no-new-effect",
+      "type": "tool_usage",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Tool usage matched expectations."
+    },
+    {
+      "id": "thanks-keeps-selection",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "thanks-no-search-or-close",
+      "type": "tool_usage",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Tool usage matched expectations."
+    },
+    {
+      "id": "thanks-performs-no-new-effect",
+      "type": "tool_usage",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Tool usage matched expectations."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 1,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 9 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 5,
+    "avg_latency_ms": 7935.8,
+    "p95_latency_ms": 12214,
+    "tool_calls_total": 7,
+    "unique_tools_called": 2,
+    "tool_call_rate_per_turn": 1.4,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.20689655172413793,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 46084,
+    "cache_hit_rate": 0.7449699563000728,
+    "input_tokens": 43936,
+    "cached_input_tokens": 32731,
+    "cache_write_input_tokens": 11166,
+    "uncached_input_tokens": 11205,
+    "usage_known": true
+  },
+  "timing": {
+    "queueWaitMs": 72581,
+    "setupMs": 0,
+    "turnMs": 42505,
+    "snapshotMs": 12,
+    "teardownMs": 0,
+    "judgeWaitMs": 0,
+    "judgeApiMs": 0,
+    "reportWriteMs": 0,
+    "makespanMs": 0
+  },
+  "judgeMetrics": {
+    "modelCalls": 0,
+    "retryCount": 0,
+    "rateLimitCount": 0,
+    "tokensUnknown": false,
+    "openaiSdk": "7.43.0",
+    "judgeModels": []
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Quiero la opción que está en Miraflores.",
+        "sessionId": "live-behavior-provider-miraflores-session",
+        "backendFixture": {
+          "scenario": "provider-miraflores-option"
+        }
+      },
+      "outputText": "Perfecto, queda seleccionada Opción Esencial, en Miraflores, para el catering de tu boda. ¿Quieres que sigamos con otra necesidad, como fotografía, música o local, o prefieres guardar el plan por ahora?",
+      "deliveredText": "Perfecto, queda seleccionada Opción Esencial, en Miraflores, para el catering de tu boda. ¿Quieres que sigamos con otra necesidad, como fotografía, música o local, o prefieres guardar el plan por ahora?",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "f8438060f7ef11873871391cc8f02ce08359d9ade3a3a44d9ac02be57bb725b0",
+        "deliveredSha256": "f8438060f7ef11873871391cc8f02ce08359d9ade3a3a44d9ac02be57bb725b0",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "seguir_refinando_guardar_plan",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 9,
+          "attempts": 1
+        },
+        "trace_id": "01M5ZQ7YZDY3RFWA1E4DBVXVCF",
+        "conversation_id": null,
+        "plan_id": "b192e2fd-2942-4d85-9396-cfe2a706879a",
+        "previous_node": "recomendar",
+        "next_node": "seguir_refinando_guardar_plan",
+        "node_path": [
+          "recomendar",
+          "existe_plan_guardado",
+          "usuario_elige_proveedor",
+          "usuario_elige_proveedor",
+          "anadir_a_proveedores_recomendados",
+          "seguir_refinando_guardar_plan"
+        ],
+        "intent": "confirmar_proveedor",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "9579d9dcb7c9",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/domain_scope.txt",
+          "shared/flow_discipline.txt"
+        ],
+        "tools_considered": [
+          "classify_reply_delivery",
+          "get_provider_detail"
+        ],
+        "tools_called": [
+          "classify_reply_delivery",
+          "get_provider_detail"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "get_provider_detail",
+            "input": "{\"projection_version\":1,\"provider_id\":90}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "get_provider_detail",
+            "output": "{\"projection_version\":1,\"result_kind\":\"detail\",\"provider_id\":90,\"found\":true}"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 90,
+            "title": "Opción Esencial",
+            "category": "Catering",
+            "location": "Miraflores",
+            "priceLevel": "low",
+            "reason": "alternativa ubicada en Miraflores",
+            "serviceHighlights": [],
+            "termsHighlights": []
+          },
+          {
+            "id": 109,
+            "title": "EDO Sushi Bar",
+            "category": "Catering",
+            "location": "Barranco",
+            "priceLevel": "high",
+            "reason": "alternativa ubicada en Barranco",
+            "serviceHighlights": [],
+            "termsHighlights": []
+          }
+        ],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [
+            {
+              "provider_id": 90,
+              "category": "Catering",
+              "has_title": true,
+              "has_hint": true
+            }
+          ],
+          "selected_provider_hints_count": 1,
+          "provider_plan_operation_types": [
+            "select_provider"
+          ],
+          "provider_plan_operation_categories": [
+            "Catering"
+          ]
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 90,
+            "category": "Catering",
+            "location": "Miraflores",
+            "retrieval_source": null,
+            "retrieval_score": null,
+            "fit_score": null
+          },
+          {
+            "provider_id": 109,
+            "category": "Catering",
+            "location": "Barranco",
+            "retrieval_source": null,
+            "retrieval_score": null,
+            "fit_score": null
+          }
+        ],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_0c9171d9dbaa4891006ae123cace4c87d28dde73860c6d540f",
+            "requestId": "req_980c1cd075374be8b6035e36cfe23d63",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 657,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 7534,
+                "instructionBytes": 0,
+                "inputBytes": 5707,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_036e464051b0e857006ae123ce30e087d2aa27f7572ab6fec4",
+            "requestId": "req_79b5ef40a02d49f28c2c5d5074bd8ad3",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 10050,
+              "inputBytes": 3671,
+              "toolCount": 0,
+              "schemaPropertyCount": 36,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 35525,
+                "instructionBytes": 10163,
+                "inputBytes": 3987,
+                "toolBytes": 2,
+                "outputSchemaBytes": 21111,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_0d9b9ab41ad820d5006ae123d45fc887d2afa15b98f3ec88b7",
+            "requestId": "req_964f7564ea304791846fc301d755bbab",
+            "model": "gpt-6-luna",
+            "attemptCount": 2,
+            "requestMetrics": {
+              "instructionBytes": 2588,
+              "inputBytes": 8556,
+              "toolCount": 1,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 2,
+                "totalPayloadBytes": 26635,
+                "instructionBytes": 5248,
+                "inputBytes": 19499,
+                "toolBytes": 686,
+                "outputSchemaBytes": 626,
+                "requests": []
+              }
+            }
+          },
+          "router": null
+        },
+        "recommendation_funnel": {
+          "available_candidates": 2,
+          "context_candidates": 2,
+          "context_candidate_ids": [
+            90,
+            109
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "seguir_refinando_guardar_plan",
+        "timing_ms": {
+          "total": 11296,
+          "load_plan": 16,
+          "response_classification": 3255,
+          "prepare_working_plan": 0,
+          "extraction": 5126,
+          "apply_extraction": 19,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 2857,
+          "save_plan": 12,
+          "router": 0,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1496,
+            "output_tokens": 139,
+            "total_tokens": 1635,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 151
+          },
+          "router": null,
+          "extraction": {
+            "input_tokens": 7688,
+            "output_tokens": 495,
+            "total_tokens": 8183,
+            "cached_input_tokens": 6805,
+            "cache_write_input_tokens": 880
+          },
+          "reply": {
+            "input_tokens": 5707,
+            "output_tokens": 87,
+            "total_tokens": 5794,
+            "cached_input_tokens": 2799,
+            "cache_write_input_tokens": 2902
+          },
+          "total": {
+            "input_tokens": 14891,
+            "output_tokens": 721,
+            "total_tokens": 15612,
+            "cached_input_tokens": 10946,
+            "cache_write_input_tokens": 3933
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "local_plan",
+          "has_prior_outbound_message": false,
+          "fallback_used": false,
+          "conversation_health": "uncertain",
+          "health_reason": "insufficient_context",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "question_or_request",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "seguir_refinando_guardar_plan",
+          "routeKind": "apply_selection",
+          "providerSearchMode": "none",
+          "presentationScope": "none",
+          "focusNeedCategory": "Catering",
+          "needsToSearch": [],
+          "needsToPresent": [],
+          "stopReason": null,
+          "persistReason": "seguir_refinando_guardar_plan",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "apply_selection",
+        "presentation_scope": "none",
+        "session_focus_used": false,
+        "session_focus_key_present": true,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.99,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": "boda",
+          "vendor_category": "Catering",
+          "vendor_categories": [
+            "Catering"
+          ],
+          "active_need_category": "Catering",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "51-100",
+          "selected_provider_hints": [
+            "la opción ubicada en Miraflores"
+          ],
+          "preferences": [
+            "comida japonesa"
+          ],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 0,
+          "provider_plan_operations_count": 1,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "El usuario elige la opción ubicada en Miraflores, identificada claramente como Opción Esencial (ID 90).",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "seguir_refinando_guardar_plan",
+          "lifecycle_state": "active",
+          "event_type": "boda",
+          "vendor_category": "Catering",
+          "active_need_category": "Catering",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "51-100",
+          "provider_need_categories": [
+            "Catering"
+          ],
+          "provider_need_count": 1,
+          "provider_need_statuses": [
+            {
+              "category": "Catering",
+              "status": "selected",
+              "has_recommendations": true,
+              "selected_provider_ids": [
+                90
+              ]
+            }
+          ],
+          "selected_provider_ids": [
+            90
+          ],
+          "missing_fields": [],
+          "conversation_summary_preview": "El usuario elige la opción ubicada en Miraflores, identificada claramente como Opción Esencial (ID 90).",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "missing_phone_number",
+          "context_source": "local_plan",
+          "retrieved_message_count": 0,
+          "recent_message_count": 0,
+          "excluded_current_message_count": 0,
+          "directions": [],
+          "sources": [],
+          "entry_source": null
+        },
+        "continuity_state": "continuing",
+        "welcome_allowed": false,
+        "history_status": "missing_phone_number",
+        "has_prior_outbound": false,
+        "requested_operation": "provider.plan",
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 8527,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M5ZQ7YZDY3RFWA1E4DBVXVCF",
+        "conversation_hash": "79226c5b1bc3b11edb581b2874231ef6dfeb6a01bccd267a47dc64e371c32e91",
+        "runtime_latency_ms": 11296,
+        "extraction_latency_ms": 5126,
+        "compose_latency_ms": 2857,
+        "tools_called_count": 2,
+        "provider_results_count": 2,
+        "recommendation_context_candidates": 2,
+        "recommendation_presentation_limit": 6,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "uncertain",
+        "conversation_health_reason": "insufficient_context",
+        "human_help_response": "not_applicable",
+        "total_tokens": 15612,
+        "cached_input_tokens": 10946,
+        "cache_hit_rate": 0.7350748774427507,
+        "extraction_to_compose_ratio": 1.7941897094854742,
+        "captured_at": "2026-10-27T22:21:10.005Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "seguir_refinando_guardar_plan",
+        "lifecycle_state": "active",
+        "event_type": "boda",
+        "vendor_category": "Catering",
+        "active_need_category": "Catering",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": "51-100",
+        "provider_needs": [
+          {
+            "category": "Catering",
+            "status": "selected",
+            "recommended_provider_ids": [
+              90,
+              109
+            ],
+            "selected_provider_ids": [
+              90
+            ]
+          }
+        ],
+        "selected_provider_ids": [
+          90
+        ],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": false
+        }
+      },
+      "latencyMs": 11644
+    },
+    {
+      "turnIndex": 1,
+      "input": {
+        "text": "¿Cuál era la otra opción?",
+        "sessionId": "live-behavior-provider-miraflores-session",
+        "backendFixture": {
+          "scenario": "provider-miraflores-option"
+        }
+      },
+      "outputText": "La otra opción era EDO Sushi Bar, en Barranco. Su nivel de precio es alto; ¿quieres que te cuente más sobre ella?\n\n1. EDO Sushi Bar\n También es una opción de catering para boda y está en Barranco.\n Ubicación: Barranco.\n Precio: $$$.\n Nota: Su nivel de precio es alto.",
+      "deliveredText": "La otra opción era EDO Sushi Bar, en Barranco. Su nivel de precio es alto; ¿quieres que te cuente más sobre ella?\n\n1. EDO Sushi Bar\n También es una opción de catering para boda y está en Barranco.\n Ubicación: Barranco.\n Precio: $$$.\n Nota: Su nivel de precio es alto.",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "b33e4fe15a27a49b3ee636e76910b7fc991f7ccd9483ab5bef4a664695dac3e8",
+        "deliveredSha256": "b33e4fe15a27a49b3ee636e76910b7fc991f7ccd9483ab5bef4a664695dac3e8",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "recomendar",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 7,
+          "attempts": 1
+        },
+        "trace_id": "01M5ZQ8B220V2GYGWA2K2Q0KNQ",
+        "conversation_id": null,
+        "plan_id": "b192e2fd-2942-4d85-9396-cfe2a706879a",
+        "previous_node": "seguir_refinando_guardar_plan",
+        "next_node": "recomendar",
+        "node_path": [
+          "seguir_refinando_guardar_plan",
+          "existe_plan_guardado",
+          "refinar_criterios",
+          "recomendar"
+        ],
+        "intent": "ver_opciones",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "9579d9dcb7c9",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/domain_scope.txt",
+          "shared/flow_discipline.txt"
+        ],
+        "tools_considered": [
+          "classify_reply_delivery",
+          "get_provider_detail",
+          "get_related_providers",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "classify_reply_delivery",
+          "get_provider_detail"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "get_provider_detail",
+            "input": "{\"projection_version\":1,\"provider_id\":109}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "get_provider_detail",
+            "output": "{\"projection_version\":1,\"result_kind\":\"detail\",\"provider_id\":109,\"found\":true}"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 90,
+            "title": "Opción Esencial",
+            "category": "Catering",
+            "location": "Miraflores",
+            "priceLevel": "low",
+            "reason": "alternativa ubicada en Miraflores",
+            "serviceHighlights": [],
+            "termsHighlights": []
+          },
+          {
+            "id": 109,
+            "title": "EDO Sushi Bar",
+            "category": "Catering",
+            "location": "Barranco",
+            "priceLevel": "high",
+            "reason": "alternativa ubicada en Barranco",
+            "serviceHighlights": [],
+            "termsHighlights": []
+          }
+        ],
+        "search_strategy": "existing_plan_shortlist",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 90,
+            "category": "Catering",
+            "location": "Miraflores",
+            "retrieval_source": null,
+            "retrieval_score": null,
+            "fit_score": null
+          },
+          {
+            "provider_id": 109,
+            "category": "Catering",
+            "location": "Barranco",
+            "retrieval_source": null,
+            "retrieval_score": null,
+            "fit_score": null
+          }
+        ],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_07836d7f541485c3006ae123d68c9087d2a69eec3b98ec42b4",
+            "requestId": "req_3dfaa9e241474c018bb060f39b38c325",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 1042,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 7931,
+                "instructionBytes": 0,
+                "inputBytes": 6104,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_0cb658a7e80fba5b006ae123da4b7487d287b1f30276355f45",
+            "requestId": "req_2407bddaf0e14cd3ad59e7dd0cdfbb86",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 10050,
+              "inputBytes": 4473,
+              "toolCount": 0,
+              "schemaPropertyCount": 36,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 36360,
+                "instructionBytes": 10163,
+                "inputBytes": 4822,
+                "toolBytes": 2,
+                "outputSchemaBytes": 21111,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_0eaf76c7406359db006ae123e0554487d297defbf3db373852",
+            "requestId": "req_ca16b591451d44808ad18522fc02eef1",
+            "model": "gpt-6-luna",
+            "attemptCount": 2,
+            "requestMetrics": {
+              "instructionBytes": 2588,
+              "inputBytes": 8139,
+              "toolCount": 3,
+              "schemaPropertyCount": 3,
+              "transport": {
+                "observedRequestCount": 2,
+                "totalPayloadBytes": 27684,
+                "instructionBytes": 5248,
+                "inputBytes": 18510,
+                "toolBytes": 2054,
+                "outputSchemaBytes": 1334,
+                "requests": []
+              }
+            }
+          },
+          "router": null
+        },
+        "recommendation_funnel": {
+          "available_candidates": 2,
+          "context_candidates": 2,
+          "context_candidate_ids": [
+            90,
+            109
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "recomendar",
+        "timing_ms": {
+          "total": 11908,
+          "load_plan": 19,
+          "response_classification": 3445,
+          "prepare_working_plan": 0,
+          "extraction": 4802,
+          "apply_extraction": 2,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 3609,
+          "save_plan": 23,
+          "router": 0,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1600,
+            "output_tokens": 125,
+            "total_tokens": 1725,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 255
+          },
+          "router": null,
+          "extraction": {
+            "input_tokens": 7889,
+            "output_tokens": 412,
+            "total_tokens": 8301,
+            "cached_input_tokens": 6805,
+            "cache_write_input_tokens": 1081
+          },
+          "reply": {
+            "input_tokens": 5722,
+            "output_tokens": 116,
+            "total_tokens": 5838,
+            "cached_input_tokens": 2807,
+            "cache_write_input_tokens": 2909
+          },
+          "total": {
+            "input_tokens": 15211,
+            "output_tokens": 653,
+            "total_tokens": 15864,
+            "cached_input_tokens": 10954,
+            "cache_write_input_tokens": 4245
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "local_plan",
+          "has_prior_outbound_message": true,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "question_or_request",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "recomendar",
+          "routeKind": "present_existing_shortlist",
+          "providerSearchMode": "existing_shortlist",
+          "presentationScope": "single_need",
+          "focusNeedCategory": "Catering",
+          "needsToSearch": [],
+          "needsToPresent": [
+            "Catering"
+          ],
+          "stopReason": null,
+          "persistReason": "recomendar",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "present_existing_shortlist",
+        "presentation_scope": "single_need",
+        "session_focus_used": true,
+        "session_focus_key_present": true,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.99,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": null,
+          "vendor_category": "Catering",
+          "vendor_categories": [],
+          "active_need_category": "Catering",
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 0,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "El usuario pregunta cuál era la otra opción de catering recomendada; era EDO Sushi Bar, ubicada en Barranco.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "recomendar",
+          "lifecycle_state": "active",
+          "event_type": "boda",
+          "vendor_category": "Catering",
+          "active_need_category": "Catering",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "51-100",
+          "provider_need_categories": [
+            "Catering"
+          ],
+          "provider_need_count": 1,
+          "provider_need_statuses": [
+            {
+              "category": "Catering",
+              "status": "selected",
+              "has_recommendations": true,
+              "selected_provider_ids": [
+                90
+              ]
+            }
+          ],
+          "selected_provider_ids": [
+            90
+          ],
+          "missing_fields": [],
+          "conversation_summary_preview": "El usuario pregunta cuál era la otra opción de catering recomendada; era EDO Sushi Bar, ubicada en Barranco.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "missing_phone_number",
+          "context_source": "local_plan",
+          "retrieved_message_count": 0,
+          "recent_message_count": 1,
+          "excluded_current_message_count": 0,
+          "directions": [
+            "outbound"
+          ],
+          "sources": [
+            null
+          ],
+          "entry_source": null
+        },
+        "continuity_state": "continuing",
+        "welcome_allowed": false,
+        "history_status": "missing_phone_number",
+        "has_prior_outbound": true,
+        "requested_operation": null,
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 8347,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M5ZQ8B220V2GYGWA2K2Q0KNQ",
+        "conversation_hash": "79226c5b1bc3b11edb581b2874231ef6dfeb6a01bccd267a47dc64e371c32e91",
+        "runtime_latency_ms": 11908,
+        "extraction_latency_ms": 4802,
+        "compose_latency_ms": 3609,
+        "tools_called_count": 2,
+        "provider_results_count": 2,
+        "recommendation_context_candidates": 2,
+        "recommendation_presentation_limit": 6,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 15864,
+        "cached_input_tokens": 10954,
+        "cache_hit_rate": 0.7201367431464072,
+        "extraction_to_compose_ratio": 1.3305624826821834,
+        "captured_at": "2026-10-27T22:21:22.381Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "recomendar",
+        "lifecycle_state": "active",
+        "event_type": "boda",
+        "vendor_category": "Catering",
+        "active_need_category": "Catering",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": "51-100",
+        "provider_needs": [
+          {
+            "category": "Catering",
+            "status": "selected",
+            "recommended_provider_ids": [
+              90,
+              109
+            ],
+            "selected_provider_ids": [
+              90
+            ]
+          }
+        ],
+        "selected_provider_ids": [
+          90
+        ],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": false
+        }
+      },
+      "latencyMs": 12214
+    },
+    {
+      "turnIndex": 2,
+      "input": {
+        "text": "Perdona, ¿me repites lo último que me dijiste?",
+        "sessionId": "live-behavior-provider-miraflores-session",
+        "backendFixture": {
+          "scenario": "provider-miraflores-option"
+        }
+      },
+      "outputText": "La otra opción era EDO Sushi Bar, en Barranco. Es una opción de catering para bodas y tiene un nivel de precio alto ($$$).",
+      "deliveredText": "La otra opción era EDO Sushi Bar, en Barranco. Es una opción de catering para bodas y tiene un nivel de precio alto ($$$).",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "09d6d771682c54c7e76c75ec6178df397e4565f4aaa0cb0b95bebd476f9243b9",
+        "deliveredSha256": "09d6d771682c54c7e76c75ec6178df397e4565f4aaa0cb0b95bebd476f9243b9",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "recomendar",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 8,
+          "attempts": 1
+        },
+        "trace_id": "01M5ZQ8MYK61CEMP0E9JMWAJ2A",
+        "conversation_id": null,
+        "plan_id": "b192e2fd-2942-4d85-9396-cfe2a706879a",
+        "previous_node": "recomendar",
+        "next_node": "recomendar",
+        "node_path": [
+          "recomendar"
+        ],
+        "intent": null,
+        "missing_fields": [],
+        "search_ready": false,
+        "prompt_bundle_id": "09f7a0da63c9",
+        "prompt_file_paths": [
+          "shared/reply_core.txt"
+        ],
+        "tools_considered": [
+          "classify_reply_delivery"
+        ],
+        "tools_called": [
+          "classify_reply_delivery"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_026a3cbf2bdb7286006ae123e2df6887d286081f212da650fb",
+            "requestId": "req_6a59fc63a19d4a229c849233e53bbf7b",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 1119,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 8014,
+                "instructionBytes": 0,
+                "inputBytes": 6187,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_09844c0d7f3a0ee9006ae123e4f99c87d291a3b9255c72d99a",
+            "requestId": "req_9a3fe395a8a24f04bd1ce4c05a7a5f6c",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 10050,
+              "inputBytes": 4597,
+              "toolCount": 0,
+              "schemaPropertyCount": 36,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 36492,
+                "instructionBytes": 10163,
+                "inputBytes": 4954,
+                "toolBytes": 2,
+                "outputSchemaBytes": 21111,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_04de4aa80999a579006ae123ea02e487d2be899ade5f5565c0",
+            "requestId": "req_1e7325e21ae04788aa15ea191affecdc",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 680,
+              "inputBytes": 3464,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 5166,
+                "instructionBytes": 684,
+                "inputBytes": 3877,
+                "toolBytes": 2,
+                "outputSchemaBytes": 313,
+                "requests": []
+              }
+            }
+          },
+          "router": null
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 5
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "contextual_clarification",
+        "timing_ms": {
+          "total": 9705,
+          "load_plan": 10,
+          "response_classification": 1951,
+          "prepare_working_plan": 0,
+          "extraction": 5141,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 0,
+          "save_plan": 0,
+          "router": 0,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1627,
+            "output_tokens": 103,
+            "total_tokens": 1730,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 282
+          },
+          "router": null,
+          "extraction": {
+            "input_tokens": 7936,
+            "output_tokens": 416,
+            "total_tokens": 8352,
+            "cached_input_tokens": 6805,
+            "cache_write_input_tokens": 1128
+          },
+          "reply": {
+            "input_tokens": 1127,
+            "output_tokens": 48,
+            "total_tokens": 1175,
+            "cached_input_tokens": 0,
+            "cache_write_input_tokens": 1124
+          },
+          "total": {
+            "input_tokens": 10690,
+            "output_tokens": 567,
+            "total_tokens": 11257,
+            "cached_input_tokens": 8147,
+            "cache_write_input_tokens": 2534
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "local_plan",
+          "has_prior_outbound_message": true,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "question_or_request",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "resolver_consultas_informativas",
+          "routeKind": "contextual_clarification",
+          "providerSearchMode": "none",
+          "presentationScope": "clarification",
+          "focusNeedCategory": null,
+          "needsToSearch": [],
+          "needsToPresent": [],
+          "stopReason": null,
+          "persistReason": "contextual_clarification",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "contextual_clarification",
+        "presentation_scope": "clarification",
+        "session_focus_used": false,
+        "session_focus_key_present": false,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 1,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": null,
+          "vendor_category": null,
+          "vendor_categories": [],
+          "active_need_category": null,
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 0,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "El usuario pide que se repita la última respuesta sobre EDO Sushi Bar.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "recomendar",
+          "lifecycle_state": "active",
+          "event_type": "boda",
+          "vendor_category": "Catering",
+          "active_need_category": "Catering",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "51-100",
+          "provider_need_categories": [
+            "Catering"
+          ],
+          "provider_need_count": 1,
+          "provider_need_statuses": [
+            {
+              "category": "Catering",
+              "status": "selected",
+              "has_recommendations": true,
+              "selected_provider_ids": [
+                90
+              ]
+            }
+          ],
+          "selected_provider_ids": [
+            90
+          ],
+          "missing_fields": [],
+          "conversation_summary_preview": "El usuario pregunta cuál era la otra opción de catering recomendada; era EDO Sushi Bar, ubicada en Barranco.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "missing_phone_number",
+          "context_source": "local_plan",
+          "retrieved_message_count": 0,
+          "recent_message_count": 1,
+          "excluded_current_message_count": 0,
+          "directions": [
+            "outbound"
+          ],
+          "sources": [
+            null
+          ],
+          "entry_source": null
+        },
+        "continuity_state": "continuing",
+        "welcome_allowed": false,
+        "history_status": "missing_phone_number",
+        "has_prior_outbound": true,
+        "requested_operation": null,
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 7170,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M5ZQ8MYK61CEMP0E9JMWAJ2A",
+        "conversation_hash": "79226c5b1bc3b11edb581b2874231ef6dfeb6a01bccd267a47dc64e371c32e91",
+        "runtime_latency_ms": 9705,
+        "extraction_latency_ms": 5141,
+        "compose_latency_ms": 0,
+        "tools_called_count": 1,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 5,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 11257,
+        "cached_input_tokens": 8147,
+        "cache_hit_rate": 0.7621141253507951,
+        "extraction_to_compose_ratio": null,
+        "captured_at": "2026-10-27T22:21:32.506Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "recomendar",
+        "lifecycle_state": "active",
+        "event_type": "boda",
+        "vendor_category": "Catering",
+        "active_need_category": "Catering",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": "51-100",
+        "provider_needs": [
+          {
+            "category": "Catering",
+            "status": "selected",
+            "recommended_provider_ids": [
+              90,
+              109
+            ],
+            "selected_provider_ids": [
+              90
+            ]
+          }
+        ],
+        "selected_provider_ids": [
+          90
+        ],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": false
+        }
+      },
+      "latencyMs": 10013
+    },
+    {
+      "turnIndex": 3,
+      "input": {
+        "text": "Gracias, lo pienso y te aviso.",
+        "sessionId": "live-behavior-provider-miraflores-session",
+        "backendFixture": {
+          "scenario": "provider-miraflores-option"
+        }
+      },
+      "outputText": "",
+      "deliveredText": null,
+      "delivery": {
+        "action": "suppress",
+        "reason": "suppress_acknowledgement"
+      },
+      "outputOrigin": {
+        "status": "missing",
+        "candidateSha256": null,
+        "deliveredSha256": null,
+        "transformationVersion": null,
+        "mismatchFields": [
+          "candidate_output_origin"
+        ]
+      },
+      "currentNode": "recomendar",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 6,
+          "attempts": 1
+        },
+        "trace_id": "01M5ZQ8RJX95BNEC168DXH8JJX",
+        "conversation_id": null,
+        "plan_id": "b192e2fd-2942-4d85-9396-cfe2a706879a",
+        "previous_node": "recomendar",
+        "next_node": "recomendar",
+        "node_path": [
+          "recomendar"
+        ],
+        "intent": "solicitar_humano",
+        "missing_fields": [],
+        "search_ready": false,
+        "prompt_bundle_id": "3dadfbdaa726",
+        "prompt_file_paths": [
+          "nodes/deteccion_intencion/response_classifier.txt"
+        ],
+        "tools_considered": [
+          "classify_reply_delivery"
+        ],
+        "tools_called": [
+          "classify_reply_delivery"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_0e4240b42f324502006ae123ed29d487d29a0a232c7e574577",
+            "requestId": "req_42457cea715642fb9ee222f83970311c",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 945,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 7834,
+                "instructionBytes": 0,
+                "inputBytes": 6007,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": null,
+          "reply": null,
+          "router": null
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 5
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "response_classifier_suppressed",
+        "timing_ms": {
+          "total": 3264,
+          "load_plan": 82,
+          "response_classification": 3174,
+          "prepare_working_plan": 0,
+          "extraction": 0,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 0,
+          "save_plan": 7,
+          "router": 0,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1573,
+            "output_tokens": 128,
+            "total_tokens": 1701,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 228
+          },
+          "router": null,
+          "extraction": null,
+          "reply": null,
+          "total": {
+            "input_tokens": 1573,
+            "output_tokens": 128,
+            "total_tokens": 1701,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 228
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "suppress_acknowledgement",
+          "reason": "acknowledgement",
+          "would_suppress": true,
+          "context_source": "local_plan",
+          "has_prior_outbound_message": true,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "acknowledgement_only",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "recomendar",
+          "routeKind": "ask_event_context",
+          "providerSearchMode": "none",
+          "presentationScope": "single_need",
+          "focusNeedCategory": "Catering",
+          "needsToSearch": [
+            "Catering"
+          ],
+          "needsToPresent": [],
+          "stopReason": null,
+          "persistReason": "recomendar",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "ask_event_context",
+        "presentation_scope": "single_need",
+        "session_focus_used": false,
+        "session_focus_key_present": false,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 1,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": null,
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": null,
+          "vendor_category": null,
+          "vendor_categories": [],
+          "active_need_category": null,
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 0,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "The response classifier suppressed delivery: acknowledgement.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "recomendar",
+          "lifecycle_state": "active",
+          "event_type": "boda",
+          "vendor_category": "Catering",
+          "active_need_category": "Catering",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "51-100",
+          "provider_need_categories": [
+            "Catering"
+          ],
+          "provider_need_count": 1,
+          "provider_need_statuses": [
+            {
+              "category": "Catering",
+              "status": "selected",
+              "has_recommendations": true,
+              "selected_provider_ids": [
+                90
+              ]
+            }
+          ],
+          "selected_provider_ids": [
+            90
+          ],
+          "missing_fields": [],
+          "conversation_summary_preview": "El usuario pregunta cuál era la otra opción de catering recomendada; era EDO Sushi Bar, ubicada en Barranco.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "missing_phone_number",
+          "context_source": "local_plan",
+          "retrieved_message_count": 0,
+          "recent_message_count": 1,
+          "excluded_current_message_count": 0,
+          "directions": [
+            "outbound"
+          ],
+          "sources": [
+            null
+          ],
+          "entry_source": null
+        },
+        "continuity_state": "continuing",
+        "welcome_allowed": false,
+        "history_status": "missing_phone_number",
+        "has_prior_outbound": true,
+        "requested_operation": null,
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 6144,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M5ZQ8RJX95BNEC168DXH8JJX",
+        "conversation_hash": "79226c5b1bc3b11edb581b2874231ef6dfeb6a01bccd267a47dc64e371c32e91",
+        "runtime_latency_ms": 3264,
+        "extraction_latency_ms": 0,
+        "compose_latency_ms": 0,
+        "tools_called_count": 1,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 5,
+        "response_classifier_action": "suppress_acknowledgement",
+        "response_classifier_would_suppress": true,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 1701,
+        "cached_input_tokens": 1342,
+        "cache_hit_rate": 0.8531468531468531,
+        "extraction_to_compose_ratio": null,
+        "captured_at": "2026-10-27T22:21:36.222Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "recomendar",
+        "lifecycle_state": "active",
+        "event_type": "boda",
+        "vendor_category": "Catering",
+        "active_need_category": "Catering",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": "51-100",
+        "provider_needs": [
+          {
+            "category": "Catering",
+            "status": "selected",
+            "recommended_provider_ids": [
+              90,
+              109
+            ],
+            "selected_provider_ids": [
+              90
+            ]
+          }
+        ],
+        "selected_provider_ids": [
+          90
+        ],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": false
+        }
+      },
+      "latencyMs": 3604
+    },
+    {
+      "turnIndex": 4,
+      "input": {
+        "text": "Gracias, eso era todo.",
+        "sessionId": "live-behavior-provider-miraflores-session",
+        "backendFixture": {
+          "scenario": "provider-miraflores-option"
+        }
+      },
+      "outputText": "",
+      "deliveredText": null,
+      "delivery": {
+        "action": "suppress",
+        "reason": "suppress_acknowledgement"
+      },
+      "outputOrigin": {
+        "status": "missing",
+        "candidateSha256": null,
+        "deliveredSha256": null,
+        "transformationVersion": null,
+        "mismatchFields": [
+          "candidate_output_origin"
+        ]
+      },
+      "currentNode": "recomendar",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 6,
+          "attempts": 1
+        },
+        "trace_id": "01M5ZQ8TV9F4ZYCFGQPAXNN7YK",
+        "conversation_id": null,
+        "plan_id": "b192e2fd-2942-4d85-9396-cfe2a706879a",
+        "previous_node": "recomendar",
+        "next_node": "recomendar",
+        "node_path": [
+          "recomendar"
+        ],
+        "intent": "solicitar_humano",
+        "missing_fields": [],
+        "search_ready": false,
+        "prompt_bundle_id": "3dadfbdaa726",
+        "prompt_file_paths": [
+          "nodes/deteccion_intencion/response_classifier.txt"
+        ],
+        "tools_considered": [
+          "classify_reply_delivery"
+        ],
+        "tools_called": [
+          "classify_reply_delivery"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_0c44f6141709fe13006ae123f0b07c87d2afe5194bbb2ebb79",
+            "requestId": "req_f66d05eb2e174e76944618d963a0a615",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 937,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 7826,
+                "instructionBytes": 0,
+                "inputBytes": 5999,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": null,
+          "reply": null,
+          "router": null
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 5
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "response_classifier_suppressed",
+        "timing_ms": {
+          "total": 1936,
+          "load_plan": 9,
+          "response_classification": 1920,
+          "prepare_working_plan": 0,
+          "extraction": 0,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 0,
+          "save_plan": 6,
+          "router": 0,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1571,
+            "output_tokens": 79,
+            "total_tokens": 1650,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 226
+          },
+          "router": null,
+          "extraction": null,
+          "reply": null,
+          "total": {
+            "input_tokens": 1571,
+            "output_tokens": 79,
+            "total_tokens": 1650,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 226
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "suppress_acknowledgement",
+          "reason": "acknowledgement",
+          "would_suppress": true,
+          "context_source": "local_plan",
+          "has_prior_outbound_message": true,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "acknowledgement_only",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "recomendar",
+          "routeKind": "ask_event_context",
+          "providerSearchMode": "none",
+          "presentationScope": "single_need",
+          "focusNeedCategory": "Catering",
+          "needsToSearch": [
+            "Catering"
+          ],
+          "needsToPresent": [],
+          "stopReason": null,
+          "persistReason": "recomendar",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "ask_event_context",
+        "presentation_scope": "single_need",
+        "session_focus_used": false,
+        "session_focus_key_present": false,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 1,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": null,
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": null,
+          "vendor_category": null,
+          "vendor_categories": [],
+          "active_need_category": null,
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 0,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "The response classifier suppressed delivery: acknowledgement.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "recomendar",
+          "lifecycle_state": "active",
+          "event_type": "boda",
+          "vendor_category": "Catering",
+          "active_need_category": "Catering",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "51-100",
+          "provider_need_categories": [
+            "Catering"
+          ],
+          "provider_need_count": 1,
+          "provider_need_statuses": [
+            {
+              "category": "Catering",
+              "status": "selected",
+              "has_recommendations": true,
+              "selected_provider_ids": [
+                90
+              ]
+            }
+          ],
+          "selected_provider_ids": [
+            90
+          ],
+          "missing_fields": [],
+          "conversation_summary_preview": "El usuario pregunta cuál era la otra opción de catering recomendada; era EDO Sushi Bar, ubicada en Barranco.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "missing_phone_number",
+          "context_source": "local_plan",
+          "retrieved_message_count": 0,
+          "recent_message_count": 1,
+          "excluded_current_message_count": 0,
+          "directions": [
+            "outbound"
+          ],
+          "sources": [
+            null
+          ],
+          "entry_source": null
+        },
+        "continuity_state": "continuing",
+        "welcome_allowed": false,
+        "history_status": "missing_phone_number",
+        "has_prior_outbound": true,
+        "requested_operation": null,
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 6141,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M5ZQ8TV9F4ZYCFGQPAXNN7YK",
+        "conversation_hash": "79226c5b1bc3b11edb581b2874231ef6dfeb6a01bccd267a47dc64e371c32e91",
+        "runtime_latency_ms": 1936,
+        "extraction_latency_ms": 0,
+        "compose_latency_ms": 0,
+        "tools_called_count": 1,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 5,
+        "response_classifier_action": "suppress_acknowledgement",
+        "response_classifier_would_suppress": true,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 1650,
+        "cached_input_tokens": 1342,
+        "cache_hit_rate": 0.8542329726288987,
+        "extraction_to_compose_ratio": null,
+        "captured_at": "2026-10-27T22:21:38.538Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "recomendar",
+        "lifecycle_state": "active",
+        "event_type": "boda",
+        "vendor_category": "Catering",
+        "active_need_category": "Catering",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": "51-100",
+        "provider_needs": [
+          {
+            "category": "Catering",
+            "status": "selected",
+            "recommended_provider_ids": [
+              90,
+              109
+            ],
+            "selected_provider_ids": [
+              90
+            ]
+          }
+        ],
+        "selected_provider_ids": [
+          90
+        ],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": false
+        }
+      },
+      "latencyMs": 2204
+    }
+  ],
+  "startedAt": "2026-10-27T22:21:38.781Z",
+  "completedAt": "2026-10-27T22:21:38.782Z"
+}

@@ -1,0 +1,1784 @@
+{
+  "runId": "eval-2026-11-05T16-01-27-136Z-2eace95d",
+  "caseId": "live_behavior.master_provider_live_catering.master_r2",
+  "suite": "live_behavior_regression",
+  "target": "live_lambda",
+  "configLabel": "live_lambda",
+  "status": "passed",
+  "hardGatePassed": true,
+  "finalScore": 1,
+  "totalLatencyMs": 38377,
+  "totalToolCalls": 10,
+  "nodeTransitions": [
+    "contacto_inicial->recomendar",
+    "recomendar->recomendar"
+  ],
+  "planDiffSummary": [
+    "current_node=\"recomendar\"",
+    "intent=\"refinar_busqueda\"",
+    "event_type=\"boda\"",
+    "vendor_category=\"Catering\"",
+    "active_need_category=\"Catering\"",
+    "location=\"Lima\"",
+    "budget_signal=\"Prefiere alternativas más económicas que las mostradas; sin presupuesto máximo definido\"",
+    "guest_range=\"51-100\"",
+    "provider_needs=Catering:shortlisted"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/.eval-runs/eval-2026-11-05T16-01-27-136Z-2eace95d/artifacts/live_lambda/live_behavior.master_provider_live_catering.master_r2.json"
+  },
+  "expectationResults": [
+    {
+      "id": "no-real-or-requested-submission",
+      "type": "tool_usage",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Tool usage matched expectations."
+    },
+    {
+      "id": "requested-category-preserved",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field active_need_category matched exactly."
+    },
+    {
+      "id": "live-catalog-yields-candidates",
+      "type": "provider_result_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Provider result count 7 matched expectation."
+    },
+    {
+      "id": "reply-presents-provider-source-link",
+      "type": "text_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Text containment checks passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "objective-obligations",
+      "type": "expectation_pass_rate",
+      "score": 1,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 4 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 2,
+    "avg_latency_ms": 19188.5,
+    "p95_latency_ms": 21334,
+    "tool_calls_total": 10,
+    "unique_tools_called": 3,
+    "tool_call_rate_per_turn": 5,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.3103448275862069,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 42604,
+    "cache_hit_rate": 0.5664261355211783,
+    "input_tokens": 40466,
+    "cached_input_tokens": 22921,
+    "cache_write_input_tokens": 16039,
+    "uncached_input_tokens": 17545,
+    "usage_known": true
+  },
+  "timing": {
+    "queueWaitMs": 3869867,
+    "setupMs": 0,
+    "turnMs": 40176,
+    "snapshotMs": 14,
+    "teardownMs": 0,
+    "judgeWaitMs": 0,
+    "judgeApiMs": 0,
+    "reportWriteMs": 0,
+    "makespanMs": 0
+  },
+  "judgeMetrics": {
+    "modelCalls": 0,
+    "retryCount": 0,
+    "rateLimitCount": 0,
+    "tokensUnknown": false,
+    "openaiSdk": "7.43.0",
+    "judgeModels": []
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Busco catering para mi boda en Lima, para 100 invitados, sin un presupuesto máximo por ahora. Recomiéndame proveedores.",
+        "sessionId": "live_behavior.master_provider_live_catering",
+        "backendFixture": {
+          "scenario": "master-provider-live-public"
+        }
+      },
+      "outputText": "Para tu boda en Lima con 100 invitados, estas opciones de catering podrían encajar. Como aún no tienes un presupuesto máximo, te sugiero pedir cotizaciones para comparar propuestas y precios.\n\n1. Erika Fernandez Bodas & Eventos\n Ofrece catering para matrimonios, propuestas personalizadas y servicio integral de montaje. Tiene un vale de S/ 500 de descuento en catering para nuevos contratos, sujeto a disponibilidad.\n Ubicación: Lima, Perú.\n Precio: $$$.\n Promo: Vale de S/. 500 de descuento.\n Nota: La ficha indica un nivel de precio alto, pero no publica tarifas.\n\n Ficha: https://sinenvolturas.com/proveedores/erika-fernandez-bodas-eventos\n\n2. Galería Gourmand\n Ofrece catering gourmet para matrimonios y eventos, propuestas personalizadas y alquiler de menaje en Lima.\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 10% Off.\n Nota: El descuento aplica a matrimonios civiles y menaje; no se especifican precios.\n\n Ficha: https://sinenvolturas.com/proveedores/galeria-gourmand\n\n3. Lucitana\n Lucitana ofrece propuestas gastronómicas personalizadas y asesoría o degustación sin costo; también anuncia un descuento en catering.\n Ubicación: Lima, Perú.\n Promo: 10 % OFF.\n Nota: Conviene confirmar disponibilidad para 100 invitados y las condiciones del beneficio.\n\n Ficha: https://sinenvolturas.com/proveedores/lucitana\n\n4. Café del Alba\n Café del Alba ofrece barras móviles, carritos de café y coffee stations para bodas y celebraciones.\n Ubicación: Lima, Perú.\n Precio: $$$.\n Promo: S/. 250 de dscto.\n Nota: Es un servicio de café, no una propuesta de catering integral.\n\n Ficha: https://sinenvolturas.com/proveedores/cafe-del-alba",
+      "deliveredText": "Para tu boda en Lima con 100 invitados, estas opciones de catering podrían encajar. Como aún no tienes un presupuesto máximo, te sugiero pedir cotizaciones para comparar propuestas y precios.\n\n1. Erika Fernandez Bodas & Eventos\n Ofrece catering para matrimonios, propuestas personalizadas y servicio integral de montaje. Tiene un vale de S/ 500 de descuento en catering para nuevos contratos, sujeto a disponibilidad.\n Ubicación: Lima, Perú.\n Precio: $$$.\n Promo: Vale de S/. 500 de descuento.\n Nota: La ficha indica un nivel de precio alto, pero no publica tarifas.\n\n Ficha: https://sinenvolturas.com/proveedores/erika-fernandez-bodas-eventos\n\n2. Galería Gourmand\n Ofrece catering gourmet para matrimonios y eventos, propuestas personalizadas y alquiler de menaje en Lima.\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 10% Off.\n Nota: El descuento aplica a matrimonios civiles y menaje; no se especifican precios.\n\n Ficha: https://sinenvolturas.com/proveedores/galeria-gourmand\n\n3. Lucitana\n Lucitana ofrece propuestas gastronómicas personalizadas y asesoría o degustación sin costo; también anuncia un descuento en catering.\n Ubicación: Lima, Perú.\n Promo: 10 % OFF.\n Nota: Conviene confirmar disponibilidad para 100 invitados y las condiciones del beneficio.\n\n Ficha: https://sinenvolturas.com/proveedores/lucitana\n\n4. Café del Alba\n Café del Alba ofrece barras móviles, carritos de café y coffee stations para bodas y celebraciones.\n Ubicación: Lima, Perú.\n Precio: $$$.\n Promo: S/. 250 de dscto.\n Nota: Es un servicio de café, no una propuesta de catering integral.\n\n Ficha: https://sinenvolturas.com/proveedores/cafe-del-alba",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "c3921e4eba951c865f0531841aaf53d13354dd79fb68481e18d07ebf4f8bb10d",
+        "deliveredSha256": "c3921e4eba951c865f0531841aaf53d13354dd79fb68481e18d07ebf4f8bb10d",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "recomendar",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 6,
+          "attempts": 1
+        },
+        "trace_id": "01M6PASZD5GEZXVQGAMQESE4V9",
+        "conversation_id": null,
+        "plan_id": "01M6PASBW9JWJ4TFR1N9NAGEWJ",
+        "previous_node": "contacto_inicial",
+        "next_node": "recomendar",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "minimos_para_buscar",
+          "buscar_proveedores",
+          "busqueda_exitosa",
+          "hay_resultados",
+          "recomendar"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "9579d9dcb7c9",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/domain_scope.txt",
+          "shared/flow_discipline.txt"
+        ],
+        "tools_considered": [
+          "classify_reply_delivery",
+          "search_providers_from_plan",
+          "get_provider_detail",
+          "get_related_providers",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "classify_reply_delivery",
+          "search_providers_from_plan",
+          "get_provider_detail",
+          "get_provider_detail",
+          "get_provider_detail"
+        ],
+        "tool_inputs": [],
+        "tool_outputs": [],
+        "provider_results": [
+          {
+            "id": 138,
+            "title": "Galería Gourmand",
+            "slug": "galeria-gourmand",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "Galería Gourmand encaja con Catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/galeria-gourmand",
+            "websiteUrl": "https://www.galeriagourmand.com/tienda-online/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off",
+            "promoSummary": "10% de Descuento en comida gourmet para matrimonios civiles y alquiler de menaje, solo para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+            "serviceHighlights": [
+              "Catering gourmet para matrimonios civiles y eventos",
+              "Alquiler de menaje",
+              "Propuestas gastronómicas personalizadas",
+              "Servicio para eventos sociales"
+            ],
+            "termsHighlights": [
+              "Aplica para matrimonios civiles y alquiler de menaje.",
+              "Válido solo para clientes de Sin Envolturas.",
+              "Válido únicamente en Lima.",
+              "Beneficio no transferible ni acumulable.",
+              "Válido de lunes a viernes en horario laboral.",
+              "Aplica solo para anfitriones.",
+              "Los pedidos deben realizarse con 48 horas de anticipación."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+              "Servicios que ofrece: Catering gourmet para matrimonios civiles y eventos",
+              "Servicios que ofrece: Alquiler de menaje",
+              "Servicios que ofrece: Propuestas gastronómicas personalizadas",
+              "Servicios que ofrece: Servicio para eventos sociales",
+              "Términos  y condiciones: Aplica para matrimonios civiles y alquiler de menaje.",
+              "Términos  y condiciones: Válido solo para clientes de Sin Envolturas.",
+              "Términos  y condiciones: Válido únicamente en Lima.",
+              "Términos  y condiciones: Beneficio no transferible ni acumulable.",
+              "Términos  y condiciones: Válido de lunes a viernes en horario laboral.",
+              "Términos  y condiciones: Aplica solo para anfitriones.",
+              "Términos  y condiciones: Los pedidos deben realizarse con 48 horas de anticipación.",
+              "Términos y condiciones: Aplica para matrimonios civiles y alquiler de menaje.",
+              "Términos y condiciones: Válido solo para clientes de Sin Envolturas.",
+              "Términos y condiciones: Válido únicamente en Lima.",
+              "Términos y condiciones: Beneficio no transferible ni acumulable.",
+              "Términos y condiciones: Válido de lunes a viernes en horario laboral.",
+              "Términos y condiciones: Aplica solo para anfitriones.",
+              "Términos y condiciones: Los pedidos deben realizarse con 48 horas de anticipación."
+            ],
+            "eventTypes": [],
+            "description": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+            "fitScore": 89,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.836799733855933,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 130,
+            "title": "Erika Fernandez Bodas & Eventos",
+            "slug": "erika-fernandez-bodas-eventos",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Erika Fernandez Bodas & Eventos encaja con Catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/erika-fernandez-bodas-eventos",
+            "websiteUrl": "https://erikafernandez.pe/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "Vale de S/. 500 de descuento",
+            "promoSummary": "Vale de S/.500 de descuento en servicio de catering.",
+            "descriptionSnippet": "Erika Fernández Bodas & Eventos es un servicio especializado en la organización de matrimonios y eventos, ofreciendo propuestas integrales de catering y planificación para crear celebraciones únicas y memorables.",
+            "serviceHighlights": [
+              "Catering para matrimonios y eventos",
+              "Planificación y coordinación de eventos",
+              "Diseño de propuestas personalizadas",
+              "Montaje y servicio integral"
+            ],
+            "termsHighlights": [
+              "Válido únicamente para novios de Sin Envolturas.",
+              "Para acceder al beneficio, deberán identificarse como clientes al momento de solicitar el presupuesto o reunión.",
+              "Válido para nuevos contratos.",
+              "Sujeto a disponibilidad."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Erika Fernández Bodas & Eventos es un servicio especializado en la organización de matrimonios y eventos, ofreciendo propuestas integrales de catering y planificación para crear celebraciones únicas y memorables.",
+              "Servicios que ofrece: Catering para matrimonios y eventos",
+              "Servicios que ofrece: Planificación y coordinación de eventos",
+              "Servicios que ofrece: Diseño de propuestas personalizadas",
+              "Servicios que ofrece: Montaje y servicio integral",
+              "Términos  y condiciones: Válido únicamente para novios de Sin Envolturas.",
+              "Términos  y condiciones: Para acceder al beneficio, deberán identificarse como clientes al momento de solicitar el presupuesto o reunión.",
+              "Términos  y condiciones: Válido para nuevos contratos.",
+              "Términos  y condiciones: Sujeto a disponibilidad.",
+              "Términos y condiciones: Válido únicamente para novios de Sin Envolturas.",
+              "Términos y condiciones: Para acceder al beneficio, deberán identificarse como clientes al momento de solicitar el presupuesto o reunión.",
+              "Términos y condiciones: Válido para nuevos contratos.",
+              "Términos y condiciones: Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Erika Fernández Bodas & Eventos es un servicio especializado en la organización de matrimonios y eventos, ofreciendo propuestas integrales de catering y planificación para crear celebraciones únicas y memorables.",
+            "fitScore": 89,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.8265169624972301,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 189,
+            "title": "Café del Alba",
+            "slug": "cafe-del-alba",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Café del Alba encaja con Catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/cafe-del-alba",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "S/. 250 de dscto",
+            "promoSummary": "S/250 de descuento en servicios para clientes de Sin Envolturas.",
+            "descriptionSnippet": "En Lima, Café del Alba es un emprendimiento local especializado en el servicio de carritos de café para eventos y celebraciones.",
+            "serviceHighlights": [
+              "Cafetería para eventos y corporativos: Instalación de barras móviles atendidas por baristas profesionales para conferencias y eventos sociales.",
+              "Coffee stations y carritos de café: Alquiler de carritos equipados que sirven café caliente, frío y opciones de tendencia como el matcha latte .",
+              "Servicio de atención personalizada: Proveen insumos seleccionados de alta calidad para que los invitados disfruten de una experiencia completa de cafetería de especialidad adaptada al lugar del evento"
+            ],
+            "termsHighlights": [
+              "Consultar términos y condiciones."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: En Lima, Café del Alba es un emprendimiento local especializado en el servicio de carritos de café para eventos y celebraciones. Ofrecen barras móviles y coffee breaks personalizados para bodas, baby showers, lanzamientos de marca, ferias y reuniones corporativas.",
+              "Servicios que ofrece: Cafetería para eventos y corporativos: Instalación de barras móviles atendidas por baristas profesionales para conferencias y eventos sociales.",
+              "Servicios que ofrece: Coffee stations y carritos de café: Alquiler de carritos equipados que sirven café caliente, frío y opciones de tendencia como el matcha latte .",
+              "Servicios que ofrece: Servicio de atención personalizada: Proveen insumos seleccionados de alta calidad para que los invitados disfruten de una experiencia completa de cafetería de especialidad adaptada al lugar del evento",
+              "Términos  y condiciones: Consultar términos y condiciones.",
+              "Términos y condiciones: Consultar términos y condiciones."
+            ],
+            "eventTypes": [],
+            "description": "En Lima, Café del Alba es un emprendimiento local especializado en el servicio de carritos de café para eventos y celebraciones. Ofrecen barras móviles y coffee breaks personalizados para bodas, baby showers, lanzamientos de marca, ferias y reuniones corporativas.",
+            "fitScore": 82,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 199,
+            "title": "Lucitana",
+            "slug": "lucitana",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": null,
+            "rating": "0.0",
+            "reason": "Lucitana encaja con Catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/lucitana",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10 % OFF",
+            "promoSummary": "Descuento en servicios de catering",
+            "descriptionSnippet": "Empresa de catering que convierte cada evento en una experiencia para disfrutar.",
+            "serviceHighlights": [
+              "Catering para eventos sociales",
+              "Catering para eventos corporativos",
+              "Propuestas gastronómicas personalizadas",
+              "Producción integral de eventos"
+            ],
+            "termsHighlights": [
+              "Válido únicamente para clientes de Sin Envolturas",
+              "Degustación o asesoría personalizada sin costo",
+              "Válido únicamente en Lima"
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Empresa de catering que convierte cada evento en una experiencia para disfrutar. Crea propuestas gastronómicas personalizadas, combinando sabor, buena presentación y un servicio adaptado a cada ocasión.",
+              "Servicios que ofrece: Catering para eventos sociales",
+              "Servicios que ofrece: Catering para eventos corporativos",
+              "Servicios que ofrece: Propuestas gastronómicas personalizadas",
+              "Servicios que ofrece: Producción integral de eventos",
+              "Términos  y condiciones: Válido únicamente para clientes de Sin Envolturas",
+              "Términos  y condiciones: Degustación o asesoría personalizada sin costo",
+              "Términos  y condiciones: Válido únicamente en Lima"
+            ],
+            "eventTypes": [],
+            "description": "Empresa de catering que convierte cada evento en una experiencia para disfrutar. Crea propuestas gastronómicas personalizadas, combinando sabor, buena presentación y un servicio adaptado a cada ocasión.",
+            "fitScore": 81,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.8428375721011555,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 137,
+            "title": "FCatering",
+            "slug": "fcatering",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "FCatering encaja con Catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "Vale de 300 Dólares",
+            "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+            "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+            "serviceHighlights": [
+              "Catering para eventos",
+              "Propuestas gastronómicas personalizadas",
+              "Montaje y servicio de alimentos",
+              "Atención para eventos sociales y corporativos"
+            ],
+            "termsHighlights": [
+              "Válido solo para clientes de Sin Envolturas.",
+              "Válido únicamente en Lima.",
+              "Beneficio no transferible ni acumulable.",
+              "Válido de lunes a viernes en horario laboral.",
+              "Aplica solo para anfitriones.",
+              "Sujeto a disponibilidad."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+              "Servicios que ofrece: Catering para eventos",
+              "Servicios que ofrece: Propuestas gastronómicas personalizadas",
+              "Servicios que ofrece: Montaje y servicio de alimentos",
+              "Servicios que ofrece: Atención para eventos sociales y corporativos",
+              "Términos  y condiciones: Válido solo para clientes de Sin Envolturas.",
+              "Términos  y condiciones: Válido únicamente en Lima.",
+              "Términos  y condiciones: Beneficio no transferible ni acumulable.",
+              "Términos  y condiciones: Válido de lunes a viernes en horario laboral.",
+              "Términos  y condiciones: Aplica solo para anfitriones.",
+              "Términos  y condiciones: Sujeto a disponibilidad.",
+              "Términos y condiciones: Válido solo para clientes de Sin Envolturas.",
+              "Términos y condiciones: Válido únicamente en Lima.",
+              "Términos y condiciones: Beneficio no transferible ni acumulable.",
+              "Términos y condiciones: Válido de lunes a viernes en horario laboral.",
+              "Términos y condiciones: Aplica solo para anfitriones.",
+              "Términos y condiciones: Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+            "fitScore": 81,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.8383084578466016,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 136,
+            "title": "4Foodies",
+            "slug": "4foodies",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "4Foodies encaja con Catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/4foodies",
+            "websiteUrl": "https://www.4foodies.pe",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off",
+            "promoSummary": "10% de descuento en el servicio de catering para los clientes de Sin Envolturas",
+            "descriptionSnippet": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+            "serviceHighlights": [
+              "Catering para eventos",
+              "Tablas de quesos",
+              "Mesas gastronómicas",
+              "Implementación y montaje de servicio",
+              "Propuestas personalizadas según el evento"
+            ],
+            "termsHighlights": [
+              "El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+              "El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+              "En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+              "Válido para Lima (previa validación de zona de cobertura)."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: 4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+              "Servicios que ofrece: Catering para eventos",
+              "Servicios que ofrece: Tablas de quesos",
+              "Servicios que ofrece: Mesas gastronómicas",
+              "Servicios que ofrece: Implementación y montaje de servicio",
+              "Servicios que ofrece: Propuestas personalizadas según el evento",
+              "Términos  y condiciones: El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+              "Términos  y condiciones: El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+              "Términos  y condiciones: En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+              "Términos  y condiciones: Válido para Lima (previa validación de zona de cobertura).",
+              "Términos y condiciones: El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+              "Términos y condiciones: El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+              "Términos y condiciones: En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+              "Términos y condiciones: Válido para Lima (previa validación de zona de cobertura)."
+            ],
+            "eventTypes": [],
+            "description": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+            "fitScore": 81,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.835872839620382,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 153,
+            "title": "BAPO",
+            "slug": "bapo",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "BAPO encaja con Catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% off",
+            "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+            "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+            "serviceHighlights": [
+              "Servicios de catering",
+              "Preguntar por paquetes"
+            ],
+            "termsHighlights": [
+              "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+              "Válido solo para Lima Metropolitana o consultando disponibilidad",
+              "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+              "No acumulable con otros descuentos y/o promociones"
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+              "Servicios que ofrece: Servicios de catering",
+              "Servicios que ofrece: Preguntar por paquetes",
+              "Términos  y condiciones: Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+              "Términos  y condiciones: Válido solo para Lima Metropolitana o consultando disponibilidad",
+              "Términos  y condiciones: Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+              "Términos  y condiciones: No acumulable con otros descuentos y/o promociones",
+              "Términos y condiciones: Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+              "Términos y condiciones: Válido solo para Lima Metropolitana o consultando disponibilidad",
+              "Términos y condiciones: Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+              "Términos y condiciones: No acumulable con otros descuentos y/o promociones"
+            ],
+            "eventTypes": [],
+            "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+            "fitScore": 81,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.8241812252998176,
+            "retrievalSource": "hybrid"
+          }
+        ],
+        "search_strategy": "search_from_plan",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_080b4a95e68d9380006aecb778fd2887d1b970602044feeb5c",
+            "requestId": "req_b1e699923ad24c7281590b00933ee3d3",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 755,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 7632,
+                "instructionBytes": 0,
+                "inputBytes": 5805,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_02389b684096d8e7006aecb77abd5c87d1964b01af60a323da",
+            "requestId": "req_0a450927379d49d6aed65b6314dcdcdc",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 6855,
+              "inputBytes": 2757,
+              "toolCount": 0,
+              "schemaPropertyCount": 30,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 20390,
+                "instructionBytes": 6932,
+                "inputBytes": 2987,
+                "toolBytes": 2,
+                "outputSchemaBytes": 10207,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_0a76e79c8a3ba089006aecb7862d0887d191f8843de4aaa1d8",
+            "requestId": "req_d4f122e7a64946bb9fa880ea53f760cf",
+            "model": "gpt-6-luna",
+            "attemptCount": 2,
+            "requestMetrics": {
+              "instructionBytes": 2588,
+              "inputBytes": 16502,
+              "toolCount": 3,
+              "schemaPropertyCount": 3,
+              "transport": {
+                "observedRequestCount": 2,
+                "totalPayloadBytes": 55041,
+                "instructionBytes": 5248,
+                "inputBytes": 45867,
+                "toolBytes": 2054,
+                "outputSchemaBytes": 1334,
+                "requests": []
+              }
+            }
+          },
+          "router": {
+            "responseId": null,
+            "requestId": "req_47dc2ba13b9a4501a36e4a61c74eeb02",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 3321,
+              "inputBytes": 2581,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 6863,
+                "instructionBytes": 3321,
+                "inputBytes": 2581,
+                "toolBytes": 0,
+                "outputSchemaBytes": 0,
+                "requests": []
+              }
+            }
+          }
+        },
+        "recommendation_funnel": {
+          "available_candidates": 7,
+          "context_candidates": 6,
+          "context_candidate_ids": [
+            138,
+            130,
+            189,
+            199,
+            137,
+            136
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "recomendar",
+        "timing_ms": {
+          "total": 20002,
+          "load_plan": 6,
+          "response_classification": 1711,
+          "prepare_working_plan": 0,
+          "extraction": 6160,
+          "apply_extraction": 2,
+          "compute_sufficiency": 0,
+          "provider_search": 2667,
+          "provider_enrichment": 167,
+          "prompt_bundle_load": 0,
+          "compose_reply": 9022,
+          "save_plan": 68,
+          "router": 189,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1524,
+            "output_tokens": 70,
+            "total_tokens": 1594,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 179
+          },
+          "router": {
+            "input_tokens": 1482,
+            "output_tokens": 0,
+            "total_tokens": 1482
+          },
+          "extraction": {
+            "input_tokens": 4287,
+            "output_tokens": 567,
+            "total_tokens": 4854,
+            "cached_input_tokens": 3636,
+            "cache_write_input_tokens": 648
+          },
+          "reply": {
+            "input_tokens": 11343,
+            "output_tokens": 529,
+            "total_tokens": 11872,
+            "cached_input_tokens": 4748,
+            "cache_write_input_tokens": 6589
+          },
+          "total": {
+            "input_tokens": 18636,
+            "output_tokens": 1166,
+            "total_tokens": 19802,
+            "cached_input_tokens": 9726,
+            "cache_write_input_tokens": 7416
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "local_plan",
+          "has_prior_outbound_message": false,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "question_or_request",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "recomendar",
+          "routeKind": "single_need_search",
+          "providerSearchMode": "single_need_from_plan",
+          "presentationScope": "single_need",
+          "focusNeedCategory": "Catering",
+          "needsToSearch": [
+            "Catering"
+          ],
+          "needsToPresent": [
+            "Catering"
+          ],
+          "stopReason": null,
+          "persistReason": "recomendar",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "single_need_search",
+        "presentation_scope": "single_need",
+        "session_focus_used": false,
+        "session_focus_key_present": true,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.99,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": "boda",
+          "vendor_category": "Catering",
+          "vendor_categories": [
+            "Catering"
+          ],
+          "active_need_category": "Catering",
+          "location": "Lima",
+          "budget_signal": "Sin presupuesto máximo por ahora",
+          "guest_range": "51-100",
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 1,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Busca proveedores de catering para una boda en Lima, para 100 invitados, sin presupuesto máximo definido.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "recomendar",
+          "lifecycle_state": "active",
+          "event_type": "boda",
+          "vendor_category": "Catering",
+          "active_need_category": "Catering",
+          "location": "Lima",
+          "budget_signal": "Sin presupuesto máximo por ahora",
+          "guest_range": "51-100",
+          "provider_need_categories": [
+            "Catering"
+          ],
+          "provider_need_count": 1,
+          "provider_need_statuses": [
+            {
+              "category": "Catering",
+              "status": "shortlisted",
+              "has_recommendations": true,
+              "selected_provider_ids": []
+            }
+          ],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "Busca proveedores de catering para una boda en Lima, para 100 invitados, sin presupuesto máximo definido.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "missing_phone_number",
+          "context_source": "local_plan",
+          "retrieved_message_count": 0,
+          "recent_message_count": 0,
+          "excluded_current_message_count": 0,
+          "directions": [],
+          "sources": [],
+          "entry_source": null
+        },
+        "continuity_state": "degraded",
+        "welcome_allowed": false,
+        "history_status": "missing_phone_number",
+        "has_prior_outbound": false,
+        "requested_operation": "provider.search",
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": true,
+          "droppedCandidateDetails": 7,
+          "droppedCalls": 13,
+          "diagnosticBytes": 12288,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M6PASZD5GEZXVQGAMQESE4V9",
+        "conversation_hash": "d5bfd59cb71d70b7f1f49a7dc90e602cc732c028a7bc0311431ce84c04882b19",
+        "runtime_latency_ms": 20002,
+        "extraction_latency_ms": 6160,
+        "compose_latency_ms": 9022,
+        "tools_called_count": 5,
+        "provider_results_count": 7,
+        "recommendation_context_candidates": 6,
+        "recommendation_presentation_limit": 6,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 19802,
+        "cached_input_tokens": 9726,
+        "cache_hit_rate": 0.5218931101094656,
+        "extraction_to_compose_ratio": 0.6827754378186655,
+        "captured_at": "2026-11-05T17:06:20.720Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "recomendar",
+        "lifecycle_state": "active",
+        "event_type": "boda",
+        "vendor_category": "Catering",
+        "active_need_category": "Catering",
+        "location": "Lima",
+        "budget_signal": "Sin presupuesto máximo por ahora",
+        "guest_range": "51-100",
+        "provider_needs": [
+          {
+            "category": "Catering",
+            "status": "shortlisted",
+            "recommended_provider_ids": [
+              138,
+              130,
+              189,
+              199,
+              137,
+              136,
+              153
+            ],
+            "selected_provider_ids": []
+          }
+        ],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": false
+        }
+      },
+      "latencyMs": 21334
+    },
+    {
+      "turnIndex": 1,
+      "input": {
+        "text": "Mantén catering en Lima. Ahora prefiero alternativas más económicas; muéstrame las opciones que encuentres.",
+        "sessionId": "live_behavior.master_provider_live_catering",
+        "backendFixture": {
+          "scenario": "master-provider-live-public"
+        }
+      },
+      "outputText": "Para tu boda en Lima, estas alternativas tienen un nivel de precio medio, aunque no hay precios publicados para compararlas. Te sugiero pedir cotización para saber cuál se ajusta mejor a tu presupuesto.\n\n1. Galería Gourmand\n Ofrece catering gourmet para matrimonios y eventos, con propuestas personalizadas y alquiler de menaje. Tiene 10% de descuento en comida gourmet para matrimonios civiles, sujeto a condiciones.\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 10% Off.\n Nota: El descuento aplica a matrimonios civiles; no hay precios publicados.\n\n Ficha: https://sinenvolturas.com/proveedores/galeria-gourmand\n\n2. FCatering\n Ofrece catering para eventos, propuestas personalizadas y montaje. Tiene un vale de US$300 sobre el presupuesto total para clientes de Sin Envolturas, sujeto a condiciones.\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: Vale de 300 Dólares.\n Nota: No hay precios publicados; el vale está sujeto a disponibilidad y otras condiciones.\n\n Ficha: https://sinenvolturas.com/proveedores/fcatering\n\n3. Lucitana\n Ofrece catering para eventos sociales, propuestas personalizadas y asesoría o degustación sin costo. Tiene un descuento anunciado en sus servicios.\n Ubicación: Lima, Perú.\n Promo: 10 % OFF.\n Nota: No hay información de precio para confirmar que sea más económica.\n\n Ficha: https://sinenvolturas.com/proveedores/lucitana",
+      "deliveredText": "Para tu boda en Lima, estas alternativas tienen un nivel de precio medio, aunque no hay precios publicados para compararlas. Te sugiero pedir cotización para saber cuál se ajusta mejor a tu presupuesto.\n\n1. Galería Gourmand\n Ofrece catering gourmet para matrimonios y eventos, con propuestas personalizadas y alquiler de menaje. Tiene 10% de descuento en comida gourmet para matrimonios civiles, sujeto a condiciones.\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 10% Off.\n Nota: El descuento aplica a matrimonios civiles; no hay precios publicados.\n\n Ficha: https://sinenvolturas.com/proveedores/galeria-gourmand\n\n2. FCatering\n Ofrece catering para eventos, propuestas personalizadas y montaje. Tiene un vale de US$300 sobre el presupuesto total para clientes de Sin Envolturas, sujeto a condiciones.\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: Vale de 300 Dólares.\n Nota: No hay precios publicados; el vale está sujeto a disponibilidad y otras condiciones.\n\n Ficha: https://sinenvolturas.com/proveedores/fcatering\n\n3. Lucitana\n Ofrece catering para eventos sociales, propuestas personalizadas y asesoría o degustación sin costo. Tiene un descuento anunciado en sus servicios.\n Ubicación: Lima, Perú.\n Promo: 10 % OFF.\n Nota: No hay información de precio para confirmar que sea más económica.\n\n Ficha: https://sinenvolturas.com/proveedores/lucitana",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "4a5cc3d3705c4d77f58d87e520903e9a9ed5624fc732624844a2074c494ee222",
+        "deliveredSha256": "4a5cc3d3705c4d77f58d87e520903e9a9ed5624fc732624844a2074c494ee222",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "recomendar",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 5,
+          "attempts": 1
+        },
+        "trace_id": "01M6PATGXM5S1M4CS1Y4225DSC",
+        "conversation_id": null,
+        "plan_id": "01M6PASBW9JWJ4TFR1N9NAGEWJ",
+        "previous_node": "recomendar",
+        "next_node": "recomendar",
+        "node_path": [
+          "recomendar",
+          "existe_plan_guardado",
+          "refinar_criterios",
+          "minimos_para_buscar",
+          "buscar_proveedores",
+          "busqueda_exitosa",
+          "hay_resultados",
+          "recomendar"
+        ],
+        "intent": "refinar_busqueda",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "9579d9dcb7c9",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/domain_scope.txt",
+          "shared/flow_discipline.txt"
+        ],
+        "tools_considered": [
+          "classify_reply_delivery",
+          "search_providers_from_plan",
+          "get_provider_detail",
+          "get_related_providers",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "classify_reply_delivery",
+          "search_providers_from_plan",
+          "get_provider_detail",
+          "get_provider_detail",
+          "get_provider_detail"
+        ],
+        "tool_inputs": [],
+        "tool_outputs": [],
+        "provider_results": [
+          {
+            "id": 138,
+            "title": "Galería Gourmand",
+            "slug": "galeria-gourmand",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "Galería Gourmand encaja con Catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/galeria-gourmand",
+            "websiteUrl": "https://www.galeriagourmand.com/tienda-online/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off",
+            "promoSummary": "10% de Descuento en comida gourmet para matrimonios civiles y alquiler de menaje, solo para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+            "serviceHighlights": [
+              "Catering gourmet para matrimonios civiles y eventos",
+              "Alquiler de menaje",
+              "Propuestas gastronómicas personalizadas",
+              "Servicio para eventos sociales"
+            ],
+            "termsHighlights": [
+              "Aplica para matrimonios civiles y alquiler de menaje.",
+              "Válido solo para clientes de Sin Envolturas.",
+              "Válido únicamente en Lima.",
+              "Beneficio no transferible ni acumulable.",
+              "Válido de lunes a viernes en horario laboral.",
+              "Aplica solo para anfitriones.",
+              "Los pedidos deben realizarse con 48 horas de anticipación."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+              "Servicios que ofrece: Catering gourmet para matrimonios civiles y eventos",
+              "Servicios que ofrece: Alquiler de menaje",
+              "Servicios que ofrece: Propuestas gastronómicas personalizadas",
+              "Servicios que ofrece: Servicio para eventos sociales",
+              "Términos  y condiciones: Aplica para matrimonios civiles y alquiler de menaje.",
+              "Términos  y condiciones: Válido solo para clientes de Sin Envolturas.",
+              "Términos  y condiciones: Válido únicamente en Lima.",
+              "Términos  y condiciones: Beneficio no transferible ni acumulable.",
+              "Términos  y condiciones: Válido de lunes a viernes en horario laboral.",
+              "Términos  y condiciones: Aplica solo para anfitriones.",
+              "Términos  y condiciones: Los pedidos deben realizarse con 48 horas de anticipación.",
+              "Términos y condiciones: Aplica para matrimonios civiles y alquiler de menaje.",
+              "Términos y condiciones: Válido solo para clientes de Sin Envolturas.",
+              "Términos y condiciones: Válido únicamente en Lima.",
+              "Términos y condiciones: Beneficio no transferible ni acumulable.",
+              "Términos y condiciones: Válido de lunes a viernes en horario laboral.",
+              "Términos y condiciones: Aplica solo para anfitriones.",
+              "Términos y condiciones: Los pedidos deben realizarse con 48 horas de anticipación."
+            ],
+            "eventTypes": [],
+            "description": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+            "fitScore": 88,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7906176404944718,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 130,
+            "title": "Erika Fernandez Bodas & Eventos",
+            "slug": "erika-fernandez-bodas-eventos",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Erika Fernandez Bodas & Eventos encaja con Catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/erika-fernandez-bodas-eventos",
+            "websiteUrl": "https://erikafernandez.pe/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "Vale de S/. 500 de descuento",
+            "promoSummary": "Vale de S/.500 de descuento en servicio de catering.",
+            "descriptionSnippet": "Erika Fernández Bodas & Eventos es un servicio especializado en la organización de matrimonios y eventos, ofreciendo propuestas integrales de catering y planificación para crear celebraciones únicas y memorables.",
+            "serviceHighlights": [
+              "Catering para matrimonios y eventos",
+              "Planificación y coordinación de eventos",
+              "Diseño de propuestas personalizadas",
+              "Montaje y servicio integral"
+            ],
+            "termsHighlights": [
+              "Válido únicamente para novios de Sin Envolturas.",
+              "Para acceder al beneficio, deberán identificarse como clientes al momento de solicitar el presupuesto o reunión.",
+              "Válido para nuevos contratos.",
+              "Sujeto a disponibilidad."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Erika Fernández Bodas & Eventos es un servicio especializado en la organización de matrimonios y eventos, ofreciendo propuestas integrales de catering y planificación para crear celebraciones únicas y memorables.",
+              "Servicios que ofrece: Catering para matrimonios y eventos",
+              "Servicios que ofrece: Planificación y coordinación de eventos",
+              "Servicios que ofrece: Diseño de propuestas personalizadas",
+              "Servicios que ofrece: Montaje y servicio integral",
+              "Términos  y condiciones: Válido únicamente para novios de Sin Envolturas.",
+              "Términos  y condiciones: Para acceder al beneficio, deberán identificarse como clientes al momento de solicitar el presupuesto o reunión.",
+              "Términos  y condiciones: Válido para nuevos contratos.",
+              "Términos  y condiciones: Sujeto a disponibilidad.",
+              "Términos y condiciones: Válido únicamente para novios de Sin Envolturas.",
+              "Términos y condiciones: Para acceder al beneficio, deberán identificarse como clientes al momento de solicitar el presupuesto o reunión.",
+              "Términos y condiciones: Válido para nuevos contratos.",
+              "Términos y condiciones: Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Erika Fernández Bodas & Eventos es un servicio especializado en la organización de matrimonios y eventos, ofreciendo propuestas integrales de catering y planificación para crear celebraciones únicas y memorables.",
+            "fitScore": 88,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7755169314862923,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 189,
+            "title": "Café del Alba",
+            "slug": "cafe-del-alba",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Café del Alba encaja con Catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/cafe-del-alba",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "S/. 250 de dscto",
+            "promoSummary": "S/250 de descuento en servicios para clientes de Sin Envolturas.",
+            "descriptionSnippet": "En Lima, Café del Alba es un emprendimiento local especializado en el servicio de carritos de café para eventos y celebraciones.",
+            "serviceHighlights": [
+              "Cafetería para eventos y corporativos: Instalación de barras móviles atendidas por baristas profesionales para conferencias y eventos sociales.",
+              "Coffee stations y carritos de café: Alquiler de carritos equipados que sirven café caliente, frío y opciones de tendencia como el matcha latte .",
+              "Servicio de atención personalizada: Proveen insumos seleccionados de alta calidad para que los invitados disfruten de una experiencia completa de cafetería de especialidad adaptada al lugar del evento"
+            ],
+            "termsHighlights": [
+              "Consultar términos y condiciones."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: En Lima, Café del Alba es un emprendimiento local especializado en el servicio de carritos de café para eventos y celebraciones. Ofrecen barras móviles y coffee breaks personalizados para bodas, baby showers, lanzamientos de marca, ferias y reuniones corporativas.",
+              "Servicios que ofrece: Cafetería para eventos y corporativos: Instalación de barras móviles atendidas por baristas profesionales para conferencias y eventos sociales.",
+              "Servicios que ofrece: Coffee stations y carritos de café: Alquiler de carritos equipados que sirven café caliente, frío y opciones de tendencia como el matcha latte .",
+              "Servicios que ofrece: Servicio de atención personalizada: Proveen insumos seleccionados de alta calidad para que los invitados disfruten de una experiencia completa de cafetería de especialidad adaptada al lugar del evento",
+              "Términos  y condiciones: Consultar términos y condiciones.",
+              "Términos y condiciones: Consultar términos y condiciones."
+            ],
+            "eventTypes": [],
+            "description": "En Lima, Café del Alba es un emprendimiento local especializado en el servicio de carritos de café para eventos y celebraciones. Ofrecen barras móviles y coffee breaks personalizados para bodas, baby showers, lanzamientos de marca, ferias y reuniones corporativas.",
+            "fitScore": 82,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 137,
+            "title": "FCatering",
+            "slug": "fcatering",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "FCatering encaja con Catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "Vale de 300 Dólares",
+            "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+            "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+            "serviceHighlights": [
+              "Catering para eventos",
+              "Propuestas gastronómicas personalizadas",
+              "Montaje y servicio de alimentos",
+              "Atención para eventos sociales y corporativos"
+            ],
+            "termsHighlights": [
+              "Válido solo para clientes de Sin Envolturas.",
+              "Válido únicamente en Lima.",
+              "Beneficio no transferible ni acumulable.",
+              "Válido de lunes a viernes en horario laboral.",
+              "Aplica solo para anfitriones.",
+              "Sujeto a disponibilidad."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+              "Servicios que ofrece: Catering para eventos",
+              "Servicios que ofrece: Propuestas gastronómicas personalizadas",
+              "Servicios que ofrece: Montaje y servicio de alimentos",
+              "Servicios que ofrece: Atención para eventos sociales y corporativos",
+              "Términos  y condiciones: Válido solo para clientes de Sin Envolturas.",
+              "Términos  y condiciones: Válido únicamente en Lima.",
+              "Términos  y condiciones: Beneficio no transferible ni acumulable.",
+              "Términos  y condiciones: Válido de lunes a viernes en horario laboral.",
+              "Términos  y condiciones: Aplica solo para anfitriones.",
+              "Términos  y condiciones: Sujeto a disponibilidad.",
+              "Términos y condiciones: Válido solo para clientes de Sin Envolturas.",
+              "Términos y condiciones: Válido únicamente en Lima.",
+              "Términos y condiciones: Beneficio no transferible ni acumulable.",
+              "Términos y condiciones: Válido de lunes a viernes en horario laboral.",
+              "Términos y condiciones: Aplica solo para anfitriones.",
+              "Términos y condiciones: Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7845569121270594,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 199,
+            "title": "Lucitana",
+            "slug": "lucitana",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": null,
+            "rating": "0.0",
+            "reason": "Lucitana encaja con Catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/lucitana",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10 % OFF",
+            "promoSummary": "Descuento en servicios de catering",
+            "descriptionSnippet": "Empresa de catering que convierte cada evento en una experiencia para disfrutar.",
+            "serviceHighlights": [
+              "Catering para eventos sociales",
+              "Catering para eventos corporativos",
+              "Propuestas gastronómicas personalizadas",
+              "Producción integral de eventos"
+            ],
+            "termsHighlights": [
+              "Válido únicamente para clientes de Sin Envolturas",
+              "Degustación o asesoría personalizada sin costo",
+              "Válido únicamente en Lima"
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Empresa de catering que convierte cada evento en una experiencia para disfrutar. Crea propuestas gastronómicas personalizadas, combinando sabor, buena presentación y un servicio adaptado a cada ocasión.",
+              "Servicios que ofrece: Catering para eventos sociales",
+              "Servicios que ofrece: Catering para eventos corporativos",
+              "Servicios que ofrece: Propuestas gastronómicas personalizadas",
+              "Servicios que ofrece: Producción integral de eventos",
+              "Términos  y condiciones: Válido únicamente para clientes de Sin Envolturas",
+              "Términos  y condiciones: Degustación o asesoría personalizada sin costo",
+              "Términos  y condiciones: Válido únicamente en Lima"
+            ],
+            "eventTypes": [],
+            "description": "Empresa de catering que convierte cada evento en una experiencia para disfrutar. Crea propuestas gastronómicas personalizadas, combinando sabor, buena presentación y un servicio adaptado a cada ocasión.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7795312379040782,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 136,
+            "title": "4Foodies",
+            "slug": "4foodies",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "4Foodies encaja con Catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/4foodies",
+            "websiteUrl": "https://www.4foodies.pe",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off",
+            "promoSummary": "10% de descuento en el servicio de catering para los clientes de Sin Envolturas",
+            "descriptionSnippet": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+            "serviceHighlights": [
+              "Catering para eventos",
+              "Tablas de quesos",
+              "Mesas gastronómicas",
+              "Implementación y montaje de servicio",
+              "Propuestas personalizadas según el evento"
+            ],
+            "termsHighlights": [
+              "El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+              "El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+              "En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+              "Válido para Lima (previa validación de zona de cobertura)."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: 4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+              "Servicios que ofrece: Catering para eventos",
+              "Servicios que ofrece: Tablas de quesos",
+              "Servicios que ofrece: Mesas gastronómicas",
+              "Servicios que ofrece: Implementación y montaje de servicio",
+              "Servicios que ofrece: Propuestas personalizadas según el evento",
+              "Términos  y condiciones: El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+              "Términos  y condiciones: El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+              "Términos  y condiciones: En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+              "Términos  y condiciones: Válido para Lima (previa validación de zona de cobertura).",
+              "Términos y condiciones: El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+              "Términos y condiciones: El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+              "Términos y condiciones: En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+              "Términos y condiciones: Válido para Lima (previa validación de zona de cobertura)."
+            ],
+            "eventTypes": [],
+            "description": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7784959394008312,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 153,
+            "title": "BAPO",
+            "slug": "bapo",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "BAPO encaja con Catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% off",
+            "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+            "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+            "serviceHighlights": [
+              "Servicios de catering",
+              "Preguntar por paquetes"
+            ],
+            "termsHighlights": [
+              "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+              "Válido solo para Lima Metropolitana o consultando disponibilidad",
+              "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+              "No acumulable con otros descuentos y/o promociones"
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+              "Servicios que ofrece: Servicios de catering",
+              "Servicios que ofrece: Preguntar por paquetes",
+              "Términos  y condiciones: Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+              "Términos  y condiciones: Válido solo para Lima Metropolitana o consultando disponibilidad",
+              "Términos  y condiciones: Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+              "Términos  y condiciones: No acumulable con otros descuentos y/o promociones",
+              "Términos y condiciones: Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+              "Términos y condiciones: Válido solo para Lima Metropolitana o consultando disponibilidad",
+              "Términos y condiciones: Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+              "Términos y condiciones: No acumulable con otros descuentos y/o promociones"
+            ],
+            "eventTypes": [],
+            "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7626530694175989,
+            "retrievalSource": "hybrid"
+          }
+        ],
+        "search_strategy": "search_from_plan",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_0f9fbf9c1e728653006aecb78e65a087d1a19d9f035c21e152",
+            "requestId": "req_5e3e3fa964894889bc7ddcaa787d6760",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 1311,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 8208,
+                "instructionBytes": 0,
+                "inputBytes": 6381,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_0265a3a8403311f7006aecb790affc87d188c48547954412d7",
+            "requestId": "req_701f066998e740bd9664016d489f62e2",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 10226,
+              "inputBytes": 7080,
+              "toolCount": 0,
+              "schemaPropertyCount": 37,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 39404,
+                "instructionBytes": 10339,
+                "inputBytes": 7543,
+                "toolBytes": 2,
+                "outputSchemaBytes": 21258,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_05a08498838161bb006aecb79ad61087d193b9937a4de528e9",
+            "requestId": "req_0916e60ea80e421180ac9faf35b2bfc6",
+            "model": "gpt-6-luna",
+            "attemptCount": 2,
+            "requestMetrics": {
+              "instructionBytes": 2588,
+              "inputBytes": 17573,
+              "toolCount": 3,
+              "schemaPropertyCount": 3,
+              "transport": {
+                "observedRequestCount": 2,
+                "totalPayloadBytes": 55449,
+                "instructionBytes": 5248,
+                "inputBytes": 46275,
+                "toolBytes": 2054,
+                "outputSchemaBytes": 1334,
+                "requests": []
+              }
+            }
+          },
+          "router": null
+        },
+        "recommendation_funnel": {
+          "available_candidates": 7,
+          "context_candidates": 6,
+          "context_candidate_ids": [
+            138,
+            130,
+            189,
+            137,
+            199,
+            136
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "recomendar",
+        "timing_ms": {
+          "total": 16476,
+          "load_plan": 11,
+          "response_classification": 2318,
+          "prepare_working_plan": 0,
+          "extraction": 6010,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 2098,
+          "provider_enrichment": 136,
+          "prompt_bundle_load": 0,
+          "compose_reply": 5857,
+          "save_plan": 36,
+          "router": 0,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1659,
+            "output_tokens": 70,
+            "total_tokens": 1729,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 314
+          },
+          "router": null,
+          "extraction": {
+            "input_tokens": 8567,
+            "output_tokens": 568,
+            "total_tokens": 9135,
+            "cached_input_tokens": 6860,
+            "cache_write_input_tokens": 1704
+          },
+          "reply": {
+            "input_tokens": 11604,
+            "output_tokens": 334,
+            "total_tokens": 11938,
+            "cached_input_tokens": 4993,
+            "cache_write_input_tokens": 6605
+          },
+          "total": {
+            "input_tokens": 21830,
+            "output_tokens": 972,
+            "total_tokens": 22802,
+            "cached_input_tokens": 13195,
+            "cache_write_input_tokens": 8623
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "local_plan",
+          "has_prior_outbound_message": true,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "not_applicable",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "recomendar",
+          "routeKind": "single_need_search",
+          "providerSearchMode": "single_need_from_plan",
+          "presentationScope": "single_need",
+          "focusNeedCategory": "Catering",
+          "needsToSearch": [
+            "Catering"
+          ],
+          "needsToPresent": [
+            "Catering"
+          ],
+          "stopReason": null,
+          "persistReason": "recomendar",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "single_need_search",
+        "presentation_scope": "single_need",
+        "session_focus_used": true,
+        "session_focus_key_present": true,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.99,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": "boda",
+          "vendor_category": "Catering",
+          "vendor_categories": [
+            "Catering"
+          ],
+          "active_need_category": "Catering",
+          "location": "Lima",
+          "budget_signal": "Prefiere alternativas más económicas que las mostradas; sin presupuesto máximo definido",
+          "guest_range": "51-100",
+          "selected_provider_hints": [],
+          "preferences": [
+            "Opciones de catering más económicas"
+          ],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 1,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Busca alternativas de catering más económicas en Lima para su boda de 100 invitados.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "recomendar",
+          "lifecycle_state": "active",
+          "event_type": "boda",
+          "vendor_category": "Catering",
+          "active_need_category": "Catering",
+          "location": "Lima",
+          "budget_signal": "Prefiere alternativas más económicas que las mostradas; sin presupuesto máximo definido",
+          "guest_range": "51-100",
+          "provider_need_categories": [
+            "Catering"
+          ],
+          "provider_need_count": 1,
+          "provider_need_statuses": [
+            {
+              "category": "Catering",
+              "status": "shortlisted",
+              "has_recommendations": true,
+              "selected_provider_ids": []
+            }
+          ],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "Busca alternativas de catering más económicas en Lima para su boda de 100 invitados.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "missing_phone_number",
+          "context_source": "local_plan",
+          "retrieved_message_count": 0,
+          "recent_message_count": 1,
+          "excluded_current_message_count": 0,
+          "directions": [
+            "outbound"
+          ],
+          "sources": [
+            null
+          ],
+          "entry_source": null
+        },
+        "continuity_state": "continuing",
+        "welcome_allowed": false,
+        "history_status": "missing_phone_number",
+        "has_prior_outbound": true,
+        "requested_operation": "provider.search",
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": true,
+          "droppedCandidateDetails": 7,
+          "droppedCalls": 10,
+          "diagnosticBytes": 12288,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M6PATGXM5S1M4CS1Y4225DSC",
+        "conversation_hash": "d5bfd59cb71d70b7f1f49a7dc90e602cc732c028a7bc0311431ce84c04882b19",
+        "runtime_latency_ms": 16476,
+        "extraction_latency_ms": 6010,
+        "compose_latency_ms": 5857,
+        "tools_called_count": 5,
+        "provider_results_count": 7,
+        "recommendation_context_candidates": 6,
+        "recommendation_presentation_limit": 6,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 22802,
+        "cached_input_tokens": 13195,
+        "cache_hit_rate": 0.6044434264773247,
+        "extraction_to_compose_ratio": 1.0261225883558136,
+        "captured_at": "2026-11-05T17:06:38.657Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "recomendar",
+        "lifecycle_state": "active",
+        "event_type": "boda",
+        "vendor_category": "Catering",
+        "active_need_category": "Catering",
+        "location": "Lima",
+        "budget_signal": "Prefiere alternativas más económicas que las mostradas; sin presupuesto máximo definido",
+        "guest_range": "51-100",
+        "provider_needs": [
+          {
+            "category": "Catering",
+            "status": "shortlisted",
+            "recommended_provider_ids": [
+              138,
+              130,
+              189,
+              137,
+              199,
+              136,
+              153
+            ],
+            "selected_provider_ids": []
+          }
+        ],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": false
+        }
+      },
+      "latencyMs": 17043
+    }
+  ],
+  "startedAt": "2026-11-05T17:06:39.205Z",
+  "completedAt": "2026-11-05T17:06:39.205Z"
+}

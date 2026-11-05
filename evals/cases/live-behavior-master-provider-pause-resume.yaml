@@ -1,0 +1,131 @@
+template: template.base-live
+id: live_behavior.master_provider_pause_resume
+suite: live_behavior_regression
+version: 1
+description: Pausing then recalling a stored provider selection preserves the
+  selected identity without quote submission.
+tags:
+  - live
+  - behavior
+  - provider
+  - thesis-master
+targetModes:
+  - live_lambda
+backendFixture:
+  scenario: provider-decimal-budget
+inputs:
+  - text: Guarda mi plan por ahora; lo retomamos más tarde.
+    sessionId: master-provider-pause_resume
+    backendFixture:
+      scenario: provider-decimal-budget
+  - text: "Retomemos mi cumpleaños: ¿qué proveedor de catering había elegido?"
+    sessionId: master-provider-pause_resume
+    backendFixture:
+      scenario: provider-decimal-budget
+seedPlan:
+  current_node: recomendar
+  event_type: cumpleanos
+  location: Lima
+  guest_range: 1-20
+  active_need_category: Catering
+  vendor_category: Catering
+  provider_needs:
+    - category: Catering
+      status: selected
+      preferences: []
+      hard_constraints: []
+      missing_fields: []
+      recommended_provider_ids:
+        - 9101
+        - 9102
+      recommended_providers: &a1
+        - id: 9101
+          title: Mesa Accesible
+          slug: mesa-accesible-9101
+          category: Catering
+          location: Lima
+          priceLevel: low
+          minPrice: "100.00"
+          maxPrice: "400.00"
+          detailUrl: https://fixture.example/catering/mesa-accesible-9101
+          serviceHighlights:
+            - Catering para cumpleaños y celebraciones sociales de 20 invitados
+          termsHighlights:
+            - Sujeto a disponibilidad
+          eventTypes:
+            - others
+          description: Catering para cumpleaños y celebraciones sociales.
+        - id: 9102
+          title: Mesa Premium
+          slug: mesa-premium-9102
+          category: Catering
+          location: Lima
+          priceLevel: high
+          minPrice: "8000.00"
+          maxPrice: "12000.00"
+          detailUrl: https://fixture.example/catering/mesa-premium-9102
+          serviceHighlights:
+            - Catering para cumpleaños y celebraciones sociales de 20 invitados
+          termsHighlights:
+            - Sujeto a disponibilidad
+          eventTypes:
+            - others
+          description: Catering para cumpleaños y celebraciones sociales.
+      selected_provider_ids: &a2
+        - 9101
+      selected_provider_hints: []
+  recommended_provider_ids:
+    - 9101
+    - 9102
+  recommended_providers: *a1
+  selected_provider_ids: *a2
+expectations:
+  - id: pause-retains-selected-id
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: Catering
+        selected_provider_ids:
+          - 9101
+    turnIndex: 0
+    severity: hard
+  - id: resume-retains-selected-id
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: Catering
+        selected_provider_ids:
+          - 9101
+    turnIndex: 1
+    severity: hard
+  - id: stored-selection-delivered
+    type: text_contains
+    allOf:
+      - Mesa Accesible
+    turnIndex: 1
+    severity: hard
+  - id: read-only-provider-conversation-has-no-submission
+    type: tool_usage
+    mustNotCall:
+      - create_quote_request
+      - finish_plan
+      - request_human_takeover
+      - guest_rsvp
+      - request_user_login_code
+      - verify_user_login_code
+    severity: hard
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1
+budget:
+  maxTurns: 2
+  estimatedPromptTokensPerTurn: 12000
+  estimatedCompletionTokensPerTurn: 600
+notes:
+  - Frozen synthetic capability question for the master thesis study. These
+    fixtures test the deployed orchestration and model against a declared
+    provider world; they do not test real marketplace/vector retrieval recall.
+  - All replies remain model-generated. Assertions pin independently declared
+    provider identities, facts and effects rather than prose style or internal
+    node paths.

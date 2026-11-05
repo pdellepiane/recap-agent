@@ -1,0 +1,1722 @@
+{
+  "runId": "eval-2026-10-27T22-19-42-463Z-78589b85",
+  "caseId": "live_behavior.gift_mixed_order_distinguishes_items.master_r2",
+  "suite": "live_behavior_regression",
+  "target": "live_lambda",
+  "configLabel": "live_lambda",
+  "status": "passed",
+  "hardGatePassed": true,
+  "finalScore": 1,
+  "totalLatencyMs": 7826,
+  "totalToolCalls": 15,
+  "nodeTransitions": [
+    "contacto_inicial->resolver_consultas_informativas",
+    "resolver_consultas_informativas->resolver_consultas_informativas",
+    "resolver_consultas_informativas->resolver_consultas_informativas"
+  ],
+  "planDiffSummary": [
+    "current_node=\"resolver_consultas_informativas\""
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/.eval-runs/eval-2026-10-27T22-19-42-463Z-78589b85/artifacts/live_lambda/live_behavior.gift_mixed_order_distinguishes_items.master_r2.json"
+  },
+  "expectationResults": [
+    {
+      "id": "mixed-uses-gift-reads",
+      "type": "tool_usage",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Tool usage matched expectations."
+    },
+    {
+      "id": "mixed-gift-evidence-in-trace",
+      "type": "trace_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field information_execution_summary contained the expected subset."
+    },
+    {
+      "id": "mixed-no-unsolicited-effects",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture handoff.write attempts=0 successes=0 replays=0 outcome=none."
+    },
+    {
+      "id": "mixed-no-rsvp-writes",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture rsvp.write attempts=0 successes=0 replays=0 outcome=none."
+    },
+    {
+      "id": "mixed-t1-gift-evidence-in-trace",
+      "type": "trace_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field information_execution_summary contained the expected subset."
+    },
+    {
+      "id": "requested-sheet-amount-delivered",
+      "type": "text_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Text containment checks passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 1,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 6 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 3,
+    "avg_latency_ms": 2608.6666666666665,
+    "p95_latency_ms": 3305,
+    "tool_calls_total": 15,
+    "unique_tools_called": 5,
+    "tool_call_rate_per_turn": 5,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.06896551724137931,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 14308,
+    "cache_hit_rate": 0.14727078130574384,
+    "input_tokens": 14015,
+    "cached_input_tokens": 2064,
+    "cache_write_input_tokens": 6489,
+    "uncached_input_tokens": 11951,
+    "usage_known": true
+  },
+  "timing": {
+    "queueWaitMs": 837693,
+    "setupMs": 0,
+    "turnMs": 11870,
+    "snapshotMs": 11,
+    "teardownMs": 0,
+    "judgeWaitMs": 0,
+    "judgeApiMs": 0,
+    "reportWriteMs": 0,
+    "makespanMs": 0
+  },
+  "judgeMetrics": {
+    "modelCalls": 0,
+    "retryCount": 0,
+    "rateLimitCount": 0,
+    "tokensUnknown": false,
+    "openaiSdk": "7.43.0",
+    "judgeModels": []
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Compré dos regalos para la boda. ¿Cuándo llegan?",
+        "channel": "whatsapp",
+        "sessionId": "live-gift-mixed",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "purchase-gift-mixed"
+        }
+      },
+      "outputText": "Encontré una compra para la boda: el juego de sábanas es un regalo físico y el aporte para la luna de miel se acredita a la cuenta de los anfitriones, así que no se envía. No aparece información del envío del juego de sábanas; ¿te refieres a esa compra o hiciste otra? Con ese dato puedo ayudarte a revisarlo.",
+      "deliveredText": "Encontré una compra para la boda: el juego de sábanas es un regalo físico y el aporte para la luna de miel se acredita a la cuenta de los anfitriones, así que no se envía. No aparece información del envío del juego de sábanas; ¿te refieres a esa compra o hiciste otra? Con ese dato puedo ayudarte a revisarlo.",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "59cb068f57dd148b11eb750514507385d8a29ff9ba2e9c7b43c9e01e7795d702",
+        "deliveredSha256": "59cb068f57dd148b11eb750514507385d8a29ff9ba2e9c7b43c9e01e7795d702",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "resolver_consultas_informativas",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 5,
+          "attempts": 1
+        },
+        "trace_id": "01M5ZQZ0K7S536QZ66N606PEYM",
+        "conversation_id": null,
+        "plan_id": "01M5ZQYY7150F1FKSEBRDFTT4H",
+        "previous_node": "contacto_inicial",
+        "next_node": "resolver_consultas_informativas",
+        "node_path": [
+          "contacto_inicial",
+          "resolver_consultas_informativas"
+        ],
+        "intent": null,
+        "missing_fields": [],
+        "search_ready": false,
+        "prompt_bundle_id": "580e84bcf5ec",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/customer_context_fields.txt",
+          "nodes/resolver_consultas_informativas/payment_disclosure.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "agent_api_purchase_lookup"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "lookup_guest_orders_by_phone",
+          "lookup_guest_gift_purchases_by_phone",
+          "support_reply_sidecar"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "agent_api_purchase_lookup",
+            "input": "{\"projection_version\":1,\"status\":null,\"kind\":null,\"request_present\":true}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "agent_api_purchase_lookup",
+            "output": "{\"projection_version\":1,\"status\":\"completed\",\"kind\":\"purchase\",\"result_count\":1}"
+          },
+          {
+            "tool": "support_reply_sidecar",
+            "output": "[omitted]"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [
+          {
+            "requestId": "information-1",
+            "kind": "purchase",
+            "status": "completed",
+            "source": "agent_api",
+            "outcomeCode": "completed_with_results",
+            "retryable": null,
+            "queryHash": "58750cb45707339d25fd7b688fe105a4ee744aa272c7613f2ea4e4d7421cfd1f",
+            "evidence": [
+              {
+                "fileId": "",
+                "filename": "",
+                "score": 0,
+                "contentHash": "dda82a09e4783954925bf20404c108802ff0cf26259863db8cb6e9dcd56b7301",
+                "purchaseFact": {
+                  "eventLabel": "Boda Lucía y Marco",
+                  "total": 230,
+                  "currency": null,
+                  "currencySymbol": null,
+                  "paymentMethod": "Transferencia",
+                  "paymentStatus": "approved",
+                  "shippingStatus": null,
+                  "eventDate": "2026-10-10",
+                  "createdAt": "2026-09-01 11:00:00",
+                  "referencePresent": true,
+                  "reference": "100000901",
+                  "thanksPresent": false,
+                  "thanksMessage": null,
+                  "thanksSendMethod": null,
+                  "payment": {
+                    "method": "Transferencia",
+                    "amount": 230,
+                    "paidAt": "2026-09-01 11:00:00",
+                    "transactionStatus": null,
+                    "gatewayMessage": null,
+                    "operationCode": null,
+                    "originBank": null,
+                    "voucherProvided": null,
+                    "declineCode": null
+                  },
+                  "amounts": {
+                    "charged_total": {
+                      "value": 230,
+                      "currency": null,
+                      "currencySymbol": null
+                    },
+                    "gift_value": [
+                      {
+                        "value": 150,
+                        "currency": null,
+                        "currencySymbol": null,
+                        "itemName": "Juego de sábanas"
+                      },
+                      {
+                        "value": 80,
+                        "currency": null,
+                        "currencySymbol": null,
+                        "itemName": "Aporte luna de miel"
+                      }
+                    ],
+                    "reported_amount": null
+                  },
+                  "items": [
+                    {
+                      "name": "Juego de sábanas",
+                      "quantity": 1,
+                      "amount": 150,
+                      "rowTotal": 150,
+                      "fulfillment": "physical"
+                    },
+                    {
+                      "name": "Aporte luna de miel",
+                      "quantity": 1,
+                      "amount": 80,
+                      "rowTotal": 80,
+                      "fulfillment": "host_credit"
+                    }
+                  ]
+                }
+              }
+            ],
+            "resultCount": 1,
+            "durationMs": 0,
+            "accessMethod": "trusted_phone_purchase",
+            "sourceCoverage": [
+              {
+                "source": "orders",
+                "childId": "information-1:orders",
+                "status": "empty",
+                "count": 0
+              },
+              {
+                "source": "gift_purchases",
+                "childId": "information-1:gift_purchases",
+                "status": "completed",
+                "count": 1
+              }
+            ],
+            "coverage": "complete"
+          }
+        ],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": null,
+          "extraction": null,
+          "reply": {
+            "responseId": "resp_04c91dc4e5204e76006ae126c733d087d2bf0c7cf6dfc4e03d",
+            "requestId": "req_43ea0e68c640431090b0b7b2e008df31",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 2209,
+              "inputBytes": 6513,
+              "toolCount": 0,
+              "schemaPropertyCount": 7,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 12535,
+                "instructionBytes": 2227,
+                "inputBytes": 7294,
+                "toolBytes": 2,
+                "outputSchemaBytes": 2722,
+                "requests": []
+              }
+            }
+          },
+          "router": {
+            "responseId": null,
+            "requestId": "req_9f895604021f40eab386e2fdb881014a",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 3321,
+              "inputBytes": 2711,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 7017,
+                "instructionBytes": 3321,
+                "inputBytes": 2711,
+                "toolBytes": 0,
+                "outputSchemaBytes": 0,
+                "requests": []
+              }
+            }
+          }
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 5
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "resolver_consultas_informativas",
+        "timing_ms": {
+          "total": 2444,
+          "load_plan": 6,
+          "response_classification": 29,
+          "prepare_working_plan": 0,
+          "extraction": 0,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 2207,
+          "save_plan": 5,
+          "router": 191,
+          "information_execution": 2,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": null,
+          "router": {
+            "input_tokens": 1521,
+            "output_tokens": 0,
+            "total_tokens": 1521
+          },
+          "extraction": null,
+          "reply": {
+            "input_tokens": 2620,
+            "output_tokens": 131,
+            "total_tokens": 2751,
+            "cached_input_tokens": 0,
+            "cache_write_input_tokens": 2617
+          },
+          "total": {
+            "input_tokens": 4141,
+            "output_tokens": 131,
+            "total_tokens": 4272,
+            "cached_input_tokens": 0,
+            "cache_write_input_tokens": 2617
+          }
+        },
+        "turn_decision": {
+          "nextNode": "resolver_consultas_informativas",
+          "routeKind": "information_batch",
+          "providerSearchMode": "none",
+          "presentationScope": "information_batch",
+          "focusNeedCategory": null,
+          "needsToSearch": [],
+          "needsToPresent": [],
+          "stopReason": null,
+          "persistReason": "information_batch",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "information_batch",
+        "presentation_scope": "information_batch",
+        "session_focus_used": false,
+        "session_focus_key_present": false,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": null,
+          "information_request_count": 1,
+          "information_request_kinds": [
+            "purchase"
+          ],
+          "support_act_kind": null,
+          "ambiguity_status": null,
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": null,
+          "vendor_category": null,
+          "vendor_categories": [],
+          "active_need_category": null,
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 0,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Turno de asistencia decidido por el router.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "resolver_consultas_informativas",
+          "lifecycle_state": "active",
+          "event_type": null,
+          "vendor_category": null,
+          "active_need_category": null,
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "provider_need_categories": [],
+          "provider_need_count": 0,
+          "provider_need_statuses": [],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "empty",
+          "context_source": "agent_api",
+          "retrieved_message_count": 0,
+          "recent_message_count": 0,
+          "excluded_current_message_count": 0,
+          "directions": [],
+          "sources": [],
+          "entry_source": null
+        },
+        "continuity_state": "new",
+        "welcome_allowed": true,
+        "history_status": "empty",
+        "has_prior_outbound": false,
+        "requested_operation": null,
+        "capability_decision": null,
+        "capability_reason": null,
+        "router_decision": {
+          "route": "answer_with_records",
+          "route_probability": 0.89,
+          "route_probabilities": [
+            {
+              "value": "answer_with_records",
+              "probability": 0.89
+            },
+            {
+              "value": "information_flow",
+              "probability": 0.03
+            },
+            {
+              "value": "ask_clarification",
+              "probability": 0.02
+            },
+            {
+              "value": "offer_human",
+              "probability": 0.01
+            },
+            {
+              "value": "escalate_human",
+              "probability": 0.04
+            },
+            {
+              "value": "rsvp_flow",
+              "probability": 0
+            },
+            {
+              "value": "planning_flow",
+              "probability": 0.01
+            },
+            {
+              "value": "suppress_ack",
+              "probability": 0
+            }
+          ],
+          "same_open_request": false,
+          "same_open_request_probability": 0,
+          "request_settled": false,
+          "request_settled_probability": 0.55
+        },
+        "open_request_state": "needs_input",
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 8774,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M5ZQZ0K7S536QZ66N606PEYM",
+        "conversation_hash": "4e92360a7f30a26fa1513df5ba89d903e10dbc05c8aa911e6dd2496308089d68",
+        "runtime_latency_ms": 2444,
+        "extraction_latency_ms": 0,
+        "compose_latency_ms": 2207,
+        "tools_called_count": 5,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 5,
+        "response_classifier_action": null,
+        "response_classifier_would_suppress": null,
+        "conversation_health_status": null,
+        "conversation_health_reason": null,
+        "human_help_response": null,
+        "total_tokens": 4272,
+        "cached_input_tokens": 0,
+        "cache_hit_rate": 0,
+        "extraction_to_compose_ratio": 0,
+        "captured_at": "2026-10-27T22:33:45.327Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "resolver_consultas_informativas",
+        "lifecycle_state": "active",
+        "event_type": null,
+        "vendor_category": null,
+        "active_need_category": null,
+        "location": null,
+        "budget_signal": null,
+        "guest_range": null,
+        "provider_needs": [],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": true
+        }
+      },
+      "latencyMs": 3305
+    },
+    {
+      "turnIndex": 1,
+      "input": {
+        "text": "¿Y el regalo de 80, cómo llega?",
+        "channel": "whatsapp",
+        "sessionId": "live-gift-mixed",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "purchase-gift-mixed"
+        }
+      },
+      "outputText": "El regalo de S/ 80 es un aporte para la luna de miel: se acredita en la cuenta de los anfitriones, no se envía físicamente. La compra figura aprobada.",
+      "deliveredText": "El regalo de S/ 80 es un aporte para la luna de miel: se acredita en la cuenta de los anfitriones, no se envía físicamente. La compra figura aprobada.",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "fd45e570961ee4f9901329dbbfa0a62b8af15ca7487907b012eae3fd3d261265",
+        "deliveredSha256": "fd45e570961ee4f9901329dbbfa0a62b8af15ca7487907b012eae3fd3d261265",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "resolver_consultas_informativas",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 5,
+          "attempts": 1
+        },
+        "trace_id": "01M5ZQZ49DMHG70XK8CFMM5ZTC",
+        "conversation_id": null,
+        "plan_id": "01M5ZQYY7150F1FKSEBRDFTT4H",
+        "previous_node": "resolver_consultas_informativas",
+        "next_node": "resolver_consultas_informativas",
+        "node_path": [
+          "resolver_consultas_informativas"
+        ],
+        "intent": null,
+        "missing_fields": [],
+        "search_ready": false,
+        "prompt_bundle_id": "bb81e083a211",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/customer_context_fields.txt",
+          "nodes/resolver_consultas_informativas/payment_disclosure.txt",
+          "nodes/resolver_consultas_informativas/support_continuity.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "agent_api_purchase_lookup"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "lookup_guest_orders_by_phone",
+          "lookup_guest_gift_purchases_by_phone",
+          "support_reply_sidecar"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "agent_api_purchase_lookup",
+            "input": "{\"projection_version\":1,\"status\":null,\"kind\":null,\"request_present\":true}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "agent_api_purchase_lookup",
+            "output": "{\"projection_version\":1,\"status\":\"completed\",\"kind\":\"purchase\",\"result_count\":1}"
+          },
+          {
+            "tool": "support_reply_sidecar",
+            "output": "[omitted]"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [
+          {
+            "requestId": "information-1",
+            "kind": "purchase",
+            "status": "completed",
+            "source": "agent_api",
+            "outcomeCode": "completed_with_results",
+            "retryable": null,
+            "queryHash": "58750cb45707339d25fd7b688fe105a4ee744aa272c7613f2ea4e4d7421cfd1f",
+            "evidence": [
+              {
+                "fileId": "",
+                "filename": "",
+                "score": 0,
+                "contentHash": "dda82a09e4783954925bf20404c108802ff0cf26259863db8cb6e9dcd56b7301",
+                "purchaseFact": {
+                  "eventLabel": "Boda Lucía y Marco",
+                  "total": 230,
+                  "currency": null,
+                  "currencySymbol": null,
+                  "paymentMethod": "Transferencia",
+                  "paymentStatus": "approved",
+                  "shippingStatus": null,
+                  "eventDate": "2026-10-10",
+                  "createdAt": "2026-09-01 11:00:00",
+                  "referencePresent": true,
+                  "reference": "100000901",
+                  "thanksPresent": false,
+                  "thanksMessage": null,
+                  "thanksSendMethod": null,
+                  "payment": {
+                    "method": "Transferencia",
+                    "amount": 230,
+                    "paidAt": "2026-09-01 11:00:00",
+                    "transactionStatus": null,
+                    "gatewayMessage": null,
+                    "operationCode": null,
+                    "originBank": null,
+                    "voucherProvided": null,
+                    "declineCode": null
+                  },
+                  "amounts": {
+                    "charged_total": {
+                      "value": 230,
+                      "currency": null,
+                      "currencySymbol": null
+                    },
+                    "gift_value": [
+                      {
+                        "value": 150,
+                        "currency": null,
+                        "currencySymbol": null,
+                        "itemName": "Juego de sábanas"
+                      },
+                      {
+                        "value": 80,
+                        "currency": null,
+                        "currencySymbol": null,
+                        "itemName": "Aporte luna de miel"
+                      }
+                    ],
+                    "reported_amount": null
+                  },
+                  "items": [
+                    {
+                      "name": "Juego de sábanas",
+                      "quantity": 1,
+                      "amount": 150,
+                      "rowTotal": 150,
+                      "fulfillment": "physical"
+                    },
+                    {
+                      "name": "Aporte luna de miel",
+                      "quantity": 1,
+                      "amount": 80,
+                      "rowTotal": 80,
+                      "fulfillment": "host_credit"
+                    }
+                  ]
+                }
+              }
+            ],
+            "resultCount": 1,
+            "durationMs": 0,
+            "accessMethod": "trusted_phone_purchase",
+            "sourceCoverage": [
+              {
+                "source": "orders",
+                "childId": "information-1:orders",
+                "status": "empty",
+                "count": 0
+              },
+              {
+                "source": "gift_purchases",
+                "childId": "information-1:gift_purchases",
+                "status": "completed",
+                "count": 1
+              }
+            ],
+            "coverage": "complete"
+          }
+        ],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": null,
+          "extraction": null,
+          "reply": {
+            "responseId": "resp_037bba4ef695aad9006ae126cb594c87d285121fa892eb7b73",
+            "requestId": "req_05f17ec7efe64f7fbcb42aed1db9eb1d",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 2638,
+              "inputBytes": 7207,
+              "toolCount": 0,
+              "schemaPropertyCount": 7,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 13705,
+                "instructionBytes": 2659,
+                "inputBytes": 8032,
+                "toolBytes": 2,
+                "outputSchemaBytes": 2722,
+                "requests": []
+              }
+            }
+          },
+          "router": {
+            "responseId": null,
+            "requestId": "req_0ba38ba86fb14c5f90434893ad531499",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4023,
+              "inputBytes": 3257,
+              "toolCount": 0,
+              "schemaPropertyCount": 3,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 8518,
+                "instructionBytes": 4023,
+                "inputBytes": 3257,
+                "toolBytes": 0,
+                "outputSchemaBytes": 0,
+                "requests": []
+              }
+            }
+          }
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 5
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "resolver_consultas_informativas",
+        "timing_ms": {
+          "total": 2042,
+          "load_plan": 7,
+          "response_classification": 43,
+          "prepare_working_plan": 0,
+          "extraction": 0,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 1836,
+          "save_plan": 5,
+          "router": 146,
+          "information_execution": 1,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": null,
+          "router": {
+            "input_tokens": 1931,
+            "output_tokens": 0,
+            "total_tokens": 1931
+          },
+          "extraction": null,
+          "reply": {
+            "input_tokens": 2898,
+            "output_tokens": 93,
+            "total_tokens": 2991,
+            "cached_input_tokens": 1032,
+            "cache_write_input_tokens": 1863
+          },
+          "total": {
+            "input_tokens": 4829,
+            "output_tokens": 93,
+            "total_tokens": 4922,
+            "cached_input_tokens": 1032,
+            "cache_write_input_tokens": 1863
+          }
+        },
+        "turn_decision": {
+          "nextNode": "resolver_consultas_informativas",
+          "routeKind": "information_batch",
+          "providerSearchMode": "none",
+          "presentationScope": "information_batch",
+          "focusNeedCategory": null,
+          "needsToSearch": [],
+          "needsToPresent": [],
+          "stopReason": null,
+          "persistReason": "information_batch",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "information_batch",
+        "presentation_scope": "information_batch",
+        "session_focus_used": false,
+        "session_focus_key_present": false,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": null,
+          "information_request_count": 1,
+          "information_request_kinds": [
+            "purchase"
+          ],
+          "support_act_kind": null,
+          "ambiguity_status": null,
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": null,
+          "vendor_category": null,
+          "vendor_categories": [],
+          "active_need_category": null,
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 0,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Turno de asistencia decidido por el router.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "resolver_consultas_informativas",
+          "lifecycle_state": "active",
+          "event_type": null,
+          "vendor_category": null,
+          "active_need_category": null,
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "provider_need_categories": [],
+          "provider_need_count": 0,
+          "provider_need_statuses": [],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "available",
+          "context_source": "agent_api",
+          "retrieved_message_count": 2,
+          "recent_message_count": 2,
+          "excluded_current_message_count": 0,
+          "directions": [
+            "inbound",
+            "outbound"
+          ],
+          "sources": [
+            null,
+            null
+          ],
+          "entry_source": null
+        },
+        "continuity_state": "continuing",
+        "welcome_allowed": false,
+        "history_status": "available",
+        "has_prior_outbound": true,
+        "requested_operation": null,
+        "capability_decision": null,
+        "capability_reason": null,
+        "router_decision": {
+          "route": "ask_clarification",
+          "route_probability": 0.45,
+          "route_probabilities": [
+            {
+              "value": "answer_with_records",
+              "probability": 0.29
+            },
+            {
+              "value": "information_flow",
+              "probability": 0.14
+            },
+            {
+              "value": "ask_clarification",
+              "probability": 0.45
+            },
+            {
+              "value": "offer_human",
+              "probability": 0.03
+            },
+            {
+              "value": "escalate_human",
+              "probability": 0.08
+            },
+            {
+              "value": "rsvp_flow",
+              "probability": 0
+            },
+            {
+              "value": "planning_flow",
+              "probability": 0
+            },
+            {
+              "value": "suppress_ack",
+              "probability": 0.01
+            }
+          ],
+          "same_open_request": true,
+          "same_open_request_probability": 0.94,
+          "request_settled": false,
+          "request_settled_probability": 0.65
+        },
+        "open_request_state": "answered",
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 8878,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M5ZQZ49DMHG70XK8CFMM5ZTC",
+        "conversation_hash": "4e92360a7f30a26fa1513df5ba89d903e10dbc05c8aa911e6dd2496308089d68",
+        "runtime_latency_ms": 2042,
+        "extraction_latency_ms": 0,
+        "compose_latency_ms": 1836,
+        "tools_called_count": 5,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 5,
+        "response_classifier_action": null,
+        "response_classifier_would_suppress": null,
+        "conversation_health_status": null,
+        "conversation_health_reason": null,
+        "human_help_response": null,
+        "total_tokens": 4922,
+        "cached_input_tokens": 1032,
+        "cache_hit_rate": 0.21370884241043694,
+        "extraction_to_compose_ratio": 0,
+        "captured_at": "2026-10-27T22:33:49.106Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "resolver_consultas_informativas",
+        "lifecycle_state": "active",
+        "event_type": null,
+        "vendor_category": null,
+        "active_need_category": null,
+        "location": null,
+        "budget_signal": null,
+        "guest_range": null,
+        "provider_needs": [],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": true
+        }
+      },
+      "latencyMs": 2310
+    },
+    {
+      "turnIndex": 2,
+      "input": {
+        "text": "¿Cuánto costaron las sábanas y cuántas compré?",
+        "channel": "whatsapp",
+        "sessionId": "live-gift-mixed",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "purchase-gift-mixed"
+        }
+      },
+      "outputText": "Las sábanas costaron S/ 150 y compraste un juego.",
+      "deliveredText": "Las sábanas costaron S/ 150 y compraste un juego.",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "896dff55cdf69af920e1264ca57caa5cead0f793b9ef0f060b60a6b4e473abfc",
+        "deliveredSha256": "896dff55cdf69af920e1264ca57caa5cead0f793b9ef0f060b60a6b4e473abfc",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "resolver_consultas_informativas",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 5,
+          "attempts": 1
+        },
+        "trace_id": "01M5ZQZ7ARGTYK8N5XAQ9V1T48",
+        "conversation_id": null,
+        "plan_id": "01M5ZQYY7150F1FKSEBRDFTT4H",
+        "previous_node": "resolver_consultas_informativas",
+        "next_node": "resolver_consultas_informativas",
+        "node_path": [
+          "resolver_consultas_informativas"
+        ],
+        "intent": null,
+        "missing_fields": [],
+        "search_ready": false,
+        "prompt_bundle_id": "bb81e083a211",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/customer_context_fields.txt",
+          "nodes/resolver_consultas_informativas/payment_disclosure.txt",
+          "nodes/resolver_consultas_informativas/support_continuity.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "agent_api_purchase_lookup"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "lookup_guest_orders_by_phone",
+          "lookup_guest_gift_purchases_by_phone",
+          "support_reply_sidecar"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "agent_api_purchase_lookup",
+            "input": "{\"projection_version\":1,\"status\":null,\"kind\":null,\"request_present\":true}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "agent_api_purchase_lookup",
+            "output": "{\"projection_version\":1,\"status\":\"completed\",\"kind\":\"purchase\",\"result_count\":1}"
+          },
+          {
+            "tool": "support_reply_sidecar",
+            "output": "[omitted]"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [
+          {
+            "requestId": "information-1",
+            "kind": "purchase",
+            "status": "completed",
+            "source": "agent_api",
+            "outcomeCode": "completed_with_results",
+            "retryable": null,
+            "queryHash": "58750cb45707339d25fd7b688fe105a4ee744aa272c7613f2ea4e4d7421cfd1f",
+            "evidence": [
+              {
+                "fileId": "",
+                "filename": "",
+                "score": 0,
+                "contentHash": "dda82a09e4783954925bf20404c108802ff0cf26259863db8cb6e9dcd56b7301",
+                "purchaseFact": {
+                  "eventLabel": "Boda Lucía y Marco",
+                  "total": 230,
+                  "currency": null,
+                  "currencySymbol": null,
+                  "paymentMethod": "Transferencia",
+                  "paymentStatus": "approved",
+                  "shippingStatus": null,
+                  "eventDate": "2026-10-10",
+                  "createdAt": "2026-09-01 11:00:00",
+                  "referencePresent": true,
+                  "reference": "100000901",
+                  "thanksPresent": false,
+                  "thanksMessage": null,
+                  "thanksSendMethod": null,
+                  "payment": {
+                    "method": "Transferencia",
+                    "amount": 230,
+                    "paidAt": "2026-09-01 11:00:00",
+                    "transactionStatus": null,
+                    "gatewayMessage": null,
+                    "operationCode": null,
+                    "originBank": null,
+                    "voucherProvided": null,
+                    "declineCode": null
+                  },
+                  "amounts": {
+                    "charged_total": {
+                      "value": 230,
+                      "currency": null,
+                      "currencySymbol": null
+                    },
+                    "gift_value": [
+                      {
+                        "value": 150,
+                        "currency": null,
+                        "currencySymbol": null,
+                        "itemName": "Juego de sábanas"
+                      },
+                      {
+                        "value": 80,
+                        "currency": null,
+                        "currencySymbol": null,
+                        "itemName": "Aporte luna de miel"
+                      }
+                    ],
+                    "reported_amount": null
+                  },
+                  "items": [
+                    {
+                      "name": "Juego de sábanas",
+                      "quantity": 1,
+                      "amount": 150,
+                      "rowTotal": 150,
+                      "fulfillment": "physical"
+                    },
+                    {
+                      "name": "Aporte luna de miel",
+                      "quantity": 1,
+                      "amount": 80,
+                      "rowTotal": 80,
+                      "fulfillment": "host_credit"
+                    }
+                  ]
+                }
+              }
+            ],
+            "resultCount": 1,
+            "durationMs": 0,
+            "accessMethod": "trusted_phone_purchase",
+            "sourceCoverage": [
+              {
+                "source": "orders",
+                "childId": "information-1:orders",
+                "status": "empty",
+                "count": 0
+              },
+              {
+                "source": "gift_purchases",
+                "childId": "information-1:gift_purchases",
+                "status": "completed",
+                "count": 1
+              }
+            ],
+            "coverage": "complete"
+          }
+        ],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": null,
+          "extraction": null,
+          "reply": {
+            "responseId": "resp_04b8d60c29b2dbdf006ae126ce9f0087d296d779c6b6f7eda4",
+            "requestId": "req_7f34e33e15da44a7a23e85fe2561e979",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 2638,
+              "inputBytes": 7689,
+              "toolCount": 0,
+              "schemaPropertyCount": 7,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 14227,
+                "instructionBytes": 2659,
+                "inputBytes": 8554,
+                "toolBytes": 2,
+                "outputSchemaBytes": 2722,
+                "requests": []
+              }
+            }
+          },
+          "router": {
+            "responseId": null,
+            "requestId": "req_139ab2144f7440f6847d80f91479fd5d",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4023,
+              "inputBytes": 3532,
+              "toolCount": 0,
+              "schemaPropertyCount": 3,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 8809,
+                "instructionBytes": 4023,
+                "inputBytes": 3532,
+                "toolBytes": 0,
+                "outputSchemaBytes": 0,
+                "requests": []
+              }
+            }
+          }
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 5
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "resolver_consultas_informativas",
+        "timing_ms": {
+          "total": 1945,
+          "load_plan": 7,
+          "response_classification": 32,
+          "prepare_working_plan": 0,
+          "extraction": 0,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 1719,
+          "save_plan": 6,
+          "router": 177,
+          "information_execution": 1,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": null,
+          "router": {
+            "input_tokens": 2001,
+            "output_tokens": 0,
+            "total_tokens": 2001
+          },
+          "extraction": null,
+          "reply": {
+            "input_tokens": 3044,
+            "output_tokens": 69,
+            "total_tokens": 3113,
+            "cached_input_tokens": 1032,
+            "cache_write_input_tokens": 2009
+          },
+          "total": {
+            "input_tokens": 5045,
+            "output_tokens": 69,
+            "total_tokens": 5114,
+            "cached_input_tokens": 1032,
+            "cache_write_input_tokens": 2009
+          }
+        },
+        "turn_decision": {
+          "nextNode": "resolver_consultas_informativas",
+          "routeKind": "information_batch",
+          "providerSearchMode": "none",
+          "presentationScope": "information_batch",
+          "focusNeedCategory": null,
+          "needsToSearch": [],
+          "needsToPresent": [],
+          "stopReason": null,
+          "persistReason": "information_batch",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "information_batch",
+        "presentation_scope": "information_batch",
+        "session_focus_used": false,
+        "session_focus_key_present": false,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": null,
+          "information_request_count": 1,
+          "information_request_kinds": [
+            "purchase"
+          ],
+          "support_act_kind": null,
+          "ambiguity_status": null,
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": null,
+          "vendor_category": null,
+          "vendor_categories": [],
+          "active_need_category": null,
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 0,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Turno de asistencia decidido por el router.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "resolver_consultas_informativas",
+          "lifecycle_state": "active",
+          "event_type": null,
+          "vendor_category": null,
+          "active_need_category": null,
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "provider_need_categories": [],
+          "provider_need_count": 0,
+          "provider_need_statuses": [],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "available",
+          "context_source": "agent_api",
+          "retrieved_message_count": 4,
+          "recent_message_count": 4,
+          "excluded_current_message_count": 0,
+          "directions": [
+            "inbound",
+            "outbound",
+            "inbound",
+            "outbound"
+          ],
+          "sources": [
+            null,
+            null,
+            null,
+            null
+          ],
+          "entry_source": null
+        },
+        "continuity_state": "continuing",
+        "welcome_allowed": false,
+        "history_status": "available",
+        "has_prior_outbound": true,
+        "requested_operation": null,
+        "capability_decision": null,
+        "capability_reason": null,
+        "router_decision": {
+          "route": "answer_with_records",
+          "route_probability": 0.81,
+          "route_probabilities": [
+            {
+              "value": "answer_with_records",
+              "probability": 0.81
+            },
+            {
+              "value": "information_flow",
+              "probability": 0.06
+            },
+            {
+              "value": "ask_clarification",
+              "probability": 0.06
+            },
+            {
+              "value": "offer_human",
+              "probability": 0
+            },
+            {
+              "value": "escalate_human",
+              "probability": 0.05
+            },
+            {
+              "value": "rsvp_flow",
+              "probability": 0.01
+            },
+            {
+              "value": "planning_flow",
+              "probability": 0.01
+            },
+            {
+              "value": "suppress_ack",
+              "probability": 0
+            }
+          ],
+          "same_open_request": false,
+          "same_open_request_probability": 0.94,
+          "request_settled": true,
+          "request_settled_probability": 0.74
+        },
+        "open_request_state": "answered",
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 8911,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M5ZQZ7ARGTYK8N5XAQ9V1T48",
+        "conversation_hash": "4e92360a7f30a26fa1513df5ba89d903e10dbc05c8aa911e6dd2496308089d68",
+        "runtime_latency_ms": 1945,
+        "extraction_latency_ms": 0,
+        "compose_latency_ms": 1719,
+        "tools_called_count": 5,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 5,
+        "response_classifier_action": null,
+        "response_classifier_would_suppress": null,
+        "conversation_health_status": null,
+        "conversation_health_reason": null,
+        "human_help_response": null,
+        "total_tokens": 5114,
+        "cached_input_tokens": 1032,
+        "cache_hit_rate": 0.2045589692765114,
+        "extraction_to_compose_ratio": 0,
+        "captured_at": "2026-10-27T22:33:52.221Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "resolver_consultas_informativas",
+        "lifecycle_state": "active",
+        "event_type": null,
+        "vendor_category": null,
+        "active_need_category": null,
+        "location": null,
+        "budget_signal": null,
+        "guest_range": null,
+        "provider_needs": [],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": true
+        }
+      },
+      "latencyMs": 2211
+    }
+  ],
+  "startedAt": "2026-10-27T22:33:53.254Z",
+  "completedAt": "2026-10-27T22:33:53.255Z"
+}

@@ -1,0 +1,64 @@
+template: template.base-live
+id: live_behavior.master_provider_direct_search
+suite: live_behavior_regression
+version: 1
+description: A complete low-budget catering request recommends the accessible
+  fixture provider and excludes unrelated category records.
+tags:
+  - live
+  - behavior
+  - provider
+  - thesis-master
+targetModes:
+  - live_lambda
+backendFixture:
+  scenario: master-provider-catalog
+inputs:
+  - text: Busco catering para mi cumpleaños en Lima para 20 invitados. Tengo un
+      presupuesto máximo de 500 soles. ¿Qué opción tienes?
+    sessionId: master-provider-direct_search
+    backendFixture:
+      scenario: master-provider-catalog
+expectations:
+  - id: accessible-shortlist
+    type: plan_field_equals
+    path: recommended_provider_ids
+    expected:
+      - 9101
+    severity: hard
+  - id: source-provider-delivered
+    type: text_contains
+    allOf:
+      - Mesa Accesible
+    severity: hard
+  - id: unrelated-category-not-delivered
+    type: text_not_contains
+    phrases:
+      - Luz Musical
+      - luz-musical-9301
+    severity: hard
+  - id: read-only-provider-conversation-has-no-submission
+    type: tool_usage
+    mustNotCall:
+      - create_quote_request
+      - finish_plan
+      - request_human_takeover
+      - guest_rsvp
+      - request_user_login_code
+      - verify_user_login_code
+    severity: hard
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 12000
+  estimatedCompletionTokensPerTurn: 600
+notes:
+  - Frozen synthetic capability question for the master thesis study. These
+    fixtures test the deployed orchestration and model against a declared
+    provider world; they do not test real marketplace/vector retrieval recall.
+  - All replies remain model-generated. Assertions pin independently declared
+    provider identities, facts and effects rather than prose style or internal
+    node paths.

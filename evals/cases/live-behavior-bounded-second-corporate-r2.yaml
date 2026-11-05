@@ -1,0 +1,99 @@
+id: live_behavior.bounded_second_corporate_r2
+version: 1
+description: "Bounded selection: July breadth study.corporate.05: Select
+  corporate venue option."
+inputs:
+  - text: Necesito local para evento corporativo en Lima para 80 personas.
+    sessionId: live_behavior.bounded_second_corporate_r2
+    channel: whatsapp
+    backendFixture:
+      scenario: master-provider-live-public
+    contactPhone: "+51900007000"
+  - text: Elijo la segunda opción.
+    sessionId: live_behavior.bounded_second_corporate_r2
+    channel: whatsapp
+    backendFixture:
+      scenario: master-provider-live-public
+    contactPhone: "+51900007000"
+expectations:
+  - id: event-type-retained
+    type: plan_field_equals
+    path: event_type
+    expected: corporativo
+    turnIndex: 1
+    severity: hard
+  - id: answer-delivered
+    type: text_contains
+    regex:
+      - "[\\s\\S]+"
+    turnIndex: 1
+    severity: hard
+  - id: no-provider-quote-without-explicit-date
+    type: fixture_effect_count
+    operation: provider.quote.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: no-unrequested-rsvp
+    type: fixture_effect_count
+    operation: rsvp.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: no-unrequested-handoff
+    type: fixture_effect_count
+    operation: handoff.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: requested-needs-retained
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: Locales
+    turnIndex: 1
+    severity: hard
+  - id: provider-selection-recorded
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: Locales
+        status: selected
+    turnIndex: 1
+    severity: hard
+  - id: two-options-available
+    type: provider_result_count
+    min: 2
+    turnIndex: 0
+    severity: hard
+  - id: second-displayed-provider-selected
+    type: provider_displayed_selection
+    sourceTurnIndex: 0
+    turnIndex: 1
+    ordinal: 2
+    severity: hard
+notes:
+  - New preregistered bounded selection scenario; no semantic judge. Public
+    provider reads are live only where the fixture enables them; all SE effects
+    remain mocked.
+  - Source cases and all earlier study results remain unchanged.
+suite: live_behavior_regression
+tags:
+  - live
+  - behavior
+  - july-breadth
+  - corporate
+  - selection
+targetModes:
+  - live_lambda
+backendFixture:
+  scenario: master-provider-live-public
+scorers:
+  - id: objective-obligations
+    type: expectation_pass_rate
+    weight: 1
+budget:
+  maxTurns: 2

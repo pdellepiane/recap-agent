@@ -1,0 +1,43 @@
+template: template.base-live
+id: live_behavior.provider_decimal_budget_excludes_expensive_candidates
+suite: live_behavior_regression
+version: 1
+description: A decimal PEN budget keeps the high-price candidate out of recommendations while retaining the fixture's accessible catering option.
+tags: [live, behavior, provider, budget, decimal, thesis-master]
+targetModes: [live_lambda]
+backendFixture:
+  scenario: provider-decimal-budget
+inputs:
+  - text: "Busco catering para mi cumpleaños en Lima, para 20 invitados. Mi presupuesto máximo para el catering es S/ 500.00. ¿Qué opción tienes dentro de ese presupuesto?"
+    sessionId: provider-decimal-budget
+    backendFixture:
+      scenario: provider-decimal-budget
+expectations:
+  - id: only-accessible-provider-is-recommended
+    type: plan_field_equals
+    path: recommended_provider_ids
+    expected: [9101]
+    severity: hard
+  - id: accessible-provider-is-delivered
+    type: text_contains
+    allOf: ["Mesa Accesible"]
+    severity: hard
+  - id: expensive-provider-is-not-delivered
+    type: text_not_contains
+    phrases: ["Mesa Premium", "mesa-premium-9102"]
+    severity: hard
+  - id: recommendation-does-not-submit-an-effect
+    type: tool_usage
+    mustNotCall: [create_quote_request, finish_plan, request_human_takeover, guest_rsvp]
+    severity: hard
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 12000
+  estimatedCompletionTokensPerTurn: 500
+notes:
+  - "Synthetic independent fixture world for the 2026-10-26 provider numeric-budget fix. This is not a historical customer interaction or a captured marketplace quote."
+  - "Expected outcome: decimal 500.00 means PEN 500, never 50000. The accessible record is available and the high-price record is excluded. The offline twin forces the numeric fallback directly because live extraction may already supply a correct typed budgetAmount."

@@ -1,0 +1,89 @@
+id: live_behavior.july_breadth_baby_shower_06_phonefixed
+suite: live_behavior_regression
+version: 1
+description: "July breadth study.baby_shower.06: Pause and resume baby shower planning."
+tags:
+  - live
+  - behavior
+  - july-breadth
+  - baby_shower
+  - pause_resume
+targetModes:
+  - live_lambda
+backendFixture:
+  scenario: master-provider-live-public
+inputs:
+  - text: Planeo un baby shower en Lima y necesito decoración.
+    channel: whatsapp
+    sessionId: live_behavior.july_breadth_baby_shower_06_phonefixed
+    backendFixture:
+      scenario: master-provider-live-public
+    contactPhone: "+51900007000"
+  - text: Pausa el plan.
+    channel: whatsapp
+    sessionId: live_behavior.july_breadth_baby_shower_06_phonefixed
+    backendFixture:
+      scenario: master-provider-live-public
+    contactPhone: "+51900007000"
+  - text: Continuemos con el baby shower.
+    channel: whatsapp
+    sessionId: live_behavior.july_breadth_baby_shower_06_phonefixed
+    backendFixture:
+      scenario: master-provider-live-public
+    contactPhone: "+51900007000"
+expectations:
+  - id: event-type-retained
+    type: plan_field_equals
+    path: event_type
+    expected: baby_shower
+    turnIndex: 2
+    severity: hard
+  - id: answer-delivered
+    type: text_contains
+    regex:
+      - "[\\s\\S]+"
+    turnIndex: 2
+    severity: hard
+  - id: no-provider-quote-without-explicit-date
+    type: fixture_effect_count
+    operation: provider.quote.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: no-unrequested-rsvp
+    type: fixture_effect_count
+    operation: rsvp.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: no-unrequested-handoff
+    type: fixture_effect_count
+    operation: handoff.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: requested-needs-retained
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: Hogar y deco
+    turnIndex: 2
+    severity: hard
+scorers:
+  - id: objective-obligations
+    type: expectation_pass_rate
+    weight: 1
+budget:
+  maxTurns: 3
+notes:
+  - Derived from study.baby_shower.06, route pause_resume; prompts are
+    preserved, assertions use current objective contracts, so results are not
+    directly comparable to July.
+  - Live public provider reads; private customer reads and all SE effects are
+    mocked.
+  - For selection, the selected state is checked but correctness of the first
+    displayed provider identity is not independently verified. Other unscored
+    semantic outcomes must not be inferred.

@@ -53,6 +53,17 @@ describe('typed silence exemption', () => {
     expect(collectOriginGateFailures([turn])).toEqual([]);
   });
 
+  it('recognizes router suppression only with its persisted trace, not as proof of an adequate answer', () => {
+    const turn = silenceTurn({ reason: 'suppress_acknowledgement' });
+    Object.assign(turn.trace, { router_decision: { route: 'suppress_ack' }, plan_persisted: true, plan_persist_reason: 'router_suppress_ack' });
+    expect(validateSilenceExemption(turn).exempt).toBe(true);
+    expect(collectOriginGateFailures([turn])).toEqual([]);
+    Object.assign(turn.trace, { plan_persisted: false });
+    expect(validateSilenceExemption(turn).exempt).toBe(false);
+    Object.assign(turn.trace, { plan_persisted: true, router_decision: { route: 'answer_with_records' } });
+    expect(validateSilenceExemption(turn).exempt).toBe(false);
+  });
+
   it('rejects a required unanswered question without suppression evidence', () => {
     const turn = silenceTurn({ reason: 'reply_composed', action: 'send' });
     const verdict = validateSilenceExemption(turn);

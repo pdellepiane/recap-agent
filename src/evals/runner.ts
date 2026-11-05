@@ -1,3 +1,4 @@
+import { checkDisplayedSelection, inspectProviderCards } from './bounded-response-checks';
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import * as fsSync from 'node:fs';
@@ -128,6 +129,8 @@ export type CaseCostEvent = {
   caseCostUsd: number;
   runningCostUsd: number;
   priced: boolean;
+  /** Missing usage/model pricing must not silently consume a study budget. */
+  unpriced?: boolean;
 };
 
 export type EvalRunnerOptions = {
@@ -1055,6 +1058,7 @@ export async function runEvaluation(
           caseCostUsd: roundUsd(settled.totalUsd),
           runningCostUsd: roundUsd(runCost.runningUsd),
           priced: pricing !== null,
+          unpriced: settled.unpricedCases.length > 0 || settled.unpricedModels.length > 0,
         });
       },
     });
@@ -2509,6 +2513,21 @@ async function evaluateExpectation(
       result.message = result.passed
         ? 'Provider results contained the expected matches.'
         : `Matched ${matched.length} of ${expectation.providers.length} provider expectations.`;
+      return result;
+    }
+    case 'provider_displayed_selection': {
+      const source = selectTurn(context.turns, expectation.sourceTurnIndex);
+      const selected = selectTurn(context.turns, expectation.turnIndex);
+      if (!source || !selected || source.outputOrigin?.status !== 'verified' || selected.outputOrigin?.status !== 'verified') {
+        result.message = 'Selection evidence is unassessable: source or selection turn is missing or lacks verified delivery.';
+        return result;
+      }
+      const cards = inspectProviderCards(getEvaluationOutputText(source), source.trace.provider_results);
+      const ids = getEvaluationPlan(selected)?.selected_provider_ids ?? null;
+      const verdict = checkDisplayedSelection(cards, ids, expectation.ordinal);
+      result.passed = verdict === 'matched';
+      result.score = result.passed ? 1 : 0;
+      result.message = `Displayed selection comparison: ${verdict}.`;
       return result;
     }
     case 'provider_result_count': {

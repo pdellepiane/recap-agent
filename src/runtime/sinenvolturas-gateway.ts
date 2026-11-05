@@ -57,11 +57,30 @@ class GuestServiceHttpError extends Error {
   }
 }
 
+/** Public category metadata arrives as JSON strings or expanded records. */
+function normalizeCategoryEventTypes(value: unknown): string[] {
+  let decoded: unknown = value;
+  if (typeof decoded === 'string') {
+    try {
+      decoded = JSON.parse(decoded) as unknown;
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(decoded)) return [];
+  const names = decoded.flatMap((entry: unknown): string[] => {
+    const name = typeof entry === 'string' ? entry
+      : entry && typeof entry === 'object' && 'name' in entry ? entry.name : null;
+    return typeof name === 'string' && name.trim() ? [name.trim()] : [];
+  });
+  return [...new Set(names)];
+}
+
 type CategoryApiItem = {
   id?: number | null;
   slug?: string | null;
   color?: string | null;
-  event_types?: Array<{ name?: string | null }> | null;
+  event_types?: unknown;
   translations?: Array<{ name?: string | null; language?: { locale?: string | null } }>;
   [key: string]: unknown;
 };
@@ -951,9 +970,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
       name,
       slug: category.slug ?? null,
       color: category.color ?? null,
-      eventTypes:
-        category.event_types?.map((eventType) => eventType.name).filter(Boolean) as string[] ??
-        [],
+      eventTypes: normalizeCategoryEventTypes(category.event_types),
       raw: category,
     };
   }

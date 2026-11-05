@@ -19,14 +19,13 @@ import { SinEnvolturasGateway } from '../runtime/sinenvolturas-gateway';
 import {
   HttpAgentConversationGateway,
 } from '../runtime/agent-conversation-gateway';
-import { FixtureAgentConversationGateway } from '../runtime/eval-fixture-gateway';
-import { FixtureProviderGateway } from '../runtime/fixture-provider-gateway';
+import { FixtureAgentConversationGateway, loadFixtureData } from '../runtime/eval-fixture-gateway';
+import { buildFixtureProviderGateway } from './fixture-provider-boundary';
 import {
   assertFixtureAllowed,
   buildFixtureConversationKey,
   createEvalFixtureStateStoreFromEnv,
 } from '../runtime/eval-fixture-state';
-import type { FixtureData } from '../runtime/eval-fixture-gateway';
 import { ProviderVectorSearchGateway } from '../runtime/provider-vector-search';
 import { AgentService } from '../runtime/agent-service';
 import type { HandleTurnResponse } from '../runtime/agent-service';
@@ -863,70 +862,23 @@ async function getFixtureRuntime(args: {
     );
   }
   const shared = await getSharedRuntimeDeps();
-  const fixtureGateway = await FixtureAgentConversationGateway.create(args.scenario, undefined, {
+  const fixtureLoad = await loadFixtureData(scenario);
+  const fixtureGateway = new FixtureAgentConversationGateway(scenario, fixtureLoad, {
     stateStore: fixtureStore,
     runId,
     caseId,
     conversationKey,
   });
-  // Under fixture marker, providerGateway.lookupUserEventContext must not hit real backend.
-  // Return deterministic empty typed context (fixture guestEvents drives reconciliation).
-  const rawFixture = (fixtureGateway as unknown as { data?: Record<string, unknown> }).data ?? null;
-  const fixtureProviderContext = rawFixture && typeof rawFixture === 'object' && 'providerUserEvents' in rawFixture
-    ? rawFixture['providerUserEvents']
-    : null;
-  const originalProviderGateway = shared.providerGateway;
-  const fixtureQuoteGateway = new FixtureProviderGateway(
-    scenario,
-    (rawFixture as FixtureData | null) ?? null,
-    rawFixture ? 'loaded' : 'unknown_scenario',
-    { runId, caseId, stateStore: fixtureStore },
-  );
-  const fixtureProviderGateway: typeof shared.providerGateway = {
-    listCategories: (...args: Parameters<typeof originalProviderGateway.listCategories>) => originalProviderGateway.listCategories(...args),
-    getCategoryBySlug: (...args: Parameters<typeof originalProviderGateway.getCategoryBySlug>) => originalProviderGateway.getCategoryBySlug(...args),
-    listLocations: (...args: Parameters<typeof originalProviderGateway.listLocations>) => originalProviderGateway.listLocations(...args),
-    searchProviders: (...args: Parameters<typeof originalProviderGateway.searchProviders>) => originalProviderGateway.searchProviders(...args),
-    searchProvidersByKeyword: (...args: Parameters<typeof originalProviderGateway.searchProvidersByKeyword>) => originalProviderGateway.searchProvidersByKeyword(...args),
-    searchProvidersByCategoryLocation: (...args: Parameters<typeof originalProviderGateway.searchProvidersByCategoryLocation>) => originalProviderGateway.searchProvidersByCategoryLocation(...args),
-    searchProvidersByQueryIntent: (...args: Parameters<typeof originalProviderGateway.searchProvidersByQueryIntent>) => originalProviderGateway.searchProvidersByQueryIntent(...args),
-    getRelevantProviders: (...args: Parameters<typeof originalProviderGateway.getRelevantProviders>) => originalProviderGateway.getRelevantProviders(...args),
-    getProviderDetail: (...args: Parameters<typeof originalProviderGateway.getProviderDetail>) => originalProviderGateway.getProviderDetail(...args),
-    getProviderDetailAndTrackView: (...args: Parameters<typeof originalProviderGateway.getProviderDetailAndTrackView>) => originalProviderGateway.getProviderDetailAndTrackView(...args),
-    getRelatedProviders: (...args: Parameters<typeof originalProviderGateway.getRelatedProviders>) => originalProviderGateway.getRelatedProviders(...args),
-    listProviderReviews: (...args: Parameters<typeof originalProviderGateway.listProviderReviews>) => originalProviderGateway.listProviderReviews(...args),
-    getEventVendorContext: (...args: Parameters<typeof originalProviderGateway.getEventVendorContext>) => originalProviderGateway.getEventVendorContext(...args),
-    listEventFavoriteProviders: (...args: Parameters<typeof originalProviderGateway.listEventFavoriteProviders>) => originalProviderGateway.listEventFavoriteProviders(...args),
-    listUserEventsVendorContext: (...args: Parameters<typeof originalProviderGateway.listUserEventsVendorContext>) => originalProviderGateway.listUserEventsVendorContext(...args),
-    lookupUserEventContext: async (input: Parameters<typeof originalProviderGateway.lookupUserEventContext>[0]) => {
-      if (fixtureProviderContext && typeof fixtureProviderContext === 'object' && fixtureProviderContext !== null) {
-        return fixtureProviderContext as Awaited<ReturnType<typeof originalProviderGateway.lookupUserEventContext>>;
-      }
-      return {
-        lookup: input,
-        user: null,
-        events: [],
-        counts: {
-          ownerEvents: 0,
-          guestEvents: 0,
-          hostEvents: 0,
-          celebratedEvents: 0,
-          recentOrders: 0,
-        },
-      };
-    },
-    requestUserLoginCode: (email: string) => fixtureGateway.requestUserLoginCode(email),
-    verifyUserLoginCode: (email: string, code: string) => fixtureGateway.verifyUserLoginCode(email, code),
-    lookupAuthenticatedUserEvents: (...args: Parameters<typeof originalProviderGateway.lookupAuthenticatedUserEvents>) => originalProviderGateway.lookupAuthenticatedUserEvents(...args),
-    createQuoteRequest: (input: Parameters<typeof originalProviderGateway.createQuoteRequest>[0]) => fixtureQuoteGateway.createQuoteRequest(input),
-    addVendorToEventFavorites: (...args: Parameters<typeof originalProviderGateway.addVendorToEventFavorites>) => originalProviderGateway.addVendorToEventFavorites(...args),
-    createProviderReview: (...args: Parameters<typeof originalProviderGateway.createProviderReview>) => originalProviderGateway.createProviderReview(...args),
-  } as unknown as typeof shared.providerGateway;
+  const rawFixture = fixtureLoad.status === 'loaded' ? fixtureLoad.data : null;
+  const fixtureProviderGateway = buildFixtureProviderGateway({
+    scenario, runId, caseId, data: rawFixture, stateStore: fixtureStore,
+    agentGateway: fixtureGateway, publicProviderGateway: shared.providerGateway,
+  });
   const fixtureOpenAiRuntime = shared.openAiRuntime.withCapabilityManifest(
     fixtureGateway.capabilityDescriptor,
     fixtureProviderGateway,
   );
-  const fixtureKnowledgePassages = ((rawFixture as FixtureData | null) ?? null)?.knowledgeBase?.passages;
+  const fixtureKnowledgePassages = rawFixture?.knowledgeBase?.passages;
   const knowledgeGateway = fixtureKnowledgePassages !== undefined && fixtureKnowledgePassages.length > 0
     ? new FixtureKnowledgeRetrievalGateway(fixtureKnowledgePassages)
     : shared.knowledgeGateway;

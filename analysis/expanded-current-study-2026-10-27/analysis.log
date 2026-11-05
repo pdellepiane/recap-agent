@@ -1,0 +1,199 @@
+{
+  "studyId": "current-expanded-july-breadth-2026-10-27",
+  "runId": "eval-2026-10-28T02-18-49-459Z-91b952cc",
+  "population": "current-master-only",
+  "scheduled": 252,
+  "observed": 252,
+  "passed": 100,
+  "passRate": 0.3968253968253968,
+  "allThreePassScenarios": 33,
+  "mixedScenarios": 1,
+  "scenarioClusterBootstrap95": {
+    "lower": 0.38095238095238093,
+    "upper": 0.40476190476190477,
+    "resamples": 10000,
+    "seed": 27102650
+  },
+  "missingExecutionIds": [],
+  "strata": [
+    {
+      "stratum": "provider",
+      "scheduled": 36,
+      "observed": 36,
+      "passed": 36
+    },
+    {
+      "stratum": "faq_customer_service",
+      "scheduled": 36,
+      "observed": 36,
+      "passed": 36
+    },
+    {
+      "stratum": "continuity_auth_effects",
+      "scheduled": 30,
+      "observed": 30,
+      "passed": 28
+    },
+    {
+      "stratum": "july_wedding",
+      "scheduled": 30,
+      "observed": 30,
+      "passed": 0
+    },
+    {
+      "stratum": "july_birthday",
+      "scheduled": 30,
+      "observed": 30,
+      "passed": 0
+    },
+    {
+      "stratum": "july_baby_shower",
+      "scheduled": 30,
+      "observed": 30,
+      "passed": 0
+    },
+    {
+      "stratum": "july_corporate",
+      "scheduled": 30,
+      "observed": 30,
+      "passed": 0
+    },
+    {
+      "stratum": "july_social",
+      "scheduled": 30,
+      "observed": 30,
+      "passed": 0
+    }
+  ],
+  "diagnostics": {
+    "observedTurns": 219,
+    "scriptedTurns": 489,
+    "conversationLatencyMs": {
+      "n": 252,
+      "mean": 6261.388888888889,
+      "median": 0,
+      "p95": 28737,
+      "max": 53583
+    },
+    "turnLatencyMs": {
+      "n": 219,
+      "mean": 7204.885844748858,
+      "median": 6891,
+      "p95": 16769,
+      "max": 24787
+    },
+    "deliveredEmptyTurns": 33,
+    "tokenTelemetryTurns": 219,
+    "reportedTokens": 1788020,
+    "cachedInputTokens": 728801,
+    "modelStages": [
+      {
+        "stage": "classifier",
+        "reportedOperations": 95,
+        "reportedAttempts": 95,
+        "instructionBytes": {
+          "n": 95,
+          "mean": 4896,
+          "median": 4896,
+          "p95": 4896,
+          "max": 4896
+        },
+        "inputBytes": {
+          "n": 95,
+          "mean": 963.4,
+          "median": 816,
+          "p95": 1425,
+          "max": 1549
+        },
+        "observedTransportRequests": 95
+      },
+      {
+        "stage": "extraction",
+        "reportedOperations": 128,
+        "reportedAttempts": 128,
+        "instructionBytes": {
+          "n": 128,
+          "mean": 6986.6015625,
+          "median": 6855,
+          "p95": 10050,
+          "max": 10050
+        },
+        "inputBytes": {
+          "n": 128,
+          "mean": 3832.3984375,
+          "median": 3595,
+          "p95": 5445,
+          "max": 7516
+        },
+        "observedTransportRequests": 128
+      },
+      {
+        "stage": "reply",
+        "reportedOperations": 186,
+        "reportedAttempts": 209,
+        "instructionBytes": {
+          "n": 186,
+          "mean": 2407.2741935483873,
+          "median": 2588,
+          "p95": 3443,
+          "max": 4789
+        },
+        "inputBytes": {
+          "n": 186,
+          "mean": 8526.505376344086,
+          "median": 8379,
+          "p95": 16087,
+          "max": 17985
+        },
+        "observedTransportRequests": 209
+      },
+      {
+        "stage": "router",
+        "reportedOperations": 169,
+        "reportedAttempts": 169,
+        "instructionBytes": {
+          "n": 169,
+          "mean": 3623.4674556213017,
+          "median": 3321,
+          "p95": 4108,
+          "max": 4193
+        },
+        "inputBytes": {
+          "n": 169,
+          "mean": 3028.5325443786983,
+          "median": 2975,
+          "p95": 3877,
+          "max": 4192
+        },
+        "observedTransportRequests": 169
+      }
+    ],
+    "traceProviderRecords": 151,
+    "detectedDeliveredProviderLinks": 70,
+    "linksMatchedToSameTurnTraceProvider": 70,
+    "providerReferenceLimit": "URL spans only; unmatched trace links may have other retained seed/history evidence. No comprehensive claim entailment or actual display count."
+  },
+  "cost": {
+    "accounting": "estimated-from-token-usage-and-dated-rates",
+    "harnessEstimate": {
+      "priced": true,
+      "pricingVersion": "2026-09-25",
+      "openaiUsd": 0.166962,
+      "judgeUsd": 0,
+      "lambdaUsd": 0.026342,
+      "totalUsd": 0.193303,
+      "unpricedCases": [],
+      "unpricedModels": []
+    }
+  },
+  "limitations": {
+    "primary": "All hard objective obligations met divided by all scheduled conversations; retain failures, errors, and missing executions.",
+    "uncertainty": "10000 seeded stratified scenario-cluster bootstrap over the declared eight strata, retaining repetitions; not a customer-population confidence interval.",
+    "claimBoundary": "Preselected designed regression-informed technical benchmark, not user satisfaction, business impact, complete prose faithfulness, or causal optimization improvement.",
+    "historicalPopulation": "July V4, first and second October runs, and calculator target remain separate; do not overwrite or pool.",
+    "freeze": "Freeze resolved cases/fixtures/prompt/evaluator/lockfile/KB identities and deployed artifact/config before first paid call. No tuning between repetitions. Later fixes require a separate study.",
+    "providerPopulation": "Fifty new July-derived scenarios cover five event groups and ten route families; the five no-result scenarios use a controlled empty provider fixture, while other public provider reads are live. The earlier 12 provider-stratum scenarios remain separately identified. Private customer data and all SE effects are mocked.",
+    "routeLimit": "Some scenarios check only event/need preservation, reply presence, and effect safety; no broad claim of route-specific semantic correctness. Selection status does not verify the exact first displayed provider. Controlled emptiness does not establish real-catalog no results.",
+    "otpScope": "Two OTP-specific scenarios were removed before this new protocol was frozen, per user direction; original historical errors remain preserved."
+  }
+}

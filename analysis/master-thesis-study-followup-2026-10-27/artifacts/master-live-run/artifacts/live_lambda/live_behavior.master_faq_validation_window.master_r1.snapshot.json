@@ -1,0 +1,535 @@
+{
+  "runId": "eval-2026-10-27T22-19-42-463Z-78589b85",
+  "caseId": "live_behavior.master_faq_validation_window.master_r1",
+  "configLabel": "live_lambda",
+  "lane": "parallel",
+  "phase": "snapshot",
+  "status": "passed",
+  "executionUncertain": false,
+  "writtenAt": "2026-10-27T22:25:43.210Z",
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Si pago un regalo por transferencia o Yape, ¿cuál es el plazo publicado mínimo y máximo de validación en horas hábiles?",
+        "channel": "whatsapp",
+        "sessionId": "live_behavior.master_faq_validation_window",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "master-faq-public-empty"
+        }
+      },
+      "outputText": "El plazo publicado de validación es de 24 a 72 horas hábiles, de lunes a viernes, entre las 9:00 a. m. y las 6:00 p. m. Si falta información o el comprobante no es válido, el tiempo puede depender de cuándo completes lo solicitado.\n\nFuente: https://sinenvolturas.tawk.help/article/medios-de-pago",
+      "deliveredText": "El plazo publicado de validación es de 24 a 72 horas hábiles, de lunes a viernes, entre las 9:00 a. m. y las 6:00 p. m. Si falta información o el comprobante no es válido, el tiempo puede depender de cuándo completes lo solicitado.\n\nFuente: https://sinenvolturas.tawk.help/article/medios-de-pago",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "959ca46ee060ffb52e990521107bd42c15788b7c46398b3b5f5470621ff5db2a",
+        "deliveredSha256": "959ca46ee060ffb52e990521107bd42c15788b7c46398b3b5f5470621ff5db2a",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "resolver_consultas_informativas",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 5,
+          "attempts": 1
+        },
+        "trace_id": "01M5ZQG81JQE8PBRQQD0PW72RB",
+        "conversation_id": null,
+        "plan_id": "01M5ZQFT6NMD2CDEGVC5KQPY57",
+        "previous_node": "contacto_inicial",
+        "next_node": "resolver_consultas_informativas",
+        "node_path": [
+          "contacto_inicial",
+          "resolver_consultas_informativas"
+        ],
+        "intent": null,
+        "missing_fields": [],
+        "search_ready": false,
+        "prompt_bundle_id": "86b5eba7a40c",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "nodes/resolver_consultas_informativas/payment_disclosure.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "knowledge_base_search"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "knowledge_base_search",
+          "support_reply_sidecar"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "knowledge_base_search",
+            "input": "{\"projection_version\":1,\"status\":null,\"kind\":null,\"request_present\":true}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "knowledge_base_search",
+            "output": "{\"projection_version\":1,\"status\":\"completed\",\"kind\":\"faq\",\"result_count\":6}"
+          },
+          {
+            "tool": "support_reply_sidecar",
+            "output": "[omitted]"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [
+          {
+            "requestId": "information-1",
+            "kind": "faq",
+            "status": "completed",
+            "source": "knowledge_base",
+            "outcomeCode": "completed_with_results",
+            "retryable": null,
+            "queryHash": "267bea347eb91d6a6974bebc9a2198558f272828ead47c0001a4475015906dd7",
+            "evidence": [
+              {
+                "fileId": "file-MpgXFXtxpBeVvZBKSGyCBK",
+                "filename": "medios-de-pago.md",
+                "score": 0.9399474336012834,
+                "contentHash": "0d9c70bb3b3d56bf053ce20e504e92daef4bd5883d71da8919579bc306ee11df"
+              },
+              {
+                "fileId": "file-1wmaVWTL1PcW4TC7HvZUyk",
+                "filename": "¿cuándo-llega-mi-regalo.md",
+                "score": 0.9248703615683705,
+                "contentHash": "ba37a0deb58b44c68c0b21d6a3bf773be013f5aceb290eee33e1f0542ab33d38"
+              },
+              {
+                "fileId": "file-J61oLoYHGzTr6TRUERFf5b",
+                "filename": "validación-de-regalos-por-transferencia-y-yape.md",
+                "score": 0.9242528240114279,
+                "contentHash": "5210520bf29f9d18124d90c6c842a16f69f17a77f14de886a8c102ce2b3e4e76"
+              },
+              {
+                "fileId": "file-SAHhffRsx7nUtUDVvyh1es",
+                "filename": "horarios-y-canales-de-atención.md",
+                "score": 0.6613922087663885,
+                "contentHash": "9459bd5ab4999d7cb90c81fdac9573bb768df1a6c1024b6d834da607025ea51f"
+              },
+              {
+                "fileId": "file-3MrXXv8EsJGDtMbGkR9vHm",
+                "filename": "devoluciones.md",
+                "score": 0.5698779268346481,
+                "contentHash": "c5528b7697392bcc8f1f46900356674f5871ce8315d9164834dfc40d88787caa"
+              },
+              {
+                "fileId": "file-CvAEYi8dtoZUDfL1Y12XqD",
+                "filename": "configuracion-transmision.md",
+                "score": 0.49109772502626625,
+                "contentHash": "63e67471e2e8ada9d3771a48c0e1859b80e700891b0d5a5e07ab744ed5cc46a9"
+              }
+            ],
+            "resultCount": 6,
+            "durationMs": 1769,
+            "openAiTransport": {
+              "observedRequestCount": 1,
+              "totalPayloadBytes": 404,
+              "instructionBytes": 0,
+              "inputBytes": 0,
+              "toolBytes": 0,
+              "outputSchemaBytes": 0,
+              "requests": [
+                {
+                  "sequence": 0,
+                  "stage": "knowledge_retrieval",
+                  "requestId": "req_c57e190218f34cea901e82e46e877242",
+                  "responseId": null,
+                  "statusCode": 200,
+                  "succeeded": true,
+                  "totalPayloadBytes": 404,
+                  "instructionBytes": 0,
+                  "inputBytes": 0,
+                  "toolBytes": 0,
+                  "outputSchemaBytes": 0,
+                  "requestBodySha256": "37605bdc883d9c368a9d4512b4edc91e4bf13d2d1e8bbff4305880515e06b0f6"
+                }
+              ]
+            }
+          }
+        ],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": null,
+          "extraction": {
+            "responseId": "resp_00cf7bd697fef93d006ae124d7b25887d292c73b3253b00790",
+            "requestId": "req_fcae8a40604f45ef8e236c6003a827a7",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 6855,
+              "inputBytes": 3182,
+              "toolCount": 0,
+              "schemaPropertyCount": 30,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 20869,
+                "instructionBytes": 6932,
+                "inputBytes": 3466,
+                "toolBytes": 2,
+                "outputSchemaBytes": 10207,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_0418bef6042a7bd1006ae124dd5f1487d282ef7da076a63b43",
+            "requestId": "req_4f47caa8b8b343d3b649ec65da5b0b7f",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 993,
+              "inputBytes": 10018,
+              "toolCount": 0,
+              "schemaPropertyCount": 7,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 14840,
+                "instructionBytes": 1000,
+                "inputBytes": 10826,
+                "toolBytes": 2,
+                "outputSchemaBytes": 2722,
+                "requests": []
+              }
+            }
+          },
+          "router": {
+            "responseId": null,
+            "requestId": "req_b44b889ab2af4635b8c43df19b8ad388",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 3321,
+              "inputBytes": 2585,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 6867,
+                "instructionBytes": 3321,
+                "inputBytes": 2585,
+                "toolBytes": 0,
+                "outputSchemaBytes": 0,
+                "requests": []
+              }
+            }
+          }
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 5
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "resolver_consultas_informativas",
+        "timing_ms": {
+          "total": 14179,
+          "load_plan": 6,
+          "response_classification": 33,
+          "prepare_working_plan": 0,
+          "extraction": 3994,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 8200,
+          "save_plan": 6,
+          "router": 165,
+          "information_execution": 1770,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": null,
+          "router": {
+            "input_tokens": 1485,
+            "output_tokens": 0,
+            "total_tokens": 1485
+          },
+          "extraction": {
+            "input_tokens": 4411,
+            "output_tokens": 388,
+            "total_tokens": 4799,
+            "cached_input_tokens": 3636,
+            "cache_write_input_tokens": 772
+          },
+          "reply": {
+            "input_tokens": 3361,
+            "output_tokens": 111,
+            "total_tokens": 3472,
+            "cached_input_tokens": 0,
+            "cache_write_input_tokens": 3358
+          },
+          "total": {
+            "input_tokens": 9257,
+            "output_tokens": 499,
+            "total_tokens": 9756,
+            "cached_input_tokens": 3636,
+            "cache_write_input_tokens": 4130
+          }
+        },
+        "turn_decision": {
+          "nextNode": "resolver_consultas_informativas",
+          "routeKind": "information_batch",
+          "providerSearchMode": "none",
+          "presentationScope": "information_batch",
+          "focusNeedCategory": null,
+          "needsToSearch": [],
+          "needsToPresent": [],
+          "stopReason": null,
+          "persistReason": "information_batch",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "information_batch",
+        "presentation_scope": "information_batch",
+        "session_focus_used": false,
+        "session_focus_key_present": false,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.99,
+          "information_request_count": 1,
+          "information_request_kinds": [
+            "faq"
+          ],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": null,
+          "vendor_category": null,
+          "vendor_categories": [],
+          "active_need_category": null,
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 0,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Pregunta por el plazo mínimo y máximo publicado, en horas hábiles, para validar un regalo pagado por transferencia o Yape.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "resolver_consultas_informativas",
+          "lifecycle_state": "active",
+          "event_type": null,
+          "vendor_category": null,
+          "active_need_category": null,
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "provider_need_categories": [],
+          "provider_need_count": 0,
+          "provider_need_statuses": [],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "empty",
+          "context_source": "agent_api",
+          "retrieved_message_count": 0,
+          "recent_message_count": 0,
+          "excluded_current_message_count": 0,
+          "directions": [],
+          "sources": [],
+          "entry_source": null
+        },
+        "continuity_state": "new",
+        "welcome_allowed": true,
+        "history_status": "empty",
+        "has_prior_outbound": false,
+        "requested_operation": "faq.read",
+        "capability_decision": null,
+        "capability_reason": null,
+        "router_decision": {
+          "route": "information_flow",
+          "route_probability": 0.98,
+          "route_probabilities": [
+            {
+              "value": "answer_with_records",
+              "probability": 0.01
+            },
+            {
+              "value": "information_flow",
+              "probability": 0.98
+            },
+            {
+              "value": "ask_clarification",
+              "probability": 0.01
+            },
+            {
+              "value": "offer_human",
+              "probability": 0
+            },
+            {
+              "value": "escalate_human",
+              "probability": 0
+            },
+            {
+              "value": "rsvp_flow",
+              "probability": 0
+            },
+            {
+              "value": "planning_flow",
+              "probability": 0
+            },
+            {
+              "value": "suppress_ack",
+              "probability": 0
+            }
+          ],
+          "same_open_request": false,
+          "same_open_request_probability": 0,
+          "request_settled": true,
+          "request_settled_probability": 0.65
+        },
+        "open_request_state": "answered",
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 9479,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M5ZQG81JQE8PBRQQD0PW72RB",
+        "conversation_hash": "a8ba5100545615f883c81d6df2459dca46b7f450362ad1fba823bad316f3c954",
+        "runtime_latency_ms": 14179,
+        "extraction_latency_ms": 3994,
+        "compose_latency_ms": 8200,
+        "tools_called_count": 4,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 5,
+        "response_classifier_action": null,
+        "response_classifier_would_suppress": null,
+        "conversation_health_status": null,
+        "conversation_health_reason": null,
+        "human_help_response": null,
+        "total_tokens": 9756,
+        "cached_input_tokens": 3636,
+        "cache_hit_rate": 0.3927838392567787,
+        "extraction_to_compose_ratio": 0.4870731707317073,
+        "captured_at": "2026-10-27T22:25:41.436Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "resolver_consultas_informativas",
+        "lifecycle_state": "active",
+        "event_type": null,
+        "vendor_category": null,
+        "active_need_category": null,
+        "location": null,
+        "budget_signal": null,
+        "guest_range": null,
+        "provider_needs": [],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": true
+        }
+      },
+      "latencyMs": 15233
+    }
+  ]
+}

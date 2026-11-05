@@ -1,3 +1,4 @@
+import { resolveDeliveredProviderId } from './delivered-provider-options';
 import { ulid } from 'ulid';
 import { applyHandoffResult, decideHumanHelpAttempt, resolveHandoffGatewayStatus } from './human-help-policy';
 import type { DecisionNode } from '../core/decision-nodes';
@@ -1043,10 +1044,17 @@ export class AgentService {
         toolUsage, timingMs, tokenUsage, messageContext, handleTurnStartedAt,
       });
     }
+    // A pending information request is still an active obligation. A router
+    // acknowledgement decision cannot discard its next turn without allowing
+    // extraction to establish whether the customer is withdrawing or answering it.
+    const routerSuppressionWithPendingRequest = routerResult?.status === 'ok' &&
+      routerResult.outcome.kind === 'suppress_ack' &&
+      routerPlan.information_state.pending_requests.length > 0;
     if (
       routerResult !== null &&
       routerResult.status === 'ok' &&
-      !isExtractorLaneOutcome(routerResult.outcome)
+      !isExtractorLaneOutcome(routerResult.outcome) &&
+      !routerSuppressionWithPendingRequest
     ) {
       return await this.handleSupportLaneTurn({
         inbound,
@@ -1815,10 +1823,32 @@ export class AgentService {
       });
       sessionFocus = null;
     }
+    // A position refers to the sent list, never to the retrieval order. Resolve
+    // before applying provider operations so both selection paths share evidence.
+    const selectedOrdinal = extraction.selectedProviderOrdinal ?? null;
+    let displayedSelectionUnavailable = false;
+    let displayedSelectionResolved = false;
+    if (selectedOrdinal !== null) {
+      const providers = workingPlan.provider_needs.flatMap((need) => need.recommended_providers);
+      const providerId = resolveDeliveredProviderId(messageContext.recentMessages, providers, selectedOrdinal);
+      const provider = providerId === null ? null : providers.find((item) => item.id === providerId);
+      displayedSelectionUnavailable = !provider;
+      displayedSelectionResolved = provider !== null;
+      const operations = (extraction.providerPlanOperations ?? []).filter(
+        (operation) => operation.type !== 'select_provider' && operation.type !== 'replace_provider',
+      );
+      extraction = {
+        ...extraction,
+        selectedProviderHints: [],
+        selectedProviderReferences: provider ? [{ providerId: provider.id, providerTitle: provider.title, category: provider.category ?? null, hint: null }] : [],
+        providerPlanOperations: operations,
+      };
+    }
     const providerConfirmationGuard = this.guardAmbiguousProviderConfirmation(
       workingPlan,
       extraction,
       inbound.text,
+      displayedSelectionResolved,
     );
     extraction = providerConfirmationGuard.extraction;
     // L4 persistent ownership: resolve the serving owner from typed turn
@@ -1905,6 +1935,7 @@ export class AgentService {
     }
     const effectiveSelectionHints = this.resolveEffectiveSelectionHints(extraction);
     const shouldResolveProviderSelection =
+      !displayedSelectionUnavailable &&
       !this.isCloseContactFieldTurn(previousNode, extraction, validationError, mergedPlan);
     const preliminarySelectionResolution: SelectionResolution = shouldResolveProviderSelection
       ? providerConfirmationGuard.ambiguous
@@ -1933,7 +1964,7 @@ export class AgentService {
       sufficiency,
       sufficiencyByNeed,
       hasResolvedSelection: selectionShouldStop,
-      hasAmbiguousSelection: providerConfirmationGuard.ambiguous,
+      hasAmbiguousSelection: providerConfirmationGuard.ambiguous || displayedSelectionUnavailable,
       hasReplaceProviderOperation: operationResult.appliedOperations.some(
         (op) => op.type === 'replace_provider',
       ),
@@ -2386,14 +2417,16 @@ export class AgentService {
             extraction.providerFitCriteria,
             planAfterFlow,
           );
+          const activeNeed = getActiveNeed(planAfterFlow);
+          const searchedCategory = activeNeed?.category ?? planAfterFlow.vendor_category;
           providerResults = rankProvidersForCriteria(
             enrichedProviders,
             completeFitCriteria,
           ).filter((provider) =>
+            (!searchedCategory || normalizeToProviderCategory(provider.category) === searchedCategory) &&
             isProviderEligibleForCriteria(provider, completeFitCriteria),
           );
           timingMs.provider_enrichment += Date.now() - providerEnrichmentStartedAt;
-          const activeNeed = getActiveNeed(planAfterFlow);
           planAfterFlow = mergePlan(planAfterFlow, {
             active_need_category:
               activeNeed?.category ?? planAfterFlow.active_need_category,
@@ -5522,6 +5555,18 @@ export class AgentService {
     extraction: ExtractionResult,
     options?: { forImageGate?: boolean },
   ): boolean {
+    // A clear, structured provider-search pivot owns this turn. Keep any
+    // pending information request on the plan for a later continuation.
+    if (
+      options?.forImageGate !== true &&
+      extraction.actionIntent === 'buscar_proveedores' &&
+      extraction.requestedOperation === 'provider.search' &&
+      extraction.informationRequests.length === 0 &&
+      extraction.supportAct == null &&
+      extraction.ambiguity?.status !== 'ambiguous'
+    ) {
+      return false;
+    }
     // A close-flow contact turn belongs to close handling even when the
     // extractor also labels it a support detail: providing requested contact
     // data is not a support act, and the support path would drop the update.
@@ -12222,7 +12267,10 @@ export class AgentService {
     plan: PlanSnapshot,
     extraction: ExtractionResult,
     userMessage: string,
+    displayedSelectionResolved = false,
   ): { extraction: ExtractionResult; ambiguous: boolean } {
+    // A previously validated delivered ordinal already grounds the identity.
+    if (displayedSelectionResolved) return { extraction, ambiguous: false };
     // Packet C: only an actual unresolved selection requested by the user
     // enters this guard. retomar_plan resumes or closes existing state; it
     // is never a shortlist selection request, so it must not overwrite
@@ -12377,7 +12425,7 @@ export class AgentService {
       return resolved ? [resolved.provider] : [];
     });
     const providersFromHints = extraction.selectedProviderHints.flatMap((hint) =>
-      this.resolveProviderSelections(needsWithProviders, activeNeed, hint)
+      this.resolveProviderSelections(needsWithProviders, hint)
         .map((selection) => selection.selectedProvider),
     );
     const referencedProviders = new Map(
@@ -13619,7 +13667,6 @@ export class AgentService {
         ? selectedProviderHints.flatMap((hint) =>
           this.resolveProviderSelections(
             needsWithProviders,
-            activeNeed,
             hint,
           ),
         )
@@ -13671,42 +13718,9 @@ export class AgentService {
 
   private resolveProviderSelections(
     needsWithProviders: ProviderNeed[],
-    activeNeed: ProviderNeed | null,
     effectiveHint: string,
   ): ProviderSelectionMatch[] {
-    const byName = this.resolveProviderSelectionsByName(
-      needsWithProviders,
-      effectiveHint,
-    );
-    if (byName.length > 0) {
-      return byName;
-    }
-
-    const ordinalChoices = this.parseSelectionOrdinals(effectiveHint);
-    if (ordinalChoices.length === 0) {
-      return [];
-    }
-
-    const ordinalNeed =
-      activeNeed?.recommended_providers.length
-        ? activeNeed
-        : needsWithProviders.length === 1
-          ? needsWithProviders[0] ?? null
-          : null;
-    if (!ordinalNeed) {
-      return [];
-    }
-
-    return ordinalChoices.flatMap((ordinalChoice) => {
-      const selectedProvider = ordinalNeed.recommended_providers[ordinalChoice - 1] ?? null;
-      return selectedProvider
-        ? [{
-            selectedNeed: ordinalNeed,
-            selectedProvider,
-            hint: selectedProvider.title,
-          }]
-        : [];
-    });
+    return this.resolveProviderSelectionsByName(needsWithProviders, effectiveHint);
   }
 
   private resolveProviderReferenceSelection(
@@ -13780,39 +13794,6 @@ export class AgentService {
     }
 
     return matches;
-  }
-
-  private parseSelectionOrdinals(value: string): number[] {
-    const normalized = this.normalizeSelectionText(value);
-    const ordinalWords: Array<[RegExp, number]> = [
-      [/\b(?:primer|primera|primero|1er|1era|1ero|1ra|1ro|uno|una)\b/u, 1],
-      [/\b(?:segunda|segundo|2da|2do|dos)\b/u, 2],
-      [/\b(?:tercera|tercero|tercer|3ra|3ro|tres)\b/u, 3],
-      [/\b(?:cuarta|cuarto|4ta|4to|cuatro)\b/u, 4],
-      [/\b(?:quinta|quinto|5ta|5to|cinco)\b/u, 5],
-      [/\b(?:sexta|sexto|6ta|6to|seis)\b/u, 6],
-      [/\b(?:septima|septimo|7ma|7mo|siete)\b/u, 7],
-      [/\b(?:octava|octavo|8va|8vo|ocho)\b/u, 8],
-      [/\b(?:novena|noveno|9na|9no|nueve)\b/u, 9],
-      [/\b(?:decima|decimo|10ma|10mo|diez)\b/u, 10],
-    ];
-
-    const ordinals = new Set<number>();
-    for (const [pattern, ordinal] of ordinalWords) {
-      if (pattern.test(normalized)) {
-        ordinals.add(ordinal);
-      }
-    }
-
-    for (const numericMatch of normalized.matchAll(
-      /\b(?:opcion|alternativa|proveedor|numero|nro|num)?\s*(\d{1,2})\b/gu,
-    )) {
-      if (numericMatch[1]) {
-        ordinals.add(Number.parseInt(numericMatch[1], 10));
-      }
-    }
-
-    return Array.from(ordinals).sort((a, b) => a - b);
   }
 
   private dedupeSelections(selections: ProviderSelectionMatch[]): ProviderSelectionMatch[] {
@@ -14128,6 +14109,10 @@ export class AgentService {
     ).length;
 
     return (
+      // An explicit structured search for a small set of ready needs is
+      // sufficient even when the customer has no stylistic preferences.
+      (extraction.actionIntent === 'buscar_proveedores' && queryIntentCount >= 2 &&
+        queryIntentCount <= 3 && readyNeedCount === queryIntentCount) ||
       (extraction.hardConstraints?.length ?? 0) > 0 ||
       (extraction.preferences?.length ?? 0) >= 3 ||
       (multiQueryNeedCount > 0 && queryIntentDetails.size >= 2) ||

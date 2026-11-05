@@ -1,0 +1,59 @@
+id: live_behavior.reset_demo_provider_support
+suite: live_behavior_regression
+version: 1
+description: Simulate a fresh post-reset wedding demo with synthetic recent FAQ context and a support-to-provider follow-up.
+tags: [live, behavior, provider, support, production-regression]
+targetModes: [live_lambda]
+backendFixture:
+  scenario: demo-reset-support-history
+inputs:
+  - text: Hola, busco catering criollo tipo buffet para mi boda en Lima, para 100 invitados y con un presupuesto de 20 mil soles. ¿Me das opciones?
+    channel: whatsapp
+    sessionId: live_behavior.reset_demo_provider_support
+    contactPhone: "+51999111222"
+    backendFixture:
+      scenario: demo-reset-support-history
+  - text: ¿Cómo funcionan las comisiones para los regalos?
+    channel: whatsapp
+    sessionId: live_behavior.reset_demo_provider_support
+    contactPhone: "+51999111222"
+    backendFixture:
+      scenario: demo-reset-support-history
+  - text: Gracias. Volviendo al catering de mi boda, muéstrame las opciones.
+    channel: whatsapp
+    sessionId: live_behavior.reset_demo_provider_support
+    contactPhone: "+51999111222"
+    backendFixture:
+      scenario: demo-reset-support-history
+expectations:
+  - id: first-provider-options
+    type: text_contains
+    turnIndex: 0
+    regex: ["https://sinenvolturas\\.com/proveedores/[\\p{L}\\p{N}%_-]+"]
+    severity: hard
+  - id: provider-context-after-support
+    type: plan_field_equals
+    turnIndex: 2
+    path: active_need_category
+    expected: Catering
+    severity: hard
+  - id: provider-options-after-support
+    type: text_contains
+    turnIndex: 2
+    regex: ["https://sinenvolturas\\.com/proveedores/[\\p{L}\\p{N}%_-]+"]
+    severity: hard
+  - id: no-unrequested-effects
+    type: tool_usage
+    mustNotCall: [create_quote_request, finish_plan, request_human_takeover, guest_rsvp, request_user_login_code, verify_user_login_code, add_vendor_to_event_favorites, create_provider_review]
+    severity: hard
+budget:
+  maxTurns: 3
+  estimatedPromptTokensPerTurn: 12000
+  estimatedCompletionTokensPerTurn: 600
+scorers:
+  - id: objective-obligations
+    type: expectation_pass_rate
+    weight: 1
+notes:
+  - Synthetic prior support messages model the history remaining after a plan reset; no actual phone or customer information is used.
+  - Provider reads are live; all customer data and effects are mocked.

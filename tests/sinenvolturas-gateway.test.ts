@@ -11,6 +11,30 @@ describe('SinEnvolturasGateway strict search mapping', () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
 
+  it('normalizes public category event types from encoded strings and expanded arrays without trusting malformed shapes', async () => {
+    const shapes: Array<{ value: unknown; expected: string[] }> = [
+      { value: '["wedding", "others"]', expected: ['wedding', 'others'] },
+      { value: [{ name: 'wedding' }, { name: 'others' }], expected: ['wedding', 'others'] },
+      { value: ['wedding', 'others', 'wedding'], expected: ['wedding', 'others'] },
+      { value: [{ name: null }, 7, null, { name: 'others' }], expected: ['others'] },
+      { value: { wedding: true }, expected: [] },
+      { value: null, expected: [] },
+      { value: 'invalid JSON', expected: [] },
+      { value: '{"name":"wedding"}', expected: [] },
+      { value: 7, expected: [] },
+    ];
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      async json() {
+        return { data: shapes.map((shape, id) => ({ id, translations: [{ name: 'Catering' }], event_types: shape.value })) };
+      },
+    }));
+    const gateway = new SinEnvolturasGateway({
+      baseUrl: 'https://api.example.test/vendor', persistedSearchLimit: 5, summarySearchWordLimit: 10,
+    });
+    expect((await gateway.listCategories()).map((category) => category.eventTypes)).toEqual(shapes.map((shape) => shape.expected));
+  });
+
   it('maps searches to the allowlisted filtered params', async () => {
     {
       const fetchMock = vi.fn().mockResolvedValue({

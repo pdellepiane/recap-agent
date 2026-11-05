@@ -1,0 +1,931 @@
+{
+  "runId": "eval-2026-10-29T13-46-58-495Z-62c0e7de",
+  "caseId": "live_behavior.july_breadth_baby_shower_03_phonefixed",
+  "suite": "live_behavior_regression",
+  "target": "live_lambda",
+  "configLabel": "live_lambda",
+  "status": "passed",
+  "hardGatePassed": true,
+  "finalScore": 1,
+  "totalLatencyMs": 26332,
+  "totalToolCalls": 9,
+  "nodeTransitions": [
+    "contacto_inicial->elicitacion_necesidades"
+  ],
+  "planDiffSummary": [
+    "current_node=\"elicitacion_necesidades\"",
+    "intent=\"buscar_proveedores\"",
+    "event_type=\"baby_shower\"",
+    "vendor_category=\"Locales\"",
+    "active_need_category=\"Locales\"",
+    "location=\"Lima\"",
+    "budget_signal=\"medio\"",
+    "guest_range=\"21-50\"",
+    "provider_needs=Locales:shortlisted, Catering:shortlisted, Hogar y deco:shortlisted"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/.eval-runs/eval-2026-10-29T13-46-58-495Z-62c0e7de/artifacts/live_lambda/live_behavior.july_breadth_baby_shower_03_phonefixed.json"
+  },
+  "expectationResults": [
+    {
+      "id": "event-type-retained",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "answer-delivered",
+      "type": "text_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Text containment checks passed."
+    },
+    {
+      "id": "no-provider-quote-without-explicit-date",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture provider.quote.write attempts=0 successes=0 replays=0 outcome=none."
+    },
+    {
+      "id": "no-unrequested-rsvp",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture rsvp.write attempts=0 successes=0 replays=0 outcome=none."
+    },
+    {
+      "id": "no-unrequested-handoff",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture handoff.write attempts=0 successes=0 replays=0 outcome=none."
+    },
+    {
+      "id": "requested-needs-retained",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "recommendation-has-candidates",
+      "type": "provider_result_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Provider result count 5 matched expectation."
+    },
+    {
+      "id": "recommendation-delivers-provider-link",
+      "type": "text_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Text containment checks passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "objective-obligations",
+      "type": "expectation_pass_rate",
+      "score": 1,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 8 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 1,
+    "avg_latency_ms": 26332,
+    "p95_latency_ms": 26332,
+    "tool_calls_total": 9,
+    "unique_tools_called": 5,
+    "tool_call_rate_per_turn": 9,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.10344827586206896,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 22300,
+    "cache_hit_rate": 0.5213796477495107,
+    "input_tokens": 20440,
+    "cached_input_tokens": 10657,
+    "cache_write_input_tokens": 8290,
+    "uncached_input_tokens": 9783,
+    "usage_known": true
+  },
+  "timing": {
+    "queueWaitMs": 26355,
+    "setupMs": 0,
+    "turnMs": 28589,
+    "snapshotMs": 7,
+    "teardownMs": 0,
+    "judgeWaitMs": 0,
+    "judgeApiMs": 0,
+    "reportWriteMs": 0,
+    "makespanMs": 0
+  },
+  "judgeMetrics": {
+    "modelCalls": 0,
+    "retryCount": 0,
+    "rateLimitCount": 0,
+    "tokensUnknown": false,
+    "openaiSdk": "7.43.0",
+    "judgeModels": []
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Organizo un baby shower en Lima para 50 personas. Necesito local, catering y decoración sobria, presupuesto medio.",
+        "channel": "whatsapp",
+        "sessionId": "live_behavior.july_breadth_baby_shower_03_phonefixed",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "master-provider-live-public"
+        }
+      },
+      "outputText": "Para tu baby shower en Lima para 50 personas, encontré opciones para los tres frentes. Ojo: algunas tienen diferencias importantes con tu presupuesto medio o con el tipo de servicio que buscas.\n\nLocales\nUna opción para eventos sociales, aunque está en Cieneguilla y figura con nivel de precio alto.\n1. Casa Club 147 - Local para eventos (Perú · $$$ · promo: 10% Off Alquiler local)\n Casa Club 147 ofrece alquiler de local y menciona celebraciones sociales, incluidos showers. Tiene 10% de descuento para clientes de Sin Envolturas.\n Limitación: Está en Cieneguilla y su nivel de precio figura como alto; consulta disponibilidad y si se ajusta a tu presupuesto.\n Ficha: https://sinenvolturas.com/proveedores/casa-club-147\n\nServicio de comida\nHay opciones de catering y una alternativa más específica de cafetería para eventos.\n1. FCatering - Catering en Lima (Lima, Perú · $$ · promo: Vale de 300 Dólares)\n FCatering ofrece propuestas gastronómicas personalizadas y montaje de alimentos; figura con nivel de precio medio.\n Limitación: Confirma el menú y el precio para 50 personas; su vale promocional tiene condiciones de uso.\n Ficha: https://sinenvolturas.com/proveedores/fcatering\n2. 4Foodies - Catering y mesas gastronómicas (Lima, Perú · $$$ · promo: 10% Off)\n 4Foodies ofrece catering, mesas gastronómicas y propuestas personalizadas. Tiene 10% de descuento para clientes de Sin Envolturas.\n Limitación: Solicita el precio para 50 personas; pide al menos 2 meses de anticipación y valida cobertura.\n Ficha: https://sinenvolturas.com/proveedores/4foodies\n3. Café del Alba - Carrito de café (Lima, Perú · $$$ · promo: S/. 250 de dscto)\n Café del Alba ofrece barras móviles, carritos de café y coffee breaks en Lima; menciona baby showers entre sus eventos.\n Limitación: Es una opción de cafetería para complementar el catering, no evidencia de un servicio completo de comidas.\n Ficha: https://sinenvolturas.com/proveedores/cafe-del-alba\n\nHogar y decoración\nLa opción encontrada se especializa en recuerdos personalizados, no hay evidencia clara de decoración integral.\n1. Nina Creativa - Recuerdos personalizados (Lima, Perú · $$ · promo: 10% off)\n Nina Creativa elabora velas y recuerdos para baby showers, con personalización de nombres y temática; figura con nivel de precio medio.\n Limitación: La información disponible no confirma decoración integral ni específicamente un estilo sobrio; consulta si puede ofrecerlo.\n Ficha: https://sinenvolturas.com/proveedores/nina-creativa\n\n¿Quieres que prioricemos el local y te ayude a preparar consultas de precio y disponibilidad, o prefieres empezar por el catering?",
+      "deliveredText": "Para tu baby shower en Lima para 50 personas, encontré opciones para los tres frentes. Ojo: algunas tienen diferencias importantes con tu presupuesto medio o con el tipo de servicio que buscas.\n\nLocales\nUna opción para eventos sociales, aunque está en Cieneguilla y figura con nivel de precio alto.\n1. Casa Club 147 - Local para eventos (Perú · $$$ · promo: 10% Off Alquiler local)\n Casa Club 147 ofrece alquiler de local y menciona celebraciones sociales, incluidos showers. Tiene 10% de descuento para clientes de Sin Envolturas.\n Limitación: Está en Cieneguilla y su nivel de precio figura como alto; consulta disponibilidad y si se ajusta a tu presupuesto.\n Ficha: https://sinenvolturas.com/proveedores/casa-club-147\n\nServicio de comida\nHay opciones de catering y una alternativa más específica de cafetería para eventos.\n1. FCatering - Catering en Lima (Lima, Perú · $$ · promo: Vale de 300 Dólares)\n FCatering ofrece propuestas gastronómicas personalizadas y montaje de alimentos; figura con nivel de precio medio.\n Limitación: Confirma el menú y el precio para 50 personas; su vale promocional tiene condiciones de uso.\n Ficha: https://sinenvolturas.com/proveedores/fcatering\n2. 4Foodies - Catering y mesas gastronómicas (Lima, Perú · $$$ · promo: 10% Off)\n 4Foodies ofrece catering, mesas gastronómicas y propuestas personalizadas. Tiene 10% de descuento para clientes de Sin Envolturas.\n Limitación: Solicita el precio para 50 personas; pide al menos 2 meses de anticipación y valida cobertura.\n Ficha: https://sinenvolturas.com/proveedores/4foodies\n3. Café del Alba - Carrito de café (Lima, Perú · $$$ · promo: S/. 250 de dscto)\n Café del Alba ofrece barras móviles, carritos de café y coffee breaks en Lima; menciona baby showers entre sus eventos.\n Limitación: Es una opción de cafetería para complementar el catering, no evidencia de un servicio completo de comidas.\n Ficha: https://sinenvolturas.com/proveedores/cafe-del-alba\n\nHogar y decoración\nLa opción encontrada se especializa en recuerdos personalizados, no hay evidencia clara de decoración integral.\n1. Nina Creativa - Recuerdos personalizados (Lima, Perú · $$ · promo: 10% off)\n Nina Creativa elabora velas y recuerdos para baby showers, con personalización de nombres y temática; figura con nivel de precio medio.\n Limitación: La información disponible no confirma decoración integral ni específicamente un estilo sobrio; consulta si puede ofrecerlo.\n Ficha: https://sinenvolturas.com/proveedores/nina-creativa\n\n¿Quieres que prioricemos el local y te ayude a preparar consultas de precio y disponibilidad, o prefieres empezar por el catering?",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "cad0dbdb9495d870b1e4976c25bc0475e01307520aa13d08c1f1a0345ae98430",
+        "deliveredSha256": "cad0dbdb9495d870b1e4976c25bc0475e01307520aa13d08c1f1a0345ae98430",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "elicitacion_necesidades",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 8,
+          "attempts": 1
+        },
+        "trace_id": "01M63YNJ7VV1WZD143X2W6BRNJ",
+        "conversation_id": null,
+        "plan_id": "01M63YMTAQ1X5WWQWSF0127GG4",
+        "previous_node": "contacto_inicial",
+        "next_node": "elicitacion_necesidades",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "elicitacion_necesidades"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "d4c67dedd44b",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/domain_scope.txt",
+          "shared/flow_discipline.txt",
+          "shared/domain_knowledge.txt",
+          "shared/question_strategy.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "get_provider_detail",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "get_provider_detail",
+          "get_provider_detail",
+          "get_provider_detail"
+        ],
+        "tool_inputs": [],
+        "tool_outputs": [],
+        "provider_results": [
+          {
+            "id": 147,
+            "title": "Casa Club 147",
+            "slug": "casa-club-147",
+            "category": "Locales",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Casa Club 147 encaja con Local según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+            "websiteUrl": "https://casaclub147.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off Alquiler local",
+            "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "serviceHighlights": [
+              "Alquiler de local para eventos",
+              "Espacios para matrimonios",
+              "Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Eventos institucionales",
+              "Alojamiento para hasta 32 personas"
+            ],
+            "termsHighlights": [
+              "Beneficio no transferible ni acumulable con otras promociones.",
+              "Sujeto a disponibilidad."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "Servicios que ofrece: Alquiler de local para eventos",
+              "Servicios que ofrece: Espacios para matrimonios",
+              "Servicios que ofrece: Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Servicios que ofrece: Eventos institucionales",
+              "Servicios que ofrece: Alojamiento para hasta 32 personas",
+              "Términos  y condiciones: Beneficio no transferible ni acumulable con otras promociones.",
+              "Términos  y condiciones: Sujeto a disponibilidad.",
+              "Términos y condiciones: Beneficio no transferible ni acumulable con otras promociones.",
+              "Términos y condiciones: Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "fitScore": 93,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "preference_match",
+              "semantic_match",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.565231444677487,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 189,
+            "title": "Café del Alba",
+            "slug": "cafe-del-alba",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Café del Alba encaja con Catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/cafe-del-alba",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "S/. 250 de dscto",
+            "promoSummary": "S/250 de descuento en servicios para clientes de Sin Envolturas.",
+            "descriptionSnippet": "En Lima, Café del Alba es un emprendimiento local especializado en el servicio de carritos de café para eventos y celebraciones.",
+            "serviceHighlights": [
+              "Cafetería para eventos y corporativos: Instalación de barras móviles atendidas por baristas profesionales para conferencias y eventos sociales.",
+              "Coffee stations y carritos de café: Alquiler de carritos equipados que sirven café caliente, frío y opciones de tendencia como el matcha latte .",
+              "Servicio de atención personalizada: Proveen insumos seleccionados de alta calidad para que los invitados disfruten de una experiencia completa de cafetería de especialidad adaptada al lugar del evento"
+            ],
+            "termsHighlights": [
+              "Consultar términos y condiciones."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: En Lima, Café del Alba es un emprendimiento local especializado en el servicio de carritos de café para eventos y celebraciones. Ofrecen barras móviles y coffee breaks personalizados para bodas, baby showers, lanzamientos de marca, ferias y reuniones corporativas.",
+              "Servicios que ofrece: Cafetería para eventos y corporativos: Instalación de barras móviles atendidas por baristas profesionales para conferencias y eventos sociales.",
+              "Servicios que ofrece: Coffee stations y carritos de café: Alquiler de carritos equipados que sirven café caliente, frío y opciones de tendencia como el matcha latte .",
+              "Servicios que ofrece: Servicio de atención personalizada: Proveen insumos seleccionados de alta calidad para que los invitados disfruten de una experiencia completa de cafetería de especialidad adaptada al lugar del evento",
+              "Términos  y condiciones: Consultar términos y condiciones.",
+              "Términos y condiciones: Consultar términos y condiciones."
+            ],
+            "eventTypes": [],
+            "description": "En Lima, Café del Alba es un emprendimiento local especializado en el servicio de carritos de café para eventos y celebraciones. Ofrecen barras móviles y coffee breaks personalizados para bodas, baby showers, lanzamientos de marca, ferias y reuniones corporativas.",
+            "fitScore": 95,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "preference_match",
+              "semantic_match",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.8209162422087103,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 136,
+            "title": "4Foodies",
+            "slug": "4foodies",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "4Foodies encaja con Catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/4foodies",
+            "websiteUrl": "https://www.4foodies.pe",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off",
+            "promoSummary": "10% de descuento en el servicio de catering para los clientes de Sin Envolturas",
+            "descriptionSnippet": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+            "serviceHighlights": [
+              "Catering para eventos",
+              "Tablas de quesos",
+              "Mesas gastronómicas",
+              "Implementación y montaje de servicio",
+              "Propuestas personalizadas según el evento"
+            ],
+            "termsHighlights": [
+              "El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+              "El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+              "En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+              "Válido para Lima (previa validación de zona de cobertura)."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: 4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+              "Servicios que ofrece: Catering para eventos",
+              "Servicios que ofrece: Tablas de quesos",
+              "Servicios que ofrece: Mesas gastronómicas",
+              "Servicios que ofrece: Implementación y montaje de servicio",
+              "Servicios que ofrece: Propuestas personalizadas según el evento",
+              "Términos  y condiciones: El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+              "Términos  y condiciones: El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+              "Términos  y condiciones: En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+              "Términos  y condiciones: Válido para Lima (previa validación de zona de cobertura).",
+              "Términos y condiciones: El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+              "Términos y condiciones: El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+              "Términos y condiciones: En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+              "Términos y condiciones: Válido para Lima (previa validación de zona de cobertura)."
+            ],
+            "eventTypes": [],
+            "description": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+            "fitScore": 87,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "preference_match",
+              "semantic_match",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.868279992187248,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 137,
+            "title": "FCatering",
+            "slug": "fcatering",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "FCatering encaja con Catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "Vale de 300 Dólares",
+            "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+            "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+            "serviceHighlights": [
+              "Catering para eventos",
+              "Propuestas gastronómicas personalizadas",
+              "Montaje y servicio de alimentos",
+              "Atención para eventos sociales y corporativos"
+            ],
+            "termsHighlights": [
+              "Válido solo para clientes de Sin Envolturas.",
+              "Válido únicamente en Lima.",
+              "Beneficio no transferible ni acumulable.",
+              "Válido de lunes a viernes en horario laboral.",
+              "Aplica solo para anfitriones.",
+              "Sujeto a disponibilidad."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+              "Servicios que ofrece: Catering para eventos",
+              "Servicios que ofrece: Propuestas gastronómicas personalizadas",
+              "Servicios que ofrece: Montaje y servicio de alimentos",
+              "Servicios que ofrece: Atención para eventos sociales y corporativos",
+              "Términos  y condiciones: Válido solo para clientes de Sin Envolturas.",
+              "Términos  y condiciones: Válido únicamente en Lima.",
+              "Términos  y condiciones: Beneficio no transferible ni acumulable.",
+              "Términos  y condiciones: Válido de lunes a viernes en horario laboral.",
+              "Términos  y condiciones: Aplica solo para anfitriones.",
+              "Términos  y condiciones: Sujeto a disponibilidad.",
+              "Términos y condiciones: Válido solo para clientes de Sin Envolturas.",
+              "Términos y condiciones: Válido únicamente en Lima.",
+              "Términos y condiciones: Beneficio no transferible ni acumulable.",
+              "Términos y condiciones: Válido de lunes a viernes en horario laboral.",
+              "Términos y condiciones: Aplica solo para anfitriones.",
+              "Términos y condiciones: Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+            "fitScore": 87,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "preference_match",
+              "semantic_match",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.8498443855690527,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 179,
+            "title": "Nina Creativa",
+            "slug": "nina-creativa",
+            "category": "Hogar y deco",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "Nina Creativa encaja con Decoración según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/nina-creativa",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% off",
+            "promoSummary": "10% de descuento en el total de la compra (no incluye costo de envío).",
+            "descriptionSnippet": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+            "serviceHighlights": [
+              "Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+              "Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+              "Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento."
+            ],
+            "termsHighlights": [
+              "Válido para pedidos con entrega en todo el Perú.",
+              "No acumulable con otras promociones, cupones o descuentos vigentes.",
+              "Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+              "Sujeto a disponibilidad de stock y agenda de producción."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+              "Acerca del proveedor: Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar.",
+              "Acerca del proveedor: Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+              "Servicios que ofrece: Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+              "Servicios que ofrece: Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+              "Servicios que ofrece: Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento.",
+              "Términos y condiciones: Válido para pedidos con entrega en todo el Perú.",
+              "Términos y condiciones: No acumulable con otras promociones, cupones o descuentos vigentes.",
+              "Términos y condiciones: Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+              "Términos y condiciones: Sujeto a disponibilidad de stock y agenda de producción.",
+              "Acerca del proveedor: Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes."
+            ],
+            "eventTypes": [],
+            "description": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+            "fitScore": 100,
+            "fitWarnings": [
+              "No hay evidencia exacta de Decoración en la ficha."
+            ],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "preference_match",
+              "semantic_match",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.6931693478768822,
+            "retrievalSource": "vector"
+          }
+        ],
+        "search_strategy": "multi_need_query_intents",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_0089cbd3fbb6852c006ae34e71529487d1a600997ea95e1c71",
+            "requestId": "req_b87d24574cd64cfbba835b90f92ac0c9",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 749,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 7626,
+                "instructionBytes": 0,
+                "inputBytes": 5799,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_02d2e7b36ebfbefe006ae34e73a94c87d187a2d03815fa4720",
+            "requestId": "req_e7d56d6235a048f08375175f0d04a3bc",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 6855,
+              "inputBytes": 3175,
+              "toolCount": 0,
+              "schemaPropertyCount": 30,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 20862,
+                "instructionBytes": 6932,
+                "inputBytes": 3459,
+                "toolBytes": 2,
+                "outputSchemaBytes": 10207,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_05a3815983758f8e006ae34e82098c87d18bbaefba56fadba5",
+            "requestId": "req_616d1b5a071d409ab59281b7b9f93542",
+            "model": "gpt-6-luna",
+            "attemptCount": 2,
+            "requestMetrics": {
+              "instructionBytes": 4789,
+              "inputBytes": 18079,
+              "toolCount": 2,
+              "schemaPropertyCount": 4,
+              "transport": {
+                "observedRequestCount": 2,
+                "totalPayloadBytes": 62278,
+                "instructionBytes": 9708,
+                "inputBytes": 48238,
+                "toolBytes": 1366,
+                "outputSchemaBytes": 2402,
+                "requests": []
+              }
+            }
+          },
+          "router": {
+            "responseId": null,
+            "requestId": "req_505467267b29480bac65dbe71712b219",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 3321,
+              "inputBytes": 2575,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 6857,
+                "instructionBytes": 3321,
+                "inputBytes": 2575,
+                "toolBytes": 0,
+                "outputSchemaBytes": 0,
+                "requests": []
+              }
+            }
+          }
+        },
+        "recommendation_funnel": {
+          "available_candidates": 5,
+          "context_candidates": 5,
+          "context_candidate_ids": [
+            147,
+            189,
+            136,
+            137,
+            179
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "elicitacion_necesidades",
+        "timing_ms": {
+          "total": 24491,
+          "load_plan": 12,
+          "response_classification": 2324,
+          "prepare_working_plan": 0,
+          "extraction": 9753,
+          "apply_extraction": 6,
+          "compute_sufficiency": 0,
+          "provider_search": 6005,
+          "provider_enrichment": 241,
+          "prompt_bundle_load": 0,
+          "compose_reply": 9580,
+          "save_plan": 54,
+          "router": 178,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1523,
+            "output_tokens": 102,
+            "total_tokens": 1625,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 178
+          },
+          "router": {
+            "input_tokens": 1481,
+            "output_tokens": 0,
+            "total_tokens": 1481
+          },
+          "extraction": {
+            "input_tokens": 4407,
+            "output_tokens": 1004,
+            "total_tokens": 5411,
+            "cached_input_tokens": 3636,
+            "cache_write_input_tokens": 768
+          },
+          "reply": {
+            "input_tokens": 13029,
+            "output_tokens": 754,
+            "total_tokens": 13783,
+            "cached_input_tokens": 5679,
+            "cache_write_input_tokens": 7344
+          },
+          "total": {
+            "input_tokens": 20440,
+            "output_tokens": 1860,
+            "total_tokens": 22300,
+            "cached_input_tokens": 10657,
+            "cache_write_input_tokens": 8290
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "agent_api",
+          "has_prior_outbound_message": false,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "other_actionable",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "elicitacion_necesidades",
+          "routeKind": "multi_need_search",
+          "providerSearchMode": "multi_need_query_intents",
+          "presentationScope": "multi_need",
+          "focusNeedCategory": "Locales",
+          "needsToSearch": [
+            "Locales",
+            "Catering",
+            "Hogar y deco"
+          ],
+          "needsToPresent": [
+            "Locales",
+            "Catering",
+            "Hogar y deco"
+          ],
+          "stopReason": null,
+          "persistReason": "elicitacion_necesidades",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "multi_need_search",
+        "presentation_scope": "multi_need",
+        "session_focus_used": false,
+        "session_focus_key_present": true,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.96,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": "baby_shower",
+          "vendor_category": "Locales",
+          "vendor_categories": [
+            "Locales",
+            "Catering",
+            "Hogar y deco"
+          ],
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": "medio",
+          "guest_range": "21-50",
+          "selected_provider_hints": [],
+          "preferences": [
+            "decoración sobria"
+          ],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 3,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Organiza un baby shower en Lima para 50 personas y necesita local, catering y decoración sobria, con presupuesto medio.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "elicitacion_necesidades",
+          "lifecycle_state": "active",
+          "event_type": "baby_shower",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": "medio",
+          "guest_range": "21-50",
+          "provider_need_categories": [
+            "Locales",
+            "Catering",
+            "Hogar y deco"
+          ],
+          "provider_need_count": 3,
+          "provider_need_statuses": [
+            {
+              "category": "Locales",
+              "status": "shortlisted",
+              "has_recommendations": true,
+              "selected_provider_ids": []
+            },
+            {
+              "category": "Catering",
+              "status": "shortlisted",
+              "has_recommendations": true,
+              "selected_provider_ids": []
+            },
+            {
+              "category": "Hogar y deco",
+              "status": "shortlisted",
+              "has_recommendations": true,
+              "selected_provider_ids": []
+            }
+          ],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "Organiza un baby shower en Lima para 50 personas y necesita local, catering y decoración sobria, con presupuesto medio.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "empty",
+          "context_source": "agent_api",
+          "retrieved_message_count": 0,
+          "recent_message_count": 0,
+          "excluded_current_message_count": 0,
+          "directions": [],
+          "sources": [],
+          "entry_source": null
+        },
+        "continuity_state": "new",
+        "welcome_allowed": true,
+        "history_status": "empty",
+        "has_prior_outbound": false,
+        "requested_operation": "provider.plan",
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": true,
+          "droppedCandidateDetails": 5,
+          "droppedCalls": 20,
+          "diagnosticBytes": 12288,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M63YNJ7VV1WZD143X2W6BRNJ",
+        "conversation_hash": "5581e4371461003e8305a0f1f194b8d0a371d321c3f7036fee5e5beccd44cf58",
+        "runtime_latency_ms": 24491,
+        "extraction_latency_ms": 9753,
+        "compose_latency_ms": 9580,
+        "tools_called_count": 9,
+        "provider_results_count": 5,
+        "recommendation_context_candidates": 5,
+        "recommendation_presentation_limit": 6,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 22300,
+        "cached_input_tokens": 10657,
+        "cache_hit_rate": 0.5213796477495107,
+        "extraction_to_compose_ratio": 1.0180584551148226,
+        "captured_at": "2026-10-29T13:47:53.481Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "elicitacion_necesidades",
+        "lifecycle_state": "active",
+        "event_type": "baby_shower",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": "Lima",
+        "budget_signal": "medio",
+        "guest_range": "21-50",
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "shortlisted",
+            "recommended_provider_ids": [
+              147
+            ],
+            "selected_provider_ids": []
+          },
+          {
+            "category": "Catering",
+            "status": "shortlisted",
+            "recommended_provider_ids": [
+              189,
+              136,
+              137
+            ],
+            "selected_provider_ids": []
+          },
+          {
+            "category": "Hogar y deco",
+            "status": "shortlisted",
+            "recommended_provider_ids": [
+              179
+            ],
+            "selected_provider_ids": []
+          }
+        ],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": true
+        }
+      },
+      "latencyMs": 26332
+    }
+  ],
+  "startedAt": "2026-10-29T13:47:56.043Z",
+  "completedAt": "2026-10-29T13:47:56.044Z"
+}

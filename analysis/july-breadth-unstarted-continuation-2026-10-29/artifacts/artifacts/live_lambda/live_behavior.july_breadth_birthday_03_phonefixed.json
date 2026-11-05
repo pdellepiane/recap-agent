@@ -1,0 +1,861 @@
+{
+  "runId": "eval-2026-10-29T13-46-58-495Z-62c0e7de",
+  "caseId": "live_behavior.july_breadth_birthday_03_phonefixed",
+  "suite": "live_behavior_regression",
+  "target": "live_lambda",
+  "configLabel": "live_lambda",
+  "status": "passed",
+  "hardGatePassed": true,
+  "finalScore": 1,
+  "totalLatencyMs": 23203,
+  "totalToolCalls": 8,
+  "nodeTransitions": [
+    "contacto_inicial->elicitacion_necesidades"
+  ],
+  "planDiffSummary": [
+    "current_node=\"elicitacion_necesidades\"",
+    "intent=\"buscar_proveedores\"",
+    "event_type=\"cumpleanos\"",
+    "vendor_category=\"Catering\"",
+    "active_need_category=\"Catering\"",
+    "location=\"San Borja\"",
+    "budget_signal=\"presupuesto medio\"",
+    "guest_range=\"21-50\"",
+    "provider_needs=Catering:shortlisted, Hogar y deco:shortlisted"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/.eval-runs/eval-2026-10-29T13-46-58-495Z-62c0e7de/artifacts/live_lambda/live_behavior.july_breadth_birthday_03_phonefixed.json"
+  },
+  "expectationResults": [
+    {
+      "id": "event-type-retained",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "answer-delivered",
+      "type": "text_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Text containment checks passed."
+    },
+    {
+      "id": "no-provider-quote-without-explicit-date",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture provider.quote.write attempts=0 successes=0 replays=0 outcome=none."
+    },
+    {
+      "id": "no-unrequested-rsvp",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture rsvp.write attempts=0 successes=0 replays=0 outcome=none."
+    },
+    {
+      "id": "no-unrequested-handoff",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture handoff.write attempts=0 successes=0 replays=0 outcome=none."
+    },
+    {
+      "id": "requested-needs-retained",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "recommendation-has-candidates",
+      "type": "provider_result_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Provider result count 4 matched expectation."
+    },
+    {
+      "id": "recommendation-delivers-provider-link",
+      "type": "text_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Text containment checks passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "objective-obligations",
+      "type": "expectation_pass_rate",
+      "score": 1,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 8 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 1,
+    "avg_latency_ms": 23203,
+    "p95_latency_ms": 23203,
+    "tool_calls_total": 8,
+    "unique_tools_called": 5,
+    "tool_call_rate_per_turn": 8,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.10344827586206896,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 21377,
+    "cache_hit_rate": 0.5849966986642288,
+    "input_tokens": 19689,
+    "cached_input_tokens": 11518,
+    "cache_write_input_tokens": 6678,
+    "uncached_input_tokens": 8171,
+    "usage_known": true
+  },
+  "timing": {
+    "queueWaitMs": 214387,
+    "setupMs": 0,
+    "turnMs": 25418,
+    "snapshotMs": 10,
+    "teardownMs": 0,
+    "judgeWaitMs": 0,
+    "judgeApiMs": 0,
+    "reportWriteMs": 0,
+    "makespanMs": 0
+  },
+  "judgeMetrics": {
+    "modelCalls": 0,
+    "retryCount": 0,
+    "rateLimitCount": 0,
+    "tokensUnknown": false,
+    "openaiSdk": "7.43.0",
+    "judgeModels": []
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Haré un cumpleaños infantil en San Borja para 35 personas. Necesito catering y decoración colorida, presupuesto medio.",
+        "channel": "whatsapp",
+        "sessionId": "live_behavior.july_breadth_birthday_03_phonefixed",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "master-provider-live-public"
+        }
+      },
+      "outputText": "Para el cumpleaños infantil de 35 personas en San Borja, encontré opciones para catering y decoración. Ten en cuenta que las opciones de catering figuran con nivel de precio alto, así que conviene pedir cotización para validar si se ajustan a tu presupuesto medio.\n\nServicio de comida\nOpciones de catering con propuestas gastronómicas distintas; confirma disponibilidad y precio para tu fecha y grupo.\n1. Edo Sushi Bar - Catering de sushi (Lima, Perú · $$$ · promo: 10% Off)\n Ofrece catering japonés para eventos y paquetes personalizados; tiene 10% de descuento bajo ciertas condiciones.\n Limitación: Figura con nivel de precio alto y el descuento aplica desde 300 piezas.\n Ficha: https://sinenvolturas.com/proveedores/edo-sushi-bar\n2. 4Foodies - Mesas gastronómicas y catering (Lima, Perú · $$$ · promo: 10% Off)\n Ofrece mesas gastronómicas, montaje y propuestas personalizadas; tiene 10% de descuento.\n Limitación: Figura con nivel de precio alto; solicita el servicio con al menos dos meses de anticipación y valida cobertura en San Borja.\n Ficha: https://sinenvolturas.com/proveedores/4foodies\n3. BAPO - Catering de bocaditos asiáticos (Lima, Perú · $$$ · promo: 10% off)\n Alternativa de catering con sabores asiáticos y 10% de descuento.\n Limitación: Figura con nivel de precio alto; consulta paquetes y disponibilidad para San Borja.\n Ficha: https://sinenvolturas.com/proveedores/bapo\n\nHogar y decoración\nOpción de productos personalizados para acompañar la decoración; no se confirma montaje integral del espacio.\n1. Nina Creativa - Recuerdos y detalles personalizados (Lima, Perú · $$ · promo: 10% off)\n Ofrece recuerdos para cumpleaños y personalización con temáticas a elección.\n Limitación: Su oferta descrita es de velas y recuerdos personalizados, no decoración integral del evento; requiere entre 10 días y 20 días hábiles de anticipación.\n Ficha: https://sinenvolturas.com/proveedores/nina-creativa\n\n¿Quieres que prioricemos una opción de catering para pedir cotización, o prefieres que busquemos decoración integral y colorida?",
+      "deliveredText": "Para el cumpleaños infantil de 35 personas en San Borja, encontré opciones para catering y decoración. Ten en cuenta que las opciones de catering figuran con nivel de precio alto, así que conviene pedir cotización para validar si se ajustan a tu presupuesto medio.\n\nServicio de comida\nOpciones de catering con propuestas gastronómicas distintas; confirma disponibilidad y precio para tu fecha y grupo.\n1. Edo Sushi Bar - Catering de sushi (Lima, Perú · $$$ · promo: 10% Off)\n Ofrece catering japonés para eventos y paquetes personalizados; tiene 10% de descuento bajo ciertas condiciones.\n Limitación: Figura con nivel de precio alto y el descuento aplica desde 300 piezas.\n Ficha: https://sinenvolturas.com/proveedores/edo-sushi-bar\n2. 4Foodies - Mesas gastronómicas y catering (Lima, Perú · $$$ · promo: 10% Off)\n Ofrece mesas gastronómicas, montaje y propuestas personalizadas; tiene 10% de descuento.\n Limitación: Figura con nivel de precio alto; solicita el servicio con al menos dos meses de anticipación y valida cobertura en San Borja.\n Ficha: https://sinenvolturas.com/proveedores/4foodies\n3. BAPO - Catering de bocaditos asiáticos (Lima, Perú · $$$ · promo: 10% off)\n Alternativa de catering con sabores asiáticos y 10% de descuento.\n Limitación: Figura con nivel de precio alto; consulta paquetes y disponibilidad para San Borja.\n Ficha: https://sinenvolturas.com/proveedores/bapo\n\nHogar y decoración\nOpción de productos personalizados para acompañar la decoración; no se confirma montaje integral del espacio.\n1. Nina Creativa - Recuerdos y detalles personalizados (Lima, Perú · $$ · promo: 10% off)\n Ofrece recuerdos para cumpleaños y personalización con temáticas a elección.\n Limitación: Su oferta descrita es de velas y recuerdos personalizados, no decoración integral del evento; requiere entre 10 días y 20 días hábiles de anticipación.\n Ficha: https://sinenvolturas.com/proveedores/nina-creativa\n\n¿Quieres que prioricemos una opción de catering para pedir cotización, o prefieres que busquemos decoración integral y colorida?",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "4f2d711a0ccbfaa5d71a073639a7a2a6e1acba239682043bef4c3610c03964ce",
+        "deliveredSha256": "4f2d711a0ccbfaa5d71a073639a7a2a6e1acba239682043bef4c3610c03964ce",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "elicitacion_necesidades",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 5,
+          "attempts": 1
+        },
+        "trace_id": "01M63YV7AD2D9DFQRA3V2P1M0Y",
+        "conversation_id": null,
+        "plan_id": "01M63YTHX6Q79EKEXG4Q26Z4Y7",
+        "previous_node": "contacto_inicial",
+        "next_node": "elicitacion_necesidades",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "elicitacion_necesidades"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "d4c67dedd44b",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/domain_scope.txt",
+          "shared/flow_discipline.txt",
+          "shared/domain_knowledge.txt",
+          "shared/question_strategy.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "get_provider_detail",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "get_provider_detail",
+          "get_provider_detail",
+          "get_provider_detail"
+        ],
+        "tool_inputs": [],
+        "tool_outputs": [],
+        "provider_results": [
+          {
+            "id": 109,
+            "title": "Edo Sushi Bar",
+            "slug": "edo-sushi-bar",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "5.0",
+            "reason": "Edo Sushi Bar encaja con Catering para cumpleaños infantil según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/edo-sushi-bar",
+            "websiteUrl": "https://www.edosushibar.com/catering",
+            "minPrice": "1200.00",
+            "maxPrice": null,
+            "promoBadge": "10% Off",
+            "promoSummary": "10% de descuento en servicio de catering para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Edo Sushi Bar es un servicio de catering especializado en comida japonesa, ofreciendo propuestas gastronómicas de alta calidad para eventos y celebraciones.",
+            "serviceHighlights": [
+              "Catering de sushi para eventos",
+              "Propuestas gastronómicas japonesas",
+              "Paquetes de catering personalizados",
+              "Atención para eventos sociales y corporativos"
+            ],
+            "termsHighlights": [
+              "Para acceder al beneficio, se debe indicar al momento de solicitar la cotización.",
+              "Válido para pedidos desde 300 piezas a más.",
+              "Aplica únicamente para servicio de catering (no incluye consumo en locales ni delivery).",
+              "No acumulable con otros descuentos o promociones.",
+              "Sujeto a disponibilidad"
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Edo Sushi Bar es un servicio de catering especializado en comida japonesa, ofreciendo propuestas gastronómicas de alta calidad para eventos y celebraciones.",
+              "Servicios que ofrece: Catering de sushi para eventos",
+              "Servicios que ofrece: Propuestas gastronómicas japonesas",
+              "Servicios que ofrece: Paquetes de catering personalizados",
+              "Servicios que ofrece: Atención para eventos sociales y corporativos",
+              "Términos  y condiciones: Para acceder al beneficio, se debe indicar al momento de solicitar la cotización.",
+              "Términos  y condiciones: Válido para pedidos desde 300 piezas a más.",
+              "Términos  y condiciones: Aplica únicamente para servicio de catering (no incluye consumo en locales ni delivery).",
+              "Términos  y condiciones: No acumulable con otros descuentos o promociones.",
+              "Términos  y condiciones: Sujeto a disponibilidad",
+              "EDO SUSHI BAR | 10% DE DSCTO EN CATERING: Edo Sushi Bar es un servicio de catering especializado en comida japonesa, ofreciendo propuestas gastronómicas de alta calidad para eventos y celebraciones.",
+              "Términos y condiciones: Para acceder al beneficio, se debe indicar al momento de solicitar la cotización.",
+              "Términos y condiciones: Válido para pedidos desde 300 piezas a más.",
+              "Términos y condiciones: Aplica únicamente para servicio de catering (no incluye consumo en locales ni delivery).",
+              "Términos y condiciones: No acumulable con otros descuentos o promociones.",
+              "Términos y condiciones: Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "Edo Sushi Bar es un servicio de catering especializado en comida japonesa, ofreciendo propuestas gastronómicas de alta calidad para eventos y celebraciones.",
+            "fitScore": 100,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match",
+              "must_have_evidence",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.7563326629685757,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 136,
+            "title": "4Foodies",
+            "slug": "4foodies",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "4Foodies encaja con Catering para cumpleaños infantil según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/4foodies",
+            "websiteUrl": "https://www.4foodies.pe",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off",
+            "promoSummary": "10% de descuento en el servicio de catering para los clientes de Sin Envolturas",
+            "descriptionSnippet": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+            "serviceHighlights": [
+              "Catering para eventos",
+              "Tablas de quesos",
+              "Mesas gastronómicas",
+              "Implementación y montaje de servicio",
+              "Propuestas personalizadas según el evento"
+            ],
+            "termsHighlights": [
+              "El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+              "El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+              "En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+              "Válido para Lima (previa validación de zona de cobertura)."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: 4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+              "Servicios que ofrece: Catering para eventos",
+              "Servicios que ofrece: Tablas de quesos",
+              "Servicios que ofrece: Mesas gastronómicas",
+              "Servicios que ofrece: Implementación y montaje de servicio",
+              "Servicios que ofrece: Propuestas personalizadas según el evento",
+              "Términos  y condiciones: El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+              "Términos  y condiciones: El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+              "Términos  y condiciones: En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+              "Términos  y condiciones: Válido para Lima (previa validación de zona de cobertura).",
+              "Términos y condiciones: El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+              "Términos y condiciones: El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+              "Términos y condiciones: En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+              "Términos y condiciones: Válido para Lima (previa validación de zona de cobertura)."
+            ],
+            "eventTypes": [],
+            "description": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+            "fitScore": 94,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match",
+              "must_have_evidence",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.7735187218041092,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 153,
+            "title": "BAPO",
+            "slug": "bapo",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "BAPO encaja con Catering para cumpleaños infantil según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% off",
+            "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+            "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+            "serviceHighlights": [
+              "Servicios de catering",
+              "Preguntar por paquetes"
+            ],
+            "termsHighlights": [
+              "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+              "Válido solo para Lima Metropolitana o consultando disponibilidad",
+              "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+              "No acumulable con otros descuentos y/o promociones"
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+              "Servicios que ofrece: Servicios de catering",
+              "Servicios que ofrece: Preguntar por paquetes",
+              "Términos  y condiciones: Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+              "Términos  y condiciones: Válido solo para Lima Metropolitana o consultando disponibilidad",
+              "Términos  y condiciones: Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+              "Términos  y condiciones: No acumulable con otros descuentos y/o promociones",
+              "Términos y condiciones: Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+              "Términos y condiciones: Válido solo para Lima Metropolitana o consultando disponibilidad",
+              "Términos y condiciones: Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+              "Términos y condiciones: No acumulable con otros descuentos y/o promociones"
+            ],
+            "eventTypes": [],
+            "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+            "fitScore": 94,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match",
+              "must_have_evidence",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.7618055563071552,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 179,
+            "title": "Nina Creativa",
+            "slug": "nina-creativa",
+            "category": "Hogar y deco",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "Nina Creativa encaja con Decoración colorida para cumpleaños infantil según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/nina-creativa",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% off",
+            "promoSummary": "10% de descuento en el total de la compra (no incluye costo de envío).",
+            "descriptionSnippet": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+            "serviceHighlights": [
+              "Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+              "Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+              "Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento."
+            ],
+            "termsHighlights": [
+              "Válido para pedidos con entrega en todo el Perú.",
+              "No acumulable con otras promociones, cupones o descuentos vigentes.",
+              "Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+              "Sujeto a disponibilidad de stock y agenda de producción."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+              "Acerca del proveedor: Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar.",
+              "Acerca del proveedor: Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+              "Servicios que ofrece: Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+              "Servicios que ofrece: Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+              "Servicios que ofrece: Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento.",
+              "Términos y condiciones: Válido para pedidos con entrega en todo el Perú.",
+              "Términos y condiciones: No acumulable con otras promociones, cupones o descuentos vigentes.",
+              "Términos y condiciones: Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+              "Términos y condiciones: Sujeto a disponibilidad de stock y agenda de producción.",
+              "Acerca del proveedor: Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes."
+            ],
+            "eventTypes": [],
+            "description": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+            "fitScore": 100,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match",
+              "must_have_evidence",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.5250861000166124,
+            "retrievalSource": "vector"
+          }
+        ],
+        "search_strategy": "multi_need_query_intents",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_0c8682e06af40c34006ae34f2d603487d1a2e449727f91c98b",
+            "requestId": "req_25cf1a55c40947acb87cbda7e0d21e0d",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 755,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 7632,
+                "instructionBytes": 0,
+                "inputBytes": 5805,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_0e7d9179edacddb2006ae34f2f647887d1899836d2b503a913",
+            "requestId": "req_585413adea2e4c44abb19fce7de500c8",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 6855,
+              "inputBytes": 3181,
+              "toolCount": 0,
+              "schemaPropertyCount": 30,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 20868,
+                "instructionBytes": 6932,
+                "inputBytes": 3465,
+                "toolBytes": 2,
+                "outputSchemaBytes": 10207,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_0d4eb348d7f15f17006ae34f3c764c87d1b8bb6f9008506932",
+            "requestId": "req_165aa2a6d314402da8a8d6fb5f65da7d",
+            "model": "gpt-6-luna",
+            "attemptCount": 2,
+            "requestMetrics": {
+              "instructionBytes": 4789,
+              "inputBytes": 16329,
+              "toolCount": 2,
+              "schemaPropertyCount": 4,
+              "transport": {
+                "observedRequestCount": 2,
+                "totalPayloadBytes": 58971,
+                "instructionBytes": 9708,
+                "inputBytes": 44931,
+                "toolBytes": 1366,
+                "outputSchemaBytes": 2402,
+                "requests": []
+              }
+            }
+          },
+          "router": {
+            "responseId": null,
+            "requestId": "req_a3cd2de3040c4ccaaa800adbd15ab462",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 3321,
+              "inputBytes": 2581,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 6863,
+                "instructionBytes": 3321,
+                "inputBytes": 2581,
+                "toolBytes": 0,
+                "outputSchemaBytes": 0,
+                "requests": []
+              }
+            }
+          }
+        },
+        "recommendation_funnel": {
+          "available_candidates": 4,
+          "context_candidates": 4,
+          "context_candidate_ids": [
+            109,
+            136,
+            153,
+            179
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "elicitacion_necesidades",
+        "timing_ms": {
+          "total": 21937,
+          "load_plan": 11,
+          "response_classification": 2101,
+          "prepare_working_plan": 1,
+          "extraction": 9124,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 3875,
+          "provider_enrichment": 150,
+          "prompt_bundle_load": 0,
+          "compose_reply": 8288,
+          "save_plan": 53,
+          "router": 156,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1523,
+            "output_tokens": 110,
+            "total_tokens": 1633,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 178
+          },
+          "router": {
+            "input_tokens": 1481,
+            "output_tokens": 0,
+            "total_tokens": 1481
+          },
+          "extraction": {
+            "input_tokens": 4407,
+            "output_tokens": 950,
+            "total_tokens": 5357,
+            "cached_input_tokens": 3636,
+            "cache_write_input_tokens": 768
+          },
+          "reply": {
+            "input_tokens": 12278,
+            "output_tokens": 628,
+            "total_tokens": 12906,
+            "cached_input_tokens": 6540,
+            "cache_write_input_tokens": 5732
+          },
+          "total": {
+            "input_tokens": 19689,
+            "output_tokens": 1688,
+            "total_tokens": 21377,
+            "cached_input_tokens": 11518,
+            "cache_write_input_tokens": 6678
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "agent_api",
+          "has_prior_outbound_message": false,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "question_or_request",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "elicitacion_necesidades",
+          "routeKind": "multi_need_search",
+          "providerSearchMode": "multi_need_query_intents",
+          "presentationScope": "multi_need",
+          "focusNeedCategory": "Catering",
+          "needsToSearch": [
+            "Catering",
+            "Hogar y deco"
+          ],
+          "needsToPresent": [
+            "Catering",
+            "Hogar y deco"
+          ],
+          "stopReason": null,
+          "persistReason": "elicitacion_necesidades",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "multi_need_search",
+        "presentation_scope": "multi_need",
+        "session_focus_used": false,
+        "session_focus_key_present": true,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.88,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": "cumpleanos",
+          "vendor_category": "Catering",
+          "vendor_categories": [
+            "Catering",
+            "Hogar y deco"
+          ],
+          "active_need_category": "Catering",
+          "location": "San Borja",
+          "budget_signal": "presupuesto medio",
+          "guest_range": "21-50",
+          "selected_provider_hints": [],
+          "preferences": [
+            "Decoración colorida",
+            "Cumpleaños infantil"
+          ],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 2,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Organizará un cumpleaños infantil en San Borja para 35 personas y busca catering y decoración colorida, con presupuesto medio.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "elicitacion_necesidades",
+          "lifecycle_state": "active",
+          "event_type": "cumpleanos",
+          "vendor_category": "Catering",
+          "active_need_category": "Catering",
+          "location": "San Borja",
+          "budget_signal": "presupuesto medio",
+          "guest_range": "21-50",
+          "provider_need_categories": [
+            "Catering",
+            "Hogar y deco"
+          ],
+          "provider_need_count": 2,
+          "provider_need_statuses": [
+            {
+              "category": "Catering",
+              "status": "shortlisted",
+              "has_recommendations": true,
+              "selected_provider_ids": []
+            },
+            {
+              "category": "Hogar y deco",
+              "status": "shortlisted",
+              "has_recommendations": true,
+              "selected_provider_ids": []
+            }
+          ],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "Organizará un cumpleaños infantil en San Borja para 35 personas y busca catering y decoración colorida, con presupuesto medio.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "empty",
+          "context_source": "agent_api",
+          "retrieved_message_count": 0,
+          "recent_message_count": 0,
+          "excluded_current_message_count": 0,
+          "directions": [],
+          "sources": [],
+          "entry_source": null
+        },
+        "continuity_state": "new",
+        "welcome_allowed": true,
+        "history_status": "empty",
+        "has_prior_outbound": false,
+        "requested_operation": "provider.search",
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": true,
+          "droppedCandidateDetails": 4,
+          "droppedCalls": 17,
+          "diagnosticBytes": 12288,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M63YV7AD2D9DFQRA3V2P1M0Y",
+        "conversation_hash": "14c38b00d7be5fc62b68e1a7825bc9bba6affd0ee413e5e5d8a631fdd464782e",
+        "runtime_latency_ms": 21937,
+        "extraction_latency_ms": 9124,
+        "compose_latency_ms": 8288,
+        "tools_called_count": 8,
+        "provider_results_count": 4,
+        "recommendation_context_candidates": 4,
+        "recommendation_presentation_limit": 6,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 21377,
+        "cached_input_tokens": 11518,
+        "cache_hit_rate": 0.5849966986642288,
+        "extraction_to_compose_ratio": 1.100868725868726,
+        "captured_at": "2026-10-29T13:50:58.906Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "elicitacion_necesidades",
+        "lifecycle_state": "active",
+        "event_type": "cumpleanos",
+        "vendor_category": "Catering",
+        "active_need_category": "Catering",
+        "location": "San Borja",
+        "budget_signal": "presupuesto medio",
+        "guest_range": "21-50",
+        "provider_needs": [
+          {
+            "category": "Catering",
+            "status": "shortlisted",
+            "recommended_provider_ids": [
+              109,
+              136,
+              153
+            ],
+            "selected_provider_ids": []
+          },
+          {
+            "category": "Hogar y deco",
+            "status": "shortlisted",
+            "recommended_provider_ids": [
+              179
+            ],
+            "selected_provider_ids": []
+          }
+        ],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": true
+        }
+      },
+      "latencyMs": 23203
+    }
+  ],
+  "startedAt": "2026-10-29T13:51:00.905Z",
+  "completedAt": "2026-10-29T13:51:00.906Z"
+}

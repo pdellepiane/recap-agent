@@ -14,8 +14,8 @@ import { createDynamicExtractionSchema, requestedOperationSchema, type Extractio
  * schema fields and prompt files stay omitted for that turn.
  *
  * L3 established-lane narrowing: once typed plan state shows an established
- * purchase/support lane (information node with pending or completed
- * information work) or an established RSVP lane (invitation node or active
+ * purchase/support lane (information node or pending information work)
+ * or an established RSVP lane (invitation node or active
  * RSVP state), planning-only fields stay omitted from the profile. The
  * domain is derived from structured plan state only, never from message
  * keywords. Information and RSVP stays expressible in both lanes so
@@ -30,6 +30,7 @@ export type ExtractionProjectionInput = {
   readonly manifest: RuntimeCapabilityManifest;
   readonly allowedActionIntents: readonly ActionIntent[];
   readonly routedInformation?: boolean;
+  readonly providerPivot?: boolean;
 };
 
 export type ExtractionProjection = {
@@ -49,7 +50,7 @@ function manifestAvailable(
 
 /**
  * L3: established lane derived from typed plan state only. An information
- * lane with pending or completed information work is an established
+ * lane with active information work is an established
  * purchase lane when a purchase/associated-event request is present and an
  * established support lane otherwise (faq, policy and follow-up turns).
  * An invitation node or active RSVP state is an established RSVP lane.
@@ -68,8 +69,7 @@ export function deriveEstablishedExtractionDomain(
   }
   const hasInformationWork =
     plan.current_node === 'resolver_consultas_informativas' ||
-    pending.length > 0 ||
-    lastCompleted != null;
+    pending.length > 0;
   if (!hasInformationWork) {
     return null;
   }
@@ -85,10 +85,11 @@ export function deriveEstablishedExtractionDomain(
 function profileFromManifestAndPlan(
   plan: PersistedPlan,
   manifest: RuntimeCapabilityManifest,
+  providerPivot = false,
 ): ExtractionCapabilityProfile {
   const lane = derivePlanCapabilities(plan);
   const established = deriveEstablishedExtractionDomain(plan);
-  const laneNarrowed = established !== null;
+  const laneNarrowed = established !== null && !providerPivot;
   const information =
     manifestAvailable(manifest, 'faq.read') ||
     manifestAvailable(manifest, 'event.association.read') ||
@@ -150,7 +151,7 @@ function intentAllowedByManifest(
 }
 
 export function projectExtraction(input: ExtractionProjectionInput): ExtractionProjection {
-  const availableProfile = profileFromManifestAndPlan(input.plan, input.manifest);
+  const availableProfile = profileFromManifestAndPlan(input.plan, input.manifest, input.providerPivot);
   const profile = input.routedInformation ? { ...availableProfile, rsvp: false, contact: false,
     providerPlanning: false, providerOperations: false, providerSelection: false,
     providerInspection: false, close: false } : availableProfile;
@@ -163,7 +164,7 @@ export function projectExtraction(input: ExtractionProjectionInput): ExtractionP
   const established = deriveEstablishedExtractionDomain(input.plan);
   const laneIntents = input.routedInformation
     ? input.allowedActionIntents.filter((intent) => intent === 'solicitar_humano')
-    : established === null
+    : established === null || input.providerPivot
     ? input.allowedActionIntents
     : input.allowedActionIntents.filter((intent) =>
       (baseActionIntents as readonly ActionIntent[]).includes(intent),

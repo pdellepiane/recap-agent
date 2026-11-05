@@ -1,0 +1,1547 @@
+{
+  "runId": "eval-2026-10-28T13-25-45-964Z-aaee23b6",
+  "caseId": "live_behavior.july_breadth_birthday_06_phonefixed.master_r1",
+  "configLabel": "live_lambda",
+  "lane": "parallel",
+  "phase": "snapshot",
+  "status": "passed",
+  "executionUncertain": false,
+  "writtenAt": "2026-10-28T13:37:35.811Z",
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Planeo un cumpleaños en Lima para 25 personas y necesito música.",
+        "channel": "whatsapp",
+        "sessionId": "live_behavior.july_breadth_birthday_06_phonefixed",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "master-provider-live-public"
+        }
+      },
+      "outputText": "Para tu cumpleaños en Lima para 25 personas, te recomiendo a Dj Bufi. Ofrece DJ, sonido e iluminación, además de musicalización personalizada; tiene 20% de descuento exclusivo para clientes de Sin Envolturas. El precio figura como alto y puedes consultar los términos de la promoción con el proveedor.\n\n1. Dj Bufi\n Ofrece DJ profesional, sonido, luces y música personalizada, servicios adecuados para una celebración. La promoción anunciada es de 20% de descuento para clientes de Sin Envolturas.\n Ubicación: Lima, Perú.\n Precio: $$$.\n Promo: 20% off.\n Nota: Su nivel de precio figura como alto; consulta con el proveedor el precio final y los términos de la promoción.\n\n Ficha: https://sinenvolturas.com/proveedores/dj-bufi",
+      "deliveredText": "Para tu cumpleaños en Lima para 25 personas, te recomiendo a Dj Bufi. Ofrece DJ, sonido e iluminación, además de musicalización personalizada; tiene 20% de descuento exclusivo para clientes de Sin Envolturas. El precio figura como alto y puedes consultar los términos de la promoción con el proveedor.\n\n1. Dj Bufi\n Ofrece DJ profesional, sonido, luces y música personalizada, servicios adecuados para una celebración. La promoción anunciada es de 20% de descuento para clientes de Sin Envolturas.\n Ubicación: Lima, Perú.\n Precio: $$$.\n Promo: 20% off.\n Nota: Su nivel de precio figura como alto; consulta con el proveedor el precio final y los términos de la promoción.\n\n Ficha: https://sinenvolturas.com/proveedores/dj-bufi",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "62a812c7d8566bd145bcaa3c72605123ead257fd8d9f85139724c0b6f63f1577",
+        "deliveredSha256": "62a812c7d8566bd145bcaa3c72605123ead257fd8d9f85139724c0b6f63f1577",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "recomendar",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 12,
+          "attempts": 1
+        },
+        "trace_id": "01M61BN4Z7471J9B71EJEA44V6",
+        "conversation_id": null,
+        "plan_id": "01M61BMPH3T8YD7MTV91XZTCZ7",
+        "previous_node": "contacto_inicial",
+        "next_node": "recomendar",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "minimos_para_buscar",
+          "buscar_proveedores",
+          "busqueda_exitosa",
+          "hay_resultados",
+          "recomendar"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "9579d9dcb7c9",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/domain_scope.txt",
+          "shared/flow_discipline.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "search_providers_from_plan",
+          "get_provider_detail",
+          "get_related_providers",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "search_providers_from_plan",
+          "get_provider_detail"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "search_providers_from_plan",
+            "input": "{\"projection_version\":1}"
+          },
+          {
+            "tool": "get_provider_detail",
+            "input": "{\"projection_version\":1,\"provider_id\":187}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "search_providers_from_plan",
+            "output": "{\"projection_version\":1,\"result_kind\":\"collection\",\"count\":1,\"provider_ids\":[187]}"
+          },
+          {
+            "tool": "get_provider_detail",
+            "output": "{\"projection_version\":1,\"result_kind\":\"detail\",\"provider_id\":187,\"found\":true}"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 187,
+            "title": "Dj Bufi",
+            "slug": "dj-bufi",
+            "category": "Música",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Dj Bufi encaja con Música según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "20% off",
+            "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+            "serviceHighlights": [
+              "Asesoría personalizada en todo el proceso del evento",
+              "DJ profesional para todo tipo de eventos.",
+              "Sonido profesional para ceremonias, recepciones y fiestas.",
+              "Iluminación ambiental y decorativa.",
+              "Luces para pista de baile y efectos especiales.",
+              "Musicalización personalizada según el estilo del evento."
+            ],
+            "termsHighlights": [
+              "Valido solo para Lima. Consultar términos y condiciones."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+              "Servicios que ofrece: Asesoría personalizada en todo el proceso del evento",
+              "Servicios que ofrece: DJ profesional para todo tipo de eventos.",
+              "Servicios que ofrece: Sonido profesional para ceremonias, recepciones y fiestas.",
+              "Servicios que ofrece: Iluminación ambiental y decorativa.",
+              "Servicios que ofrece: Luces para pista de baile y efectos especiales.",
+              "Servicios que ofrece: Musicalización personalizada según el estilo del evento.",
+              "Términos  y condiciones: Valido solo para Lima. Consultar términos y condiciones.",
+              "Términos y condiciones: Valido solo para Lima. Consultar términos y condiciones."
+            ],
+            "eventTypes": [],
+            "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+            "fitScore": 89,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.8379370787292983,
+            "retrievalSource": "hybrid"
+          }
+        ],
+        "search_strategy": "search_from_plan",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 187,
+            "category": "Música",
+            "location": "Lima, Perú",
+            "retrieval_source": "hybrid",
+            "retrieval_score": 0.8379370787292983,
+            "fit_score": 89
+          }
+        ],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_001dc94b2218ce1f006ae1fa7592a887d189a67d89a381d81e",
+            "requestId": "req_90633ca98e8b4a42872dc7da7f261c4c",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 700,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 7577,
+                "instructionBytes": 0,
+                "inputBytes": 5750,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_0c4494337d7706e7006ae1fa77b44487d1bb80401cd0e9367a",
+            "requestId": "req_30eff7d5006e447895838e88b69c2874",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 6855,
+              "inputBytes": 3126,
+              "toolCount": 0,
+              "schemaPropertyCount": 30,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 20813,
+                "instructionBytes": 6932,
+                "inputBytes": 3410,
+                "toolBytes": 2,
+                "outputSchemaBytes": 10207,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_0126c104127ec3e7006ae1fa81472887d18d1c8d4142c13323",
+            "requestId": "req_d2e568620efc4d9991245875869c429c",
+            "model": "gpt-6-luna",
+            "attemptCount": 2,
+            "requestMetrics": {
+              "instructionBytes": 2588,
+              "inputBytes": 9166,
+              "toolCount": 3,
+              "schemaPropertyCount": 3,
+              "transport": {
+                "observedRequestCount": 2,
+                "totalPayloadBytes": 31919,
+                "instructionBytes": 5248,
+                "inputBytes": 22745,
+                "toolBytes": 2054,
+                "outputSchemaBytes": 1334,
+                "requests": []
+              }
+            }
+          },
+          "router": {
+            "responseId": null,
+            "requestId": "req_4c21f5b226844627a47467e6f5de7819",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 3321,
+              "inputBytes": 2526,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 6808,
+                "instructionBytes": 3321,
+                "inputBytes": 2526,
+                "toolBytes": 0,
+                "outputSchemaBytes": 0,
+                "requests": []
+              }
+            }
+          }
+        },
+        "recommendation_funnel": {
+          "available_candidates": 1,
+          "context_candidates": 1,
+          "context_candidate_ids": [
+            187
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "recomendar",
+        "timing_ms": {
+          "total": 14798,
+          "load_plan": 10,
+          "response_classification": 2109,
+          "prepare_working_plan": 0,
+          "extraction": 5958,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 1938,
+          "provider_enrichment": 44,
+          "prompt_bundle_load": 0,
+          "compose_reply": 4563,
+          "save_plan": 20,
+          "router": 146,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1512,
+            "output_tokens": 112,
+            "total_tokens": 1624,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 167
+          },
+          "router": {
+            "input_tokens": 1470,
+            "output_tokens": 0,
+            "total_tokens": 1470
+          },
+          "extraction": {
+            "input_tokens": 4396,
+            "output_tokens": 583,
+            "total_tokens": 4979,
+            "cached_input_tokens": 3636,
+            "cache_write_input_tokens": 757
+          },
+          "reply": {
+            "input_tokens": 6596,
+            "output_tokens": 187,
+            "total_tokens": 6783,
+            "cached_input_tokens": 3045,
+            "cache_write_input_tokens": 3545
+          },
+          "total": {
+            "input_tokens": 13974,
+            "output_tokens": 882,
+            "total_tokens": 14856,
+            "cached_input_tokens": 8023,
+            "cache_write_input_tokens": 4469
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "agent_api",
+          "has_prior_outbound_message": false,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "question_or_request",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "recomendar",
+          "routeKind": "single_need_search",
+          "providerSearchMode": "single_need_from_plan",
+          "presentationScope": "single_need",
+          "focusNeedCategory": "Música",
+          "needsToSearch": [
+            "Música"
+          ],
+          "needsToPresent": [
+            "Música"
+          ],
+          "stopReason": null,
+          "persistReason": "recomendar",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "single_need_search",
+        "presentation_scope": "single_need",
+        "session_focus_used": false,
+        "session_focus_key_present": true,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.91,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": "cumpleanos",
+          "vendor_category": "Música",
+          "vendor_categories": [
+            "Música"
+          ],
+          "active_need_category": "Música",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "21-50",
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 1,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Planea un cumpleaños en Lima para 25 personas y necesita música.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "recomendar",
+          "lifecycle_state": "active",
+          "event_type": "cumpleanos",
+          "vendor_category": "Música",
+          "active_need_category": "Música",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "21-50",
+          "provider_need_categories": [
+            "Música"
+          ],
+          "provider_need_count": 1,
+          "provider_need_statuses": [
+            {
+              "category": "Música",
+              "status": "shortlisted",
+              "has_recommendations": true,
+              "selected_provider_ids": []
+            }
+          ],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "Planea un cumpleaños en Lima para 25 personas y necesita música.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "empty",
+          "context_source": "agent_api",
+          "retrieved_message_count": 0,
+          "recent_message_count": 0,
+          "excluded_current_message_count": 0,
+          "directions": [],
+          "sources": [],
+          "entry_source": null
+        },
+        "continuity_state": "new",
+        "welcome_allowed": true,
+        "history_status": "empty",
+        "has_prior_outbound": false,
+        "requested_operation": "provider.search",
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 11239,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M61BN4Z7471J9B71EJEA44V6",
+        "conversation_hash": "c3c7ea2a0d374fbee5cbbf2b60b57a8d0cb0af74c75487b48a7acb717fd4879c",
+        "runtime_latency_ms": 14798,
+        "extraction_latency_ms": 5958,
+        "compose_latency_ms": 4563,
+        "tools_called_count": 5,
+        "provider_results_count": 1,
+        "recommendation_context_candidates": 1,
+        "recommendation_presentation_limit": 6,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 14856,
+        "cached_input_tokens": 8023,
+        "cache_hit_rate": 0.5741376842707886,
+        "extraction_to_compose_ratio": 1.3057199211045365,
+        "captured_at": "2026-10-28T13:37:08.079Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "recomendar",
+        "lifecycle_state": "active",
+        "event_type": "cumpleanos",
+        "vendor_category": "Música",
+        "active_need_category": "Música",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": "21-50",
+        "provider_needs": [
+          {
+            "category": "Música",
+            "status": "shortlisted",
+            "recommended_provider_ids": [
+              187
+            ],
+            "selected_provider_ids": []
+          }
+        ],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": true
+        }
+      },
+      "latencyMs": 17018
+    },
+    {
+      "turnIndex": 1,
+      "input": {
+        "text": "Guardemos esto y continúo después.",
+        "channel": "whatsapp",
+        "sessionId": "live_behavior.july_breadth_birthday_06_phonefixed",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "master-provider-live-public"
+        }
+      },
+      "outputText": "Claro, dejamos guardada la recomendación de Dj Bufi para tu cumpleaños en Lima. Cuando quieras continuar, escríbeme y retomamos desde aquí.",
+      "deliveredText": "Claro, dejamos guardada la recomendación de Dj Bufi para tu cumpleaños en Lima. Cuando quieras continuar, escríbeme y retomamos desde aquí.",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "922a4b7fb8a180be9cebb5315e4d7494563f9c092ef29dc85afe329ac834643c",
+        "deliveredSha256": "922a4b7fb8a180be9cebb5315e4d7494563f9c092ef29dc85afe329ac834643c",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "recomendar",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 5,
+          "attempts": 1
+        },
+        "trace_id": "01M61BNJHQE174A84VP51Q4QH8",
+        "conversation_id": null,
+        "plan_id": "01M61BMPH3T8YD7MTV91XZTCZ7",
+        "previous_node": "recomendar",
+        "next_node": "recomendar",
+        "node_path": [
+          "recomendar"
+        ],
+        "intent": null,
+        "missing_fields": [],
+        "search_ready": false,
+        "prompt_bundle_id": "09f7a0da63c9",
+        "prompt_file_paths": [
+          "shared/reply_core.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_0b74c952fd9ad6a5006ae1fa87fd9c87d1826726dbb0f388c0",
+            "requestId": "req_2e328d6ffc1f4b0e8545dc2a208aba07",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 1305,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 8208,
+                "instructionBytes": 0,
+                "inputBytes": 6381,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_0d48cdbda35dcd66006ae1fa8b476c87d19dd7ad3cdd55d215",
+            "requestId": "req_cdd9fcc43752438eb479403077b5b1cf",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 10050,
+              "inputBytes": 5658,
+              "toolCount": 0,
+              "schemaPropertyCount": 36,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 37602,
+                "instructionBytes": 10163,
+                "inputBytes": 6064,
+                "toolBytes": 2,
+                "outputSchemaBytes": 21111,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_00dda86f25517243006ae1fa9092bc87d1b9d873d202284b0d",
+            "requestId": "req_8f646d427ff54ac6bc0f7855346f9bf5",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 680,
+              "inputBytes": 4651,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 6446,
+                "instructionBytes": 684,
+                "inputBytes": 5157,
+                "toolBytes": 2,
+                "outputSchemaBytes": 313,
+                "requests": []
+              }
+            }
+          },
+          "router": null
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 5
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "contextual_clarification",
+        "timing_ms": {
+          "total": 10224,
+          "load_plan": 90,
+          "response_classification": 3198,
+          "prepare_working_plan": 0,
+          "extraction": 5419,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 0,
+          "save_plan": 0,
+          "router": 0,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1659,
+            "output_tokens": 179,
+            "total_tokens": 1838,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 314
+          },
+          "router": null,
+          "extraction": {
+            "input_tokens": 8178,
+            "output_tokens": 437,
+            "total_tokens": 8615,
+            "cached_input_tokens": 6805,
+            "cache_write_input_tokens": 1370
+          },
+          "reply": {
+            "input_tokens": 1420,
+            "output_tokens": 49,
+            "total_tokens": 1469,
+            "cached_input_tokens": 0,
+            "cache_write_input_tokens": 1417
+          },
+          "total": {
+            "input_tokens": 11257,
+            "output_tokens": 665,
+            "total_tokens": 11922,
+            "cached_input_tokens": 8147,
+            "cache_write_input_tokens": 3101
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "agent_api",
+          "has_prior_outbound_message": true,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "other_actionable",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "resolver_consultas_informativas",
+          "routeKind": "contextual_clarification",
+          "providerSearchMode": "none",
+          "presentationScope": "clarification",
+          "focusNeedCategory": null,
+          "needsToSearch": [],
+          "needsToPresent": [],
+          "stopReason": null,
+          "persistReason": "contextual_clarification",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "contextual_clarification",
+        "presentation_scope": "clarification",
+        "session_focus_used": false,
+        "session_focus_key_present": false,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.98,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": null,
+          "vendor_category": null,
+          "vendor_categories": [],
+          "active_need_category": null,
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 0,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Planea un cumpleaños en Lima para 25 personas y necesita música. Se le recomendó a Dj Bufi; quiere guardar el plan y continuar después.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "recomendar",
+          "lifecycle_state": "active",
+          "event_type": "cumpleanos",
+          "vendor_category": "Música",
+          "active_need_category": "Música",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "21-50",
+          "provider_need_categories": [
+            "Música"
+          ],
+          "provider_need_count": 1,
+          "provider_need_statuses": [
+            {
+              "category": "Música",
+              "status": "shortlisted",
+              "has_recommendations": true,
+              "selected_provider_ids": []
+            }
+          ],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "Planea un cumpleaños en Lima para 25 personas y necesita música.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "available",
+          "context_source": "agent_api",
+          "retrieved_message_count": 2,
+          "recent_message_count": 2,
+          "excluded_current_message_count": 0,
+          "directions": [
+            "inbound",
+            "outbound"
+          ],
+          "sources": [
+            null,
+            null
+          ],
+          "entry_source": null
+        },
+        "continuity_state": "continuing",
+        "welcome_allowed": false,
+        "history_status": "available",
+        "has_prior_outbound": true,
+        "requested_operation": null,
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 7553,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M61BNJHQE174A84VP51Q4QH8",
+        "conversation_hash": "c3c7ea2a0d374fbee5cbbf2b60b57a8d0cb0af74c75487b48a7acb717fd4879c",
+        "runtime_latency_ms": 10224,
+        "extraction_latency_ms": 5419,
+        "compose_latency_ms": 0,
+        "tools_called_count": 3,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 5,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 11922,
+        "cached_input_tokens": 8147,
+        "cache_hit_rate": 0.7237274584702852,
+        "extraction_to_compose_ratio": null,
+        "captured_at": "2026-10-28T13:37:21.983Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "recomendar",
+        "lifecycle_state": "active",
+        "event_type": "cumpleanos",
+        "vendor_category": "Música",
+        "active_need_category": "Música",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": "21-50",
+        "provider_needs": [
+          {
+            "category": "Música",
+            "status": "shortlisted",
+            "recommended_provider_ids": [
+              187
+            ],
+            "selected_provider_ids": []
+          }
+        ],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": true
+        }
+      },
+      "latencyMs": 10701
+    },
+    {
+      "turnIndex": 2,
+      "input": {
+        "text": "Retomemos el plan del cumpleaños.",
+        "channel": "whatsapp",
+        "sessionId": "live_behavior.july_breadth_birthday_06_phonefixed",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "master-provider-live-public"
+        }
+      },
+      "outputText": "Retomamos tu cumpleaños en Lima para 25 personas. Para la música, sigue como recomendación Dj Bufi: ofrece DJ, sonido, iluminación y musicalización personalizada.\n\n1. Dj Bufi\n Su servicio de DJ, sonido e iluminación puede cubrir varios aspectos de la celebración, y ofrece musicalización personalizada.\n Ubicación: Lima, Perú.\n Precio: $$$.\n Promo: 20% off.\n Nota: Su nivel de precio figura como alto; el descuento del 20% es exclusivo para clientes de Sin Envolturas y aplica en Lima. Consulta con el proveedor los términos y el precio final.\n\n Ficha: https://sinenvolturas.com/proveedores/dj-bufi",
+      "deliveredText": "Retomamos tu cumpleaños en Lima para 25 personas. Para la música, sigue como recomendación Dj Bufi: ofrece DJ, sonido, iluminación y musicalización personalizada.\n\n1. Dj Bufi\n Su servicio de DJ, sonido e iluminación puede cubrir varios aspectos de la celebración, y ofrece musicalización personalizada.\n Ubicación: Lima, Perú.\n Precio: $$$.\n Promo: 20% off.\n Nota: Su nivel de precio figura como alto; el descuento del 20% es exclusivo para clientes de Sin Envolturas y aplica en Lima. Consulta con el proveedor los términos y el precio final.\n\n Ficha: https://sinenvolturas.com/proveedores/dj-bufi",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "8372cff65422d808d1abd74e1da9c18b73514eb372df337fde69b19e71df6bbb",
+        "deliveredSha256": "8372cff65422d808d1abd74e1da9c18b73514eb372df337fde69b19e71df6bbb",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "recomendar",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 7,
+          "attempts": 1
+        },
+        "trace_id": "01M61BNYCDPBV80B4T8D937KBN",
+        "conversation_id": null,
+        "plan_id": "01M61BMPH3T8YD7MTV91XZTCZ7",
+        "previous_node": "recomendar",
+        "next_node": "recomendar",
+        "node_path": [
+          "recomendar",
+          "existe_plan_guardado",
+          "entrevista",
+          "recomendar"
+        ],
+        "intent": "retomar_plan",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "9579d9dcb7c9",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/domain_scope.txt",
+          "shared/flow_discipline.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "get_provider_detail",
+          "get_related_providers",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "get_provider_detail"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "get_provider_detail",
+            "input": "{\"projection_version\":1,\"provider_id\":187}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "classify_reply_delivery",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "get_provider_detail",
+            "output": "{\"projection_version\":1,\"result_kind\":\"detail\",\"provider_id\":187,\"found\":true}"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 187,
+            "title": "Dj Bufi",
+            "slug": "dj-bufi",
+            "category": "Música",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Dj Bufi encaja con Música según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "20% off",
+            "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+            "serviceHighlights": [
+              "Asesoría personalizada en todo el proceso del evento",
+              "DJ profesional para todo tipo de eventos.",
+              "Sonido profesional para ceremonias, recepciones y fiestas.",
+              "Iluminación ambiental y decorativa.",
+              "Luces para pista de baile y efectos especiales.",
+              "Musicalización personalizada según el estilo del evento."
+            ],
+            "termsHighlights": [
+              "Valido solo para Lima. Consultar términos y condiciones."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+              "Servicios que ofrece: Asesoría personalizada en todo el proceso del evento",
+              "Servicios que ofrece: DJ profesional para todo tipo de eventos.",
+              "Servicios que ofrece: Sonido profesional para ceremonias, recepciones y fiestas.",
+              "Servicios que ofrece: Iluminación ambiental y decorativa.",
+              "Servicios que ofrece: Luces para pista de baile y efectos especiales.",
+              "Servicios que ofrece: Musicalización personalizada según el estilo del evento.",
+              "Términos  y condiciones: Valido solo para Lima. Consultar términos y condiciones.",
+              "Términos y condiciones: Valido solo para Lima. Consultar términos y condiciones."
+            ],
+            "eventTypes": [],
+            "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+            "fitScore": 89,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.8379370787292983,
+            "retrievalSource": "hybrid"
+          }
+        ],
+        "search_strategy": "existing_plan_shortlist",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 187,
+            "category": "Música",
+            "location": "Lima, Perú",
+            "retrieval_source": "hybrid",
+            "retrieval_score": 0.8379370787292983,
+            "fit_score": 89
+          }
+        ],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_0049670278d5d780006ae1fa93f07087d18ecf03bc989056dc",
+            "requestId": "req_db2beb719b00470cb3d34b654015eaad",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 1579,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 8502,
+                "instructionBytes": 0,
+                "inputBytes": 6675,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_0a19618af222c3be006ae1fa95e0dc87d1bb6f0db603dce2ff",
+            "requestId": "req_c5407c332a8a4586a6d566e1aa3e7112",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 10050,
+              "inputBytes": 5636,
+              "toolCount": 0,
+              "schemaPropertyCount": 36,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 37604,
+                "instructionBytes": 10163,
+                "inputBytes": 6066,
+                "toolBytes": 2,
+                "outputSchemaBytes": 21111,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_0dc61c60b60cbabb006ae1fa9ba3d087d1ad7588fc5af4bc4b",
+            "requestId": "req_378c77dadfd445b1a4209463be22ca13",
+            "model": "gpt-6-luna",
+            "attemptCount": 2,
+            "requestMetrics": {
+              "instructionBytes": 2588,
+              "inputBytes": 10228,
+              "toolCount": 3,
+              "schemaPropertyCount": 3,
+              "transport": {
+                "observedRequestCount": 2,
+                "totalPayloadBytes": 34123,
+                "instructionBytes": 5248,
+                "inputBytes": 24949,
+                "toolBytes": 2054,
+                "outputSchemaBytes": 1334,
+                "requests": []
+              }
+            }
+          },
+          "router": null
+        },
+        "recommendation_funnel": {
+          "available_candidates": 1,
+          "context_candidates": 1,
+          "context_candidate_ids": [
+            187
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "recomendar",
+        "timing_ms": {
+          "total": 10323,
+          "load_plan": 10,
+          "response_classification": 1898,
+          "prepare_working_plan": 1,
+          "extraction": 4469,
+          "apply_extraction": 3,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 3910,
+          "save_plan": 25,
+          "router": 0,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1722,
+            "output_tokens": 104,
+            "total_tokens": 1826,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 377
+          },
+          "router": null,
+          "extraction": {
+            "input_tokens": 8197,
+            "output_tokens": 385,
+            "total_tokens": 8582,
+            "cached_input_tokens": 6805,
+            "cache_write_input_tokens": 1389
+          },
+          "reply": {
+            "input_tokens": 7190,
+            "output_tokens": 161,
+            "total_tokens": 7351,
+            "cached_input_tokens": 3342,
+            "cache_write_input_tokens": 3842
+          },
+          "total": {
+            "input_tokens": 17109,
+            "output_tokens": 650,
+            "total_tokens": 17759,
+            "cached_input_tokens": 11489,
+            "cache_write_input_tokens": 5608
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "agent_api",
+          "has_prior_outbound_message": true,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "not_applicable",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "recomendar",
+          "routeKind": "present_existing_shortlist",
+          "providerSearchMode": "existing_shortlist",
+          "presentationScope": "single_need",
+          "focusNeedCategory": "Música",
+          "needsToSearch": [],
+          "needsToPresent": [
+            "Música"
+          ],
+          "stopReason": null,
+          "persistReason": "recomendar",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "present_existing_shortlist",
+        "presentation_scope": "single_need",
+        "session_focus_used": true,
+        "session_focus_key_present": true,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.99,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": "cumpleanos",
+          "vendor_category": "Música",
+          "vendor_categories": [
+            "Música"
+          ],
+          "active_need_category": "Música",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "21-50",
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 0,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Retoma el plan guardado de cumpleaños en Lima para 25 personas, con música y Dj Bufi recomendado.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "recomendar",
+          "lifecycle_state": "active",
+          "event_type": "cumpleanos",
+          "vendor_category": "Música",
+          "active_need_category": "Música",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "21-50",
+          "provider_need_categories": [
+            "Música"
+          ],
+          "provider_need_count": 1,
+          "provider_need_statuses": [
+            {
+              "category": "Música",
+              "status": "shortlisted",
+              "has_recommendations": true,
+              "selected_provider_ids": []
+            }
+          ],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "Retoma el plan guardado de cumpleaños en Lima para 25 personas, con música y Dj Bufi recomendado.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "available",
+          "context_source": "agent_api",
+          "retrieved_message_count": 4,
+          "recent_message_count": 4,
+          "excluded_current_message_count": 0,
+          "directions": [
+            "inbound",
+            "outbound",
+            "inbound",
+            "outbound"
+          ],
+          "sources": [
+            null,
+            null,
+            null,
+            null
+          ],
+          "entry_source": null
+        },
+        "continuity_state": "continuing",
+        "welcome_allowed": false,
+        "history_status": "available",
+        "has_prior_outbound": true,
+        "requested_operation": null,
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 10612,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M61BNYCDPBV80B4T8D937KBN",
+        "conversation_hash": "c3c7ea2a0d374fbee5cbbf2b60b57a8d0cb0af74c75487b48a7acb717fd4879c",
+        "runtime_latency_ms": 10323,
+        "extraction_latency_ms": 4469,
+        "compose_latency_ms": 3910,
+        "tools_called_count": 4,
+        "provider_results_count": 1,
+        "recommendation_context_candidates": 1,
+        "recommendation_presentation_limit": 6,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 17759,
+        "cached_input_tokens": 11489,
+        "cache_hit_rate": 0.6715179145478988,
+        "extraction_to_compose_ratio": 1.1429667519181586,
+        "captured_at": "2026-10-28T13:37:34.100Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "recomendar",
+        "lifecycle_state": "active",
+        "event_type": "cumpleanos",
+        "vendor_category": "Música",
+        "active_need_category": "Música",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": "21-50",
+        "provider_needs": [
+          {
+            "category": "Música",
+            "status": "shortlisted",
+            "recommended_provider_ids": [
+              187
+            ],
+            "selected_provider_ids": []
+          }
+        ],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": true
+        }
+      },
+      "latencyMs": 10667
+    }
+  ]
+}

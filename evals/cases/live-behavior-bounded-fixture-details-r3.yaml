@@ -1,0 +1,127 @@
+id: live_behavior.bounded_fixture_details_r3
+description: Bounded fixture provider identity, category, minimum price and
+  location in the delivered response.
+inputs:
+  - text: Para Mesa Accesible, ¿cuál es su categoría, el precio mínimo registrado y
+      la ciudad?
+    sessionId: live_behavior.bounded_fixture_details_r3
+    backendFixture:
+      scenario: provider-decimal-budget
+expectations:
+  - id: provider-identity-and-city
+    type: text_contains
+    allOf:
+      - Mesa Accesible
+      - Lima
+    severity: hard
+  - id: recorded-minimum-price-delivered
+    type: text_contains
+    regex:
+      - \b100(?:[.,]00)?\b
+    severity: hard
+  - id: detail-question-makes-no-selection
+    type: plan_field_equals
+    path: selected_provider_ids
+    expected: []
+    severity: hard
+  - id: read-only-provider-conversation-has-no-submission
+    type: tool_usage
+    mustNotCall:
+      - create_quote_request
+      - finish_plan
+      - request_human_takeover
+      - guest_rsvp
+      - request_user_login_code
+      - verify_user_login_code
+    severity: hard
+  - id: fixture-category-mentioned
+    type: text_contains
+    allOf:
+      - Catering
+    severity: hard
+  - id: other-provider-price-not-mentioned
+    type: text_not_contains
+    phrases:
+      - "8000"
+      - 8,000
+    severity: hard
+notes:
+  - Synthetic provider fixture is the authoritative test world; literal-presence
+    checks cannot establish correct association, negation, or comprehensive
+    prose faithfulness.
+template: template.base-live
+suite: live_behavior_regression
+version: 1
+tags:
+  - live
+  - behavior
+  - provider
+  - thesis-master
+targetModes:
+  - live_lambda
+backendFixture:
+  scenario: provider-decimal-budget
+seedPlan:
+  current_node: recomendar
+  event_type: cumpleanos
+  location: Lima
+  guest_range: 1-20
+  active_need_category: Catering
+  vendor_category: Catering
+  provider_needs:
+    - category: Catering
+      status: shortlisted
+      preferences: []
+      hard_constraints: []
+      missing_fields: []
+      recommended_provider_ids:
+        - 9101
+        - 9102
+      recommended_providers: &a1
+        - id: 9101
+          title: Mesa Accesible
+          slug: mesa-accesible-9101
+          category: Catering
+          location: Lima
+          priceLevel: low
+          minPrice: "100.00"
+          maxPrice: "400.00"
+          detailUrl: https://fixture.example/catering/mesa-accesible-9101
+          serviceHighlights:
+            - Catering para cumpleaños y celebraciones sociales de 20 invitados
+          termsHighlights:
+            - Sujeto a disponibilidad
+          eventTypes:
+            - others
+          description: Catering para cumpleaños y celebraciones sociales.
+        - id: 9102
+          title: Mesa Premium
+          slug: mesa-premium-9102
+          category: Catering
+          location: Lima
+          priceLevel: high
+          minPrice: "8000.00"
+          maxPrice: "12000.00"
+          detailUrl: https://fixture.example/catering/mesa-premium-9102
+          serviceHighlights:
+            - Catering para cumpleaños y celebraciones sociales de 20 invitados
+          termsHighlights:
+            - Sujeto a disponibilidad
+          eventTypes:
+            - others
+          description: Catering para cumpleaños y celebraciones sociales.
+      selected_provider_ids: &a2 []
+      selected_provider_hints: []
+  recommended_provider_ids:
+    - 9101
+    - 9102
+  recommended_providers: *a1
+  selected_provider_ids: *a2
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 12000
+  estimatedCompletionTokensPerTurn: 600

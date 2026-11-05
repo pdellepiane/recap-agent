@@ -810,6 +810,15 @@ const fixtureEffectCountExpectationSchema = z.object({
   severity: z.enum(['hard', 'soft']).default('hard'),
 });
 
+const providerDisplayedSelectionSchema = z.object({
+  id: z.string().optional(),
+  type: z.literal('provider_displayed_selection'),
+  sourceTurnIndex: z.number().int().nonnegative(),
+  turnIndex: z.number().int().nonnegative(),
+  ordinal: z.number().int().positive(),
+  severity: z.enum(['hard', 'soft']).default('hard'),
+}).refine(value => value.sourceTurnIndex < value.turnIndex, { message: 'Selection must follow the displayed options.' });
+
 export const expectationSchema = z.discriminatedUnion('type', [
   nodeTransitionExpectationSchema,
   nodePathContainsExpectationSchema,
@@ -817,6 +826,7 @@ export const expectationSchema = z.discriminatedUnion('type', [
   planFieldSubsetExpectationSchema,
   providerResultsContainsExpectationSchema,
   providerResultCountExpectationSchema,
+  providerDisplayedSelectionSchema,
   traceFieldEqualsExpectationSchema,
   traceFieldSubsetExpectationSchema,
   traceFieldNumberExpectationSchema,

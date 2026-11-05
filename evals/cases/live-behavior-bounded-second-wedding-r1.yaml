@@ -1,0 +1,99 @@
+id: live_behavior.bounded_second_wedding_r1
+version: 1
+description: "Bounded selection: July breadth study.wedding.05: Select the first
+  wedding photography option."
+inputs:
+  - text: Busco fotógrafos para mi boda en Lima para 90 invitados.
+    sessionId: live_behavior.bounded_second_wedding_r1
+    channel: whatsapp
+    backendFixture:
+      scenario: master-provider-live-public
+    contactPhone: "+51900007000"
+  - text: Elijo la segunda opción.
+    sessionId: live_behavior.bounded_second_wedding_r1
+    channel: whatsapp
+    backendFixture:
+      scenario: master-provider-live-public
+    contactPhone: "+51900007000"
+expectations:
+  - id: event-type-retained
+    type: plan_field_equals
+    path: event_type
+    expected: boda
+    turnIndex: 1
+    severity: hard
+  - id: answer-delivered
+    type: text_contains
+    regex:
+      - "[\\s\\S]+"
+    turnIndex: 1
+    severity: hard
+  - id: no-provider-quote-without-explicit-date
+    type: fixture_effect_count
+    operation: provider.quote.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: no-unrequested-rsvp
+    type: fixture_effect_count
+    operation: rsvp.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: no-unrequested-handoff
+    type: fixture_effect_count
+    operation: handoff.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: requested-needs-retained
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: Fotografía y video
+    turnIndex: 1
+    severity: hard
+  - id: provider-selection-recorded
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: Fotografía y video
+        status: selected
+    turnIndex: 1
+    severity: hard
+  - id: two-options-available
+    type: provider_result_count
+    min: 2
+    turnIndex: 0
+    severity: hard
+  - id: second-displayed-provider-selected
+    type: provider_displayed_selection
+    sourceTurnIndex: 0
+    turnIndex: 1
+    ordinal: 2
+    severity: hard
+notes:
+  - New preregistered bounded selection scenario; no semantic judge. Public
+    provider reads are live only where the fixture enables them; all SE effects
+    remain mocked.
+  - Source cases and all earlier study results remain unchanged.
+suite: live_behavior_regression
+tags:
+  - live
+  - behavior
+  - july-breadth
+  - wedding
+  - selection
+targetModes:
+  - live_lambda
+backendFixture:
+  scenario: master-provider-live-public
+scorers:
+  - id: objective-obligations
+    type: expectation_pass_rate
+    weight: 1
+budget:
+  maxTurns: 2

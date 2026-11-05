@@ -1,0 +1,83 @@
+id: live_behavior.july_breadth_baby_shower_09
+suite: live_behavior_regression
+version: 1
+description: "July breadth study.baby_shower.09: Overconstrained baby shower venue."
+tags:
+  - live
+  - behavior
+  - july-breadth
+  - baby_shower
+  - no_results
+targetModes:
+  - live_lambda
+backendFixture:
+  scenario: master-provider-empty
+inputs:
+  - text: Busco un local en una isla privada dentro de Lima para baby shower, 20
+      personas y presupuesto muy bajo.
+    channel: whatsapp
+    sessionId: live_behavior.july_breadth_baby_shower_09
+    backendFixture:
+      scenario: master-provider-empty
+expectations:
+  - id: event-type-retained
+    type: plan_field_equals
+    path: event_type
+    expected: baby_shower
+    turnIndex: 0
+    severity: hard
+  - id: answer-delivered
+    type: text_contains
+    regex:
+      - "[\\s\\S]+"
+    turnIndex: 0
+    severity: hard
+  - id: no-provider-quote-without-explicit-date
+    type: fixture_effect_count
+    operation: provider.quote.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: no-unrequested-rsvp
+    type: fixture_effect_count
+    operation: rsvp.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: no-unrequested-handoff
+    type: fixture_effect_count
+    operation: handoff.write
+    expectedAttempts: 0
+    expectedSuccesses: 0
+    expectedReplays: 0
+    severity: hard
+  - id: requested-needs-retained
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: Locales
+    turnIndex: 0
+    severity: hard
+  - id: empty-world-has-no-shortlist
+    type: plan_field_equals
+    path: recommended_provider_ids
+    expected: []
+    turnIndex: 0
+    severity: hard
+scorers:
+  - id: objective-obligations
+    type: expectation_pass_rate
+    weight: 1
+budget:
+  maxTurns: 1
+notes:
+  - Derived from study.baby_shower.09, route no_results; prompts are preserved,
+    assertions use current objective contracts, so results are not directly
+    comparable to July.
+  - Controlled empty provider world; this does not establish that the real
+    catalog has no match.
+  - For selection, the selected state is checked but correctness of the first
+    displayed provider identity is not independently verified. Other unscored
+    semantic outcomes must not be inferred.

@@ -1,0 +1,535 @@
+{
+  "runId": "eval-2026-10-27T22-19-42-463Z-78589b85",
+  "caseId": "live_behavior.master_faq_support_hours.master_r1",
+  "configLabel": "live_lambda",
+  "lane": "parallel",
+  "phase": "snapshot",
+  "status": "passed",
+  "executionUncertain": false,
+  "writtenAt": "2026-10-27T22:20:02.659Z",
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "¿Cuáles son los dos horarios diarios de atención al cliente? Indícame las horas de inicio y fin de cada bloque.",
+        "channel": "whatsapp",
+        "sessionId": "live_behavior.master_faq_support_hours",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "master-faq-public-empty"
+        }
+      },
+      "outputText": "Atendemos de lunes a sábado en dos bloques: de 9:30 a. m. a 1:30 p. m. y de 3:30 p. m. a 7:30 p. m.\n\nFuente: https://sinenvolturas.tawk.help/article/horarios-y-canales-de-atenci%C3%B3n",
+      "deliveredText": "Atendemos de lunes a sábado en dos bloques: de 9:30 a. m. a 1:30 p. m. y de 3:30 p. m. a 7:30 p. m.\n\nFuente: https://sinenvolturas.tawk.help/article/horarios-y-canales-de-atenci%C3%B3n",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "24e7f4d714dc5e5b3f4839885a19038079d99f7b3d65006b6ca59238def9649c",
+        "deliveredSha256": "24e7f4d714dc5e5b3f4839885a19038079d99f7b3d65006b6ca59238def9649c",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "resolver_consultas_informativas",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 41,
+          "attempts": 1
+        },
+        "trace_id": "01M5ZQ5TA1NCCYN9KCST6QGF6Z",
+        "conversation_id": null,
+        "plan_id": "01M5ZQ5G548GVX8H9152P2J4ND",
+        "previous_node": "contacto_inicial",
+        "next_node": "resolver_consultas_informativas",
+        "node_path": [
+          "contacto_inicial",
+          "resolver_consultas_informativas"
+        ],
+        "intent": null,
+        "missing_fields": [],
+        "search_ready": false,
+        "prompt_bundle_id": "86b5eba7a40c",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "nodes/resolver_consultas_informativas/payment_disclosure.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "knowledge_base_search"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "knowledge_base_search",
+          "support_reply_sidecar"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "input": "[omitted]"
+          },
+          {
+            "tool": "knowledge_base_search",
+            "input": "{\"projection_version\":1,\"status\":null,\"kind\":null,\"request_present\":true}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "get_agent_conversation_messages",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "log_agent_conversation_message",
+            "output": "[omitted]"
+          },
+          {
+            "tool": "knowledge_base_search",
+            "output": "{\"projection_version\":1,\"status\":\"completed\",\"kind\":\"faq\",\"result_count\":6}"
+          },
+          {
+            "tool": "support_reply_sidecar",
+            "output": "[omitted]"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [
+          {
+            "requestId": "information-1",
+            "kind": "faq",
+            "status": "completed",
+            "source": "knowledge_base",
+            "outcomeCode": "completed_with_results",
+            "retryable": null,
+            "queryHash": "94fe7d21d9ec872d17e1def33e254d0dd7d2849e6c65b81c4b081e9e1d65807c",
+            "evidence": [
+              {
+                "fileId": "file-SAHhffRsx7nUtUDVvyh1es",
+                "filename": "horarios-y-canales-de-atención.md",
+                "score": 0.9160922507066394,
+                "contentHash": "8110af1f6884fb8ef15ef718eb3e168214caae19c8a844d096757806f8edff1c"
+              },
+              {
+                "fileId": "file-J61oLoYHGzTr6TRUERFf5b",
+                "filename": "validación-de-regalos-por-transferencia-y-yape.md",
+                "score": 0.5510312546828046,
+                "contentHash": "5210520bf29f9d18124d90c6c842a16f69f17a77f14de886a8c102ce2b3e4e76"
+              },
+              {
+                "fileId": "file-1wmaVWTL1PcW4TC7HvZUyk",
+                "filename": "¿cuándo-llega-mi-regalo.md",
+                "score": 0.4953689423073498,
+                "contentHash": "ba37a0deb58b44c68c0b21d6a3bf773be013f5aceb290eee33e1f0542ab33d38"
+              },
+              {
+                "fileId": "file-CeZiF8CJBz3bEdUGpqpt4D",
+                "filename": "¿qué-debo-hacer-si-tengo-algún-reclamo-de-mi-compra-en-el-shop.md",
+                "score": 0.18787641575606492,
+                "contentHash": "67540e107e38022d83aa5dd4536974c7c0d459bc504ed0d55eb95faf28290a1c"
+              },
+              {
+                "fileId": "file-MpgXFXtxpBeVvZBKSGyCBK",
+                "filename": "medios-de-pago.md",
+                "score": 0.12087956849377653,
+                "contentHash": "c259f0e6591be47dcb677411e3a60c8b0d359656c3a7d30c22522706f27c2aab"
+              },
+              {
+                "fileId": "file-WriP1Dp3KD7cvbEj9PXE6B",
+                "filename": "no-he-recibido-confirmación.md",
+                "score": 0.07403804565648027,
+                "contentHash": "e01d606e77108b3379973dee2dff2714ee37ff893d5cb10e03c4855f27613346"
+              }
+            ],
+            "resultCount": 6,
+            "durationMs": 2465,
+            "openAiTransport": {
+              "observedRequestCount": 1,
+              "totalPayloadBytes": 394,
+              "instructionBytes": 0,
+              "inputBytes": 0,
+              "toolBytes": 0,
+              "outputSchemaBytes": 0,
+              "requests": [
+                {
+                  "sequence": 0,
+                  "stage": "knowledge_retrieval",
+                  "requestId": "req_ca689af112e44ac79f54a312c3a83afd",
+                  "responseId": null,
+                  "statusCode": 200,
+                  "succeeded": true,
+                  "totalPayloadBytes": 394,
+                  "instructionBytes": 0,
+                  "inputBytes": 0,
+                  "toolBytes": 0,
+                  "outputSchemaBytes": 0,
+                  "requestBodySha256": "b3cccea0cd0a5af875669fb295bda34b40b9ecfe8fcb12009c0711e863be6faf"
+                }
+              ]
+            }
+          }
+        ],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": null,
+          "extraction": {
+            "responseId": "resp_04407c68d5abb852006ae1238690a887d2b856897123828801",
+            "requestId": "req_c8faea0209034521ad7e9038c0d8ffaf",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 6855,
+              "inputBytes": 3172,
+              "toolCount": 0,
+              "schemaPropertyCount": 30,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 20859,
+                "instructionBytes": 6932,
+                "inputBytes": 3456,
+                "toolBytes": 2,
+                "outputSchemaBytes": 10207,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_0661c84deddbfffe006ae1238cf31487d2a70d7b8d91e6410e",
+            "requestId": "req_f53960fad157486bb20ca60b1814ec5b",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 993,
+              "inputBytes": 10885,
+              "toolCount": 0,
+              "schemaPropertyCount": 7,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 15754,
+                "instructionBytes": 1000,
+                "inputBytes": 11740,
+                "toolBytes": 2,
+                "outputSchemaBytes": 2722,
+                "requests": []
+              }
+            }
+          },
+          "router": {
+            "responseId": null,
+            "requestId": "req_3c40b038110143dbac24649a878ea563",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 3321,
+              "inputBytes": 2575,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 6857,
+                "instructionBytes": 3321,
+                "inputBytes": 2575,
+                "toolBytes": 0,
+                "outputSchemaBytes": 0,
+                "requests": []
+              }
+            }
+          }
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 5
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "resolver_consultas_informativas",
+        "timing_ms": {
+          "total": 10423,
+          "load_plan": 27,
+          "response_classification": 41,
+          "prepare_working_plan": 0,
+          "extraction": 4186,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 2933,
+          "save_plan": 16,
+          "router": 702,
+          "information_execution": 2468,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": null,
+          "router": {
+            "input_tokens": 1482,
+            "output_tokens": 0,
+            "total_tokens": 1482
+          },
+          "extraction": {
+            "input_tokens": 4408,
+            "output_tokens": 345,
+            "total_tokens": 4753,
+            "cached_input_tokens": 0,
+            "cache_write_input_tokens": 4405
+          },
+          "reply": {
+            "input_tokens": 3603,
+            "output_tokens": 95,
+            "total_tokens": 3698,
+            "cached_input_tokens": 0,
+            "cache_write_input_tokens": 3600
+          },
+          "total": {
+            "input_tokens": 9493,
+            "output_tokens": 440,
+            "total_tokens": 9933,
+            "cached_input_tokens": 0,
+            "cache_write_input_tokens": 8005
+          }
+        },
+        "turn_decision": {
+          "nextNode": "resolver_consultas_informativas",
+          "routeKind": "information_batch",
+          "providerSearchMode": "none",
+          "presentationScope": "information_batch",
+          "focusNeedCategory": null,
+          "needsToSearch": [],
+          "needsToPresent": [],
+          "stopReason": null,
+          "persistReason": "information_batch",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "information_batch",
+        "presentation_scope": "information_batch",
+        "session_focus_used": false,
+        "session_focus_key_present": false,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.99,
+          "information_request_count": 1,
+          "information_request_kinds": [
+            "faq"
+          ],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": null,
+          "vendor_category": null,
+          "vendor_categories": [],
+          "active_need_category": null,
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "selected_provider_hints": [],
+          "preferences": [],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 0,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Consulta los horarios diarios de atención al cliente y pide la hora de inicio y fin de ambos bloques.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "resolver_consultas_informativas",
+          "lifecycle_state": "active",
+          "event_type": null,
+          "vendor_category": null,
+          "active_need_category": null,
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "provider_need_categories": [],
+          "provider_need_count": 0,
+          "provider_need_statuses": [],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "empty",
+          "context_source": "agent_api",
+          "retrieved_message_count": 0,
+          "recent_message_count": 0,
+          "excluded_current_message_count": 0,
+          "directions": [],
+          "sources": [],
+          "entry_source": null
+        },
+        "continuity_state": "new",
+        "welcome_allowed": true,
+        "history_status": "empty",
+        "has_prior_outbound": false,
+        "requested_operation": "faq.read",
+        "capability_decision": null,
+        "capability_reason": null,
+        "router_decision": {
+          "route": "information_flow",
+          "route_probability": 0.87,
+          "route_probabilities": [
+            {
+              "value": "answer_with_records",
+              "probability": 0.1
+            },
+            {
+              "value": "information_flow",
+              "probability": 0.87
+            },
+            {
+              "value": "ask_clarification",
+              "probability": 0.01
+            },
+            {
+              "value": "offer_human",
+              "probability": 0
+            },
+            {
+              "value": "escalate_human",
+              "probability": 0.01
+            },
+            {
+              "value": "rsvp_flow",
+              "probability": 0
+            },
+            {
+              "value": "planning_flow",
+              "probability": 0
+            },
+            {
+              "value": "suppress_ack",
+              "probability": 0.01
+            }
+          ],
+          "same_open_request": false,
+          "same_open_request_probability": 0,
+          "request_settled": true,
+          "request_settled_probability": 0.64
+        },
+        "open_request_state": "answered",
+        "truncation": {
+          "truncated": false,
+          "droppedCandidateDetails": 0,
+          "droppedCalls": 0,
+          "diagnosticBytes": 9516,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M5ZQ5TA1NCCYN9KCST6QGF6Z",
+        "conversation_hash": "fb91423df0418a852bc3475ffeb417b7185a2608cd6f36836efc7d324361db8e",
+        "runtime_latency_ms": 10423,
+        "extraction_latency_ms": 4186,
+        "compose_latency_ms": 2933,
+        "tools_called_count": 4,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 5,
+        "response_classifier_action": null,
+        "response_classifier_would_suppress": null,
+        "conversation_health_status": null,
+        "conversation_health_reason": null,
+        "human_help_response": null,
+        "total_tokens": 9933,
+        "cached_input_tokens": 0,
+        "cache_hit_rate": 0,
+        "extraction_to_compose_ratio": 1.4272076372315037,
+        "captured_at": "2026-10-27T22:19:59.697Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "resolver_consultas_informativas",
+        "lifecycle_state": "active",
+        "event_type": null,
+        "vendor_category": null,
+        "active_need_category": null,
+        "location": null,
+        "budget_signal": null,
+        "guest_range": null,
+        "provider_needs": [],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": true
+        }
+      },
+      "latencyMs": 14806
+    }
+  ]
+}

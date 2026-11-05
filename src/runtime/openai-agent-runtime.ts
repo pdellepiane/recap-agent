@@ -1171,14 +1171,14 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     // planning-only fields; unsupported operations stay expressible through
     // the capabilityBoundary field.
     const projection = this.buildExtractionProjection(request.plan, policy, features, request.scope);
-    const runExtraction = async (): Promise<ExtractResult> => {
+    const runExtraction = async (activeProjection: ExtractionProjection): Promise<ExtractResult> => {
       // G1/G2 single construction boundary: the compiler-selected modules
       // loaded via PromptLoader are the instructions actually sent.
       // Image-linkage guidance stays conditional so imageless turns stay
       // byte-identical. Auth extraction-decision guidance travels through
       // the extraction_information module (auth_control.txt); the reply
       // stage carries only its own scoped limitation wording.
-      const spec = await this.buildExtractionRequestSpec(request, policy, projection);
+      const spec = await this.buildExtractionRequestSpec(request, policy, activeProjection);
       const bundle = { id: spec.bundleId, instructions: spec.instructions };
       const outputSchema = spec.outputSchema;
       const extractor = new Agent({
@@ -1249,7 +1249,62 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       }
     };
 
-    return runExtraction();
+    const initial = await runExtraction(projection);
+    const initialExtraction = initial.extraction;
+    if (
+      !projection.profile.providerPlanning &&
+      features.providerPlanning &&
+      initialExtraction.actionIntent === 'buscar_proveedores' &&
+      initialExtraction.requestedOperation === 'provider.search' &&
+      initialExtraction.informationRequests.length === 0 &&
+      initialExtraction.supportAct == null &&
+      initialExtraction.ambiguity?.status !== 'ambiguous'
+    ) {
+      const pivot = this.buildExtractionProjection(request.plan, policy, features, request.scope, true);
+      if (pivot.profile.providerPlanning) {
+        const detailed = await runExtraction(pivot);
+        return this.combineProviderPivotExtraction(initial, detailed);
+      }
+    }
+    return initial;
+  }
+
+  private combineProviderPivotExtraction(initial: ExtractResult, detailed: ExtractResult): ExtractResult {
+    const a = initial.tokenUsage;
+    const b = detailed.tokenUsage;
+    const tokenUsage = a && b ? {
+      input_tokens: a.input_tokens + b.input_tokens,
+      output_tokens: a.output_tokens + b.output_tokens,
+      total_tokens: a.total_tokens + b.total_tokens,
+      cached_input_tokens: (a.cached_input_tokens ?? 0) + (b.cached_input_tokens ?? 0),
+      cache_write_input_tokens: (a.cache_write_input_tokens ?? 0) + (b.cache_write_input_tokens ?? 0),
+    } : null;
+    const first = initial.openAiCall;
+    const second = detailed.openAiCall;
+    const firstTransport = first?.requestMetrics.transport;
+    const secondTransport = second?.requestMetrics.transport;
+    const sum = (x: number | null, y: number | null): number | null => x === null || y === null ? null : x + y;
+    const transport = firstTransport && secondTransport ? {
+      observedRequestCount: firstTransport.observedRequestCount + secondTransport.observedRequestCount,
+      totalPayloadBytes: sum(firstTransport.totalPayloadBytes, secondTransport.totalPayloadBytes),
+      instructionBytes: sum(firstTransport.instructionBytes, secondTransport.instructionBytes),
+      inputBytes: sum(firstTransport.inputBytes, secondTransport.inputBytes),
+      toolBytes: sum(firstTransport.toolBytes, secondTransport.toolBytes),
+      outputSchemaBytes: sum(firstTransport.outputSchemaBytes, secondTransport.outputSchemaBytes),
+      requests: [...firstTransport.requests, ...secondTransport.requests].map((item, sequence) => ({ ...item, sequence })),
+    } : undefined;
+    const openAiCall = first && second ? {
+      ...second,
+      attemptCount: first.attemptCount + second.attemptCount,
+      requestMetrics: {
+        instructionBytes: first.requestMetrics.instructionBytes + second.requestMetrics.instructionBytes,
+        inputBytes: first.requestMetrics.inputBytes + second.requestMetrics.inputBytes,
+        toolCount: first.requestMetrics.toolCount + second.requestMetrics.toolCount,
+        schemaPropertyCount: first.requestMetrics.schemaPropertyCount + second.requestMetrics.schemaPropertyCount,
+        ...(transport ? { transport } : {}),
+      },
+    } : null;
+    return { extraction: detailed.extraction, tokenUsage, openAiCall };
   }
 
   /**
@@ -1264,6 +1319,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     policy: DynamicAgentPolicy,
     features: AgentFeatureFlags,
     scope?: ExtractRequest['scope'],
+    providerPivot = false,
   ): ExtractionProjection {
     const featureAllowedIntents = policy.allowedActionIntents.filter(
       (actionIntent) =>
@@ -1287,6 +1343,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       manifest,
       allowedActionIntents: featureAllowedIntents,
       routedInformation: scope === 'support_information',
+      providerPivot,
     });
   }
 
@@ -1334,6 +1391,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
       assumptions: extraction.assumptions ?? [],
       conversationSummary: extraction.conversationSummary ?? '',
       selectedProviderHints: extraction.selectedProviderHints ?? [],
+      selectedProviderOrdinal: extraction.selectedProviderOrdinal ?? null,
       selectedProviderReferences: extraction.selectedProviderReferences ?? [],
       closeAction: repairVoidCloseAction(extraction.closeAction ?? null),
       pauseRequested: extraction.pauseRequested ?? false,
@@ -1869,7 +1927,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
    * category gating.
    */
   private deriveExtractionCompilerContext(plan: PersistedPlan, projection?: ExtractionProjection, hasCustomerRecords = false): ModuleSelectionContext {
-    const established = deriveEstablishedExtractionDomain(plan);
+    const established = projection?.profile.providerPlanning ? null : deriveEstablishedExtractionDomain(plan);
     const capabilities = derivePlanCapabilities(plan);
     return {
       stage: 'extraction',
@@ -1988,7 +2046,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     policy: DynamicAgentPolicy,
     projection?: ExtractionProjection,
   ): InputSection[] {
-    const planSnapshot = this.buildExtractorPlanSnapshot(request.plan, request.currentMessageId ?? null);
+    const planSnapshot = this.buildExtractorPlanSnapshot(request.plan, request.currentMessageId ?? null, projection?.profile.providerPlanning === true);
     // G2: module + category selection is owned by the shared compiler.
     // Established purchase/support/RSVP turns carry no provider category
     // priorities and no planning module; the model reads the current lane
@@ -2225,12 +2283,12 @@ export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runn
     ].join(' ');
   }
 
-  private buildExtractorPlanSnapshot(plan: PersistedPlan, currentMessageId: string | null): Record<string, unknown> {
+  private buildExtractorPlanSnapshot(plan: PersistedPlan, currentMessageId: string | null, providerPlanning = false): Record<string, unknown> {
     // L3 minimum disclosure: established purchase/support/RSVP turns carry
     // only their lane facts plus contact, summary and pending questions.
     // Planning-only fields stay omitted so unrelated planning state cannot
     // leak into (or change the bytes of) an information or RSVP request.
-    const established = deriveEstablishedExtractionDomain(plan);
+    const established = providerPlanning ? null : deriveEstablishedExtractionDomain(plan);
     const actionIntent =
       plan.current_node === 'resolver_consultas_informativas'
         ? null

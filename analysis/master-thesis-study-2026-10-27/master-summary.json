@@ -1,0 +1,167 @@
+{
+  "studyId": "current-master-2026-10-27",
+  "runId": "eval-2026-10-27T05-31-20-436Z-edb558f3",
+  "population": "current-master-only",
+  "scheduled": 90,
+  "observed": 90,
+  "passed": 70,
+  "passRate": 0.7777777777777778,
+  "allThreePassScenarios": 21,
+  "mixedScenarios": 6,
+  "scenarioClusterBootstrap95": {
+    "lower": 0.6555555555555556,
+    "upper": 0.8888888888888888,
+    "resamples": 10000,
+    "seed": 2701026
+  },
+  "missingExecutionIds": [],
+  "strata": [
+    {
+      "stratum": "provider",
+      "scheduled": 30,
+      "observed": 30,
+      "passed": 28
+    },
+    {
+      "stratum": "faq_customer_service",
+      "scheduled": 30,
+      "observed": 30,
+      "passed": 23
+    },
+    {
+      "stratum": "continuity_auth_effects",
+      "scheduled": 30,
+      "observed": 30,
+      "passed": 19
+    }
+  ],
+  "diagnostics": {
+    "observedTurns": 174,
+    "scriptedTurns": 174,
+    "conversationLatencyMs": {
+      "n": 90,
+      "mean": 17337.255555555555,
+      "median": 11924,
+      "p95": 44600,
+      "max": 57901
+    },
+    "turnLatencyMs": {
+      "n": 174,
+      "mean": 8967.545977011494,
+      "median": 9729,
+      "p95": 19577,
+      "max": 22150
+    },
+    "deliveredEmptyTurns": 18,
+    "tokenTelemetryTurns": 174,
+    "reportedTokens": 1461515,
+    "cachedInputTokens": 572496,
+    "modelStages": [
+      {
+        "stage": "classifier",
+        "reportedOperations": 77,
+        "reportedAttempts": 77,
+        "instructionBytes": {
+          "n": 77,
+          "mean": 4896,
+          "median": 4896,
+          "p95": 4896,
+          "max": 4896
+        },
+        "inputBytes": {
+          "n": 77,
+          "mean": 946.922077922078,
+          "median": 781,
+          "p95": 1475,
+          "max": 1571
+        },
+        "observedTransportRequests": 77
+      },
+      {
+        "stage": "extraction",
+        "reportedOperations": 109,
+        "reportedAttempts": 109,
+        "instructionBytes": {
+          "n": 109,
+          "mean": 6844.128440366972,
+          "median": 6855,
+          "p95": 10050,
+          "max": 10050
+        },
+        "inputBytes": {
+          "n": 109,
+          "mean": 3753.321100917431,
+          "median": 3210,
+          "p95": 5539,
+          "max": 7478
+        },
+        "observedTransportRequests": 109
+      },
+      {
+        "stage": "reply",
+        "reportedOperations": 157,
+        "reportedAttempts": 171,
+        "instructionBytes": {
+          "n": 157,
+          "mean": 2681.248407643312,
+          "median": 2588,
+          "p95": 5699,
+          "max": 5699
+        },
+        "inputBytes": {
+          "n": 157,
+          "mean": 8642.24203821656,
+          "median": 8605,
+          "p95": 16226,
+          "max": 17831
+        },
+        "observedTransportRequests": 171
+      },
+      {
+        "stage": "router",
+        "reportedOperations": 138,
+        "reportedAttempts": 138,
+        "instructionBytes": {
+          "n": 138,
+          "mean": 3573.9565217391305,
+          "median": 3321,
+          "p95": 4023,
+          "max": 4108
+        },
+        "inputBytes": {
+          "n": 138,
+          "mean": 2968.217391304348,
+          "median": 2765.5,
+          "p95": 3892,
+          "max": 4121
+        },
+        "observedTransportRequests": 138
+      }
+    ],
+    "traceProviderRecords": 119,
+    "detectedDeliveredProviderLinks": 64,
+    "linksMatchedToSameTurnTraceProvider": 64,
+    "providerReferenceLimit": "URL spans only; unmatched trace links may have other retained seed/history evidence. No comprehensive claim entailment or actual display count."
+  },
+  "cost": {
+    "accounting": "estimated-from-token-usage-and-dated-rates",
+    "harnessEstimate": {
+      "priced": true,
+      "pricingVersion": "2026-09-25",
+      "openaiUsd": 0.141469,
+      "judgeUsd": 0,
+      "lambdaUsd": 0.026041,
+      "totalUsd": 0.16751,
+      "unpricedCases": [],
+      "unpricedModels": []
+    }
+  },
+  "limitations": {
+    "primary": "All hard observable obligations met / all scheduled conversations; report functional failures and invalid measurement separately.",
+    "uncertainty": "10000 fixed-seed stratified scenario-cluster bootstrap; preserve all repetitions and ratio-of-sums denominators.",
+    "claimBoundary": "Designed regression-informed technical benchmark, not customer satisfaction, comprehensive prose faithfulness, or causal optimization improvement.",
+    "historicalPopulation": "July V4 retained separately; no regrading or pooling.",
+    "freeze": "Freeze resolved cases/fixtures/prompt/evaluator/lockfile/KB identities and deployed artifact/config before first paid call. No tuning between repetitions. Later fixes require a separate study.",
+    "providerPopulation": "Eight live public provider read scenarios and two controlled fixture scenarios. All customer/effect mutations mocked. Report live-read and controlled providers separately; do not claim frozen-catalog determinism."
+  }
+}
