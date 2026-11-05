@@ -1,0 +1,184 @@
+{
+  "schemaVersion": 1,
+  "runId": "eval-2026-11-05T15-44-10-684Z-f3fd08a5",
+  "label": "fix-validation-2026-11-05",
+  "dryRun": false,
+  "releaseReadyClaim": false,
+  "referenceStatus": "red",
+  "source": {
+    "commit": "88ed677d5347c9865aacefcf49cf17a1193dd8f0",
+    "gitAvailable": true,
+    "dirty": true,
+    "dirtyPatchDigest": "19fc8001affab52a81fe4f18f2f726fa0d1916fe8900ec7b10e5da6bc3c8161d",
+    "untrackedContentDigest": "1bb8c7c0fdb4a9e6cd8c9f03186cb17f28ed46f2f6fb67f1edce89602fad9573"
+  },
+  "deploymentBefore": {
+    "functionArn": "arn:aws:lambda:us-east-1:684516060775:function:recap-agent-runtime-dev",
+    "codeSha256": "R5GA92FKv2IXrmy7qMo8iII9cV3CQM9h6whYD8HRzpg=",
+    "version": "$LATEST",
+    "lastModified": "2026-11-05T15:43:31.000+0000",
+    "artifactSha256": "479180f7614abf6217ae6cbba8ca3c88823d715dc240cf61eb08580fc1d1ce98",
+    "artifactProvenance": "verified-aws",
+    "checkedAt": "2026-11-05T15:44:11.566Z"
+  },
+  "deploymentAfter": {
+    "functionArn": "arn:aws:lambda:us-east-1:684516060775:function:recap-agent-runtime-dev",
+    "codeSha256": "R5GA92FKv2IXrmy7qMo8iII9cV3CQM9h6whYD8HRzpg=",
+    "version": "$LATEST",
+    "lastModified": "2026-11-05T15:43:31.000+0000",
+    "artifactSha256": "479180f7614abf6217ae6cbba8ca3c88823d715dc240cf61eb08580fc1d1ce98",
+    "artifactProvenance": "verified-aws",
+    "checkedAt": "2026-11-05T15:45:27.329Z"
+  },
+  "artifact": {
+    "artifactSha256": "479180f7614abf6217ae6cbba8ca3c88823d715dc240cf61eb08580fc1d1ce98",
+    "codeSha256": "R5GA92FKv2IXrmy7qMo8iII9cV3CQM9h6whYD8HRzpg=",
+    "version": "$LATEST",
+    "lastModified": "2026-11-05T15:43:31.000+0000",
+    "provenance": "verified-aws"
+  },
+  "lockfiles": {
+    "package-lock.json": "a2cff053ce5a610df685e68f9030ce750f54f45b38963a39f2eee45670b0d57b",
+    "bun.lock": "a4438419b1dbe9dd6decb2ac28a483b76f08e7b25122661be0ecd8a6f8ba173f"
+  },
+  "prompts": {
+    "digest": "d7069efdf70f5890a9a7ca8a23485bff6d46a6cd48a3e2e6f58fc993d033f2dc",
+    "fileCount": 139
+  },
+  "evaluator": {
+    "commit": "88ed677d5347c9865aacefcf49cf17a1193dd8f0",
+    "contentDigest": "fd6b386b83de22e8be1b0948a3b966a4337a25c611747021a4ccb13a296444e1"
+  },
+  "cases": {
+    "orderedIds": [
+      "live_behavior.quote_explicit_send_seeded_contact",
+      "live_behavior.regression_displayed_second_birthday"
+    ],
+    "identities": [
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.quote_explicit_send_seeded_contact",
+        "pairId": "b22a7318c8a7306e7666b542975deb432d583fd63a05e98802bc637e6fd96c2e",
+        "caseDigest": "aea4d2d54c5fdbe8170479bfd26680a2f6ecb22cfe334e56f6f295ecf27b25e1",
+        "fixtureDigest": "ffb5b42e7523d3de5302333ea29a4ac907fe41d799071347c3f49309315d6c56",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "configLabel": "live_lambda",
+        "caseId": "live_behavior.regression_displayed_second_birthday",
+        "pairId": "bdb3bf4811e75e253ea0fc5337e3cd8d8f31e00d52fbf8053597cb5f8c0669cb",
+        "caseDigest": "0abf4f13ee41038c7e6ff60d6d63aa19be2cf54e61289d3b170d1affa17a3c43",
+        "fixtureDigest": "bc83786a52ceec1ed3864adeca801119fd1b65cb60ea6d5c9080a79f6c24d278",
+        "rubricDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      }
+    ]
+  },
+  "models": {
+    "reply": "gpt-6-luna",
+    "extractor": "gpt-6-luna",
+    "classifier": "gpt-6-luna",
+    "judgeModels": [
+      "gpt-6-luna"
+    ],
+    "promptCache": {
+      "mode": "implicit",
+      "ttl": "30m"
+    },
+    "configSettings": [
+      {
+        "label": "live_lambda",
+        "replyModel": null,
+        "extractorModel": null,
+        "reasoningEffort": null,
+        "promptBundleLabel": null
+      }
+    ]
+  },
+  "concurrency": {
+    "requestedCases": 1,
+    "requestedJudges": 1,
+    "effectiveCases": 1,
+    "effectiveJudges": 1
+  },
+  "timeouts": {
+    "perTurnMs": 95000,
+    "suiteDeadlineMs": 3600000,
+    "drainMs": 300000,
+    "judgeTimeoutMs": 60000,
+    "judgeMaxRetries": 1
+  },
+  "startedAt": "2026-11-05T15:44:11.567Z",
+  "completedAt": "2026-11-05T15:45:27.329Z",
+  "env": {
+    "nodeVersion": "v24.15.0",
+    "platform": "darwin",
+    "awsProfile": "se-dev",
+    "awsRegion": "us-east-1",
+    "stackName": "recap-agent-runtime-dev",
+    "openaiSdk": "7.43.0",
+    "agentsSdk": "0.21.0"
+  },
+  "providerModelIdentities": [
+    "gpt-6-luna"
+  ],
+  "preflight": {
+    "passed": true,
+    "checks": [
+      {
+        "id": "selected-count",
+        "status": "pass",
+        "detail": "Selected 2 cases."
+      },
+      {
+        "id": "duplicate-ids",
+        "status": "pass",
+        "detail": "Case IDs are unique."
+      },
+      {
+        "id": "config-case-identity",
+        "status": "pass",
+        "detail": "Every config/case pair has a unique identity."
+      },
+      {
+        "id": "judge-availability",
+        "status": "pass",
+        "detail": "Judge key is present (value never printed)."
+      },
+      {
+        "id": "credentials",
+        "status": "pass",
+        "detail": "Live target resolves AWS credentials at invocation; profile presence is advisory only and no secret was read."
+      },
+      {
+        "id": "fixture-completeness",
+        "status": "pass",
+        "detail": "2 cases reference a backend fixture, 0 declare RSVP hooks, 0 run without one."
+      },
+      {
+        "id": "disk-writability",
+        "status": "pass",
+        "detail": "Run directory /Users/leonardocandio/Work/thesis/recap-agent/.eval-runs/eval-2026-11-05T15-44-10-684Z-f3fd08a5 is writable."
+      },
+      {
+        "id": "deployed-identity",
+        "status": "pass",
+        "detail": "Pinned arn:aws:lambda:us-east-1:684516060775:function:recap-agent-runtime-dev CodeSha256 R5GA92FKv2IX artifact 479180f7614a version $LATEST."
+      },
+      {
+        "id": "sdk-versions",
+        "status": "pass",
+        "detail": "openai 7.43.0, @openai/agents 0.21.0."
+      },
+      {
+        "id": "service-limits",
+        "status": "warn",
+        "detail": "Configured service limits are undiscovered; capacity against 4 cases / 2 judges is unproven and no default was changed."
+      }
+    ]
+  },
+  "notes": [
+    "O2/O3 bounded pipeline: configurations sequential, up to 4 case workers with a single external lane, 2 judge requests in flight, 8-snapshot backpressure queue.",
+    "Judge policy explicit: 60s request timeout, SDK maxRetries=0, one runner-owned retry only for transient transport/429/5xx after Retry-After (<=30s) or 2s.",
+    "Suite coordinator deadline 60 minutes with a 5-minute bounded drain; per-turn Lambda bound stays 95s."
+  ]
+}

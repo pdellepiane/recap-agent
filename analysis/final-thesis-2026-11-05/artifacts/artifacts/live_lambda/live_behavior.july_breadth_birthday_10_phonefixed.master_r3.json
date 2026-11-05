@@ -1,0 +1,1496 @@
+{
+  "runId": "eval-2026-11-05T16-01-27-136Z-2eace95d",
+  "caseId": "live_behavior.july_breadth_birthday_10_phonefixed.master_r3",
+  "suite": "live_behavior_regression",
+  "target": "live_lambda",
+  "configLabel": "live_lambda",
+  "status": "passed",
+  "hardGatePassed": true,
+  "finalScore": 1,
+  "totalLatencyMs": 37052,
+  "totalToolCalls": 9,
+  "nodeTransitions": [
+    "contacto_inicial->recomendar",
+    "recomendar->recomendar"
+  ],
+  "planDiffSummary": [
+    "current_node=\"recomendar\"",
+    "intent=\"refinar_busqueda\"",
+    "event_type=\"cumpleanos\"",
+    "vendor_category=\"Baile\"",
+    "active_need_category=\"Baile\"",
+    "location=\"Lima\"",
+    "guest_range=\"1-20\"",
+    "provider_needs=Baile:shortlisted"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/.eval-runs/eval-2026-11-05T16-01-27-136Z-2eace95d/artifacts/live_lambda/live_behavior.july_breadth_birthday_10_phonefixed.master_r3.json"
+  },
+  "expectationResults": [
+    {
+      "id": "event-type-retained",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "answer-delivered",
+      "type": "text_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Text containment checks passed."
+    },
+    {
+      "id": "no-provider-quote-without-explicit-date",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture provider.quote.write attempts=0 successes=0 replays=0 outcome=none."
+    },
+    {
+      "id": "no-unrequested-rsvp",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture rsvp.write attempts=0 successes=0 replays=0 outcome=none."
+    },
+    {
+      "id": "no-unrequested-handoff",
+      "type": "fixture_effect_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Fixture handoff.write attempts=0 successes=0 replays=0 outcome=none."
+    },
+    {
+      "id": "requested-needs-retained",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "objective-obligations",
+      "type": "expectation_pass_rate",
+      "score": 1,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 6 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 2,
+    "avg_latency_ms": 18526,
+    "p95_latency_ms": 20721,
+    "tool_calls_total": 9,
+    "unique_tools_called": 5,
+    "tool_call_rate_per_turn": 4.5,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.3103448275862069,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 32970,
+    "cache_hit_rate": 0.5702164725618608,
+    "input_tokens": 30997,
+    "cached_input_tokens": 17675,
+    "cache_write_input_tokens": 11828,
+    "uncached_input_tokens": 13322,
+    "usage_known": true
+  },
+  "timing": {
+    "queueWaitMs": 6126654,
+    "setupMs": 0,
+    "turnMs": 40752,
+    "snapshotMs": 10,
+    "teardownMs": 0,
+    "judgeWaitMs": 1,
+    "judgeApiMs": 0,
+    "reportWriteMs": 0,
+    "makespanMs": 0
+  },
+  "judgeMetrics": {
+    "modelCalls": 0,
+    "retryCount": 0,
+    "rateLimitCount": 0,
+    "tokensUnknown": false,
+    "openaiSdk": "7.43.0",
+    "judgeModels": []
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Busco animación temática medieval para cumpleaños en Lurín, 20 personas.",
+        "channel": "whatsapp",
+        "sessionId": "live_behavior.july_breadth_birthday_10_phonefixed",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "master-provider-live-public"
+        }
+      },
+      "outputText": "No encontré opciones que coincidan con animación temática medieval: los resultados disponibles son escuelas de baile enfocadas principalmente en bodas. ¿Quieres que amplíe la búsqueda a animadores temáticos en Lima o prefieres opciones de baile en general?",
+      "deliveredText": "No encontré opciones que coincidan con animación temática medieval: los resultados disponibles son escuelas de baile enfocadas principalmente en bodas. ¿Quieres que amplíe la búsqueda a animadores temáticos en Lima o prefieres opciones de baile en general?",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "d479f11aa01de17351ecf8c3330157e1f337f3980f754320a15a4cce7fc7e473",
+        "deliveredSha256": "d479f11aa01de17351ecf8c3330157e1f337f3980f754320a15a4cce7fc7e473",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "recomendar",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 5,
+          "attempts": 1
+        },
+        "trace_id": "01M6PCYPB0E46EPZWE5WVCTH3K",
+        "conversation_id": null,
+        "plan_id": "01M6PCY7J0AMVKVKXS7549TYXR",
+        "previous_node": "contacto_inicial",
+        "next_node": "recomendar",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "minimos_para_buscar",
+          "buscar_proveedores",
+          "busqueda_exitosa",
+          "hay_resultados",
+          "recomendar"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "9579d9dcb7c9",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/domain_scope.txt",
+          "shared/flow_discipline.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "search_providers_from_plan",
+          "get_provider_detail",
+          "get_related_providers",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "search_providers_from_plan"
+        ],
+        "tool_inputs": [],
+        "tool_outputs": [],
+        "provider_results": [
+          {
+            "id": 121,
+            "title": "Dance & Grace",
+            "slug": "dance-grace",
+            "category": "Baile",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Dance & Grace encaja con Baile según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/dance-grace",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "20% Off",
+            "promoSummary": "20% de descuento sobre el precio de lista de paquetes de clases de baile para novios de Sin Envolturas. \r\n\r\nRegalo adicional: Sesión de vals para familiares en el ensayo general.",
+            "descriptionSnippet": "Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.",
+            "serviceHighlights": [
+              "Clases de baile para novios",
+              "Coreografías personalizadas",
+              "Ensayos y preparación para el primer baile",
+              "Clases presenciales y virtuales"
+            ],
+            "termsHighlights": [
+              "Válido para clases presenciales en Lima y virtuales a nivel mundial.",
+              "Paquete mínimo de 5 clases para coreografías de novios.",
+              "El paquete completo puede ser transferible.",
+              "No acumulable con otras promociones.",
+              "Sujeto a disponibilidad."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.",
+              "Servicios que ofrece: Clases de baile para novios",
+              "Servicios que ofrece: Coreografías personalizadas",
+              "Servicios que ofrece: Ensayos y preparación para el primer baile",
+              "Servicios que ofrece: Clases presenciales y virtuales",
+              "Términos  y condiciones: Válido para clases presenciales en Lima y virtuales a nivel mundial.",
+              "Términos  y condiciones: Paquete mínimo de 5 clases para coreografías de novios.",
+              "Términos  y condiciones: El paquete completo puede ser transferible.",
+              "Términos  y condiciones: No acumulable con otras promociones.",
+              "Términos  y condiciones: Sujeto a disponibilidad.",
+              "Términos y condiciones: Válido para clases presenciales en Lima y virtuales a nivel mundial.",
+              "Términos y condiciones: Paquete mínimo de 5 clases para coreografías de novios.",
+              "Términos y condiciones: El paquete completo puede ser transferible.",
+              "Términos y condiciones: No acumulable con otras promociones.",
+              "Términos y condiciones: Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7791061462553687,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 201,
+            "title": "Ada Cisneros Coreógrafa Bodas",
+            "slug": "ada-cisneros-coreografa-bodas",
+            "category": "Baile",
+            "location": "Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "Ada Cisneros Coreógrafa Bodas encaja con Baile según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/ada-cisneros-coreografa-bodas",
+            "websiteUrl": null,
+            "minPrice": "750.00",
+            "maxPrice": null,
+            "promoBadge": "REGALOS SORPRESA",
+            "promoSummary": "Regalos sorpresa según el proceso y número de clases",
+            "descriptionSnippet": "Especialista en danza y clases de baile para bodas, con casi 15 años de experiencia en el rubro.",
+            "serviceHighlights": [
+              "Clases de baile para bodas.",
+              "Clases presenciales y online en tiempo real.",
+              "Preparación de vals, salsa, merengue, latin, tango y marinera.",
+              "Coaching para prácticas en casa.",
+              "Preparación de bailes con familiares.",
+              "Ensayo en el local de la boda.",
+              "Diseño del timing de los bailes.",
+              "Coordinación con wedding planner, DJs y editores."
+            ],
+            "termsHighlights": [
+              "Válido para todos los clientes.",
+              "Clases flexibles y reprogramables sin penalidad.",
+              "El servicio culmina después del baile de los novios el día de la boda."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Especialista en danza y clases de baile para bodas, con casi 15 años de experiencia en el rubro. Su metodología es personalizada y busca que cada pareja conecte, disfrute y mantenga su propio estilo. Cuenta con formación anual en Argentina y trabaja en español e inglés, además de manejar diferentes ritmos para crear una experiencia única y significativa para cada pareja.",
+              "Servicios que ofrece: Clases de baile para bodas.",
+              "Servicios que ofrece: Clases presenciales y online en tiempo real.",
+              "Servicios que ofrece: Preparación de vals, salsa, merengue, latin, tango y marinera.",
+              "Servicios que ofrece: Coaching para prácticas en casa.",
+              "Servicios que ofrece: Preparación de bailes con familiares.",
+              "Servicios que ofrece: Ensayo en el local de la boda.",
+              "Servicios que ofrece: Diseño del timing de los bailes.",
+              "Servicios que ofrece: Coordinación con wedding planner, DJs y editores.",
+              "Términos  y condiciones: Válido para todos los clientes.",
+              "Términos  y condiciones: Clases flexibles y reprogramables sin penalidad.",
+              "Términos  y condiciones: El servicio culmina después del baile de los novios el día de la boda."
+            ],
+            "eventTypes": [],
+            "description": "Especialista en danza y clases de baile para bodas, con casi 15 años de experiencia en el rubro. Su metodología es personalizada y busca que cada pareja conecte, disfrute y mantenga su propio estilo. Cuenta con formación anual en Argentina y trabaja en español e inglés, además de manejar diferentes ritmos para crear una experiencia única y significativa para cada pareja.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7732205695701709,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 127,
+            "title": "Arthur Murray",
+            "slug": "arthur-murray",
+            "category": "Baile",
+            "location": "Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "Arthur Murray encaja con Baile según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/arthur-murray",
+            "websiteUrl": "http://www.arthurmurrayperu.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "20% Off",
+            "promoSummary": "20% de descuento en cualquiera de nuestros programas de baile y primera clase de prueba totalmente gratuita para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.",
+            "serviceHighlights": [
+              "Clases de baile para novios",
+              "Programas de baile personalizados",
+              "Preparación para el primer baile",
+              "Clases de prueba"
+            ],
+            "termsHighlights": [
+              "Aplica en cualquiera de los programas de baile disponibles.",
+              "Incluye una primera clase de prueba totalmente gratuita.",
+              "Beneficio sujeto a disponibilidad."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.",
+              "Servicios que ofrece: Clases de baile para novios",
+              "Servicios que ofrece: Programas de baile personalizados",
+              "Servicios que ofrece: Preparación para el primer baile",
+              "Servicios que ofrece: Clases de prueba",
+              "Términos  y condiciones: Aplica en cualquiera de los programas de baile disponibles.",
+              "Términos  y condiciones: Incluye una primera clase de prueba totalmente gratuita.",
+              "Términos  y condiciones: Beneficio sujeto a disponibilidad.",
+              "Términos y condiciones: Aplica en cualquiera de los programas de baile disponibles.",
+              "Términos y condiciones: Incluye una primera clase de prueba totalmente gratuita.",
+              "Términos y condiciones: Beneficio sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7656530813361132,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 86,
+            "title": "Bodanza",
+            "slug": "bodanza",
+            "category": "Baile",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Bodanza encaja con Baile según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/bodanza",
+            "websiteUrl": "https://bodanza.com.pe/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": null,
+            "promoSummary": "25% de descuento en Bodanza escuela de baile para novios \r\n25 % de descuento en Bodanza Latin Estudio \r\n25 % de descuento en Bodanza Latin Fit",
+            "descriptionSnippet": "Bodanza es una escuela de baile especializada en novios y bienestar, ofreciendo clases diseñadas para que cada pareja disfrute y brille en su primer baile.",
+            "serviceHighlights": [
+              "Clases de baile para novios",
+              "Coreografías personalizadas",
+              "Clases en Bodanza Latin Studio",
+              "Clases de baile fitness en Bodanza Latin Fit"
+            ],
+            "termsHighlights": [
+              "Aplica en:",
+              "Bodanza escuela de baile para novios",
+              "Bodanza Latin Studio",
+              "Bodanza Latin Fit",
+              "Beneficio sujeto a disponibilidad."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Bodanza es una escuela de baile especializada en novios y bienestar, ofreciendo clases diseñadas para que cada pareja disfrute y brille en su primer baile.",
+              "Servicios que ofrece: Clases de baile para novios",
+              "Servicios que ofrece: Coreografías personalizadas",
+              "Servicios que ofrece: Clases en Bodanza Latin Studio",
+              "Servicios que ofrece: Clases de baile fitness en Bodanza Latin Fit",
+              "Términos  y condiciones: Aplica en:",
+              "Términos  y condiciones: Bodanza escuela de baile para novios",
+              "Términos  y condiciones: Bodanza Latin Studio",
+              "Términos  y condiciones: Bodanza Latin Fit",
+              "Términos  y condiciones: Beneficio sujeto a disponibilidad.",
+              "Términos y condiciones: Aplica en:",
+              "Términos y condiciones: Bodanza escuela de baile para novios",
+              "Términos y condiciones: Bodanza Latin Studio",
+              "Términos y condiciones: Bodanza Latin Fit",
+              "Términos y condiciones: Beneficio sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Bodanza es una escuela de baile especializada en novios y bienestar, ofreciendo clases diseñadas para que cada pareja disfrute y brille en su primer baile.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7588376451939224,
+            "retrievalSource": "hybrid"
+          }
+        ],
+        "search_strategy": "search_from_plan",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_00c0bb7a124bd330006aecc04a720c87d18a5d134cc49fc4d1",
+            "requestId": "req_43f4127c943440fbb2fbc45e1bc240ff",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 710,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 7587,
+                "instructionBytes": 0,
+                "inputBytes": 5760,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_0921f075e4b61db7006aecc04d479887d19f53dd30e562cec6",
+            "requestId": "req_11fc08041de6427bb21493c37d25674c",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 6855,
+              "inputBytes": 3136,
+              "toolCount": 0,
+              "schemaPropertyCount": 30,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 20823,
+                "instructionBytes": 6932,
+                "inputBytes": 3420,
+                "toolBytes": 2,
+                "outputSchemaBytes": 10207,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_06f40144185689e4006aecc05529ec87d1a178642aeb0d4c34",
+            "requestId": "req_7d13a5cfa8f545d7b00b7bdfa592a114",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 2588,
+              "inputBytes": 14146,
+              "toolCount": 3,
+              "schemaPropertyCount": 3,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 20040,
+                "instructionBytes": 2624,
+                "inputBytes": 15453,
+                "toolBytes": 1027,
+                "outputSchemaBytes": 667,
+                "requests": []
+              }
+            }
+          },
+          "router": {
+            "responseId": null,
+            "requestId": "req_ae57a0b6951346eea19bcd73063cbd55",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 3321,
+              "inputBytes": 2536,
+              "toolCount": 0,
+              "schemaPropertyCount": 2,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 6818,
+                "instructionBytes": 3321,
+                "inputBytes": 2536,
+                "toolBytes": 0,
+                "outputSchemaBytes": 0,
+                "requests": []
+              }
+            }
+          }
+        },
+        "recommendation_funnel": {
+          "available_candidates": 4,
+          "context_candidates": 4,
+          "context_candidate_ids": [
+            121,
+            201,
+            127,
+            86
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "recomendar",
+        "timing_ms": {
+          "total": 15142,
+          "load_plan": 6,
+          "response_classification": 2825,
+          "prepare_working_plan": 0,
+          "extraction": 5952,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 1849,
+          "provider_enrichment": 90,
+          "prompt_bundle_load": 0,
+          "compose_reply": 3356,
+          "save_plan": 21,
+          "router": 1034,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1515,
+            "output_tokens": 122,
+            "total_tokens": 1637,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 170
+          },
+          "router": {
+            "input_tokens": 1473,
+            "output_tokens": 0,
+            "total_tokens": 1473
+          },
+          "extraction": {
+            "input_tokens": 4399,
+            "output_tokens": 634,
+            "total_tokens": 5033,
+            "cached_input_tokens": 3636,
+            "cache_write_input_tokens": 760
+          },
+          "reply": {
+            "input_tokens": 4277,
+            "output_tokens": 180,
+            "total_tokens": 4457,
+            "cached_input_tokens": 0,
+            "cache_write_input_tokens": 4274
+          },
+          "total": {
+            "input_tokens": 11664,
+            "output_tokens": 936,
+            "total_tokens": 12600,
+            "cached_input_tokens": 4978,
+            "cache_write_input_tokens": 5204
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "agent_api",
+          "has_prior_outbound_message": false,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "question_or_request",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "recomendar",
+          "routeKind": "single_need_search",
+          "providerSearchMode": "single_need_from_plan",
+          "presentationScope": "single_need",
+          "focusNeedCategory": "Baile",
+          "needsToSearch": [
+            "Baile"
+          ],
+          "needsToPresent": [
+            "Baile"
+          ],
+          "stopReason": null,
+          "persistReason": "recomendar",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "single_need_search",
+        "presentation_scope": "single_need",
+        "session_focus_used": false,
+        "session_focus_key_present": true,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.96,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": "cumpleanos",
+          "vendor_category": "Baile",
+          "vendor_categories": [
+            "Baile"
+          ],
+          "active_need_category": "Baile",
+          "location": "Lurín",
+          "budget_signal": null,
+          "guest_range": "1-20",
+          "selected_provider_hints": [],
+          "preferences": [
+            "temática medieval",
+            "animación"
+          ],
+          "hard_constraints": [],
+          "assumptions": [],
+          "provider_query_intents_count": 1,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Busca animación temática medieval para un cumpleaños en Lurín, para 20 personas.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "recomendar",
+          "lifecycle_state": "active",
+          "event_type": "cumpleanos",
+          "vendor_category": "Baile",
+          "active_need_category": "Baile",
+          "location": "Lurín",
+          "budget_signal": null,
+          "guest_range": "1-20",
+          "provider_need_categories": [
+            "Baile"
+          ],
+          "provider_need_count": 1,
+          "provider_need_statuses": [
+            {
+              "category": "Baile",
+              "status": "shortlisted",
+              "has_recommendations": true,
+              "selected_provider_ids": []
+            }
+          ],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "Busca animación temática medieval para un cumpleaños en Lurín, para 20 personas.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "empty",
+          "context_source": "agent_api",
+          "retrieved_message_count": 0,
+          "recent_message_count": 0,
+          "excluded_current_message_count": 0,
+          "directions": [],
+          "sources": [],
+          "entry_source": null
+        },
+        "continuity_state": "new",
+        "welcome_allowed": true,
+        "history_status": "empty",
+        "has_prior_outbound": false,
+        "requested_operation": "provider.search",
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": true,
+          "droppedCandidateDetails": 4,
+          "droppedCalls": 8,
+          "diagnosticBytes": 12288,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M6PCYPB0E46EPZWE5WVCTH3K",
+        "conversation_hash": "a6b5c12f08c2dee02b7f99afc3fa931a530a27f519ca90a2624aa47debe31c68",
+        "runtime_latency_ms": 15142,
+        "extraction_latency_ms": 5952,
+        "compose_latency_ms": 3356,
+        "tools_called_count": 4,
+        "provider_results_count": 4,
+        "recommendation_context_candidates": 4,
+        "recommendation_presentation_limit": 6,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 12600,
+        "cached_input_tokens": 4978,
+        "cache_hit_rate": 0.4267832647462277,
+        "extraction_to_compose_ratio": 1.7735399284862932,
+        "captured_at": "2026-11-05T17:43:52.426Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "recomendar",
+        "lifecycle_state": "active",
+        "event_type": "cumpleanos",
+        "vendor_category": "Baile",
+        "active_need_category": "Baile",
+        "location": "Lurín",
+        "budget_signal": null,
+        "guest_range": "1-20",
+        "provider_needs": [
+          {
+            "category": "Baile",
+            "status": "shortlisted",
+            "recommended_provider_ids": [
+              121,
+              201,
+              127,
+              86
+            ],
+            "selected_provider_ids": []
+          }
+        ],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": true
+        }
+      },
+      "latencyMs": 16331
+    },
+    {
+      "turnIndex": 1,
+      "input": {
+        "text": "Si no hay, amplía la búsqueda a entretenimiento para cumpleaños en Lima.",
+        "channel": "whatsapp",
+        "sessionId": "live_behavior.july_breadth_birthday_10_phonefixed",
+        "contactPhone": null,
+        "backendFixture": {
+          "scenario": "master-provider-live-public"
+        }
+      },
+      "outputText": "Amplié la búsqueda, pero las opciones disponibles son principalmente escuelas y coreógrafos de baile para bodas; no encajan claramente con animación para un cumpleaños. ¿Quieres que busquemos entretenimiento en otra categoría, como Música, o prefieres ajustar la búsqueda de Baile?",
+      "deliveredText": "Amplié la búsqueda, pero las opciones disponibles son principalmente escuelas y coreógrafos de baile para bodas; no encajan claramente con animación para un cumpleaños. ¿Quieres que busquemos entretenimiento en otra categoría, como Música, o prefieres ajustar la búsqueda de Baile?",
+      "delivery": {
+        "action": "send",
+        "reason": "reply_composed"
+      },
+      "outputOrigin": {
+        "status": "verified",
+        "candidateSha256": "37e2be457decc03ad4a846dd07ff4018df5cbc9173f9c320eb44f45766312fcf",
+        "deliveredSha256": "37e2be457decc03ad4a846dd07ff4018df5cbc9173f9c320eb44f45766312fcf",
+        "transformationVersion": "transport-v2",
+        "mismatchFields": []
+      },
+      "currentNode": "recomendar",
+      "trace": {
+        "turn_coordination": {
+          "wait_ms": 38,
+          "attempts": 1
+        },
+        "trace_id": "01M6PCZC3PRTMW5Q0JM9CC0GJV",
+        "conversation_id": null,
+        "plan_id": "01M6PCY7J0AMVKVKXS7549TYXR",
+        "previous_node": "recomendar",
+        "next_node": "recomendar",
+        "node_path": [
+          "recomendar",
+          "existe_plan_guardado",
+          "refinar_criterios",
+          "minimos_para_buscar",
+          "buscar_proveedores",
+          "busqueda_exitosa",
+          "hay_resultados",
+          "recomendar"
+        ],
+        "intent": "refinar_busqueda",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "9579d9dcb7c9",
+        "prompt_file_paths": [
+          "shared/reply_core.txt",
+          "shared/domain_scope.txt",
+          "shared/flow_discipline.txt"
+        ],
+        "tools_considered": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "search_providers_from_plan",
+          "get_provider_detail",
+          "get_related_providers",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "get_agent_conversation_messages",
+          "log_agent_conversation_message",
+          "classify_reply_delivery",
+          "search_providers_from_plan",
+          "get_related_providers"
+        ],
+        "tool_inputs": [],
+        "tool_outputs": [],
+        "provider_results": [
+          {
+            "id": 121,
+            "title": "Dance & Grace",
+            "slug": "dance-grace",
+            "category": "Baile",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Dance & Grace encaja con Baile según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/dance-grace",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "20% Off",
+            "promoSummary": "20% de descuento sobre el precio de lista de paquetes de clases de baile para novios de Sin Envolturas. \r\n\r\nRegalo adicional: Sesión de vals para familiares en el ensayo general.",
+            "descriptionSnippet": "Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.",
+            "serviceHighlights": [
+              "Clases de baile para novios",
+              "Coreografías personalizadas",
+              "Ensayos y preparación para el primer baile",
+              "Clases presenciales y virtuales"
+            ],
+            "termsHighlights": [
+              "Válido para clases presenciales en Lima y virtuales a nivel mundial.",
+              "Paquete mínimo de 5 clases para coreografías de novios.",
+              "El paquete completo puede ser transferible.",
+              "No acumulable con otras promociones.",
+              "Sujeto a disponibilidad."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.",
+              "Servicios que ofrece: Clases de baile para novios",
+              "Servicios que ofrece: Coreografías personalizadas",
+              "Servicios que ofrece: Ensayos y preparación para el primer baile",
+              "Servicios que ofrece: Clases presenciales y virtuales",
+              "Términos  y condiciones: Válido para clases presenciales en Lima y virtuales a nivel mundial.",
+              "Términos  y condiciones: Paquete mínimo de 5 clases para coreografías de novios.",
+              "Términos  y condiciones: El paquete completo puede ser transferible.",
+              "Términos  y condiciones: No acumulable con otras promociones.",
+              "Términos  y condiciones: Sujeto a disponibilidad.",
+              "Términos y condiciones: Válido para clases presenciales en Lima y virtuales a nivel mundial.",
+              "Términos y condiciones: Paquete mínimo de 5 clases para coreografías de novios.",
+              "Términos y condiciones: El paquete completo puede ser transferible.",
+              "Términos y condiciones: No acumulable con otras promociones.",
+              "Términos y condiciones: Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.",
+            "fitScore": 81,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.8446249574478945,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 201,
+            "title": "Ada Cisneros Coreógrafa Bodas",
+            "slug": "ada-cisneros-coreografa-bodas",
+            "category": "Baile",
+            "location": "Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "Ada Cisneros Coreógrafa Bodas encaja con Baile según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/ada-cisneros-coreografa-bodas",
+            "websiteUrl": null,
+            "minPrice": "750.00",
+            "maxPrice": null,
+            "promoBadge": "REGALOS SORPRESA",
+            "promoSummary": "Regalos sorpresa según el proceso y número de clases",
+            "descriptionSnippet": "Especialista en danza y clases de baile para bodas, con casi 15 años de experiencia en el rubro.",
+            "serviceHighlights": [
+              "Clases de baile para bodas.",
+              "Clases presenciales y online en tiempo real.",
+              "Preparación de vals, salsa, merengue, latin, tango y marinera.",
+              "Coaching para prácticas en casa.",
+              "Preparación de bailes con familiares.",
+              "Ensayo en el local de la boda.",
+              "Diseño del timing de los bailes.",
+              "Coordinación con wedding planner, DJs y editores."
+            ],
+            "termsHighlights": [
+              "Válido para todos los clientes.",
+              "Clases flexibles y reprogramables sin penalidad.",
+              "El servicio culmina después del baile de los novios el día de la boda."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Especialista en danza y clases de baile para bodas, con casi 15 años de experiencia en el rubro. Su metodología es personalizada y busca que cada pareja conecte, disfrute y mantenga su propio estilo. Cuenta con formación anual en Argentina y trabaja en español e inglés, además de manejar diferentes ritmos para crear una experiencia única y significativa para cada pareja.",
+              "Servicios que ofrece: Clases de baile para bodas.",
+              "Servicios que ofrece: Clases presenciales y online en tiempo real.",
+              "Servicios que ofrece: Preparación de vals, salsa, merengue, latin, tango y marinera.",
+              "Servicios que ofrece: Coaching para prácticas en casa.",
+              "Servicios que ofrece: Preparación de bailes con familiares.",
+              "Servicios que ofrece: Ensayo en el local de la boda.",
+              "Servicios que ofrece: Diseño del timing de los bailes.",
+              "Servicios que ofrece: Coordinación con wedding planner, DJs y editores.",
+              "Términos  y condiciones: Válido para todos los clientes.",
+              "Términos  y condiciones: Clases flexibles y reprogramables sin penalidad.",
+              "Términos  y condiciones: El servicio culmina después del baile de los novios el día de la boda."
+            ],
+            "eventTypes": [],
+            "description": "Especialista en danza y clases de baile para bodas, con casi 15 años de experiencia en el rubro. Su metodología es personalizada y busca que cada pareja conecte, disfrute y mantenga su propio estilo. Cuenta con formación anual en Argentina y trabaja en español e inglés, además de manejar diferentes ritmos para crear una experiencia única y significativa para cada pareja.",
+            "fitScore": 81,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.8363852883458068,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 127,
+            "title": "Arthur Murray",
+            "slug": "arthur-murray",
+            "category": "Baile",
+            "location": "Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "Arthur Murray encaja con Baile según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/arthur-murray",
+            "websiteUrl": "http://www.arthurmurrayperu.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "20% Off",
+            "promoSummary": "20% de descuento en cualquiera de nuestros programas de baile y primera clase de prueba totalmente gratuita para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.",
+            "serviceHighlights": [
+              "Clases de baile para novios",
+              "Programas de baile personalizados",
+              "Preparación para el primer baile",
+              "Clases de prueba"
+            ],
+            "termsHighlights": [
+              "Aplica en cualquiera de los programas de baile disponibles.",
+              "Incluye una primera clase de prueba totalmente gratuita.",
+              "Beneficio sujeto a disponibilidad."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.",
+              "Servicios que ofrece: Clases de baile para novios",
+              "Servicios que ofrece: Programas de baile personalizados",
+              "Servicios que ofrece: Preparación para el primer baile",
+              "Servicios que ofrece: Clases de prueba",
+              "Términos  y condiciones: Aplica en cualquiera de los programas de baile disponibles.",
+              "Términos  y condiciones: Incluye una primera clase de prueba totalmente gratuita.",
+              "Términos  y condiciones: Beneficio sujeto a disponibilidad.",
+              "Términos y condiciones: Aplica en cualquiera de los programas de baile disponibles.",
+              "Términos y condiciones: Incluye una primera clase de prueba totalmente gratuita.",
+              "Términos y condiciones: Beneficio sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.",
+            "fitScore": 81,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.8281340287370537,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 86,
+            "title": "Bodanza",
+            "slug": "bodanza",
+            "category": "Baile",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Bodanza encaja con Baile según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/bodanza",
+            "websiteUrl": "https://bodanza.com.pe/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": null,
+            "promoSummary": "25% de descuento en Bodanza escuela de baile para novios \r\n25 % de descuento en Bodanza Latin Estudio \r\n25 % de descuento en Bodanza Latin Fit",
+            "descriptionSnippet": "Bodanza es una escuela de baile especializada en novios y bienestar, ofreciendo clases diseñadas para que cada pareja disfrute y brille en su primer baile.",
+            "serviceHighlights": [
+              "Clases de baile para novios",
+              "Coreografías personalizadas",
+              "Clases en Bodanza Latin Studio",
+              "Clases de baile fitness en Bodanza Latin Fit"
+            ],
+            "termsHighlights": [
+              "Aplica en:",
+              "Bodanza escuela de baile para novios",
+              "Bodanza Latin Studio",
+              "Bodanza Latin Fit",
+              "Beneficio sujeto a disponibilidad."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Bodanza es una escuela de baile especializada en novios y bienestar, ofreciendo clases diseñadas para que cada pareja disfrute y brille en su primer baile.",
+              "Servicios que ofrece: Clases de baile para novios",
+              "Servicios que ofrece: Coreografías personalizadas",
+              "Servicios que ofrece: Clases en Bodanza Latin Studio",
+              "Servicios que ofrece: Clases de baile fitness en Bodanza Latin Fit",
+              "Términos  y condiciones: Aplica en:",
+              "Términos  y condiciones: Bodanza escuela de baile para novios",
+              "Términos  y condiciones: Bodanza Latin Studio",
+              "Términos  y condiciones: Bodanza Latin Fit",
+              "Términos  y condiciones: Beneficio sujeto a disponibilidad.",
+              "Términos y condiciones: Aplica en:",
+              "Términos y condiciones: Bodanza escuela de baile para novios",
+              "Términos y condiciones: Bodanza Latin Studio",
+              "Términos y condiciones: Bodanza Latin Fit",
+              "Términos y condiciones: Beneficio sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Bodanza es una escuela de baile especializada en novios y bienestar, ofreciendo clases diseñadas para que cada pareja disfrute y brille en su primer baile.",
+            "fitScore": 81,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.8256473043932361,
+            "retrievalSource": "hybrid"
+          }
+        ],
+        "search_strategy": "search_from_plan",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "valid",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          }
+        },
+        "provider_candidate_audit": [],
+        "information_execution_summary": [],
+        "finish_plan_summary": null,
+        "provider_quote_receipts": [],
+        "openai_calls": {
+          "classifier": {
+            "responseId": "resp_077701bd299abdf1006aecc05b077487d195866d6f3751a299",
+            "requestId": "req_53a3e1bc54094315ba3722c162d87e4f",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 4896,
+              "inputBytes": 1224,
+              "toolCount": 0,
+              "schemaPropertyCount": 9,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 8123,
+                "instructionBytes": 0,
+                "inputBytes": 6296,
+                "toolBytes": 0,
+                "outputSchemaBytes": 1592,
+                "requests": []
+              }
+            }
+          },
+          "extraction": {
+            "responseId": "resp_09030cf5bded9210006aecc05dedb487d19b2bbc08e74d4d7f",
+            "requestId": "req_70891ddcb34649ce85cf248bacaf18da",
+            "model": "gpt-6-luna",
+            "attemptCount": 1,
+            "requestMetrics": {
+              "instructionBytes": 10226,
+              "inputBytes": 5826,
+              "toolCount": 0,
+              "schemaPropertyCount": 37,
+              "transport": {
+                "observedRequestCount": 1,
+                "totalPayloadBytes": 38184,
+                "instructionBytes": 10339,
+                "inputBytes": 6323,
+                "toolBytes": 2,
+                "outputSchemaBytes": 21258,
+                "requests": []
+              }
+            }
+          },
+          "reply": {
+            "responseId": "resp_09da1d58c0b8e654006aecc06ccb8487d1aec0261662f2b5f6",
+            "requestId": "req_a7c20bb67eb24e12920d1531b24cf7d2",
+            "model": "gpt-6-luna",
+            "attemptCount": 2,
+            "requestMetrics": {
+              "instructionBytes": 2588,
+              "inputBytes": 15122,
+              "toolCount": 3,
+              "schemaPropertyCount": 3,
+              "transport": {
+                "observedRequestCount": 2,
+                "totalPayloadBytes": 46471,
+                "instructionBytes": 5248,
+                "inputBytes": 37297,
+                "toolBytes": 2054,
+                "outputSchemaBytes": 1334,
+                "requests": []
+              }
+            }
+          },
+          "router": null
+        },
+        "recommendation_funnel": {
+          "available_candidates": 4,
+          "context_candidates": 4,
+          "context_candidate_ids": [
+            121,
+            201,
+            127,
+            86
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "recomendar",
+        "timing_ms": {
+          "total": 20047,
+          "load_plan": 20,
+          "response_classification": 2641,
+          "prepare_working_plan": 0,
+          "extraction": 10971,
+          "apply_extraction": 2,
+          "compute_sufficiency": 0,
+          "provider_search": 1932,
+          "provider_enrichment": 95,
+          "prompt_bundle_load": 0,
+          "compose_reply": 4351,
+          "save_plan": 27,
+          "router": 0,
+          "information_execution": 0,
+          "rsvp_execution": 0
+        },
+        "token_usage": {
+          "classifier": {
+            "input_tokens": 1623,
+            "output_tokens": 112,
+            "total_tokens": 1735,
+            "cached_input_tokens": 1342,
+            "cache_write_input_tokens": 278
+          },
+          "router": null,
+          "extraction": {
+            "input_tokens": 8291,
+            "output_tokens": 746,
+            "total_tokens": 9037,
+            "cached_input_tokens": 6860,
+            "cache_write_input_tokens": 1428
+          },
+          "reply": {
+            "input_tokens": 9419,
+            "output_tokens": 179,
+            "total_tokens": 9598,
+            "cached_input_tokens": 4495,
+            "cache_write_input_tokens": 4918
+          },
+          "total": {
+            "input_tokens": 19333,
+            "output_tokens": 1037,
+            "total_tokens": 20370,
+            "cached_input_tokens": 12697,
+            "cache_write_input_tokens": 6624
+          }
+        },
+        "response_classifier": {
+          "mode": "enforce",
+          "classifier_profile": "general",
+          "action": "respond",
+          "reason": "requires_response",
+          "would_suppress": false,
+          "context_source": "agent_api",
+          "has_prior_outbound_message": true,
+          "fallback_used": false,
+          "conversation_health": "progressing",
+          "health_reason": "normal_progress",
+          "human_help_response": "not_applicable",
+          "campaign_reply_kind": "question_or_request",
+          "automation_confidence": "not_automated",
+          "automation_pattern": "none",
+          "automation_scope": "none_or_uncertain",
+          "prompt_bundle_id": "3dadfbdaa726",
+          "prompt_file_paths": [
+            "nodes/deteccion_intencion/response_classifier.txt"
+          ]
+        },
+        "turn_decision": {
+          "nextNode": "recomendar",
+          "routeKind": "single_need_search",
+          "providerSearchMode": "single_need_from_plan",
+          "presentationScope": "single_need",
+          "focusNeedCategory": "Baile",
+          "needsToSearch": [
+            "Baile"
+          ],
+          "needsToPresent": [
+            "Baile"
+          ],
+          "stopReason": null,
+          "persistReason": "recomendar",
+          "invariantStatus": "valid",
+          "invariantViolations": []
+        },
+        "route_kind": "single_need_search",
+        "presentation_scope": "single_need",
+        "session_focus_used": true,
+        "session_focus_key_present": true,
+        "state_machine_invariant_status": "valid",
+        "state_machine_invariant_violations": [],
+        "operational_note": "[omitted]",
+        "extraction_summary": {
+          "intent_confidence": 0.97,
+          "information_request_count": 0,
+          "information_request_kinds": [],
+          "support_act_kind": null,
+          "ambiguity_status": "clear",
+          "clarification_question_present": false,
+          "ambiguity_interpretation_count": 0,
+          "event_type": "cumpleanos",
+          "vendor_category": "Baile",
+          "vendor_categories": [
+            "Baile"
+          ],
+          "active_need_category": "Baile",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "1-20",
+          "selected_provider_hints": [],
+          "preferences": [
+            "entretenimiento para cumpleaños",
+            "animación"
+          ],
+          "hard_constraints": [],
+          "assumptions": [
+            "Amplía la búsqueda más allá de la temática medieval y conserva el cumpleaños como contexto."
+          ],
+          "provider_query_intents_count": 1,
+          "provider_plan_operations_count": 0,
+          "provider_explanation_requested": false,
+          "provider_detail_requested": false,
+          "rsvp_action": null,
+          "rsvp_candidate_guest_id_present": false,
+          "rsvp_event_reference_present": false,
+          "conversation_summary_preview": "Acepta ampliar la búsqueda a entretenimiento para cumpleaños en Lima, tras no encontrar animación temática medieval en Lurín.",
+          "pause_requested": false,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "contact_validation_error": null
+        },
+        "plan_summary": {
+          "current_node": "recomendar",
+          "lifecycle_state": "active",
+          "event_type": "cumpleanos",
+          "vendor_category": "Baile",
+          "active_need_category": "Baile",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "1-20",
+          "provider_need_categories": [
+            "Baile"
+          ],
+          "provider_need_count": 1,
+          "provider_need_statuses": [
+            {
+              "category": "Baile",
+              "status": "shortlisted",
+              "has_recommendations": true,
+              "selected_provider_ids": []
+            }
+          ],
+          "selected_provider_ids": [],
+          "missing_fields": [],
+          "conversation_summary_preview": "Acepta ampliar la búsqueda a entretenimiento para cumpleaños en Lima, tras no encontrar animación temática medieval en Lurín.",
+          "open_question_count": 0,
+          "contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": true
+          },
+          "contact_validation_error": null,
+          "user_auth_status": "none",
+          "auth_recovery_terminal_reason": null,
+          "auth_recovery_send_attempted": false,
+          "auth_recovery_verification_attempted": false,
+          "pending_information_request_count": 0,
+          "rsvp_status": "none",
+          "rsvp_candidate_count": 0
+        },
+        "authentication_execution_summary": [],
+        "message_context": {
+          "history_status": "available",
+          "context_source": "agent_api",
+          "retrieved_message_count": 2,
+          "recent_message_count": 2,
+          "excluded_current_message_count": 0,
+          "directions": [
+            "inbound",
+            "outbound"
+          ],
+          "sources": [
+            null,
+            null
+          ],
+          "entry_source": null
+        },
+        "continuity_state": "continuing",
+        "welcome_allowed": false,
+        "history_status": "available",
+        "has_prior_outbound": true,
+        "requested_operation": "provider.search",
+        "capability_decision": null,
+        "capability_reason": null,
+        "truncation": {
+          "truncated": true,
+          "droppedCandidateDetails": 4,
+          "droppedCalls": 10,
+          "diagnosticBytes": 12288,
+          "envelopeBytes": 12288,
+          "maxCallSummaries": 16,
+          "maxCandidateDetails": 8
+        }
+      },
+      "perf": {
+        "trace_id": "01M6PCZC3PRTMW5Q0JM9CC0GJV",
+        "conversation_hash": "a6b5c12f08c2dee02b7f99afc3fa931a530a27f519ca90a2624aa47debe31c68",
+        "runtime_latency_ms": 20047,
+        "extraction_latency_ms": 10971,
+        "compose_latency_ms": 4351,
+        "tools_called_count": 5,
+        "provider_results_count": 4,
+        "recommendation_context_candidates": 4,
+        "recommendation_presentation_limit": 6,
+        "response_classifier_action": "respond",
+        "response_classifier_would_suppress": false,
+        "conversation_health_status": "progressing",
+        "conversation_health_reason": "normal_progress",
+        "human_help_response": "not_applicable",
+        "total_tokens": 20370,
+        "cached_input_tokens": 12697,
+        "cache_hit_rate": 0.656752702632804,
+        "extraction_to_compose_ratio": 2.5214893128016547,
+        "captured_at": "2026-11-05T17:44:14.721Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-dev-perf"
+      },
+      "plan_summary": {
+        "current_node": "recomendar",
+        "lifecycle_state": "active",
+        "event_type": "cumpleanos",
+        "vendor_category": "Baile",
+        "active_need_category": "Baile",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": "1-20",
+        "provider_needs": [
+          {
+            "category": "Baile",
+            "status": "shortlisted",
+            "recommended_provider_ids": [
+              121,
+              201,
+              127,
+              86
+            ],
+            "selected_provider_ids": []
+          }
+        ],
+        "selected_provider_ids": [],
+        "missing_fields": []
+      },
+      "auth_evidence": {
+        "status": "none",
+        "auth_method": null,
+        "awaiting_phone_confirmation": false,
+        "phone_confirmation": "not_awaiting",
+        "contact_fields_present": {
+          "name": false,
+          "email": false,
+          "phone": true
+        }
+      },
+      "latencyMs": 20721
+    }
+  ],
+  "startedAt": "2026-11-05T17:44:16.569Z",
+  "completedAt": "2026-11-05T17:44:16.570Z"
+}
